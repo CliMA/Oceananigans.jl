@@ -1,3 +1,5 @@
+using Oceananigans.Grids: prettysummary
+
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     grid :: G
@@ -19,24 +21,43 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     Examples
     ========
     
-    Construct a KernelFunctionOperation that returns random numbers:
+    Construct a `KernelFunctionOperation` that returns random numbers:
     
-    ```julia
-    random_kernel_function(i, j, k, grid) = rand() # use CUDA.rand on the GPU
+    ```jldoctest kfo
+    using Oceananigans
+
+    grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1));
+
+    random_kernel_function(i, j, k, grid) = rand(); # use CUDA.rand on the GPU
     
     kernel_op = KernelFunctionOperation{Center, Center, Center}(random_kernel_function, grid)
+
+    # output
+
+    KernelFunctionOperation at (Center, Center, Center)
+    ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── kernel_function: random_kernel_function (generic function with 1 method)
+    └── arguments: ()
     ```
     
-    Construct a KernelFunctionOperation using the vertical vorticity operator
-    used internally to compute vertical vorticity on all grids:
+    Construct a `KernelFunctionOperation` using the vertical vorticity operator used internally
+    to compute vertical vorticity on all grids:
     
-    ```julia
+    ```jldoctest kfo
     using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+
+    model = HydrostaticFreeSurfaceModel(; grid);
     
-    grid = model.grid
-    u, v, w = model.velocities
+    u, v, w = model.velocities;
     
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
+
+    # output
+
+    KernelFunctionOperation at (Face, Face, Center)
+    ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── kernel_function: ζ₃ᶠᶠᶜ (generic function with 1 method)
+    └── arguments: ("1×8×8 Field{Face, Center, Center} on RectilinearGrid on CPU", "1×8×8 Field{Center, Face, Center} on RectilinearGrid on CPU")
     ```
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
@@ -64,6 +85,10 @@ Base.show(io::IO, kfo::KernelFunctionOperation) =
       summary(kfo), '\n',
       "├── grid: ", summary(kfo.grid), '\n',
       "├── kernel_function: ", prettysummary(kfo.kernel_function), '\n',
-      "└── arguments: (", Tuple(string(prettysummary(a), ", ") for a in kfo.arguments[1:end-1])...,
-                       " ", prettysummary(kfo.arguments[end]), ")")
-
+      "└── arguments: ", if isempty(kfo.arguments)
+                             "()"
+                         else
+                             Tuple(string(prettysummary(a)) for a in kfo.arguments[1:end-1])...,
+                             prettysummary(kfo.arguments[end])
+                         end
+)
