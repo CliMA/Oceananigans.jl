@@ -401,11 +401,21 @@ julia> zspacings(grid, Center(), Center(), Center())
 """
 @inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
-"""
-    minimum_spacing(dir, (LX, LY, LZ), grid)
+destantiate(::Face)   = Face
+destantiate(::Center) = Center
 
-Return the minimum spacing for `grid` in direction `dir` and at location
-`(LX, LY, LZ)`.
+function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
+    spacing = eval(Symbol(dir, :spacing))
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
+
+    return minimum(Δ)
+end
+
+"""
+    minimum_xspacing(grid, ℓx, ℓy, ℓz)
+
+Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
@@ -414,23 +424,49 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 
-julia> minimum_spacing(:x, (Face, Face, Face), grid)
+julia> minimum_xspacing(grid, Center(), Center(), Center())
 0.5
+```
+"""
+minimum_xspacing(grid, ℓx, ℓy, ℓz) = (:x, grid, ℓx, ℓy, ℓz)
+minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
+"""
+    minimum_yspacing(grid, ℓx, ℓy, ℓz)
 
-julia> minimum_spacing(:y, (Face, Face, Face), grid)
+Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_yspacing(grid, Center(), Center(), Center())
 0.25
+```
+"""
+minimum_yspacing(grid, ℓx, ℓy, ℓz) = (:y, grid, ℓx, ℓy, ℓz)
+minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
 
-julia> minimum_spacing(:z, (Center, Center, Center), grid)
+"""
+    minimum_zspacing(grid, ℓx, ℓy, ℓz)
+
+Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_zspacing(grid, Center(), Center(), Center())
 0.125
 ```
 """
-function minimum_spacing(dir, (LX, LY, LZ), grid)
-    spacing = eval(Symbol(dir, :spacing))
-    loc = map(instantiate, (LX, LY, LZ))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, loc...)
-
-    return minimum(Δ)
-end
+minimum_zspacing(grid, ℓx, ℓy, ℓz) = (:z, grid, ℓx, ℓy, ℓz)
+minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
 #####
 ##### Convenience functions

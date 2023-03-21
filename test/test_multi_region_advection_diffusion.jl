@@ -8,8 +8,8 @@ Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
-    Δx_min = minimum_spacing(:x, (Face, Face, Face), grid)
-    Δy_min = minimum_spacing(:y, (Face, Face, Face), grid)
+    Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
 end
 

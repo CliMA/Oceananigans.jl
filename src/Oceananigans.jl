@@ -24,7 +24,7 @@ export
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
     xspacings, yspacings, zspacings,
-    minimum_spacing,
+    minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,

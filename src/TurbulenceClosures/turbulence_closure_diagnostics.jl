@@ -5,19 +5,19 @@
 using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
 
 function min_Δxyz(grid, ::ThreeDimensionalFormulation)
-    Δx = minimum_spacing(:x, (Face, Face, Face), grid)
-    Δy = minimum_spacing(:y, (Face, Face, Face), grid)
-    Δz = minimum_spacing(:z, (Face, Face, Face), grid)
+    Δx = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy = minimum_yspacing(grid, Center(), Center(), Center())
+    Δz = minimum_zspacing(grid, Center(), Center(), Center())
     return min(Δx, Δy, Δz)
 end
 
 function min_Δxyz(grid, ::HorizontalFormulation)
-    Δx = minimum_spacing(:x, (Face, Face, Face), grid)
-    Δy = minimum_spacing(:y, (Face, Face, Face), grid)
+    Δx = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx, Δy)
 end
 
-min_Δxyz(grid, ::VerticalFormulation) = minimum_spacing(:z, (Face, Face, Face), grid)
+min_Δxyz(grid, ::VerticalFormulation) = minimum_zspacing(grid, Center(), Center(), Center())
 
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivity_fields, model.grid)
