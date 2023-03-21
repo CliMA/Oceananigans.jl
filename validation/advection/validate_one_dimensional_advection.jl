@@ -84,7 +84,7 @@ for (gr, grid) in enumerate([grid_str])
     
     @info "testing grid number $gr"
 
-    Δt_max   = 0.2 * min_Δx(grid)
+    Δt_max   = 0.2 * minimum_spacing(:x, (Face, Face, Face), grid)
     end_time = 2.0
     
     @show tot_iter = end_time ÷ Δt_max

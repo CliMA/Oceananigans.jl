@@ -1,6 +1,5 @@
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_field
-using Oceananigans.Grids: min_Δx, min_Δy
 using Oceananigans.Operators: hack_cosd
 
 # Tracer patch for visualization
@@ -9,8 +8,8 @@ Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
-    Δx_min = min_Δx(grid)
-    Δy_min = min_Δy(grid)
+    Δx_min = minimum_spacing(:x, (Face, Face, Face), grid)
+    Δy_min = minimum_spacing(:y, (Face, Face, Face), grid)
     return min(Δx_min, Δy_min)
 end
 

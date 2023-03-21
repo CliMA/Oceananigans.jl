@@ -6,7 +6,6 @@ using LinearAlgebra
 using OffsetArrays
 
 using Oceananigans
-using Oceananigans.Grids: min_Δx    
 using Oceananigans.Models: ShallowWaterModel
 
 rate_of_convergence(::UpwindBiased) = 5
@@ -19,7 +18,7 @@ rate_of_convergence(::WENO{6})      = 11
 
 labels(::Centered)     = "Center4ᵗʰ"
 labels(::UpwindBiased) = "Upwind5ᵗʰ"
-labels(::WENO)         =  "WENOᵗʰ "
+labels(::WENO)         = "WENOᵗʰ "
 
 shapes(::Centered)     = :diamond
 shapes(::UpwindBiased) = :square
@@ -76,7 +75,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
                                 halo=(halos(scheme)),
                                 topology=(Periodic, Flat, Flat))
 
-    Δt = 0.1 * min_Δx(grid)
+    Δt = 0.1 * minimum_spacing(:x, (Face, Face, Face), grid)
 
     model = ShallowWaterModel(grid = grid,
                               momentum_advection = scheme,

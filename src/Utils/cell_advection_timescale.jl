@@ -7,9 +7,9 @@ function cell_advection_timescale(u, v, w, grid)
     vmax = maximum(abs, v)
     wmax = maximum(abs, w)
 
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
+    Δx = minimum_spacing(:x, (Face, Face, Face), grid)
+    Δy = minimum_spacing(:y, (Face, Face, Face), grid)
+    Δz = minimum_spacing(:z, (Face, Face, Face), grid)
 
     return min(Δx/umax, Δy/vmax, Δz/wmax)
 end

@@ -319,6 +319,11 @@ nodes(grid::AbstractGrid, (LX, LY, LZ); reshape=false, with_halos=false) = nodes
 ##### << Spacings >>
 #####
 
+# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
+function xspacing end
+function yspacing end
+function zspacing end
+
 """
     xspacings(grid, LX, LY, LZ; with_halos=true)
 
@@ -386,6 +391,39 @@ julia> zspacings(grid, Center(), Center(), Center())
 """
 @inline zspacings(grid, LX, LY, LZ; with_halos=true) = zspacings(grid, LZ; with_halos)
 
+instantiate(T::DataType) = T()
+instantiate(t) = t
+
+"""
+    minimum_spacing(dir, (LX, LY, LZ), grid)
+
+Return the minimum spacing for `grid` in direction `dir` and at location
+`(LX, LY, LZ)`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_spacing(:x, (Face, Face, Face), grid)
+0.5
+
+julia> minimum_spacing(:y, (Face, Face, Face), grid)
+0.25
+
+julia> minimum_spacing(:z, (Center, Center, Center), grid)
+0.125
+```
+"""
+function minimum_spacing(dir, (LX, LY, LZ), grid)
+    spacing = eval(Symbol(dir, :spacing))
+    loc = map(instantiate, (LX, LY, LZ))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, loc...)
+
+    return minimum(Δ)
+end
 
 #####
 ##### Convenience functions
