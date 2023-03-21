@@ -10,7 +10,8 @@ export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
-export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing, minimum_spacing
+export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
 export on_architecture
 
