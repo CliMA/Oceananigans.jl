@@ -30,16 +30,16 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
     "one_dimensional_diffusion.jl",
-    "two_dimensional_turbulence.jl",
-    "internal_wave.jl",
-    "convecting_plankton.jl",
-    "ocean_wind_mixing_and_convection.jl",
-    "langmuir_turbulence.jl",
-    "baroclinic_adjustment.jl",
-    "kelvin_helmholtz_instability.jl",
-    "shallow_water_Bickley_jet.jl",
-    "horizontal_convection.jl",
-    "tilted_bottom_boundary_layer.jl"
+#    "two_dimensional_turbulence.jl",
+#    "internal_wave.jl",
+#    "convecting_plankton.jl",
+#    "ocean_wind_mixing_and_convection.jl",
+#    "langmuir_turbulence.jl",
+#    "baroclinic_adjustment.jl",
+#    "kelvin_helmholtz_instability.jl",
+#    "shallow_water_Bickley_jet.jl",
+#    "horizontal_convection.jl",
+#    "tilted_bottom_boundary_layer.jl"
 ]
 
 for example in examples
@@ -53,16 +53,16 @@ end
 
 example_pages = [
     "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                      => "generated/internal_wave.md",
-    "Convecting plankton"                => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
-    "Baroclinic adjustment"              => "generated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"              => "generated/horizontal_convection.md",
-    "Tilted bottom boundary layer"       => "generated/tilted_bottom_boundary_layer.md"
+#    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+#    "Internal wave"                      => "generated/internal_wave.md",
+#    "Convecting plankton"                => "generated/convecting_plankton.md",
+#    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+#    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+#    "Baroclinic adjustment"              => "generated/baroclinic_adjustment.md",
+#    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+#    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
+#    "Horizontal convection"              => "generated/horizontal_convection.md",
+#    "Tilted bottom boundary layer"       => "generated/tilted_bottom_boundary_layer.md"
  ]
 
 model_setup_pages = [
@@ -125,14 +125,14 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
-    "Quick start" => "quick_start.md",
+#    "Quick start" => "quick_start.md",
     "Examples" => example_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
+#    "Physics" => physics_pages,
+#    "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
-    "Gallery" => "gallery.md",
+#    "Simulation tips" => "simulation_tips.md",
+#    "Contributor's guide" => "contributing.md",
+#    "Gallery" => "gallery.md",
     "References" => "references.md",
     "Appendix" => appendix_pages
 ]
