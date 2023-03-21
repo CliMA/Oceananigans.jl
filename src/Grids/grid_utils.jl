@@ -400,9 +400,6 @@ julia> zspacings(grid, Center(), Center(), Center())
 """
 @inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
-instantiate(T::DataType) = T()
-instantiate(t) = t
-
 """
     minimum_spacing(dir, (LX, LY, LZ), grid)
 
