@@ -6,8 +6,8 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     ν₀  :: FT
     κ₀  :: FT
-    κᶜ  :: FT
-    Cᵉ  :: FT
+    κᶜᵃ :: FT
+    Cᵉⁿ :: FT
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
@@ -15,13 +15,13 @@ end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
-                                        κᶜ::FT,
-                                        Cᵉ::FT,
+                                        κᶜᵃ::FT,
+                                        Cᵉⁿ::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R) where {TD, FT, R}
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Cᵉ, Ri₀, Riᵟ,
+    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering)
 end
 
@@ -36,8 +36,8 @@ struct HyperbolicTangentRiDependentTapering end
                                Ri_dependent_tapering = ExponentialRiDependentTapering(),
                                ν₀  = 0.30,
                                κ₀  = 0.42,
-                               κᶜ  = 4.0,
-                               Cᵉ  = 0.57,
+                               κᶜᵃ  = 4.0,
+                               Cᵉⁿ  = 0.57,
                                Ri₀ = 0.27,
                                Riᵟ = 0.20,
                                warning = true)
@@ -55,8 +55,8 @@ Keyword Arguments
   `ExponentialRiDependentTapering()`.
 * `ν₀`: Non-convective viscosity.
 * `κ₀`: Non-convective diffusivity for tracers.
-* `κᶜ`: Convective adjustment diffusivity for tracers.
-* `Cᵉ`: Entrainment coefficient for tracers.
+* `κᶜᵃ`: Convective adjustment diffusivity for tracers.
+* `Cᵉⁿ`: Entrainment coefficient for tracers.
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
@@ -65,8 +65,8 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     ν₀  = 0.30,
                                     κ₀  = 0.42,
-                                    κᶜ  = 4.0,
-                                    Cᵉ  = 0.57,
+                                    κᶜᵃ  = 4.0,
+                                    Cᵉⁿ  = 0.57,
                                     Ri₀ = 0.27,
                                     Riᵟ = 0.20,
                                     warning = true)
@@ -80,7 +80,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     TD = typeof(time_discretization)
 
-    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Cᵉ),
+    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜᵃ), FT(Cᵉⁿ),
                                           FT(Ri₀), FT(Riᵟ),
                                           Ri_dependent_tapering)
 end
@@ -99,7 +99,7 @@ const FlavorOfRBVD = Union{RBVD, RBVDArray}
 @inline viscosity_location(::FlavorOfRBVD)   = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
@@ -175,8 +175,8 @@ end
 
     ν₀  = closure_ij.ν₀
     κ₀  = closure_ij.κ₀
-    κᶜ  = closure_ij.κᶜ
-    Cᵉ  = closure_ij.Cᵉ
+    κᶜᵃ = closure_ij.κᶜᵃ
+    Cᵉⁿ = closure_ij.Cᵉⁿ
     Ri₀ = closure_ij.Ri₀
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
@@ -189,30 +189,30 @@ end
     entraining = (!convecting) & (N²_above < 0)
 
     # Convective adjustment diffusivity
-    κᶜᵒ = ifelse(convecting, κᶜ, zero(grid))
+    κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
-    κᵉ = ifelse(entraining, Cᵉ, zero(grid))
+    κᵉⁿ = ifelse(Qᵇ > 0, Cᵉⁿ * Qᵇ / N², zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ, zero(grid))
 
     # Shear mixing diffusivity and viscosity
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κ★ = κ₀ * τ
-    ν★ = ν₀ * τ
+    κᶜ★ = κᶜ₀ * τ
+    κᵘ★ = ν₀ * τ
 
     # Previous diffusivities
-    κ = diffusivities.κᶜ
-    ν = diffusivities.κᵘ
+    κᶜ = diffusivities.κᶜ
+    κᵘ = diffusivities.κᵘ
 
     # New diffusivities
-    κ⁺ = κᶜ + κᵉ + κ★
-    ν⁺ = ν★
+    κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
+    κᵘ⁺ = κᵘ★
 
     # Update by averaging in time
-    @inbounds κ[i, j, k] = 1/2 * (κ[i, j, k] + κ⁺)
-    @inbounds ν[i, j, k] = 1/2 * (ν[i, j, k] + ν⁺)
+    @inbounds κᶜ[i, j, k] = 1/2 * (κᶜ[i, j, k] + κᶜ⁺)
+    @inbounds κᵘ[i, j, k] = 1/2 * (κᵘ[i, j, k] + κᵘ⁺)
 end
 
 #####
