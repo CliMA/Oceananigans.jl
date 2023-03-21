@@ -414,6 +414,7 @@ end
 
 """
     minimum_xspacing(grid, ℓx, ℓy, ℓz)
+    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
 
 Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -432,6 +433,7 @@ minimum_xspacing(grid, ℓx, ℓy, ℓz) = (:x, grid, ℓx, ℓy, ℓz)
 minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
+    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
 
 Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -451,6 +453,7 @@ minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
 
 """
     minimum_zspacing(grid, ℓx, ℓy, ℓz)
+    minimum_zspacing(grid) = minimum_zspacing(grid, Center(), Center(), Center())
 
 Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
 
