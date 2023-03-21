@@ -125,14 +125,14 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
-#    "Quick start" => "quick_start.md",
+    "Quick start" => "quick_start.md",
     "Examples" => example_pages,
-#    "Physics" => physics_pages,
-#    "Numerical implementation" => numerical_pages,
+    "Physics" => physics_pages,
+    "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
-#    "Simulation tips" => "simulation_tips.md",
-#    "Contributor's guide" => "contributing.md",
-#    "Gallery" => "gallery.md",
+    "Simulation tips" => "simulation_tips.md",
+    "Contributor's guide" => "contributing.md",
+    "Gallery" => "gallery.md",
     "References" => "references.md",
     "Appendix" => appendix_pages
 ]
