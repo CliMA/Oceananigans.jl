@@ -106,9 +106,9 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ = Field((Center, Center, Face), grid)
-    ν = Field((Center, Center, Face), grid)
-    return (; κ, ν)
+    κᶜ = Field((Center, Center, Face), grid)
+    κᵘ = Field((Center, Center, Face), grid)
+    return (; κᶜ, κᵘ)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
@@ -189,7 +189,7 @@ end
     entraining = (!convecting) & (N²_above < 0)
 
     # Convective adjustment diffusivity
-    κᶜ = ifelse(convecting, κᶜ, zero(grid))
+    κᶜᵒ = ifelse(convecting, κᶜ, zero(grid))
 
     # Entrainment diffusivity
     κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
@@ -202,8 +202,17 @@ end
     κ★ = κ₀ * τ
     ν★ = ν₀ * τ
 
-    @inbounds diffusivities.κ[i, j, k] = κᶜ + κᵉ + κ★
-    @inbounds diffusivities.ν[i, j, k] = ν★
+    # Previous diffusivities
+    κ = diffusivities.κᶜ
+    ν = diffusivities.κᵘ
+
+    # New diffusivities
+    κ⁺ = κᶜ + κᵉ + κ★
+    ν⁺ = ν★
+
+    # Update by averaging in time
+    @inbounds κ[i, j, k] = 1/2 * (κ[i, j, k] + κ⁺)
+    @inbounds ν[i, j, k] = 1/2 * (ν[i, j, k] + ν⁺)
 end
 
 #####
