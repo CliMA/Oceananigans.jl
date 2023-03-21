@@ -87,13 +87,23 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
-@inline z_top(i, j, grid)                        = znode(i, j, grid.Nz+1, grid, Center(), Center(), Face())
-@inline z_bottom(i, j,  grid)                    = znode(i, j, 1,         grid, Center(), Center(), Face())
-@inline depthᶜᶜᶠ(i, j, k, grid)                  = z_top(i, j, grid) - znode(i, j, k, grid, Center(), Center(), Face())
-@inline total_depthᶜᶜᵃ(i, j, grid)               = z_top(i, j, grid) - z_bottom(i, j, grid)
-@inline height_above_bottomᶜᶜᶠ(i, j, k, grid)    = znode(i, j, k, grid, Center(), Center(), Face()) - z_bottom(i, j, grid)
+@inline clip(x) = max(zero(x), x)
+const c = Center()
+const f = Face()
+
+@inline z_top(i, j, grid)                        = znode(i, j, grid.Nz+1, grid, c, c, f)
+@inline z_bottom(i, j,  grid)                    = znode(i, j, 1,         grid, c, c, f)
+
+@inline depthᶜᶜᶠ(i, j, k, grid)                  = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
+@inline total_depthᶜᶜᵃ(i, j, grid)               = clip(z_top(i, j, grid) - z_bottom(i, j, grid))
+
+@inline function height_above_bottomᶜᶜᶠ(i, j, k, grid)
+    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+    h = znode(i, j, k, grid, c, c, f) - z_bottom(i, j, grid)
+    return max(Δz, h)
+end
+
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
-@inline opposite_wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = max(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
 include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
