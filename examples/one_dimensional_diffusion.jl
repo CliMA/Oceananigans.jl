@@ -88,7 +88,8 @@ current_figure() # hide
 # Next we set-up a `Simulation` that time-steps the model forward and manages output.
 
 ## Time-scale for diffusion across a grid cell
-diffusion_time_scale = minimum_spacing(:z, (Face, Face, Face), grid)^2 / model.closure.κ.T
+min_Δz = minimum_spacing(:z, (Face, Face, Face), model.grid)
+diffusion_time_scale = min_Δz^2 / model.closure.κ.T
 
 simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
 
