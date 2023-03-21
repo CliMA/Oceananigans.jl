@@ -190,7 +190,7 @@ function ShallowWaterModel(;
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,
-                              shallow_water_velocities(solution, formulation),
+                              shallow_water_velocities(formulation, solution),
                               coriolis,
                               forcing,
                               closure,
@@ -216,18 +216,12 @@ formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
 
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
-function shallow_water_velocities(solution, formulation)
-    if formulation isa VectorInvariantFormulation 
-        return (u = solution.u, v = solution.v, w = nothing) 
-    else
-        u = Field(@at (Face, Center, Center) solution.uh / solution.h)
-        v = Field(@at (Center, Face, Center) solution.vh / solution.h)
+shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
 
-        compute!(u)
-        compute!(v)
-
-        return (; u, v, w = nothing)
-    end
+function shallow_water_velocities(::ConservativeFormulation, solution)
+    u = solution.uh / solution.h
+    v = solution.vh / solution.h
+    return (; u, v, w=nothing)
 end
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)

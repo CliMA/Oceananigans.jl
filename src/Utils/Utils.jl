@@ -1,8 +1,6 @@
 module Utils
 
 export launch_config, work_layout, launch!
-export cell_advection_timescale
-export TimeStepWizard, update_Δt!
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples
 export validate_intervals, time_to_run
@@ -31,7 +29,6 @@ getnamewrapper(type) = typeof(type).name.wrapper
 
 include("prettysummary.jl")
 include("kernel_launching.jl")
-include("cell_advection_timescale.jl")
 include("prettytime.jl")
 include("pretty_filesize.jl")
 include("tuple_utils.jl")
