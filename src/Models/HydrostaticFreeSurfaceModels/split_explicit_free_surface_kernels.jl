@@ -281,8 +281,7 @@ ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
     
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
-    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
-
+    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
     return nothing
 end
 
