@@ -429,7 +429,7 @@ julia> minimum_xspacing(grid, Center(), Center(), Center())
 0.5
 ```
 """
-minimum_xspacing(grid, ℓx, ℓy, ℓz) = (:x, grid, ℓx, ℓy, ℓz)
+minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
 minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
@@ -448,7 +448,7 @@ julia> minimum_yspacing(grid, Center(), Center(), Center())
 0.25
 ```
 """
-minimum_yspacing(grid, ℓx, ℓy, ℓz) = (:y, grid, ℓx, ℓy, ℓz)
+minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
 minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
 
 """
@@ -468,7 +468,7 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 0.125
 ```
 """
-minimum_zspacing(grid, ℓx, ℓy, ℓz) = (:z, grid, ℓx, ℓy, ℓz)
+minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
 #####

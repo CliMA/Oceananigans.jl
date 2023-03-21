@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
-using Oceananigans.AbstractOperations: @at
+using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.Distributed
 using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -14,9 +14,10 @@ using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
+
 import Oceananigans.Architectures: architecture
 
-const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
+const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
 function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
     u =  XFaceField(grid)
@@ -218,11 +219,14 @@ architecture(model::ShallowWaterModel) = model.architecture
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
 
+# TODO: convert u and v into binary operations
 function shallow_water_velocities(::ConservativeFormulation, solution)
-    u = solution.uh / solution.h
-    v = solution.vh / solution.h
+    u = compute!(Field(solution.uh / solution.h))
+    v = compute!(Field(solution.vh / solution.h))
     return (; u, v, w=nothing)
 end
+
+shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(model.formulation, model.solution)
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)

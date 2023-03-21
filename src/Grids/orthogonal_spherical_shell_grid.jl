@@ -604,11 +604,11 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     interior_data = arch_array(arch, file[field_name][ii, jj])
 
     underlying_data = zeros(FT, arch,
-                            total_length(loc[1], topo[1], N[1], H[1]),
-                            total_length(loc[2], topo[2], N[2], H[2]))
+                            total_length(loc[1](), topo[1](), N[1], H[1]),
+                            total_length(loc[2](), topo[2](), N[2], H[2]))
 
-    ip = interior_parent_indices(loc[1], topo[1], N[1], H[1])
-    jp = interior_parent_indices(loc[2], topo[2], N[2], H[2])
+    ip = interior_parent_indices(loc[1](), topo[1](), N[1], H[1])
+    jp = interior_parent_indices(loc[2](), topo[2](), N[2], H[2])
 
     view(underlying_data, ip, jp) .= interior_data
 
@@ -671,10 +671,10 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     Azᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
     ## Maybe we won't need these?
-    Txᶠᶜ = total_length(loc_fc[1], topology[1], N[1], H[1])
-    Txᶜᶠ = total_length(loc_cf[1], topology[1], N[1], H[1])
-    Tyᶠᶜ = total_length(loc_fc[2], topology[2], N[2], H[2])
-    Tyᶜᶠ = total_length(loc_cf[2], topology[2], N[2], H[2])
+    Txᶠᶜ = total_length(loc_fc[1](), topology[1](), N[1], H[1])
+    Txᶜᶠ = total_length(loc_cf[1](), topology[1](), N[1], H[1])
+    Tyᶠᶜ = total_length(loc_fc[2](), topology[2](), N[2], H[2])
+    Tyᶜᶠ = total_length(loc_cf[2](), topology[2](), N[2], H[2])
 
     λᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     λᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])

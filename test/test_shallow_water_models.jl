@@ -57,12 +57,14 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     momentum_advection = nothing
     tracer_advection = nothing
     mass_advection = nothing
+
     model = ShallowWaterModel(; grid, closure, 
                                 gravitational_acceleration=1.0, 
                                 momentum_advection, tracer_advection, mass_advection,
                                 formulation)
 
     field = model.velocities[fieldname]
+
     interior(field) .= arch_array(architecture(grid), cos.(m * ξ))
     update_state!(model)
 
@@ -81,7 +83,6 @@ end
 
 @testset "Shallow Water Models" begin
     @info "Testing shallow water models..."
-
     @testset "Must be Flat in the vertical" begin
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
         @test_throws ArgumentError ShallowWaterModel(grid=grid, gravitational_acceleration=1)

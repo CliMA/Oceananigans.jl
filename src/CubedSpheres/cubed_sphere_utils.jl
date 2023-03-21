@@ -48,22 +48,22 @@ top_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} 
                                    right_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz))
 
 underlying_west_halo(f, grid, location, topo=topology(grid, 1)) =
-    view(f.parent, underlying_left_halo_indices(location, topo, grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_left_halo_indices(location(), topo(), grid.Nx, grid.Hx), :, :)
 
 underlying_east_halo(f, grid, location, topo=topology(grid, 1)) =
-    view(f.parent, underlying_right_halo_indices(location, topo, grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_right_halo_indices(location(), topo(), grid.Nx, grid.Hx), :, :)
 
 underlying_south_halo(f, grid, location, topo=topology(grid, 2)) =
-    view(f.parent, :, underlying_left_halo_indices(location, topo, grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_left_halo_indices(location(), topo(), grid.Ny, grid.Hy), :)
 
 underlying_north_halo(f, grid, location, topo=topology(grid, 2)) =
-    view(f.parent, :, underlying_right_halo_indices(location, topo, grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_right_halo_indices(location(), topo(), grid.Ny, grid.Hy), :)
 
 underlying_bottom_halo(f, grid, location, topo=topology(grid, 3)) =
-    view(f.parent, :, :, underlying_left_halo_indices(location, topo, grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_left_halo_indices(location(), topo(), grid.Nz, grid.Hz))
 
 underlying_top_halo(f, grid, location, topo=topology(grid, 3)) =
-    view(f.parent, :, :, underlying_right_halo_indices(location, topo, grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_right_halo_indices(location(), topo(), grid.Nz, grid.Hz))
 
 #####
 ##### Viewing boundary grid points (used to fill other halos)
