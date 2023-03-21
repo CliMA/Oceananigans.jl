@@ -143,7 +143,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 
 using Oceananigans.Units
 
-simulation = Simulation(model, Δt = 0.5 * minimum_spacing(:z, (Face, Face, Face), grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
