@@ -109,8 +109,8 @@ function FieldTimeSeries(path, name, backend;
     if backend isa InMemory
         Nt = length(times)
         space_size = total_size(location, grid, indices)
-        underlying_data = zeros(FT, architecture, space_size..., Nt)
-        data = offset_data(underlying_data, grid, loc, indices)
+        underlying_data = zeros(eltype(grid), architecture, space_size..., Nt)
+        data = offset_data(underlying_data, grid, location, indices)
     elseif backend isa OnDisk
         data = OnDiskData(path, name)
     else
