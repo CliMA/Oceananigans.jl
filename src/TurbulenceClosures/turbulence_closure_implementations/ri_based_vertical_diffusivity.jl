@@ -204,8 +204,10 @@ end
     κ★ = κ₀ * τ
     ν★ = ν₀ * τ
 
-    @inbounds diffusivities.κ[i, j, k] = κᶜ + κᵉ + κ★
-    @inbounds diffusivities.ν[i, j, k] = ν★
+    κⁿ = κᶜ + κᵉ + κ★
+    νⁿ = ν★
+    @inbounds diffusivities.κ[i, j, k] = 0.5 * (diffusivities.κ[i, j, k] + κⁿ)
+    @inbounds diffusivities.ν[i, j, k] = 0.5 * (diffusivities.ν[i, j, k] + νⁿ)
 end
 
 #####
