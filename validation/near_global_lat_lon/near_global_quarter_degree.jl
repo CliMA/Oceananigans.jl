@@ -122,17 +122,13 @@ target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 νz = 5e-3
 κz = 1e-4
 
-using Oceananigans.Operators: Δx, Δy
-using Oceananigans.TurbulenceClosures
-
-@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields) =
-                (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))^2 / 5days
-
+convective_adjustment  = RiBasedDiffusivity()
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
-convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
-biharmonic_viscosity   = HorizontalDivergenceScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
      
-closures = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity)
+tracer_advection   = WENO(underlying_grid)
+momentum_advection = VectorInvariant(vorticity_scheme  = WENO(), 
+                                     divergence_scheme = WENO(), 
+                                     vertical_scheme   = WENO(underlying_grid)) 
 
 #####
 ##### Boundary conditions / time-dependent fluxes 
@@ -228,13 +224,12 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       free_surface,
-                                      momentum_advection = WENO(vector_invariant = VelocityStencil()),
+                                      momentum_advection, tracer_advection,
                                       coriolis = HydrostaticSphericalCoriolis(),
                                       buoyancy,
                                       tracers = (:T, :S),
-                                      closure = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
-                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
-                                      tracer_advection = WENO(underlying_grid))
+                                      closure = (vertical_diffusivity, convective_adjustment),
+                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs))
 
 #####
 ##### Initial condition:
@@ -293,16 +288,16 @@ S = model.tracers.S
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              filename = output_prefix * "_surface",
-                                                              indices = (:, :, grid.Nz),
-                                                              overwrite_existing = true)
+# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+#                                                               schedule = TimeInterval(save_interval),
+#                                                               filename = output_prefix * "_surface",
+#                                                               indices = (:, :, grid.Nz),
+#                                                               overwrite_existing = true)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1year),
-                                                        prefix = output_prefix * "_checkpoint",
-                                                        overwrite_existing = true)
+# simulation.output_writers[:checkpointer] = Checkpointer(model,
+#                                                         schedule = TimeInterval(1year),
+#                                                         prefix = output_prefix * "_checkpoint",
+#                                                         overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

@@ -59,11 +59,11 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+lines(zspacings(grid, Center()), znodes(grid, Center()),
       axis = (ylabel = "Depth (m)",
               xlabel = "Vertical spacing (m)"))
 
-scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 
@@ -109,7 +109,7 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
 κ = 0.4 # von Karman constant
-z₁ = znodes(Center, grid)[1] # Closest grid center to the bottom
+z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
@@ -125,11 +125,9 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity.
+# and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
 
-ν = 1e-4 # m² s⁻¹, small-ish
-κ = ν
-closure = ScalarDiffusivity(; ν, κ)
+closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
@@ -227,7 +225,7 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
-fig[1, :] = Label(fig, title, textsize=20, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
 # Finally, we record a movie.
 

@@ -8,8 +8,8 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_topology(Arch, N, topo)
-    grid = RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
+    grid = RectilinearGrid(Arch(), topology=topo, size=(N, N, N), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid)
 
     time_step!(model, 1) # warmup
 

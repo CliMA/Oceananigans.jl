@@ -3,8 +3,10 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using CairoMakie # to avoid capturing precompilation output by Literate
 using Glob
+
+using CairoMakie # to avoid capturing precompilation output by Literate
+CairoMakie.activate!(type = "svg")
 
 using Oceananigans
 using Oceananigans.Operators
@@ -168,6 +170,6 @@ deploydocs(
           repo = "github.com/CliMA/OceananigansDocumentation.git",
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
      forcepush = true,
-  push_preview = true,
+  push_preview = false,
      devbranch = "main"
 )

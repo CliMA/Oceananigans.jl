@@ -4,12 +4,13 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
+using Oceananigans.Biogeochemistry: biogeochemistry_rhs
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, boundary_buffer
+using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
+using KernelAbstractions: @private
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation
-
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
+import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west 
@@ -103,10 +104,12 @@ where `c = C[tracer_index]`.
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                           val_tracer_index::Val{tracer_index},
+                                                          val_tracer_name,
                                                           advection,
                                                           closure,
                                                           c_immersed_bc,
                                                           buoyancy,
+                                                          biogeochemistry,
                                                           velocities,
                                                           free_surface,
                                                           tracers,
@@ -122,6 +125,7 @@ where `c = C[tracer_index]`.
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             + biogeochemistry_rhs(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -151,10 +155,12 @@ end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
+                                                               val_tracer_name,
                                                                advection,
                                                                closure,
                                                                e_immersed_bc,
                                                                buoyancy,
+                                                               biogeochemistry,
                                                                velocities,
                                                                free_surface,
                                                                tracers,

@@ -242,20 +242,20 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b, c = model.tracers.b, model.tracers.c
 
-dependencies = (gent_mcwilliams_diffusivity,
-                b,
-                Val(1),
-                model.clock,
-                model.diffusivity_fields,
-                model.tracers,
-                model.buoyancy,
-                model.velocities)
+arguments = (gent_mcwilliams_diffusivity,
+             b,
+             Val(1),
+             model.clock,
+             model.diffusivity_fields,
+             model.tracers,
+             model.buoyancy,
+             model.velocities)
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_y, diffusive_flux_z, ∇_dot_qᶜ
 
-vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=architecture, computed_dependencies=dependencies)
-wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=architecture, computed_dependencies=dependencies)
-∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
+vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, arguments...)
+wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, arguments...)
+∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, arguments...)
 
 vb = Field(vb_op)
 wb = Field(wb_op)
@@ -334,7 +334,7 @@ fig, ax, hm = heatmap(yc * 1e-3, zc, interior(∇_q_timeseries)[1, :, :, which_i
                       colormap=:balance, colorrange=(-1e-7, 1e-7),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "∇⋅q", textsize=30)
+fig[0, :] = Label(fig, "∇⋅q", fontsize=30)
 xlims!(y_limits[1], y_limits[2])
 ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -343,7 +343,7 @@ fig, ax, hm = heatmap(yv * 1e-3, zv, interior(vb_timeseries)[1, :, :, which_iter
                       colormap=:balance, colorrange=(-2e-5, 2e-5),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "v'b'", textsize=30)
+fig[0, :] = Label(fig, "v'b'", fontsize=30)
 xlims!(y_limits[1], y_limits[2])
 ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -352,7 +352,7 @@ fig, ax, hm = heatmap(yw * 1e-3, zw, interior(wb_timeseries)[1, :, :, which_iter
                       colormap=:balance, colorrange=(-1e-6, 1e-6),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "w'b'", textsize=30)
+fig[0, :] = Label(fig, "w'b'", fontsize=30)
 xlims!(y_limits[1], y_limits[2])
 ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -363,7 +363,7 @@ fig, ax, hm = heatmap(yc * 1e-3, zc, interior(b)[1, :, :],
                     #   colormap=:balance, colorrange=(-1e-7, 1e-7),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "b", textsize=30)
+fig[0, :] = Label(fig, "b", fontsize=30)
 xlims!(y_limits[1], y_limits[2])
 ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -373,7 +373,7 @@ fig, ax, hm = heatmap(yu * 1e-3, zu, interior(u_timeseries)[1, :, :, which_itera
                       colormap=:balance, colorrange=(-0.5, 0.5),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "u", textsize=30)
+fig[0, :] = Label(fig, "u", fontsize=30)
 # xlims!(y_limits[1], y_limits[2])
 # ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -384,7 +384,7 @@ fig, ax, hm = heatmap(yv * 1e-3, zv, interior(v_timeseries)[1, :, :, which_itera
                       colormap=:balance, colorrange=(-0.1, 0.1),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "v", textsize=30)
+fig[0, :] = Label(fig, "v", fontsize=30)
 # xlims!(y_limits[1], y_limits[2])
 # ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -395,7 +395,7 @@ fig, ax, hm = heatmap(yw * 1e-3, zw, interior(w_timeseries)[1, :, :, which_itera
                       colormap=:balance, colorrange=(-1e-4, 1e-4),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "w", textsize=30)
+fig[0, :] = Label(fig, "w", fontsize=30)
 # xlims!(y_limits[1], y_limits[2])
 # ylims!(z_limits[1], z_limits[2])
 display(fig)
@@ -411,7 +411,7 @@ fig, ax, hm = heatmap(yw * 1e-3, zw, interior(b_z)[1, :, :],
                       colormap=:curl, colorrange=(-5e-4, 5e-4),
                       axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
 Colorbar(fig[1, 2], hm, ticklabelsize=20)
-fig[0, :] = Label(fig, "∂b/∂z", textsize=30)
+fig[0, :] = Label(fig, "∂b/∂z", fontsize=30)
 xlims!(y_limits[1], y_limits[2])
 ylims!(z_limits[1], z_limits[2])
 display(fig)

@@ -8,13 +8,14 @@ export
 using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans: @ifhasamgx
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
+using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Models: initialize_model!
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -45,6 +46,7 @@ include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
 include("split_explicit_free_surface.jl")
+include("distributed_split_explicit_free_surface.jl")
 include("split_explicit_free_surface_kernels.jl")
 
 include("hydrostatic_free_surface_field_tuples.jl")
@@ -63,7 +65,7 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
 @inline fields(model::HydrostaticFreeSurfaceModel) = 
-        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
+        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields, biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)

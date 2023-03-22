@@ -74,8 +74,11 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
     end
 end
 
+const LatLonGrid = LatitudeLongitudeGrid
+const HNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
 const XRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const YRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const YNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any, <:Number}
 const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 
@@ -120,7 +123,9 @@ Keyword arguments
 
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical 
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
-              `Bounded`, `Periodic`, or `Flat`.
+              `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
+              topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
+              or (`Bounded`, `Bounded`, `Bounded`) otherwise.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
                         Default: `true`. When `false`, horizontal spacings and areas are computed
@@ -181,19 +186,19 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
-  
+
     if architecture == GPU() && !has_cuda() 
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
-    
+
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-    
+
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     TX, TY, TZ = topology
-    
+
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, Nλ, Hλ, longitude, architecture)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, Nφ, Hφ, latitude,  architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, Nz, Hz, z,         architecture)
@@ -217,13 +222,13 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
     arch = architecture(grid)
-    Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = allocate_metrics(grid)
+    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
     wait(device_event(arch))
 
-    precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
+    precompute_curvilinear_metrics!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
     wait(device_event(arch))
 
-    Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
+    Δyᶠᶜᵃ, Δyᶜᶠᵃ = precompute_Δy_metrics(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
 
     Nλ, Nφ, Nz = size(grid)
     Hλ, Hφ, Hz = halo_size(grid)
@@ -236,9 +241,8 @@ function with_precomputed_metrics(grid)
                                              grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
                                              grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
                                              grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, grid.zᵃᵃᶠ, grid.zᵃᵃᶜ,
-                                             Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ,
-                                             Δyᶠᶜ, Δyᶜᶠ,
-                                             Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
+                                             Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                             Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
@@ -315,24 +319,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-# Node by node
-@inline xnode(::Face,   i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
-@inline xnode(::Center, i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
-@inline ynode(::Face,   j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
-@inline ynode(::Center, j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
-@inline znode(::Face,   k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Center, k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
-
-all_x_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.λᶠᵃᵃ
-all_x_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.λᶜᵃᵃ
-all_y_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.φᵃᶠᵃ
-all_y_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.φᵃᶜᵃ
-all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
-all_z_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶜ
-
-@inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
-@inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
-@inline z_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+@inline x_domain(grid::LatLonGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
+@inline y_domain(grid::LatLonGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
+@inline z_domain(grid::LatLonGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
 
 @inline cpu_face_constructor_x(grid::XRegLatLonGrid) = x_domain(grid)
 @inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
@@ -534,7 +523,7 @@ end
 
     @inbounds begin
         Δyᶜᶠ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
-        Δyᶠᶜ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
+        Δyᶠᶜ[j′] = Δyᶠᶜᵃ(1, j′, 1, grid)
     end
 end
 
@@ -584,8 +573,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
-
-
 #####
 ##### Utilities
 #####
@@ -593,35 +580,107 @@ end
 return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 
+#####
+##### Grid nodes
+#####
+
+@inline xnodes(grid::LatLonGrid, LX::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline xnodes(grid::LatLonGrid, LX::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+
+@inline ynodes(grid::LatLonGrid, LY::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::LatLonGrid, LY::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
+@inline znodes(grid::LatLonGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::LatLonGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+
+@inline xnodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = xnodes(grid, LX; with_halos)
+@inline ynodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = ynodes(grid, LY; with_halos)
+@inline znodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = znodes(grid, LZ; with_halos)
+
+@inline xnode(i, grid::LatLonGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
+@inline xnode(i, grid::LatLonGrid, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
+
+@inline ynode(j, grid::LatLonGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
+@inline ynode(j, grid::LatLonGrid, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
+
+@inline znode(k, grid::LatLonGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::LatLonGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline xnode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = znode(k, grid, LZ)
 
 #####
-##### Get minima of grid
+##### Grid spacings in x, y, z (in meters)
 #####
 
-function min_Δx(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[1] == Flat
-        return Inf
-    else
-        ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
-        return grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(min_number_or_array(grid.Δλᶜᵃᵃ))
-    end
-end
+@inline xspacings(grid::LatLonGrid, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
+    view(grid.Δxᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::LatLonGrid, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
+    view(grid.Δxᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::LatLonGrid, LX::Face, LY::Center;   with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
+    view(grid.Δxᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::LatLonGrid, LX::Face, LY::Face;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
+    view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-function min_Δy(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[2] == Flat
-        return Inf
-    else
-        return grid.radius * deg2rad(min_number_or_array(grid.Δφᵃᶜᵃ))
-    end
-end
+@inline xspacings(grid::HRegLatLonGrid, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
+    view(grid.Δxᶜᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::HRegLatLonGrid, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
+    view(grid.Δxᶜᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::HRegLatLonGrid, LX::Face, LY::Center;   with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
+    view(grid.Δxᶠᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::HRegLatLonGrid, LX::Face, LY::Face;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
+    view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-function min_Δz(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[3] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δzᵃᵃᶜ)
-    end
-end
+@inline yspacings(grid::YNonRegLatLonGrid, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
+    view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::YNonRegLatLonGrid, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
+    view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
+@inline yspacings(grid::YRegLatLonGrid, LX, LY; with_halos=false) = yspacings(grid, LY; with_halos)
+@inline yspacings(grid, LY::Center; kwargs...) = grid.Δyᶠᶜᵃ
+@inline yspacings(grid, LY::Face; kwargs...)   = grid.Δyᶜᶠᵃ
+
+@inline zspacings(grid::LatLonGrid,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline zspacings(grid::ZRegLatLonGrid, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline zspacings(grid::LatLonGrid,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline zspacings(grid::ZRegLatLonGrid, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
+
+@inline xspacings(grid::LatLonGrid, LX, LY, LZ; kwargs...) = xspacings(grid, LX, LY; kwargs...)
+@inline yspacings(grid::LatLonGrid, LX, LY, LZ; kwargs...) = yspacings(grid, LX, LY; kwargs...)
+@inline zspacings(grid::LatLonGrid, LX, LY, LZ; kwargs...) = zspacings(grid, LZ; kwargs...)
+
+min_Δx(grid::LatLonGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
+min_Δy(grid::LatLonGrid) = topology(grid)[2] == Flat ? Inf : minimum((yspacings(grid, Face(), Center()), yspacings(grid, Center(), Face())))
+min_Δz(grid::LatLonGrid) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))
+
+
+#####
+##### Grid spacings in λ, φ (in degrees)
+#####
+
+@inline λspacings(grid::LatLonGrid,     LX::Center; with_halos=false) = with_halos ? grid.Δλᶜᵃᵃ : view(grid.Δλᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline λspacings(grid::XRegLatLonGrid, LX::Center; with_halos=false) = grid.Δλᶜᵃᵃ
+@inline λspacings(grid::LatLonGrid,     LX::Face;   with_halos=false) = with_halos ? grid.Δλᶠᵃᵃ : view(grid.Δλᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline λspacings(grid::XRegLatLonGrid, LX::Face;   with_halos=false) = grid.Δλᶠᵃᵃ
+
+@inline φspacings(grid::LatLonGrid,     LY::Center; with_halos=false) = with_halos ? grid.Δφᵃᶜᵃ : view(grid.Δφᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline φspacings(grid::YRegLatLonGrid, LY::Center; with_halos=false) = grid.Δφᵃᶜᵃ
+@inline φspacings(grid::LatLonGrid,     LY::Face;   with_halos=false) = with_halos ? grid.Δφᵃᶠᵃ : view(grid.Δφᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline φspacings(grid::YRegLatLonGrid, LY::Face;   with_halos=false) = grid.Δφᵃᶠᵃ
+
+@inline λspacings(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = λspacings(grid, LX; with_halos)
+@inline φspacings(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = φspacings(grid, LY; with_halos)
+
+@inline λspacing(i, grid::LatLonGrid,     ::Center) = @inbounds grid.Δλᶜᵃᵃ[i]
+@inline λspacing(i, grid::LatLonGrid,     ::Face)   = @inbounds grid.Δλᶠᵃᵃ[i]
+@inline λspacing(i, grid::XRegLatLonGrid, ::Center) = grid.Δλᶜᵃᵃ
+@inline λspacing(i, grid::XRegLatLonGrid, ::Face)   = grid.Δλᶠᵃᵃ
+
+@inline φspacing(j, grid::LatLonGrid,     ::Center) = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline φspacing(j, grid::LatLonGrid,     ::Face)   = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline φspacing(j, grid::YRegLatLonGrid, ::Center) = grid.Δφᵃᶜᵃ
+@inline φspacing(j, grid::YRegLatLonGrid, ::Face)   = grid.Δφᵃᶠᵃ
+
+@inline λspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = λspacing(i, grid, LX)
+@inline φspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = φspacing(j, grid, LY)

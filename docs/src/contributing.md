@@ -134,7 +134,7 @@ Your development environment is now ready!
 We follow the [ColPrac guide](https://github.com/SciML/ColPrac) for collaborative practices.
 We ask that new contributors read that guide before submitting a pull request.
 
-Changes and contributions should be made via GitHub pull requests against the ``master`` branch.
+Changes and contributions should be made via GitHub pull requests against the ``main`` branch.
 
 When you're done making changes, commit the changes you made. Chris Beams has written a 
 [guide](https://chris.beams.io/posts/git-commit/) on how to write good commit messages.
