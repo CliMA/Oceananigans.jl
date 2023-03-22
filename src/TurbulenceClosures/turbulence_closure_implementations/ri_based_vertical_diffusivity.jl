@@ -100,7 +100,7 @@ const FlavorOfRBVD = Union{RBVD, RBVDArray}
 @inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
 
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
@@ -199,7 +199,7 @@ end
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κᶜ★ = κᶜ₀ * τ
+    κᶜ★ = κ₀ * τ
     κᵘ★ = ν₀ * τ
 
     # Previous diffusivities
