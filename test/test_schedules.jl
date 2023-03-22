@@ -8,7 +8,7 @@ using Oceananigans: initialize!
     @info "Testing schedules..."
 
     # Some fake models
-    fake_model_at_iter_0 = (; clock=Clock(time=1.0, iteration=0))
+    fake_model_at_iter_0 = (; clock=Clock(time=0.0, iteration=0))
     fake_model_at_iter_3 = (; clock=Clock(time=1.0, iteration=3))
     fake_model_at_iter_5 = (; clock=Clock(time=2.0, iteration=5))
 
