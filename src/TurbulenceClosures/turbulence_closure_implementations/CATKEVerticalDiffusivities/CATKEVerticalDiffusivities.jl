@@ -46,6 +46,7 @@ struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD
     turbulent_kinetic_energy_equation :: TKE
     maximum_diffusivity :: FT
     minimum_turbulent_kinetic_energy :: FT
+    minimum_convective_buoyancy_flux :: FT
     negative_turbulent_kinetic_energy_damping_time_scale :: FT
 end
 
@@ -53,12 +54,14 @@ function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                                       turbulent_kinetic_energy_equation::TKE,
                                       maximum_diffusivity::FT,
                                       minimum_turbulent_kinetic_energy::FT,
+                                      minimum_convective_buoyancy_flux::FT,
                                       negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT}
 
     return CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
                                                      turbulent_kinetic_energy_equation,
                                                      maximum_diffusivity,
                                                      minimum_turbulent_kinetic_energy,
+                                                     minimum_convective_buoyancy_flux,
                                                      negative_turbulent_kinetic_energy_damping_time_scale)
 end
 
@@ -134,6 +137,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   turbulent_kinetic_energy_equation = optimal_turbulent_kinetic_energy_equation(FT),
                                   maximum_diffusivity = Inf,
                                   minimum_turbulent_kinetic_energy = 0,
+                                  minimum_convective_buoyancy_flux = 1e-11,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
                                   warning = true) where TD
 
@@ -148,9 +152,11 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
-    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation,
+    return CATKEVerticalDiffusivity{TD}(mixing_length,
+                                        turbulent_kinetic_energy_equation,
                                         FT(maximum_diffusivity),
                                         FT(minimum_turbulent_kinetic_energy),
+                                        FT(minimum_convective_buoyancy_flux),
                                         FT(negative_turbulent_kinetic_energy_damping_time_scale))
                                   
 end
