@@ -294,9 +294,9 @@ end
 ##### Showing grids
 #####
 
-x_domain(grid::RectilinearGrid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
-y_domain(grid::RectilinearGrid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
-z_domain(grid::RectilinearGrid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+x_domain(grid::RectilinearGrid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
+y_domain(grid::RectilinearGrid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
+z_domain(grid::RectilinearGrid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
