@@ -107,3 +107,4 @@ function time_step!(model::OnlyParticleTrackingModel, Δt; euler=false)
     tick!(model.clock, Δt)
     update_particle_properties!(model, Δt)
 end
+

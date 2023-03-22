@@ -1,9 +1,10 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
-
+using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
+
+import Oceananigans.TimeSteppers: calculate_tendencies!
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -36,6 +37,8 @@ function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
+    update_tendencies!(model.biogeochemistry, model)
+
     return nothing
 end
 
@@ -48,6 +51,7 @@ function calculate_interior_tendency_contributions!(model)
     advection            = model.advection
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
+    biogeochemistry      = model.biogeochemistry
     stokes_drift         = model.stokes_drift
     closure              = model.closure
     background_fields    = model.background_fields
@@ -94,20 +98,21 @@ function calculate_interior_tendency_contributions!(model)
             only_active_cells)
 
     start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
-    
+    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
+
     for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index+3]
-        @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_tendency = tendencies[tracer_index + 3]
+        @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
+        @inbounds tracer_name = keys(tracers)[tracer_index]
 
         launch!(arch, grid, :xyz, calculate_Gc!,
-                c_tendency, grid, Val(tracer_index),
+                c_tendency, grid, Val(tracer_index), Val(tracer_name),
                 start_tracer_kernel_args..., 
                 c_immersed_bc,
                 end_tracer_kernel_args...,
                 forcing, clock;
-                only_active_cells)
+                dependencies, only_active_cells)
 
     end
 

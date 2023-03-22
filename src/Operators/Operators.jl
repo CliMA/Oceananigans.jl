@@ -1,6 +1,7 @@
 module Operators
 
 # Spacings
+export xspacing, yspacing, zspacing
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
 export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
 export Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
@@ -80,5 +81,9 @@ include("derivative_operators.jl")
 include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
+
+const xspacing = Δx
+const yspacing = Δy
+const zspacing = Δz
 
 end # module
