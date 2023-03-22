@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
+using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices, _set!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -205,8 +205,9 @@ for arch in archs
             grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
             a, b = (Field{Center, Center, Center}(grid) for i in 1:2)
 
-            set!(b, 2)
-            set!(a, (x, y, z) -> x < 2 ? 3x : 6)
+            # Use private _set! that doesn't fill halos
+            _set!(b, 2)
+            _set!(a, (x, y, z) -> x < 2 ? 3x : 6)
 
             #                            0   0.5   1   1.5   2   2.5   3
             # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘

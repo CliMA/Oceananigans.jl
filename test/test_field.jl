@@ -101,11 +101,12 @@ end
 function run_field_interpolation_tests(FT, arch)
 
     grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
+    Nz = size(grid, 3)
 
-    velocities = VelocityFields(grid)
-    tracers = TracerFields((:c,), grid)
-
-    (u, v, w), c = velocities, tracers.c
+    u = XFaceField(grid)
+    v = YFaceField(grid)
+    w = ZFaceField(grid) # Note this does not have ImpenetrableBoundaryCondition at the bottom
+    c = CenterField(grid)
 
     # Choose a trilinear function so trilinear interpolation can return values that
     # are exactly correct.
@@ -131,8 +132,8 @@ function run_field_interpolation_tests(FT, arch)
 
         @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
         @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
         @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
     end
 
     # Check that interpolating between grid points works as expected.
@@ -151,8 +152,8 @@ function run_field_interpolation_tests(FT, arch)
 
         @test all(isapprox.(ℑu, F, atol=ε_max))
         @test all(isapprox.(ℑv, F, atol=ε_max))
-        @test all(isapprox.(ℑw, F, atol=ε_max))
         @test all(isapprox.(ℑc, F, atol=ε_max))
+        @test all(isapprox.(ℑw, F, atol=ε_max))
     end
 
     return nothing
@@ -272,7 +273,6 @@ end
     end
 
     @testset "Setting fields" begin
-        
         @info "  Testing field setting..."
 
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)

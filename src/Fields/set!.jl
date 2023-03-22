@@ -15,6 +15,14 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
+"""
+    set!(u::Field, v)
+
+Fill the interior values of `u` with `v` and
+fill the halo regions of `u`. `v` may be a Number,
+`Function`, `Array`, or anything for which `u .= v`
+is valid. Returns `u`.
+"""
 function set!(u::Field, v)
     _set!(u::Field, v)
     try
