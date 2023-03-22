@@ -4,7 +4,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
-import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, set_interior!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Base: fill!, axes
@@ -112,14 +112,21 @@ function reconstruct_global_indices(indices, p::YPartition, N)
     return (idx_x, idx_y, idx_z)
 end
 
-## Functions applied regionally
-set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
-fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
+#####
+##### Functions applied regionally
+#####
 
-set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!, mrf, f)
+function set!(mrf::MultiRegionField, v)
+    apply_regionally!(set_interior!, mrf, v)
+    fill_halo_regions!(mrf)
+    return mrf
+end
 
+set_interior!(mrf::MultiRegionField, v) = apply_regionally!(set_interior!, mrf, v)
+set_interior!(mrf::MultiRegionField, f::Function) = apply_regionally!(set_interior!, mrf, f)
 compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
 compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
+fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
@@ -158,11 +165,11 @@ function inject_regional_bcs(grid, region, partition, loc, indices;
                                top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
+    west  = inject_west_boundary(region, partition, west)
+    east  = inject_east_boundary(region, partition, east)
+    south = inject_south_boundary(region, partition, south)
+    north = inject_north_boundary(region, partition, north)
 
-  west  = inject_west_boundary(region, partition, west)
-  east  = inject_east_boundary(region, partition, east)
-  south = inject_south_boundary(region, partition, south)
-  north = inject_north_boundary(region, partition, north)
   return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
 
@@ -177,9 +184,9 @@ function Base.show(io::IO, field::MultiRegionField)
   middle = isnothing(field.operand) ? "" :
       string("├── operand: ", summary(field.operand), "\n",
              "├── status: ", summary(field.status), "\n")
-
-  suffix = string("└── data: ", summary(field.data), "\n",
-                  "    └── ", data_summary(field))
+  suffix =
+      string("└── data: ", summary(field.data), "\n",
+             "    └── ", data_summary(field))
 
   print(io, prefix, middle, suffix)
 end
