@@ -1,5 +1,5 @@
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.Fields: _set!
+using Oceananigans.Fields: set_interior!
 
 import Oceananigans.Fields: set!
 
@@ -44,10 +44,11 @@ function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
 
-        @apply_regionally _set!(ϕ, value)
+        @apply_regionally set_interior!(ϕ, value)
     end
 
     update_state!(model)
 
     return nothing
 end
+

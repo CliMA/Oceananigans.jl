@@ -1,4 +1,4 @@
-using Oceananigans.Fields: _set!
+using Oceananigans.Fields: set_interior!
 import Oceananigans.Fields: set!
 
 using Oceananigans.TimeSteppers: update_state!
@@ -12,7 +12,7 @@ function set!(model::ShallowWaterModel; kwargs...)
         else
             throw(ArgumentError("name $fldname not found in model.solution or model.tracers."))
         end
-        _set!(ϕ, value)
+        set_interior!(ϕ, value)
     end
 
     update_state!(model)

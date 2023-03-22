@@ -15,7 +15,6 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
     calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
     calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
-
     calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
        
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
@@ -27,7 +26,7 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
-"""Integrate z at locations `location` and set! `height`` with the result"""
+"""Integrate z at locations `location`."""
 @inline function calculate_column_height!(height, location)
     dz = GridMetricOperation(location, Δz, height.grid)
     return sum!(height, dz)
@@ -36,9 +35,7 @@ end
 @inline function augmented_kernel_size(grid::DistributedGrid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
-
     Tx, Ty, _ = topology(grid)
-
     Rx, Ry, _ = architecture(grid).ranks
 
     Ax = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx + Hx - 1 : Nx + 2Hx - 2)
@@ -50,7 +47,6 @@ end
 @inline function augmented_kernel_offsets(grid::DistributedGrid)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
-
     Rx, Ry, _ = architecture(grid).ranks
 
     Ax = Rx == 1 || Tx == RightConnected ? 0 : Hx - 1
@@ -60,29 +56,31 @@ end
 end
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
+    settings  = free_surface.settings 
+    current_halo = halo_size(grid)
 
-        settings  = free_surface.settings 
-
-        old_halos = halo_size(grid)
-
-        new_halos = split_explicit_halos(old_halos, settings.substeps+1, grid)         
-        new_grid  = with_halo(new_halos, grid)
+    # Build an expanded "split-explicit grid" with (potentially) huge halos
+    # so we can avoid communication during split-explicit substepping
+    se_halo = split_explicit_halo(current_halo, settings.substeps, grid)         
+    se_grid = with_halo(se_halo, grid)
     
-        η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
+    Nz = size(se_grid, 3)
+    η = ZFaceField(se_grid, indices=(:, :, Nz+1))
 
-        return SplitExplicitFreeSurface(η,
-                                        SplitExplicitState(new_grid),
-                                        SplitExplicitAuxiliaryFields(new_grid),
-                                        free_surface.gravitational_acceleration,
-                                        free_surface.settings)
+    return SplitExplicitFreeSurface(η,
+                                    SplitExplicitState(new_grid),
+                                    SplitExplicitAuxiliaryFields(new_grid),
+                                    free_surface.gravitational_acceleration,
+                                    free_surface.settings)
 end
 
-@inline function split_explicit_halos(old_halos, step_halo, grid::DistributedGrid)
+@inline function split_explicit_halo(current_halo, Nsubsteps, grid::DistributedGrid)
+    arch = architecture(grid)
+    Rx, Ry, _ = arch.ranks
 
-    Rx, Ry, _ = architecture(grid).ranks
+    # Inflate halos given current number of substeps
+    Hx = Rx == 1 ? current_halo[1] : Nsubsteps + 1
+    Hy = Ry == 1 ? current_halo[2] : Nsubsteps + 1
 
-    Ax = Rx == 1 ? old_halos[1] : step_halo
-    Ay = Ry == 1 ? old_halos[2] : step_halo
-
-    return (Ax, Ay, old_halos[3])
+    return (Hx, Hy, current_halo[3])
 end

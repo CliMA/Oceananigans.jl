@@ -1,12 +1,15 @@
-using KernelAbstractions: @index, @kernel, Event
-using KernelAbstractions.Extras.LoopInfo: @unroll
-using Oceananigans.Grids: topology
 using Oceananigans.Utils
-using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
+
+using Oceananigans.Grids: topology
+using Oceananigans.Fields: set_interior!
+using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node,
                                        inactive_node, IBG, c, f
+
+using KernelAbstractions: @index, @kernel, Event
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
@@ -49,10 +52,10 @@ const μ = 1.0 - δ - γ - ϵ
 
 # Enforce NoFlux conditions for `η★`
 
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, 0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, 0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, 0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, 0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
 
 # Enforce Impenetrability conditions for `U★` and `V★`
 
@@ -313,7 +316,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Reset eta for the next timestep
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
-    @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+    @apply_regionally set_interior!(free_surface.η, free_surface.state.η̅)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
