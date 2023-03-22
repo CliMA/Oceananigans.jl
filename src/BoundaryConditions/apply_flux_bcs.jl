@@ -9,8 +9,8 @@ using Oceananigans.Grids: AbstractGrid
 #####
 
 # Unpack
-apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west,   c.boundary_conditions.east, args...)
-apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south,  c.boundary_conditions.north, args...)
+apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west, c.boundary_conditions.east, args...)
+apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south, c.boundary_conditions.north, args...)
 apply_z_bcs!(Gc, c, args...) = apply_z_bcs!(Gc, Gc.grid, c, c.boundary_conditions.bottom, c.boundary_conditions.top, args...)
 
 # Shortcuts for...
@@ -21,7 +21,7 @@ apply_y_bcs!(::Nothing, args...) = nothing
 apply_z_bcs!(::Nothing, args...) = nothing
 
 # Not-flux boundary conditions
-const NotFluxBC = Union{PBC, MCBC, DCBC, VBC, GBC, OBC, ZFBC, Nothing}
+const NotFluxBC = Union{PBC, CBC, VBC, GBC, OBC, ZFBC, Nothing}
 
 apply_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = nothing
 apply_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = nothing
@@ -32,21 +32,21 @@ apply_z_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitec
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_x_bcs!(Gc, grid::AbstractGrid, c, west_bc, east_bc, arch::AbstractArchitecture, args...) =
+apply_x_bcs!(Gc, grid::AbstractGrid, c, west_bc, east_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), grid, west_bc, east_bc, args...)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_y_bcs!(Gc, grid::AbstractGrid, c, south_bc, north_bc, arch::AbstractArchitecture, args...) =
+apply_y_bcs!(Gc, grid::AbstractGrid, c, south_bc, north_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), grid, south_bc, north_bc, args...)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, args...) =
+apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, args...)
 
 """
