@@ -88,7 +88,8 @@ end
 function regrid_in_y!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_y_faces = ynodes(source_grid, f)
-    event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
+    Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
+    event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
     wait(device(arch), event)
     return a
 end
@@ -96,7 +97,8 @@ end
 function regrid_in_x!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_x_faces = xnodes(source_grid, f)
-    event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
+    Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
+    event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
     wait(device(arch), event)
     return a
 end
@@ -181,7 +183,7 @@ end
     end
 end
 
-@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces)
+@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces, Nx_source_faces)
     i, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -189,7 +191,6 @@ end
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
 
-    Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
     i⁺_src = min(Nx_source_faces, i_src + 1)
 
     fo = ForwardOrdering()
@@ -249,7 +250,7 @@ end
     end
 end
 
-@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces)
+@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces, Ny_source_faces)
     j, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -257,7 +258,6 @@ end
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
 
-    Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
     j⁺_src = min(Ny_source_faces, j_src + 1)
 
     fo = ForwardOrdering()
