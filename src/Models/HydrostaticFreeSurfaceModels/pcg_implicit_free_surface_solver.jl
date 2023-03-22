@@ -245,7 +245,7 @@ finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
 
 struct DiagonallyDominantInversePreconditioner end
 
-@inline precondition!(P_r, ::DiagonallyDominantInversePreconditioner, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
+@inline precondition!(P_r, ::DiagonallyDominantInversePreconditioner, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
     diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 """
