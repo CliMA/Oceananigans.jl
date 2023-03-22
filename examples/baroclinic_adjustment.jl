@@ -197,7 +197,11 @@ b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
                   bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
                   top    = FieldTimeSeries(slice_filenames.top, "b"))
 
+times = avg_b_timeseries.times
+
 avg_b_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
+
+times = avg_b_timeseries.times
 
 nothing #hide
 
@@ -270,13 +274,14 @@ contour!(ax, y, z, avg_b; transformation = (:yz, zonal_slice_displacement * x[en
 
 Colorbar(fig[2, 2], sf, label = "m s⁻²", height = 200, tellheight=false)
 
-# Finally, we add a figure title with the time of the snapshot and then record a movie.
-
-times = avg_b_timeseries.times
-
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
 fig[1, 1:2] = Label(fig, title; fontsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
+
+current_figure() # hide
+fig
+
+# Finally, we add a figure title with the time of the snapshot and then record a movie.
 
 frames = 1:length(times)
 

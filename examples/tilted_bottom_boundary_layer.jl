@@ -226,6 +226,9 @@ times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
+current_figure() # hide
+fig
+
 # Finally, we record a movie.
 
 frames = 1:length(times)

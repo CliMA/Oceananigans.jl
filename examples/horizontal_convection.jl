@@ -13,7 +13,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, CairoMakie"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## Horizontal convection
@@ -163,7 +163,7 @@ run!(simulation)
 
 # ## Load saved output, process, visualize
 #
-# We animate the results by opening the JLD2 file, extracting data for the iterations we ended
+# We animate the results by loading the saved output, extracting data for the iterations we ended
 # up saving at, and ploting the saved fields. From the saved buoyancy field we compute the 
 # buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
 #
