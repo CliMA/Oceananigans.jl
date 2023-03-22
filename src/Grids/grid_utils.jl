@@ -58,9 +58,6 @@ Base.length(::Center,  ::Flat,            N) = N
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
 
-instantiate(T::Type) = T()
-instantiate(t) = t
-
 """
     size(grid)
 

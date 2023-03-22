@@ -314,9 +314,9 @@ end
 function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    x₁, x₂ = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
-    y₁, y₂ = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
-    z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+    x₁, x₂ = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
+    y₁, y₂ = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
+    z₁, z₂ = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "x", x₁, x₂)
     y_summary = domain_summary(TY(), "y", y₁, y₂)

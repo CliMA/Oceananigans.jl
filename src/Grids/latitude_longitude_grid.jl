@@ -296,9 +296,9 @@ end
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    λ₁, λ₂ = domain(topology(grid, 1)(), size(grid, 1), grid.λᶠᵃᵃ)
-    φ₁, φ₂ = domain(topology(grid, 2)(), size(grid, 2), grid.φᵃᶠᵃ)
-    z₁, z₂ = domain(topology(grid, 3)(), size(grid, 3), grid.zᵃᵃᶠ)
+    λ₁, λ₂ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
+    φ₁, φ₂ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
+    z₁, z₂ = domain(TZ(), size(grid, 3), grid.zᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)

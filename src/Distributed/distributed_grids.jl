@@ -133,7 +133,7 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ, φl, arch.child_architecture)
 
     architecture = DistributedArch(child_architecture(arch); 
-                                   topology = topology, 
+                                   topology = topology,
                                    ranks = arch.ranks, 
                                    communicator = arch.communicator,
                                    use_buffers = using_buffered_communication(arch))
