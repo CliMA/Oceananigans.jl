@@ -340,7 +340,7 @@ end
 #####
 
 # Include the time dimension.
-@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid, fts.indices)..., length(fts.times))
+@inline Base.size(fts::FieldTimeSeries) = (size(fts.grid, location(fts), fts.indices)..., length(fts.times))
 
 @propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
 
