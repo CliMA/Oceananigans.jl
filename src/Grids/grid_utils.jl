@@ -73,9 +73,9 @@ Return a 3-tuple with the number of halo cells on either side of the
 domain in (x, y, z).
 """
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid, d) = halo_size(grid)[d]
 
 Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-halo_size(grid, d) = halo_size(grid)[d]
 
 Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
     size(loc, topology(grid), size(grid), indices)
