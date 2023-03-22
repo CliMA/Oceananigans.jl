@@ -38,9 +38,12 @@ sides  = (:west, :east, :south, :north, :top, :bottom)
 side_id = Dict(side => n for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
-    :west => :east, :east => :west,
-    :south => :north, :north => :south,
-    :bottom => :top, :top => :bottom
+    :west => :east,
+    :east => :west,
+    :south => :north,
+    :north => :south,
+    :bottom => :top,
+    :top => :bottom
 )
 
 # Define functions that return unique send and recv MPI tags for each side.

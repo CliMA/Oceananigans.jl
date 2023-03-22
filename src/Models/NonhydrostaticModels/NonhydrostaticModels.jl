@@ -2,26 +2,26 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel
 
-using DocStringExtensions
-
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
+
+using Oceananigans.Architectures: CPU, GPU
+using Oceananigans.Utils: launch!
 using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
+using DocStringExtensions
+using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 import Oceananigans: fields, prognostic_fields
 
-function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
-    global_grid = reconstruct_global_grid(local_grid)
-    return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
-end
-
-PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::CPU,                   grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::GPU,                   grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::CPU,                   grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::GPU,                   grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::DistributedArch, local_grid::RegRectilinearGrid)  = DistributedFFTBasedPoissonSolver(local_grid)
+PressureSolver(::DistributedArch, local_grid::HRegRectilinearGrid) = DistributedFFTBasedPoissonSolver(local_grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
