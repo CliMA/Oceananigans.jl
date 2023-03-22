@@ -2,11 +2,13 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans: initialize!
 
 @testset "Schedules" begin
     @info "Testing schedules..."
 
     # Some fake models
+    fake_model_at_iter_0 = (; clock=Clock(time=1.0, iteration=0))
     fake_model_at_iter_3 = (; clock=Clock(time=1.0, iteration=3))
     fake_model_at_iter_5 = (; clock=Clock(time=2.0, iteration=5))
 
@@ -20,12 +22,14 @@ using Oceananigans.TimeSteppers: Clock
     @test ti.interval == 2.0
     @test ti(fake_model_at_time_2)
     @test !(ti(fake_model_at_time_3))
+    @test initialize!(ti, fake_model_at_iter_0)
 
     # IterationInterval
     ii = IterationInterval(3)
 
     @test !(ii(fake_model_at_iter_5))
     @test ii(fake_model_at_iter_3)
+    @test initialize!(ii, fake_model_at_iter_0)
 
     # OrSchedule
     ti_and_ii = AndSchedule(TimeInterval(2), IterationInterval(3))
@@ -53,6 +57,7 @@ using Oceananigans.TimeSteppers: Clock
     st_vector = SpecifiedTimes([2, 5, 6])
     @test st_list.times == st_vector.times
     @test st.times == [2.0, 5.0, 6.0]
+    @test !(initialize!(st, fake_model_at_iter_0))
 
     # Times are sorted
     st = SpecifiedTimes(5, 2, 6)
@@ -62,4 +67,8 @@ using Oceananigans.TimeSteppers: Clock
 
     @test !(st(fake_model_at_time_4))
     @test st(fake_model_at_time_5)
+
+    # Specified times includes iteration 0
+    st = SpecifiedTimes(0, 2, 4)
+    @test initialize!(st, fake_model_at_iter_0)
 end
