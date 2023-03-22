@@ -72,25 +72,25 @@ underlying_top_halo(f, grid, location) =
 #####
 
 underlying_left_boundary_indices(loc, topo, N, H) = 1+H:2H
-underlying_left_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+underlying_left_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 underlying_right_boundary_indices(loc, topo, N, H) = N+1:N+H
-underlying_right_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+underlying_right_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 underlying_west_boundary(f, grid, location) =
-    view(f.parent, underlying_left_boundary_indices(location, topology(grid, 1), grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_left_boundary_indices(instantiate(location), instantiate(topology(grid, 1)), grid.Nx, grid.Hx), :, :)
 
 underlying_east_boundary(f, grid, location) =
-    view(f.parent, underlying_right_boundary_indices(location, topology(grid, 1), grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_right_boundary_indices(instantiate(location), instantiate(topology(grid, 1)), grid.Nx, grid.Hx), :, :)
 
 underlying_south_boundary(f, grid, location) =
-    view(f.parent, :, underlying_left_boundary_indices(location, topology(grid, 2), grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_left_boundary_indices(instantiate(location), instantiate(topology(grid, 2)), grid.Ny, grid.Hy), :)
 
 underlying_north_boundary(f, grid, location) =
-    view(f.parent, :, underlying_right_boundary_indices(location, topology(grid, 2), grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_right_boundary_indices(instantiate(location), instantiate(topology(grid, 2)), grid.Ny, grid.Hy), :)
 
 underlying_bottom_boundary(f, grid, location) =
-    view(f.parent, :, :, underlying_left_boundary_indices(location, topology(grid, 3), grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_left_boundary_indices(instantiate(location), instantiate(topology(grid, 3)), grid.Nz, grid.Hz))
 
 underlying_top_boundary(f, grid, location) =
-    view(f.parent, :, :, underlying_right_boundary_indices(location, topology(grid, 3), grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_right_boundary_indices(instantiate(location), instantiate(topology(grid, 3)), grid.Nz, grid.Hz))

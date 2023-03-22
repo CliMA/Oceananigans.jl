@@ -73,36 +73,36 @@ underlying_top_halo(f, grid, location, topo=topology(grid, 3)) =
 #####
 
 left_boundary_indices(loc, topo, N, H) = 1:H
-left_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+left_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 right_boundary_indices(loc, topo, N, H) = N-H+1:N
-right_boundary_indices(::Type{Face}, ::Type{Bounded}, N, H) = N-H:N+1
-right_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+right_boundary_indices(::Face, ::Bounded, N, H) = N-H:N+1
+right_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 underlying_left_boundary_indices(loc, topo, N, H) = 1+H:2H
-underlying_left_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+underlying_left_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 underlying_right_boundary_indices(loc, topo, N, H) = N+1:N+H
-underlying_right_boundary_indices(::Type{Face}, ::Type{Bounded}, N, H) = N+2:N+H+1
-underlying_right_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+underlying_right_boundary_indices(::Face, ::Bounded, N, H) = N+2:N+H+1
+underlying_right_boundary_indices(::Nothing, topo, N, H) = 1:0 # empty
 
 underlying_west_boundary(f, grid, location, topo=topology(grid, 1)) =
-    view(f.parent, underlying_left_boundary_indices(location, topo, grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_left_boundary_indices(instantiate(location), instantiate(topo), grid.Nx, grid.Hx), :, :)
 
 underlying_east_boundary(f, grid, location, topo=topo = topology(grid, 1)) =
-    view(f.parent, underlying_right_boundary_indices(location, topo, grid.Nx, grid.Hx), :, :)
+    view(f.parent, underlying_right_boundary_indices(instantiate(location), instantiate(topo), grid.Nx, grid.Hx), :, :)
 
 underlying_south_boundary(f, grid, location, topo=topology(grid, 2)) =
-    view(f.parent, :, underlying_left_boundary_indices(location, topo, grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_left_boundary_indices(instantiate(location), instantiate(topo), grid.Ny, grid.Hy), :)
 
 underlying_north_boundary(f, grid, location, topo=topology(grid, 2)) =
-    view(f.parent, :, underlying_right_boundary_indices(location, topo, grid.Ny, grid.Hy), :)
+    view(f.parent, :, underlying_right_boundary_indices(instantiate(location), instantiate(topo), grid.Ny, grid.Hy), :)
 
 underlying_bottom_boundary(f, grid, location, topo=topology(grid, 3)) =
-    view(f.parent, :, :, underlying_left_boundary_indices(location, topo, grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_left_boundary_indices(instantiate(location), instantiate(topo), grid.Nz, grid.Hz))
 
 underlying_top_boundary(f, grid, location, topo=topology(grid, 3)) =
-    view(f.parent, :, :, underlying_right_boundary_indices(location, topo, grid.Nz, grid.Hz))
+    view(f.parent, :, :, underlying_right_boundary_indices(instantiate(location), instantiate(topo), grid.Nz, grid.Hz))
 
 #####
 ##### Convenience functions
