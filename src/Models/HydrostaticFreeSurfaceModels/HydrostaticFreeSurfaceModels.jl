@@ -14,8 +14,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
-import Oceananigans: fields, prognostic_fields
-import Oceananigans.Models: initialize_model!
+import Oceananigans: fields, prognostic_fields, initialize!
 
 abstract type AbstractFreeSurface{E, G} end
 

@@ -6,8 +6,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
-using Oceananigans.Models: initialize_model!
-
+import Oceananigans: initialize!
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: aligned_time_step
@@ -103,14 +102,17 @@ function run!(sim; pickup=false)
     return nothing
 end
 
+const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
+
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
 
     if !(sim.initialized) # execute initialization step
-        initialize_simulation!(sim)
-        initialize_model!(sim.model)
+        initialize!(sim)
+        initialize!(sim.model)
+        model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
 
         if sim.running # check that initialization didn't stop time-stepping
             if sim.verbose 
@@ -119,7 +121,7 @@ function time_step!(sim::Simulation)
             end
 
             Δt = aligned_time_step(sim, sim.Δt)
-            time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimeStepCallsite)])
+            time_step!(sim.model, Δt, callbacks=model_callbacks)
 
             if sim.verbose 
                 elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
@@ -131,13 +133,21 @@ function time_step!(sim::Simulation)
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimeStepCallsite)])
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
     end
 
     # Callbacks and callback-like things
-    [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
-    [callback.schedule(sim.model) && callback(sim) for callback in values(sim.callbacks) if isa(callback.callsite, TimeStepCallsite)]
-    [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
+    for diag in values(sim.diagnostics)
+        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model) 
+    end
+
+    for callback in values(sim.callbacks)
+        callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
+    end
+
+    for writer in values(sim.output_writers)
+        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+    end
 
     end_time_step = time_ns()
 
@@ -163,7 +173,7 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """ 
-    initialize_simulation!(sim, pickup=false)
+    initialize!(sim::Simulation, pickup=false)
 
 Initialize a simulation:
 
@@ -171,7 +181,7 @@ Initialize a simulation:
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
 """
-function initialize_simulation!(sim)
+function initialize!(sim::Simulation)
     if sim.verbose
         @info "Initializing simulation..."
         start_time = time_ns()
@@ -196,10 +206,7 @@ function initialize_simulation!(sim)
         end
 
         for callback in values(sim.callbacks) 
-            if isa(callback.callsite, TimeStepCallsite)
-                callback.schedule(model)
-                callback(sim)
-            end
+            callback.callsite isa TimeStepCallsite && initialize!(callback, sim)
         end
 
         for writer in values(sim.output_writers)

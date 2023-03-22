@@ -12,6 +12,12 @@ end
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
+# Fallback initialization: call the schedule, then the callback
+function initialize!(callback, sim)
+    initialize!(callback.schedule, model) && callback(sim)
+    return nothing
+end
+
 """
     Callback(func, schedule=IterationInterval(1); parameters=nothing)
 
