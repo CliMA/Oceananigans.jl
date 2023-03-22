@@ -8,6 +8,7 @@ struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, Ve
     κ₀  :: FT
     κᶜᵃ :: FT
     Cᵉⁿ :: FT
+    Cᵃᵛ :: FT
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
@@ -17,11 +18,12 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
                                         κᶜᵃ::FT,
                                         Cᵉⁿ::FT,
+                                        Cᵃᵛ::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R) where {TD, FT, R}
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Ri₀, Riᵟ,
+    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering)
 end
 
@@ -36,8 +38,9 @@ struct HyperbolicTangentRiDependentTapering end
                                Ri_dependent_tapering = ExponentialRiDependentTapering(),
                                ν₀  = 0.30,
                                κ₀  = 0.42,
-                               κᶜᵃ  = 4.0,
-                               Cᵉⁿ  = 0.57,
+                               κᶜᵃ = 4.0,
+                               Cᵉⁿ = 0.57,
+                               Cᵃᵛ = 1.0,
                                Ri₀ = 0.27,
                                Riᵟ = 0.20,
                                warning = true)
@@ -57,6 +60,7 @@ Keyword Arguments
 * `κ₀`: Non-convective diffusivity for tracers.
 * `κᶜᵃ`: Convective adjustment diffusivity for tracers.
 * `Cᵉⁿ`: Entrainment coefficient for tracers.
+* `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity.
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
@@ -65,8 +69,9 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     ν₀  = 0.30,
                                     κ₀  = 0.42,
-                                    κᶜᵃ  = 4.0,
-                                    Cᵉⁿ  = 0.57,
+                                    κᶜᵃ = 4.0,
+                                    Cᵉⁿ = 0.57,
+                                    Cᵃᵛ = 1.0,
                                     Ri₀ = 0.27,
                                     Riᵟ = 0.20,
                                     warning = true)
@@ -162,9 +167,6 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
-@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
@@ -177,6 +179,7 @@ end
     κ₀  = closure_ij.κ₀
     κᶜᵃ = closure_ij.κᶜᵃ
     Cᵉⁿ = closure_ij.Cᵉⁿ
+    Cᵃᵛ = closure_ij.Cᵃᵛ
     Ri₀ = closure_ij.Ri₀
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
@@ -211,8 +214,8 @@ end
     κᵘ⁺ = κᵘ★
 
     # Update by averaging in time
-    @inbounds κᶜ[i, j, k] = 1/2 * (κᶜ[i, j, k] + κᶜ⁺)
-    @inbounds κᵘ[i, j, k] = 1/2 * (κᵘ[i, j, k] + κᵘ⁺)
+    @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
+    @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
 end
 
 #####
