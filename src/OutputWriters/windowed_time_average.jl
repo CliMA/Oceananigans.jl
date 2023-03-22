@@ -6,7 +6,7 @@ using Oceananigans.TimeSteppers: Clock
 
 import Oceananigans: run_diagnostic!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
-import Oceananigans.Fields: location, indices, set!
+import Oceananigans.Fields: location, indices, set_interior!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -189,7 +189,7 @@ end
 # Time-averaging doesn't change spatial location
 location(wta::WindowedTimeAverage) = location(wta.operand)
 indices(wta::WindowedTimeAverage) = indices(wta.operand)
-set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
+set_interior!(u::Field, wta::WindowedTimeAverage) = set_interior!(u, wta.result)
 Base.parent(wta::WindowedTimeAverage) = parent(wta.result)
 
 # This is called when output is requested.
