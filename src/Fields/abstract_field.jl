@@ -71,19 +71,15 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds xnode(i, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = xnode(LX(), i, ψ.grid)
-@propagate_inbounds ynode(j, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = ynode(LY(), j, ψ.grid)
-@propagate_inbounds znode(k, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = znode(LZ(), k, ψ.grid)
+@propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 
-@propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(instantiated_location(ψ)..., i, j, k, ψ.grid)
-@propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(instantiated_location(ψ)..., i, j, k, ψ.grid)
-@propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(instantiated_location(ψ)..., i, j, k, ψ.grid)
+xnodes(ψ::AbstractField; kwargs...) = xnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+ynodes(ψ::AbstractField; kwargs...) = ynodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+znodes(ψ::AbstractField; kwargs...) = znodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 
-xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
-ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
-znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
-
-nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
+nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
 
 #####
 ##### Some conveniences
