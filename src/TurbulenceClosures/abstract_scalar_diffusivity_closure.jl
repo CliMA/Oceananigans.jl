@@ -3,7 +3,7 @@ using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
 
-Abstract type for closures with *isotropic* diffusivities.
+Abstract type for closures with scalar diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
