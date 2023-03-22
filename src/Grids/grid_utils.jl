@@ -416,12 +416,17 @@ end
 #####
 
 struct ZDirection end
+
 Base.summary(::ZDirection) = "ZDirection()"
 Base.show(io::IO, zdir::ZDirection) = print(io, summary(zdir))
 
 struct NegativeZDirection end
+
 Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 Base.show(io::IO, zdir::NegativeZDirection) = print(io, summary(zdir))
+
+Base.-(::NegativeZDirection) = ZDirection()
+Base.-(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils

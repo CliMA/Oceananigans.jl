@@ -22,7 +22,7 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show
+import Base: size, length, eltype, show, +, -
 import Oceananigans.Architectures: architecture
 
 #####

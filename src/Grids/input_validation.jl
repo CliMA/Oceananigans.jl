@@ -176,7 +176,7 @@ end
 validate_unit_vector(ê::ZDirection) = ê
 validate_unit_vector(ê::NegativeZDirection) = ê
 
-function validate_unit_vector(ê)
+function validate_unit_vector(ê, FT::DataType=Float64)
     length(ê) == 3 || throw(ArgumentError("unit vector must have length 3"))
 
     # ensures that all components of ê are of the same type
@@ -187,7 +187,7 @@ function validate_unit_vector(ê)
     ex^2 + ey^2 + ez^2 ≈ 1 ||
         throw(ArgumentError("unit vector `ê` must satisfy ê[1]² + ê[2]² + ê[3]² ≈ 1"))
 
-    return tuple(ê...)
+    return tuple(FT(ex), FT(ey), FT(ez))
 end
 
 function validate_index(idx, loc, topo, N, H)
