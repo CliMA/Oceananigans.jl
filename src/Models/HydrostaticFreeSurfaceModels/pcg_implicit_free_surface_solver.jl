@@ -294,10 +294,10 @@ end
                                           Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
-    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, grid.Nz+1] -
-                                                                Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, grid.Nz+1] - 
-                                                                Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, grid.Nz+1] - 
-                                                                Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, grid.Nz+1])
+    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - 2 * Ax⁻(i, j, grid, ax) / (Ac(i-1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i-1, j, grid.Nz+1] -
+                                                                2 * Ax⁺(i, j, grid, ax) / (Ac(i+1, j, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i+1, j, grid.Nz+1] - 
+                                                                2 * Ay⁻(i, j, grid, ay) / (Ac(i, j-1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j-1, grid.Nz+1] - 
+                                                                2 * Ay⁺(i, j, grid, ay) / (Ac(i, j+1, grid, g, Δt, ax, ay) + Ac(i, j, grid, g, Δt, ax, ay)) * r[i, j+1, grid.Nz+1])
 
 @kernel function _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
