@@ -120,7 +120,7 @@ corresponding to the number of grid points along `x, y, z`.
 """
 function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
     D = length(loc)
-    return Tuple(total_length(loc[d](), topo[d](), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+    return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
 end
 
 total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
