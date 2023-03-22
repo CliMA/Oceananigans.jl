@@ -85,7 +85,7 @@ function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
     return Tuple(length(loc[d](), topo[d](), sz[d], indices[d]) for d = 1:D)
 end
 
-Base.size(grid, loc::Tuple, d::Int) = size(loc, grid)[d]
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())

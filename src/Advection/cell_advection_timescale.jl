@@ -1,3 +1,4 @@
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
 
 function cell_advection_timescale(grid, velocities)

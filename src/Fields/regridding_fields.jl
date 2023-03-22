@@ -125,7 +125,7 @@ function regrid!(a, target_grid, source_grid, b)
 end
 
 #####
-##### Regridding for single column grids
+##### Regridding for all grids
 #####
 
 @kernel function _regrid_in_z!(target_field, source_field, target_grid, source_grid, source_z_faces)
@@ -189,7 +189,7 @@ end
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
 
-    Nx_source_faces = size((Face, Center, Center), source_grid, 1)
+    Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
     i⁺_src = min(Nx_source_faces, i_src + 1)
 
     fo = ForwardOrdering()
@@ -226,7 +226,7 @@ end
             if j₋_src > 1
                 j_left = j₋_src - 1
 
-                x₁ = xnode(i_src,   source_grid, f)
+                x₁ = xnode(i_src,  source_grid, f)
                 x₂ = xnode(i⁺_src, source_grid, f)
                 Az_left = fractional_horizontal_area(source_grid, x₁, x₂, y₋, yj₋_src)
 
@@ -237,7 +237,7 @@ end
             if j₊_src < source_grid.Ny+1
                 j_right = j₊_src
 
-                x₁ = xnode(i_src,   source_grid, f)
+                x₁ = xnode(i_src,  source_grid, f)
                 x₂ = xnode(i⁺_src, source_grid, f)
                 Az_right = fractional_horizontal_area(source_grid, x₁, x₂, yj₊_src, y₊)
 
@@ -257,7 +257,7 @@ end
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
 
-    Ny_source_faces = size((Center, Face, Center), source_grid, 2)
+    Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
     j⁺_src = min(Ny_source_faces, j_src + 1)
 
     fo = ForwardOrdering()
@@ -267,7 +267,7 @@ end
 
         # Integrate source field from x₋ to x₊
         x₋ = xnode(i,   j, k, target_grid, f, c, c)
-        x₊ = xnode(i+1, j, k, target_grid, f, c, c) 
+        x₊ = xnode(i+1, j, k, target_grid, f, c, c)
 
         # The first face on the source grid that appears inside the target cell
         i₋_src = searchsortedfirst(source_x_faces, x₋, 1, Nx_source+1, fo)
@@ -302,7 +302,7 @@ end
             if i₋_src > 1
                 i_left = i₋_src - 1
                 
-                y₁ = ynode(j_src, source_grid, f) 
+                y₁ = ynode(j_src,  source_grid, f) 
                 y₂ = ynode(j⁺_src, source_grid, f) 
                 Az_left = fractional_horizontal_area(source_grid, x₋, xi₋_src, y₁, y₂)
 
@@ -313,8 +313,8 @@ end
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
 
-                y₁ = ynode(j_src, source_grid, f) 
-                y₂ = ynode(j⁺_src, source_grid, f) 
+                y₁ = ynode(j_src,  source_grid, f)
+                y₂ = ynode(j⁺_src, source_grid, f)
                 Az_right = fractional_horizontal_area(source_grid, xi₊_src, x₊, y₁, y₂)
 
                 @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right

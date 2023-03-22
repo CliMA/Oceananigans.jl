@@ -18,8 +18,8 @@ import CUDA  # To avoid name conflicts
 ##### Misc. small utils
 #####
 
-instantiate(x) = x
-instantiate(X::DataType) = X()
+instantiate(T::Type) = T()
+instantiate(t) = t
 
 getnamewrapper(type) = typeof(type).name.wrapper
 
