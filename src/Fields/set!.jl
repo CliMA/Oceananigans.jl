@@ -24,7 +24,7 @@ fill the halo regions of `u`. `v` may be a Number,
 is valid. Returns `u`.
 """
 function set!(u::Field, v)
-    _set!(u::Field, v)
+    set_interior!(u::Field, v)
     try
         fill_halo_regions!(u)
     catch
@@ -33,12 +33,12 @@ function set!(u::Field, v)
     return u
 end
 
-function _set!(u::Field, v)
+function set_interior!(u::Field, v)
     u .= v # fallback
     return u
 end
 
-function _set!(u::Field, f::Function)
+function set_interior!(u::Field, f::Function)
     if architecture(u) isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
         u_cpu = Field(location(u), cpu_grid; indices = indices(u))
@@ -53,13 +53,13 @@ function _set!(u::Field, f::Function)
     return u
 end
 
-function _set!(u::Field, f::Union{Array, CuArray, OffsetArray})
+function set_interior!(u::Field, f::Union{Array, CuArray, OffsetArray})
     f = arch_array(architecture(u), f)
     u .= f
     return u
 end
 
-function _set!(u::Field, v::Field)
+function set_interior!(u::Field, v::Field)
     # Note: we only copy interior points.
     # To copy halos use `parent(u) .= parent(v)`.
     
