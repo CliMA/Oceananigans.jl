@@ -71,7 +71,6 @@ Computes ib.bottom_height and wraps in an array.
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
     bottom_field = Field((Center, Center, Nothing), grid)
     set!(bottom_field, ib.bottom_height)
-    fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
 
     # TODO: maybe clean this up
@@ -165,7 +164,6 @@ end
 function compute_mask(grid, ib)
     mask_field = Field{Center, Center, Center}(grid, Bool)
     set!(mask_field, ib.mask)
-    fill_halo_regions!(mask_field)
     return mask_field
 end
 

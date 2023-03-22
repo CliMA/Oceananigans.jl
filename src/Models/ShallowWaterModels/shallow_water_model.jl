@@ -161,12 +161,8 @@ function ShallowWaterModel(;
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
     
     bathymetry_field = CenterField(grid)
-    if !isnothing(bathymetry)
-        set!(bathymetry_field, bathymetry)
-        fill_halo_regions!(bathymetry_field)
-    else
-        fill!(bathymetry_field, 0.0)
-    end
+    isnothing(bathymetry) && (bathymetry = 0)
+    set!(bathymetry_field, bathymetry)
 
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)

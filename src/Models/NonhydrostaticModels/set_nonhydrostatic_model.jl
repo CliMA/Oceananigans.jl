@@ -1,6 +1,7 @@
 using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
 
 import Oceananigans.Fields: set!
+using Oceananigans.Fields: _set!
 
 """
     set!(model; kwargs...)
@@ -38,7 +39,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
-        set!(ϕ, value)
+        _set!(ϕ, value)
     end
 
     # Apply a mask
