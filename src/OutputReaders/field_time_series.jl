@@ -69,7 +69,7 @@ Keyword arguments
 """
 FieldTimeSeries(path, name; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
 
-function FieldTimeSeries(path, name, backend,
+function FieldTimeSeries(path, name, backend;
                          architecture = nothing,
                          grid = nothing,
                          location = nothing,
