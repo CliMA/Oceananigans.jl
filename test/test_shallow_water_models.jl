@@ -83,6 +83,7 @@ end
 
 @testset "Shallow Water Models" begin
     @info "Testing shallow water models..."
+
     @testset "Must be Flat in the vertical" begin
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
         @test_throws ArgumentError ShallowWaterModel(grid=grid, gravitational_acceleration=1)
@@ -234,14 +235,19 @@ end
             @testset "ShallowWaterModels with ImmersedBoundaryGrid [$arch]" begin
                 @info "Testing ShallowWaterModels with ImmersedBoundaryGrid [$arch]"
 
-                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
-                
                 # Gaussian bump of width "1"
                 bump(x, y, z) = y < exp(-x^2)
-                
+
+                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
                 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+
+                @test_throws ArgumentError model = ShallowWaterModel(grid=grid_with_bump, gravitational_acceleration=1)
+
+                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat), halo=(4, 4))
+                grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+
                 model = ShallowWaterModel(grid=grid_with_bump, gravitational_acceleration=1)
-                
+
                 set!(model, h=1)
                 simulation = Simulation(model, Δt=1.0, stop_iteration=1)
                 run!(simulation)
