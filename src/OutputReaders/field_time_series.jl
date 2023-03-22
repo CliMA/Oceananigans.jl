@@ -34,6 +34,8 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 ##### Constructors
 #####
 
+instantiate(T::Type) = T()
+
 """
     FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
                                 indices = (:, :, :),
@@ -47,7 +49,7 @@ function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
 
     Nt = length(times)
     arch = architecture(grid)
-    loc = (LX, LY, LZ)
+    loc = map(instantiate, (LX, LY, LZ))
     space_size = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
