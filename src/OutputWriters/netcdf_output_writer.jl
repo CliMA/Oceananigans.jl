@@ -53,8 +53,10 @@ function default_dimensions(output, grid, indices, with_halos)
 
     topo = map(instantiate, topology(grid))
 
+    indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
+
     if !with_halos
-        indices = Dict(name => restrict_to_interior.(indices, locs[name], topo, size(grid))
+        indices = Dict(name => restrict_to_interior.(indices[name], locs[name], topo, size(grid))
                        for name in keys(locs))
     end
 

@@ -58,6 +58,9 @@ Base.length(::Center,  ::Flat,            N) = N
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
 
+instantiate(T::Type) = T()
+instantiate(t) = t
+
 """
     size(grid)
 
@@ -82,7 +85,7 @@ Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) 
 
 function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
     D = length(loc)
-    return Tuple(length(loc[d](), topo[d](), sz[d], indices[d]) for d = 1:D)
+    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
 end
 
 Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]

@@ -192,10 +192,10 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
-    all_idx = all_indices(loc(), topo(), N, H)
+    all_idx = all_indices(loc, topo, N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
 end
@@ -206,4 +206,4 @@ validate_indices(indices, loc, grid::AbstractGrid) =
     validate_indices(indices, loc, topology(grid), size(grid, loc), halo_size(grid))
 
 validate_indices(indices, loc, topo, sz, halo_sz) =
-    map(validate_index, indices, loc, topo, sz, halo_sz)
+    map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)
