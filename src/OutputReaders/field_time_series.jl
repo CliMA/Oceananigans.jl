@@ -269,8 +269,8 @@ function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractFiel
 end
 
 function interior(fts::FieldTimeSeries)
-    loc = location(fts)
-    topo = topology(fts.grid)
+    loc = instantiate.(location(fts))
+    topo = instantiate.(topology(fts.grid))
     sz = size(fts.grid)
     halo_sz = halo_size(fts.grid)
 
