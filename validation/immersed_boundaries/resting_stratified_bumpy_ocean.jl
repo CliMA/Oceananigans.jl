@@ -20,15 +20,11 @@ L = 0.25 # bump width
 @inline h(y) = h₀ * exp(- y^2 / L^2)
 @inline seamount(x, y) = - 1 + h(y)
 
-seamount_field = Field{Center, Center, Nothing}(underlying_grid)
-set!(seamount_field, seamount)
-fill_halo_regions!(seamount_field)
-
 minimum_fractional_Δz = 0.2
 immersed_boundaries = [
-                       PartialCellBottom(seamount_field.data;
+                       PartialCellBottom(seamount;
                                          minimum_fractional_Δz),
-                       GridFittedBottom(seamount_field.data)
+                       GridFittedBottom(seamount)
                       ]
 
 b = []
