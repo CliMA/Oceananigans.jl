@@ -3,7 +3,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at
 using Oceananigans.Distributed
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
@@ -37,11 +37,11 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-    gravitational_acceleration :: T         # Gravitational acceleration, full, or reduced
+    gravitational_acceleration :: GR        # Gravitational acceleration, full, or reduced
                      advection :: V         # Advection scheme for velocities, mass and tracers
                     velocities :: U         # Velocities in the shallow water model
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
@@ -208,13 +208,11 @@ function ShallowWaterModel(;
     return model
 end
 
-using Oceananigans.Advection: VectorInvariantSchemes
-
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
     throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
                         "Use `momentum_advection = VectorInvariant()`."))
-validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, Nothing}, ::VectorInvariantFormulation) = momentum_advection
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture

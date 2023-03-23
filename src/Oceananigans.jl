@@ -21,8 +21,9 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    xspacings, yspacings, zspacings,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
@@ -71,6 +72,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
     FluxTapering,
     VerticallyImplicitTimeDiscretization,
+    viscosity, diffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -138,22 +140,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-
-# TODO: find a way to check whether the libraries for NETCDF 
-# (libnetcdf) are installed on the machine
-
-"Boolean denoting whether NCDatasets.jl can be loaded on machine."
-const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
-
-"""
-    @ifnetcdf expr
-
-Evaluate `expr` only if `hasnetcdf == true`.
-"""
-macro ifhasnetcdf(expr)
-    hasnetcdf ? :($(esc(expr))) : :(nothing) 
-end
-
+    
 #####
 ##### Abstract types
 #####
@@ -213,7 +200,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -221,8 +207,10 @@ include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

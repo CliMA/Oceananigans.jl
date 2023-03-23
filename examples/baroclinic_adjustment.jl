@@ -81,7 +81,7 @@ set!(model, b=bᵢ)
 
 using CairoMakie
 
-x, y, z = 1e-3 .* nodes((Center, Center, Center), grid) # convert m -> km
+x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center())) # convert m -> km
 
 b = model.tracers.b
 
@@ -94,9 +94,8 @@ fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
 
 Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
 
-save("initial_buoyancy.svg", fig); nothing # hide
-
-# ![](initial_buoyancy.svg)
+current_figure() # hide
+fig
 
 # Now let's built a `Simulation`.
 
@@ -277,7 +276,7 @@ times = avg_b_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
-fig[1, 1:2] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
+fig[1, 1:2] = Label(fig, title; fontsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
 

@@ -211,10 +211,10 @@ sphere_continents!(ax_v)
 rotate_cam!(ax_v.scene, (π/8, π/6, 0))
 
 plot_title = @lift "t = " * ti($iter)
-supertitle = sphere_fig[0, 3:4] = Label(sphere_fig, plot_title, textsize=40)
+supertitle = sphere_fig[0, 3:4] = Label(sphere_fig, plot_title, fontsize=40)
 
-#v_title = sphere_fig[0, 5] = Label(sphere_fig, "Ocean meridional velocity", textsize=20)
-#T_title = sphere_fig[0, 2] = Label(sphere_fig, "Ocean temperature", textsize=20)
+#v_title = sphere_fig[0, 5] = Label(sphere_fig, "Ocean meridional velocity", fontsize=20)
+#T_title = sphere_fig[0, 2] = Label(sphere_fig, "Ocean temperature", fontsize=20)
 
 display(sphere_fig)
 

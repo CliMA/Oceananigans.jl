@@ -149,8 +149,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
 end
 
 ε_op = KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc,
-                                                       grid;
-                                                       computed_dependencies=(u, v, w, ν))
+                                                       grid, u, v, w, ν)
 
 ε = Field(ε_op)
 
@@ -181,7 +180,11 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
-  on your GPU and how much of it you're using and you can run it from Julia with the command `` run(`nvidia-smi`) ``.
+  on your GPU and how much of it you're using and you can run it from Julia via
+  ```julia
+  julia> ;
+  shell> run(`nvidia-smi`)
+  ```
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
@@ -192,11 +195,9 @@ For large simulations on the GPU, careful management of memory allocation may be
   called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
   the memory requirements. However, if you explicitly create a scratch space and pass that same
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
-  calculations by reusing the same chunk of memory. As an example, you can see scratch space being
-  created
-  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383)
-  and then being used in calculations
-  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
+  calculations by reusing the same chunk of memory. Have a look at an
+  [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
+  [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
@@ -207,11 +208,12 @@ launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU
 [here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and 
 [here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
-which is very slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar indexing by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
+Oceananigans.jl disables CUDA scalar indexing by default. See the
+[scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
-For example if can be difficult to just view a `CuArray` since Julia needs to access 
+For example, if can be difficult to just view a `CuArray` since Julia needs to access 
 its elements to do that. Consider the example below:
 
 ```julia
@@ -253,8 +255,8 @@ julia> adapt(Array, model.velocities.u.data)
  0.0  0.0  0.0
 ```
 
-Notice that in order to view the `CuArray` that stores values for `u` we needed to transform
-it into a regular `Array` first using `Adapt.adapt`. If we naively try to view the `CuArray`
+Notice that to view the `CuArray` that stores values for `u` we first need to transform
+it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
 without that step we get an error:
 
 ```julia

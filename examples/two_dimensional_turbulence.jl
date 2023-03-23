@@ -145,7 +145,7 @@ heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
 heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 
 title = @lift "t = " * string(round(times[$n], digits=2))
-Label(fig[1, 1:2], title, textsize=24, tellwidth=false)
+Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 
