@@ -1,3 +1,4 @@
+using Oceananigans.Models: prognostic_fields
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
@@ -63,8 +64,9 @@ function Simulation(model; Δt,
    callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
 
    # Check for NaNs in the model's first prognostic field every 100 iterations.
-   model_fields = fields(model)
-   field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
+   model_fields = prognostic_fields(model)
+   first_name = first(keys(model_fields))
+   field_to_check_nans = NamedTuple(first_name => model_fields[first_name])
    nan_checker = NaNChecker(field_to_check_nans)
    callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 
