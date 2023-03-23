@@ -9,21 +9,21 @@
 # because the boundary-normal index can vary (and array boundary conditions need to be
 # 3D in general).
 
-@kernel function set_west_or_east_u!(u, offset, i_boundary, bc, grid, args...)
+@kernel function set_west_or_east_u!(u, offset, i_boundary, bc, grid, args::Vararg{T, N}) where {T, N}
     j, k = @index(Global, NTuple)
     j′ = j + offset[1]
     k′ = k + offset[2]
 @inbounds u[i_boundary, j′, k′] = getbc(bc, j′, k′, grid, args...)
 end
 
-@kernel function set_south_or_north_v!(v, offset, j_boundary, bc, grid, args...)
+@kernel function set_south_or_north_v!(v, offset, j_boundary, bc, grid, args::Vararg{T, N}) where {T, N}
     i, k = @index(Global, NTuple)
     i′ = i + offset[1]
     k′ = k + offset[2]
 @inbounds v[i′, j_boundary, k′] = getbc(bc, i′, k′, grid, args...)
 end
 
-@kernel function set_bottom_or_top_w!(w, offset, k_boundary, bc, grid, args...)
+@kernel function set_bottom_or_top_w!(w, offset, k_boundary, bc, grid, args::Vararg{T, N}) where {T, N}
     i, j = @index(Global, NTuple)
     i′ = i + offset[1]
     j′ = j + offset[2]

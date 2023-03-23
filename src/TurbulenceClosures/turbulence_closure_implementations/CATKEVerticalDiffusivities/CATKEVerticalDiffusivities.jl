@@ -246,7 +246,7 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, args::Vararg{T, N}) where {T, N}
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures

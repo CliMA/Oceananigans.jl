@@ -129,36 +129,36 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, args...)
+@kernel function calculate_Gu!(Gu, args::Vararg{T, N}) where {T, N}
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args::Vararg{T, N}) where {T, N}
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, args...)
+@kernel function calculate_Gv!(Gv, args::Vararg{T, N}) where {T, N}
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args::Vararg{T, N}) where {T, N}
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, args...)
+@kernel function calculate_Gw!(Gw, args::Vararg{T, N}) where {T, N}
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args::Vararg{T, N}) where {T, N}
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
@@ -169,12 +169,12 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, args...)
+@kernel function calculate_Gc!(Gc, args::Vararg{T, N}) where {T, N}
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args::Vararg{T, N}) where {T, N}
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)

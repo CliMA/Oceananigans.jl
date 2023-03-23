@@ -88,7 +88,7 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args::Vararg{T, N}) where {T, N}
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)

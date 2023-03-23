@@ -54,7 +54,7 @@ apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchite
 
 Apply a west and/or east boundary condition to variable `c`.
 """
-@kernel function _apply_x_bcs!(Gc, loc, grid, west_bc, east_bc, args...)
+@kernel function _apply_x_bcs!(Gc, loc, grid, west_bc, east_bc, args::Vararg{T, N}) where {T, N}
     j, k = @index(Global, NTuple)
     apply_x_west_bc!(Gc, loc, west_bc, j, k, grid, args...)
     apply_x_east_bc!(Gc, loc, east_bc, j, k, grid, args...)
@@ -65,7 +65,7 @@ end
 
 Apply a south and/or north boundary condition to variable `c`.
 """
-@kernel function _apply_y_bcs!(Gc, loc, grid, south_bc, north_bc, args...)
+@kernel function _apply_y_bcs!(Gc, loc, grid, south_bc, north_bc, args::Vararg{T, N}) where {T, N}
     i, k = @index(Global, NTuple)
     apply_y_south_bc!(Gc, loc, south_bc, i, k, grid, args...)
     apply_y_north_bc!(Gc, loc, north_bc, i, k, grid, args...)
@@ -76,7 +76,7 @@ end
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
-@kernel function _apply_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args...)
+@kernel function _apply_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args::Vararg{T, N}) where {T, N}
     i, j = @index(Global, NTuple)
     apply_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
