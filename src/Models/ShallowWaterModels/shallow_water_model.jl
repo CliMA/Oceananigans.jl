@@ -35,9 +35,9 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, VM, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, NL, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
                           grid :: G         # Grid of physical points on which `Model` is solved
-                vertical_model :: VM        # Either single-layer or multi-layer
+              number_of_layers :: NL        # Number of fluid layers in the shallow water system
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
     gravitational_acceleration :: GR        # Gravitational acceleration, full, or reduced
@@ -58,14 +58,10 @@ struct ConservativeFormulation end
 
 struct VectorInvariantFormulation end
 
-struct SingleLayerModel end
-
-struct MultiLayerModel end
-
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
-                     vertical_model = SingleLayerModel(),
+                   number_of_layers = 1,
                               clock = Clock{eltype(grid)}(0, 0, 1),
                  momentum_advection = UpwindBiasedFifthOrder(),
                    tracer_advection = WENO(),
@@ -89,8 +85,7 @@ Keyword arguments
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the grid.
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
-  - `vertical_model`: Whether the model has one (`SingleLayermModel()`) or multiple 
-     (`MultiLayerModel()`) layers.
+  - `number_of_layers`: Number of fluid layers in the model
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
     Default: `UpwindBiasedFifthOrder()`.
@@ -119,7 +114,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                      vertical_model = SingleLayerModel(),
+                    number_of_layers = 1,
                                clock = Clock{eltype(grid)}(0, 0, 1),
                   momentum_advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO(),
@@ -138,10 +133,9 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    grid.Nz == 1 ? println("Proceeding with single-layer shallow water model") : println(
+    number_of_layers = grid.Nz 
+    number_of_layers == 1 ? println("Proceeding with single-layer shallow water model") : println(
         "Proceeding with multi-layer shallow water model")
-
-    grid.Nz == 1 ? vertical_model = SingleLayerModel() : vertical_model = MultiLayerModel()
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
@@ -195,7 +189,7 @@ function ShallowWaterModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     model = ShallowWaterModel(grid,
-                              vertical_model,
+                              number_of_layers,
                               arch,
                               clock,
                               gravitational_acceleration,
