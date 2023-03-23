@@ -86,7 +86,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
     TD = typeof(time_discretization)
 
     return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜᵃ), FT(Cᵉⁿ),
-                                          FT(Ri₀), FT(Riᵟ),
+                                          FT(Cᵃᵛ), FT(Ri₀), FT(Riᵟ),
                                           Ri_dependent_tapering)
 end
 
