@@ -40,10 +40,6 @@ Return the architecture (CPU or GPU) that the `grid` lives on.
 """
 @inline architecture(grid::AbstractGrid) = grid.architecture
 
-"""
-    Constant Grid Definitions 
-"""
-
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
@@ -169,18 +165,18 @@ regular_dimensions(grid) = ()
 @inline interior_parent_offset(loc, topo, H) = H
 @inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
 
-@inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
+@inline interior_parent_indices(loc,             topo,            N, H)           = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
-@inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
+@inline interior_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
 
 @inline interior_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
 @inline interior_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
 @inline interior_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
 
 # All indices including halos.
-@inline all_indices(loc,             topo,            N, H) = 1-H:N+H
+@inline all_indices(loc,             topo,            N, H)           = 1-H:N+H
 @inline all_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1-H:N+1+H
-@inline all_indices(::Type{Nothing}, topo,            N, H) = 1:1
+@inline all_indices(::Type{Nothing}, topo,            N, H)           = 1:1
 
 @inline all_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
 @inline all_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
@@ -190,9 +186,9 @@ regular_dimensions(grid) = ()
 @inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
-@inline all_parent_indices(loc,             topo,            N, H) = 1:N+2H
+@inline all_parent_indices(loc,             topo,            N, H)           = 1:N+2H
 @inline all_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
+@inline all_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
 
 @inline all_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
 @inline all_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
@@ -215,7 +211,6 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
 @inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
 @inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
-
 
 #####
 ##### << Nodes >>
@@ -434,6 +429,7 @@ dimension_summary(topo::Flat, name, args...) = "Flat $name"
 function domain_summary(topo, name, left, right)
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
+
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
@@ -452,6 +448,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
 end
 
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+
 coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
