@@ -200,11 +200,11 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, args...)
+        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args...)
     end
 
     # Free surface
