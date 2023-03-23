@@ -15,7 +15,7 @@ aligned_time_step(schedule, clock, Δt) = Δt
 # Fallback initialization for schedule: call the schedule,
 # then return `true`, indicating that the schedule "actuates" at
 # initial call.
-function initialize!(schedule::Schedule, model)
+function initialize!(schedule::AbstractSchedule, model)
     schedule(model)
 
     # `return true` indicates that the schedule
