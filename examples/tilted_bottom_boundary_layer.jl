@@ -27,9 +27,9 @@
 
 using Oceananigans
 
-Lx = 400 # m
+Lx = 200 # m
 Lz = 100 # m
-Nx = 128
+Nx = 64
 Nz = 64
 
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
@@ -76,12 +76,12 @@ current_figure() # hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-sloce direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = (sind(θ), 0, cosd(θ))
+ĝ = [sind(θ), 0, cosd(θ)]
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = ĝ)
+buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
