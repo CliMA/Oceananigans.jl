@@ -63,8 +63,8 @@ grid = RectilinearGrid(CPU();
 
 fig = Figure(resolution=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
-lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
-scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 fig
@@ -78,7 +78,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # ## Boundary conditions
 #
-# We calculate the surface temperature flux associated with surface heating of
+# We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
 Qʰ = 200.0  # W m⁻², surface _heat_ flux

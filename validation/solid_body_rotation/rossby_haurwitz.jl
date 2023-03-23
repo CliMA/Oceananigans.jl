@@ -112,7 +112,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     u, v, w = model.velocities
     η=model.free_surface.η
 
-    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid; computed_dependencies=(u, v))
+    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     ζ = Field(ζ_op)
 

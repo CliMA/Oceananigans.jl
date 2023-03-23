@@ -45,9 +45,9 @@ end
     i, j, k = @index(Global, NTuple)
     
     # Evaluate x, y, z at cell centers to determine if node is immersed
-    x = xnode(Center(), i, grid)
-    y = ynode(Center(), j, grid)
-    z = znode(Center(), k, grid)
+    x = xnode(i, grid, Center())
+    y = ynode(j, grid, Center())
+    z = znode(k, grid, Center())
 
     @inbounds begin
         # correcting velocity tendency terms: if immersd boundary gives true then correct tendency, otherwise don't (it's a fluid node)
