@@ -214,8 +214,7 @@ end
 
 # may need to do Val(Nk) since it may not be known at compile
 barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
-                   dependencies=Event(device(arch)))
+    launch!(architecture(grid), grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v)
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
@@ -270,15 +269,15 @@ end
 """
 Explicitly step forward η in substeps.
 """
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
-    split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
+ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
+    split_explicit_free_surface_step!(free_surface, model, Δt, χ)
     
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
-    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
+    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
 end
 
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
     grid = free_surface.η.grid
 
@@ -303,9 +302,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     @apply_regionally set!(free_surface.η, free_surface.state.η̅)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), velocities_update)
-    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in model.velocities)
-    wait(device(arch), MultiEvent(masking_events))
+    
+    mask_immersed_field!(model.velocities.u)
+    mask_immersed_field!(model.velocities.v)
 
     fill_halo_regions!(free_surface.η)
 

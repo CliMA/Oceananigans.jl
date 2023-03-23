@@ -112,7 +112,7 @@ function calculate_interior_tendency_contributions!(model)
                 c_immersed_bc,
                 end_tracer_kernel_args...,
                 forcing, clock;
-                dependencies, only_active_cells)
+                only_active_cells)
 
     end
 
