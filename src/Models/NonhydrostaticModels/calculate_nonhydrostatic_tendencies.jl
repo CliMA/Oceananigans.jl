@@ -173,7 +173,7 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function calculate_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
 @kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args) 
