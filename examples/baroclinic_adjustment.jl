@@ -197,8 +197,6 @@ b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
                   bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
                   top    = FieldTimeSeries(slice_filenames.top, "b"))
 
-times = avg_b_timeseries.times
-
 avg_b_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
 
 times = avg_b_timeseries.times
