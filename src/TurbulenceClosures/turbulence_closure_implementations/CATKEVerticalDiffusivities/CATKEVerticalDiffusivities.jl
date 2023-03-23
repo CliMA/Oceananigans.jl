@@ -109,28 +109,28 @@ include("turbulent_kinetic_energy_equation.jl")
 
 # Optimal parameters for "favorite CATKE" from Wagner et al. 2023 (in prep)
 optimal_turbulent_kinetic_energy_equation(FT) = TurbulentKineticEnergyEquation(
-    C⁻D  = FT(4.9),
-    C⁺D  = FT(3.5),
-    CᶜD  = FT(0.69),
+    C⁻D  = FT(4.4),
+    C⁺D  = FT(3.3),
+    CᶜD  = FT(0.23),
     CᵉD  = FT(0.0),
-    Cᵂu★ = FT(1.7),
-    CᵂwΔ = FT(11.0))
+    Cᵂu★ = FT(1.8),
+    CᵂwΔ = FT(12.0))
 
 optimal_mixing_length(FT) = MixingLength(
-    Cᵇ   = FT(0.36), 
-    Cᶜc  = FT(6.4),
-    Cᶜe  = FT(1.3),
-    Cᵉc  = FT(0.023),
+    Cᵇ   = FT(0.37), 
+    Cᶜc  = FT(4.8),
+    Cᶜe  = FT(1.1),
+    Cᵉc  = FT(0.049),
     Cᵉe  = FT(0.0),
-    Cˢᶜ  = FT(0.17),
+    Cˢᶜ  = FT(0.29),
     C⁻u  = FT(0.36),
-    C⁺u  = FT(0.26),
-    C⁻c  = FT(0.40),
-    C⁺c  = FT(0.17),
-    C⁻e  = FT(7.0),
-    C⁺e  = FT(5.1),
-    CRiʷ = FT(0.087),
-    CRiᶜ = FT(0.85))
+    C⁺u  = FT(0.24),
+    C⁻c  = FT(0.41),
+    C⁺c  = FT(0.12),
+    C⁻e  = FT(6.7),
+    C⁺e  = FT(5.4),
+    CRiʷ = FT(0.011),
+    CRiᶜ = FT(0.76))
 
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   mixing_length = optimal_mixing_length(FT),
