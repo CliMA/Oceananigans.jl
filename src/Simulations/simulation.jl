@@ -1,4 +1,4 @@
-using Oceananigans.Models: prognostic_fields
+using Oceananigans: prognostic_fields
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
