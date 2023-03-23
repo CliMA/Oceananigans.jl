@@ -29,8 +29,8 @@ end
 
 mask_immersed_field_xy!(field,     args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
-mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, immersed_function = peripheral_node) =
-    mask_immersed_field_xy!(field, field.grid, location(field), value; k, immersed_function)
+mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
+    mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
 
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)
