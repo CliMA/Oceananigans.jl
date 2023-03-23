@@ -1,7 +1,8 @@
 module ShallowWaterModels
 
 export ShallowWaterModel, ShallowWaterScalarDiffusivity,
-       ConservativeFormulation, VectorInvariantFormulation
+       ConservativeFormulation, VectorInvariantFormulation,
+       SingleLayerModel, MultiLayerModel
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
