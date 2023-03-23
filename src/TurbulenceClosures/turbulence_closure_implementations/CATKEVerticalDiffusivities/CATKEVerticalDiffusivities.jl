@@ -246,7 +246,7 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, args::Vararg{T, N}) where {T, N}
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
@@ -255,9 +255,9 @@ end
     max_K = closure_ij.maximum_diffusivity
 
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = min(max_K, Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
-        diffusivities.Kᶜ[i, j, k] = min(max_K, Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
-        diffusivities.Kᵉ[i, j, k] = min(max_K, Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᵘ[i, j, k] = min(max_K, Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
+        diffusivities.Kᶜ[i, j, k] = min(max_K, Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
+        diffusivities.Kᵉ[i, j, k] = min(max_K, Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
@@ -268,7 +268,7 @@ end
         dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        diffusivities.Lᵉ[i, j, k] = - wb_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     end
 end
 
