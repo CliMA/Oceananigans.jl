@@ -120,7 +120,6 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                 model.auxiliary_fields,
                 c_forcing,
                 model.clock;
-                dependencies = barrier, 
                 only_active_cells)
     end
 
@@ -132,15 +131,15 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
+function apply_flux_bcs!(Gcⁿ, c, arch, args...)
+    apply_x_bcs!(Gcⁿ, c, arch, args...)
+    apply_y_bcs!(Gcⁿ, c, arch, args...)
+    apply_z_bcs!(Gcⁿ, c, arch, args...)
 
     return nothing
 end
 
-function calculate_free_surface_tendency!(grid, model, dependencies)
+function calculate_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
@@ -152,15 +151,14 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
             model.tracers,
             model.auxiliary_fields,
             model.forcing,
-            model.clock;
-            dependencies = dependencies)
+            model.clock)
 
     return nothing
 end
     
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
+function calculate_hydrostatic_momentum_tendencies!(model, velocities)
 
     grid = model.grid
     arch = architecture(grid)
@@ -190,13 +188,13 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
 
     launch!(arch, grid, :xyz,
             calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
-            dependencies = dependencies, only_active_cells)
+            only_active_cells)
 
     launch!(arch, grid, :xyz,
             calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
-            dependencies = dependencies, only_active_cells)
+            only_active_cells)
 
-    calculate_free_surface_tendency!(grid, model, dependencies)
+    calculate_free_surface_tendency!(grid, model)
 
     return nothing
 end
@@ -206,15 +204,15 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, args...)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, barrier, args...)
+    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args...)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
     end
 
     return nothing
