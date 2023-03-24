@@ -23,16 +23,16 @@ end
 @inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
-    Kᵘ = diffusivities.Kᵘ
+    κᵘ = diffusivities.κᵘ
     u = velocities.u
     v = velocities.v
 
     # Separate reconstruction of the u- and v- contributions is essential for numerical stability
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², Kᵘ, u) + ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², Kᵘ, v)
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², κᵘ, u) + ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², κᵘ, v)
 end
 
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κᶻ = @inbounds diffusivities.Kᶜ[i, j, k]
+    κᶻ = @inbounds diffusivities.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶻ * N²
 end
