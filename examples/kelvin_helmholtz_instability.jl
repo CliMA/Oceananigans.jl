@@ -59,6 +59,9 @@ lines!(ax, [stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth
 ax = Axis(fig[1, 3], xlabel = "Ri(z)")
 lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, color = :black) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
+current_figure() # hide
+fig
+
 # In unstable flows it is often useful to determine the dominant spatial structure of the
 # instability and the growth rate at which the instability grows.
 # If the simulation idealizes a physical flow, this can be used to make
