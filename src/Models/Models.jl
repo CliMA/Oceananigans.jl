@@ -8,6 +8,7 @@ export
     PrescribedVelocityFields, PressureField
 
 using Oceananigans: AbstractModel
+using Oceananigans.Grids: halo_size, inflate_halo_size
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: device_event, architecture
@@ -39,6 +40,17 @@ end
 
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
+
+function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(1, 1, 1, grid,
+                                      momentum_advection,
+                                      tracer_advection,
+                                      closure)
+
+    any(user_halo .< required_halo) &&
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."))
+end
 
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
