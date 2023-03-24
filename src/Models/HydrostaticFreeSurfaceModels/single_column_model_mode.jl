@@ -37,6 +37,7 @@ function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid,
 end
 
 validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
+validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
