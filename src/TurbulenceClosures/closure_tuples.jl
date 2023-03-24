@@ -62,7 +62,7 @@ with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closur
 
 function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...)
     for (α, closure) in enumerate(closure_tuple)
-        @inbounds diffusivity_fields = diffusivity_fields_tuple[α]
+        diffusivity_fields = diffusivity_fields_tuple[α]
         calculate_diffusivities!(diffusivity_fields, closure, args...)
     end
     return nothing

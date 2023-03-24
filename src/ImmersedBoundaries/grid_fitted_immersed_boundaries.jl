@@ -10,7 +10,7 @@ using Printf
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal,
-                                        bottom
+                                        z_bottom
 
 import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
                                         immersed_∂ⱼ_τ₂ⱼ,
@@ -87,7 +87,7 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
 end
 
 function validate_ib_size(grid, ib)
-    bottom_height_size = total_size((Center, Center, Nothing), grid)[1:2]
+    bottom_height_size = total_size(grid, (Center, Center, Nothing))[1:2]
 
     size(ib.bottom_height) != bottom_height_size &&
         throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
@@ -107,7 +107,7 @@ end
     return z <= h
 end
 
-@inline bottom(i, j, k, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
+@inline z_bottom(i, j, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
