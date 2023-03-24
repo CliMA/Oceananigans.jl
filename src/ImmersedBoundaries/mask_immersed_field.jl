@@ -4,7 +4,8 @@ using Statistics
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.Fields: location, Field
 
-instantiate(X) = X()
+instantiate(T::Type) = T()
+instantiate(t) = t
 
 #####
 ##### Outer functions

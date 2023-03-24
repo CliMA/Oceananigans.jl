@@ -190,7 +190,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
     barrier = device_event(arch)
-    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers, dependencies=barrier)
+    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers; dependencies=barrier)
 
     events = [viscosity_event]
 
