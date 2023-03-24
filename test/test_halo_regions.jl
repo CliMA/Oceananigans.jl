@@ -6,7 +6,7 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     field = CenterField(grid)
 
     # Fill the interior with random numbers.
-    set!(field, rand(FT, Nx, Ny, Nz))
+    set_interior!(field, rand(FT, Nx, Ny, Nz))
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -29,8 +29,6 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     field = CenterField(grid)
 
     set!(field, rand(FT, Nx, Ny, Nz))
-    fill_halo_regions!(field)
-
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     data = field.data
 
