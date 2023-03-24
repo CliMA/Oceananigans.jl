@@ -108,11 +108,11 @@ const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
         initialize!(sim.model)
-        model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
 
         if sim.running # check that initialization didn't stop time-stepping
             if sim.verbose 
