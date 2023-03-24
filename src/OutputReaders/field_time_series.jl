@@ -48,26 +48,6 @@ instantiate(T::Type) = T()
     FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
                                 indices = (:, :, :),
                                 boundary_conditions = nothing)
-Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
-"""
-function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
-                                     indices = (:, :, :),
-                                     boundary_conditions = nothing) where {LX, LY, LZ}
-
-    Nt = length(times)
-    arch = architecture(grid)
-    loc = map(instantiate, (LX, LY, LZ))
-    space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, arch, space_size..., Nt)
-    data = offset_data(underlying_data, grid, loc, indices)
-
-    return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times, indices)
-end
-
-"""
-    FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
-                                indices = (:, :, :),
-                                boundary_conditions = nothing)
 
 Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
 """
