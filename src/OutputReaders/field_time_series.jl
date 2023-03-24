@@ -70,8 +70,8 @@ end
                     iterations = nothing,
                     times = nothing)
 
-Returns a `FieldTimeSeries` for the field `name` describing a field's time history from a JLD2 file
-located at `path`.
+Return a `FieldTimeSeries` containing a time-series of the field `name`
+load from JLD2 output located at `path`.
 
 Keyword arguments
 =================
@@ -90,6 +90,8 @@ Keyword arguments
 """
 FieldTimeSeries(path, name; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
 
+instantiate(T::Type) = T()
+
 function FieldTimeSeries(path, name, backend;
                          architecture = nothing,
                          grid = nothing,
@@ -103,7 +105,7 @@ function FieldTimeSeries(path, name, backend;
     # Defaults
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
-    isnothing(location)     && (location   = file["timeseries/$name/serialized/location"])
+    isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
@@ -125,13 +127,14 @@ function FieldTimeSeries(path, name, backend;
     # This should be removed in a month or two (4/5/2022).
     grid = on_architecture(architecture, grid)
 
-    LX, LY, LZ = location
+    LX, LY, LZ = Location
+    loc = map(instantiate, Location)
 
     if backend isa InMemory
         Nt = length(times)
-        space_size = total_size(location, grid, indices)
+        space_size = total_size(grid, loc, indices)
         underlying_data = zeros(eltype(grid), architecture, space_size..., Nt)
-        data = offset_data(underlying_data, grid, location, indices)
+        data = offset_data(underlying_data, grid, loc, indices)
     elseif backend isa OnDisk
         data = OnDiskData(path, name)
     else
@@ -254,8 +257,8 @@ function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractFiel
 end
 
 function interior(fts::FieldTimeSeries)
-    loc = location(fts)
-    topo = topology(fts.grid)
+    loc = instantiate.(location(fts))
+    topo = instantiate.(topology(fts.grid))
     sz = size(fts.grid)
     halo_sz = halo_size(fts.grid)
 
@@ -296,7 +299,7 @@ end
 #####
 
 # Include the time dimension.
-@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid, fts.indices)..., length(fts.times))
+@inline Base.size(fts::FieldTimeSeries) = (size(fts.grid, location(fts), fts.indices)..., length(fts.times))
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
 
