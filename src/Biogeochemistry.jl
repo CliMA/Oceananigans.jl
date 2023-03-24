@@ -62,15 +62,6 @@ is a subtype of `AbstractBioeochemistry`:
 """
 abstract type AbstractBiogeochemistry end
 
-@inline function biogeochemistry_rhs(i, j, k, grid, bgc::AbstractBiogeochemistry,
-                                     val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
-
-    # gets the biogeochemical reaction forcing (including transforming form for continuous form)
-    src = biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
-
-    return src
-end
-
 # Returns the forcing for discrete form models
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
     bgc(i, j, k, grid, val_tracer_name, clock, fields)
