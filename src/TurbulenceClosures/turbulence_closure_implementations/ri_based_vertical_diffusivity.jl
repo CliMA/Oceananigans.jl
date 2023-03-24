@@ -35,14 +35,14 @@ struct HyperbolicTangentRiDependentTapering end
 """
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                FT = Float64;]
-                               Ri_dependent_tapering = ExponentialRiDependentTapering(),
-                               ν₀  = 0.30,
-                               κ₀  = 0.42,
-                               κᶜᵃ = 4.0,
-                               Cᵉⁿ = 0.57,
-                               Cᵃᵛ = 1.0,
-                               Ri₀ = 0.27,
-                               Riᵟ = 0.20,
+                               Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
+                               ν₀  = 0.61,
+                               κ₀  = 0.37,
+                               κᶜᵃ = 1.1,
+                               Cᵉⁿ = 0.2,
+                               Cᵃᵛ = 0.76,
+                               Ri₀ = 0.14,
+                               Riᵟ = 0.38,
                                warning = true)
 
 Return a closure that estimates the vertical viscosity and diffusivit
@@ -67,13 +67,13 @@ Keyword Arguments
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    ν₀  = 0.30,
-                                    κ₀  = 0.42,
-                                    κᶜᵃ = 4.0,
-                                    Cᵉⁿ = 0.57,
-                                    Cᵃᵛ = 1.0,
-                                    Ri₀ = 0.27,
-                                    Riᵟ = 0.20,
+                                    ν₀  = 0.61,
+                                    κ₀  = 0.37,
+                                    κᶜᵃ = 1.1,
+                                    Cᵉⁿ = 0.2,
+                                    Cᵃᵛ = 0.76,
+                                    Ri₀ = 0.14,
+                                    Riᵟ = 0.38,
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -223,4 +223,17 @@ end
 #####
 
 Base.summary(closure::RiBasedVerticalDiffusivity{TD}) where TD = string("RiBasedVerticalDiffusivity{$TD}")
-Base.show(io::IO, closure::RiBasedVerticalDiffusivity) = print(io, summary(closure))
+
+function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
+    print(io, summary(closure))
+    print(io, "├── Ri_dependent_tapering: ", prettysummary(closure.Ri_dependent_tapering), '\n')
+    print(io, "├── κ₀: ", prettysummary(closure.κ₀), '\n')
+    print(io, "├── κᶜᵃ: ", prettysummary(closure.κᶜᵃ), '\n')
+    print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
+    print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
+    print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')
+    print(io, "└── Riᵟ: ", prettysummary(closure.Riᵟ))
+end
+
+    
+    
