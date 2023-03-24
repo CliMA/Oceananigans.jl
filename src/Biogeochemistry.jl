@@ -66,6 +66,8 @@ abstract type AbstractBiogeochemistry end
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
     bgc(i, j, k, grid, val_tracer_name, clock, fields)
 
+@inline biogeochemical_transition(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields) = zero(grid)
+
 # Required for when a model is defined but not for all tracers
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
 
