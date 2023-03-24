@@ -2,14 +2,14 @@ using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 using CUDA: synchronize
 import Oceananigans.Utils: sync_device!
-using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
-                           fill_south_and_north_send_buffers!, 
+using Oceananigans.Fields: fill_west_and_east_send_buffers!,
+                           fill_south_and_north_send_buffers!,
                            fill_west_send_buffers!,
                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
                            fill_north_send_buffers!,
-                           recv_from_buffers!, 
-                           reduced_dimensions, 
+                           recv_from_buffers!,
+                           reduced_dimensions,
                            instantiated_location
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
@@ -20,11 +20,11 @@ using Oceananigans.BoundaryConditions:
     permute_boundary_conditions,
     PBCT, DCBCT, DCBC
 
-import Oceananigans.BoundaryConditions: 
+import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
-    fill_west_and_east_halo!, 
+    fill_west_and_east_halo!,
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
@@ -76,7 +76,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
@@ -100,12 +100,12 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch       = architecture(grid)
     child_arch = child_architecture(arch)
     halo_tuple = permute_boundary_conditions(bcs)
-    
+
     for task = 1:3
         barrier = device_event(child_arch)
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
     end
-    
+
     barrier = device_event(child_arch)
 
     fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
@@ -119,13 +119,13 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid
     hbc_right = filter(bc -> bc isa DCBC, halo_tuple[3])
 
     # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
-    if length(hbc_left) > 1 
+    if length(hbc_left) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[2])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
     end
 
-    if length(hbc_right) > 1 
+    if length(hbc_right) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[3])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
@@ -146,12 +146,12 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     offset = fill_halo_offset(size, fill_halo!, indices)
 
     events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
-    
+
     if events_and_requests isa Event
-        wait(device(child_architecture(arch)), events_and_requests)    
+        wait(device(child_architecture(arch)), events_and_requests)
         return nothing
     end
-    
+
     MPI.Waitall(events_and_requests)
 
     buffer_side = mpi_communication_side(Val(fill_halo!))
@@ -208,7 +208,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
             wait(device(child_arch), event)    
-            
+
             $fill_side_send_buffers!(c, buffers, grid)
 
             sync_device!(child_arch)

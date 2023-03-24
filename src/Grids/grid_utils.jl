@@ -4,20 +4,10 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
-#####
-##### Convenience functions
-#####
+# Define default indices
+default_indices(n) = Tuple(Colon() for i=1:n)
 
 const BoundedTopology = Union{Bounded, LeftConnected}
-
-Base.length(::Type{Face}, topo, N) = N
-Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
-Base.length(::Type{Center}, topo, N) = N
-Base.length(::Type{Nothing}, topo, N) = 1
-
-Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
-Base.length(::Type{Face},    ::Type{Flat}, N) = N
-Base.length(::Type{Center},  ::Type{Flat}, N) = N
 
 """
     topology(grid)
@@ -54,49 +44,84 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
-"""
-    size(loc, grid)
+const AT = AbstractTopology
 
-Return the size of a `grid` at `loc`, not including halos.
-This is a 3-tuple of integers corresponding to the number of interior nodes
-along `x, y, z`.
-"""
-Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
-                                      length(loc[2], topology(grid, 2), grid.Ny),
-                                      length(loc[3], topology(grid, 3), grid.Nz))
+Base.length(::Face,    ::BoundedTopology, N) = N + 1
+Base.length(::Nothing, ::AT,              N) = 1
+Base.length(::Face,    ::AT,              N) = N
+Base.length(::Center,  ::AT,              N) = N
+Base.length(::Nothing, ::Flat,            N) = N
+Base.length(::Face,    ::Flat,            N) = N
+Base.length(::Center,  ::Flat,            N) = N
 
-Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
-Base.size(grid::AbstractGrid, d) = size(grid)[d]
-Base.size(loc, grid, d) = size(loc, grid)[d]
-
-total_size(a) = size(a) # fallback
+# "Indices-aware" length
+Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
+Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
 
 """
-    total_size(loc, grid)
+    size(grid)
 
-Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
-corresponding to the number of grid points along `x, y, z`.
+Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
+Center cells have the location (Center, Center, Center).
 """
-total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                         total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                         total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
-
-function total_size(loc, grid, indices::Tuple)
-    sz = total_size(loc, grid)
-    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
-end
-
-function Base.size(loc, grid::AbstractGrid, indices::Tuple)
-    sz = size(loc, grid)
-    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
-end
+Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 
 """
     halo_size(grid)
 
-Return a tuple with the size of the halo in each dimension.
+Return a 3-tuple with the number of halo cells on either side of the
+domain in (x, y, z).
 """
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid, d) = halo_size(grid)[d]
+
+Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
+
+Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
+    size(loc, topology(grid), size(grid), indices)
+
+function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
+    D = length(loc)
+    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
+end
+
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
+
+"""
+    total_length(loc, topo, N, H=0, ind=Colon())
+
+Return the total length of a field at `loc`ation along
+one dimension of `topo`logy with `N` centered cells and
+`H` halo cells. If `ind` is provided the total_length
+is restricted by `length(ind)`.
+"""
+total_length(::Face,    ::AT,              N, H=0) = N + 2H
+total_length(::Center,  ::AT,              N, H=0) = N + 2H
+total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
+total_length(::Nothing, ::AT,              N, H=0) = 1
+total_length(::Nothing, ::Flat,            N, H=0) = N
+total_length(::Face,    ::Flat,            N, H=0) = N
+total_length(::Center,  ::Flat,            N, H=0) = N
+
+# "Indices-aware" total length
+total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
+total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+
+total_size(a) = size(a) # fallback
+
+"""
+    total_size(grid, loc)
+
+Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
+corresponding to the number of grid points along `x, y, z`.
+"""
+function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+    D = length(loc)
+    return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+end
+
+total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+    total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
     total_extent(topology, H, Δ, L)
@@ -105,30 +130,16 @@ Return the total extent, including halo regions, of constant-spaced
 `Periodic` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
-@inline total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
-@inline total_extent(::Type{<:BoundedTopology}, H, Δ, L) = L + 2H * Δ
-
-"""
-    total_length(loc, topo, N, H=0)
-
-Return the total length of a field at `loc`ation along
-one dimension of `topo`logy with `N` centered cells and
-`H` halo cells.
-"""
-@inline total_length(loc,             topo,            N, H=0) = N + 2H
-@inline total_length(::Type{Face},    ::Type{<:BoundedTopology}, N, H=0) = N + 1 + 2H
-@inline total_length(::Type{Nothing}, topo,            N, H=0) = 1
-@inline total_length(::Type{Nothing}, ::Type{Flat},    N, H=0) = N
-@inline total_length(::Type{Face},    ::Type{Flat},    N, H=0) = N
-@inline total_length(::Type{Center},  ::Type{Flat},    N, H=0) = N
+@inline total_extent(topo, H, Δ, L) = L + (2H - 1) * Δ
+@inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
 
-@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
-@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+@inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 regular_dimensions(grid) = ()
 
@@ -136,127 +147,127 @@ regular_dimensions(grid) = ()
 ##### << Indexing >>
 #####
 
-@inline left_halo_indices(loc, topo, N, H) = 1-H:0
-@inline left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+@inline left_halo_indices(loc, ::AT, N, H) = 1-H:0
+@inline left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
-@inline right_halo_indices(loc, topo, N, H) = N+1:N+H
-@inline right_halo_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H) = N+2:N+1+H
-@inline right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+@inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
+@inline right_halo_indices(::Face, ::BoundedTopology, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
-@inline underlying_left_halo_indices(loc, topo, N, H) = 1:H
-@inline underlying_left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+@inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
+@inline underlying_left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
-@inline underlying_right_halo_indices(loc, topo, N, H) = N+1+H:N+2H
-@inline underlying_right_halo_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H) = N+2+H:N+1+2H
-@inline underlying_right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
+@inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
+@inline underlying_right_halo_indices(::Face,    ::BoundedTopology, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
-@inline interior_indices(loc,             topo,            N) = 1:N
-@inline interior_indices(::Type{Face},    ::Type{<:BoundedTopology}, N) = 1:N+1
-@inline interior_indices(::Type{Nothing}, topo,            N) = 1:1
+@inline interior_indices(loc,       ::AT,              N) = 1:N
+@inline interior_indices(::Face,    ::BoundedTopology, N) = 1:N+1
+@inline interior_indices(::Nothing, ::AT,              N) = 1:1
 
-@inline interior_indices(::Type{Nothing}, topo::Type{Flat}, N) = 1:N
-@inline interior_indices(::Type{Face},    topo::Type{Flat}, N) = 1:N
-@inline interior_indices(::Type{Center},  topo::Type{Flat}, N) = 1:N
+@inline interior_indices(::Nothing, ::Flat, N) = 1:N
+@inline interior_indices(::Face,    ::Flat, N) = 1:N
+@inline interior_indices(::Center,  ::Flat, N) = 1:N
 
-@inline interior_x_indices(loc, grid) = interior_indices(loc, topology(grid, 1), grid.Nx)
-@inline interior_y_indices(loc, grid) = interior_indices(loc, topology(grid, 2), grid.Ny)
-@inline interior_z_indices(loc, grid) = interior_indices(loc, topology(grid, 3), grid.Nz)
+@inline interior_x_indices(grid, loc) = interior_indices(loc[1], topology(grid, 1)(), size(grid, 1))
+@inline interior_y_indices(grid, loc) = interior_indices(loc[2], topology(grid, 2)(), size(grid, 2))
+@inline interior_z_indices(grid, loc) = interior_indices(loc[3], topology(grid, 3)(), size(grid, 3))
 
-@inline interior_parent_offset(loc, topo, H) = H
-@inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
+@inline interior_parent_offset(loc,       ::AT, H) = H
+@inline interior_parent_offset(::Nothing, ::AT, H) = 0
 
-@inline interior_parent_indices(loc,             topo,            N, H)           = 1+H:N+H
-@inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
-@inline interior_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
+@inline interior_parent_indices(::Nothing, ::AT,              N, H) = 1:1
+@inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
-@inline interior_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
-@inline interior_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
-@inline interior_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline interior_parent_indices(::Face,    ::Flat, N, H) = 1:N
+@inline interior_parent_indices(::Center,  ::Flat, N, H) = 1:N
 
 # All indices including halos.
-@inline all_indices(loc,             topo,            N, H)           = 1-H:N+H
-@inline all_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1-H:N+1+H
-@inline all_indices(::Type{Nothing}, topo,            N, H)           = 1:1
+@inline all_indices(::Nothing, ::AT,              N, H) = 1:1
+@inline all_indices(::Face,    ::BoundedTopology, N, H) = 1-H:N+1+H
+@inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
-@inline all_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
-@inline all_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
-@inline all_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
+@inline all_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline all_indices(::Face,    ::Flat, N, H) = 1:N
+@inline all_indices(::Center,  ::Flat, N, H) = 1:N
 
-@inline all_x_indices(loc, grid) = all_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
-@inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
-@inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+@inline all_x_indices(grid, loc) = all_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
+@inline all_y_indices(grid, loc) = all_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
+@inline all_z_indices(grid, loc) = all_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
-@inline all_parent_indices(loc,             topo,            N, H)           = 1:N+2H
-@inline all_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
+@inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
+@inline all_parent_indices(::Face,    ::BoundedTopology, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 
-@inline all_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
-@inline all_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
-@inline all_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
+@inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline all_parent_indices(::Face,    ::Flat, N, H) = 1:N
+@inline all_parent_indices(::Center,  ::Flat, N, H) = 1:N
 
-@inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
-@inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
-@inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+@inline all_parent_x_indices(grid, loc) = all_parent_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
+@inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
+@inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
 parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
 
-parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
-parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
+parent_index_range(index::UnitRange, ::Nothing, ::Flat, halo) = index
+parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
-@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
-@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
-@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
+@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:size(grid, 1)+1])
+@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:size(grid, 2)+1])
+@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:size(grid, 3)+1])
 
 #####
 ##### << Nodes >>
 #####
 
-@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
-                                           ynode(i, j, k, grid, LX, LY, LZ),
-                                           znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                           ynode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                           znode(i, j, k, grid, ℓx, ℓy, ℓz))
 
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ynode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz::Nothing) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), ynode(i, j, k, grid, ℓx, ℓy, ℓz))
 
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(xnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ynode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
 
 xnodes(grid, ::Nothing; kwargs...) = 1:1
 ynodes(grid, ::Nothing; kwargs...) = 1:1
 znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
-    xnodes(grid, LX, LY, LZ, with_halos=false)
+    xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
 
-Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline xnodes(grid, LX, LY, LZ; kwargs...) = xnodes(grid, LX; kwargs...)
-
-"""
-    ynodes(grid, LX, LY, LZ, with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 See [`znodes`](@ref) for examples.
 """
-@inline ynodes(grid, LX, LY, LZ; kwargs...) = ynodes(grid, LY; kwargs...)
+@inline xnodes(grid, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
 
 """
-    znodes(grid, LX, LY, LZ; with_halos=false)
+    ynodes(grid, ℓx, ℓy, ℓz, with_halos=false)
 
-Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+See [`znodes`](@ref) for examples.
+"""
+@inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
+
+"""
+    znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest znodes
 julia> using Oceananigans
@@ -280,14 +291,14 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 -1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-@inline znodes(grid, LX, LY, LZ; kwargs...) = znodes(grid, LZ; kwargs...)
+@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 """
-    nodes(grid, (LX, LY, LZ); reshape=false, with_halos=false)
-    nodes(grid, LX, LY, LZ; reshape=false, with_halos=false)
+    nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
+    nodes(grid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
 
 Return a 3-tuple of views over the interior nodes
-at the locations in `loc=(LX, LY, LZ)` in `x, y, z`.
+at the locations in `loc=(ℓx, ℓy, ℓz)` in `x, y, z`.
 
 If `reshape=true`, the views are reshaped to 3D arrays
 with non-singleton dimensions 1, 2, 3 for `x, y, z`, respectively.
@@ -296,14 +307,13 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, with_halos=false)
-    x = xnodes(grid, LX, LY, LZ; with_halos)
-    y = ynodes(grid, LX, LY, LZ; with_halos)
-    z = znodes(grid, LX, LY, LZ; with_halos)
+function nodes(grid::AbstractGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
+    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         N = (length(x), length(y), length(z))
-
         x = Base.reshape(x, N[1], 1, 1)
         y = Base.reshape(y, 1, N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
@@ -312,18 +322,23 @@ function nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, with_halos=false)
     return (x, y, z)
 end
 
-nodes(grid::AbstractGrid, (LX, LY, LZ); reshape=false, with_halos=false) = nodes(grid, LX, LY, LZ; reshape, with_halos)
+nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
 
 #####
 ##### << Spacings >>
 #####
 
-"""
-    xspacings(grid, LX, LY, LZ; with_halos=true)
+# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
+function xspacing end
+function yspacing end
+function zspacing end
 
-Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+"""
+    xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest xspacings
 julia> using Oceananigans
@@ -349,14 +364,14 @@ julia> xspacings(grid, Center(), Face(), Center())
  714747.2110712599
  ```
 """
-@inline xspacings(grid, LX, LY, LZ; with_halos=true) = xspacings(grid, LX; with_halos)
+@inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
 
 
 """
-    yspacings(grid, LX, LY, LZ; with_halos=true)
+    yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
 
-Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest yspacings
 julia> using Oceananigans
@@ -367,13 +382,13 @@ julia> yspacings(grid, Center(), Center(), Center())
 222389.85328911748
 ```
 """
-@inline yspacings(grid, LX, LY, LZ; with_halos=true) = yspacings(grid, LY; with_halos)
+@inline yspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = yspacings(grid, ℓy; with_halos)
 
 """
-    zspacings(grid, LX, LY, LZ; with_halos=true)
+    zspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
 
-Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
-`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest zspacings
 julia> using Oceananigans
@@ -384,8 +399,77 @@ julia> zspacings(grid, Center(), Center(), Center())
 10.0
 ```
 """
-@inline zspacings(grid, LX, LY, LZ; with_halos=true) = zspacings(grid, LZ; with_halos)
+@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
+destantiate(::Face)   = Face
+destantiate(::Center) = Center
+
+function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
+    spacing = eval(Symbol(dir, :spacing))
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
+
+    return minimum(Δ)
+end
+
+"""
+    minimum_xspacing(grid, ℓx, ℓy, ℓz)
+    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_xspacing(grid, Center(), Center(), Center())
+0.5
+```
+"""
+minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
+minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
+"""
+    minimum_yspacing(grid, ℓx, ℓy, ℓz)
+    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_yspacing(grid, Center(), Center(), Center())
+0.25
+```
+"""
+minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
+minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
+
+"""
+    minimum_zspacing(grid, ℓx, ℓy, ℓz)
+    minimum_zspacing(grid) = minimum_zspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_zspacing(grid, Center(), Center(), Center())
+0.125
+```
+"""
+minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
+minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
 #####
 ##### Convenience functions

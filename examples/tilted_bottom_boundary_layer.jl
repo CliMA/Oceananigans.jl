@@ -142,9 +142,8 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 # conservatively, based on the smallest grid size of our domain and set-up a 
 
 using Oceananigans.Units
-using Oceananigans.Grids: min_Δz
 
-simulation = Simulation(model, Δt = 0.5 * min_Δz(grid) / V∞, stop_time = 1days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
@@ -226,6 +225,9 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
+
+current_figure() # hide
+fig
 
 # Finally, we record a movie.
 

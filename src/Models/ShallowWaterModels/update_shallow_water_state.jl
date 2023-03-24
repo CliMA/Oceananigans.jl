@@ -36,4 +36,5 @@ compute_velocities!(U, ::VectorInvariantFormulation) = nothing
 function compute_velocities!(U, ::ConservativeFormulation)
     compute!(U.u)
     compute!(U.v)
+    return nothing
 end
