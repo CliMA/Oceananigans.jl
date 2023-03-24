@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.Grids: AbstractGrid, active_cell
+using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
@@ -26,8 +26,10 @@ function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; active_cells_map = false) wh
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, map)
 end
 
+@inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
+
 function compute_active_cells(grid, ib)
-    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(active_cell, grid)
+    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(active_cell, grid, ib)
     active_cells_field = Field{Center, Center, Center}(grid, Bool)
     set!(active_cells_field, is_immersed_operation)
     return active_cells_field
