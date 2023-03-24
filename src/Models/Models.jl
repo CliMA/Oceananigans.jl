@@ -9,6 +9,7 @@ export
 
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo
 using Oceananigans: AbstractModel
+using Oceananigans.Grids: halo_size, inflate_halo_size
 
 import Oceananigans.Architectures: device_event, architecture
 
@@ -49,8 +50,8 @@ function validate_model_halo(grid, tendency_terms...)
     required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
 
     any(user_halo .< required_halo) &&
-      throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. " *
-                          "Note that an ImmersedBoundaryGrid requires an extra halo point."))
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo." *
+                            "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."))
 end
 
 include("NonhydrostaticModels/NonhydrostaticModels.jl")

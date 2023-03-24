@@ -227,16 +227,5 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing},
 
 architecture(model::HydrostaticFreeSurfaceModel) = model.architecture
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-    user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(1, 1, 1, grid,
-                                      momentum_advection,
-                                      tracer_advection,
-                                      closure)
-
-    any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."))
-end
-
 initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing

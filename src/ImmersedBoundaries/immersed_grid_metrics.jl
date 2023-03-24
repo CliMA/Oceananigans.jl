@@ -1,7 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
 import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz
-import Oceananigans.Operators: xspacing, yspacing, zspacing
 
 const c = Center()
 const f = Face()
@@ -39,6 +38,3 @@ return_metrics(grid::IBG) = return_metrics(grid.underlying_grid)
 xspacings(X, grid::IBG) = xspacings(X, grid.underlying_grid)
 yspacings(Y, grid::IBG) = yspacings(Y, grid.underlying_grid)
 zspacings(Z, grid::IBG) = zspacings(Z, grid.underlying_grid)
-min_Δx(grid::IBG) = min_Δx(grid.underlying_grid)
-min_Δy(grid::IBG) = min_Δy(grid.underlying_grid)
-min_Δz(grid::IBG) = min_Δz(grid.underlying_grid)
