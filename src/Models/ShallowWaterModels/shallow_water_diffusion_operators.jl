@@ -55,8 +55,10 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) =
-        fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
+@kernel function _calculate_shallow_water_viscosity!(νₑ, grid, closure, clock, fields)
+    i, j, k = @index(Global, NTuple)
+    νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
+end
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
 
@@ -65,9 +67,9 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
     clock = model.clock
 
     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
-    
+
     launch!(arch, grid, :xyz,
-            calculate_nonlinear_viscosity!,
+            _calculate_shallow_water_viscosity!,
             diffusivity_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing

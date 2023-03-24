@@ -186,10 +186,10 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     buoyancy = model.buoyancy
 
     workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
     diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
-    viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]

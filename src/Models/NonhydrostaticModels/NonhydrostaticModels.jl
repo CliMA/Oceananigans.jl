@@ -14,6 +14,7 @@ using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolve
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Advection: cell_advection_timescale
 
 function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
@@ -39,8 +40,10 @@ include("show_nonhydrostatic_model.jl")
 include("set_nonhydrostatic_model.jl")
 
 #####
-##### Time-stepping NonhydrostaticModels
+##### AbstractModel interface
 #####
+
+cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
     fields(model::NonhydrostaticModel)

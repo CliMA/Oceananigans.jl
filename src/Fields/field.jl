@@ -34,7 +34,7 @@ end
 #####
 
 function validate_field_data(loc, data, grid, indices)
-    Fx, Fy, Fz = total_size(loc, grid, indices)
+    Fx, Fy, Fz = total_size(grid, loc, indices)
 
     if size(data) != (Fx, Fy, Fz)
         LX, LY, LZ = loc    
@@ -83,9 +83,9 @@ end
 
 # Common outer constructor for all field flavors that performs input validation
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
+    @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    @apply_regionally indices = validate_indices(indices, loc, grid)
     buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
@@ -233,18 +233,20 @@ Return an `OffsetArray` of a `view` of `parent(data)` with `indices`.
 
 If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
 """
-function offset_windowed_data(data, loc, grid, indices)
+function offset_windowed_data(data, Loc, grid, indices)
     halo = halo_size(grid)
-    topo = topology(grid)
+    topo = map(instantiate, topology(grid))
+    loc = map(instantiate, Loc)
 
     if indices isa typeof(default_indices(3))
         windowed_parent = parent(data)
     else
-        parent_indices = parent_index_range.(indices, loc, topo, halo)
+        parent_indices = map(parent_index_range, indices, loc, topo, halo)
         windowed_parent = view(parent(data), parent_indices...)
     end
 
     sz = size(grid)
+
     return offset_data(windowed_parent, loc, topo, sz, halo, indices)
 end
 
@@ -344,9 +346,7 @@ function boundary_conditions(f::Field)
 end
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
-
 data(field::Field) = field.data
-
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
 indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
@@ -356,15 +356,20 @@ indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 interior_view_indices(field_indices, interior_indices) = Colon()
 interior_view_indices(::Colon,       interior_indices) = interior_indices
 
+instantiate(T::Type) = T()
+instantiate(t) = t
+
 function interior(a::OffsetArray,
-                  loc::Tuple,
-                  topo::Tuple,
-                  size::NTuple{N, Int},
-                  halo_size::NTuple{N, Int},
+                  Loc::Tuple,
+                  Topo::Tuple,
+                  sz::NTuple{N, Int},
+                  halo_sz::NTuple{N, Int},
                   ind::Tuple=default_indices(3)) where N
 
-    i_interior = interior_parent_indices.(loc, topo, size, halo_size)
-    i_view = interior_view_indices.(ind, i_interior)
+    loc = map(instantiate, Loc)
+    topo = map(instantiate, Topo)
+    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
+    i_view = map(interior_view_indices, ind, i_interior)
     return view(parent(a), i_view...)
 end
 
@@ -398,11 +403,8 @@ Base.fill!(f::Field, val) = fill!(parent(f), val)
 Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
-length_indices(N, i::Colon) = N
-length_indices(N, i::UnitRange) = length(i)
-
-total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
-Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
+total_size(f::Field) = total_size(f.grid, location(f), f.indices)
+Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
@@ -722,3 +724,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
+

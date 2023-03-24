@@ -79,7 +79,7 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 ab2_step_free_surface!(::Nothing, model, Δt, χ) = nothing 
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
-validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
+validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
 FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing

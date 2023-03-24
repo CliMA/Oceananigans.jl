@@ -163,7 +163,7 @@ fill_first(bc1, bc2)               = true
 ##### General fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, offset, loc, grid, args...)
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, offset, loc, grid, args) 
     j, k = @index(Global, NTuple)
     j′ = j + offset[1]
     k′ = k + offset[2]
@@ -171,7 +171,7 @@ fill_first(bc1, bc2)               = true
     _fill_east_halo!(j′, k′, grid, c, east_bc, loc, args...)
 end
 
-@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, offset, loc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, offset, loc, grid, args)
     i, k = @index(Global, NTuple)
     i′ = i + offset[1]
     k′ = k + offset[2]
@@ -179,7 +179,7 @@ end
     _fill_north_halo!(i′, k′, grid, c, north_bc, loc, args...)
 end
 
-@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, offset, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, offset, loc, grid, args)
     i, j = @index(Global, NTuple)
     i′ = i + offset[1]
     j′ = j + offset[2]
@@ -193,7 +193,7 @@ end
 
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args...)
+@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
@@ -205,7 +205,7 @@ import Oceananigans.Utils: @constprop
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, offset, loc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, offset, loc, grid, args) 
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
@@ -217,7 +217,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args) 
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
@@ -230,13 +230,13 @@ end
 end
 
 fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, args...; kwargs...)
+    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, Tuple(args); kwargs...)
 
 fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, args...; kwargs...)
+    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, Tuple(args); kwargs...)
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, args...; kwargs...)
+    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, Tuple(args); kwargs...)
 
 #####
 ##### Calculate kernel size and offset for Windowed and Sliced Fields

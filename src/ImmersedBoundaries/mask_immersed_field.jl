@@ -3,7 +3,8 @@ using Statistics
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: location, ZReducedField, Field
 
-instantiate(X) = X()
+instantiate(T::Type) = T()
+instantiate(t) = t
 
 mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =

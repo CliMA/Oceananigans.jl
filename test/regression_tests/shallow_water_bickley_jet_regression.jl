@@ -12,7 +12,8 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
 
     grid = RectilinearGrid(arch, size = (Nx, Ny),
                            x = (0, Lx), y = (-Ly/2, Ly/2),
-                           topology = (Periodic, Bounded, Flat))
+                           topology = (Periodic, Bounded, Flat),
+                           halo = (4, 4))
 
     gravitational_acceleration = 1
     coriolis = FPlane(f=1)
