@@ -53,7 +53,7 @@ Returns the size of an `AbstractField{LX, LY, LZ}` located at `LX, LY, LZ`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 of `f` along `x, y, z`.
 """
-Base.size(f::AbstractField) = size(location(f), f.grid)
+Base.size(f::AbstractField) = size(f.grid, location(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
@@ -63,7 +63,7 @@ Base.parent(f::AbstractField) = f
 Returns a 3-tuple that gives the "total" size of a field including
 both interior points and halo points.
 """
-total_size(f::AbstractField) = total_size(location(f), f.grid)
+total_size(f::AbstractField) = total_size(f.grid, location(f))
 
 interior(f::AbstractField) = f
 
