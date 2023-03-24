@@ -125,7 +125,7 @@ end
 
 Return a grid with `immersed_boundary`. If `active_cells_map=true`,
 a linear index for every "active" (non-immersed) cell is generated, and
-the map between Carteian indices `(i, j, k)` and the active indices is
+the map between Cartesian indices `(i, j, k)` and the active indices is
 stored in `grid`.
 """
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; active_cells_map=false) where {TX, TY, TZ} 
