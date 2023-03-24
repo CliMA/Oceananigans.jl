@@ -3,8 +3,8 @@ using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
-restrict_to_interior(::Colon, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
-restrict_to_interior(index::UnitRange, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
+restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(index::UnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
 
 function restrict_to_interior(index::UnitRange, loc, topo, N)
     from = max(first(index), 1)
@@ -29,13 +29,15 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
+instantiate(T::Type) = T()
+
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
-        loc = location(output)
-        topo = topology(grid)
-        indices = restrict_to_interior.(indices, loc, topo, size(grid))
+        loc = map(instantiate, location(output))
+        topo = map(instantiate, topology(grid))
+        indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
     return indices

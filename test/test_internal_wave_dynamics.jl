@@ -8,7 +8,7 @@ function internal_wave_solution(; L, background_stratification=false)
      k = 1
      f = 0.2
      ℕ = 1.0
-     σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
+     σ = sqrt( (ℕ^2 * k^2 + f^2 * m^2) / (k^2 + m^2) )
 
     # Numerical parameters
     Δt = 0.01 * 1/σ
@@ -60,7 +60,7 @@ function internal_wave_dynamics_test(model, solution, Δt)
     v₀(x, y, z) = solution.v(x, y, z, 0)
     w₀(x, y, z) = solution.w(x, y, z, 0)
     b₀(x, y, z) = solution.b(x, y, z, 0)
-    
+
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     simulation = Simulation(model, stop_iteration=10, Δt=Δt)
@@ -71,4 +71,3 @@ function internal_wave_dynamics_test(model, solution, Δt)
 
     return nothing
 end
-
