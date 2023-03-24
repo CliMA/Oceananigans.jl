@@ -1,13 +1,12 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz,
+using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings, 
                           xnode, ynode, znode,
                           λspacings, φspacings, λspacing, φspacing
 
-using Oceananigans.Operators: xspacing, yspacing, zspacing,
-                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
 ##### Regular rectilinear grids
@@ -197,9 +196,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test ynode(2, grid, Face()) ≈ FT(π/3)
         @test znode(2, grid, Face()) ≈ FT(π/3)
 
-        @test min_Δx(grid) ≈ FT(π/3)
-        @test min_Δy(grid) ≈ FT(π/3)
-        @test min_Δz(grid) ≈ FT(π/3)
+        @test minimum_xspacing(grid) ≈ FT(π/3)
+        @test minimum_yspacing(grid) ≈ FT(π/3)
+        @test minimum_zspacing(grid) ≈ FT(π/3)
 
         @test all(xspacings(grid, Center()) .≈ FT(π/N))
         @test all(yspacings(grid, Center()) .≈ FT(π/N))
@@ -413,7 +412,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
-    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ

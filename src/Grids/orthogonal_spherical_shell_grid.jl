@@ -785,7 +785,7 @@ function get_center_and_extents_of_shell(grid::OSSG)
     Nx, Ny, _ = size(grid)
 
     # find the indices that correspond to the center of the shell
-    # ÷ ensures that expressions below works for both odd and even
+    # ÷ ensures that expressions below work for both odd and even
     i_center = Nx÷2 + 1
     j_center = Ny÷2 + 1
 
@@ -835,8 +835,6 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
-
-    center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
 
     if abs(φ_center) ≈  90
         center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
@@ -891,7 +889,6 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
 
     return new_grid
 end
-
 
 @inline xnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
     view(grid.λᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
@@ -970,7 +967,3 @@ end
 @inline xspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xspacings(grid, ℓx, ℓy; with_halos)
 @inline yspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = yspacings(grid, ℓx, ℓy; with_halos)
 @inline zspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = zspacings(grid, ℓz; with_halos)
-
-min_Δx(grid::OSSG) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
-min_Δy(grid::OSSG) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center(), Center()))
-min_Δz(grid::OSSG) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))

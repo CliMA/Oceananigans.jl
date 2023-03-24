@@ -259,10 +259,11 @@ const OSSG = OrthogonalSphericalShellGrid
 ##### Grid utils
 #####
 
-Base.size(grid::OldConformalCubedSphereGrid)      = (size(grid.panels[1])..., length(grid.panels))
-Base.size(loc, grid::OldConformalCubedSphereGrid) = size(loc, grid.panels[1])
-Base.size(grid::OldConformalCubedSphereGrid, i)   = size(grid)[i]
-halo_size(ccsg::OldConformalCubedSphereGrid)      = halo_size(first(ccsg.panels)) # hack
+Base.size(grid::ConformalCubedSphereGrid)             = (size(grid.faces[1])..., length(grid.faces))
+Base.size(grid::ConformalCubedSphereGrid, loc::Tuple) = size(grid.faces[1], loc)
+Base.size(grid::ConformalCubedSphereGrid, i::Int)     = size(grid)[i]
+
+halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg.faces)) # hack
 
 Base.eltype(grid::OldConformalCubedSphereGrid{FT}) where FT = FT
 

@@ -10,7 +10,8 @@ export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
-export xspacings, yspacings, zspacings
+export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
 export on_architecture
 
@@ -22,7 +23,7 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show
+import Base: size, length, eltype, show, -
 import Oceananigans.Architectures: architecture
 
 #####

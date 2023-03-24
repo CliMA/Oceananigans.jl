@@ -73,19 +73,19 @@ Return a 3-tuple with the number of halo cells on either side of the
 domain in (x, y, z).
 """
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid, d) = halo_size(grid)[d]
 
 Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-halo_size(grid, d) = halo_size(grid)[d]
 
 Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
     size(loc, topology(grid), size(grid), indices)
 
 function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
     D = length(loc)
-    return Tuple(length(loc[d](), topo[d](), sz[d], indices[d]) for d = 1:D)
+    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
 end
 
-Base.size(grid, loc::Tuple, d::Int) = size(loc, grid)[d]
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -117,7 +117,7 @@ corresponding to the number of grid points along `x, y, z`.
 """
 function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
     D = length(loc)
-    return Tuple(total_length(loc[d](), topo[d](), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+    return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
 end
 
 total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
@@ -329,6 +329,11 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 ##### << Spacings >>
 #####
 
+# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
+function xspacing end
+function yspacing end
+function zspacing end
+
 """
     xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
 
@@ -396,6 +401,75 @@ julia> zspacings(grid, Center(), Center(), Center())
 """
 @inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
+destantiate(::Face)   = Face
+destantiate(::Center) = Center
+
+function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
+    spacing = eval(Symbol(dir, :spacing))
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
+
+    return minimum(Δ)
+end
+
+"""
+    minimum_xspacing(grid, ℓx, ℓy, ℓz)
+    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_xspacing(grid, Center(), Center(), Center())
+0.5
+```
+"""
+minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
+minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
+"""
+    minimum_yspacing(grid, ℓx, ℓy, ℓz)
+    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_yspacing(grid, Center(), Center(), Center())
+0.25
+```
+"""
+minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
+minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
+
+"""
+    minimum_zspacing(grid, ℓx, ℓy, ℓz)
+    minimum_zspacing(grid) = minimum_zspacing(grid, Center(), Center(), Center())
+
+Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> minimum_zspacing(grid, Center(), Center(), Center())
+0.125
+```
+"""
+minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
+minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
 #####
 ##### Convenience functions
@@ -426,7 +500,17 @@ end
 #####
 
 struct ZDirection end
-Base.summary(::ZDirection) = "ZDirection"
+
+Base.summary(::ZDirection) = "ZDirection()"
+Base.show(io::IO, zdir::ZDirection) = print(io, summary(zdir))
+
+struct NegativeZDirection end
+
+Base.summary(::NegativeZDirection) = "NegativeZDirection()"
+Base.show(io::IO, zdir::NegativeZDirection) = print(io, summary(zdir))
+
+-(::NegativeZDirection) = ZDirection()
+-(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils
@@ -439,6 +523,7 @@ dimension_summary(topo::Flat, name, args...) = "Flat $name"
 function domain_summary(topo, name, left, right)
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
+
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
@@ -457,6 +542,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
 end
 
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+
 coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),

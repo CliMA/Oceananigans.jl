@@ -219,13 +219,13 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
     arch = architecture(grid)
-    Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = allocate_metrics(grid)
+    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
     wait(device_event(arch))
 
-    precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
+    precompute_curvilinear_metrics!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
     wait(device_event(arch))
 
-    Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
+    Δyᶠᶜᵃ, Δyᶜᶠᵃ = precompute_Δy_metrics(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
 
     Nλ, Nφ, Nz = size(grid)
     Hλ, Hφ, Hz = halo_size(grid)
@@ -238,9 +238,8 @@ function with_precomputed_metrics(grid)
                                              grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
                                              grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
                                              grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, grid.zᵃᵃᶠ, grid.zᵃᵃᶜ,
-                                             Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ,
-                                             Δyᶠᶜ, Δyᶜᶠ,
-                                             Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
+                                             Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                             Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
@@ -294,9 +293,9 @@ end
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    λ₁, λ₂ = domain(topology(grid, 1)(), size(grid, 1), grid.λᶠᵃᵃ)
-    φ₁, φ₂ = domain(topology(grid, 2)(), size(grid, 2), grid.φᵃᶠᵃ)
-    z₁, z₂ = domain(topology(grid, 3)(), size(grid, 3), grid.zᵃᵃᶠ)
+    λ₁, λ₂ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
+    φ₁, φ₂ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
+    z₁, z₂ = domain(TZ(), size(grid, 3), grid.zᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
