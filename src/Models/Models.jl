@@ -7,6 +7,7 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField
 
+using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo
 using Oceananigans: AbstractModel
 using Oceananigans.Grids: halo_size, inflate_halo_size
 
@@ -40,15 +41,17 @@ end
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+#####
+##### Halo validation for models
+#####
+
+function validate_model_halo(grid, tendency_terms...)
     user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(1, 1, 1, grid,
-                                      momentum_advection,
-                                      tracer_advection,
-                                      closure)
+    required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
 
     any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."))
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo." *
+                            "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."))
 end
 
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
