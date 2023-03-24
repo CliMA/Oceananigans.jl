@@ -66,7 +66,7 @@ function Simulation(model; Δt,
    # Check for NaNs in the model's first prognostic field every 100 iterations.
    model_fields = prognostic_fields(model)
    first_name = first(keys(model_fields))
-   field_to_check_nans = NamedTuple(first_name => model_fields[first_name])
+   field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
    nan_checker = NaNChecker(field_to_check_nans)
    callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 
