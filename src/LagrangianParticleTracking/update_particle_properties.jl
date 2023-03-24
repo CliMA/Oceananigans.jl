@@ -156,8 +156,12 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
 
+    total_velocities = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
+                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
+                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
+
     advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(model.velocities),
+                                                      datatuple(total_velocities),
                                                       dependencies=Event(device(arch)))
 
     wait(device(arch), advect_particles_event)
