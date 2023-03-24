@@ -1,7 +1,7 @@
 module Fields
 
 export Face, Center
-export AbstractField, Field, Average, Integral, Reduction, field, SumOfFields
+export AbstractField, Field, Average, Integral, Reduction, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
@@ -12,8 +12,6 @@ export interpolate
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
-
-import Base: getindex
 
 include("abstract_field.jl")
 include("constant_field.jl")
@@ -52,14 +50,4 @@ function field(loc, f::Field, grid)
 end
 
 include("set!.jl")
-
-struct SumOfFields{N, F}
-    fields :: F
-    SumOfFields{N}(fields...) where N = new{N, typeof(fields)}(fields)
-end
-
-@inline getindex(s::SumOfFields{1}, i, j, k) = @inbounds s.fields[1][i, j, k]
-@inline getindex(s::SumOfFields{2}, i, j, k) = @inbounds s.fields[1][i, j, k] + s.fields[2][i, j, k]
-@inline getindex(s::SumOfFields{3}, i, j, k) = @inbounds s.fields[1][i, j, k] + s.fields[2][i, j, k] + s.fields[3][i, j, k]
-
 end # module

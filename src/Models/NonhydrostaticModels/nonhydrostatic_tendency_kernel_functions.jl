@@ -7,7 +7,7 @@ using Oceananigans.StokesDrift
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
-using Oceananigans.Fields: SumOfFields
+using Oceananigans.Utils: SumOfArrays
 
 "return the ``x``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
@@ -62,9 +62,9 @@ pressure anomaly.
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = (u = SumOfFields{2}(velocities.u, background_fields.velocities.u),
-                        v = SumOfFields{2}(velocities.v, background_fields.velocities.v),
-                        w = SumOfFields{2}(velocities.w, background_fields.velocities.w))
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
 
     # This changes the statement that ∇⋅((u⃗ + U⃗)(c + C))≈∇⋅(u⃗c) + ∇⋅(u⃗C) + ∇⋅(U⃗c)
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, total_velocities.u)
@@ -123,9 +123,9 @@ pressure anomaly.
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = (u = SumOfFields{2}(velocities.u, background_fields.velocities.u),
-                        v = SumOfFields{2}(velocities.v, background_fields.velocities.v),
-                        w = SumOfFields{2}(velocities.w, background_fields.velocities.w))
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
 
     # This changes the statement that ∇⋅((u⃗ + U⃗)(c + C))≈∇⋅(u⃗c) + ∇⋅(u⃗C) + ∇⋅(U⃗c)
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, total_velocities.u)
@@ -181,9 +181,9 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = (u = SumOfFields{2}(velocities.u, background_fields.velocities.u),
-                        v = SumOfFields{2}(velocities.v, background_fields.velocities.v),
-                        w = SumOfFields{2}(velocities.w, background_fields.velocities.w))
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
 
     # This changes the statement that ∇⋅((u⃗ + U⃗)(c + C))≈∇⋅(u⃗c) + ∇⋅(u⃗C) + ∇⋅(U⃗c)
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, total_velocities.u)
@@ -243,12 +243,12 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
-    total_velocities = (u = SumOfFields{3}(velocities.u, background_fields.velocities.u, biogeochemical_velocities.u),
-                        v = SumOfFields{3}(velocities.v, background_fields.velocities.v, biogeochemical_velocities.v),
-                        w = SumOfFields{3}(velocities.w, background_fields.velocities.w, biogeochemical_velocities.w))
+    total_velocities = (u = SumOfArrays{3}(velocities.u, background_fields.velocities.u, biogeochemical_velocities.u),
+                        v = SumOfArrays{3}(velocities.v, background_fields.velocities.v, biogeochemical_velocities.v),
+                        w = SumOfArrays{3}(velocities.w, background_fields.velocities.w, biogeochemical_velocities.w))
 
     # This changes the statement that ∇⋅((u⃗ + U⃗)(c + C))≈∇⋅(u⃗c) + ∇⋅(u⃗C) + ∇⋅(U⃗c)
-    return ( - div_Uc(i, j, k, grid, advection, total_velocities, SumOfFields{2}(c, background_fields_c))
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, SumOfArrays{2}(c, background_fields_c))
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, fields)
