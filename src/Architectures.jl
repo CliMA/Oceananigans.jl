@@ -6,7 +6,6 @@ export device, architecture, array_type, arch_array, unified_array, device_copy_
 
 using CUDA
 using KernelAbstractions
-using CUDA.CUDAKernels
 using Adapt
 using OffsetArrays
 
