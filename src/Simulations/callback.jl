@@ -14,7 +14,7 @@ end
 
 # Fallback initialization: call the schedule, then the callback
 function initialize!(callback, sim)
-    initialize!(callback.schedule, model) && callback(sim)
+    initialize!(callback.schedule, sim.model) && callback(sim)
     return nothing
 end
 
