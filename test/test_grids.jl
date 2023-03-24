@@ -1,13 +1,12 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz,
+using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings, 
                           xnode, ynode, znode,
                           λspacings, φspacings, λspacing, φspacing
 
-using Oceananigans.Operators: xspacing, yspacing, zspacing,
-                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
 ##### Regular rectilinear grids
@@ -187,7 +186,7 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     grids       = [regular_spaced_grid, variably_spaced_grid]
 
     for (grid_type, grid) in zip(grids_types, grids)
-        @info "        Testing on $grid_type grid...."
+        @info "        Testing grid utils on $grid_type grid...."
 
         @test xnode(2, grid, Center()) ≈ FT(π/2)
         @test ynode(2, grid, Center()) ≈ FT(π/2)
@@ -197,9 +196,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test ynode(2, grid, Face()) ≈ FT(π/3)
         @test znode(2, grid, Face()) ≈ FT(π/3)
 
-        @test min_Δx(grid) ≈ FT(π/3)
-        @test min_Δy(grid) ≈ FT(π/3)
-        @test min_Δz(grid) ≈ FT(π/3)
+        @test minimum_xspacing(grid) ≈ FT(π/3)
+        @test minimum_yspacing(grid) ≈ FT(π/3)
+        @test minimum_zspacing(grid) ≈ FT(π/3)
 
         @test all(xspacings(grid, Center()) .≈ FT(π/N))
         @test all(yspacings(grid, Center()) .≈ FT(π/N))
@@ -413,7 +412,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
-    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
@@ -719,13 +718,12 @@ end
 #####
 
 @testset "Grids" begin
-    @info "Testing grids..."
+    @info "Testing AbstractGrids..."
 
     @testset "Grid utils" begin
         @info "  Testing grid utilities..."
-
-        @test total_extent(Periodic, 1, 0.2, 1.0) == 1.2
-        @test total_extent(Bounded, 1, 0.2, 1.0) == 1.4
+        @test total_extent(Periodic(), 1, 0.2, 1.0) == 1.2
+        @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
     @testset "Regular rectilinear grid" begin
@@ -753,7 +751,6 @@ end
 
         @testset "Grid dimensions" begin
             @info "    Testing grid constructor errors..."
-
             for FT in float_types
                 test_regular_rectilinear_constructor_errors(FT)
             end
@@ -761,7 +758,6 @@ end
 
         @testset "Grids with flat dimensions" begin
             @info "    Testing construction of grids with Flat dimensions..."
-
             for FT in float_types
                 test_flat_size_regular_rectilinear_grid(FT)
             end
@@ -878,7 +874,7 @@ end
 
         @test grid isa LatitudeLongitudeGrid
     end
-
+    
     @testset "Conformal cubed sphere face grid" begin
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 

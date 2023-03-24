@@ -33,28 +33,28 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the left and right.
 """
 apply_x_bcs!(Gc, grid::AbstractGrid, c, west_bc, east_bc, arch::AbstractArchitecture, dep, args...) =
-    launch!(arch, grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), grid, west_bc, east_bc, args..., dependencies=dep)
+    launch!(arch, grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), grid, west_bc, east_bc, Tuple(args), dependencies=dep)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
 apply_y_bcs!(Gc, grid::AbstractGrid, c, south_bc, north_bc, arch::AbstractArchitecture, dep, args...) =
-    launch!(arch, grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), grid, south_bc, north_bc, args..., dependencies=dep)
+    launch!(arch, grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), grid, south_bc, north_bc, Tuple(args), dependencies=dep)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
 apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, dep, args...) =
-    launch!(arch, grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, args..., dependencies=dep)
+    launch!(arch, grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, Tuple(args), dependencies=dep)
 
 """
     _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
 
 Apply a west and/or east boundary condition to variable `c`.
 """
-@kernel function _apply_x_bcs!(Gc, loc, grid, west_bc, east_bc, args...)
+@kernel function _apply_x_bcs!(Gc, loc, grid, west_bc, east_bc, args) 
     j, k = @index(Global, NTuple)
     apply_x_west_bc!(Gc, loc, west_bc, j, k, grid, args...)
     apply_x_east_bc!(Gc, loc, east_bc, j, k, grid, args...)
@@ -65,7 +65,7 @@ end
 
 Apply a south and/or north boundary condition to variable `c`.
 """
-@kernel function _apply_y_bcs!(Gc, loc, grid, south_bc, north_bc, args...)
+@kernel function _apply_y_bcs!(Gc, loc, grid, south_bc, north_bc, args)
     i, k = @index(Global, NTuple)
     apply_y_south_bc!(Gc, loc, south_bc, i, k, grid, args...)
     apply_y_north_bc!(Gc, loc, north_bc, i, k, grid, args...)
@@ -76,7 +76,7 @@ end
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
-@kernel function _apply_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args...)
+@kernel function _apply_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args) 
     i, j = @index(Global, NTuple)
     apply_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
