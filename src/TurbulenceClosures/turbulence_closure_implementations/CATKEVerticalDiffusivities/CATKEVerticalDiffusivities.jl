@@ -327,6 +327,7 @@ function Base.show(io::IO, closure::FlavorOfCATKE)
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n',
               "├── minimum_turbulent_kinetic_energy: ", prettysummary(closure.minimum_turbulent_kinetic_energy), '\n',
               "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(closure.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
+              "├── minimum_convective_buoyancy_flux: ", prettysummary(closure.minimum_convective_buoyancy_flux), '\n',
               "├── mixing_length: ", prettysummary(closure.mixing_length), '\n',
               "│   ├── Cᵇ:   ", prettysummary(closure.mixing_length.Cᵇ), '\n',
               "│   ├── Cᶜc:  ", prettysummary(closure.mixing_length.Cᶜc), '\n',
