@@ -58,9 +58,9 @@ end
 @inline fractional_y_index(y::FT, ::Nothing, grid) where FT = one(FT)
 @inline fractional_z_index(z::FT, ::Nothing, grid) where FT = one(FT)
 
-@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid)[1], grid.Nx), x, xnodes(grid, Center())) - 1
-@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid)[2], grid.Ny), y, ynodes(grid, Center())) - 1
-@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid)[3], grid.Nz), z, znodes(grid, Center())) - 1
+@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 1)(), grid.Nx), x, xnodes(grid, Center())) - 1
+@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 2)(), grid.Ny), y, ynodes(grid, Center())) - 1
+@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 3)(), grid.Nz), z, znodes(grid, Center())) - 1
 
 @inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face(), topology(grid, 1)(), size(grid, 1)), x, xnodes(grid, Face())) - 1
 @inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face(), topology(grid, 2)(), size(grid, 2)), y, ynodes(grid, Face())) - 1
