@@ -307,21 +307,6 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(grid::AbstractGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
-
-    if reshape
-        N = (length(x), length(y), length(z))
-        x = Base.reshape(x, N[1], 1, 1)
-        y = Base.reshape(y, 1, N[2], 1)
-        z = Base.reshape(z, 1, 1, N[3])
-    end
-
-    return (x, y, z)
-end
-
 nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
 
