@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings, 
-                          xnode, ynode, znode,
+                          xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings, λspacing, φspacing
 
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
