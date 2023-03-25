@@ -79,7 +79,7 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
 ab2_step_free_surface!(::Nothing, model, Δt, χ, prognostic_field_events) = MultiEvent(flatten_tuple(prognostic_field_events))
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
-validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
+validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
 FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing

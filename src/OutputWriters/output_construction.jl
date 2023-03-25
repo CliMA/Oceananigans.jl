@@ -29,8 +29,6 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
-instantiate(T::Type) = T()
-
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
