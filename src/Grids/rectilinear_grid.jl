@@ -409,6 +409,21 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 ##### Grid nodes
 #####
 
+function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
+    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+
+    if reshape
+        N = (length(x), length(y), length(z))
+        x = Base.reshape(x, N[1], 1, 1)
+        y = Base.reshape(y, 1, N[2], 1)
+        z = Base.reshape(z, 1, 1, N[3])
+    end
+
+    return (x, y, z)
+end
+
 @inline xnodes(grid::RectilinearGrid, ℓx::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
 @inline xnodes(grid::RectilinearGrid, ℓx::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
 
@@ -418,6 +433,7 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 @inline znodes(grid::RectilinearGrid, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
 @inline znodes(grid::RectilinearGrid, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
 
+# convenience
 @inline xnodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
 @inline ynodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 @inline znodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
@@ -431,6 +447,7 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 @inline znode(k, grid::RectilinearGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::RectilinearGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
 
+# convenience
 @inline xnode(i, j, k, grid::RectilinearGrid, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ynode(i, j, k, grid::RectilinearGrid, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 @inline znode(i, j, k, grid::RectilinearGrid, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
