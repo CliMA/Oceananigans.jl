@@ -111,8 +111,8 @@ function compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
     event = launch!(arch, grid, :xy,
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
-		            dependencies = device_event(arch))
-    
+                    dependencies = device_event(arch))
+
     wait(device(arch), event)
     return nothing
 end
