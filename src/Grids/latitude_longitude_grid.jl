@@ -632,10 +632,8 @@ end
 @inline φnode(j, grid::LatLonGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
 @inline φnode(j, grid::LatLonGrid, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
 
-@inline xnode(i, j, grid::LatLonGrid, ℓx, ℓy) =
-    grid.radius * deg2rad(λnode(i, grid, ℓx)) * hack_cosd((φnode(j, grid, ℓy)))
-@inline ynode(j, grid::LatLonGrid, ℓy)        =
-    grid.radius * deg2rad(φnode(j, grid, ℓy))
+@inline xnode(i, j, grid::LatLonGrid, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, grid, ℓx)) * hack_cosd((φnode(j, grid, ℓy)))
+@inline ynode(j, grid::LatLonGrid, ℓy)        = grid.radius * deg2rad(φnode(j, grid, ℓy))
 
 @inline znode(k, grid::LatLonGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::LatLonGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
