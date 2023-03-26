@@ -33,8 +33,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
-    update_hydrostatic_pressure!(model)
-    fill_halo_regions!(model.pressures.pHY′)
+    #update_hydrostatic_pressure!(model)
+    #fill_halo_regions!(model.pressures.pHY′)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
 
