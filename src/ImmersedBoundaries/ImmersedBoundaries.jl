@@ -44,17 +44,13 @@ using Oceananigans.Advection:
 import Base: show, summary
 import Oceananigans.Advection: cell_advection_timescale
 
-import Oceananigans.Grids: 
-        cpu_face_constructor_x,
-        cpu_face_constructor_y,
-        cpu_face_constructor_z,
-        x_domain,
-        y_domain,
-        z_domain
-        
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
-import Oceananigans.Grids: xnode, ynode, znode, xnodes, ynodes, znodes
-import Oceananigans.Grids: inactive_cell
+import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                            x_domain, y_domain, z_domain
+
+import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+                           xnode, ynode, znode, nodes, xnodes, ynodes, znodes, λnodes, φnodes,
+                           inactive_cell
+
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
@@ -132,9 +128,6 @@ const IBG = ImmersedBoundaryGrid
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
 @inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
-
-@inline nodes(ibg::IBG, ℓx, ℓy, ℓz; reshape=false, with_halos=false) =
-    nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))
@@ -245,6 +238,10 @@ const f = Face()
 @inline ynode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 @inline znode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 
+nodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+
+λnodes(ibg::IBG, loc; kwargs...) = λnodes(ibg.underlying_grid, loc; kwargs...)
+φnodes(ibg::IBG, loc; kwargs...) = φnodes(ibg.underlying_grid, loc; kwargs...)
 xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
 ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
 znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
