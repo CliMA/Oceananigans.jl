@@ -266,17 +266,17 @@ function test_regular_rectilinear_constructor_errors(FT)
 end
 
 function flat_size_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, topology, extent)
     return grid.Nx, grid.Ny, grid.Nz
 end
 
 function flat_halo_regular_rectilinear_grid(FT; topology, size, halo, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, halo=halo, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, halo, topology, extent)
     return grid.Hx, grid.Hy, grid.Hz
 end
 
 function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, topology, extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
@@ -621,6 +621,35 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
+function test_lat_lon_xyzλφ_node_nodes(FT, arch)
+
+    @info "    Testing with ($FT) on ($arch)..."
+
+    (Nλ, Nφ, Nz) = grid_size = (12, 4, 2)
+    (Hλ, Hφ, Hz) = halo      = (1, 1, 1)
+
+    lat = (-60,   60)
+    lon = (-180, 180)
+    zᵣ  = (-10,   0)
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+
+    @info "        Testing grid utils on $grid_type grid...."
+
+    @test λnode(3, 1, 2, grid, Face(), Face(), Face()) ≈ -120
+    @test φnode(3, 2, 2, grid, Face(), Face(), Face()) ≈ -30
+    @test xnode(5, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/2)
+    @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
+    @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
+
+    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(60)
+    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
+    @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
+    @test minimum_zspacing(grid) ≈ 5
+
+    return nothing
+end
+
 function test_lat_lon_precomputed_metrics(FT, arch)
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
@@ -844,6 +873,7 @@ end
         @info "  Testing precomputed metrics on latitude-longitude grid..."
         for arch in archs, FT in float_types
             test_lat_lon_precomputed_metrics(FT, arch)
+            test_lat_lon_xyzλφ_node_nodes(FT, arch)
         end
 
         # Testing show function for regular grid
