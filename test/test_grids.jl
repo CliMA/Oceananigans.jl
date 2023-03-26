@@ -638,7 +638,7 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
 
     @test λnode(3, 1, 2, grid, Face(), Face(), Face()) ≈ -120
     @test φnode(3, 2, 2, grid, Face(), Face(), Face()) ≈ -30
-    @test xnode(5, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/2)
+    @test xnode(5, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/6)
     @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
     @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
 
@@ -792,7 +792,7 @@ end
             end
         end
 
-         @testset "Grid equality" begin
+        @testset "Grid equality" begin
             @info "    Testing grid equality operator (==)..."
             
             for arch in archs
