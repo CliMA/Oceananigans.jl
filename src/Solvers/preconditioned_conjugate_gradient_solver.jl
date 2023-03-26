@@ -192,7 +192,7 @@ function iterate!(x, solver, b, args...)
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
-    @apply_regionally perform_iteration!(q, p, z, sover, args...)
+    @apply_regionally perform_iteration!(q, p, z, solver, args...)
 
     α = ρ / dot(p, q)
 
