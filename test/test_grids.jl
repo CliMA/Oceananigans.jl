@@ -634,7 +634,7 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
-    @info "        Testing grid utils on $grid_type grid...."
+    @info "        Testing grid utils on LatitudeLongitude grid...."
 
     @test λnode(3, 1, 2, grid, Face(), Face(), Face()) ≈ -120
     @test φnode(3, 2, 2, grid, Face(), Face(), Face()) ≈ -30
@@ -667,7 +667,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
 
     latitude  = (latreg, latstr)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
-    zcoord    = (zreg,     zstr)
+    zcoord    = (zreg,   zstr)
 
     CUDA.allowscalar() do
 
@@ -792,7 +792,7 @@ end
             end
         end
 
-        @testset "Grid equality" begin
+         @testset "Grid equality" begin
             @info "    Testing grid equality operator (==)..."
             
             for arch in archs
