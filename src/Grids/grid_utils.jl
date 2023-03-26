@@ -219,9 +219,9 @@ parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
-@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, Face(); with_halos=true)[1:size(grid, 1)+1], 1))
-@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, Face(); with_halos=true)[1:size(grid, 2)+1], 2))
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, Face(); with_halos=true)[1:size(grid, 3)+1], 3))
+@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, Face(), Center(), Center(); with_halos=true), 1)[1:size(grid, 1)+1])
+@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, Center(), Face(), Center(); with_halos=true), 2)[1:size(grid, 2)+1])
+@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, Center(), Center(), Face(); with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### << Nodes >>
