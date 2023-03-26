@@ -110,12 +110,11 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
     immersed_boundary :: I
     active_cells_map :: M
     
-    # Internal interface
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, wcm::M) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M}
         FT = eltype(grid)
         arch = architecture(grid)
         Arch = typeof(arch)
-        
+
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, wcm)
     end
 end
@@ -133,6 +132,9 @@ const IBG = ImmersedBoundaryGrid
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
 @inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
+
+@inline nodes(ibg::IBG, ℓx, ℓy, ℓz; reshape=false, with_halos=false) =
+    nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))
@@ -223,7 +225,7 @@ As well as
 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
-  
+
 
 #####
 ##### Utilities
