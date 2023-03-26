@@ -864,7 +864,7 @@ end
 ##### Grid nodes
 #####
 
-function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
     φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
@@ -898,7 +898,7 @@ end
     view(grid.φᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
 @inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos=with_halos)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
-@inline ynodes(grid::OSSG, ℓy, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
+@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
 
 @inline znodes(grid::OSSG, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
     view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
