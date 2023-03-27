@@ -508,7 +508,7 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  # # We get a SegFault. We probably need more devices to run this test
+  # We get a SegFault. We probably need more devices to run this test
   # - label: "🐲 gpu distributed unit tests"
   # env:
   #   JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"

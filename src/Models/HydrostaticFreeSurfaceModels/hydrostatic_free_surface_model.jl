@@ -225,3 +225,4 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing},
 
 initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+

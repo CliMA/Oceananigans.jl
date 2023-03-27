@@ -10,12 +10,13 @@ export
 using Oceananigans: AbstractModel
 using Oceananigans.Grids: halo_size, inflate_halo_size
 
+import Oceananigans: initialize!
 import Oceananigans.Architectures: device_event, architecture
 
 device_event(model::AbstractModel) = device_event(model.architecture)
 architecture(model::AbstractModel) = model.architecture
 
-initialize_model!(model::AbstractModel) = nothing
+initialize!(model::AbstractModel) = nothing
 
 using Oceananigans: fields
 import Oceananigans.TimeSteppers: reset!
