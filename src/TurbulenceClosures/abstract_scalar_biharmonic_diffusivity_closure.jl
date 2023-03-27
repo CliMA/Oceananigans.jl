@@ -1,9 +1,9 @@
 using Oceananigans.Grids: peripheral_node
 
 """
-    abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
+    abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
 
-Abstract type for closures with *isotropic* diffusivities.
+Abstract type for closures with scalar biharmonic diffusivities.
 """
 abstract type AbstractScalarBiharmonicDiffusivity{F} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization} end
 

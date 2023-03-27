@@ -37,7 +37,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Measures, CairoMakie"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## The grid
@@ -65,7 +65,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # constant during the first phase of the simulation. We produce a plot of this time-dependent
 # buoyancy flux for the visually-oriented,
 
-using CairoMakie, Measures
+using CairoMakie
 set_theme!(Theme(fontsize = 24, linewidth=2))
 
 times = range(0, 12hours, length=100)
@@ -75,6 +75,9 @@ ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m
 
 flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 lines!(ax, times ./ hour, flux_time_series)
+
+current_figure() # hide
+fig
 
 # The buoyancy flux effectively shuts off after 6 hours of simulation time.
 #
@@ -260,6 +263,9 @@ lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :b
 b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
 lines!(ax_avg_P, avg_Pₙ, zp)
+
+current_figure() # hide
+fig
 
 # And, finally, we record a movie.
 
