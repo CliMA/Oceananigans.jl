@@ -90,6 +90,52 @@ implicitly during time-stepping.
              + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
+
+"""
+    unspecialized_hydrostatic_tracer_tendency(i, j, k, grid, 
+                                              val_tracer_index,
+                                              val_tracer_name::Val{tracer_name},
+                                              advection,
+                                              closure,
+                                              args...) where tracer_name
+
+dispatches to the correct tendency kernel (trick to force CPU compilation). 
+Note that here the if... else... syntax is preferred to ifelse because there is _NO_ branch divergence
+(i.e., all threads will follow the same path)
+"""
+@inline specialized_hydrostatic_tracer_tendency(i, j, k, grid, args...) =
+            hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+
+@inline function specialized_hydrostatic_tracer_tendency(i, j, k, grid, 
+                                                         val_tracer_name::Val{:e},
+                                                         closure,
+                                                         args...) 
+    
+    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
+
+    if isnothing(catke_index)
+        return hydrostatic_free_surface_tracer_tendency(i, j, k, grid, val_tracer_name, closure, args...)
+    else
+        return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_name, closure, args...)
+    end                                         
+end
+
+@inline function specialized_hydrostatic_tracer_tendency(i, j, k, grid, 
+                                                         val_tracer_name::Val{:K},
+                                                         closure,
+                                                         args...) 
+
+    mews_index = findfirst(c -> c isa MEWS, closures)
+
+    if isnothing(mews_index)
+        return hydrostatic_free_surface_tracer_tendency(i, j, k, grid, val_tracer_name, closure, args...)
+    else
+        return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_name, closure, args...)
+    end                                         
+end
+
 """
 Return the tendency for a tracer field with index `tracer_index` 
 at grid point `i, j, k`.
@@ -103,10 +149,10 @@ The tendency is called ``G_c`` and defined via
 where `c = C[tracer_index]`. 
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
-                                                          val_tracer_index::Val{tracer_index},
                                                           val_tracer_name,
-                                                          advection,
                                                           closure,
+                                                          val_tracer_index::Val{tracer_index},
+                                                          advection,
                                                           c_immersed_bc,
                                                           buoyancy,
                                                           biogeochemistry,
@@ -154,10 +200,10 @@ The tendency is called ``G_η`` and defined via
 end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
-                                                               val_tracer_index::Val{tracer_index},
                                                                val_tracer_name,
-                                                               advection,
                                                                closure,
+                                                               val_tracer_index::Val{tracer_index},
+                                                               advection,
                                                                e_immersed_bc,
                                                                buoyancy,
                                                                biogeochemistry,
