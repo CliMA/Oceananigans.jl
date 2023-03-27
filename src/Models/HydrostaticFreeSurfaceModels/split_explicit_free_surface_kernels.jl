@@ -19,11 +19,10 @@ const ϵ = 0.013
 const μ = 1.0 - δ - γ - ϵ
 
 # Evolution Kernels
-#=
-∂t(η) = -∇⋅U
-∂t(U) = - gH∇η + f
-=#
-
+#
+# ∂t(η) = -∇⋅U
+# ∂t(U) = - gH∇η + f
+# 
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
@@ -35,8 +34,8 @@ const μ = 1.0 - δ - γ - ϵ
 #
 #   `δxᶜᵃᵃ_U` : Hardcodes NoPenetration or Periodic boundary conditions for the zonal barotropic velocity U in x direction 
 #   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for the meridional barotropic velocity V in y direction
-
-# functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
+#
+# The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 @inline δxᶠᵃᵃ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, η★, args...)
 @inline δyᵃᶠᵃ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, η★, args...)
 @inline δxᶜᵃᵃ_U(i, j, k, grid, T, U★::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, U★, args...)
@@ -73,11 +72,8 @@ const μ = 1.0 - δ - γ - ϵ
 @inline ∂xᶠᶜᶠ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ_η(i, j, k, grid, T, η★, args...) / Δxᶠᶜᶠ(i, j, k, grid)
 @inline ∂yᶜᶠᶠ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ_η(i, j, k, grid, T, η★, args...) / Δyᶜᶠᶠ(i, j, k, grid)
                                                                                                                                            
-@inline div_xᶜᶜᶠ_U(i, j, k, grid, TX, U★, args...) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
-
-@inline div_yᶜᶜᶠ_V(i, j, k, grid, TY, V★, args...) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
+@inline div_xᶜᶜᶠ_U(i, j, k, grid, TX, U★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
+@inline div_yᶜᶜᶠ_V(i, j, k, grid, TY, V★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
 
 # Immersed Boundary Operators (Velocities are `0` on `peripheral_node`s and the free surface should ensure no-flux on `inactive_node`s)
 
@@ -295,6 +291,7 @@ end
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
 
     grid = free_surface.η.grid
+    arch = architecture(grid)
 
     # we start the time integration of η from the average ηⁿ     
     Gu  = model.timestepper.G⁻.u
@@ -318,6 +315,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
     @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+
+    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
+    wait(device(arch), velocities_update)
+    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in model.velocities)
+    wait(device(arch), MultiEvent(masking_events))
 
     fill_halo_regions!(free_surface.η)
 
@@ -352,9 +354,9 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))
 
-    masking_events = [mask_immersed_field!(q) for q in velocities]
-    push!(masking_events, mask_immersed_field!(Gu))
-    push!(masking_events, mask_immersed_field!(Gv))
+    masking_events = [mask_immersed_field!(q, blocking=false) for q in velocities]
+    push!(masking_events, mask_immersed_field!(Gu, blocking=false))
+    push!(masking_events, mask_immersed_field!(Gv, blocking=false))
     wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
 
     # Compute barotropic mode of tendency fields
@@ -362,3 +364,4 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
 
     return MultiEvent(tuple(velocities_update[2]...))
 end
+
