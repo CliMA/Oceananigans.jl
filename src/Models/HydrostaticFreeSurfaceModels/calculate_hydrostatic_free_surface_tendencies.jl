@@ -46,16 +46,32 @@ end
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
 
-tracer_tendency_kernel_function(args...) = calculate_hydrostatic_free_surface_Gc!
+@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = calculate_hydrostatic_free_surface_Gc!, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, c::MEWS,          K) = calculate_hydrostatic_free_surface_Ge!, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = calculate_hydrostatic_free_surface_Ge!, c, K
 
-function tracer_tendency_kernel_function(::Val{:e}, closure) 
-    catke_index = findfirst(c -> c isa FlavorOfCATKE, closure)
-    return isnothing(catke_index) ? calculate_hydrostatic_free_surface_Gc! : calculate_hydrostatic_free_surface_Ge!
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
+    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
+
+    if isnothing(catke_index)
+        return calculate_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
+    else
+        catke_closure = closures[catke_index]
+        catke_diffusivity_fields = diffusivity_fields[catke_index]
+        return calculate_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
+    end
 end
 
-function tracer_tendency_kernel_function(::Val{:K}, closure) 
-    mews_index = findfirst(c -> c isa MEWS, closure)
-    return isnothing(mews_index) ? calculate_hydrostatic_free_surface_Gc! : calculate_hydrostatic_free_surface_Ge!
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, closures::Tuple, diffusivity_fields::Tuple)
+    mews_index = findfirst(c -> c isa MEWS, closures)
+
+    if isnothing(mews_index)
+        return calculate_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
+    else
+        mews_closure = closures[mews_index]
+        mews_diffusivity_fields = diffusivity_fields[mews_index]
+        return  calculate_hydrostatic_free_surface_Ge!, mews_closure, mews_diffusivity_fields 
+    end
 end
 
 top_tracer_boundary_conditions(grid, tracers) =
@@ -80,12 +96,12 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         c_forcing     = model.forcing[tracer_name]
         c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        tendency_kernel! = tracer_tendency_kernel_function(Val(tracer_name), model.closure)
+        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(Val(tracer_name), model.closure)
 
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
-                     model.closure,
+                     closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
@@ -93,7 +109,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                      model.free_surface,
                      model.tracers,
                      top_tracer_bcs,
-                     model.diffusivity_fields,
+                     diffusivity,
                      model.auxiliary_fields,
                      c_forcing,
                      model.clock)
