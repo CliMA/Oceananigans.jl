@@ -2,7 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Architectures: device_event
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
