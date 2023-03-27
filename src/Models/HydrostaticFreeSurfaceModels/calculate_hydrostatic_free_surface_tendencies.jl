@@ -96,7 +96,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         c_forcing     = model.forcing[tracer_name]
         c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(Val(tracer_name), model.closure)
+        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model, Val(tracer_name), model.closure, model.diffusivity_fields)
 
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
