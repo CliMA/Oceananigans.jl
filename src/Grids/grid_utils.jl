@@ -294,6 +294,26 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 @inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 """
+    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
+for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+See [`znodes`](@ref) for examples.
+"""
+@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
+
+"""
+    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
+for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+See [`znodes`](@ref) for examples.
+"""
+@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
+
+"""
     nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
     nodes(grid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
 
