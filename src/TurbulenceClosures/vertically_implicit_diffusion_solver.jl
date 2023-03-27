@@ -2,6 +2,8 @@ using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
+import Oceananigans.Solvers: get_coefficient
+
 #####
 ##### implicit_step! interface
 #####
@@ -123,12 +125,16 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = maybe_tupled_ivd_lower_diagonal,
-                                        diagonal = ivd_diagonal,
-                                        upper_diagonal = maybe_tupled_ivd_upper_diagonal)
+                                        lower_diagonal = Val(:maybe_tupled_ivd_lower_diagonal),
+                                        diagonal       = Val(:ivd_diagonal),
+                                        upper_diagonal = Val(:maybe_tupled_ivd_upper_diagonal))
 
     return z_solver
 end
+
+@inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:ivd_diagonal}, i, j, k, grid, p, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
