@@ -82,8 +82,8 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
         tendency_kernel! = tracer_tendency_kernel_function(Val(tracer_name), model.closure)
 
-        args = tuple(Val(tracer_name),
-                     Val(tracer_index),
+        args = tuple(Val(tracer_index),
+                     Val(tracer_name),
                      c_advection,
                      model.closure,
                      c_immersed_bc,
