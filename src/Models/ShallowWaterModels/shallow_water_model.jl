@@ -35,12 +35,13 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, VM, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, VM, T, GR, N, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
                           grid :: G         # Grid of physical points on which `Model` is solved
           vertical_formulation :: VM        # Either single-layer or multi-layer
+              number_of_layers :: N         # Number of layers in the model
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-    gravitational_acceleration :: GR        # Gravitational acceleration, full, or reduced
+    gravitational_acceleration :: GR        # Gravitational acceleration
                      advection :: V         # Advection scheme for velocities, mass and tracers
                     velocities :: U         # Velocities in the shallow water model
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
@@ -62,10 +63,15 @@ struct SingleLayerModel end
 
 struct MultiLayerModel end
 
+const SingleLayerShallowWaterModel = ShallowWaterModel{<:Any, <:Any, SingleLayerModel}
+
+#const SingleLayerShallowWaterModelG, A<:AbstractArchitecture, VM, T, GR, N, V, U, R, F, E, B, Q, C, K, TS, FR} = ShallowWaterModel{G, A<:AbstractArchitecture, VM, T, GR, N, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
                vertical_formulation = SingleLayerModel(),
+                   number_of_layers = 1,
                               clock = Clock{eltype(grid)}(0, 0, 1),
                  momentum_advection = UpwindBiasedFifthOrder(),
                    tracer_advection = WENO(),
@@ -91,6 +97,7 @@ Keyword arguments
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `vertical_formulation`: Whether the model has one (`SingleLayermModel()`) or multiple 
      (`MultiLayerModel()`) layers.
+  - `number_of_layers`: Number of density layers in the model
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
     Default: `UpwindBiasedFifthOrder()`.
@@ -120,6 +127,7 @@ function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
                 vertical_formulation = SingleLayerModel(),
+                    number_of_layers = 1,
                                clock = Clock{eltype(grid)}(0, 0, 1),
                   momentum_advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO(),
@@ -138,10 +146,11 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    grid.Nz == 1 ? println("Proceeding with single-layer shallow water model") : println(
+    number_of_layers = grid.Nz
+    number_of_layers == 1 ? println("Proceeding with single-layer shallow water model") : println(
         "Proceeding with multi-layer shallow water model")
 
-    grid.Nz == 1 ? vertical_formulation = SingleLayerModel() : vertical_formulation = MultiLayerModel()
+    number_of_layers == 1 ? vertical_formulation = SingleLayerModel() : vertical_formulation = MultiLayerModel()
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
@@ -196,6 +205,7 @@ function ShallowWaterModel(;
 
     model = ShallowWaterModel(grid,
                               vertical_formulation,
+                              number_of_layers,
                               arch,
                               clock,
                               gravitational_acceleration,
