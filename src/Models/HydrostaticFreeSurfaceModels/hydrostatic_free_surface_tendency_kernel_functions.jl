@@ -94,15 +94,15 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
 
 """
-    unspecialized_hydrostatic_tracer_tendency(i, j, k, grid, 
-                                              val_tracer_index,
-                                              val_tracer_name::Val{tracer_name},
-                                              advection,
-                                              closure,
-                                              args...) where tracer_name
+    specialized_hydrostatic_tracer_tendency(i, j, k, grid, 
+                                            val_tracer_index,
+                                            val_tracer_name::Val{tracer_name},
+                                            advection,
+                                            closure,
+                                            args...) where tracer_name
 
 dispatches to the correct tendency kernel (trick to force CPU compilation). 
-Note that here the if... else... syntax is preferred to ifelse because there is _NO_ branch divergence
+Note that here the `if... else...` syntax is preferred to `ifelse` because there is _NO_ branch divergence
 (i.e., all threads will follow the same path)
 """
 @inline specialized_hydrostatic_tracer_tendency(i, j, k, grid, args...) =
