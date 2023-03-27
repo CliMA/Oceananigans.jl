@@ -37,7 +37,6 @@ end
     return ∂xᶠᶜᶜ(i, j, k, grid, h[i, j, k] * pressure[i, j, k], h, g)
 end
 
-
 @inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
 @inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)
 
