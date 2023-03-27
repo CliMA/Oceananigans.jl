@@ -61,8 +61,6 @@ end
 
 function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
-    topology(grid, 1) !== Periodic && error("solid_body_rotation_test requires that the first dimension of the grid is Periodic.")
-
     if architecture(grid) isa GPU
         devices = (0, 0)
     else
@@ -183,7 +181,7 @@ for arch in archs
                                      latitude = (-80, 80),
                                      longitude = (-160, 150),
                                      z = (-1, 0),
-                                     topology = (Periodic, Bounded, Bounded), # λ has to be Periodic for this test
+                                     topology = (Bounded, Bounded, Bounded),
                                      radius = 1)
 
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
