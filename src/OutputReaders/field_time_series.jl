@@ -48,6 +48,7 @@ instantiate(T::Type) = T()
     FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
                                 indices = (:, :, :),
                                 boundary_conditions = nothing)
+
 Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);

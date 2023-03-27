@@ -1,3 +1,4 @@
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
@@ -35,9 +36,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     fill_halo_regions!(model.pressures.pHY′)
 
     for callback in callbacks
-        if callback.callsite isa UpdateStateCallsite
-            callback(model)
-        end
+        callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)

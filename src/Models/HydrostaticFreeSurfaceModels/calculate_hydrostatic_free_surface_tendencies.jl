@@ -1,6 +1,4 @@
-using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-
-using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
@@ -34,7 +32,9 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
                                                            model.closure,
                                                            model.buoyancy)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
+    for callback in callbacks
+        callback.callsite isa TendencyCallsite && callback(model)
+    end
 
     update_tendencies!(model.biogeochemistry, model)
 

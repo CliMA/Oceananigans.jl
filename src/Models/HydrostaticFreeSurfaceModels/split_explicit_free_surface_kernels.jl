@@ -280,6 +280,7 @@ end
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
     grid = free_surface.η.grid
+    arch = architecture(grid)
 
     # we start the time integration of η from the average ηⁿ     
     Gu  = model.timestepper.G⁻.u
@@ -335,6 +336,10 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
 
     # reset free surface averages
     initialize_free_surface_state!(state, η)
+
+    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
+    mask_immersed_field!(Gu)
+    mask_immersed_field!(Gv)
 
     # Compute barotropic mode of tendency fields
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)

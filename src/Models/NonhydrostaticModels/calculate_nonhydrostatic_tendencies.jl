@@ -1,5 +1,5 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
-using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
@@ -35,7 +35,9 @@ function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
                                                model.clock,
                                                fields(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
+    for callback in callbacks
+        callback.callsite isa TendencyCallsite && callback(model)
+    end
 
     update_tendencies!(model.biogeochemistry, model)
 
