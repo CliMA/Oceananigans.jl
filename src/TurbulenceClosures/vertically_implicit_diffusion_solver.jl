@@ -132,6 +132,8 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     return z_solver
 end
 
+# Extend the `get_coefficient` function to retrieve the correct `ivd_diagonal`, `ivd_lower_diagonal` and `ivd_upper_diagonal` functions
+# REMEMBER: `get_coefficient(f::Function, args...)` leads to massive performance decrease on the CPU (https://github.com/CliMA/Oceananigans.jl/issues/2996) 
 @inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
 @inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
 @inline get_coefficient(::Val{:ivd_diagonal}, i, j, k, grid, p, args...) = ivd_diagonal(i, j, k, grid, args...)
