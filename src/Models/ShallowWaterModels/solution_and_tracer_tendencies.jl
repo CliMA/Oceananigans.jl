@@ -7,34 +7,34 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::SingleLayerModel, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
-@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::SingleLayerModel, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::SingleLayerModel, ::ConservativeFormulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::SingleLayerModel, ::ConservativeFormulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
     
-@inline function x_pressure_gradient(i, j, k, grid, g, h, hB, ::MultiLayerModel, formulation)
+@inline function x_pressure_gradient(i, j, k, grid, g, h, hB, ::MultiLayerModel, ::ConservativeFormulation)
     Nz = grid.Nz
     ## Should be set to grid dimensions
-    η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)
+    η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)[i, j, k]
     ## Should be set to grid dimensions
-    pr = 0
+    pressure[i, j, k] = 0
     for iter in range(k, Nz, step = 1)
-        pr[i, j, k] = pr[i, j, k] + g[iter] * η[i, j, iter]
+        pressure[i, j, k] = pressure[i, j, k] + g[iter] * η[i, j, iter]
     end
-    pr[i, j, k] = pr[i, j, k] + g[Nz] * η[i, j, Nz]
-    return ∂xᶠᶜᶜ(i, j, k, grid, h[i, j, k] * pr[i, j, k], h, g)
+    pressure[i, j, k] = pressure[i, j, k] + g[Nz] * η[i, j, Nz]
+    return ∂xᶠᶜᶜ(i, j, k, grid, h[i, j, k] * pressure[i, j, k], h, g)
 end
 
-@inline function y_pressure_gradient(i, j, k, grid, g, h, hB, ::MultiLayerModel, formulation)
+@inline function y_pressure_gradient(i, j, k, grid, g, h, hB, ::MultiLayerModel, ::ConservativeFormulation)
     
     Nz = grid.Nz
     ## Should be set to grid dimensions
-    η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)
+    η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)[i, j, k]
     ## Should be set to grid dimensions
-    pr = 0
+    pressure[i, j, k] = 0
     for iter in range(k, Nz, step = 1)
-        pr[i, j, k] = pr[i, j, k] + g[iter] * η[i, j, iter]
+        pressure[i, j, k] = pressure[i, j, k] + g[iter] * η[i, j, iter]
     end
-    pr[i, j, k] = pr[i, j, k] + g[Nz] * η[i, j, Nz]
-    return ∂yᶜᶠᶜ(i, j, k, grid, h[i, j, k] * pr[i, j, k], h, g)
+    pressure[i, j, k] = pressure[i, j, k] + g[Nz] * η[i, j, Nz]
+    return ∂xᶠᶜᶜ(i, j, k, grid, h[i, j, k] * pressure[i, j, k], h, g)
 end
 
 
@@ -65,14 +65,14 @@ Compute the tendency for the x-directional transport, uh
                                       formulation)
 
     g = gravitational_acceleration
-    vertical_model = grid.vertical_model
+    vertical_formulation = grid.vertical_formulation
 
     model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
 
     return ( - div_mom_u(i, j, k, grid, advection, solution, formulation)
-             - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, vertical_model, formulation)
+             - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, vertical_formulation, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
-             - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, vertical_model, formulation)
+             - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, vertical_formulation, formulation)
              - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
