@@ -4,10 +4,11 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
-using Oceananigans.Biogeochemistry: biogeochemistry_rhs
+using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, boundary_buffer
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
+using Oceananigans.Utils: SumOfArrays
 using KernelAbstractions: @private
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
@@ -122,10 +123,16 @@ where `c = C[tracer_index]`.
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+    biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+
+    total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
+                        v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
+                        w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
+
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + biogeochemistry_rhs(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
