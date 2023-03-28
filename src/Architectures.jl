@@ -5,7 +5,6 @@ export CPU, GPU, MultiGPU
 export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
-using CUDA.CUDAKernels
 using KernelAbstractions
 using Adapt
 using OffsetArrays
@@ -37,7 +36,7 @@ struct GPU <: AbstractArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDABackend(; always_inline=true)
+device(::GPU) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
