@@ -109,7 +109,8 @@ function run_field_interpolation_tests(grid)
     f(x, y, z) = exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z
 
     # Maximum expected rounding error is the unit in last place of the maximum value
-    # of f over the domain of the grid. 
+    # of f over the domain of the grid.
+
     ε_max = CUDA.@allowscalar f.(nodes(grid, (Face(), Face(), Face()), reshape=true)...) |> maximum |> eps
 
     set!(u, f)
@@ -349,7 +350,8 @@ end
 
         for arch in archs, FT in float_types
             reg_grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
-            # Chosen these z points to be rounded values of `reg_grid` z nodes so interpolation should match tollerance
+            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
+
             irreg_grid = RectilinearGrid(arch, size=(4, 5, 7),
                                          x = [0.0, 0.26, 0.49, 0.78, 1.0],
                                          y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
