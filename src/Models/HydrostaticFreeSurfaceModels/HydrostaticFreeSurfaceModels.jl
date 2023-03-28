@@ -14,8 +14,8 @@ using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
-import Oceananigans: fields, prognostic_fields
-import Oceananigans.Models: initialize_model!
+import Oceananigans: fields, prognostic_fields, initialize!
+import Oceananigans.Advection: cell_advection_timescale
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -55,8 +55,10 @@ include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
 
 #####
-##### Time-stepping HydrostaticFreeSurfaceModels
+##### AbstractModel interface
 #####
+
+cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
     fields(model::HydrostaticFreeSurfaceModel)

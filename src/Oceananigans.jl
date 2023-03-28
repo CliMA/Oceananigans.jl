@@ -24,6 +24,7 @@ export
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
     xspacings, yspacings, zspacings,
+    minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
@@ -167,6 +168,7 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+# Callsites for Callbacks
 struct TimeStepCallsite end
 struct TendencyCallsite end
 struct UpdateStateCallsite end
@@ -177,6 +179,7 @@ struct UpdateStateCallsite end
 
 function run_diagnostic! end
 function write_output! end
+function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end

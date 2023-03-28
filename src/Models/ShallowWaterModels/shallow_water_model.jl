@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
-using Oceananigans.AbstractOperations: @at
+using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.Distributed
 using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -12,11 +12,13 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
+using Oceananigans.Models: validate_model_halo
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
+
 import Oceananigans.Architectures: architecture
 
-const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
+const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
 function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
     u =  XFaceField(grid)
@@ -138,7 +140,8 @@ function ShallowWaterModel(;
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
-    grid = inflate_grid_halo_size(grid, momentum_advection, tracer_advection, mass_advection, closure)
+    # Check halos and throw an error if the grid's halo is too small
+    validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
@@ -191,7 +194,7 @@ function ShallowWaterModel(;
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,
-                              shallow_water_velocities(solution, formulation),
+                              shallow_water_velocities(formulation, solution),
                               coriolis,
                               forcing,
                               closure,
@@ -217,19 +220,16 @@ formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
 
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
-function shallow_water_velocities(solution, formulation)
-    if formulation isa VectorInvariantFormulation 
-        return (u = solution.u, v = solution.v, w = nothing)
-    else
-        u = Field(@at (Face, Center, Center) solution.uh / solution.h)
-        v = Field(@at (Center, Face, Center) solution.vh / solution.h)
+shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
 
-        compute!(u)
-        compute!(v)
-
-        return (; u, v, w = nothing)
-    end
+# TODO: convert u and v into binary operations
+function shallow_water_velocities(::ConservativeFormulation, solution)
+    u = compute!(Field(solution.uh / solution.h))
+    v = compute!(Field(solution.vh / solution.h))
+    return (; u, v, w=nothing)
 end
+
+shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(model.formulation, model.solution)
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)

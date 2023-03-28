@@ -5,7 +5,6 @@ function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid, clock, bcs=NamedT
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZFaceField(grid)
-
     return (u=u, v=v, w=w)
 end
 
@@ -14,6 +13,5 @@ function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tr
     v = YFaceField(grid)
     η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
     tracers = TracerFields(tracer_names, grid)
-
     return merge((u=u, v=v, η=η), tracers)
 end
