@@ -85,13 +85,11 @@ DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 
 using Oceananigans.AbstractOperations: Δx, Δy, Δz
 
-accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.velocities)
-
-function accurate_cell_advection_timescale(velocities)
+function accurate_cell_advection_timescale(model)
     
-    τu⁻¹ = abs(velocities.u) / Δx
-    τv⁻¹ = abs(velocities.v) / Δy
-    τw⁻¹ = abs(velocities.w) / Δz
+    τu⁻¹ = abs(model.velocities.u) / Δx
+    τv⁻¹ = abs(model.velocities.v) / Δy
+    τw⁻¹ = abs(model.velocities.w) / Δz
 
     timescale = 1 / (τu⁻¹ + τv⁻¹ + τw⁻¹)
     min_timescale = minimum(timescale)
