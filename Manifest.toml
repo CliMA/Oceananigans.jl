@@ -2,19 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "96eebad427fe7f986c00777f7738aa636a9e621d"
-
-[[deps.AMGX]]
-deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
-git-tree-sha1 = "5f2e38391ea8788c69e3dc2aa297b4bef98c2ac8"
-uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
-version = "0.1.4"
-
-[[deps.AMGX_jll]]
-deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "c846a105d1bfabc86f6302d747cc48acbc7bb489"
-uuid = "656d14af-56e4-5275-8e68-4e861d7b5043"
-version = "2.1.0+0"
+project_hash = "507a46116c1afd58c93ff293274636322b6db92b"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -27,12 +15,6 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "0310e08cb19f5da31d08341c6120c047598f5b9c"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 version = "3.5.0"
-
-[[deps.AlgebraicMultigrid]]
-deps = ["CommonSolve", "LinearAlgebra", "Printf", "Reexport", "SparseArrays"]
-git-tree-sha1 = "796eedcb42226861a51d92d28ee82d4985ee860b"
-uuid = "2169fc97-5a83-5252-b627-83903c6c433c"
-version = "0.5.1"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -91,12 +73,6 @@ git-tree-sha1 = "1680366a69e9c95744ef23a239e6cfe61cf2e1ca"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.4.7"
 
-[[deps.CUDA_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "108e3ee33d8614b96c2ea43a621b0e8396d8a273"
-uuid = "e9e359dc-d701-5aa8-82ae-09bbf812ea83"
-version = "10.0.130+3"
-
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
 git-tree-sha1 = "c6d890a52d2c4d55d326439580c3b8d0875a77d9"
@@ -108,11 +84,6 @@ deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
 git-tree-sha1 = "844b061c104c408b24537482469400af6075aae4"
 uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 version = "0.1.5"
-
-[[deps.CommonSolve]]
-git-tree-sha1 = "9441451ee712d1aec22edad62db1a9af3dc8d852"
-uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
-version = "0.2.3"
 
 [[deps.Compat]]
 deps = ["Dates", "LinearAlgebra", "UUIDs"]
@@ -291,12 +262,6 @@ deps = ["Preferences"]
 git-tree-sha1 = "abc9885a7ca2052a736a600f7fa66209f96506e1"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
 version = "1.4.1"
-
-[[deps.JSON]]
-deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
-uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.3"
 
 [[deps.JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "SnoopPrecompile", "StructTypes", "UUIDs"]

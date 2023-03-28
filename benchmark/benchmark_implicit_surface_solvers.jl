@@ -1,3 +1,5 @@
+# this requires Oceananigans v0.80.0 or earlier
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil
