@@ -83,18 +83,11 @@ DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 ##### Accurate CFL via reduction
 #####
 
-using CUDA, KernelAbstractions
-
-using Oceananigans.Models
-using Oceananigans.Grids: halo_size
 using Oceananigans.AbstractOperations: Δx, Δy, Δz
 
-accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.grid, model.velocities)
+accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.velocities)
 
-function accurate_cell_advection_timescale(grid, velocities)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-
+function accurate_cell_advection_timescale(velocities)
     τᵁ = abs(velocities.u) / Δx
     τⱽ = abs(velocities.v) / Δy
     τᵂ = abs(velocities.w) / Δz
