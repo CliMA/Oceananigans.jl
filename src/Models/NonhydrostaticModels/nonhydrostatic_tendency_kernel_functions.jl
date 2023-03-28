@@ -7,6 +7,7 @@ using Oceananigans.StokesDrift
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
+
 using Oceananigans.Utils: SumOfArrays
 
 "return the ``x``-gradient of hydrostatic pressure"
@@ -127,7 +128,7 @@ pressure anomaly.
                         v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
                         w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
 
-    return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.u)
+    return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
@@ -185,7 +186,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                         v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
                         w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
 
-    return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.u)
+    return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
