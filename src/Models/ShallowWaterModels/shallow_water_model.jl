@@ -215,7 +215,7 @@ function ShallowWaterModel(;
                               number_of_layers,
                               arch,
                               clock,
-                              gravitational_acceleration,
+                              eltype(grid)(gravitational_acceleration),
                               reduced_gravity,
                               advection,
                               shallow_water_velocities(solution, formulation),
