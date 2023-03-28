@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
+import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
@@ -226,9 +226,6 @@ end
 
 # The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
 =#
-
-finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
-    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
