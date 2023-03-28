@@ -10,7 +10,6 @@ import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
        required_biogeochemical_auxiliary_fields,
        biogeochemical_drift_velocity,
-       biogeochemical_advection_scheme,
        biogeochemical_auxiliary_fields,
        update_biogeochemical_state!
 
@@ -21,12 +20,11 @@ import Adapt: adapt_structure
 #####
 
 # "Minimal" biogeochemistry model for tesing (discrete form) AbstractBiogeochemistry
-struct MinimalDiscreteBiogeochemistry{FT, I, S, A} <: AbstractBiogeochemistry
+struct MinimalDiscreteBiogeochemistry{FT, I, S} <: AbstractBiogeochemistry
     growth_rate :: FT
     mortality_rate :: FT
     photosynthetic_active_radiation :: I
     sinking_velocity :: S
-    advection_scheme :: A
 end
 
 @inline function (bgc::MinimalDiscreteBiogeochemistry)(i, j, k, grid, ::Val{:P}, clock, fields)
@@ -41,17 +39,15 @@ end
     return MinimalDiscreteBiogeochemistry(mdb.growth_rate,
                                           mdb.mortality_rate,
                                           adapt_structure(to, mdb.photosynthetic_active_radiation),
-                                          mdb.sinking_velocity,
-                                          adapt_structure(to, mdb.advection_scheme))
+                                          mdb.sinking_velocity)
 end
 
 # "Minimal" biogeochemistry model for tesing AbstractContinuousFormBiogeochemistry
-struct MinimalContinuousBiogeochemistry{FT, I, S, A} <: AbstractContinuousFormBiogeochemistry
+struct MinimalContinuousBiogeochemistry{FT, I, S} <: AbstractContinuousFormBiogeochemistry
     growth_rate :: FT
     mortality_rate :: FT
     photosynthetic_active_radiation :: I
     sinking_velocity :: S
-    advection_scheme :: A
 end
 
 @inline function (bgc::MinimalContinuousBiogeochemistry)(::Val{:P}, x, y, z, t, P, Iᴾᴬᴿ)
@@ -64,8 +60,7 @@ end
     return MinimalContinuousBiogeochemistry(mcb.growth_rate,
                                             mcb.mortality_rate,
                                             adapt_structure(to, mcb.photosynthetic_active_radiation),
-                                            mcb.sinking_velocity,
-                                            adapt_structure(to, mcb.advection_scheme))
+                                            mcb.sinking_velocity)
 end
 
 # Required method definitions
@@ -76,7 +71,6 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 @inline required_biogeochemical_auxiliary_fields(::MB) = tuple(:Iᴾᴬᴿ)
 @inline      biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
 @inline   biogeochemical_drift_velocity(bgc::MB, ::Val{:P}) = bgc.sinking_velocity
-@inline biogeochemical_advection_scheme(bgc::MB, ::Val{:P}) = bgc.advection_scheme
 
 # Update state test (won't actually change between calls but here to check it gets called)
 
@@ -107,15 +101,13 @@ function test_biogeochemistry!(arch, MinimalBiogeochemistryType, ModelType)
     w = ConstantField(-200/day)
     drift_velocities = (; u, v, w)
 
-    advection_scheme = CenteredSecondOrder()
     growth_rate = 1/day
     mortality_rate = 0.3/day
 
     biogeochemistry = MinimalBiogeochemistryType(growth_rate, 
                                                  mortality_rate, 
                                                  Iᴾᴬᴿ, 
-                                                 drift_velocities, 
-                                                 advection_scheme)
+                                                 drift_velocities)
 
     model = ModelType(; grid, biogeochemistry)
     set!(model, P = 1)

@@ -28,7 +28,6 @@ Update biogeochemical state variables. Called at the end of update_state!.
 update_biogeochemical_state!(bgc, model) = nothing
 
 @inline biogeochemical_drift_velocity(bgc, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
-@inline biogeochemical_advection_scheme(bgc, val_tracer_name) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
@@ -53,9 +52,6 @@ is a subtype of `AbstractBioeochemistry`:
   - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
      returns a velocity fields (i.e. a `NamedTuple` of fields with keys `u`, `v` & `w`)
      for each tracer.
-
-  - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
-     returns an advection scheme for each tracer.
 
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
       model state.
@@ -92,9 +88,6 @@ defined where `BiogeochemicalModel` is a subtype of `AbstractContinuousFormBioge
 
   - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
      returns "additional" velocity fields modeling, for example, sinking particles
-
-  - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
-     returns an advection scheme for each tracer.
 
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
      model state
