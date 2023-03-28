@@ -349,7 +349,7 @@ end
         @info "  Testing field interpolation..."
 
         for arch in archs, FT in float_types
-            reg_grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
+            reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
             # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
 
             irreg_grid = RectilinearGrid(arch, size=(4, 5, 7),
