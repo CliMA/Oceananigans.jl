@@ -32,7 +32,6 @@ end
 @inline function (bgc::MinimalDiscreteBiogeochemistry)(i, j, k, grid, ::Val{:P}, clock, fields)
     μ₀ = bgc.growth_rate
     m = bgc.mortality_rate
-    z = znode(Center(), k, grid)
     P = @inbounds fields.P[i, j, k]
     Iᴾᴬᴿ = @inbounds fields.Iᴾᴬᴿ[i, j, k]
     return P * (μ₀ * (1 - Iᴾᴬᴿ) - m)
@@ -83,7 +82,7 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 
 @kernel function integrate_photosynthetic_active_radiation!(Iᴾᴬᴿ, grid)
     i, j, k = @index(Global, NTuple)
-    z = znode(Center(), k, grid)
+    z = znode(i, j, k, grid, Center(), Center(), Center())
     @inbounds Iᴾᴬᴿ[i, j, k] = exp(z / 5)
 end
 
@@ -146,4 +145,3 @@ end
         end
     end
 end
-

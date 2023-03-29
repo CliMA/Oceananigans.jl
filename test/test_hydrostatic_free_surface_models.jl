@@ -144,7 +144,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             grid = RectilinearGrid(arch, FT, size=N, extent=L)
             model = HydrostaticFreeSurfaceModel(grid=grid)
 
-            x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
+            x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
             u₀(x, y, z) = x * y^2
             u_answer = @. x * y^2

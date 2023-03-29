@@ -218,7 +218,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 u, v, h = model.solution
 
-ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid; computed_dependencies=(u, v)); 
+ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 ζ = Field(ζ_op)
 compute!(ζ)
 

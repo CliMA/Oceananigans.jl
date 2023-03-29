@@ -1,9 +1,11 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
+
+using Oceananigans: UpdateStateCallsite
+using Oceananigans.Architectures: device_event
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!, inactive_node
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -24,7 +26,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally masking_immersed_model_fields!(model, grid)
+    @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
@@ -35,7 +37,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
     
@@ -43,12 +47,15 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 # Mask immersed fields
-function masking_immersed_model_fields!(model, grid)
+function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
-    masking_events = Any[mask_immersed_field!(field)
-                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k = size(grid, 3) + 1, immersed_function = inactive_node))
-    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
+    fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
+
+    Nz = size(grid, 3)
+    masking_events = Any[mask_immersed_field!(field; blocking=false) for field in fields_to_mask if field !== η]
+    push!(masking_events, mask_immersed_field_xy!(η, k=Nz+1, mask=inactive_node, blocking=false))
+
+    wait(device(architecture(grid)), MultiEvent(Tuple(masking_events)))
 end
 
 function compute_w_diffusivities_pressure!(model) 

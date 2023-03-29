@@ -191,10 +191,10 @@ end
     S_flux = getbc(S_flux_bc, i, j, grid, clock, fields)
 
     return b.gravitational_acceleration * (
-              thermal_expansionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
-           - haline_contractionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
+              thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
+           - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
 end
 
-@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz, grid, b, args...)
+@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz+1, grid, b, args...)
 @inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
 
