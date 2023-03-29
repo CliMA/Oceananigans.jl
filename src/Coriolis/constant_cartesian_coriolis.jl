@@ -41,7 +41,7 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
     elseif !isnothing(f)
         all(isnothing.((fx, fy, fz, latitude))) || throw(ArgumentError("Only `rotation_axis` can be specified when using `f`."))
 
-        rotation_axis = validate_unit_vector(rotation_axis)
+        rotation_axis = validate_unit_vector(rotation_axis, FT)
         if rotation_axis isa ZDirection
             fx = fy = 0
             fz = f

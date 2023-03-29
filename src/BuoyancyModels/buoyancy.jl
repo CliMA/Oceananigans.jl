@@ -1,4 +1,4 @@
-using Oceananigans.Grids: ZDirection, validate_unit_vector
+using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
 
 struct Buoyancy{M, G}
     model :: M
@@ -6,40 +6,60 @@ struct Buoyancy{M, G}
 end
 
 """
-    Buoyancy(; model, gravity_unit_vector=ZDirection())
+    Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
 
-Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument 
-`gravity_unit_vector` can be used to specify the direction opposite to the gravitational
-acceleration (which we take here to mean the "vertical" direction).
+Construct a `buoyancy` given a buoyancy `model`. Optional keyword argument `gravity_unit_vector`
+can be used to specify the direction of gravity (default `NegativeZDirection()`).
+The buoyancy acceleration acts in the direction opposite to gravity.
 
 Example
 =======
 
-```julia
+```jldoctest; filter = r"└ @ Oceananigans.BuoyancyModels.*"
+
 using Oceananigans
 
-grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1))
+
 θ = 45 # degrees
-g̃ = (0, sind(θ), cosd(θ))
+g̃ = (0, sind(θ), cosd(θ));
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
 model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+
+# output
+
+┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
+│ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
+│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: b
+├── closure: Nothing
+├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
+└── coriolis: Nothing
 ```
 """
-function Buoyancy(; model, gravity_unit_vector=ZDirection())
+function Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
+    gravity_unit_vector != NegativeZDirection() &&
+        @warn """The meaning of `gravity_unit_vector` changed in version 0.80.0.
+                 In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
+                 In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration."""
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return Buoyancy(model, gravity_unit_vector)
 end
 
 
-@inline ĝ_x(buoyancy) = @inbounds buoyancy.gravity_unit_vector[1]
-@inline ĝ_y(buoyancy) = @inbounds buoyancy.gravity_unit_vector[2]
-@inline ĝ_z(buoyancy) = @inbounds buoyancy.gravity_unit_vector[3]
+@inline ĝ_x(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[1]
+@inline ĝ_y(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[2]
+@inline ĝ_z(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[3]
 
-@inline ĝ_x(::Buoyancy{M, ZDirection}) where M = 0
-@inline ĝ_y(::Buoyancy{M, ZDirection}) where M = 0
-@inline ĝ_z(::Buoyancy{M, ZDirection}) where M = 1
+@inline ĝ_x(::Buoyancy{M, NegativeZDirection}) where M = 0
+@inline ĝ_y(::Buoyancy{M, NegativeZDirection}) where M = 0
+@inline ĝ_z(::Buoyancy{M, NegativeZDirection}) where M = 1
 
 #####
 ##### For convenience
@@ -58,7 +78,6 @@ end
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
-Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with -ĝ = ", summary(buoyancy.gravity_unit_vector))
+Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with ĝ = ", summary(buoyancy.gravity_unit_vector))
 
-Base.show(io::IO, buoyancy::Buoyancy) = summary(buoyancy)
-
+Base.show(io::IO, buoyancy::Buoyancy) = print(io, sprint(show, buoyancy.model), "\nwith `gravity_unit_vector` = ", summary(buoyancy.gravity_unit_vector))

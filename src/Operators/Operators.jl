@@ -59,6 +59,8 @@ export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxy
 
 using Oceananigans.Grids
 
+import Oceananigans.Grids: xspacing, yspacing, zspacing
+
 #####
 ##### Convenient aliases
 #####
@@ -68,6 +70,10 @@ const ARG  = AbstractRectilinearGrid
 const RCG  = RectilinearGrid
 const ACG  = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
+
+const Δx = xspacing
+const Δy = yspacing
+const Δz = zspacing
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")

@@ -7,17 +7,21 @@ using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: validate_model_halo
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
+
+import Oceananigans: initialize!
 
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
@@ -27,8 +31,11 @@ validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
+const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF} <: AbstractModel{TS}
   
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
@@ -40,6 +47,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                forcing :: F        # Container for forcing functions defined by the user
                closure :: E        # Diffusive 'turbulence closure' for all model fields
              particles :: P        # Particle set for Lagrangian tracking
+       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
             velocities :: U        # Container for velocity fields `u`, `v`, and `w`
                tracers :: C        # Container for tracer fields
               pressure :: Φ        # Container for hydrostatic pressure
@@ -60,7 +68,8 @@ end
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
-    particles::Union{Nothing, LagrangianParticles} = nothing,
+                     particles::ParticlesOrNothing = nothing,
+             biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
@@ -86,6 +95,7 @@ Keyword arguments
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
@@ -104,6 +114,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
     particles::Union{Nothing, LagrangianParticles} = nothing,
+             biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
@@ -119,6 +130,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
+    tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry)), biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
@@ -159,7 +171,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
-    @apply_regionally validate_velocity_boundary_conditions(velocities)
+    @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
     free_surface = FreeSurface(free_surface, velocities, grid)
 
@@ -185,7 +197,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
-                                        free_surface, forcing, closure, particles, velocities, tracers,
+                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
     update_state!(model)
@@ -193,7 +205,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     return model
 end
 
-validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
+validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
 function validate_vertical_velocity_boundary_conditions(w)
     w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
@@ -204,7 +216,7 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " * 
           "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end
@@ -213,16 +225,6 @@ validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-  user_halo = halo_size(grid)
-  required_halo = inflate_halo_size(1, 1, 1, grid,
-                                    momentum_advection,
-                                    tracer_advection,
-                                    closure)
-
-  any(user_halo .< required_halo) &&
-    throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
-end
-
-initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+

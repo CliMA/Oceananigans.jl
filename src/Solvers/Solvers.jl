@@ -11,6 +11,7 @@ export
 using Statistics
 using FFTW
 using CUDA
+using SparseArrays
 using KernelAbstractions
 using KernelAbstractions.Extras.LoopInfo: @unroll
 

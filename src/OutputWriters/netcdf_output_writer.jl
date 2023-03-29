@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
+using Oceananigans.Grids: topology, halo_size, xnodes, ynodes, znodes, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
@@ -25,33 +25,33 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",)
-ydim(::Type{Face}) = ("yF",)
-zdim(::Type{Face}) = ("zF",)
+xdim(::Face) = ("xF",)
+ydim(::Face) = ("yF",)
+zdim(::Face) = ("zF",)
 
-xdim(::Type{Center}) = ("xC",)
-ydim(::Type{Center}) = ("yC",)
-zdim(::Type{Center}) = ("zC",)
+xdim(::Center) = ("xC",)
+ydim(::Center) = ("yC",)
+zdim(::Center) = ("zC",)
 
-xdim(::Type{Nothing}) = ()
-ydim(::Type{Nothing}) = ()
-zdim(::Type{Nothing}) = ()
+xdim(::Nothing) = ()
+ydim(::Nothing) = ()
+zdim(::Nothing) = ()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict(
-                "xC" => (Center, Center, Center),
-                "xF" => (  Face, Center, Center),
-                "yC" => (Center, Center, Center),
-                "yF" => (Center,   Face, Center),
-                "zC" => (Center, Center, Center),
-                "zF" => (Center, Center,   Face),
-               )
+    locs = Dict("xC" => (Center(), Center(), Center()),
+                "xF" => (Face(),   Center(), Center()),
+                "yC" => (Center(), Center(), Center()),
+                "yF" => (Center(), Face(),   Center()),
+                "zC" => (Center(), Center(), Center()),
+                "zF" => (Center(), Center(), Face()  ))
+
+    topo = map(instantiate, topology(grid))
 
     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
@@ -60,12 +60,12 @@ function default_dimensions(output, grid, indices, with_halos)
                        for name in keys(locs))
     end
 
-    dims = Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
-                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
-                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
-                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
-                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
-                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
+    dims = Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+                "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+                "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+                "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+                "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+                "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
     return dims
 end
@@ -261,7 +261,9 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
+Nx, Ny, Nz = 16, 16, 16
+
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
 model = NonhydrostaticModel(grid=grid)
 
@@ -271,8 +273,12 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                               .*  cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+YF = [yF[j] for i in 1:Nx, j in 1:Ny]
+
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
@@ -282,7 +288,7 @@ output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-);
+)
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 

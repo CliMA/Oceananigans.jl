@@ -23,14 +23,16 @@ end
 @inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
-    Kᵘ = diffusivities.Kᵘ
+    κᵘ = diffusivities.κᵘ
     u = velocities.u
     v = velocities.v
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², Kᵘ, u) + ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², Kᵘ, v)
+
+    # Separate reconstruction of the u- and v- contributions is essential for numerical stability
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², κᵘ, u) + ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², κᵘ, v)
 end
 
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κᶻ = @inbounds diffusivities.Kᶜ[i, j, k]
+    κᶻ = @inbounds diffusivities.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶻ * N²
 end
@@ -44,14 +46,17 @@ const VITD = VerticallyImplicitTimeDiscretization
     wb = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
+    dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
+
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
-    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-    return ifelse(sign(wb) * sign(eⁱʲᵏ) < 0, zero(grid), wb)
+    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
+    # the explicit buoyancy flux.
+    return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
 end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
-@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD},
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE,
                                                   velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
@@ -60,7 +65,8 @@ end
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_mixing_lengthᶜᶜᶠ, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_length_scaleᶜᶜᶠ, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    #ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # "Stable" dissipation length
     C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
@@ -71,19 +77,18 @@ end
     σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
 
     Cᵇ = closure.mixing_length.Cᵇ
-    Cˢ = closure.mixing_length.Cˢ
-    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_mixing_lengthᶜᶜᶠ, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
+    #ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_length_scaleᶜᶜᶠ, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     # Dissipation length
-    ℓᴰ = min(grid.Lz, ℓ★ + ℓʰ)
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓᴰ = min(H, ℓ★ + ℓʰ)
 
     eᵢ = @inbounds e[i, j, k]
     
-    #ℓᴰ = ifelse(eᵢ < 0, Δzᶜᶜᶜ(i, j, k, grid) / 10, ℓᴰ)
-
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -92,12 +97,17 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    return - sqrt(abs(eᵢ)) / ℓᴰ
+    τ = closure.negative_turbulent_kinetic_energy_damping_time_scale
+
+    return ifelse(eᵢ < 0, -1/τ, -sqrt(abs(eᵢ)) / ℓᴰ)
 end
 
 # Fallbacks for explicit time discretization
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...) =
-    @inbounds - tracers.e[i, j, k] * implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+    eᵢ = @inbounds tracers.e[i, j, k]
+    L = implicit_dissipation_coefficient(i, j, k, grid, closure, velocities, tracers, args...)
+    return - L * eᵢ
+end
 
 @inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
 
@@ -108,6 +118,7 @@ end
 # TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
 
 @inline shear_production(i, j, k, grid, closure, velocities, diffusivities) = zero(grid)
+
 @inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, velocities, diffusivities) =
     shear_production(i, j, k, grid, closures[1], velocities, diffusivities[1])
 
@@ -121,6 +132,7 @@ end
     shear_production(i, j, k, grid, closures[3], velocities, diffusivities[3])
 
 @inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(grid)
+
 @inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any}, velocities, tracers, buoyancy, diffusivities) =
     buoyancy_flux(i, j, k, grid, closures[1], velocities, diffusivities[1])
 
@@ -137,6 +149,7 @@ end
 @inline dissipation(i, j, k, grid, closure, args...) = zero(grid)
 
 @inline dissipation(i, j, k, grid, closures::Tuple{<:Any}, args...) = dissipation(i, j, k, grid, closures[1], args...)
+
 @inline dissipation(i, j, k, grid, closures::Tuple{<:Any, <:Any}, args...) = 
     dissipation(i, j, k, grid, closures[1], args...) +
     dissipation(i, j, k, grid, closures[2], args...)
@@ -152,19 +165,18 @@ end
 
 """ Compute the flux of TKE through the surface / top boundary. """
 @inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfCATKE, buoyancy)
+    closure = getclosure(i, j, closure)
+
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
-    closure = getclosure(i, j, closure)
     tke_parameters = closure.turbulent_kinetic_energy_equation
 
-    return _top_tke_flux(i, j, grid, tke_parameters, closure,
-                         buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+    return _top_tke_flux(i, j, grid, clock, fields, tke_parameters, closure,
+                         buoyancy, top_tracer_bcs, top_velocity_bcs)
 end
 
 """ Compute the flux of TKE through the surface / top boundary. """
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = zero(grid)
-
-@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple{}, buoyancy) = zero(grid)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
@@ -178,8 +190,9 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) + 
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
 
-@inline function _top_tke_flux(i, j, grid, tke::TurbulentKineticEnergyEquation, closure::CATKEVD,
-                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+@inline function _top_tke_flux(i, j, grid, clock, fields,
+                               tke::TurbulentKineticEnergyEquation, closure::CATKEVD,
+                               buoyancy, top_tracer_bcs, top_velocity_bcs)
 
     wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
@@ -218,11 +231,11 @@ using Oceananigans.BoundaryConditions: Flux
 const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
 const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
 
-@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, closure, buoyancy) =
-    bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters, closure, buoyancy)
+@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
+    bc.condition.func(i, j, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
 
-@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, closure, buoyancy) =
-    bc.condition.func(i, j, k, grid, clock, model_fields, bc.condition.parameters, closure, buoyancy)
+@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
+    bc.condition.func(i, j, k, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
 
 #####
 ##### Utilities for model constructors
@@ -279,6 +292,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
     return new_boundary_conditions
 end
 
+Base.summary(::TurbulentKineticEnergyEquation) = "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation"
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
               "    C⁻D  = $(tke.C⁻D),  \n" *

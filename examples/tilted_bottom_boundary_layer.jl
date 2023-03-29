@@ -27,9 +27,9 @@
 
 using Oceananigans
 
-Lx = 400 # m
+Lx = 200 # m
 Lz = 100 # m
-Nx = 128
+Nx = 64
 Nz = 64
 
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
@@ -59,11 +59,11 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+lines(zspacings(grid, Center()), znodes(grid, Center()),
       axis = (ylabel = "Depth (m)",
               xlabel = "Vertical spacing (m)"))
 
-scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 
@@ -76,12 +76,12 @@ current_figure() # hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-sloce direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = (sind(θ), 0, cosd(θ))
+ĝ = [sind(θ), 0, cosd(θ)]
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = ĝ)
+buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
@@ -109,7 +109,7 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
 κ = 0.4 # von Karman constant
-z₁ = znodes(Center, grid)[1] # Closest grid center to the bottom
+z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
@@ -125,11 +125,9 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity.
+# and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
 
-ν = 1e-4 # m² s⁻¹, small-ish
-κ = ν
-closure = ScalarDiffusivity(; ν, κ)
+closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
@@ -144,9 +142,8 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 # conservatively, based on the smallest grid size of our domain and set-up a 
 
 using Oceananigans.Units
-using Oceananigans.Grids: min_Δz
 
-simulation = Simulation(model, Δt = 0.5 * min_Δz(grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
@@ -228,6 +225,9 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
+
+current_figure() # hide
+fig
 
 # Finally, we record a movie.
 

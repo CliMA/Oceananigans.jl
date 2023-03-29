@@ -52,17 +52,19 @@ end
 
 function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ) 
     κ, m = 1, 2 # diffusivity and cosine wavenumber
-    
+
     closure = ShallowWaterScalarDiffusivity(ν = κ)
     momentum_advection = nothing
     tracer_advection = nothing
     mass_advection = nothing
+
     model = ShallowWaterModel(; grid, closure, 
                                 gravitational_acceleration=1.0, 
                                 momentum_advection, tracer_advection, mass_advection,
                                 formulation)
-    
+
     field = model.velocities[fieldname]
+
     interior(field) .= arch_array(architecture(grid), cos.(m * ξ))
     update_state!(model)
 
@@ -100,7 +102,7 @@ end
    
     @testset "$topo model construction" begin
     @info "  Testing $topo model construction..."
-        for arch in archs, FT in float_types                
+        for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT, topology=topo, size=(), extent=())
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1) 
 
@@ -109,7 +111,7 @@ end
     end
 
     topos = (
-             (Bounded,   Flat,     Flat),    
+             (Bounded,   Flat,     Flat),
              (Flat,      Bounded,  Flat),
             )
 
@@ -137,7 +139,7 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
+               #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3, 3))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
@@ -156,7 +158,7 @@ end
             grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
 
-            x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
+            x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
             uh₀(x, y, z) = x * y^2
             uh_answer = @. x * y^2
@@ -189,7 +191,7 @@ end
         end
 
         @testset "Time-step Wizard ShallowWaterModels [$arch, $topos[1]]" begin
-	    @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
+        @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
             @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing)
         end
 
@@ -214,9 +216,10 @@ end
         end
 
         @testset "ShallowWaterModel viscous diffusion [$arch]" begin
-            grid_x = RectilinearGrid(arch, size = 10, x = (0, 1), topology = (Bounded, Flat, Flat))
-            grid_y = RectilinearGrid(arch, size = 10, y = (0, 1), topology = (Flat, Bounded, Flat))
-            coords = (xnodes(Face, grid_x, reshape=true), ynodes(Face, grid_y, reshape=true))
+            Nx, Ny = 10, 12
+            grid_x = RectilinearGrid(arch, size = Nx, x = (0, 1), topology = (Bounded, Flat, Flat))
+            grid_y = RectilinearGrid(arch, size = Ny, y = (0, 1), topology = (Flat, Bounded, Flat))
+            coords = (reshape(xnodes(grid_x, Face()), (Nx+1, 1)), reshape(ynodes(grid_y, Face()), (1, Ny+1)))
             
             for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
                 for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
@@ -232,14 +235,19 @@ end
             @testset "ShallowWaterModels with ImmersedBoundaryGrid [$arch]" begin
                 @info "Testing ShallowWaterModels with ImmersedBoundaryGrid [$arch]"
 
-                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
-                
                 # Gaussian bump of width "1"
                 bump(x, y, z) = y < exp(-x^2)
-                
+
+                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
                 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+
+                @test_throws ArgumentError model = ShallowWaterModel(grid=grid_with_bump, gravitational_acceleration=1)
+
+                grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat), halo=(4, 4))
+                grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+
                 model = ShallowWaterModel(grid=grid_with_bump, gravitational_acceleration=1)
-                
+
                 set!(model, h=1)
                 simulation = Simulation(model, Δt=1.0, stop_iteration=1)
                 run!(simulation)
