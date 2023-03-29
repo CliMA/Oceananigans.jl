@@ -83,27 +83,6 @@ DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 ##### Accurate CFL via reduction
 #####
 
-using Oceananigans.Grids: halo_size
-using Oceananigans.AbstractOperations: Δx, Δy, Δz, GridMetricOperation
+using Oceananigans.Advection: cell_advection_timescale
 
-@inline advection_timescale(u, v, w, dx, dy, dz) = 1 / ((abs(u) / dx + abs(v) / dy + abs(w) / dz))
-
-function accurate_cell_advection_timescale(model)
-    
-    grid = model.grid
-    velocities = model.velocities
-
-    Nx, Ny, Nz = size(grid)
-
-    u = interior(velocities.u, 1:Nx, 1:Ny, 1:Nz)
-    v = interior(velocities.v, 1:Nx, 1:Ny, 1:Nz)
-    w = interior(velocities.w, 1:Nx, 1:Ny, 1:Nz)
-
-    dx = GridMetricOperation((Face, Center, Center), Δx, grid; indices = (1:Nx, 1:Ny, 1:Nz))
-    dy = GridMetricOperation((Center, Face, Center), Δy, grid; indices = (1:Nx, 1:Ny, 1:Nz))
-    dz = GridMetricOperation((Center, Center, Face), Δz, grid; indices = (1:Nx, 1:Ny, 1:Nz))
-
-    timescale = mapreduce(advection_timescale, min, u, v, w, dx, dy, dz)
-
-    return timescale
-end
+accurate_cell_advection_timescale(model) = cell_advection_timescale(model.grid, model.velocities)
