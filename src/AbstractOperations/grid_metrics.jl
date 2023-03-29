@@ -117,22 +117,24 @@ function metric_function(loc, metric::AbstractGridMetric)
     return eval(metric_function_symbol)
 end
 
-struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
+struct GridMetricOperation{LX, LY, LZ, G, T, M, I} <: AbstractOperation{LX, LY, LZ, G, T}
           metric :: M
             grid :: G
-    function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
+         indices :: I
+    function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G, indices::I) where {LX, LY, LZ, M, G, I}
         T = eltype(grid)
-        return new{LX, LY, LZ, G, T, M}(metric, grid)
+        return new{LX, LY, LZ, G, T, M, I}(metric, grid, indices)
     end
 end
 
 Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ}=
          GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
-                                         Adapt.adapt(to, gm.grid))
+                                         Adapt.adapt(to, gm.grid),
+                                         Adapt.adapt(to, gm.indices))
 
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
 
-indices(gm::GridMetricOperation) = default_indices(3)
+indices(gm::GridMetricOperation) = gm.indices
 
 # Special constructor for BinaryOperation
-GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+GridMetricOperation(L, metric, grid; indices = default_indices(3)) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid, indices)
