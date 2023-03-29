@@ -91,8 +91,7 @@ function accurate_cell_advection_timescale(model)
     τv⁻¹ = abs(model.velocities.v) / Δy
     τw⁻¹ = abs(model.velocities.w) / Δz
 
-    timescale = 1 / (τu⁻¹ + τv⁻¹ + τw⁻¹)
-    min_timescale = minimum(timescale)
+    timescale = 1 / (maximum(τu⁻¹) + maximum(τv⁻¹) + maximum(τw⁻¹))
 
-    return min_timescale
+    return timescale
 end
