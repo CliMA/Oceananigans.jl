@@ -1,6 +1,8 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
+
+using Oceananigans: UpdateStateCallsite
+using Oceananigans.Architectures: device_event
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
@@ -35,7 +37,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
     
