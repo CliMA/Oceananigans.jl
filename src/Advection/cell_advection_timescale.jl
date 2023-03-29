@@ -16,4 +16,3 @@ end
                           abs(v[i, j, k]) / Δy +
                           abs(w[i, j, k]) / Δz) 
 end
-
