@@ -6,10 +6,10 @@ using Oceananigans.Advection:
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
         _symmetric_interpolate_yᵃᶜᵃ,
-        biased_interpolate_xᶜᵃᵃ, 
-        biased_interpolate_xᶠᵃᵃ, 
-        biased_interpolate_yᵃᶜᵃ, 
-        biased_interpolate_yᵃᶠᵃ
+        _biased_interpolate_xᶜᵃᵃ, 
+        _biased_interpolate_xᶠᵃᵃ, 
+        _biased_interpolate_yᵃᶜᵃ, 
+        _biased_interpolate_yᵃᶠᵃ
 
 advection_schemes = [Centered, UpwindBiased, WENO]
 
