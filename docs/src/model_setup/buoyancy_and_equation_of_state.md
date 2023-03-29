@@ -184,7 +184,7 @@ SeawaterBuoyancy{Float64}:
 
 ### Idealized nonlinear equations of state
 
-Instead of a linear equation of state, six idealized (second-order) nonlinear equation of state
+Instead of a linear equation of state, six idealized (second-order) nonlinear equations of state
 as described by [Roquet15Idealized](@cite) may be used. These equations of state are provided
 via the [SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
 
