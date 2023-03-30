@@ -42,6 +42,29 @@ struct UnspecifiedBoundaryConditions end
 ##### Constructors
 #####
 
+instantiate(T::Type) = T()
+
+"""
+    FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
+                                indices = (:, :, :),
+                                boundary_conditions = nothing)
+
+Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
+"""
+function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
+                                     indices = (:, :, :),
+                                     boundary_conditions = nothing) where {LX, LY, LZ}
+
+    Nt = length(times)
+    arch = architecture(grid)
+    loc = map(instantiate, (LX, LY, LZ))
+    space_size = total_size(grid, loc, indices)
+    underlying_data = zeros(FT, arch, space_size..., Nt)
+    data = offset_data(underlying_data, grid, loc, indices)
+
+    return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times, indices)
+end
+
 """
     FieldTimeSeries(path, name;
                     backend = InMemory(),
@@ -68,8 +91,6 @@ Keyword arguments
            Takes precedence over `iterations` if `times` is specified.
 """
 FieldTimeSeries(path, name; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
-
-instantiate(T::Type) = T()
 
 function FieldTimeSeries(path, name, backend;
                          architecture = nothing,

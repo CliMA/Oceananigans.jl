@@ -21,6 +21,8 @@ using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_s
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 
+import Oceananigans: initialize!
+
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
@@ -169,7 +171,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
-    @apply_regionally validate_velocity_boundary_conditions(velocities)
+    @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
     free_surface = FreeSurface(free_surface, velocities, grid)
 
@@ -203,7 +205,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     return model
 end
 
-validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
+validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
 function validate_vertical_velocity_boundary_conditions(w)
     w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
@@ -223,5 +225,6 @@ validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
-initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+

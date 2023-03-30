@@ -291,6 +291,7 @@ end
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
 
     grid = free_surface.η.grid
+    arch = architecture(grid)
 
     # we start the time integration of η from the average ηⁿ     
     Gu  = model.timestepper.G⁻.u
@@ -353,9 +354,9 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))
 
-    masking_events = [mask_immersed_field!(q) for q in velocities]
-    push!(masking_events, mask_immersed_field!(Gu))
-    push!(masking_events, mask_immersed_field!(Gv))
+    masking_events = [mask_immersed_field!(q, blocking=false) for q in velocities]
+    push!(masking_events, mask_immersed_field!(Gu, blocking=false))
+    push!(masking_events, mask_immersed_field!(Gv, blocking=false))
     wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
 
     # Compute barotropic mode of tendency fields

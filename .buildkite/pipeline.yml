@@ -508,7 +508,7 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  # # We get a SegFault. We probably need more devices to run this test
+  # We get a SegFault. We probably need more devices to run this test
   # - label: "🐲 gpu distributed unit tests"
   # env:
   #   JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -527,16 +527,16 @@ steps:
 ##### Regression
 #####
 
-  # - label: "🦝 gpu shallow water regression tests"
-  #   env:
-  #     JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-  #     TEST_GROUP: "shallowwater_regression"
-  #   commands:
-  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     queue: Oceananigans
-  #     architecture: GPU
-  #   depends_on: "init_gpu"
+  - label: "🦝 gpu shallow water regression tests"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "shallowwater_regression"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
 
   - label: "🦡 cpu shallow water regression tests"
     env:

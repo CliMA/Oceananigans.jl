@@ -1,4 +1,4 @@
-using ..TurbulenceClosures: wall_vertical_distanceᶜᶜᶠ, total_depthᶜᶜᵃ
+using ..TurbulenceClosures: wall_vertical_distanceᶜᶜᶠ, wall_vertical_distanceᶜᶜᶜ, total_depthᶜᶜᵃ
 
 """
     struct MixingLength{FT}
@@ -29,9 +29,16 @@ end
 @inline ϕ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
-@inline function shearᶜᶜᶠ(i, j, k, grid, velocities)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+@inline function shearᶜᶜᶠ(i, j, k, grid, u, v)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
+    S² = ∂z_u² + ∂z_v²
+    return S²
+end
+
+@inline function shearᶜᶜᶜ(i, j, k, grid, u, v)
+    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
+    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
     S² = ∂z_u² + ∂z_v²
     return S²
 end
@@ -44,9 +51,25 @@ end
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
 
+@inline function buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    FT = eltype(grid)
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N²⁺ = clip(N²)
+    w★ = turbulent_velocity(i, j, k, grid, closure, e)
+    return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
+end
+
 @inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᵇ::Number, e, velocities, tracers, buoyancy)
     ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
+    ℓᵇ = ifelse(isnan(ℓᵇ), d, ℓᵇ)
+    ℓ = min(d, ℓᵇ)
+    return ℓ
+end
+
+@inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᵇ::Number, e, velocities, tracers, buoyancy)
+    ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    d = wall_vertical_distanceᶜᶜᶜ(i, j, k, grid)
     ℓᵇ = ifelse(isnan(ℓᵇ), d, ℓᵇ)
     ℓ = min(d, ℓᵇ)
     return ℓ
@@ -58,34 +81,86 @@ end
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᶜ::Number,
                                             velocities, tracers, buoyancy, clock, tracer_bcs)
 
-    Qᵇ  = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
-    N²  = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    w★  = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, closure, tracers.e)
-    w★³ = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tke, closure, tracers.e)
-    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tke, closure, tracers.e)
+    u, v, w = velocities
+
+    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
+    Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, closure, tracers.e)
+    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tke, closure, tracers.e)
+    w★³      = turbulent_velocity(i, j, grid.Nz, grid, closure, tracers.e)^3
+    S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
+    N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+
+    #w★³ = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tke, closure, tracers.e)
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / Qᵇ
-
-    # "Entrainment length"
-    # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N²)
+    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
+    ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Figure out which mixing length applies
-    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers) # buoyancy frequency
-    convecting = (Qᵇ > 0) & (N² < 0)
-    entraining = (Qᵇ > 0) & (N² > 0) & (N²_above < 0)
+    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
 
     # Model for shear-convection interaction
-    S² = shearᶜᶜᶠ(i, j, k, grid, velocities)
-    Sc = sqrt(S²) * w★² / Qᵇ # Cs = "Sheared convection number"
-    ϵᶜˢ = 1 - Cˢᶜ * Sc       # ϵ = Sheared convection factor
+    Sc = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sc = "Sheared convection number"
+    ϵᶜˢ = 1 - Cˢᶜ * Sc               # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
     # end ensure non-negativity
     ℓᶜ = clip(ϵᶜˢ * ℓᶜ)
+
+    # "Entrainment length"
+    # Ensures that w′b′ ~ Qᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
     ℓᵉ = clip(ϵᶜˢ * ℓᵉ)
+    
+    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+
+    ℓ = ifelse(convecting, ℓᶜ,
+        ifelse(entraining, ℓᵉ, zero(grid)))
+
+    return ifelse(isnan(ℓ), zero(grid), ℓ)
+end
+
+@inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᶜ::Number,
+                                            velocities, tracers, buoyancy, clock, tracer_bcs)
+
+    u, v, w = velocities
+
+    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
+    Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    w★       = turbulent_velocity(i, j, k, grid, closure, tracers.e)
+    w★²      = turbulent_velocity(i, j, k, grid, closure, tracers.e)^2
+    w★³      = turbulent_velocity(i, j, grid.Nz, grid, closure, tracers.e)^3
+    S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
+    N²       = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+
+    #w★³ = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tke, closure, tracers.e)
+
+    # "Convective length"
+    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
+    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
+    ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
+
+    # Figure out which mixing length applies
+    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+
+    # Model for shear-convection interaction
+    Sc = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sc = "Sheared convection number"
+    ϵᶜˢ = 1 - Cˢᶜ * Sc               # ϵ = Sheared convection factor
+    
+    # Reduce convective and entraining mixing lengths by sheared convection factor
+    # end ensure non-negativity
+    ℓᶜ = clip(ϵᶜˢ * ℓᶜ)
+
+    # "Entrainment length"
+    # Ensures that w′b′ ~ Qᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    ℓᵉ = clip(ϵᶜˢ * ℓᵉ)
+    
+    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
