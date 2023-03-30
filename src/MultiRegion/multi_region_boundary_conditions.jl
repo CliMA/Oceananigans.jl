@@ -103,6 +103,11 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
+getside(x, ::North) = x.north
+getside(x, ::South) = x.south
+getside(x, ::West)  = x.west
+getside(x, ::East)  = x.east
+
 function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
@@ -112,8 +117,8 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    westsrc = getproperty(buffers[westbc.condition.from_rank], westbc.condition.from_side).send
-    eastsrc = getproperty(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send
+    westsrc = getside(buffers[westbc.condition.from_rank], westbc.condition.from_side).send
+    eastsrc = getside(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send
 
     device_copy_to!(westdst, flip_west_and_east_indices(westsrc, westbc.condition))
     device_copy_to!(eastdst, flip_west_and_east_indices(eastsrc, eastbc.condition))
@@ -124,11 +129,6 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     return NoneEvent()
 end
 
-Base.getproperty(x, ::North) = getproperty(x, :north)
-Base.getproperty(x, ::South) = getproperty(x, :south)
-Base.getproperty(x, ::West)  = getproperty(x, :west)
-Base.getproperty(x, ::East)  = getproperty(x, :east)
-
 function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[2]
     N = size(grid)[2]
@@ -138,8 +138,8 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    southsrc = getproperty(buffers[southbc.condition.from_rank], southbc.condition.from_side).send
-    northsrc = getproperty(buffers[northbc.condition.from_rank], northbc.condition.from_side).send
+    southsrc = getside(buffers[southbc.condition.from_rank], southbc.condition.from_side).send
+    northsrc = getside(buffers[northbc.condition.from_rank], northbc.condition.from_side).send
 
     device_copy_to!(southdst, flip_south_and_north_indices(southsrc, southbc.condition))
     device_copy_to!(northdst, flip_south_and_north_indices(northsrc, northbc.condition))

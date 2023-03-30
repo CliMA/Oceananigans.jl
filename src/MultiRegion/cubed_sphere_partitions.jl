@@ -153,25 +153,19 @@ struct CubedSphereConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide
     ```jldoctest cubedsphereconnectivity
     julia> using Oceananigans
 
-    julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
+    julia> using Oceananigans.MultiRegion: CubedSphereConnectivity, East, West, North, South
 
     julia> CubedSphereConnectivity(1, 2, East(), West())
-    CubedSphereConnectivity{false}(1, 2, :east, :west)
+    CubedSphereConnectivity{East, West}(1, 2, East(), West())
     ```
-
-    Note that parameter `flip_indices` is `false` which implies that for this
-    connectivity the indices do not flip.
 
     A connectivity that implies that the boundary condition for the
     north side of region 1 comes from the east side of region 3 is 
 
     ```jldoctest cubedsphereconnectivity
-    julia> CubedSphereConnectivity(1, 3, :north, :east)
-    CubedSphereConnectivity{true}(1, 3, :north, :east)
+    julia> CubedSphereConnectivity(1, 3, North(), East())
+    CubedSphereConnectivity{North, East}(1, 3, North(), East())
     ```
-
-    and this time `flip_indices` is `true` implying that we need to flip the
-    indices.
     """
     CubedSphereConnectivity(rank, from_rank, side, from_side) = new{typeof(side), typeof(from_side)}(rank, from_rank, side, from_side)
 end
