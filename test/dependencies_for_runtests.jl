@@ -42,12 +42,19 @@ using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
 using KernelAbstractions: @kernel, @index
-using Libdl
 
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
 Logging.global_logger(OceananigansLogger())
+
+###
+### checking libraries
+###
+
+import Pkg
+Pkg.add("Libdl")
+using Libdl
 
 foreach(println, Libdl.dllist())
 
