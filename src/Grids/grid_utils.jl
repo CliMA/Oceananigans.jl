@@ -358,7 +358,7 @@ julia> xspacings(grid, Center(), Face(), Center())
  826339.3435524226
  772424.8654621692
  714747.2110712599
- ```
+```
 """
 @inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
 
