@@ -1,6 +1,7 @@
 using KernelAbstractions: NoneEvent
 using CUDA: @allowscalar
 
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
@@ -62,7 +63,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
 
     return nothing
 end
