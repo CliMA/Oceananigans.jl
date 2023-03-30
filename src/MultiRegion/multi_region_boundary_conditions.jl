@@ -124,8 +124,12 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     return NoneEvent()
 end
 
-function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
+Base.getproperty(x, ::North) = getproperty(x, :north)
+Base.getproperty(x, ::South) = getproperty(x, :south)
+Base.getproperty(x, ::West)  = getproperty(x, :west)
+Base.getproperty(x, ::East)  = getproperty(x, :east)
 
+function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
