@@ -2,12 +2,12 @@ using Oceananigans.Architectures: architecture
 using LinearAlgebra
 using AlgebraicMultigrid: _solve!, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
 using CUDA
-using AMGX
+# using AMGX
 
 import Oceananigans.Architectures: architecture
 
 "Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+const hasamgx   = false
 
 abstract type MultigridSolver{A, G, L, T, F} end
 
@@ -268,15 +268,15 @@ Initialize the AMGX package required to use the multigrid solver on `architectur
 This function needs to be called before creating a multigrid solver on GPU.
 """
 function initialize_AMGX(::GPU)
-    try
-        AMGX.initialize(); AMGX.initialize_plugins()
-    catch e
-        @info "It appears AMGX was not finalized. Have you called `finalize_AMGX`?"
-        AMGX.finalize_plugins()
-        AMGX.finalize()
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-    end
+    # try
+    #     AMGX.initialize(); AMGX.initialize_plugins()
+    # catch e
+    #     @info "It appears AMGX was not finalized. Have you called `finalize_AMGX`?"
+    #     AMGX.finalize_plugins()
+    #     AMGX.finalize()
+    #     AMGX.initialize()
+    #     AMGX.initialize_plugins()
+    # end
 end
 
 initialize_AMGX(::CPU) = nothing
@@ -288,7 +288,7 @@ Finalize the AMGX package required to use the multigrid solver on `architecture`
 This should be called after `finalize_solver!`.
 """
 function finalize_AMGX(::GPU)
-    AMGX.finalize_plugins(); AMGX.finalize()
+    # AMGX.finalize_plugins(); AMGX.finalize()
 end
 
 finalize_AMGX(::CPU) = nothing
