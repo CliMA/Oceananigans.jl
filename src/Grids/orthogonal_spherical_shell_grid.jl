@@ -836,8 +836,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
 
-    λ_center = ifelse(λ_center ≈ 0, 0, λ_center)
-    φ_center = ifelse(φ_center ≈ 0, 0, φ_center)
+    λ_center = ifelse(λ_center ≈ 0, 0.0, λ_center)
+    φ_center = ifelse(φ_center ≈ 0, 0.0, φ_center)
 
     center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
 
