@@ -48,16 +48,6 @@ import Oceananigans.Utils: launch!, datatuple
 
 Logging.global_logger(OceananigansLogger())
 
-###
-### checking libraries
-###
-
-import Pkg
-Pkg.add("Libdl")
-using Libdl
-
-foreach(println, Libdl.dllist())
-
 #####
 ##### Testing parameters
 #####
