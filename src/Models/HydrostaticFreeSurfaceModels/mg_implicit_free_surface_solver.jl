@@ -96,7 +96,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     settings[:reltol] = get(settings, :reltol, min(1e-7, sqrt(eps(eltype(grid)))))
 
     # initialize solver with Δt = nothing so that linear matrix is not computed;
-    # see `initialize_matrix` methods
+    # see `compute_matrix_for_linear_operation` methods
     solver = MultigridSolver(matrix;
                              template_field = right_hand_side,
                              settings...)
