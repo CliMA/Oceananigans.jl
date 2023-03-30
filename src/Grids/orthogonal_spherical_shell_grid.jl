@@ -836,13 +836,16 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
 
-    center_str = "centered at (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"
+    λ_center = ifelse(λ_center ≈ 0, 0, λ_center)
+    φ_center = ifelse(φ_center ≈ 0, 0, φ_center)
 
-    if abs(φ_center) ≈  90
+    center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+
+    if φ_center ≈ 90
         center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
     end
 
-    if abs(φ_center) ≈ -90
+    if φ_center ≈ -90
         center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
     end
 
