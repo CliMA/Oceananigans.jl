@@ -912,6 +912,18 @@ end
 @inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
 
+@inline node(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                 φnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                 znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy, ℓz) = (φnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::OSSG, ℓx, ℓy::Nothing, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::OSSG, ℓx, ℓy, ℓz::Nothing) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::OSSG, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(λnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
 @inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
 @inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
 @inline λnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]

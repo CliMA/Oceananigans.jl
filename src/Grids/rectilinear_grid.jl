@@ -438,6 +438,18 @@ end
 @inline ynodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 @inline znodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 
+@inline node(i, j, k, grid::RectilinearGrid, ℓx, ℓy, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                            ynode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                            znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::RectilinearGrid, ℓx::Nothing, ℓy, ℓz) = (ynode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::RectilinearGrid, ℓx, ℓy::Nothing, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::RectilinearGrid, ℓx, ℓy, ℓz::Nothing) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), ynode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::RectilinearGrid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(xnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::RectilinearGrid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ynode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::RectilinearGrid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
 @inline xnode(i, grid::RectilinearGrid, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(i, grid::RectilinearGrid, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
 

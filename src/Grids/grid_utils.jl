@@ -227,18 +227,6 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 ##### << Nodes >>
 #####
 
-@inline node(i, j, k, grid, ℓx, ℓy, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                           ynode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                           znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ynode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx, ℓy, ℓz::Nothing) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(xnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
 xnodes(grid, ::Nothing; kwargs...) = 1:1
 ynodes(grid, ::Nothing; kwargs...) = 1:1
 znodes(grid, ::Nothing; kwargs...) = 1:1

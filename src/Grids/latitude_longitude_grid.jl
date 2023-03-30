@@ -626,6 +626,19 @@ end
 @inline xnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
+
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                       φnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                       znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy, ℓz) = (φnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy::Nothing, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz::Nothing) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(λnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
 @inline λnode(i, grid::LatLonGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
 @inline λnode(i, grid::LatLonGrid, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
 
