@@ -187,19 +187,20 @@ function iterate!(x, solver, b, args...)
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
+
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
-    @apply_regionally perform_iteration!(q, p, z, solver, args...)
+    @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
     α = ρ / dot(p, q)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
         
-    @apply_regionally update_solution_and_residuals!(x, r, q, α)
+    @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
@@ -217,7 +218,7 @@ function initialize_solution!(q, x, b, solver, args...)
 end
 
 """ one conjugate gradient iteration """
-function perform_iteration!(q, p, z, solver, args...)
+function perform_iteration!(q, p, ρ, z, solver, args...)
 
     pp = parent(p)
     zp = parent(z)
@@ -236,10 +237,11 @@ function perform_iteration!(q, p, z, solver, args...)
     return nothing
 end
 
-function update_solution_and_residuals!(x, r, q, α)
+function update_solution_and_residuals!(x, r, q, p, α)
     xp = parent(x)
     rp = parent(r)
     qp = parent(q)
+    pp = parent(p)
 
     xp .+= α .* pp
     rp .-= α .* qp
