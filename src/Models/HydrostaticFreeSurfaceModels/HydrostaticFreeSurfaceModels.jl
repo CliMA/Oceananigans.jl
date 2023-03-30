@@ -9,12 +9,12 @@ using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, SumOfArrays
 using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
-import Oceananigans: fields, prognostic_fields, initialize!
+import Oceananigans: fields, prognostic_fields, initialize!, total_velocities
 import Oceananigans.Advection: cell_advection_timescale
 
 abstract type AbstractFreeSurface{E, G} end
@@ -76,6 +76,13 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 """
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
+
+"""
+    total_velocities(model::HydrostaticFreeSurfaceModel)
+
+Return the total velocity fields (velocity + background velocity) for `HydrostaticFreeSurfaceModel`.
+"""
+@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 
 @inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
                                                                                   v = velocities.v,

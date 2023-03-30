@@ -7,6 +7,7 @@ using Adapt
 using KernelAbstractions
 using StructArrays
 
+using Oceananigans: total_velocities
 using Oceananigans.Grids
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
@@ -15,7 +16,6 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices, fractional_y_index
 using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
-using Oceananigans.Models: NonhydrostaticModel
 
 import Base: size, length, show
 

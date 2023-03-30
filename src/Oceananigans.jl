@@ -186,6 +186,7 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
+function total_velocities end
 
 #####
 ##### Include all the submodules
