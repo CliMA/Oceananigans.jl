@@ -10,7 +10,8 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                                  idx == 3 ? RotZ(π) :
                                  idx == 4 ? RotX(π)*RotY(-π/2) :
                                  idx == 5 ? RotY(π/2)*RotX(π/2) :
-                                 RotZ(π/2)*RotX(π)
+                                 idx == 6 ? RotZ(π/2)*RotX(π) :
+                                 error("invalid panel index")
 
 """
     ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
