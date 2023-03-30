@@ -16,9 +16,9 @@ steps:
       TEST_GROUP: "none"
     plugins:
       - JuliaCI/julia#v1:
-        version: "1.8"
+          version: "1.8"
       - JuliaCI/julia-test#v1:
-        coverage: false
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -29,9 +29,9 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     plugins:
       - JuliaCI/julia#v1:
-        version: "1.8"
+          version: "1.8"
       - JuliaCI/julia-test#v1:
-        coverage: false
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -58,10 +58,10 @@ steps:
       TEST_GROUP: "{{matrix.group}}"
     plugins:
       - JuliaCI/julia#v1:
-        version: "1.8"
+          version: "1.8"
       - JuliaCI/julia-test#v1:
-        update_registry: false
-        coverage: false
+          update_registry: false
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -83,10 +83,10 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     plugins:
       - JuliaCI/julia#v1:
-        version: "1.8"
+          version: "1.8"
       - JuliaCI/julia-test#v1:
-        update_registry: false
-        coverage: false
+          update_registry: false
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: CPU
