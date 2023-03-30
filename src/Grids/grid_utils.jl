@@ -41,7 +41,7 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
     x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
 
-    return x1 == x2 && y1 == y2 && z1 == z2
+    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
 const AT = AbstractTopology
