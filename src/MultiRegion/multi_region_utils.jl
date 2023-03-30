@@ -85,4 +85,5 @@ function maybe_enable_peer_access!(devices::NTuple{<:Any, <:CUDA.CuDevice})
     end
 
     sync_all_devices!(devices)
+    return nothing
 end
