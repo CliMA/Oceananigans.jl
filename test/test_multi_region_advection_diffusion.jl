@@ -179,10 +179,10 @@ for arch in archs
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
                                      latitude = (-80, 80),
-                                     longitude = (-160, 150),
+                                     longitude = (-160, 160),
                                      z = (-1, 0),
-                                     topology = (Bounded, Bounded, Bounded),
-                                     radius = 1)
+                                     radius = 1,
+                                     topology=(Bounded, Bounded, Bounded))
 
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
 
