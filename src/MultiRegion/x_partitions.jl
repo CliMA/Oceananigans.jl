@@ -147,21 +147,18 @@ end
 ##### Boundary specific Utils
 #####
 
-struct Connectivity
-    rank :: Int
-    from_rank :: Int
-end
+const XPartitionConnectivity = Union{Connectivity{East, West}, Connectivity{West, East}}
 
 inject_south_boundary(region, p::XPartition, bc) = bc
 inject_north_boundary(region, p::XPartition, bc) = bc
 
-function inject_west_boundary(region, p::XPartition, global_bc) 
+function inject_west_boundary(region, p::XPartition, global_bc)
     if region == 1
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p))) : 
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), West(), East())) :
                 bc = global_bc
     else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, West(), East()))
     end
     return bc
 end
@@ -169,10 +166,10 @@ end
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1)) : 
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, East(), West())) : 
                 bc = global_bc
     else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, East(), West()))
     end
     return bc
 end

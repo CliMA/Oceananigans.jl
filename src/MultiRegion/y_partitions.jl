@@ -3,6 +3,7 @@ using Oceananigans.BoundaryConditions: MCBC, PBC
 
 struct YPartition{N} <: AbstractPartition
     div :: N
+
     function YPartition(sizes) 
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
@@ -132,16 +133,18 @@ end
 ##### Boundary specific Utils
 #####
 
+const YPartitionConnectivity = Union{Connectivity{North, South}, Connectivity{South, North}}
+
 inject_west_boundary(region, p::YPartition, bc) = bc 
 inject_east_boundary(region, p::YPartition, bc) = bc
 
 function inject_south_boundary(region, p::YPartition, global_bc) 
     if region == 1
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), South(), North())) :
                 bc = global_bc
     else
-        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region - 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, South(), North()))
     end
     return bc
 end
@@ -149,10 +152,10 @@ end
 function inject_north_boundary(region, p::YPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, North(), South())) : 
                 bc = global_bc
     else
-        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region + 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, North(), South()))
     end
     return bc
 end
