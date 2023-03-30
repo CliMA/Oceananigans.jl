@@ -20,7 +20,7 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                              panel_halo = (1, 1, 1),
                              panel_topology = (FullyConnected, FullyConnected, Bounded),
                              radius = R_Earth,
-                             partition = CubedSpherePartition(), 
+                             partition = CubedSpherePartition(; R=1),
                              devices = nothing)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
@@ -55,7 +55,7 @@ The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
 
 The North Pole of the sphere is in panel 3 (P3) and the South Pole in panel 6 (P6).
 
-A `CubedSpherePartition(; Rx=2)` implies partition in 2 in each
+A `CubedSpherePartition(; R=2)` implies partition in 2 in each
 dimension of each panel resulting in 24 regions. In each partition
 the intra-panel `x, y` indices are in written in the center and the
 overall region index on the bottom right.
