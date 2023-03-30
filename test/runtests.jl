@@ -1,8 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-import Libdl
-foreach(println, Libdl.dllist())
-
 # CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
