@@ -217,7 +217,7 @@ function initialize_solution!(q, x, b, solver, args...)
 end
 
 """ one conjugate gradient iteration """
-function perform_iteration!(p, z)
+function perform_iteration!(q, p, z, solver, args...)
 
     pp = parent(p)
     zp = parent(z)
