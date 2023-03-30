@@ -134,17 +134,17 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 To determine all the connectivities of a grid we can call, e.g.,
 
 ```jldoctest cubedspheregrid
-julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_east_boundary, inject_north_boundary, inject_south_boundary
+julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_east_boundary, inject_north_boundary, inject_south_boundary, East, West, South, North
 
 julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
 
 julia> for j in 1:length(grid.partition); println("panel ", j, " :", inject_south_boundary(j, grid.partition, 1).condition); end
-panel 1 :CubedSphereConnectivity{false}(1, 6, :south, :north)
-panel 2 :CubedSphereConnectivity{true}(2, 6, :south, :east)
-panel 3 :CubedSphereConnectivity{false}(3, 2, :south, :north)
-panel 4 :CubedSphereConnectivity{true}(4, 2, :south, :east)
-panel 5 :CubedSphereConnectivity{false}(5, 4, :south, :north)
-panel 6 :CubedSphereConnectivity{true}(6, 4, :south, :east)
+panel 1 :CubedSphereConnectivity{South, North}(1, 6, South(), North())
+panel 2 :CubedSphereConnectivity{South, East}(2, 6, South(), East())
+panel 3 :CubedSphereConnectivity{South, North}(3, 2, South(), North())
+panel 4 :CubedSphereConnectivity{South, East}(4, 2, South(), East())
+panel 5 :CubedSphereConnectivity{South, North}(5, 4, South(), North())
+panel 6 :CubedSphereConnectivity{South, East}(6, 4, South(), East())
 ```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
