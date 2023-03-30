@@ -1,6 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-CUDA.allowscalar() do
+import Libdl
+foreach(println, Libdl.dllist())
+
+# CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
     if test_file != :none
@@ -8,7 +11,7 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-
+    
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -175,4 +178,4 @@ CUDA.allowscalar() do
     end
 end
 
-end #CUDA.allowscalar()
+# end #CUDA.allowscalar()
