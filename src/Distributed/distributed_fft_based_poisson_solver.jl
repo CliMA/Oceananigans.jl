@@ -184,10 +184,10 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     # Apply backward transforms to x̂ = last(solver.storage).
     solver.plan \ solver.storage
-    
+
     # xc is the backward transform of x̂.
     xc = first(solver.storage)
-	
+
     # Copy the real component of xc to x.
     copy_event = launch!(arch, solver.local_grid, :xyz,
                          copy_permuted_real_component!, x, parent(xc), solver.input_permutation,
