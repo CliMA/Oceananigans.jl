@@ -36,7 +36,7 @@ steps:
       queue: Oceananigans
       architecture: CPU
 
-    - wait: ~
+    - wait
 
 # #####
 # ##### Solver tests
