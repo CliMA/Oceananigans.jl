@@ -15,6 +15,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices, fractional_y_index
 using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
+using Oceananigans.Models: NonhydrostaticModel
 
 import Base: size, length, show
 

@@ -123,6 +123,12 @@ end
     @inbounds particle_property[p] = interpolate(field, LX, LY, LZ, grid, particles.x[p], particles.y[p], particles.z[p])
 end
 
+@inline total_velocities(model) = model.velocities
+@inline total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
+                                                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
+                                                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
+
+
 function update_particle_properties!(lagrangian_particles, model, Δt)
 
     # Update tracked field properties.
@@ -156,12 +162,8 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
 
-    total_velocities = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
-                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
-                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
-
     advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(total_velocities),
+                                                      total_velocities(model),
                                                       dependencies=Event(device(arch)))
 
     wait(device(arch), advect_particles_event)
