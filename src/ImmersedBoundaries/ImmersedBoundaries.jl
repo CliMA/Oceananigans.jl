@@ -48,7 +48,8 @@ import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_
                             x_domain, y_domain, z_domain
 
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
-                           xnode, ynode, znode, nodes, xnodes, ynodes, znodes, λnodes, φnodes,
+                           xnode, ynode, znode, λnode, φnode, node,
+                           xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            inactive_cell
 
 import Oceananigans.Coriolis: φᶠᶠᵃ
@@ -241,6 +242,8 @@ const f = Face()
 @inline xnode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = xnode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 @inline ynode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 @inline znode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+
+node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 nodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 
