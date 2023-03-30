@@ -1,7 +1,7 @@
 env:
   JULIA_VERSION: "1.8.5"
   JULIA_MINOR_VERSION: "1.8"
-  SVERDRUP_HOME: "/data5/ssilvest"
+  SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
 
@@ -56,6 +56,32 @@ steps:
       queue: Oceananigans
       architecture: CPU
 
+  - label: "🏕️ initialize gpu environment tartarus"
+    key: "init_gpu_tartarus"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-TART-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "init tart"
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+      TMPDIR: "$TARTARUS_HOME/tmp"
+    commands:
+      # Download julia binaries
+      - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
+      - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
+
+      # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      
+      # Force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
+
+      # Set up the mpiexecjl command
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
 #####
 ##### Unit tests
 #####
@@ -83,6 +109,16 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
+  - label: "🐿️ gpu tartarus unit tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-TART-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "unit"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu_tartarus"
 #####
 ##### Solver tests
 #####
