@@ -1,6 +1,5 @@
 using Oceananigans
 using Oceananigans.Advection: AbstractCenteredAdvectionScheme, AbstractUpwindBiasedAdvectionScheme, VelocityStencil, VorticityStencil
-using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation
 using JLD2
 using OffsetArrays

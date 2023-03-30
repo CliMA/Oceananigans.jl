@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz
+import Oceananigans.Grids: return_metrics
 
 const c = Center()
 const f = Face()
