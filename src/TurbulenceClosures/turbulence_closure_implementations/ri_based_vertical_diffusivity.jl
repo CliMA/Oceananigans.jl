@@ -63,12 +63,12 @@ Keyword Arguments
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    ν₀  = 0.30,
-                                    κ₀  = 0.42,
-                                    κᶜ  = 4.0,
-                                    Cᵉ  = 0.57,
-                                    Ri₀ = 0.27,
-                                    Riᵟ = 0.20,
+                                    ν₀  = 0.7,
+                                    κ₀  = 0.5,
+                                    κᶜ  = 1.7,
+                                    Cᵉ  = 0.1,
+                                    Ri₀ = 0.1,
+                                    Riᵟ = 0.40,
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -206,8 +206,8 @@ end
 
     κⁿ = κᶜ + κᵉ + κ★
     νⁿ = ν★
-    @inbounds diffusivities.κ[i, j, k] = 0.5 * (diffusivities.κ[i, j, k] + κⁿ)
-    @inbounds diffusivities.ν[i, j, k] = 0.5 * (diffusivities.ν[i, j, k] + νⁿ)
+    @inbounds diffusivities.κ[i, j, k] = (0.6 * diffusivities.κ[i, j, k] + κⁿ) / 1.6
+    @inbounds diffusivities.ν[i, j, k] = (0.6 * diffusivities.ν[i, j, k] + νⁿ) / 1.6
 end
 
 #####

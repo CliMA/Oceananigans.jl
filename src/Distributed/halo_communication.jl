@@ -53,12 +53,12 @@ opposite_side = Dict(
 
 RANK_DIGITS = 2
 ID_DIGITS   = 2
-LOC_DIGITS  = 2
+LOC_DIGITS  = 1
 
 @inline loc_id(::Nothing) = 0
 @inline loc_id(::Face)    = 1
 @inline loc_id(::Center)  = 2
-@inline location_id(X, Y, Z) = loc_id(X) + 3*loc_id(Y) + 9*loc_id(Z)
+@inline location_id(X, Y, Z) = loc_id(Z)
 
 for side in sides
     side_str = string(side)
