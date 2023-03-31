@@ -71,7 +71,7 @@ for side in sides
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit  = string(side_id[Symbol($side_str)])
-            return parse(Int, field_id * loc_id * side_digit * from_digits * to_digits)
+            return parse(Int, loc_id * field_id * side_digit * from_digits * to_digits)
         end
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
@@ -80,7 +80,7 @@ for side in sides
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, field_id * loc_id * side_digit * from_digits * to_digits)
+            return parse(Int, loc_id * field_id * side_digit * from_digits * to_digits)
         end
     end
 end
