@@ -23,7 +23,7 @@ const Ω_Earth = 7.292115e-5
 """
     const g_Earth
 
-Gravitational acceleration at the Earth's surface (in meters / second²);
+Gravitational acceleration at the Earth's surface (in meters per second²);
 see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
 """
 const g_Earth = 9.80665
