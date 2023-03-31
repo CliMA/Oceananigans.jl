@@ -2,6 +2,11 @@ using Base: @propagate_inbounds
 
 import Base: getindex
 
+"""
+    SumOfArrays{N, F}
+
+`SumOfArrays` objects hold `N` arrays/fields and return their sum when indexed.
+"""
 struct SumOfArrays{N, F}
     arrays :: F
     SumOfArrays{N}(arrays...) where N = new{N, typeof(arrays)}(arrays)
