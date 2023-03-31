@@ -1,7 +1,8 @@
 using Oceananigans
+using Oceananigans.Constants: R_Earth
 using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX

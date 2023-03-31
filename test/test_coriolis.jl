@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Coriolis: Ω_Earth
+using Oceananigans.Constants: Ω_Earth
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 function instantiate_fplane_1(FT)

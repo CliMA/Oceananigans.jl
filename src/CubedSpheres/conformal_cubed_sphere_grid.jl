@@ -1,6 +1,9 @@
 using Rotations
+
 using Oceananigans.Grids
-using Oceananigans.Grids: R_Earth, interior_indices
+
+using Oceananigans.Grids: interior_indices
+using Oceananigans.Constants: R_Earth
 
 import Base: show, size, eltype
 import Oceananigans.Grids: topology, architecture, halo_size, on_architecture

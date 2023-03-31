@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.Constants: g_Earth
 using Oceananigans.Architectures: device_event
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell

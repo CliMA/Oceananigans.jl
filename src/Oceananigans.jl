@@ -10,7 +10,7 @@ end
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU,
 
     # Logging
     OceananigansLogger,
@@ -19,7 +19,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat, 
     FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
+    RectilinearGrid,
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
@@ -87,7 +87,7 @@ export
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, 
+    HydrostaticSphericalCoriolis,
     PrescribedVelocityFields,
 
     # Time stepping
@@ -114,7 +114,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
+    MultiRegionGrid, XPartition,
     ConformalCubedSphereGrid,
 
     # Utils
@@ -194,6 +194,7 @@ function tracer_tendency_kernel_function end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
+include("Constants.jl")
 include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")

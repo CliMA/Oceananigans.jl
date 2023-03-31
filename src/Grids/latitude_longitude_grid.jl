@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
-const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
+using Oceananigans.Constants: R_Earth
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
