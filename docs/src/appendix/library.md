@@ -44,6 +44,13 @@ Modules = [Oceananigans.BuoyancyModels]
 Private = false
 ```
 
+## Constants
+
+```@autodocs
+Modules = [Oceananigans.Constants]
+Private = false
+```
+
 ## Coriolis
 
 ```@autodocs
