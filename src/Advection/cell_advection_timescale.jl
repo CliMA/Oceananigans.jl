@@ -12,7 +12,7 @@ end
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
 
-    return @inbounds 1 / (abs(u[i, j, k]) / Δx +
-                          abs(v[i, j, k]) / Δy +
-                          abs(w[i, j, k]) / Δz) 
+
+    ω = @inbounds abs(u[i, j, k]) / Δx + abs(v[i, j, k]) / Δy + abs(w[i, j, k]) / Δz
+    return 1 / ω
 end
