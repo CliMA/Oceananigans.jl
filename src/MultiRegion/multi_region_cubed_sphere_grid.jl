@@ -224,8 +224,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     φfca = Field{Face, Center, Nothing}(grid)
 
     for region in 1:length(grid)
-        for j in 1:total_length(Face(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Center(), topology(grid, 1)(), size(grid, 1), 0)
+        for j in 1:total_length(Center(), topology(grid, 2)(), size(grid, 2), 0)
+            for i in 1:total_length(Face(), topology(grid, 1)(), size(grid, 1), 0)
                 getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
                 getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
             end
@@ -244,8 +244,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     φcfa = Field{Center, Face, Nothing}(grid)
 
     for region in 1:length(grid)
-        for j in 1:total_length(Center(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Face(), topology(grid, 1)(), size(grid, 1), 0)
+        for j in 1:total_length(Face(), topology(grid, 2)(), size(grid, 2), 0)
+            for i in 1:total_length(Center(), topology(grid, 1)(), size(grid, 1), 0)
                 getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
                 getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
             end
@@ -260,8 +260,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         getregion(grid, region).φᶜᶠᵃ .= getregion(φcfa, region).data
     end
 
-    λffa = Field{Center, Center, Nothing}(grid)
-    φffa = Field{Center, Center, Nothing}(grid)
+    λffa = Field{Face, Face, Nothing}(grid)
+    φffa = Field{Face, Face, Nothing}(grid)
 
     for region in 1:length(grid), j in 1:Ny, i in 1:Nx
         for j in 1:total_length(Face(), topology(grid, 2)(), size(grid, 2), 0)
