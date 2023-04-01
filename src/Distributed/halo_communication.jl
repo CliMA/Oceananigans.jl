@@ -332,7 +332,6 @@ for side in sides
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             recv_event = Threads.@spawn begin
-                KernelAbstractions.priority!(device(arch), :high)
                 cooperative_test!(recv_req)
             end
 
