@@ -42,7 +42,7 @@ using Oceananigans.Advection:
     advective_tracer_flux_z
     
 import Base: show, summary
-import Oceananigans.Utils: cell_advection_timescale
+import Oceananigans.Advection: cell_advection_timescale
 
 import Oceananigans.Grids: 
         cpu_face_constructor_x,
@@ -233,7 +233,6 @@ const c = Center()
 const f = Face()
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
-@inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
 @inline xnode(i, ibg::IBG, LX; kwargs...) = xnode(i, ibg.underlying_grid, LX; kwargs...)

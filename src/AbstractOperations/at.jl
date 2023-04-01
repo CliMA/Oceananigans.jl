@@ -77,8 +77,11 @@ end
 interpolate_index(::Colon, ::Colon, args...)       = Colon()
 interpolate_index(::Colon, b::UnitRange, args...)  = b
 
+instantiate(T::Type) = T()
+instantiate(t) = t
+
 function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
-    a = corrected_index(a, loc, new_loc)
+    a = corrected_index(a, instantiate(loc), instantiate(new_loc))
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
     first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
@@ -86,7 +89,7 @@ function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)
 end
 
 function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)   
-    a = corrected_index(a, loc, new_loc)
+    a = corrected_index(a, instantiate(loc), instantiate(new_loc))
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
     first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
@@ -100,7 +103,7 @@ end
 
 # Windowed fields interpolated from `Center`s to `Face`s lose the first index.
 # Viceverse, windowed fields interpolated from `Face`s to `Center`s lose the last index
-corrected_index(a, ::Type{Face},   ::Type{Face})   = UnitRange(first(a),   last(a))
-corrected_index(a, ::Type{Center}, ::Type{Center}) = UnitRange(first(a),   last(a))
-corrected_index(a, ::Type{Face},   ::Type{Center}) = UnitRange(first(a),   last(a)-1)
-corrected_index(a, ::Type{Center}, ::Type{Face})   = UnitRange(first(a)+1, last(a))
+corrected_index(a, ::Face,   ::Face)   = UnitRange(first(a),   last(a)  )
+corrected_index(a, ::Center, ::Center) = UnitRange(first(a),   last(a)  )
+corrected_index(a, ::Face,   ::Center) = UnitRange(first(a),   last(a)-1)
+corrected_index(a, ::Center, ::Face)   = UnitRange(first(a)+1, last(a)  )
