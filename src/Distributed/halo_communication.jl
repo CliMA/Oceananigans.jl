@@ -194,7 +194,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     end
 
     # Syncronous MPI fill_halo_event!
-    MPI.Waitall!(requests)
+    cooperative_waitall!(requests)
     # Reset MPI tag
     arch.mpi_tag[1] -= arch.mpi_tag[1]
 
