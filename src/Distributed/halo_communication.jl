@@ -1,4 +1,4 @@
-using KernelAbstractions: @kernel, @index, priority!
+using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
 using CUDA: synchronize
 import Oceananigans.Utils: sync_device!
@@ -332,7 +332,6 @@ for side in sides
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             recv_event = Threads.@spawn begin
-                priority!(device(arch), :high)
                 cooperative_test!(recv_req)
             end
 
