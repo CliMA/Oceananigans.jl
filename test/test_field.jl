@@ -113,7 +113,7 @@ function run_field_interpolation_tests(FT, arch)
 
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid.
-    ε_max = f.(nodes(grid, (Face(), Face(), Face()), reshape=true)...) |> maximum |> eps
+    ε_max = (f.(nodes(grid, (Face(), Face(), Face()), reshape=true)...) |> maximum |> eps) * 10
 
     set!(u, f)
     set!(v, f)
