@@ -149,11 +149,10 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, N²)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, velocities.u)^2
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, velocities.v)^2
     S² = ∂z_u² + ∂z_v²
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     Ri = N² / S²
 
     # Clip N² and avoid NaN
@@ -197,8 +196,8 @@ end
     κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
     κᵉ = ifelse(entraining, Cᵉ, zero(grid))
 
-    # Shear mixing diffusivity and viscosity (diffused in the horizontal to add non-locality)
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    # Shear mixing diffusivity and viscosity
+    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, N²)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κ★ = κ₀ * τ
