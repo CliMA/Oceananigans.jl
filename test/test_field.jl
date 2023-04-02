@@ -111,7 +111,10 @@ function run_field_interpolation_tests(grid)
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid.
 
-    ε_max = (CUDA.@allowscalar f.(nodes(grid, (Face(), Face(), Face()), reshape=true)...) |> maximum |> eps) * 10
+    xf, yf, zf = CUDA.@allowscalar nodes(grid, (Face(), Face(), Face()), reshape=true)
+    f_max = maximum(f.(xf, yf, zf))
+    ε_max = eps(f_max)
+    tolerance = 10 * ε_max
 
     set!(u, f)
     set!(v, f)
@@ -127,10 +130,10 @@ function run_field_interpolation_tests(grid)
         ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
         ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-        @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
-        @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
-        @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
@@ -147,10 +150,10 @@ function run_field_interpolation_tests(grid)
 
         F = f.(xs, ys, zs)
 
-        @test all(isapprox.(ℑu, F, atol=ε_max))
-        @test all(isapprox.(ℑv, F, atol=ε_max))
-        @test all(isapprox.(ℑw, F, atol=ε_max))
-        @test all(isapprox.(ℑc, F, atol=ε_max))
+        @test all(isapprox.(ℑu, F, atol=tolerance))
+        @test all(isapprox.(ℑv, F, atol=tolerance))
+        @test all(isapprox.(ℑw, F, atol=tolerance))
+        @test all(isapprox.(ℑc, F, atol=tolerance))
     end
 
     return nothing
