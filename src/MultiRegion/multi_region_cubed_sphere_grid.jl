@@ -17,8 +17,9 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
     ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
                              panel_size,
                              z,
-                             panel_halo = (1, 1, 1),
-                             panel_topology = (FullyConnected, FullyConnected, Bounded),
+                             horizontal_direction_halo = 1
+                             z_halo = horizontal_direction_halo,
+                             z_topology = Bounded,
                              radius = R_Earth,
                              partition = CubedSpherePartition(; R=1),
                              devices = nothing)
@@ -27,7 +28,13 @@ Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalS
 we refer to each of these grids as a "panel". Each panel corresponds
 to a face of the cube.
 
-The keywords prescribe the properties of each of the panels.
+The keywords prescribe the properties of each of the panels. Only the topology in the vertical
+direction can be prescribed and that's done via the `z_topology` keyword argumet (default: `Bounded`).
+Topologies in both horizontal directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
+
+Halo size in both horizontal dimensions must be equal and they are prescribed via the
+`horizontal_direction_halo` keyword argument. The number of halo points in the ``z``-directions
+is given by `z_halo`.
 
 The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
 
@@ -152,12 +159,14 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
                                   z,
                                   panel_halo = (1, 1, 1),
-                                  panel_topology = (FullyConnected, FullyConnected, Bounded),
+                                  z_topology = Bounded,
                                   radius = R_Earth,
                                   partition = CubedSpherePartition(; R=1),
                                   devices = nothing)
 
     Nx, Ny, _ = panel_size
+    region_topology = (FullyConnected, FullyConnected, z_topology)
+    region_halo = (horizontal_direction_halo, horizontal_direction_halo, z_halo)
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
 
@@ -191,8 +200,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     region_grids = construct_regionally(OrthogonalSphericalShellGrid, arch, FT;
                                         size = region_size,
                                         z,
-                                        halo = panel_halo,
-                                        topology = panel_topology,
+                                        halo = region_halo,
+                                        topology = region_topology,
                                         radius,
                                         ξ = region_ξ,
                                         η = region_η,
@@ -203,13 +212,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     λcca = Field{Center, Center, Nothing}(grid)
     φcca = Field{Center, Center, Nothing}(grid)
 
-    for region in 1:length(grid)
-        for j in 1:total_length(Center(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Center(), topology(grid, 1)(), size(grid, 1), 0)
-                getregion(λcca, region).data[i, j] = getregion(grid, region).λᶜᶜᵃ[i, j]
-                getregion(φcca, region).data[i, j] = getregion(grid, region).φᶜᶜᵃ[i, j]
-            end
-        end
+    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+        getregion(λcca, region).data[i, j] = getregion(grid, region).λᶜᶜᵃ[i, j]
+        getregion(φcca, region).data[i, j] = getregion(grid, region).φᶜᶜᵃ[i, j]
     end
 
     fill_halo_regions!(λcca)
@@ -223,13 +228,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     λfca = Field{Face, Center, Nothing}(grid)
     φfca = Field{Face, Center, Nothing}(grid)
 
-    for region in 1:length(grid)
-        for j in 1:total_length(Center(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Face(), topology(grid, 1)(), size(grid, 1), 0)
-                getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
-                getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
-            end
-        end
+    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+        getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
+        getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
     end
 
     fill_halo_regions!(λfca)
@@ -243,13 +244,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     λcfa = Field{Center, Face, Nothing}(grid)
     φcfa = Field{Center, Face, Nothing}(grid)
 
-    for region in 1:length(grid)
-        for j in 1:total_length(Face(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Center(), topology(grid, 1)(), size(grid, 1), 0)
-                getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
-                getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
-            end
-        end
+    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+        getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
+        getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
     end
 
     fill_halo_regions!(λcfa)
@@ -264,12 +261,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     φffa = Field{Face, Face, Nothing}(grid)
 
     for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-        for j in 1:total_length(Face(), topology(grid, 2)(), size(grid, 2), 0)
-            for i in 1:total_length(Face(), topology(grid, 1)(), size(grid, 1), 0)
-                getregion(λffa, region).data[i, j] = getregion(grid, region).λᶠᶠᵃ[i, j]
-                getregion(φffa, region).data[i, j] = getregion(grid, region).φᶠᶠᵃ[i, j]
-            end
-        end
+        getregion(λffa, region).data[i, j] = getregion(grid, region).λᶠᶠᵃ[i, j]
+        getregion(φffa, region).data[i, j] = getregion(grid, region).φᶠᶠᵃ[i, j]
     end
 
     fill_halo_regions!(λffa)
