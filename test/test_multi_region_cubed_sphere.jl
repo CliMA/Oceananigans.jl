@@ -6,7 +6,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function get_halo_data(field, side, k_index=1)
     Nx, Ny, _ = size(field)
-
+    
     if side == :west
         return field.data[0, 1:Ny, k_index]
     elseif side == :east
@@ -50,9 +50,11 @@ end
         for panel in 1:6
 
             CUDA.@allowscalar begin
-                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
-                @test isapprox(getregion(grid, panel).φᶜᶜᵃ, getregion(grid_cs32, panel).φᶜᶜᵃ)
-                @test isapprox(getregion(grid, panel).λᶜᶜᵃ, getregion(grid_cs32, panel).λᶜᶜᵃ)
+                # Test only on cca and ffa; fca and cfa are all zeros on grid_cs32!
+                # Only test interior points since halo regions are not filled for grid_cs32!
+
+                @test isapprox(getregion(grid, panel).φᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶜᶜᵃ[1:Nx, 1:Ny])
+                @test isapprox(getregion(grid, panel).λᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶜᶜᵃ[1:Nx, 1:Ny])
 
                 # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).λᶠᶠᵃ .≈ -180] .= 180
@@ -60,8 +62,8 @@ end
                 # and if poles are included, they have the same longitude
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90]
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90]
-                @test isapprox(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ)
-                @test isapprox(getregion(grid, panel).λᶠᶠᵃ, getregion(grid_cs32, panel).λᶠᶠᵃ)
+                @test isapprox(getregion(grid, panel).φᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶠᶠᵃ[1:Nx, 1:Ny])
+                @test isapprox(getregion(grid, panel).λᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶠᶠᵃ[1:Nx, 1:Ny])
             end
         end
     end

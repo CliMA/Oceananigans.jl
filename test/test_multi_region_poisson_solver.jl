@@ -17,7 +17,7 @@ function run_identity_operator_test(grid)
     else
         mrg = MultiRegionGrid(grid, partition = XPartition(2))
     end
-    
+
     N = size(grid)
     M = prod(N)
 
@@ -32,9 +32,9 @@ function run_identity_operator_test(grid)
 
     initial_guess = solution = CenterField(grid)
     set!(initial_guess, (x, y, z) -> rand())
-    
+
     solve!(initial_guess, solver, b, 1.0)
-    
+
     solution = reshape(solver.solution, grid.Nx, grid.Ny, grid.Nz)
 
     b = reshape(b, size(grid)...)
@@ -54,6 +54,7 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = arch_array(grid.architecture, ones(N...))
+
     for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
@@ -81,7 +82,7 @@ function run_poisson_equation_test(grid)
     else
         mrg = MultiRegionGrid(grid, partition = XPartition(2))
     end
-    
+
     # Solve ∇²ϕ = r
     ϕ_truth = CenterField(grid)
 
@@ -93,7 +94,7 @@ function run_poisson_equation_test(grid)
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
-    
+
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
     rhs = copy(interior(rhs))
@@ -127,7 +128,7 @@ end
 
     for arch in archs, topo in topologies
         @info "Testing 2D UnifiedDiagonalIterativeSolver [$(typeof(arch)) $topo]..."
-        
+
         grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
