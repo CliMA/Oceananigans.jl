@@ -158,7 +158,8 @@ panel 6 :CubedSphereConnectivity{South, East}(6, 4, South(), East())
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
                                   z,
-                                  panel_halo = (1, 1, 1),
+                                  horizontal_direction_halo = 1,
+                                  z_halo = horizontal_direction_halo,
                                   z_topology = Bounded,
                                   radius = R_Earth,
                                   partition = CubedSpherePartition(; R=1),
@@ -207,7 +208,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
+    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
 
     λcca = Field{Center, Center, Nothing}(grid)
     φcca = Field{Center, Center, Nothing}(grid)
