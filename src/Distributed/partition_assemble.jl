@@ -157,7 +157,7 @@ function construct_global_array(arch, c_local::AbstractArray, nl)
 
         c_global[1 + sum(nx[1:ri-1]) : sum(nx[1:ri]), 
                  1 + sum(ny[1:rj-1]) : sum(ny[1:rj]),
-                 1:Nz] .= c_local[1:nxl[ri], 1:nyl[rj], 1:Nz]
+                 1:Nz] .= c_local[1:nx[ri], 1:ny[rj], 1:Nz]
         
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
