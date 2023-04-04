@@ -36,9 +36,8 @@ function RectilinearGrid(arch::DistributedArch,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    global_sizes = concatenate_local_size(size, arch)
-    global_size  = sum.(global_sizes)
-
+    global_size = sum.(concatenate_local_size(size, arch))
+    
     TX, TY, TZ, global_size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, global_size, halo, FT, extent, x, y, z)
 
@@ -55,7 +54,7 @@ function RectilinearGrid(arch::DistributedArch,
     
     xl = partition(x, nx, Rx, ri)
     yl = partition(y, ny, Ry, rj)
-    zl = partition(z, nz, Rz, rk)
+    zl = z
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, Hx, xl, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))
@@ -110,7 +109,7 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     
     λl = partition(longitude, nλ, Rx, ri)
     φl = partition(latitude,  nφ, Ry, rj)
-    zl = partition(z,         nz, Rz, rk)
+    zl = z
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
