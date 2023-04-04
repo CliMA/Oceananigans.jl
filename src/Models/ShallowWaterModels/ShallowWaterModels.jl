@@ -10,7 +10,6 @@ using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
-import Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 #####
 ##### ShallowWaterModel definition

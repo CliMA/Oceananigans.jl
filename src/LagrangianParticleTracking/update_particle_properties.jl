@@ -163,7 +163,3 @@ function update_particle_properties!(lagrangian_particles::LagrangianParticles, 
     wait(device(arch), advect_particles_event)
     return nothing
 end
-
-update_particle_properties!(::Nothing, model, Δt) = nothing
-
-update_particle_properties!(model, Δt) = update_particle_properties!(model.particles, model, Δt)

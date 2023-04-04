@@ -1,11 +1,10 @@
 #####
 ##### PrescribedVelocityFields
 #####
-
+using Oceananigans: update_particle_properties!
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
 using Oceananigans.TimeSteppers: tick!
-using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
@@ -100,7 +99,7 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
 
 # If the model only tracks particles... do nothing but that!!!
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
-                 {TS, E, A, S, G, T, V, B, R, F, P<:LagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; euler=false) 
     model.timestepper.previous_Δt = Δt

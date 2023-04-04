@@ -159,6 +159,12 @@ Abstract supertype for lagranigan particles.
 """
 abstract type AbstractLagrangianParticles end
 
+update_particle_properties!(::Nothing, model, Δt) = nothing
+
+update_particle_properties!(model, Δt) = update_particle_properties!(model.particles, model, Δt)
+
+update_particle_properties!(particles::AbstractLagrangianParticles, model, Δt) = error("You need to define an `update_particle_properties!` method for $(typeof(particles))")
+
 """
     AbstractDiagnostic
 
@@ -221,9 +227,9 @@ include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Distributed/Distributed.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
