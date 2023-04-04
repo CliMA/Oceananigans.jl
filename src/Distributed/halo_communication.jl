@@ -336,12 +336,17 @@ for side in sides
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             recv_event = Threads.@spawn begin
-                # Not pick up event for the moment
-                range = priority_range()
-                priority = last(range)
+
+                # range = priority_range()
+                # priority = last(range)
             
-                new_stream = CuStream(; priority)
-                stream!(new_stream)
+                # old_stream = stream()
+                # r_flags = Ref{Cuint}()
+                # cuStreamGetFlags(old_stream, r_flags)
+                # flags = CUstream_flags_enum(r_flags[])
+                # new_stream = CuStream(; flags, priority)
+                # stream!(new_stream)
+                priority!(device(arch), :high)
                 cooperative_test!(recv_req)
                 sync_device!(arch)
             end
