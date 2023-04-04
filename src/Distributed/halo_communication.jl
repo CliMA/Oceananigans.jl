@@ -28,7 +28,9 @@ import Oceananigans.BoundaryConditions:
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
-@inline sync_device!(::GPU) = synchronize()
+@inline sync_device!(::CPU)                 = nothing
+@inline sync_device!(::GPU)                 = synchronize()
+@inline sync_device!(arch::DistributedArch) = sync_device!(arch.child_architecture)
 
 #####
 ##### MPI tags for halo communication BCs
@@ -333,6 +335,7 @@ for side in sides
 
             recv_event = Threads.@spawn begin
                 cooperative_test!(recv_req)
+                sync_device!(arch)
             end
 
             return recv_event
