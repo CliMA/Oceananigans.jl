@@ -123,7 +123,7 @@ end
     @inbounds particle_property[p] = interpolate(field, LX, LY, LZ, grid, particles.x[p], particles.y[p], particles.z[p])
 end
 
-function update_particle_properties!(lagrangian_particles, model, Δt)
+function update_particle_properties!(lagrangian_particles::LagrangianParticles, model, Δt)
 
     # Update tracked field properties.
     workgroup = min(length(lagrangian_particles), 256)

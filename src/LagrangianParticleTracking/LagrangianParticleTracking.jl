@@ -7,7 +7,7 @@ using Adapt
 using KernelAbstractions
 using StructArrays
 
-using Oceananigans: total_velocities
+using Oceananigans: total_velocities, AbstractLagrangianParticles
 using Oceananigans.Grids
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
@@ -32,7 +32,7 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.y, true) * ", "),
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
-struct LagrangianParticles{P, R, T, D, Π}
+struct LagrangianParticles{P, R, T, D, Π} <: AbstractLagrangianParticles
         properties :: P
        restitution :: R
     tracked_fields :: T

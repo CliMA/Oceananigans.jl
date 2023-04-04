@@ -1,7 +1,7 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
+using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic, AbstractLagrangianParticles
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: DistributedArch
@@ -17,13 +17,12 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
 
-const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,

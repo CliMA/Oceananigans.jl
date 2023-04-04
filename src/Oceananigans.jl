@@ -154,6 +154,12 @@ Abstract supertype for models.
 abstract type AbstractModel{TS} end
 
 """
+    AbstractLagrangianParticles
+Abstract supertype for lagranigan particles.
+"""
+abstract type AbstractLagrangianParticles end
+
+"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current

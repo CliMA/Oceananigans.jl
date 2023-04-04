@@ -18,7 +18,7 @@ using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.LagrangianParticleTracking: AbstractLagrangianParticles
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
@@ -31,7 +31,7 @@ validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
-const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
@@ -113,7 +113,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
-    particles::Union{Nothing, LagrangianParticles} = nothing,
+                     particles::ParticlesOrNothing = nothing,
              biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
