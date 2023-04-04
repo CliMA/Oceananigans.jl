@@ -86,10 +86,13 @@ end
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-
     i, j = @index(Global, NTuple)
+    _solve_batched_tridiagonal_system(i, j, ϕ, a, b, c, f, t, grid, p, args...)
+end
 
+@inline function _solve_batched_tridiagonal_system(i, j, ϕ, a, b, c, f, t, grid, p, args...)
+    
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     @inbounds begin
         β  = get_coefficient(b, i, j, 1, grid, p, args...)
         f₁ = get_coefficient(f, i, j, 1, grid, p, args...)
@@ -104,7 +107,7 @@ end
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
             fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
-            
+
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
@@ -116,4 +119,6 @@ end
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
+
+    return nothing
 end

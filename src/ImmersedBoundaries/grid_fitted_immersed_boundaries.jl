@@ -82,7 +82,7 @@ end
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
     validate_ib_size(grid, ib)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing, nothing)
 end
 
 function validate_ib_size(grid, ib)

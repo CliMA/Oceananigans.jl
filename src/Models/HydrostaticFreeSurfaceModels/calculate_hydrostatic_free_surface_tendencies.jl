@@ -9,7 +9,7 @@ using Oceananigans.Grids: halo_size
 import Oceananigans.Distributed: complete_communication_and_compute_boundary
 import Oceananigans.Distributed: interior_tendency_kernel_size, interior_tendency_kernel_offsets
 
-using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -91,7 +91,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
     
-    only_active_cells = use_only_active_cells(grid)
+    only_active_cells = use_only_active_interior_cells(grid)
 
     kernel_size    =   interior_tendency_kernel_size(grid)
     kernel_offsets = interior_tendency_kernel_offsets(grid)
@@ -155,7 +155,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
-    only_active_cells = use_only_active_cells(grid)
+    only_active_cells = use_only_active_interior_cells(grid)
 
     kernel_size    =   interior_tendency_kernel_size(grid)
     kernel_offsets = interior_tendency_kernel_offsets(grid)
@@ -212,7 +212,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gu!(Gu, offs, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -227,7 +227,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gv!(Gv, offs, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -246,7 +246,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, offs, tendency_kernel_function, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
 end
 

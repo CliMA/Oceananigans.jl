@@ -104,19 +104,20 @@ abstract type AbstractImmersedBoundary end
 ##### ImmersedBoundaryGrid
 #####
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
-    active_cells_map :: M
+    active_cells_interior :: M
+    active_cells_surface :: S
     
     # Internal interface
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, wcm::M) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M}
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
         FT = eltype(grid)
         arch = architecture(grid)
         Arch = typeof(arch)
         
-        return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, wcm)
+        return new{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
     end
 end
 
@@ -124,9 +125,10 @@ const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
 @inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
-@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})  = getfield(ibg, :immersed_boundary)
-@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})    = getfield(ibg, :underlying_grid)
-@inline get_ibg_property(ibg::IBG, ::Val{:active_cells_map})   = getfield(ibg, :active_cells_map)
+@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
+@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
+@inline get_ibg_property(ibg::IBG, ::Val{:active_cells_interior})  = getfield(ibg, :active_cells_interior)
+@inline get_ibg_property(ibg::IBG, ::Val{:active_cells_surface})   = getfield(ibg, :active_cells_surface)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 

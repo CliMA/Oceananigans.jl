@@ -62,14 +62,14 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
                workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
 
 
-    if only_active_cells
-        workgroup, worksize = active_cells_work_layout(worksize, grid) 
+    if !isnothing(only_active_cells)
+        workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
     end
 
     return workgroup, worksize
 end
 
-active_cells_work_layout(size, grid) = heuristic_workgroup(size...), size
+active_cells_work_layout(size, only_active_cells, grid) = heuristic_workgroup(size...), size
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)

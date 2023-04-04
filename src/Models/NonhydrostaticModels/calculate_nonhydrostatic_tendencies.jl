@@ -3,7 +3,7 @@ import Oceananigans.TimeSteppers: compute_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 
-using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
 
 """
     compute_tendencies!(model::NonhydrostaticModel)
@@ -79,7 +79,7 @@ function calculate_interior_tendency_contributions!(model)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
     w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
     
-    only_active_cells = use_only_active_cells(grid)
+    only_active_cells = use_only_active_interior_cells(grid)
 
     launch!(arch, grid, :xyz, calculate_Gu!, 
             tendencies.u, u_kernel_args...;
@@ -126,7 +126,7 @@ end
 
 @kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -138,7 +138,7 @@ end
 
 @kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -150,7 +150,7 @@ end
 
 @kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -166,7 +166,7 @@ end
 
 @kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
