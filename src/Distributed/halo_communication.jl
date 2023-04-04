@@ -340,11 +340,7 @@ for side in sides
                 range = priority_range()
                 priority = last(range)
             
-                old_stream = stream()
-                r_flags = Ref{Cuint}()
-                cuStreamGetFlags(old_stream, r_flags)
-                flags = CUstream_flags_enum(r_flags[])
-                new_stream = CuStream(; flags, priority)
+                new_stream = CuStream(; priority)
                 stream!(new_stream)
                 cooperative_test!(recv_req)
                 sync_device!(arch)
