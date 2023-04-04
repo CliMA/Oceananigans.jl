@@ -334,7 +334,15 @@ for side in sides
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             recv_event = Threads.@spawn begin
-                priority!(device(arch), :high)
+                range = CUDA.priority_range()
+                priority = last(range)
+            
+                old_stream = CUDA.stream()
+                r_flags = Ref{Cuint}()
+                CUDA.cuStreamGetFlags(old_stream, r_flags)
+                flags = CUDA.CUstream_flags_enum(r_flags[])
+                new_stream = CUDA.CuStream(; flags, priority)
+                CUDA.stream!(new_stream)
                 cooperative_test!(recv_req)
                 sync_device!(arch)
             end
