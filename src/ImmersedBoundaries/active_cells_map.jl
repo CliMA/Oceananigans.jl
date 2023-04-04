@@ -7,17 +7,20 @@ import Oceananigans.Utils: active_cells_work_layout
 
 const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
+struct InteriorMap end
+struct SurfaceMap end
+
 @inline use_only_active_interior_cells(grid::AbstractGrid)   = nothing
-@inline use_only_active_interior_cells(grid::ActiveCellsIBG) = Val(:interior)
+@inline use_only_active_interior_cells(grid::ActiveCellsIBG) = InteriorMap()
 
 @inline use_only_active_surface_cells(grid::AbstractGrid)   = nothing
-@inline use_only_active_surface_cells(grid::ActiveCellsIBG) = Val(:surface)
+@inline use_only_active_surface_cells(grid::ActiveCellsIBG) = SurfaceMap()
 
-@inline active_cells_work_layout(size, ::Val{:surface},  grid::ActiveCellsIBG) = min(length(grid.active_cells_surface),  256), length(grid.active_cells_surface)
-@inline active_cells_work_layout(size, ::Val{:interior}, grid::ActiveCellsIBG) = min(length(grid.active_cells_interior), 256), length(grid.active_cells_interior)
+@inline active_cells_work_layout(size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.active_cells_interior), 256), length(grid.active_cells_interior)
+@inline active_cells_work_layout(size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.active_cells_surface),  256), length(grid.active_cells_surface)
 
 @inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_interior[idx])
-@inline active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG)  = Base.map(Int, grid.active_cells_surface[idx])
+@inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_surface[idx])
 
 function ImmersedBoundaryGrid(grid, ib, active_cells_map::Bool) 
 
@@ -29,11 +32,12 @@ function ImmersedBoundaryGrid(grid, ib, active_cells_map::Bool)
         map_interior = active_cells_map_interior(ibg)
         map_interior = arch_array(architecture(ibg), map_interior)
 
-        map_surface = active_cells_map_surface(ibg)
-        map_surface = arch_array(architecture(ibg), map_surface)
-    else
-        map_interior = nothing
         map_surface  = nothing
+        # map_surface = active_cells_map_surface(ibg)
+        # map_surface = arch_array(architecture(ibg), map_surface)
+    else
+        map_surface  = nothing
+        map_interior = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 

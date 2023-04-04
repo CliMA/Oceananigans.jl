@@ -48,7 +48,7 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=(), only_active_cells = false)
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
@@ -60,11 +60,6 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
                workdims == :xy  ? (Nx′, Ny′) :
                workdims == :xz  ? (Nx′, Nz′) :
                workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
-
-
-    if !isnothing(only_active_cells)
-        workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
-    end
 
     return workgroup, worksize
 end
@@ -81,14 +76,17 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
-                 only_active_cells = false,
+                 only_active_cells = nothing,
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
                                       include_right_boundaries,
                                       reduced_dimensions,
-                                      location, 
-                                      only_active_cells)
+                                      location)
+    
+    if !isnothing(only_active_cells)
+        workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
+    end
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 

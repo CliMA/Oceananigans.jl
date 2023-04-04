@@ -19,7 +19,7 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:DistributedArch} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, <:DistributedArch} where {FT, TX, TY, TZ, I, M}
+const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, S, <:DistributedArch} where {FT, TX, TY, TZ, I, S, M}
 
 """
     RectilinearGrid(arch::DistributedArch, FT=Float64; kw...)
@@ -34,13 +34,14 @@ function RectilinearGrid(arch::DistributedArch,
                          z = nothing,
                          halo = nothing,
                          extent = nothing,
-                         topology = (Periodic, Periodic, Bounded),
-                         partitioned_size = nothing)
+                         topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, size, halo, x, y, z =
-        validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
+    global_sizes = concatenate_local_size(size, arch)
+    global_size  = sum.(global_sizes)
 
-    Nx, Ny, Nz = size
+    TX, TY, TZ, global_size, halo, x, y, z =
+        validate_rectilinear_grid_args(topology, global_size, halo, FT, extent, x, y, z)
+
     Hx, Hy, Hz = halo
 
     ri, rj, rk = arch.local_index
@@ -50,24 +51,11 @@ function RectilinearGrid(arch::DistributedArch,
     TY = insert_connected_topology(TY, Ry, rj)
     TZ = insert_connected_topology(TZ, Rz, rk)
 
-
-    if isnothing(partitioned_size)
-        @assert isinteger(Nx / Rx)
-        @assert isinteger(Ny / Ry)
-        @assert isinteger(Nz / Rz)
-
-        nx, nx, nz = Nx÷Rx, Ny÷Ry, Nz÷Rz
+    nx, ny, nz = size
     
-        xl = partition(x, nx, Rx, ri)
-        yl = partition(y, ny, Ry, rj)
-        zl = partition(z, nz, Rz, rk)
-    else
-        nx, ny, nz = (partitioned_size[1][ri], partitioned_size[2][rj], Nz)
-
-        xl = partition(longitude, partitioned_size[1], Rx, ri)
-        yl = partition(latitude,  partitioned_size[2], Ry, rj)
-        zl = z
-    end
+    xl = partition(x, nx, Rx, ri)
+    yl = partition(y, ny, Ry, rj)
+    zl = partition(z, nz, Rz, rk)
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, Hx, xl, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))
@@ -102,11 +90,14 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
                                z,           
                                topology = nothing,           
                                radius = R_Earth,
-                               halo = (1, 1, 1),
-                               partitioned_size = nothing)
+                               halo = (1, 1, 1))
+
+
+    global_sizes = concatenate_local_size(size, arch)
+    global_size  = sum.(global_sizes)
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
     
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
@@ -115,23 +106,11 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
-    if isnothing(partitioned_size)
-        @assert isinteger(Nλ / Rx)
-        @assert isinteger(Nφ / Ry)
-        @assert isinteger(Nz / Rz)
-
-        nλ, nφ, nz = Nλ÷Rx, Nφ÷Ry, Nz÷Rz
+    nλ, nφ, nz = size
     
-        λl = partition(longitude, nλ, Rx, ri)
-        φl = partition(latitude,  nφ, Ry, rj)
-        zl = partition(z,         nz, Rz, rk)
-    else
-        nλ, nφ, nz = (partitioned_size[1][ri], partitioned_size[2][rj], Nz)
-
-        λl = partition(longitude, partitioned_size[1], Rx, ri)
-        φl = partition(latitude,  partitioned_size[2], Ry, rj)
-        zl = z
-    end
+    λl = partition(longitude, nλ, Rx, ri)
+    φl = partition(latitude,  nφ, Ry, rj)
+    zl = partition(z,         nz, Rz, rk)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -179,7 +158,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     nx, ny, nz = n = size(grid)
     Hx, Hy, Hz = H = halo_size(grid)
-    Nx, Ny, Nz = n .* R
+    Nx, Ny, Nz = sum.(concatenate_local_size(n, arch))
 
     TX, TY, TZ = topology(grid)
 
@@ -222,7 +201,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     nλ, nφ, nz = n = size(grid)
     Hλ, Hφ, Hz = H = halo_size(grid)
-    Nλ, Nφ, Nz = n .* R
+    Nλ, Nφ, Nz = sum.(concatenate_local_size(n, arch))
 
     TX, TY, TZ = topology(grid)
 
