@@ -82,7 +82,7 @@ end
 Partition a global array in local arrays of size `(nx, ny)` if 2D or `(nx, ny, nz)` is 3D.
 Usefull for boundary arrays, forcings and initial conditions.
 """
-partition_global_array(arch, c_global::Function, Nl) = c_global 
+partition_global_array(arch, c_global::Function, nl) = c_global 
 
 # Here we just assume we cannot partition in z (we should remove support for that!!)
 function partition_global_array(arch, c_global::AbstractArray, nl) 
@@ -143,7 +143,7 @@ function construct_global_array(arch, c_local::AbstractArray, nl)
     
     Nx = sum(nxl)
     Ny = sum(nyl)
-    Nz = n[3]
+    Nz = nl[3]
 
     if dims == 2 
         c_global = zeros(eltype(c_local), Nx, Ny)
