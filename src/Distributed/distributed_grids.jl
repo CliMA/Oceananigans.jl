@@ -377,7 +377,7 @@ function scatter_local_grids(arch::DistributedArch, global_grid::ImmersedBoundar
     ug = global_grid.underlying_grid
 
     local_ug = scatter_local_grids(arch, ug, local_size)
-    local_ib = getnamewrapper(ib)(partition_global_array(arch, ib.bottom_height, size(global_grid), local_size))
+    local_ib = getnamewrapper(ib)(partition_global_array(arch, ib.bottom_height, local_size))
     
     return ImmersedBoundaryGrid(local_ug, local_ib)
 end

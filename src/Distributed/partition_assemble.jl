@@ -77,9 +77,9 @@ end
 # do not currently work for 2D or 3D parallelizations
 # (They are not used anywhere in the code at the moment)
 """
-    partition_global_array(arch, c_global, (Nx, Ny, Nz))
+    partition_global_array(arch, c_global, (nx, ny, nz))
 
-Partition a global array (2D of size `(Nx, Ny)` or 3D of size `(Nx, Ny, Nz)`) in local arrays.
+Partition a global array in local arrays of size `(nx, ny)` if 2D or `(nx, ny, nz)` is 3D.
 Usefull for boundary arrays, forcings and initial conditions.
 """
 partition_global_array(arch, c_global::Function, Nl) = c_global 
