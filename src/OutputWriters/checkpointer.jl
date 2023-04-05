@@ -204,7 +204,7 @@ function set!(model, filepath::AbstractString)
         checkpointed_grid = file["grid"]
 
         model.grid == checkpointed_grid ||
-             error("The grid associated with $filepath and model.grid are not the same!")
+             @warn "The grid associated with $filepath and model.grid are not the same!"
 
         model_fields = prognostic_fields(model)
 

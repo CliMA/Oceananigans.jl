@@ -1,16 +1,16 @@
 using Oceananigans.Architectures: arch_array
 
 """
-    concatenate_local_size(n, arch::DistributedArch) 
+    concatenate_local_sizes(n, arch::DistributedArch) 
 
 returns a 3-Tuple containing a vector of `size(grid, idx)` for each rank in 
 all 3 directions
 """
-concatenate_local_size(n, arch::DistributedArch) = (concatenate_local_size(n, arch, 1),
-                                                    concatenate_local_size(n, arch, 2),
-                                                    concatenate_local_size(n, arch, 3))
+concatenate_local_sizes(n, arch::DistributedArch) = (concatenate_local_sizes(n, arch, 1),
+                                                    concatenate_local_sizes(n, arch, 2),
+                                                    concatenate_local_sizes(n, arch, 3))
 
-function concatenate_local_size(n, arch::DistributedArch, idx)
+function concatenate_local_sizes(n, arch::DistributedArch, idx)
     R = arch.ranks[idx]
     r = arch.local_index[idx]
     n = n[idx]
@@ -27,7 +27,7 @@ function concatenate_local_size(n, arch::DistributedArch, idx)
     return l
 end
 
-function concatenate_local_size(n, R, r) 
+function concatenate_local_sizes(n, R, r) 
     l = zeros(Int, R)
     l[r] = n
     MPI.Allreduce!(l, +, MPI.COMM_WORLD)
@@ -41,12 +41,12 @@ end
 
 # Have to fix this! This won't work for face constructors??
 function partition(c::AbstractVector, n, R, r)
-    nl = concatenate_local_size(n, R, r)
+    nl = concatenate_local_sizes(n, R, r)
     return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]
 end
 
 function partition(c::Tuple, n, R, r)
-    nl = concatenate_local_size(n, R, r)
+    nl = concatenate_local_sizes(n, R, r)
     N  = sum(nl)
 
     Δl = (c[2] - c[1]) / N  
@@ -69,7 +69,7 @@ and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
 function assemble(c_local::AbstractVector, n, R, r, r1, r2, comm) 
-    nl = concatenate_local_size(n, R, r)
+    nl = concatenate_local_sizes(n, R, r)
 
     c_global = zeros(eltype(c_local), sum(nl)+1)
 
@@ -109,14 +109,14 @@ Usefull for boundary arrays, forcings and initial conditions.
 """
 partition_global_array(arch, c_global::Function, n) = c_global 
 
-# Here we just assume we cannot partition in z (we should remove support for that!!)
+# Here we assume that we cannot partition in z (we should remove support for that)
 function partition_global_array(arch, c_global::AbstractArray, n) 
     c_global = arch_array(CPU(), c_global)
 
-    ri, rj, rk = r = arch.local_index
+    ri, rj, rk = arch.local_index
 
     dims = length(size(c_global))
-    nx, ny, nz = concatenate_local_size(n, arch)
+    nx, ny, nz = concatenate_local_sizes(n, arch)
 
     nz = nz[1]
 
@@ -151,7 +151,7 @@ function construct_global_array(arch, c_local::AbstractArray, n)
 
     dims = length(size(c_local))
 
-    nx, ny, nz = concatenate_local_size(n, arch)
+    nx, ny, nz = concatenate_local_sizes(n, arch)
 
     Nx = sum(nx)
     Ny = sum(ny)
@@ -173,5 +173,6 @@ function construct_global_array(arch, c_local::AbstractArray, n)
         
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
+
     return arch_array(child_architecture(arch), c_global)
 end

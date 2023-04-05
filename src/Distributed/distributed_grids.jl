@@ -36,7 +36,7 @@ function RectilinearGrid(arch::DistributedArch,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    global_size = sum.(concatenate_local_size(size, arch))
+    global_size = sum.(concatenate_local_sizes(size, arch))
     
     TX, TY, TZ, global_size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, global_size, halo, FT, extent, x, y, z)
@@ -92,7 +92,7 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
                                halo = (1, 1, 1))
 
 
-    global_sizes = concatenate_local_size(size, arch)
+    global_sizes = concatenate_local_sizes(size, arch)
     global_size  = sum.(global_sizes)
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
@@ -157,7 +157,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     nx, ny, nz = n = size(grid)
     Hx, Hy, Hz = H = halo_size(grid)
-    Nx, Ny, Nz = sum.(concatenate_local_size(n, arch))
+    Nx, Ny, Nz = sum.(concatenate_local_sizes(n, arch))
 
     TX, TY, TZ = topology(grid)
 
@@ -200,7 +200,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     nλ, nφ, nz = n = size(grid)
     Hλ, Hφ, Hz = H = halo_size(grid)
-    Nλ, Nφ, Nz = sum.(concatenate_local_size(n, arch))
+    Nλ, Nφ, Nz = sum.(concatenate_local_sizes(n, arch))
 
     TX, TY, TZ = topology(grid)
 
