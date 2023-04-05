@@ -870,8 +870,8 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        # x and y are 2D arrays
-        N = (size(x)..., size(z)...)
+        # λ and φ are 2D arrays
+        N = (size(λ)..., size(z)...)
         λ = Base.reshape(λ, N[1], Ν[2], 1)
         φ = Base.reshape(φ, N[1], N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
