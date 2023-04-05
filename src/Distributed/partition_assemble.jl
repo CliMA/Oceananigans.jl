@@ -85,7 +85,7 @@ end
 
 # Simple case, just take the first and the last core
 function assemble(c::Tuple, n, R, r, r1, r2, comm) 
-    c_global = zeros(Int, 2)
+    c_global = zeros(Float64, 2)
 
     if r == 1 && r1 == 1 && r2 == 1
         c_global[1] = c[1]

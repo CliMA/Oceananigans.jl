@@ -86,21 +86,19 @@ end
 function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
     
     for k in 1:size(ibg, 3)
-        interior_cells = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
-        interior_cells = convert_interior_cells(interior_cells, k, IndicesType)
-        active_indices = vcat(active_indices, interior_cells)
-
-        @show k
+        interior_indices = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
+        interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
+        active_indices = vcat(active_indices, interior_indices)
         GC.gc()
     end
 
     return active_indices
 end
 
-function convert_interior_cells(interior_cells, k, IndicesType)
-    interior_cells = getproperty.(interior_cells, :I) 
-    interior_cells = add_3rd_index.(interior_cells, k) |> Array{IndicesType}
-    return interior_cells
+function convert_interior_indices(interior_indices, k, IndicesType)
+    interior_indices =   getproperty.(interior_indices, :I) 
+    interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
+    return interior_indices
 end
 
 @inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
