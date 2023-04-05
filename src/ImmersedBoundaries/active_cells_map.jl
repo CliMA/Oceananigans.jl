@@ -89,6 +89,8 @@ function findall_active_indices!(active_indices, active_cells_field, ibg, Indice
         interior_cells = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_cells = convert_interior_cells(interior_cells, k, IndicesType)
         active_indices = vcat(active_indices, interior_cells)
+
+        @show k
         GC.gc()
     end
 
