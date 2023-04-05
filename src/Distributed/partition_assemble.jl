@@ -1,5 +1,11 @@
 using Oceananigans.Architectures: arch_array
 
+"""
+    concatenate_local_size(n, arch::DistributedArch) 
+
+returns a 3-Tuple containing a vector of `size(grid, idx)` for each rank in 
+all 3 directions
+"""
 concatenate_local_size(n, arch::DistributedArch) = (concatenate_local_size(n, arch, 1),
                                                     concatenate_local_size(n, arch, 2),
                                                     concatenate_local_size(n, arch, 3))
@@ -33,15 +39,7 @@ end
 # Used for grid constructors (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)
 # which means that we need to repeat the value at the right boundary
 
-partition(c::Colon, n, R, r) = Colon()
-
-function partition(c::UnitRange, n, R, r)
-    g = (first(c), last(c))
-    ℓ = partition(g, n, R, r)
-    return UnitRange(ℓ[1], ℓ[2])
-end
-
-# Have to fix this! This won't work for face constructors
+# Have to fix this! This won't work for face constructors??
 function partition(c::AbstractVector, n, R, r)
     nl = concatenate_local_size(n, R, r)
     return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]
@@ -63,9 +61,9 @@ function partition(c::Tuple, n, R, r)
 end
 
 """
-    assemble(c::AbstractVector, Nc, Nr, r, arch) 
+    assemble(c::AbstractVector, n, R, r, r1, r2, comm) 
 
-Build a linear global coordinate vector given a local coordinate vector `c_local`
+Builds a linear global coordinate vector given a local coordinate vector `c_local`
 a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
@@ -101,7 +99,7 @@ function assemble(c::Tuple, n, R, r, r1, r2, comm)
 end 
 
 # TODO: partition_global_array and construct_global_array
-# do not currently work for 2D or 3D parallelizations
+# do not currently work for 3D parallelizations
 # (They are not used anywhere in the code at the moment exept for immersed boundaries)
 """
     partition_global_array(arch, c_global, (nx, ny, nz))
@@ -145,7 +143,7 @@ Usefull for boundary arrays, forcings and initial conditions.
 """
 construct_global_array(arch, c_local::Function, N) = c_local
 
-# TODO: This does not work for 2D parallelizations!!!
+# TODO: This does not work for 3D parallelizations!!!
 function construct_global_array(arch, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
 

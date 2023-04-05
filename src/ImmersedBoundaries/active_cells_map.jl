@@ -70,20 +70,26 @@ const MAXUInt32 = 2^32 - 1
 
 function active_cells_map_interior(ibg)
     active_cells_field = compute_active_cells_interior(ibg)
-    full_indices       = findall(arch_array(CPU(), interior(active_cells_field)))
-
-    # Reduce the size of the active_cells_map (originally a tuple of Int64)
+    
     N = maximum(size(ibg))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
-    smaller_indices = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType, IntType}
-    
-    return smaller_indices
+   
+    # Cannot findall on the entire field because we incur on OOM errors
+    active_indices = Tuple{IntType, IntType, IntType}[]
+    for k in 1:size(ibg, 3)
+        interior_cells = arch_array(CPU(), interior(active_cells_field, :, :, k))
+        push!(active_indices, getproperty.(findall(interior_cells), Ref(:I)) .|> Tuple{IntType, IntType, IntType})
+    end
+
+    return active_indices
 end
 
 function active_cells_map_surface(ibg)
     active_cells_field = compute_active_cells_surface(ibg)
-    full_indices       = findall(arch_array(CPU(), interior(active_cells_field, :, :, 1)))
-    
+    interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
+  
+    full_indices = findall(interior_cells)
+
     Nx, Ny, Nz = size(ibg)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)
     N = max(Nx, Ny)
