@@ -590,7 +590,7 @@ function nodes(grid::LatitudeLongitudeGrid, ℓx, ℓy, ℓz; reshape=false, wit
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        N = (length(x), length(y), length(z))
+        N = (length(λ), length(φ), length(z))
         λ = Base.reshape(λ, N[1], 1, 1)
         φ = Base.reshape(φ, 1, N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
