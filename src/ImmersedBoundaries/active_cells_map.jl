@@ -74,15 +74,34 @@ function active_cells_map_interior(ibg)
     N = maximum(size(ibg))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
    
+    IndicesType = Tuple{IntType, IntType, IntType}
+
     # Cannot findall on the entire field because we incur on OOM errors
-    active_indices = Tuple{IntType, IntType, IntType}[]
+    active_indices = IndicesType[]
+    active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
+
+    return active_indices
+end
+
+function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
+    
     for k in 1:size(ibg, 3)
-        interior_cells = arch_array(CPU(), interior(active_cells_field, :, :, k))
-        push!(active_indices, getproperty.(findall(interior_cells), Ref(:I)) .|> Tuple{IntType, IntType, IntType})
+        interior_cells = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
+        interior_cells = convert_interior_cells(interior_cells, k, IndicesType)
+        active_indices = vcat(active_indices, interior_cells)
+        GC.gc()
     end
 
     return active_indices
 end
+
+function convert_interior_cells(interior_cells, k, IndicesType)
+    interior_cells = getproperty.(interior_cells, :I) 
+    interior_cells = add_3rd_index.(interior_cells, k) |> Array{IndicesType}
+    return interior_cells
+end
+
+@inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
 
 function active_cells_map_surface(ibg)
     active_cells_field = compute_active_cells_surface(ibg)
