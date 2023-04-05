@@ -3,7 +3,7 @@ using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 #####
 ##### Output writer utilities

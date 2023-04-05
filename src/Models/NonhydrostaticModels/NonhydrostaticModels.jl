@@ -14,7 +14,7 @@ using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolve
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 
-import Oceananigans: fields, prognostic_fields, total_velocities
+import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 
 function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
@@ -60,15 +60,6 @@ fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, mode
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """
 prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
-
-"""
-    total_velocities(model::NonhydrostaticModel)
-
-Return the total velocity fields (velocity + background velocity) for `NonhydrostaticModel`.
-"""
-@inline total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
-                                                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
-                                                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")

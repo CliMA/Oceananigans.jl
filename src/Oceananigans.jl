@@ -154,18 +154,6 @@ Abstract supertype for models.
 abstract type AbstractModel{TS} end
 
 """
-    AbstractLagrangianParticles
-Abstract supertype for lagranigan particles.
-"""
-abstract type AbstractLagrangianParticles end
-
-update_particle_properties!(::Nothing, model, Δt) = nothing
-
-update_particle_properties!(model, Δt) = update_particle_properties!(model.particles, model, Δt)
-
-update_particle_properties!(particles::AbstractLagrangianParticles, model, Δt) = error("You need to define an `update_particle_properties!` method for $(typeof(particles))")
-
-"""
     AbstractDiagnostic
 
 Abstract supertype for diagnostics that compute information from the current
@@ -198,7 +186,6 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
-function total_velocities end
 
 #####
 ##### Include all the submodules
@@ -229,7 +216,6 @@ include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Distributed/Distributed.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
@@ -256,7 +242,6 @@ using .Coriolis
 using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
-using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .ImmersedBoundaries
@@ -277,7 +262,7 @@ function __init__()
         @info "Oceananigans will use $threads threads"
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4*threads)
+        FFTW.set_num_threads(4threads)
     end
 
     if CUDA.has_cuda()

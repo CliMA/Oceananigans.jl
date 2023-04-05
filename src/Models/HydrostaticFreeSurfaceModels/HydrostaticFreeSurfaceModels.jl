@@ -14,7 +14,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
-import Oceananigans: fields, prognostic_fields, initialize!, total_velocities
+import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 
 abstract type AbstractFreeSurface{E, G} end

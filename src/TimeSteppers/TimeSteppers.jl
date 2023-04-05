@@ -47,6 +47,10 @@ function calculate_tendencies! end
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing
 
+# Interface for time-stepping Lagrangian particles
+abstract type AbstractLagrangianParticles end
+update_lagrangian_particles!(model, Δt) = nothing
+
 reset!(timestepper) = nothing
 
 include("clock.jl")

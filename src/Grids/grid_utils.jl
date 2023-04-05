@@ -324,7 +324,6 @@ end
 
 nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
-
 #####
 ##### << Spacings >>
 #####

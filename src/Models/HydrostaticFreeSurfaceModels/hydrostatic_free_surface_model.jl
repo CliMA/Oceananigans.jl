@@ -1,7 +1,6 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans: AbstractModel, AbstractLagrangianParticles, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
@@ -13,9 +12,9 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_model_halo
+using Oceananigans.Models: AbstractModel, validate_model_halo
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
