@@ -42,7 +42,7 @@ function ImmersedBoundaryGrid(grid, ib, active_cells_map::Bool)
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
                                             ibg.immersed_boundary, 
-                                            map_interior, map_surface)
+                                            map_interior)
 end
 
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)

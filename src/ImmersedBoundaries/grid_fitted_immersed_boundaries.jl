@@ -82,7 +82,7 @@ end
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
     validate_ib_size(grid, ib)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing, nothing)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing)
 end
 
 function validate_ib_size(grid, ib)
@@ -177,9 +177,9 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true
     if precompute_mask
         mask_field = compute_mask(grid, ib)
         new_ib = GridFittedBoundary(mask_field)
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib, nothing)
     else
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing)
     end
 end
 
