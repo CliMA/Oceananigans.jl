@@ -5,27 +5,28 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 ##### Boundary conditions for Lagrangian particles
 #####
 
+# Functions for bouncing particles off walls to the right and left
 @inline  bounce_left(x, xᴿ, Cʳ) = xᴿ - Cʳ * (x - xᴿ)
 @inline bounce_right(x, xᴸ, Cʳ) = xᴸ + Cʳ * (xᴸ - x)
 
 """
-    enforce_boundary_conditions(x, xᴸ, xᴿ, ::Bounded)
+    enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ)
 
-If a particle with position `x` and domain `xᴸ < x < xᴿ` goes through the edge of the domain
-along a `Bounded` dimension, put them back at the wall.
+Return a new particle position if the particle position `x`
+is outside the Bounded interval `(xᴸ, xᴿ)` by bouncing the particle off
+the interval edge with coefficient of restitution `Cʳ).
 """
 @inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴿ, Cʳ),
                                                                 ifelse(x < xᴸ, bounce_right(x, xᴸ, Cʳ), x))
 
 """
-    enforce_boundary_conditions(x, xᴸ, xᴿ, ::Periodic)
+    enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ)
 
-If a particle with position `x` and domain `xᴸ < x < xᴿ` goes through the edge of the domain
-along a `Periodic` dimension, put them on the other side.
+Return a new particle position if the particle position `x`
+is outside the Periodic interval `(xᴸ, xᴿ)`.
 """
 @inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + (x - xᴿ),
                                                                  ifelse(x < xᴸ, xᴿ - (xᴸ - x), x))
-                                                                          
 
 const f = Face()
 const c = Center()
@@ -33,8 +34,8 @@ const c = Center()
 """
     bounce_immersed_particle((x, y, z), grid, restitution, previous_particle_indices)
 
-If a particle with position `x, y, z` is inside and immersed boundary, correct the 
-position based on the previous position (we bounce back a certain restitution from the old cell)
+Return a new particle position if the position `(x, y, z)` lies in an immersed cell by
+bouncing the particle off the immersed boundary with a coefficient or `restitution`.
 """
 @inline function bounce_immersed_particle((x, y, z), grid, restitution, previous_particle_indices)
     # Determine current particle cell
@@ -135,7 +136,7 @@ end
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
 @inline x_metric(i, j, grid::RectilinearGrid, u) = 1
-@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}, u) where FT = 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
+@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}, u) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
 
 @inline y_metric(i, j, grid::RectilinearGrid) = v
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = v / grid.radius * FT(360 / 2π)
