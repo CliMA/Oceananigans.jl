@@ -19,7 +19,7 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:DistributedArch} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, S, <:DistributedArch} where {FT, TX, TY, TZ, I, S, M}
+const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, <:DistributedArch} where {FT, TX, TY, TZ, I, M}
 
 """
     RectilinearGrid(arch::DistributedArch, FT=Float64; kw...)

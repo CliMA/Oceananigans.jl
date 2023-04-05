@@ -116,7 +116,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
         arch = architecture(grid)
         Arch = typeof(arch)
         
-        return new{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi)
+        return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, mi)
     end
 end
 
