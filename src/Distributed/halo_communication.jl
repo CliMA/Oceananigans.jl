@@ -174,6 +174,8 @@ function cooperative_waitall!(tasks::Array{Task})
     end
 end
 
+cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
+
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
@@ -303,12 +305,12 @@ for side in sides
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
-            send_event = Threads.@spawn begin
+            # send_event = Threads.@spawn begin
                 send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
-                cooperative_test!(send_req)
-            end
+                # cooperative_test!(send_req)
+            # end
 
-            return send_event
+            return send_req
         end
 
         @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_boundary(c, grid, side_location)
@@ -335,13 +337,13 @@ for side in sides
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
-            recv_event = Threads.@spawn begin
-                priority!(device(arch), :high)
-                cooperative_test!(recv_req)
-                sync_device!(arch)
-            end
+            # recv_event = Threads.@spawn begin
+            #     priority!(device(arch), :high)
+            #     cooperative_test!(recv_req)
+            #     sync_device!(arch)
+            # end
 
-            return recv_event
+            return recv_req
         end
 
         @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_halo(c, grid, side_location)
