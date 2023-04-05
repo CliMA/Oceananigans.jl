@@ -44,21 +44,26 @@ position based on the previous position (we bounce back a certain restitution fr
     k = Base.unsafe_trunc(Int, k)
    
     if immersed_cell(i, j, k, grid)
-        # Determine previous particle indices
+        # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
-        i⁻ = Base.unsafe_trunc(Int, i⁻)
-        j⁻ = Base.unsafe_trunc(Int, j⁻)
-        k⁻ = Base.unsafe_trunc(Int, k⁻)
        
         if !immersed_cell(i⁻, j⁻, k⁻, grid)
-            xᴿ, yᴿ, zᴿ = node(i+1, j+1, k+1, grid, f, f, f)
-            xᴸ, yᴸ, zᴸ = node(i, j, k, grid, f, f, f)
+            # Left-right bounds of the previous, non-immersed cell
+            xᴿ, yᴿ, zᴿ = node(i⁻+1, j⁻+1, k⁻+1, grid, f, f, f)
+            xᴸ, yᴸ, zᴸ = node(i⁻,   j⁻,   k⁻,   grid, f, f, f)
 
-            # What if we bounce too far? Hmm.
             Cʳ = restitution
             x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)    
             y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)    
-            z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)    
+            z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
+
+            #=
+            # Too paranoid? Correct particle position if it bounces too far.
+            x⁻, y⁻, z⁻ = node(i⁻, j⁻, k⁻, grid, c, c, c)
+            x⁺ = ifelse((x < xᴸ) | (x > xᴿ), x⁻, x⁺)
+            y⁺ = ifelse((y < yᴸ) | (y > yᴿ), y⁻, y⁺)
+            z⁺ = ifelse((z < zᴸ) | (z > zᴿ), z⁻, z⁺)
+            =#
         end
     end
 
@@ -72,23 +77,20 @@ Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, 
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
 @inline function advect_particle((x, y, z), grid, restitution, velocities, Δt)
-    current_particle_indices = fractional_indices(x, y, z, (c, c, c), grid)
+    # Obtain current particle indices
+    i, j, k = fractional_indices(x, y, z, (c, c, c), grid)
+    i = Base.unsafe_trunc(Int, i)
+    j = Base.unsafe_trunc(Int, j)
+    k = Base.unsafe_trunc(Int, k)
+
+    current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position
     u = interpolate(velocities.u, f, c, c, grid, x, y, z)
     v = interpolate(velocities.v, c, f, c, grid, x, y, z)
     w = interpolate(velocities.w, c, c, f, grid, x, y, z)
 
-    # We need the j-index of the particle in order to compute
-    # metrics for advection on curvilinear grids.
-    # Note: to support curvilinear grids other than LatitudeLongitudeGrid,
-    # we will also need the i-index.
-    i, j, k = fractional_indices(x, y, z, (c, c, c), grid)
-    i = Base.unsafe_trunc(Int, i)
-    j = Base.unsafe_trunc(Int, j)
-    k = Base.unsafe_trunc(Int, k)
-
-    # Transform Cartesian velocities into grid-dependent particle coordinate system.
+    # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
     ξ = x_metric(i, j, grid) 
