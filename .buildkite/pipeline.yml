@@ -62,7 +62,6 @@ steps:
           - "abstract_operations"
           - "cubed_sphere"
           - "multi_region"
-          - "shallowwater_regression"
           - "nonhydrostatic_regression"
           - "hydrostatic_regression"
           - "scripts"
@@ -99,7 +98,6 @@ steps:
           - "abstract_operations"
           - "cubed_sphere"
           - "multi_region"
-          - "shallowwater_regression"
           - "nonhydrostatic_regression"
           - "hydrostatic_regression"
           - "scripts"
@@ -177,4 +175,3 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
-
