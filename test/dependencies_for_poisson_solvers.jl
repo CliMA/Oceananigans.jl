@@ -2,7 +2,7 @@ using CUDA
 using Oceananigans.Solvers: solve!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 function poisson_solver_instantiates(grid, planner_flag)
@@ -57,14 +57,10 @@ function random_divergence_free_source_term(grid)
     set!(Rw, zeros(Nx, Ny, Nz))
 
     arch = architecture(grid)
-    fill_halo_regions!(Ru, nothing, nothing)
-    fill_halo_regions!(Rv, nothing, nothing)
-    fill_halo_regions!(Rw, nothing, nothing)
+    fill_halo_regions!((Ru, Rv, Rw))
 
-    launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid)
-
-    fill_halo_regions!(Rw, nothing, nothing)
-
+    compute_w_from_continuity!(U, arch, grid)
+    
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
