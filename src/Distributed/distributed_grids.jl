@@ -2,7 +2,7 @@ using MPI
 using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
+using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: R_Earth, metrics_precomputed
@@ -41,6 +41,8 @@ function RectilinearGrid(arch::DistributedArch,
     TX, TY, TZ, global_size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, global_size, halo, FT, extent, x, y, z)
 
+    size = validate_size(TX, TY, TZ, size)
+
     Hx, Hy, Hz = halo
 
     ri, rj, rk = arch.local_index
@@ -49,8 +51,6 @@ function RectilinearGrid(arch::DistributedArch,
     TX = insert_connected_topology(TX, Rx, ri)
     TY = insert_connected_topology(TY, Ry, rj)
     TZ = insert_connected_topology(TZ, Rz, rk)
-
-    nx, ny, nz = size
     
     xl = partition(x, nx, Rx, ri)
     yl = partition(y, ny, Ry, rj)
@@ -98,6 +98,8 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
     
+    size = validate_size(topology..., size)
+
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 

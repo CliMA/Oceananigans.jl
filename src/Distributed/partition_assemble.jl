@@ -6,9 +6,8 @@ using Oceananigans.Architectures: arch_array
 returns a 3-Tuple containing a vector of `size(grid, idx)` for each rank in 
 all 3 directions
 """
-concatenate_local_sizes(n, arch::DistributedArch) = (concatenate_local_sizes(n, arch, 1),
-                                                    concatenate_local_sizes(n, arch, 2),
-                                                    concatenate_local_sizes(n, arch, 3))
+concatenate_local_sizes(n, arch::DistributedArch) = 
+    Tuple(concatenate_local_sizes(n, arch, i) for i in 1:length(n))
 
 function concatenate_local_sizes(n, arch::DistributedArch, idx)
     R = arch.ranks[idx]
