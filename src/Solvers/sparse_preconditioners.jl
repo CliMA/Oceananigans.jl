@@ -3,7 +3,6 @@ using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
-using AlgebraicMultigrid: aspreconditioner
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
