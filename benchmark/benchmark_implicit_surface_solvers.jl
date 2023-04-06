@@ -4,7 +4,6 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
-using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
 using Printf
 using TimerOutputs
@@ -19,7 +18,6 @@ const to = TimerOutput()
 using_rectilinear_grid = true
 
 arch = CPU()
-initialize_AMGX(arch)
 
 for N in 10:10:250
     @info "N=$N"
@@ -70,7 +68,7 @@ for N in 10:10:250
     implicit_free_surface_solvers = (#:FastFourierTransform,
                                      #:PreconditionedConjugateGradient,
                                      :HeptadiagonalIterativeSolver,
-                                     :Multigrid,
+                                     #:Multigrid, # multigrid solvers moved to https://github.com/CliMA/MultigridOceanSolvers.jl
                                      :HeptadiagonalIterativeSolver_withMGpreconditioner,
                                      #:PreconditionedConjugateGradient_withFFTpreconditioner,
                                      #:PreconditionedConjugateGradient_withMGpreconditioner,
@@ -172,5 +170,3 @@ for N in 10:10:250
     end
     show(to)
 end
-
-finalize_AMGX(arch)
