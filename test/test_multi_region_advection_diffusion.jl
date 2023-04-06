@@ -141,17 +141,21 @@ partitioning = [XPartition]
 
 for arch in archs
 
-    grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
+    grid_rect = RectilinearGrid(arch,
+                                size = (Nx, Ny, 1),
                                 halo = (3, 3, 3),
                                 topology = (Periodic, Bounded, Bounded),
                                 x = (0, 1),
                                 y = (0, 1),
                                 z = (0, 1))
 
-    grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+    grid_lat = LatitudeLongitudeGrid(arch,
+                                     size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
-                                     radius = 1, latitude = (-80, 80),
-                                     longitude = (-180, 180), z = (-1, 0))
+                                     latitude = (-80, 80),
+                                     longitude = (-180, 180),
+                                     z = (-1, 0),
+                                     radius = 1)
 
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
@@ -163,7 +167,7 @@ for arch in archs
 
             for regions in [2], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
+                c, e = solid_body_tracer_advection_test(grid; P=P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
                 e = interior(reconstruct_global_field(e))
@@ -177,8 +181,11 @@ for arch in archs
     @testset "Testing multi region solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
-                                     radius = 1, latitude = (-80, 80),
-                                     longitude = (-160, 160), z = (-1, 0))
+                                     latitude = (-80, 80),
+                                     longitude = (-160, 160),
+                                     z = (-1, 0),
+                                     radius = 1,
+                                     topology=(Bounded, Bounded, Bounded))
 
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
 
@@ -190,7 +197,7 @@ for arch in archs
 
         for regions in [2], P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c, η = solid_body_rotation_test(grid; P = P, regions=regions)
+            u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
 
             u = interior(reconstruct_global_field(u))
             v = interior(reconstruct_global_field(v))

@@ -8,8 +8,10 @@ export AbstractRectilinearGrid, RectilinearGrid
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
-export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid, ConformalCubedSphereGrid
+export node, nodes
+export xnode, ynode, znode, λnode, φnode
+export xnodes, ynodes, znodes, λnodes, φnodes
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data

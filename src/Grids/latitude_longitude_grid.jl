@@ -581,31 +581,79 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 ##### Grid nodes
 #####
 
-@inline xnodes(grid::LatLonGrid, ℓx::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
-@inline xnodes(grid::LatLonGrid, ℓx::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
+function nodes(grid::LatitudeLongitudeGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
+    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
-@inline ynodes(grid::LatLonGrid, ℓy::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline ynodes(grid::LatLonGrid, ℓy::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
+    if reshape
+        N = (length(λ), length(φ), length(z))
+        λ = Base.reshape(λ, N[1], 1, 1)
+        φ = Base.reshape(φ, 1, N[2], 1)
+        z = Base.reshape(z, 1, 1, N[3])
+    end
 
-@inline znodes(grid::LatLonGrid, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline znodes(grid::LatLonGrid, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
+    return (λ, φ, z)
+end
 
-@inline xnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
-@inline ynodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
+@inline λnodes(grid::LatLonGrid, ℓx::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ :
+    view(grid.λᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
+@inline λnodes(grid::LatLonGrid, ℓx::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ :
+    view(grid.λᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
+
+@inline φnodes(grid::LatLonGrid, ℓy::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ :
+    view(grid.φᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
+@inline φnodes(grid::LatLonGrid, ℓy::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ :
+    view(grid.φᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
+
+@inline xnodes(grid::LatLonGrid, ℓx, ℓy; with_halos=false) =
+    grid.radius * deg2rad.(λnodes(grid, ℓx; with_halos=with_halos))' .* hack_cosd.(φnodes(grid, ℓy; with_halos=with_halos))
+@inline ynodes(grid::LatLonGrid, ℓy; with_halos=false)     =
+    grid.radius * deg2rad.(φnodes(grid, ℓy; with_halos=with_halos))
+
+@inline znodes(grid::LatLonGrid, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
+    view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
+@inline znodes(grid::LatLonGrid, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ :
+    view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
+
+# convenience
+@inline λnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
+@inline φnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓy; with_halos)
 @inline znodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
+@inline xnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
+@inline ynodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline xnode(i, grid::LatLonGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
-@inline xnode(i, grid::LatLonGrid, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
 
-@inline ynode(j, grid::LatLonGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
-@inline ynode(j, grid::LatLonGrid, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                       φnode(i, j, k, grid, ℓx, ℓy, ℓz),
+                                                       znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy, ℓz) = (φnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy::Nothing, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz::Nothing) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(λnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(φnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline node(i, j, k, grid::LatLonGrid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
+
+@inline λnode(i, grid::LatLonGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
+@inline λnode(i, grid::LatLonGrid, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
+
+@inline φnode(j, grid::LatLonGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
+@inline φnode(j, grid::LatLonGrid, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
+
+@inline xnode(i, j, grid::LatLonGrid, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, grid, ℓx)) * hack_cosd((φnode(j, grid, ℓy)))
+@inline ynode(j, grid::LatLonGrid, ℓy)        = grid.radius * deg2rad(φnode(j, grid, ℓy))
 
 @inline znode(k, grid::LatLonGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::LatLonGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
 
-@inline xnode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
-@inline ynode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
+# convenience
+@inline λnode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = λnode(i, grid, ℓx)
+@inline φnode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = φnode(j, grid, ℓy)
 @inline znode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
+@inline xnode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
+@inline ynode(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 
 #####
 ##### Grid spacings in x, y, z (in meters)
@@ -646,10 +694,6 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 @inline xspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx, ℓy; kwargs...)
 @inline yspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓx, ℓy; kwargs...)
 @inline zspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
-
-min_Δx(grid::LatLonGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
-min_Δy(grid::LatLonGrid) = topology(grid)[2] == Flat ? Inf : minimum((yspacings(grid, Face(), Center()), yspacings(grid, Center(), Face())))
-min_Δz(grid::LatLonGrid) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))
 
 
 #####

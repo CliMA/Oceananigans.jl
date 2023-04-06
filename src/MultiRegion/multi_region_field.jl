@@ -70,7 +70,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(location(mrf), global_grid; indices)
-  
+
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
     compact_data!(global_field, global_grid, data, mrf.grid.partition)
