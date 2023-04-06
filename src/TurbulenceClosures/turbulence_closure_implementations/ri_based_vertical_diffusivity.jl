@@ -107,9 +107,10 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ = Field((Center, Center, Face), grid)
-    ν = Field((Center, Center, Face), grid)
-    return (; κ, ν)
+    κ  = Field((Center, Center, Face), grid)
+    ν  = Field((Center, Center, Face), grid)
+    Ri = Field((Center, Center, Face), grid)
+    return (; κ, ν, Ri)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
@@ -122,6 +123,19 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
     only_active_cells = use_only_active_interior_cells(grid)
+
+    launch!(arch, grid, kernel_size,
+            compute_ri_number!,
+            diffusivities,
+            kernel_offsets,
+            grid,
+            closure,
+            velocities,
+            tracers,
+            buoyancy,
+            top_tracer_bcs,
+            clock;
+            only_active_cells)
 
     launch!(arch, grid, kernel_size,
             compute_ri_based_diffusivities!,
@@ -160,6 +174,18 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 
     # Clip N² and avoid NaN
     return ifelse(N² <= 0, zero(grid), Ri)
+end
+
+@kernel function compute_ri_number!(diffusivities, offs, grid, closure::FlavorOfRBVD,
+    velocities, tracers, buoyancy, tracer_bcs, clock)
+
+    i′, j′, k′ = @index(Global, NTuple)
+
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
+    k = k′ + offs[3]
+
+    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, bouyancy, tracers)
 end
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
@@ -204,7 +230,7 @@ end
     κᵉ = ifelse(entraining, Cᵉ, zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κ★ = κ₀ * τ
