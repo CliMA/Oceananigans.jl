@@ -2,7 +2,7 @@ using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
-using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, use_only_active_interior_cells, active_linear_index_to_interior_tuple 
+using Oceananigans.Utils: use_only_active_interior_cells
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     ν₀  :: FT
