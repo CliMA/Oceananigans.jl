@@ -2,6 +2,7 @@ using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, use_only_active_interior_cells, active_linear_index_to_interior_tuple 
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     ν₀  :: FT
@@ -120,6 +121,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
+    only_active_cells = use_only_active_interior_cells(grid)
+
     launch!(arch, grid, kernel_size,
             compute_ri_based_diffusivities!,
             diffusivities,
@@ -130,7 +133,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
             tracers,
             buoyancy,
             top_tracer_bcs,
-            clock)
+            clock;
+            only_active_cells)
 
     return nothing
 end
@@ -158,14 +162,36 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
+
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
-                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
+                                                velocities, tracers, buoyancy, tracer_bcs, clock)
 
     i′, j′, k′ = @index(Global, NTuple)
 
     i = i′ + offs[1] 
     j = j′ + offs[2] 
     k = k′ + offs[3]
+
+    _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+                                     velocities, tracers, buoyancy, tracer_bcs, clock)
+end
+
+@kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid::ActiveCellsIBG, closure::FlavorOfRBVD,
+                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
+
+    idx = @index(Global, Linear)
+
+    i′, j′, k′ = active_linear_index_to_interior_tuple(idx, grid)
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
+    k = k′ + offs[3]
+
+    _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+                                     velocities, tracers, buoyancy, tracer_bcs, clock)
+end
+
+@inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
@@ -203,6 +229,8 @@ end
     νⁿ = ν★
     @inbounds diffusivities.κ[i, j, k] = κⁿ
     @inbounds diffusivities.ν[i, j, k] = νⁿ
+
+    return nothing
 end
 
 #####
