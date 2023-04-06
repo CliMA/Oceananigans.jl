@@ -1,4 +1,4 @@
-using Oceananigans.TurbulenceClosures: _compute_ri_based_diffusivities!
+using Oceananigans.TurbulenceClosures: _compute_ri_based_diffusivities!, FlavorOfRBVD
 import Oceananigans.TurbulenceClosures: compute_ri_based_diffusivities!
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid::ActiveCellsIBG, closure::FlavorOfRBVD,
