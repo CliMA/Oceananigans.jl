@@ -3,14 +3,14 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Utils: active_cells_work_layout
+import Oceananigans.Utils: active_cells_work_layout, 
+                           use_only_active_interior_cells
 
 const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 struct InteriorMap end
 struct SurfaceMap end
 
-@inline use_only_active_interior_cells(grid::AbstractGrid)   = nothing
 @inline use_only_active_interior_cells(grid::ActiveCellsIBG) = InteriorMap()
 
 @inline use_only_active_surface_cells(grid::AbstractGrid)   = nothing

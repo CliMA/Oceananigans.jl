@@ -64,8 +64,9 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-active_cells_work_layout(size, only_active_cells, grid) = heuristic_workgroup(size...), size
-
+@inline active_cells_work_layout(size, only_active_cells, grid) = heuristic_workgroup(size...), size
+@inline use_only_active_interior_cells(grid) = nothing
+\
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
 
