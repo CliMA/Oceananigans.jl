@@ -177,7 +177,7 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 end
 
 @kernel function compute_ri_number!(diffusivities, offs, grid, closure::FlavorOfRBVD,
-    velocities, tracers, buoyancy, tracer_bcs, clock)
+                                    velocities, tracers, buoyancy, tracer_bcs, clock)
 
     i′, j′, k′ = @index(Global, NTuple)
 
@@ -185,7 +185,7 @@ end
     j = j′ + offs[2] 
     k = k′ + offs[3]
 
-    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, bouyancy, tracers)
+    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
 end
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
