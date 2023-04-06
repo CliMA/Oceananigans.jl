@@ -105,7 +105,7 @@ function test_regular_rectilinear_correct_end_faces(FT)
     Δ = L / N
 
     grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
-                                  topology=(Periodic, Bounded, Bounded))
+                           topology=(Periodic, Bounded, Bounded))
 
     @test grid.xᶠᵃᵃ[N+1] == L
     @test grid.yᵃᶠᵃ[N+2] == L + Δ
@@ -119,7 +119,7 @@ function test_regular_rectilinear_ranges_have_correct_length(FT)
     Hx, Hy, Hz = 1, 2, 1
 
     grid = RectilinearGrid(CPU(), FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
-                                  topology=(Bounded, Bounded, Bounded))
+                           topology=(Bounded, Bounded, Bounded))
 
     @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
@@ -188,33 +188,35 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     for (grid_type, grid) in zip(grids_types, grids)
         @info "        Testing grid utils on $grid_type grid...."
 
-        @test xnode(2, grid, Center()) ≈ FT(π/2)
-        @test ynode(2, grid, Center()) ≈ FT(π/2)
-        @test znode(2, grid, Center()) ≈ FT(π/2)
+        CUDA.@allowscalar begin
+            @test xnode(2, grid, Center()) ≈ FT(π/2)
+            @test ynode(2, grid, Center()) ≈ FT(π/2)
+            @test znode(2, grid, Center()) ≈ FT(π/2)
 
-        @test xnode(2, grid, Face()) ≈ FT(π/3)
-        @test ynode(2, grid, Face()) ≈ FT(π/3)
-        @test znode(2, grid, Face()) ≈ FT(π/3)
+            @test xnode(2, grid, Face()) ≈ FT(π/3)
+            @test ynode(2, grid, Face()) ≈ FT(π/3)
+            @test znode(2, grid, Face()) ≈ FT(π/3)
 
-        @test minimum_xspacing(grid) ≈ FT(π/3)
-        @test minimum_yspacing(grid) ≈ FT(π/3)
-        @test minimum_zspacing(grid) ≈ FT(π/3)
+            @test minimum_xspacing(grid) ≈ FT(π/3)
+            @test minimum_yspacing(grid) ≈ FT(π/3)
+            @test minimum_zspacing(grid) ≈ FT(π/3)
 
-        @test all(xspacings(grid, Center()) .≈ FT(π/N))
-        @test all(yspacings(grid, Center()) .≈ FT(π/N))
-        @test all(zspacings(grid, Center()) .≈ FT(π/N))
+            @test all(xspacings(grid, Center()) .≈ FT(π/N))
+            @test all(yspacings(grid, Center()) .≈ FT(π/N))
+            @test all(zspacings(grid, Center()) .≈ FT(π/N))
 
-        @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
-        @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
-        @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
+            @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
+            @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
+            @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
 
-        @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
-        @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
-        @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+            @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
+            @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
+            @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
 
-        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
-        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
-        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+            @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
+            @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
+            @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+        end
     end
 
     return nothing
@@ -377,46 +379,49 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     return nothing
 end
 
-function test_rectilinear_grid_correct_spacings(FT, N)
+function test_rectilinear_grid_correct_spacings(FT, arch, N)
     S = 3
     zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / N - 1)) / tanh(S)
 
     # a grid with regular x-spacing, quadratic y-spacing, and tanh-like z-spacing
-    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=collect(0:N), y=collect(0:N).^2, z=zᵃᵃᶠ)
-
-    @test all(grid.Δxᶜᵃᵃ .== 1)
-    @test all(grid.Δxᶠᵃᵃ .== 1)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), x=collect(0:N), y=collect(0:N).^2, z=zᵃᵃᶠ)
 
      yᵃᶠᵃ(j) = (j-1)^2
      yᵃᶜᵃ(j) = (j^2 + (j-1)^2) / 2
     Δyᵃᶠᵃ(j) = yᵃᶜᵃ(j) - yᵃᶜᵃ(j-1)
     Δyᵃᶜᵃ(j) = yᵃᶠᵃ(j+1) - yᵃᶠᵃ(j)
 
-    @test all(isapprox.(  grid.yᵃᶠᵃ[1:N+1],  yᵃᶠᵃ.(1:N+1) ))
-    @test all(isapprox.(  grid.yᵃᶜᵃ[1:N],    yᵃᶜᵃ.(1:N)   ))
-    @test all(isapprox.( grid.Δyᵃᶜᵃ[1:N],   Δyᵃᶜᵃ.(1:N)   ))
-
-    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
-    # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δyᵃᶠᵃ[2:N], Δyᵃᶠᵃ.(2:N) ))
-
-     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k)   + zᵃᵃᶠ(k+1)) / 2
+    zᵃᵃᶜ(k) = (zᵃᵃᶠ(k)   + zᵃᵃᶠ(k+1)) / 2
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
+    
+    CUDA.@allowscalar begin
+        @test all(grid.Δxᶜᵃᵃ .== 1)
+        @test all(grid.Δxᶠᵃᵃ .== 1)
 
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+        @test all(isapprox.(  grid.yᵃᶠᵃ[1:N+1],  yᵃᶠᵃ.(1:N+1) ))
+        @test all(isapprox.(  grid.yᵃᶜᵃ[1:N],    yᵃᶜᵃ.(1:N)   ))
+        @test all(isapprox.( grid.Δyᵃᶜᵃ[1:N],   Δyᵃᶜᵃ.(1:N)   ))
 
-    @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
-    @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
-    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
+        # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
+        # the user-supplied zᵃᵃᶠ
+        @test all(isapprox.(grid.Δyᵃᶠᵃ[2:N], Δyᵃᶠᵃ.(2:N)))
 
-    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+        @test all(isapprox.( grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1)))
+        @test all(isapprox.( grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)  ))
+        @test all(isapprox.(grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)  ))
 
-    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
-    # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
+        @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
+        @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
+
+        @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
+
+        @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+
+        # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
+        # the user-supplied zᵃᵃᶠ
+        @test all(isapprox.(grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N)))
+    end
 
     return nothing
 end
@@ -840,7 +845,7 @@ end
             @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
                 for N in [16, 17]
-                    test_rectilinear_grid_correct_spacings(FT, N)
+                    test_rectilinear_grid_correct_spacings(FT, arch, N)
                 end
             end
 
