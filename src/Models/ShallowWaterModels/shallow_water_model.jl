@@ -127,6 +127,8 @@ function ShallowWaterModel(;
                  timestepper::Symbol = :RungeKutta3,
                          formulation = ConservativeFormulation())
 
+    @warn "The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation."
+
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
