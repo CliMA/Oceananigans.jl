@@ -1,4 +1,5 @@
-import Oceananigans.TurbulenceClosures
+using Oceananigans.TurbulenceClosures: _compute_ri_based_diffusivities!
+import Oceananigans.TurbulenceClosures: compute_ri_based_diffusivities!
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid::ActiveCellsIBG, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
