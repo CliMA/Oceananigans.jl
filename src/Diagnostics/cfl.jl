@@ -12,7 +12,7 @@ struct CFL{D, S}
 end
 
 """
-    CFL(Δt [, timescale = Oceananigans.cell_advection_timescale])
+    CFL(Δt [, timescale = Oceananigans.Advection.cell_advection_timescale])
 
 Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and `timescale`.
@@ -78,10 +78,3 @@ julia> dcfl(model)
 ```
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
-
-#####
-##### Accurate CFL via reduction
-#####
-
-using Oceananigans.Advection: cell_advection_timescale
-
