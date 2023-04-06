@@ -63,12 +63,12 @@ Keyword Arguments
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    ν₀  = 0.7,
-                                    κ₀  = 0.5,
-                                    κᶜ  = 1.7,
-                                    Cᵉ  = 0.1,
-                                    Ri₀ = 0.1,
-                                    Riᵟ = 0.40,
+                                    ν₀  = 0.30,
+                                    κ₀  = 0.42,
+                                    κᶜ  = 4.0,
+                                    Cᵉ  = 0.57,
+                                    Ri₀ = 0.27,
+                                    Riᵟ = 0.20,
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -147,9 +147,10 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
 @inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
 
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, N²)
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, bouyancy, tracers)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, velocities.u)^2
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, velocities.v)^2
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
 
@@ -192,7 +193,7 @@ end
     κᵉ = ifelse(entraining, Cᵉ, zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, N²)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶜᶜᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κ★ = κ₀ * τ
@@ -200,8 +201,8 @@ end
 
     κⁿ = κᶜ + κᵉ + κ★
     νⁿ = ν★
-    @inbounds diffusivities.κ[i, j, k] = (0.6 * diffusivities.κ[i, j, k] + κⁿ) / 1.6
-    @inbounds diffusivities.ν[i, j, k] = (0.6 * diffusivities.ν[i, j, k] + νⁿ) / 1.6
+    @inbounds diffusivities.κ[i, j, k] = κⁿ
+    @inbounds diffusivities.ν[i, j, k] = νⁿ
 end
 
 #####
