@@ -12,7 +12,7 @@ import Oceananigans.TurbulenceClosures: compute_ri_based_diffusivities!, compute
     j = j′ + offs[2] 
     k = k′ + offs[3]
 
-    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, bouyancy, tracers)
+    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
 end
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid::ActiveCellsIBG, closure::FlavorOfRBVD,
