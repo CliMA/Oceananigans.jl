@@ -114,7 +114,7 @@ function WENO(FT::DataType=Float64;
 
     if order < 3
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
-        return UpwindBiased(order = 1)
+        return UpwindBiased(FT; order = 1)
     else
         N  = Int((order + 1) ÷ 2)
 
