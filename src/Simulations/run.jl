@@ -41,7 +41,7 @@ end
 Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
-function aligned_time_step(sim::Simulation, Δt)
+function aligned_time_step(sim::Simulation, Δt::FT)
     clock = sim.model.clock
 
     aligned_Δt = Δt
@@ -55,7 +55,7 @@ function aligned_time_step(sim::Simulation, Δt)
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
     aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
 
-    return aligned_Δt
+    return FT(aligned_Δt)
 end
 
 """
