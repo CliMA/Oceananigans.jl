@@ -123,13 +123,13 @@ Examples
 julia> using Oceananigans.Advection: calc_reconstruction_stencil
 
 julia> calc_reconstruction_stencil(1, :right, :x)
-:(+(coeff1_right[1] * ψ[i + 0, j, k]))
+:(+(FT(coeff1_right[1]) * ψ[i + 0, j, k]))
 
 julia> calc_reconstruction_stencil(1, :left, :x)
-:(+(coeff1_left[1] * ψ[i + -1, j, k]))
+:(+(FT(coeff1_left[1]) * ψ[i + -1, j, k]))
 
 julia> calc_reconstruction_stencil(1, :symm, :x)
-:(coeff2_symm[2] * ψ[i + -1, j, k] + coeff2_symm[1] * ψ[i + 0, j, k])
+:(FT(coeff2_symm[2]) * ψ[i + -1, j, k] + coeff2_symm[1] * ψ[i + 0, j, k])
 
 julia> calc_reconstruction_stencil(2, :symm, :x)
 :(coeff4_symm[4] * ψ[i + -2, j, k] + coeff4_symm[3] * ψ[i + -1, j, k] + coeff4_symm[2] * ψ[i + 0, j, k] + coeff4_symm[1] * ψ[i + 1, j, k])
@@ -154,16 +154,16 @@ julia> calc_reconstruction_stencil(3, :left, :x)
         c = n - buffer - 1
         if func
             stencil_full[idx] = dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ(i + $c, j, k, grid, args...)) :
+                                :(FT($coeff[$(order - idx + 1)]) * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ(i, j + $c, k, grid, args...)) :
-                                :($coeff[$(order - idx + 1)] * ψ(i, j, k + $c, grid, args...))
+                                :(FT($coeff[$(order - idx + 1)]) * ψ(i, j + $c, k, grid, args...)) :
+                                :(FT($coeff[$(order - idx + 1)]) * ψ(i, j, k + $c, grid, args...))
         else
             stencil_full[idx] =  dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ[i + $c, j, k]) :
+                                :(FT($coeff[$(order - idx + 1)]) * ψ[i + $c, j, k]) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ[i, j + $c, k]) :
-                                :($coeff[$(order - idx + 1)] * ψ[i, j, k + $c])
+                                :(FT($coeff[$(order - idx + 1)]) * ψ[i, j + $c, k]) :
+                                :(FT($coeff[$(order - idx + 1)]) * ψ[i, j, k + $c])
         end
     end
     return Expr(:call, :+, stencil_full...)
