@@ -149,9 +149,9 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 @kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
-    T = eltype(u)
-    one_point_five = convert(T, 1.5)
-    oh_point_five  = convert(T, 0.5)
+    FT = eltype(χ)
+    one_point_five = FT(1.5)
+    oh_point_five  = FT(0.5)
 
     @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
