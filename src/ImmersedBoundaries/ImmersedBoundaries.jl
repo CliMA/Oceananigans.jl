@@ -291,6 +291,5 @@ include("immersed_boundary_condition.jl")
 include("conditional_derivatives.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
-include("additional_diffusivity_kernels.jl")
 
 end # module

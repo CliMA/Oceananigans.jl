@@ -151,7 +151,7 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 
     T = eltype(u)
     one_point_five = convert(T, 1.5)
-    oh_point_five = convert(T, 0.5)
+    oh_point_five  = convert(T, 0.5)
 
     @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
