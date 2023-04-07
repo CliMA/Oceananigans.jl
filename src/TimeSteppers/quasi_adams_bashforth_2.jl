@@ -47,6 +47,7 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
+    χ  = FT(χ)
 
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
 end
