@@ -165,7 +165,7 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
 @inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
 
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, bouyancy, tracers)
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, velocities.u)^2
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, velocities.v)^2
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
