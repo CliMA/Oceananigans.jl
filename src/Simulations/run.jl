@@ -41,9 +41,10 @@ end
 Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
-function aligned_time_step(sim::Simulation, Δt::FT)
+function aligned_time_step(sim::Simulation, Δt)
     clock = sim.model.clock
 
+    FT = eltype(Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
