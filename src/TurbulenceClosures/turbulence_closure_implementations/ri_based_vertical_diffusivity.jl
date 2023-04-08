@@ -122,6 +122,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
+    only_active_cells = use_only_active_interior_cells(grid)
+
     launch!(arch, grid, kernel_size,
             compute_ri_number!,
             diffusivities,
@@ -132,7 +134,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
             tracers,
             buoyancy,
             top_tracer_bcs,
-            clock)
+            clock;
+            only_active_cells)
 
     launch!(arch, grid, kernel_size,
             compute_ri_based_diffusivities!,
@@ -144,7 +147,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
             tracers,
             buoyancy,
             top_tracer_bcs,
-            clock)
+            clock;
+            only_active_cells)
 
     return nothing
 end
