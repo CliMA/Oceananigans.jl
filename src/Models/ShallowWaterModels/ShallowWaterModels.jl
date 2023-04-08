@@ -45,7 +45,5 @@ include("shallow_water_advection_operators.jl")
 include("shallow_water_diffusion_operators.jl")
 include("shallow_water_cell_advection_timescale.jl")
 
-# No support for particle advection yet.
-update_particle_properties!(model::ShallowWaterModel, Δt) = nothing
-
 end # module
+
