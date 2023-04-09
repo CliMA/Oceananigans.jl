@@ -118,7 +118,7 @@ function active_cells_map_surface(ibg)
     return smaller_indices
 end
 
-using Ocenanaigans.TurbulenceClosures: Riᶜᶜᶠ, _compute_ri_based_diffusivities!
+using Oceananigans.TurbulenceClosures: Riᶜᶜᶠ, _compute_ri_based_diffusivities!
 import Oceananigans.TurbulenceClosures: compute_ri_number!, compute_ri_based_diffusivities!
 
 @kernel function compute_ri_number!(diffusivities, offs, grid::ActiveCellsIBG, closure::FlavorOfRBVD,
