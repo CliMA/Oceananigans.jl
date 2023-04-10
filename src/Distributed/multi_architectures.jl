@@ -147,17 +147,21 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, T, B}
-      east :: E
-      west :: W
-     north :: N
-     south :: S
-       top :: T
-    bottom :: B
+struct RankConnectivity{E, W, N, S, T, B, SW, SE, NW, NE}
+         east :: E
+         west :: W
+        north :: N
+        south :: S
+          top :: T
+       bottom :: B
+    southwest :: SW
+    southeast :: SE
+    northwest :: NW
+    northeast :: NE
 end
 
-RankConnectivity(; east, west, north, south, top, bottom) =
-    RankConnectivity(east, west, north, south, top, bottom)
+RankConnectivity(; east, west, north, south, top, bottom, southwest, southeast, northwest, northeast) =
+    RankConnectivity(east, west, north, south, top, bottom, southwest, southeast, northwest, northeast)
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
@@ -207,8 +211,18 @@ function RankConnectivity(model_index, ranks, topology)
     r_top   = isnothing(k_top)   ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
     r_bot   = isnothing(k_bot)   ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
 
+    r_northeast = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
+
+    r_northwest = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
+    r_southeast = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
+    r_southwest = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
+
     return RankConnectivity(east=r_east, west=r_west, north=r_north,
-                            south=r_south, top=r_top, bottom=r_bot)
+                            south=r_south, top=r_top, bottom=r_bot,
+                            southwest=r_southwest,
+                            southeast=r_southeast,
+                            northwest=r_northwest,
+                            northeast=r_northeast)
 end
 
 #####
@@ -225,5 +239,10 @@ function Base.show(io::IO, arch::DistributedArch)
               isnothing(c.north) ? "" : " north=$(c.north)",
               isnothing(c.south) ? "" : " south=$(c.south)",
               isnothing(c.top) ? "" : " top=$(c.top)",
-              isnothing(c.bottom) ? "" : " bottom=$(c.bottom)")
+              isnothing(c.bottom) ? "" : " bottom=$(c.bottom)",
+              isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
+              isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
+              isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
+              isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
 end
+              

@@ -10,6 +10,10 @@ using Oceananigans.Fields: fill_west_and_east_send_buffers!,
                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
                            fill_north_send_buffers!,
+                           fill_southwest_send_buffers!,
+                           fill_southeast_send_buffers!,
+                           fill_northwest_send_buffers!,
+                           fill_northeast_send_buffers!,
                            recv_from_buffers!, 
                            reduced_dimensions, 
                            instantiated_location
@@ -38,22 +42,26 @@ import Oceananigans.BoundaryConditions:
 ##### MPI tags for halo communication BCs
 #####
 
-sides  = (:west, :east, :south, :north, :top, :bottom)
-side_id = Dict(side => n for (n, side) in enumerate(sides))
+sides  = (:west, :east, :south, :north, :top, :bottom, :southwest, :southeast, :northwest, :northeast)
+side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
     :west => :east, :east => :west,
     :south => :north, :north => :south,
-    :bottom => :top, :top => :bottom
+    :bottom => :top, :top => :bottom,
+    :southwest => :northeast, 
+    :southeast => :northwest, 
+    :northwest => :southeast, 
+    :northeast => :southwest, 
 )
 
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
 #   digit 1-2: an identifier for the field that is reset each timestep
-#   digit 3-4: an identifier for the field's location 
-#   digit 3: the side
-#   digits 4-6: the "from" rank
-#   digits 7-9: the "to" rank
+#   digit 3: an identifier for the field's location 
+#   digit 4: the side
+#   digits 5-6: the "from" rank
+#   digits 7-8: the "to" rank
 
 RANK_DIGITS = 2
 ID_DIGITS   = 2
@@ -120,31 +128,77 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
-
-    # fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    
+    fill_eventual_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     arch.mpi_tag[1] += 1
 
     return nothing
 end
 
-# If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
-function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    hbc_left  = filter(bc -> bc isa DCBC, halo_tuple[2])
-    hbc_right = filter(bc -> bc isa DCBC, halo_tuple[3])
+for (side, dir) in zip([:southwest, :southeast, :northwest, :northeast], [1, 2, 3, 3])
+    fill_corner_halo! = Symbol("fill_$(side)_halo!")
+    send_side_halo  = Symbol("send_$(side)_halo")
+    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+    fill_side_send_buffers! = Symbol("fill_$(side)_send_buffers!")    
 
-    # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
-    if length(hbc_left) > 1 
-        idx = findfirst(bc -> bc isa DCBC, halo_tuple[2])
-        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-        return nothing
-    end
+    @eval begin
+        $fill_corner_halo!(::Nothing, args...; kwargs...) = nothing
 
-    if length(hbc_right) > 1 
-        idx = findfirst(bc -> bc isa DCBC, halo_tuple[3])
-        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-        return nothing
+        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, args...; kwargs...) 
+            child_arch = child_architecture(arch)
+            local_rank = arch.local_rank
+
+            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, corner, buffers)
+            $fill_side_send_buffers!(c, buffers, grid)
+            sync_device!(child_arch)
+
+            send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, corner, buffers)
+            
+            return [send_req, recv_req]
+        end
     end
 end
+
+# If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
+function fill_eventual_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; blocking = true, kwargs...)
+    
+    requests = []
+
+    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+
+    !isnothing(reqsw) && push!(requests, reqsw...)
+    !isnothing(reqse) && push!(requests, reqse...)
+    !isnothing(reqnw) && push!(requests, reqnw...)
+    !isnothing(reqne) && push!(requests, reqne...)
+
+    if isempty(requests)
+        return nothing
+    end
+
+    if !blocking && !(arch isa BlockingDistributedArch)
+        push!(arch.mpi_requests, requests...)
+        return nothing
+    end
+
+    requests = requests |> Array{MPI.Request}
+
+    # Syncronous MPI fill_halo_event!
+    cooperative_waitall!(requests)
+
+    # Reset MPI tag
+    arch.mpi_tag[1] -= arch.mpi_tag[1]
+    recv_from_buffers!(c, buffers, grid, Val(:corners))    
+
+    return nothing
+end
+
+@inline mpi_communication_side(::Val{fill_southwest_halo!}) = :southwest
+@inline mpi_communication_side(::Val{fill_southeast_halo!}) = :southeast
+@inline mpi_communication_side(::Val{fill_northwest_halo!}) = :northwest
+@inline mpi_communication_side(::Val{fill_northeast_halo!}) = :northeast
 
 @inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
@@ -174,6 +228,7 @@ function cooperative_waitall!(tasks::Array{Task})
     end
 end
 
+cooperative_wait(req::MPI.Request) = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)
@@ -305,16 +360,13 @@ for side in sides
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
-            # send_event = Threads.@spawn begin
-                send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
-                # cooperative_test!(send_req)
-            # end
+            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
             return send_req
         end
 
         @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_boundary(c, grid, side_location)
-        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.send     
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch)                   = buffers.$side.send     
     end
 end
 
@@ -337,16 +389,10 @@ for side in sides
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
-            # recv_event = Threads.@spawn begin
-            #     priority!(device(arch), :high)
-            #     cooperative_test!(recv_req)
-            #     sync_device!(arch)
-            # end
-
             return recv_req
         end
 
         @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_halo(c, grid, side_location)
-        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.recv
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch)                   = buffers.$side.recv
     end
 end
