@@ -304,9 +304,10 @@ for side in sides
             send_tag = $side_send_tag(arch, location, local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+
+            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
             
             send_event = Threads.@spawn begin
-                send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
                 cooperative_test!(send_req)
             end
 
