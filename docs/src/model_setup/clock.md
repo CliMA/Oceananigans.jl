@@ -27,16 +27,16 @@ Clock{Float64}: time = 1 hour, iteration = 0, stage = 1
 to the constructor for `NonhydrostaticModel` causes the simulation
 time to start at ``t = 3600`` seconds.
 
+
 The type of the keyword argument `time` should be a float or date type.
-To use the date type `TimeDate` from the `TimesDates.jl` package,
+To use the date type `DateTime` from the Julia `Dates` module,
 for example, pass
 
 ```jldoctest
-julia> using TimesDates
+julia> using Dates
 
-
-julia> clock = Clock(time=TimeDate(2020))
-Clock{TimesDates.TimeDate}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
+julia> clock = Clock(time=DateTime(2020))
+Clock{DateTime}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
 ```
 
 to `NonhydrostaticModel`.
