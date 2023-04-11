@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
+import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
@@ -50,7 +50,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
-    
+
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
@@ -89,7 +89,7 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
-    
+
     return nothing
 end
 
@@ -103,7 +103,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
     event = launch!(arch, grid, :xy,
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
-		            dependencies = device_event(arch))
+                    dependencies = device_event(arch))
     
     wait(device(arch), event)
     return nothing
@@ -226,9 +226,6 @@ end
 
 # The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
 =#
-
-finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
-    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner

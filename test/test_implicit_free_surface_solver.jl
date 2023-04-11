@@ -13,8 +13,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     MatrixImplicitFreeSurfaceSolver, 
     compute_vertically_integrated_lateral_areas!,
     implicit_free_surface_step!,
-    implicit_free_surface_linear_operation!,
-    finalize_solver!
+    implicit_free_surface_linear_operation!
 
 using Oceananigans.Grids: with_halo
 
@@ -198,7 +197,5 @@ end
 
         @test all(isapprox.(Δη_mat, 0, atol=1e-15))
         @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
-
-        finalize_solver!(mg_model.free_surface.implicit_step_solver)
     end
 end

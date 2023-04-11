@@ -6,8 +6,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!, 
                                                         compute_implicit_free_surface_right_hand_side!,
                                                         implicit_free_surface_step!,
-                                                        pressure_correct_velocities!,
-                                                        finalize_solver!
+                                                        pressure_correct_velocities!
 
 @testset "Immersed boundaries test divergent flow solve with hydrostatic free surface models" begin
     for arch in archs
@@ -62,8 +61,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)
-
-            finalize_solver!(model.free_surface.implicit_step_solver)
         end
 
         @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ interior(sol[3]))
