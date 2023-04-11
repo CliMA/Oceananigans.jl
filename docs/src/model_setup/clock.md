@@ -37,7 +37,7 @@ for example, pass
 julia> using Dates
 
 julia> clock = Clock(time=DateTime(2020))
-Clock{DateTime}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
+Clock{Dates.DateTime}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
 ```
 
 to `NonhydrostaticModel`.
