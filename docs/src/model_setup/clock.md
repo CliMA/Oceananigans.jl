@@ -8,6 +8,7 @@ By default, `Clock`s are initialized at iteration 0, and stage 1,
 ```@meta
 DocTestSetup = quote
     using Oceananigans
+    using Dates
 end
 ```
 
