@@ -65,20 +65,6 @@ A `Float64` constant equal to 24`hours`. Useful for increasing the clarity of sc
 const days = day
 
 """
-    year
-
-A `Float64` constant equal to 365`days`. Useful for increasing the clarity of scripts, e.g. `stop_time = 1year`.
-"""
-const year = 365days
-
-"""
-    years
-
-A `Float64` constant equal to 365`days`. Useful for increasing the clarity of scripts, e.g. `stop_time = 100years`.
-"""
-const years = year
-
-"""
     meter
 
 A `Float64` constant equal to 1.0. Useful for increasing the clarity of scripts, e.g. `Lx = 1meter`.
