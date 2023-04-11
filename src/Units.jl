@@ -1,7 +1,7 @@
 module Units
 
-export second, minute, hour, day, year, meter, kilometer,
-       seconds, minutes, hours, days, years, meters, kilometers,
+export second, minute, hour, day, meter, kilometer,
+       seconds, minutes, hours, days, meters, kilometers,
        KiB, MiB, GiB, TiB
 
 #####
