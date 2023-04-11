@@ -178,16 +178,16 @@ function compute_closure_specific_diffusive_cfl(closure)
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
-    @test diffusive_flux_x(1,1,1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
-    @test diffusive_flux_y(1,1,1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
-    @test diffusive_flux_z(1,1,1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_x(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_y(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_z(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
 
     tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
-    @test viscous_flux_ux(1,1,1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
-    @test viscous_flux_uy(1,1,1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
-    @test viscous_flux_uz(1,1,1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_ux(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_uy(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_uz(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
 
     return nothing
 end
