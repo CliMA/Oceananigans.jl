@@ -23,10 +23,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
                                           halo = (3, 3, 3),
                                           topology = (Periodic, Periodic, Bounded))
 
-        imm1 = Int(floor((Nx+1)/2)  )
-        imp1 = Int(floor((Nx+1)/2)+1)
-        jmm1 = Int(floor((Ny+1)/2)  )
-        jmp1 = Int(floor((Ny+1)/2)+1)
+        imm1 = floor(Int, (Nx + 1) / 2)
+        imp1 = floor(Int, (Nx + 1) / 2) + 1
+        jmm1 = floor(Int, (Ny + 1) / 2)
+        jmp1 = floor(Int, (Ny + 1) / 2) + 1
 
         bottom = [-1. for j=1:Ny, i=1:Nx]
         bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
