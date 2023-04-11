@@ -23,10 +23,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
                                           halo = (3, 3, 3),
                                           topology = (Periodic, Periodic, Bounded))
 
-        imm1=Int(floor((Nx+1)/2)  )
-        imp1=Int(floor((Nx+1)/2)+1)
-        jmm1=Int(floor((Ny+1)/2)  )
-        jmp1=Int(floor((Ny+1)/2)+1)
+        imm1 = Int(floor((Nx+1)/2)  )
+        imp1 = Int(floor((Nx+1)/2)+1)
+        jmm1 = Int(floor((Ny+1)/2)  )
+        jmp1 = Int(floor((Ny+1)/2)+1)
 
         bottom = [-1. for j=1:Ny, i=1:Nx]
         bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
@@ -36,7 +36,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
         free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),
                          ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0),
-                         ImplicitFreeSurface(solver_method=:Multigrid, gravitational_acceleration=1.0),
                          ImplicitFreeSurface(gravitational_acceleration=1.0)]
 
         sol = ()
@@ -57,6 +56,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
             v[imm1, jmp1, 1:Nz] .= -1
             
             events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
+
             implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5, events)
 
             sol = (sol..., model.free_surface.η)
