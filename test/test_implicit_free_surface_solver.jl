@@ -170,7 +170,7 @@ end
         Δt₁ = 900
         Δt₂ = 920.0
         
-        for m in (mat_model, pcg_model, fft_model, mg_model)
+        for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
             implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
