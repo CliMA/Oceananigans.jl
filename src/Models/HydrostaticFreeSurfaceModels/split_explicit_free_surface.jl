@@ -67,7 +67,7 @@ end
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
                                         settings = SplitExplicitSettings(eltype(grid); substeps = 200))
 
-η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid),
@@ -264,9 +264,9 @@ function SplitExplicitSettings(FT::DataType=Float64;
     mass_flux_weights ./= sum(mass_flux_weights)
 
     return SplitExplicitSettings(substeps,
-                                 averaging_weights,
-                                 mass_flux_weights, 
-                                 Δτ, 
+                                 FT.(averaging_weights),
+                                 FT.(mass_flux_weights), 
+                                 FT(Δτ), 
                                  timestepper)
 end
 
@@ -289,7 +289,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 function reset!(sefs::SplitExplicitFreeSurface)
     for name in propertynames(sefs.state)
         var = getproperty(sefs.state, name)
-        fill!(var, 0.0)
+        fill!(var, 0)
     end
     fill!(sefs.auxiliary.Gᵁ, 0)
     fill!(sefs.auxiliary.Gⱽ, 0)
