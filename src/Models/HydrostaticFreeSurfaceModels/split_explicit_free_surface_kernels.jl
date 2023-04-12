@@ -301,7 +301,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Reset eta for the next timestep
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
-    @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+    @apply_regionally set_η!(free_surface.η, free_surface.state.η̅)
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; blocking = false)
@@ -312,6 +312,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     return nothing
 end
+
+@inline set_η!(η, η̅) = parent(η) .= parent(η̅)
 
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
