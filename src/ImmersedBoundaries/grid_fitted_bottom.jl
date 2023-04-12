@@ -8,14 +8,7 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
-import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
-                                        ivd_lower_diagonal,
-                                        z_bottom
-
-import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
-                                        immersed_∂ⱼ_τ₂ⱼ,
-                                        immersed_∂ⱼ_τ₃ⱼ,
-                                        immersed_∇_dot_qᶜ
+import Oceananigans.TurbulenceClosures: z_bottom
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)

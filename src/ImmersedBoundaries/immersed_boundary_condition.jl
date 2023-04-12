@@ -6,6 +6,11 @@ using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str
 
+import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
+                                        immersed_∂ⱼ_τ₂ⱼ,
+                                        immersed_∂ⱼ_τ₃ⱼ,
+                                        immersed_∇_dot_qᶜ
+
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W                  
     east :: E
