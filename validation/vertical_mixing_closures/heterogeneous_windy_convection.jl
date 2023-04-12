@@ -3,25 +3,39 @@ using GLMakie
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom
 
 Nx = 1
 Ny = 64
-Nz = 32
 
 const Lx = 100kilometers
 const Ly = Lx
-const Lz = 256
+const Lz = 1000
+
+# Stretched vertical grid
+γ = 1.02
+Δz₀ = 8
+h₀ = 128
+z = [-Δz₀ * k for k = 0:ceil(h₀ / Δz₀)]
+while z[end] > -Lz
+    push!(z, z[end] - (z[end-1] - z[end])^γ)
+end
+z = reverse(z)
+Nz = length(z) - 1
 
 grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                       halo = (4, 4, 4),
                        x = (0, Lx),
-                       y = (0, Ly),
-                       z = (-Lz, 0),
+                       y = (-Ly/2, Ly/2),
+                       z = z,
                        topology=(Periodic, Bounded, Bounded))
+
+z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(z_bottom))
 
 @show grid
 @inline Qᵇ(x, y, t) = 2e-8 #* sin(2π * y / Ly)
-@inline Qᵘ(x, y, t) = -1e-4 * sin(π * y / Ly)
+@inline Qᵘ(x, y, t) = -1e-4 * cos(π * y / Ly)
 
 b_top_bc = FluxBoundaryCondition(Qᵇ)
 u_top_bc = FluxBoundaryCondition(Qᵘ)
@@ -29,7 +43,6 @@ u_top_bc = FluxBoundaryCondition(Qᵘ)
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
-etd = ExplicitTimeDiscretization()
 closure = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,
@@ -55,7 +68,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocit
 function progress(sim)
     u, v, w = sim.model.velocities
     e = sim.model.tracers.e
-    κᶜ = sim.model.diffusivity_fields.Kᶜ
+    κᶜ = sim.model.diffusivity_fields.κᶜ
 
     msg = @sprintf("Iter: %d, t: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
                    iteration(sim), prettytime(sim),
