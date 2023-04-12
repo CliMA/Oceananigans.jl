@@ -3,7 +3,6 @@ using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
-using AlgebraicMultigrid: aspreconditioner
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
@@ -179,29 +178,3 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
    return SparseInversePreconditioner(Minv)
 end
-
-multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
-
-multigrid_preconditioner(A::CuSparseMatrixCSC) = MultigridGPUPreconditioner(AMGXMultigridSolver(A))
-
-struct MultigridGPUPreconditioner{AMGXMultigridSolver}
-    amgx_solver :: AMGXMultigridSolver
-end
-
-import LinearAlgebra: \, *, ldiv!, mul!
-
-ldiv!(p::MultigridGPUPreconditioner, b) = copyto!(b, p \ b)
-
-function ldiv!(x, p::MultigridGPUPreconditioner, b)
-    x .= 0
-    AMGX.upload!(p.amgx_solver.device_b, b)
-    AMGX.upload!(p.amgx_solver.device_x, x)
-    AMGX.solve!(p.amgx_solver.device_x, p.amgx_solver.solver, p.amgx_solver.device_b)
-    AMGX.copy!(x, p.amgx_solver.device_x)
-end
-
-mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
-
-\(p::MultigridGPUPreconditioner, b) = ldiv!(similar(b), p, b)
-
-finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amgx_solver)

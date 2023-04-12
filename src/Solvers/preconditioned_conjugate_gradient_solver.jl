@@ -256,9 +256,6 @@ function iterating(solver, tolerance)
     return true
 end
 
-finalize_solver!(solver::PreconditionedConjugateGradientSolver) = 
-    finalize_solver!(solver.preconditioner)
-
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
     print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), "\n",
               "├── template field: ", summary(solver.residual), "\n",
