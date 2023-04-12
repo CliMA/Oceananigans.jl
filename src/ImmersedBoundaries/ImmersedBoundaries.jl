@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Architectures
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -291,8 +291,10 @@ end
 
 include("active_cells_map.jl")
 include("immersed_grid_metrics.jl")
-include("grid_fitted_immersed_boundaries.jl")
-include("partial_cell_immersed_boundaries.jl")
+include("abstract_grid_fitted_boundary.jl")
+include("grid_fitted_boundary.jl")
+include("grid_fitted_bottom.jl")
+include("partial_cell_bottom.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_derivatives.jl")
@@ -300,3 +302,4 @@ include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
 end # module
+
