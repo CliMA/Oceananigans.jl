@@ -296,7 +296,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                   radius = R_Earth,
                                   devices = nothing)
 
-    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition
+    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition, i.e. R=1
     partition = CubedSpherePartition(; R=1)
 
     devices = validate_devices(partition, arch, devices)
