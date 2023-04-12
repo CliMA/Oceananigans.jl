@@ -79,7 +79,7 @@ for side in sides
         end
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
-            side_digit  = [opposite_side[Symbol($side_str)]]
+            side_digit  = side_id[opposite_side[Symbol($side_str)]]
             field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
