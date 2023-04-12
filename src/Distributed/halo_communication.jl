@@ -56,7 +56,7 @@ opposite_side = Dict(
 #   digits 7-9: the "to" rank
 
 RANK_DIGITS = 2
-ID_DIGITS   = 2
+ID_DIGITS   = 1
 LOC_DIGITS  = 1
 
 @inline loc_id(::Nothing) = 0
