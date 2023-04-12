@@ -241,11 +241,12 @@ Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 da
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
+using Oceananigans.Units
 
 schedule = AveragedTimeInterval(4days, window=1day)
 
 # output
-AveragedTimeInterval(window=1day, stride=1, interval=4days)
+AveragedTimeInterval(window=1 day, stride=1, interval=4 days)
 ```
 
 An `AveragedTimeInterval` schedule directs an output writer
