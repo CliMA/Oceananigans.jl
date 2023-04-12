@@ -39,7 +39,7 @@ import Oceananigans.BoundaryConditions:
 #####
 
 sides  = (:west, :east, :south, :north, :top, :bottom)
-side_id = Dict(side => n for (n, side) in enumerate(sides))
+side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
     :west => :east, :east => :west,
@@ -70,19 +70,19 @@ for side in sides
     @eval begin
         # REMEMBER, we need to reset the tag not more than once every four passes!!
         function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
-            field_id    = string(location_id(location..., arch.mpi_tag[1]), pad=ID_DIGITS)
+            side_digit  = side_id[Symbol($side_str)]
+            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
-            side_digit  = string(side_id[Symbol($side_str)])
-            return parse(Int, field_id * side_digit * from_digits * to_digits)
+            return parse(Int, field_id * from_digits * to_digits)
         end
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
+            side_digit  = [opposite_side[Symbol($side_str)]]
             field_id    = string(location_id(location..., arch.mpi_tag[1]), pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
-            side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, field_id * side_digit * from_digits * to_digits)
+            return parse(Int, field_id * from_digits * to_digits)
         end
     end
 end
