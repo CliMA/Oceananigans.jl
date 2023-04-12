@@ -2,22 +2,6 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-<<<<<<< HEAD
-project_hash = "cc1412f17d03f479514833e2e9b7d605509dbf41"
-
-[[deps.AMGX]]
-deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
-git-tree-sha1 = "5f2e38391ea8788c69e3dc2aa297b4bef98c2ac8"
-uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
-version = "0.1.4"
-
-[[deps.AMGX_jll]]
-deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "c846a105d1bfabc86f6302d747cc48acbc7bb489"
-uuid = "656d14af-56e4-5275-8e68-4e861d7b5043"
-version = "2.1.0+0"
-=======
->>>>>>> main
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -142,21 +126,6 @@ version = "1.0.0"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
-<<<<<<< HEAD
-[[deps.DiffRules]]
-deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "c5b6685d53f933c11404a3ae9822afe30d522494"
-uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.12.2"
-
-[[deps.Distances]]
-deps = ["LinearAlgebra", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "49eba9ad9f7ead780bfb7ee319f962c811c6d3b2"
-uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
-version = "0.10.8"
-
-=======
->>>>>>> main
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
