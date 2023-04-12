@@ -237,16 +237,15 @@ time `interval`. The ``t_i`` specify both the end of the averaging window and th
 
 ### Example
 
-Building an `AveragedTimeInterval` that averages over a 1 year window, every 4 years,
+Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 days,
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
-using Oceananigans.Utils: year, years
 
-schedule = AveragedTimeInterval(4years, window=1year)
+schedule = AveragedTimeInterval(4days, window=1day)
 
 # output
-AveragedTimeInterval(window=1 year, stride=1, interval=4 years)
+AveragedTimeInterval(window=1day, stride=1, interval=4days)
 ```
 
 An `AveragedTimeInterval` schedule directs an output writer
@@ -255,20 +254,20 @@ to time-average its outputs before writing them to disk:
 ```jldoctest averaged_time_interval
 using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.Utils: minutes
+using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
-simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           filename = "even_more_averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4years, window=1year, stride=2))
+                                                          schedule = AveragedTimeInterval(4days, window=1day, stride=2))
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(4 years):
+JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
-├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 day, stride=2, interval=4 days)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
