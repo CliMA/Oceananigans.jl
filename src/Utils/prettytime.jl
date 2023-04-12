@@ -12,10 +12,10 @@ Convert a floating point value `t` representing an amount of time in
 SI units of seconds to a human-friendly string with three decimal places.
 Depending on the value of `t` the string will be formatted to show `t` in
 nanoseconds (ns), microseconds (μs), milliseconds (ms),
-seconds, minutes, hours, days, or years.
+seconds, minutes, hours, or days.
 
-With `longform=false`, we use s, m, hrs, d, and yrs in place of seconds,
-minutes, hours, and years.
+With `longform=false`, we use s, m, hrs, and d in place of seconds,
+minutes, and hours.
 """
 function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
@@ -55,17 +55,13 @@ function prettytimeunits(t, longform=true)
         units = value == 1 ? (longform ? "hour" : "hr") :
                              (longform ? "hours" : "hrs")
         return value, units
-    elseif t < year
+    else
         value = maybe_int(t / day)
         !longform && return value, "d"
         units = value == 1 ? "day" : "days"
-        return value, units
-    else
-        value = maybe_int(t / year)
-        units = value == 1 ? (longform ? "year" : "yr") :
-                             (longform ? "years" : "yrs")
         return value, units
     end
 end
 
 prettytime(dt::AbstractTime) = "$dt"
+
