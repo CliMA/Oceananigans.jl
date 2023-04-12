@@ -61,7 +61,7 @@ ID_DIGITS   = 1
 @inline loc_id(::Nothing, tag) = tag + 5
 @inline loc_id(::Face,    tag) = tag
 @inline loc_id(::Center,  tag) = tag
-@inline location_id(X, Y, Z) = loc_id(Z, tag)
+@inline location_id(X, Y, Z, tag) = loc_id(Z, tag)
 
 for side in sides
     side_str = string(side)
