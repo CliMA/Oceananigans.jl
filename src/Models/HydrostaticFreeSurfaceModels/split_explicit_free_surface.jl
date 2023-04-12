@@ -50,9 +50,9 @@ Keyword Arguments
                                  (i.e., ∑(aₘ m /M) = 1).
 - `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
 """
-SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
+SplitExplicitFreeSurface(FT::DataType=Float64; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
-                             gravitational_acceleration, SplitExplicitSettings(; kwargs...))
+                             gravitational_acceleration, SplitExplicitSettings(FT; kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
