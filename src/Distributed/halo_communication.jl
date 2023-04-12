@@ -42,7 +42,7 @@ import Oceananigans.BoundaryConditions:
 ##### MPI tags for halo communication BCs
 #####
 
-sides  = (:west, :east, :south, :north, :top, :bottom, :southwest, :southeast, :northwest, :northeast)
+sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast, :top, :bottom)
 side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
