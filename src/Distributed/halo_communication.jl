@@ -58,6 +58,7 @@ opposite_side = Dict(
 RANK_DIGITS = 2
 ID_DIGITS   = 1
 
+# REMEMBER!!! This won't work for tracers!!! (It assumes you are passing maximum 4 at a time)
 @inline loc_id(::Nothing, tag) = tag + 5
 @inline loc_id(::Face,    tag) = tag
 @inline loc_id(::Center,  tag) = tag
@@ -79,7 +80,7 @@ for side in sides
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
             side_digit  = [opposite_side[Symbol($side_str)]]
-            field_id    = string(location_id(location..., arch.mpi_tag[1]), pad=ID_DIGITS)
+            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             return parse(Int, field_id * from_digits * to_digits)
