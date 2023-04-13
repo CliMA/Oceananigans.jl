@@ -79,7 +79,7 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:Function}) = ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing)
+ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:Function}) = ImmersedBoundaryGrid{topology(grid)...}(grid, ib, nothing)
 
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
