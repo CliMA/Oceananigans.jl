@@ -7,7 +7,7 @@ using Distances
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Grids: xnode, ynode, prettysummary, coordinate_summary
+using Oceananigans.Grids: prettysummary, coordinate_summary
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -803,8 +803,8 @@ function get_center_and_extents_of_shell(grid::OSSG)
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = xnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = ynode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
