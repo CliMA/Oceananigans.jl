@@ -1,7 +1,7 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_event, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Fields: reduced_dimensions, fill_send_buffers!
+using Oceananigans.Fields: reduced_dimensions
 using KernelAbstractions: MultiEvent
 
 using Oceananigans.BoundaryConditions:
@@ -12,7 +12,7 @@ using Oceananigans.BoundaryConditions:
             MCBCT,
             MCBC
 
-import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
+import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
 
 import Oceananigans.BoundaryConditions:
             fill_halo_regions!,
@@ -65,15 +65,27 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     arch        = architecture(mrg)
     halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)
 
-    @apply_regionally fill_send_buffers!(c, buffers, mrg)
 
     buff = Reference(buffers.regional_objects)
 
     for task = 1:3
         barrier = device_event(arch)
+        @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
                           c, indices, loc, arch, barrier, mrg, buff, 
                           args...; kwargs...)
+    end
+
+    return nothing
+end
+
+# Find a better way to do this (this will not work for corners!!)
+function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
+    bc_left  = halo_tuple[2][task]
+    bc_right = halo_tuple[3][task]
+
+    if bc_left isa MCBC || bc_right isa MCBC
+        fill_send_buffers!(c, buffers, grid)
     end
 
     return nothing
