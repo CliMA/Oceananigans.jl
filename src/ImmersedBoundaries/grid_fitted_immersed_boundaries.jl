@@ -79,6 +79,8 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
+ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:Function}) = ImmersedBoundaryGrid(grid, ib)
+
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
     validate_ib_size(grid, ib)
@@ -97,6 +99,22 @@ function validate_ib_size(grid, ib)
         throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
 end
 
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Function, <:InterfaceImmersedCondition})
+    x = xnode(c, c, f, i, j, k+1, underlying_grid)
+    y = ynode(c, c, f, i, j, k+1, underlying_grid)
+    z = znode(c, c, f, i, j, k+1, underlying_grid)
+    h = @inbounds ib.bottom_height(x, y)
+    return z <= h
+end
+
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Function, <:CenterImmersedCondition})
+    x = xnode(c, c, c, i, j, k, underlying_grid)
+    y = ynode(c, c, c, i, j, k, underlying_grid)
+    z = znode(c, c, c, i, j, k, underlying_grid)
+    h = @inbounds ib.bottom_height(x, y)
+    return z <= h
+end
+
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(c, c, f, i, j, k+1, underlying_grid)
     h = @inbounds ib.bottom_height[i, j]
@@ -110,6 +128,11 @@ end
 end
 
 @inline bottom(i, j, k, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
+@inline function bottom(i, j, k, ibg::GridFittedBottom{<:Function}) 
+    x = xnode(c, c, c, i, j, k, ibg.underlying_grid)
+    y = ynode(c, c, c, i, j, k, ibg.underlying_grid)
+    return ibg.immersed_boundary.bottom_height(i, j)
+end
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
