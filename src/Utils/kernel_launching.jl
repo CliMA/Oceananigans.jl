@@ -85,10 +85,16 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                                       reduced_dimensions,
                                       location)
     
+
+
     if !isnothing(only_active_cells)
         workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
     end
 
+    if worksize == 0
+        return nothing
+    end
+    
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
     @debug "Launching kernel $kernel! with worksize $worksize"
