@@ -1,7 +1,6 @@
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
-import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
-                                        ivd_lower_diagonal
+import Oceananigans.TurbulenceClosures: ivd_upper_diagonal, ivd_lower_diagonal
 
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
@@ -20,21 +19,20 @@ const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstract
 # Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
 for location in (:upper_, :lower_)
-    immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
     ordinary_func = Symbol(:ivd_ ,         location, :diagonal)
+    immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
     @eval begin
         # Disambiguation
-        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-        @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
-            return ifelse(immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz),
-                          zero(eltype(ibg.underlying_grid)),
-                          $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
-        end
+        @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
+            ifelse(immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz),
+                   zero(ibg),
+                   $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
     end
 end
 
@@ -43,7 +41,7 @@ end
 # rather than immersed_cell.
 const AGFB = AbstractGridFittedBoundary
 
-immersed_cell(i, j, k, grid, ib) = _immersed_cell(i, j, k, grid, ib)
+@inline immersed_cell(i, j, k, grid, ib) = _immersed_cell(i, j, k, grid, ib)
 
 @eval begin
     @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, <:Any}, ib::AGFB) = _immersed_cell(1, j, k, grid, ib)
