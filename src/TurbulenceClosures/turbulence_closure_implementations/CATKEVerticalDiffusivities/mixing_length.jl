@@ -252,6 +252,7 @@ Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
 Base.show(io::IO, ml::MixingLength) =
     print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", '\n',
               "    Cᴺ   = $(ml.Cᴺ)",   '\n',
+              "    Cᵇ   = $(ml.Cᵇ)",   '\n',
               "    Cᶜc  = $(ml.Cᶜc)",  '\n',
               "    Cᶜe  = $(ml.Cᶜe)",  '\n',
               "    Cᵉc  = $(ml.Cᵉc)",  '\n',
