@@ -5,12 +5,13 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    C⁻D   :: FT = 1.0
-    C⁺D   :: FT = 1.0
-    CᶜD   :: FT = 0.0
+    C⁻D   :: FT = 4.4
+    C⁺D   :: FT = 3.3
+    CᶜD   :: FT = 0.23
     CᵉD   :: FT = 0.0
-    Cᵂu★  :: FT = 1.0
-    CᵂwΔ  :: FT = 1.0
+    Cᵂu★  :: FT = 1.8
+    CᵂwΔ  :: FT = 12.0
+    Cᵂϵ   :: FT = 20.0
 end
 
 #####
@@ -76,9 +77,8 @@ end
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
 
-    Cᵇ = closure.mixing_length.Cᵇ
-    #ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_length_scaleᶜᶜᶠ, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
+    #ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_length_scaleᶜᶜᶠ, closure, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
@@ -194,7 +194,7 @@ end
                                tke::TurbulentKineticEnergyEquation, closure::CATKEVD,
                                buoyancy, top_tracer_bcs, top_velocity_bcs)
 
-    wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
     Cᵂu★ = tke.Cᵂu★
@@ -212,7 +212,7 @@ end
 end
 
 """ Computes the convective velocity w★. """
-@inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
+@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
     return clip(Qᵇ) * Δz   
