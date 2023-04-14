@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture, device_event, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
+using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
@@ -160,7 +161,13 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+@inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    return ∂z_u² + ∂z_v²
+end
+
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S² = ∂z_u² + ∂z_v²
@@ -170,6 +177,9 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     # Clip N² and avoid NaN
     return ifelse(N² <= 0, zero(grid), Ri)
 end
+
+const c = Center()
+const f = Face()
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
@@ -203,11 +213,19 @@ end
     κᵉⁿ = ifelse(entraining, Cᵉⁿ, zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
+    τ = taper(tapering, Ri, Ri₀, Riᵟ)
+    κᵘ★ = ν₀ * τ
 
+    # Tracer diffusivity: average more than necessary to eliminate noise
+    #∂z_u² = ℑyᵃᶜᵃ(i, j, k, grid, ℑxyᶜᶠᵃ, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    #∂z_v² = ℑxᶜᵃᵃ(i, j, k, grid, ℑxyᶜᶠᵃ, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    #S² = ∂z_u² + ∂z_v²
+    #N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    #Ri = ifelse(N² <= 0, zero(grid), N² / S²)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κᶜ★ = κ₀ * τ
-    κᵘ★ = ν₀ * τ
 
     # Previous diffusivities
     κᶜ = diffusivities.κᶜ
@@ -216,6 +234,12 @@ end
     # New diffusivities
     κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
     κᵘ⁺ = κᵘ★
+
+    # Set to zero on periphery and NaN within inactive region
+    on_periphery = peripheral_node(i, j, k, grid, c, c, f)
+    within_inactive = inactive_node(i, j, k, grid, c, c, f)
+    κᶜ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ⁺))
+    κᵘ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵘ⁺))
 
     # Update by averaging in time
     @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
