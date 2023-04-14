@@ -100,7 +100,7 @@ Criterion is h >= z - ϵ Δz
 end
 
 @inline bottom_cell(i, j, k, ibg::PCBIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
-                                            immersed_cell(i, j, k-1, ibg.underlying_grid, ibg.immersed_boundary)
+                                             immersed_cell(i, j, k-1, ibg.underlying_grid, ibg.immersed_boundary)
 
 @inline function Δzᶜᶜᶜ(i, j, k, ibg::PCBIBG)
     underlying_grid = ibg.underlying_grid
