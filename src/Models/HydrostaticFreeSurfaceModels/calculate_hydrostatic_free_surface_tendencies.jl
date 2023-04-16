@@ -115,7 +115,6 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                 c_tendency,
                 grid,
                 args;
-                dependencies = barrier, 
                 only_active_cells)
     end
 
