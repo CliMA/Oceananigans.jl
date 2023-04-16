@@ -6,52 +6,32 @@ env:
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
 
 steps:
-  - label: "🎪 initialize gpu environment"
-    key: "init_gpu"
+
+# #####
+# ##### Setup 
+# #####
+
+  - label: "🐿️ gpu setup"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
-    commands:
-      # Download julia binaries
-      - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
-
-      # Instantiate and precompile
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
-
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
-
-      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      TEST_GROUP: "none"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.8"
+      - JuliaCI/julia-test#v1:
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🏕️ initialize cpu environment"
-    key: "init_cpu"
+  - label: "🐇 cpu setup"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
+      TEST_GROUP: "none"
       CUDA_VISIBLE_DEVICES: "-1"
-      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
-      TMPDIR: "$TARTARUS_HOME/tmp"
-    commands:
-      # Download julia binaries
-      - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
-
-      # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-
-      # Set up the mpiexecjl command
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.8"
+      - JuliaCI/julia-test#v1:
+          coverage: false
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -618,22 +598,3 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
-
-  - wait: ~
-    continue_on_failure: true
-
-#####
-##### Clean up
-#####
-
-  - label: "🧽 clean up gpu environment"
-    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-
-  - label: "🧹 clean up cpu environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    agents:
-      queue: Oceananigans
-      architecture: CPU

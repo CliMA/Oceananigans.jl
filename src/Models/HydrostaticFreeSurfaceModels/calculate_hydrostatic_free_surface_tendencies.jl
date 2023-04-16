@@ -118,7 +118,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                 dependencies = barrier, 
                 only_active_cells)
     end
-    
+
     return nothing
 end
 
