@@ -4,7 +4,7 @@ using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
+struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T}
     operand :: O
     func :: F
     grid :: G
@@ -23,7 +23,7 @@ end
                          condition = nothing,
                          mask = 0)
 
-Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
+Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field
 described by `func(operand)`.
 
 Positional arguments
@@ -93,7 +93,7 @@ end
 @inline condition_operand(func::Function, op::AbstractField, condition, mask) = ConditionalOperation(op; func, condition, mask)
 @inline condition_operand(func::Function, op::AbstractField, ::Nothing, mask) = ConditionalOperation(op; func, condition = truefunc, mask)
 
-@inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask) 
+@inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask)
     condition = arch_array(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
@@ -111,13 +111,13 @@ end
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
-                                     adapt(to, c.func), 
+                                     adapt(to, c.func),
                                      adapt(to, c.grid),
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-@inline function Base.getindex(c::ConditionalOperation, i, j, k) 
-    return ifelse(get_condition(c.condition, i, j, k, c.grid, c), 
+@inline function Base.getindex(c::ConditionalOperation, i, j, k)
+    return ifelse(get_condition(c.condition, i, j, k, c.grid, c),
                   c.func(getindex(c.operand, i, j, k)),
                   c.mask)
 end
@@ -134,7 +134,7 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
-    
+
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 
 indices(c::ConditionalOperation) = indices(c.operand)

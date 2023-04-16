@@ -5,8 +5,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
-import Oceananigans.Solvers: solve!
 
+import Oceananigans.Solvers: solve!
 
 """
     struct MatrixImplicitFreeSurfaceSolver{S, R, T}
@@ -135,5 +135,3 @@ end
         diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end
-
-finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)
