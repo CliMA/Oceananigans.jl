@@ -1,13 +1,12 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz,
+using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings, 
-                          xnode, ynode, znode,
+                          xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings, λspacing, φspacing
 
-using Oceananigans.Operators: xspacing, yspacing, zspacing,
-                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
 ##### Regular rectilinear grids
@@ -187,7 +186,7 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     grids       = [regular_spaced_grid, variably_spaced_grid]
 
     for (grid_type, grid) in zip(grids_types, grids)
-        @info "        Testing on $grid_type grid...."
+        @info "        Testing grid utils on $grid_type grid...."
 
         @test xnode(2, grid, Center()) ≈ FT(π/2)
         @test ynode(2, grid, Center()) ≈ FT(π/2)
@@ -197,9 +196,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test ynode(2, grid, Face()) ≈ FT(π/3)
         @test znode(2, grid, Face()) ≈ FT(π/3)
 
-        @test min_Δx(grid) ≈ FT(π/3)
-        @test min_Δy(grid) ≈ FT(π/3)
-        @test min_Δz(grid) ≈ FT(π/3)
+        @test minimum_xspacing(grid) ≈ FT(π/3)
+        @test minimum_yspacing(grid) ≈ FT(π/3)
+        @test minimum_zspacing(grid) ≈ FT(π/3)
 
         @test all(xspacings(grid, Center()) .≈ FT(π/N))
         @test all(yspacings(grid, Center()) .≈ FT(π/N))
@@ -267,17 +266,17 @@ function test_regular_rectilinear_constructor_errors(FT)
 end
 
 function flat_size_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, topology, extent)
     return grid.Nx, grid.Ny, grid.Nz
 end
 
 function flat_halo_regular_rectilinear_grid(FT; topology, size, halo, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, halo=halo, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, halo, topology, extent)
     return grid.Hx, grid.Hy, grid.Hz
 end
 
 function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    grid = RectilinearGrid(CPU(), FT; size, topology, extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
@@ -413,7 +412,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
-    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
@@ -622,6 +621,35 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
+function test_lat_lon_xyzλφ_node_nodes(FT, arch)
+
+    @info "    Testing with ($FT) on ($arch)..."
+
+    (Nλ, Nφ, Nz) = grid_size = (12, 4, 2)
+    (Hλ, Hφ, Hz) = halo      = (1, 1, 1)
+
+    lat = (-60,   60)
+    lon = (-180, 180)
+    zᵣ  = (-10,   0)
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+
+    @info "        Testing grid utils on LatitudeLongitude grid...."
+
+    @test λnode(3, 1, 2, grid, Face(), Face(), Face()) ≈ -120
+    @test φnode(3, 2, 2, grid, Face(), Face(), Face()) ≈ -30
+    @test xnode(5, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/6)
+    @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
+    @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
+
+    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(60)
+    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
+    @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
+    @test minimum_zspacing(grid) ≈ 5
+
+    return nothing
+end
+
 function test_lat_lon_precomputed_metrics(FT, arch)
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
@@ -639,7 +667,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
 
     latitude  = (latreg, latstr)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
-    zcoord    = (zreg,     zstr)
+    zcoord    = (zreg,   zstr)
 
     CUDA.allowscalar() do
 
@@ -719,13 +747,12 @@ end
 #####
 
 @testset "Grids" begin
-    @info "Testing grids..."
+    @info "Testing AbstractGrids..."
 
     @testset "Grid utils" begin
         @info "  Testing grid utilities..."
-
-        @test total_extent(Periodic, 1, 0.2, 1.0) == 1.2
-        @test total_extent(Bounded, 1, 0.2, 1.0) == 1.4
+        @test total_extent(Periodic(), 1, 0.2, 1.0) == 1.2
+        @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
     @testset "Regular rectilinear grid" begin
@@ -753,7 +780,6 @@ end
 
         @testset "Grid dimensions" begin
             @info "    Testing grid constructor errors..."
-
             for FT in float_types
                 test_regular_rectilinear_constructor_errors(FT)
             end
@@ -761,7 +787,6 @@ end
 
         @testset "Grids with flat dimensions" begin
             @info "    Testing construction of grids with Flat dimensions..."
-
             for FT in float_types
                 test_flat_size_regular_rectilinear_grid(FT)
             end
@@ -848,6 +873,7 @@ end
         @info "  Testing precomputed metrics on latitude-longitude grid..."
         for arch in archs, FT in float_types
             test_lat_lon_precomputed_metrics(FT, arch)
+            test_lat_lon_xyzλφ_node_nodes(FT, arch)
         end
 
         # Testing show function for regular grid
@@ -878,7 +904,7 @@ end
 
         @test grid isa LatitudeLongitudeGrid
     end
-
+    
     @testset "Conformal cubed sphere face grid" begin
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 

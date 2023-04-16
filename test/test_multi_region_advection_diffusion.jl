@@ -1,6 +1,7 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_field
-using Oceananigans.Grids: min_Δx, min_Δy
 using Oceananigans.Operators: hack_cosd
 
 # Tracer patch for visualization
@@ -9,8 +10,8 @@ Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
-    Δx_min = min_Δx(grid)
-    Δy_min = min_Δy(grid)
+    Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
 end
 
@@ -21,6 +22,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     else
         devices = nothing
     end
+
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     if grid isa RectilinearGrid
@@ -38,9 +40,6 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure  = nothing)
-
-    # Tracer patch for visualization
-    Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
     # Tracer patch parameters
     cᵢ(x, y, z) = Gaussian(x, 0, L)
@@ -85,16 +84,15 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     R = grid.radius
     Ω = model.coriolis.rotation_rate
 
-    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sin(λ)
-    ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sin(λ)
-
+    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
+    ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
     cᵢ(λ, φ, z) = Gaussian(λ, φ - 5, 10)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
     Δt = 0.1 * Δ_min(grid)  / sqrt(g * grid.Lz) 
 
-    for step in 1:10
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
@@ -117,51 +115,56 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
                                         tracers = :c,
                                         buoyancy=nothing)
 
-    init(x, y, z) = cos(m * x)
+    initial_condition(x, y, z) = cos(m * x)
     f = fields(model)[field_name]
 
-    @apply_regionally set!(f, init)
+    @apply_regionally set!(f, initial_condition)
     
     update_state!(model)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    for n = 1:10
+    for _ = 1:10
         time_step!(model, Δt)
     end
 
     return f
 end
 
-Nx = 32; Ny = 32
+Nx = 32
+Ny = 32
+
+partitioning = [XPartition]
 
 for arch in archs
 
-    grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
-                                        halo = (3, 3, 3),
-                                        topology = (Periodic, Bounded, Bounded),
-                                        x = (0, 1),
-                                        y = (0, 1),
-                                        z = (0, 1))
+    grid_rect = RectilinearGrid(arch,
+                                size = (Nx, Ny, 1),
+                                halo = (3, 3, 3),
+                                topology = (Periodic, Bounded, Bounded),
+                                x = (0, 1),
+                                y = (0, 1),
+                                z = (0, 1))
 
-    grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                        halo = (3, 3, 3),
-                                        radius = 1, latitude = (-80, 80),
-                                        longitude = (-180, 180), z = (-1, 0))
+    grid_lat = LatitudeLongitudeGrid(arch,
+                                     size = (Nx, Ny, 1),
+                                     halo = (3, 3, 3),
+                                     latitude = (-80, 80),
+                                     longitude = (-180, 180),
+                                     z = (-1, 0),
+                                     radius = 1)
 
-    partitioning = [XPartition]
-    
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
-        
+
             cs, es = solid_body_tracer_advection_test(grid)
-            
+
             cs = Array(interior(cs))
             es = Array(interior(es))
 
             for regions in [2], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
+                c, e = solid_body_tracer_advection_test(grid; P=P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
                 e = interior(reconstruct_global_field(e))
@@ -175,20 +178,23 @@ for arch in archs
     @testset "Testing multi region solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
-                                     radius = 1, latitude = (-80, 80),
-                                     longitude = (-160, 160), z = (-1, 0))
+                                     latitude = (-80, 80),
+                                     longitude = (-160, 160),
+                                     z = (-1, 0),
+                                     radius = 1,
+                                     topology=(Bounded, Bounded, Bounded))
 
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
-            
+
         us = Array(interior(us))
         vs = Array(interior(vs))
         ws = Array(interior(ws))
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
-        
+
         for regions in [2], P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c, η = solid_body_rotation_test(grid; P = P, regions=regions)
+            u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
 
             u = interior(reconstruct_global_field(u))
             v = interior(reconstruct_global_field(v))

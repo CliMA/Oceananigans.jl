@@ -1,4 +1,4 @@
-using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!
 
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 

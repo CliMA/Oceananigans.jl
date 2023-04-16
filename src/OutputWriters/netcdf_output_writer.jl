@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, xnodes, ynodes, znodes, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractRectilinearGrid, topology, halo_size, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
@@ -25,31 +25,49 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",)
-ydim(::Type{Face}) = ("yF",)
-zdim(::Type{Face}) = ("zF",)
+xdim(::Face) = ("xF",)
+ydim(::Face) = ("yF",)
+zdim(::Face) = ("zF",)
 
-xdim(::Type{Center}) = ("xC",)
-ydim(::Type{Center}) = ("yC",)
-zdim(::Type{Center}) = ("zC",)
+xdim(::Center) = ("xC",)
+ydim(::Center) = ("yC",)
+zdim(::Center) = ("zC",)
 
-xdim(::Type{Nothing}) = ()
-ydim(::Type{Nothing}) = ()
-zdim(::Type{Nothing}) = ()
+xdim(::Nothing) = ()
+ydim(::Nothing) = ()
+zdim(::Nothing) = ()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
+
+native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz) =
+    Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+
+native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
+    Dict("xC" => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         "xF" => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         "yC" => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         "yF" => parent(φnodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict("xC" => (Center, Center, Center),
-                "xF" => (  Face, Center, Center),
-                "yC" => (Center, Center, Center),
-                "yF" => (Center,   Face, Center),
-                "zC" => (Center, Center, Center),
-                "zF" => (Center, Center,   Face))
+    locs = Dict("xC" => (Center(), Center(), Center()),
+                "xF" => (Face(),   Center(), Center()),
+                "yC" => (Center(), Center(), Center()),
+                "yF" => (Center(), Face(),   Center()),
+                "zC" => (Center(), Center(), Center()),
+                "zF" => (Center(), Center(), Face()  ))
+
+    topo = map(instantiate, topology(grid))
 
     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
@@ -58,18 +76,10 @@ function default_dimensions(output, grid, indices, with_halos)
                        for name in keys(locs))
     end
 
-    dims = Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
-                "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
-                "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
-                "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
-                "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
-                "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
-
-    return dims
+    return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
-
-const default_dimension_attributes = Dict(
+const default_dimension_attributes_rectilinear = Dict(
     "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
     "xF"          => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
     "yC"          => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
@@ -82,6 +92,17 @@ const default_dimension_attributes = Dict(
     "ΔyF"         => Dict("longname" => "Spacings around cell faces in the y-direction.",   "units" => "m"),
     "ΔzC"         => Dict("longname" => "Spacings around cell centers in the z-direction.", "units" => "m"),
     "ΔzF"         => Dict("longname" => "Spacings around cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("longname" => "Time", "units" => "s"),
+    "particle_id" => Dict("longname" => "Particle ID")
+)
+
+const default_dimension_attributes_curvilinear = Dict(
+    "xC"          => Dict("longname" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+    "xF"          => Dict("longname" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+    "yC"          => Dict("longname" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+    "yF"          => Dict("longname" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
+    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
     "time"        => Dict("longname" => "Time", "units" => "s"),
     "particle_id" => Dict("longname" => "Particle ID")
 )
@@ -372,6 +393,12 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
+
+    if model.grid isa AbstractRectilinearGrid
+        default_dimension_attributes = default_dimension_attributes_rectilinear
+    elseif model.grid isa AbstractCurvilinearGrid
+        default_dimension_attributes = default_dimension_attributes_curvilinear
+    end
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"

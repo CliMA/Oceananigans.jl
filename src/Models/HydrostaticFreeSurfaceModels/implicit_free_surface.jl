@@ -71,7 +71,6 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
-* `:Multigrid` for [`MultigridSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
@@ -162,10 +161,12 @@ end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
-    masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
+    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+
+    return nothing
 end
 

@@ -149,8 +149,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
 end
 
 ε_op = KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc,
-                                                       grid;
-                                                       computed_dependencies=(u, v, w, ν))
+                                                       grid, u, v, w, ν)
 
 ε = Field(ε_op)
 

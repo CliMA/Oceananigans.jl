@@ -6,8 +6,9 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     ν₀  :: FT
     κ₀  :: FT
-    κᶜ  :: FT
-    Cᵉ  :: FT
+    κᶜᵃ :: FT
+    Cᵉⁿ :: FT
+    Cᵃᵛ :: FT
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
@@ -15,13 +16,14 @@ end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
-                                        κᶜ::FT,
-                                        Cᵉ::FT,
+                                        κᶜᵃ::FT,
+                                        Cᵉⁿ::FT,
+                                        Cᵃᵛ::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R) where {TD, FT, R}
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Cᵉ, Ri₀, Riᵟ,
+    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering)
 end
 
@@ -30,16 +32,21 @@ struct PiecewiseLinearRiDependentTapering end
 struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
+Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering" 
+Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering" 
+Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering" 
+
 """
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                FT = Float64;]
-                               Ri_dependent_tapering = ExponentialRiDependentTapering(),
-                               ν₀  = 0.30,
-                               κ₀  = 0.42,
-                               κᶜ  = 4.0,
-                               Cᵉ  = 0.57,
-                               Ri₀ = 0.27,
-                               Riᵟ = 0.20,
+                               Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
+                               ν₀  = 0.7,
+                               κ₀  = 0.5,
+                               κᶜᵃ = 1.7,
+                               Cᵉⁿ = 0.1,
+                               Cᵃᵛ = 0.6,
+                               Ri₀ = 0.1,
+                               Riᵟ = 0.4,
                                warning = true)
 
 Return a closure that estimates the vertical viscosity and diffusivit
@@ -55,20 +62,22 @@ Keyword Arguments
   `ExponentialRiDependentTapering()`.
 * `ν₀`: Non-convective viscosity.
 * `κ₀`: Non-convective diffusivity for tracers.
-* `κᶜ`: Convective adjustment diffusivity for tracers.
-* `Cᵉ`: Entrainment coefficient for tracers.
+* `κᶜᵃ`: Convective adjustment diffusivity for tracers.
+* `Cᵉⁿ`: Entrainment coefficient for tracers.
+* `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity.
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                                    ν₀  = 0.30,
-                                    κ₀  = 0.42,
-                                    κᶜ  = 4.0,
-                                    Cᵉ  = 0.57,
-                                    Ri₀ = 0.27,
-                                    Riᵟ = 0.20,
+                                    ν₀  = 0.7,
+                                    κ₀  = 0.5,
+                                    κᶜᵃ = 1.7,
+                                    Cᵉⁿ = 0.1,
+                                    Cᵃᵛ = 0.6,
+                                    Ri₀ = 0.1,
+                                    Riᵟ = 0.4,
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -80,8 +89,8 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     TD = typeof(time_discretization)
 
-    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Cᵉ),
-                                          FT(Ri₀), FT(Riᵟ),
+    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜᵃ), FT(Cᵉⁿ),
+                                          FT(Cᵃᵛ), FT(Ri₀), FT(Riᵟ),
                                           Ri_dependent_tapering)
 end
 
@@ -99,16 +108,16 @@ const FlavorOfRBVD = Union{RBVD, RBVDArray}
 @inline viscosity_location(::FlavorOfRBVD)   = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ = Field((Center, Center, Face), grid)
-    ν = Field((Center, Center, Face), grid)
-    return (; κ, ν)
+    κᶜ = Field((Center, Center, Face), grid)
+    κᵘ = Field((Center, Center, Face), grid)
+    return (; κᶜ, κᵘ)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
@@ -162,9 +171,6 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
-@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
@@ -175,8 +181,9 @@ end
 
     ν₀  = closure_ij.ν₀
     κ₀  = closure_ij.κ₀
-    κᶜ  = closure_ij.κᶜ
-    Cᵉ  = closure_ij.Cᵉ
+    κᶜᵃ = closure_ij.κᶜᵃ
+    Cᵉⁿ = closure_ij.Cᵉⁿ
+    Cᵃᵛ = closure_ij.Cᵃᵛ
     Ri₀ = closure_ij.Ri₀
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
@@ -189,21 +196,30 @@ end
     entraining = (!convecting) & (N²_above < 0)
 
     # Convective adjustment diffusivity
-    κᶜ = ifelse(convecting, κᶜ, zero(grid))
+    κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
-    κᵉ = ifelse(entraining, Cᵉ, zero(grid))
+    κᵉⁿ = ifelse(Qᵇ > 0, Cᵉⁿ * Qᵇ / N², zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ, zero(grid))
 
     # Shear mixing diffusivity and viscosity
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κ★ = κ₀ * τ
-    ν★ = ν₀ * τ
+    κᶜ★ = κ₀ * τ
+    κᵘ★ = ν₀ * τ
 
-    @inbounds diffusivities.κ[i, j, k] = κᶜ + κᵉ + κ★
-    @inbounds diffusivities.ν[i, j, k] = ν★
+    # Previous diffusivities
+    κᶜ = diffusivities.κᶜ
+    κᵘ = diffusivities.κᵘ
+
+    # New diffusivities
+    κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
+    κᵘ⁺ = κᵘ★
+
+    # Update by averaging in time
+    @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
+    @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
 end
 
 #####
@@ -211,4 +227,15 @@ end
 #####
 
 Base.summary(closure::RiBasedVerticalDiffusivity{TD}) where TD = string("RiBasedVerticalDiffusivity{$TD}")
-Base.show(io::IO, closure::RiBasedVerticalDiffusivity) = print(io, summary(closure))
+
+function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
+    print(io, summary(closure), '\n')
+    print(io, "├── Ri_dependent_tapering: ", prettysummary(closure.Ri_dependent_tapering), '\n')
+    print(io, "├── κ₀: ", prettysummary(closure.κ₀), '\n')
+    print(io, "├── κᶜᵃ: ", prettysummary(closure.κᶜᵃ), '\n')
+    print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
+    print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
+    print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')
+    print(io, "└── Riᵟ: ", prettysummary(closure.Riᵟ))
+end
+    
