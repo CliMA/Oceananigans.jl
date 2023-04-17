@@ -19,16 +19,16 @@ end
 #####
 
 diffusive_fluxes = (:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z)
+
 viscous_fluxes   = (:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,
                     :viscous_flux_vx, :viscous_flux_vy, :viscous_flux_vz,
                     :viscous_flux_wx, :viscous_flux_wy, :viscous_flux_wz)
 
-funcs     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ,
-             :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_implicit_linear_term,
-             diffusive_fluxes..., viscous_fluxes...]
-alt_funcs = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ,
-             :ivd_upper_diagonal, :ivd_lower_diagonal, :implicit_linear_term,
-             diffusive_fluxes..., viscous_fluxes...]
+divergences     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_implicit_linear_term]
+alt_divergences = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal,              :ivd_lower_diagonal,              :implicit_linear_term]
+
+funcs     = [divergences...,     diffusive_fluxes..., viscous_fluxes...]
+alt_funcs = [alt_divergences..., diffusive_fluxes..., viscous_fluxes...]
 
 for (f, alt_f) in zip(funcs, alt_funcs)
     @eval begin
