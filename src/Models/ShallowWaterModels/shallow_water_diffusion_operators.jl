@@ -32,11 +32,11 @@ end
 Return a scalar diffusivity for the shallow water model.
 
 The diffusivity for the shallow water model is calculated as `h * ν` so that we get a
-viscous term in the form ``h⁻¹ ∇ ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
-a trace, i.e., ``t = 𝛁u + (𝛁u)ᵀ - ξ I ⋅ (𝛁 ⋅ u)``.
+viscous term in the form ``h^{-1} 𝛁 ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
+a trace, i.e., ``t = 𝛁𝐮 + (𝛁𝐮)^T - ξ I ⋅ (𝛁 ⋅ 𝐮)``.
 
 With the `VectorInvariantFormulation()` (that evolves ``u`` and ``v``) we compute
-``h^{-1} 𝛁 ( \nu h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
+``h^{-1} 𝛁(ν h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
 ``u h`` and ``v h``) we compute ``𝛁 (ν h 𝛁 t)``.
 """
 function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false)
