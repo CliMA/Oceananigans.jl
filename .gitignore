@@ -57,3 +57,5 @@ docs/src/generated
 .logamgx
 
 statprof
+*.sqlite
+*.nsys-rep

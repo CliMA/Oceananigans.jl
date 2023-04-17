@@ -71,7 +71,6 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
-* `:Multigrid` for [`MultigridSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
