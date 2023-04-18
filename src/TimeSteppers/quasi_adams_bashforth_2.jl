@@ -105,6 +105,7 @@ end
 function correct_velocities_and_store_tendecies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
+    return nothing
 end
 
 #####

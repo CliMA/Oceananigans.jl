@@ -307,7 +307,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     fill_halo_regions!(free_surface.η)
 
-    return velocities_update
+    return nothing
 end
 
 function iterate_split_explicit!(free_surface, grid, Δt)
