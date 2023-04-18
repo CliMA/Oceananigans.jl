@@ -29,4 +29,4 @@ update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers)
 
 update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers) =  
-        launch!(arch, grid, :xy, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
+    launch!(arch, grid, :xy, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
