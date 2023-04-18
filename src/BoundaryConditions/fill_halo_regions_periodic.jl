@@ -30,7 +30,7 @@ end
 function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xy_size, offset = parent_size_and_offset(c, 1, 2, size, offset)
     launch!(arch, grid, xy_size, fill_periodic_bottom_and_top_halo!, c_parent, offset, grid.Hz, grid.Nz; kw...)
-    return
+    return nothing
 end
 
 #####
