@@ -18,7 +18,7 @@ end
 function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
     launch!(arch, grid, yz_size, fill_periodic_west_and_east_halo!, c_parent, offset, grid.Hx, grid.Nx; kw...)
-    return
+    return nothing
 end
 
 function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
