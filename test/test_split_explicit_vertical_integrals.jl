@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barotropic_split_explicit_corrector!, initialize_free_surface_state!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!, barotropic_split_explicit_corrector!, initialize_free_surface_state!
 
 @testset "Barotropic Kernels" begin
 
