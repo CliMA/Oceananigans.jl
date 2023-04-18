@@ -150,10 +150,7 @@ end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
-    
-    for u in velocities
-        mask_immersed_field!(u)
-    end
+    foreach(mask_immersed_field!, velocities)
     
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)

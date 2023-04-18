@@ -51,13 +51,6 @@ end
 end
 
 #####
-##### mask_immersed_velocities for NonhydrostaticModel
-#####
-
-mask_immersed_velocities!(U, arch, grid) = nothing
-mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
-
-#####
 ##### Masking for GridFittedBoundary
 #####
 
