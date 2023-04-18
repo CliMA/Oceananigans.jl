@@ -199,7 +199,7 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function barotropic_mode_kernel!(U, V, grid, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)	
 
     # hand unroll first loop 	
@@ -213,8 +213,8 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v)
+compute_barotropic_mode!(U, V, grid, u, v) = 
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v)
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
@@ -254,7 +254,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    barotropic_mode!(U, V, grid, u, v)
+    compute_barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
@@ -273,7 +273,7 @@ ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ)
     
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
-    @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
+    @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
 end
 
@@ -342,7 +342,7 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     mask_immersed_field!(Gv)
 
     # Compute barotropic mode of tendency fields
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
+    compute_barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
 
     return nothing
 end
