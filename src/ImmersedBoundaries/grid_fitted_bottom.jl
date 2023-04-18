@@ -39,9 +39,9 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax = maximum(ib.bottom_height)
-    hmin = minimum(ib.bottom_height)
-    hmean = mean(ib.bottom_height)
+    hmax = maximum(interior(ib.bottom_height))
+    hmin = minimum(interior(ib.bottom_height))
+    hmean = mean(interior(ib.bottom_height))
 
     summary1 = "GridFittedBottom("
 

@@ -15,9 +15,9 @@ end
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
 
 function Base.summary(ib::PartialCellBottom)
-    hmax = maximum(ib.bottom_height)
-    hmin = minimum(ib.bottom_height)
-    hmean = mean(ib.bottom_height)
+    hmax = maximum(interior(ib.bottom_height))
+    hmin = minimum(interior(ib.bottom_height))
+    hmean = mean(interior(ib.bottom_height))
 
     summary1 = "PartialCellBottom("
 
