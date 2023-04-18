@@ -101,5 +101,6 @@ function on_architecture(arch, ib::GridFittedBottom{<:Field})
     return GridFittedBottom(new_bottom_height, ib.immersed_condition)
 end
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), ib.immersed_condition)
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height.data),
+                                                                   ib.immersed_condition)
 
