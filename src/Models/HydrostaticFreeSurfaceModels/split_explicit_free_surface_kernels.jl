@@ -293,14 +293,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     @apply_regionally setup_split_explicit!(free_surface.auxiliary, free_surface.state, free_surface.η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
 
     fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
-
-    # Solve for the free surface at tⁿ⁺¹
-    @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
     
-    # Reset eta for the next timestep
-    # this is the only way in which η̅ is used: as a smoother for the 
-    # substepped η field
     @apply_regionally begin 
+        # Solve for the free surface at tⁿ⁺¹
+        iterate_split_explicit!(free_surface, grid, Δt)
+        # this is the only way in which η̅ is used: as a smoother for the substepped η field
         set!(free_surface.η, free_surface.state.η̅)
 
         # Wait for predictor velocity update step to complete and mask it if immersed boundary.
