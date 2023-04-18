@@ -185,7 +185,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    if architecture == GPU() && !has_cuda() 
+    if architecture == GPU() && !available(architecture)
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 

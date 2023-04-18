@@ -2,6 +2,7 @@ using Pkg
 using InteractiveUtils
 using Oceananigans.Architectures
 
+# TODO: Move to CUDAExt
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
     if CUDA.has_cuda()

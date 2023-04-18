@@ -6,7 +6,7 @@ export
     WindowedTimeAverage,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
-using CUDA
+
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

@@ -178,13 +178,13 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
     rowval = CuArray{Int}(undef, 0)
     nzval  = CuArray{eltype(grid)}(undef, 0)
 
-    CUDA.@allowscalar colptr[1] = 1
+    GPUArraysCore.@allowscalar colptr[1] = 1
 
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ)  .= 0
         parent(Aeᵢⱼₖ) .= 0
 
-        CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
+        GPUArraysCore.@allowscalar eᵢⱼₖ[i, j, k] = 1
 
         fill_halo_regions!(eᵢⱼₖ)
 
@@ -192,7 +192,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
 
         count = 0
         for n in 1:Nz, m in 1:Ny, l in 1:Nx
-            Aeᵢⱼₖₗₘₙ = CUDA.@allowscalar Aeᵢⱼₖ[l, m, n]
+            Aeᵢⱼₖₗₘₙ = GPUArraysCore.@allowscalar Aeᵢⱼₖ[l, m, n]
             if Aeᵢⱼₖₗₘₙ != 0
                 append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
                 append!(nzval, Aeᵢⱼₖₗₘₙ)
@@ -200,7 +200,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
             end
         end
 
-        CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
+        GPUArraysCore.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
     end
 
     return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))

@@ -1,4 +1,4 @@
-using CUDA: @allowscalar
+import GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: Flat, Bounded

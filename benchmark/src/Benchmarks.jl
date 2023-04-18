@@ -30,6 +30,7 @@ function __init__()
     Logging.global_logger(OceananigansLogger())
 end
 
+# TODO move to CUDAExt
 macro sync_gpu(expr)
     return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
 end

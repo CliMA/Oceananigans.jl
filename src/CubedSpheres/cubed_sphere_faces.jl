@@ -1,5 +1,5 @@
 using Statistics
-using CUDA
+import CUDA: CuArray
 using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: AbstractOperation
 

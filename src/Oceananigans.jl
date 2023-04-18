@@ -124,7 +124,7 @@ using Printf
 using Logging
 using Statistics
 using LinearAlgebra
-using CUDA
+using GPUArraysCore
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -266,15 +266,10 @@ function __init__()
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
         FFTW.set_num_threads(4*threads)
     end
+end
 
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
+if !isdefined(Base, :get_extension)
+  include("../ext/CUDAExt/CUDAExt.jl")
 end
 
 end # module

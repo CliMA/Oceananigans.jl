@@ -1,4 +1,3 @@
-using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
