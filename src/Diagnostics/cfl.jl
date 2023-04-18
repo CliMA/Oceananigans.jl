@@ -79,10 +79,3 @@ julia> dcfl(model)
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 
-#####
-##### Accurate CFL via reduction
-#####
-
-using Oceananigans.Advection: cell_advection_timescale
-
-accurate_cell_advection_timescale(model) = cell_advection_timescale(model.grid, model.velocities)

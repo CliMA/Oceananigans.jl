@@ -73,7 +73,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...
     offset = fill_halo_offset(size, fill_halo!, indices)
 
     fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, args...; kwargs...)
-    return
+    return nothing
 end
 
 function permute_boundary_conditions(boundary_conditions)
