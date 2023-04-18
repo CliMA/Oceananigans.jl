@@ -95,7 +95,7 @@ Criterion is h >= z - ϵ Δz
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     # Face node above current cell
     z = znode(i, j, k+1, underlying_grid, c, c, f)
-    h = @inbounds ib.bottom_height[i, j]
+    h = @inbounds ib.bottom_height[i, j, 1]
     return z <= h
 end
 
@@ -109,7 +109,7 @@ end
     x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom height and fractional Δz parameter
-    h = @inbounds ib.bottom_height[i, j]
+    h = @inbounds ib.bottom_height[i, j, 1]
     ϵ = ibg.immersed_boundary.minimum_fractional_cell_height
 
     # Are we in a bottom cell?
@@ -142,4 +142,4 @@ end
 @inline Δzᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
 @inline Δzᶠᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
 
-@inline z_bottom(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
+@inline z_bottom(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]

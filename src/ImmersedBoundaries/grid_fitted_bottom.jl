@@ -80,17 +80,17 @@ end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
-    h = @inbounds ib.bottom_height[i, j]
+    h = @inbounds ib.bottom_height[i, j, 1]
     return z <= h
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
     z = znode(i, j, k, underlying_grid, c, c, c)
-    h = @inbounds ib.bottom_height[i, j]
+    h = @inbounds ib.bottom_height[i, j, 1]
     return z <= h
 end
 
-@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
+@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(ib.bottom_height, ib.immersed_condition)
 
 function on_architecture(arch, ib::GridFittedBottom{<:Field})
