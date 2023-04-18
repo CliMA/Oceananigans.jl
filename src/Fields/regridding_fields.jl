@@ -80,8 +80,8 @@ end
 function regrid_in_z!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_z_faces = znodes(source_grid, f)
-    event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
-    wait(device(arch), event)
+    launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
+    
     return a
 end
 
@@ -89,8 +89,7 @@ function regrid_in_y!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_y_faces = ynodes(source_grid, f)
     Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
-    event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
-    wait(device(arch), event)
+    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
     return a
 end
 
@@ -98,8 +97,7 @@ function regrid_in_x!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_x_faces = xnodes(source_grid, f)
     Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
-    event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
-    wait(device(arch), event)
+    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
     return a
 end
 
