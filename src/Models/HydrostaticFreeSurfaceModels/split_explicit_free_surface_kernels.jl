@@ -300,12 +300,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Reset eta for the next timestep
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
-    @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+    @apply_regionally begin 
+        set!(free_surface.η, free_surface.state.η̅)
 
-    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    
-    mask_immersed_field!(model.velocities.u)
-    mask_immersed_field!(model.velocities.v)
+        # Wait for predictor velocity update step to complete and mask it if immersed boundary.
+        mask_immersed_field!(model.velocities.u)
+        mask_immersed_field!(model.velocities.v)
+    end
 
     fill_halo_regions!(free_surface.η)
 
