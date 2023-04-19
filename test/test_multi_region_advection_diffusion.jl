@@ -4,10 +4,9 @@ using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_field
 using Oceananigans.Operators: hack_cosd
 
-# Tracer patch for visualization
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
-prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
+prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -47,7 +46,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     set!(model, c=cᵢ, e=eᵢ)
 
-    # Time-scale for tracer advection across the smallest grid cell
+    # Time-scale for tracer advection across the smallest grid cell; 0.1 is maximum velocity
     advection_time_scale = Δ_min(grid) / 0.1
     
     Δt = 0.1advection_time_scale
@@ -125,7 +124,7 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
     
     update_state!(model)
 
-    # Step forward with small time-step relative to diff. time-scale
+    # Step forward with small time-step relative to diffusive time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
     for _ = 1:10
         time_step!(model, Δt)
