@@ -127,9 +127,8 @@ function incompressible_in_time(grid, Nt, timestepper)
     end
 
     arch = architecture(grid)
-    event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
+    
     min_div = CUDA.@allowscalar minimum(interior(div_U))
     max_div = CUDA.@allowscalar maximum(interior(div_U))
     max_abs_div = CUDA.@allowscalar maximum(abs, interior(div_U))

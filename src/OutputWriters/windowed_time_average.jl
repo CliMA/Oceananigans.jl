@@ -48,12 +48,12 @@ Example
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
-using Oceananigans.Utils: year, years
+using Oceananigans.Utils: days
 
-schedule = AveragedTimeInterval(4years, window=1year)
+schedule = AveragedTimeInterval(4days, window=2days)
 
 # output
-AveragedTimeInterval(window=1 year, stride=1, interval=4 years)
+AveragedTimeInterval(window=2 days, stride=1, interval=4 days)
 ```
 
 An `AveragedTimeInterval` schedule directs an output writer
@@ -66,16 +66,16 @@ using Oceananigans.Utils: minutes
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
-simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           filename= "averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4years, window=1year, stride=2))
+                                                          schedule = AveragedTimeInterval(4days, window=2days, stride=2))
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(4 years):
+JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── filepath: ./averaged_velocity_data.jld2
-├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
