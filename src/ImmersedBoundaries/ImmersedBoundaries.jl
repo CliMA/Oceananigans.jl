@@ -42,19 +42,16 @@ using Oceananigans.Advection:
     advective_tracer_flux_z
     
 import Base: show, summary
-import Oceananigans.Utils: cell_advection_timescale
+import Oceananigans.Advection: cell_advection_timescale
 
-import Oceananigans.Grids: 
-        cpu_face_constructor_x,
-        cpu_face_constructor_y,
-        cpu_face_constructor_z,
-        x_domain,
-        y_domain,
-        z_domain
-        
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
-import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
-import Oceananigans.Grids: inactive_cell
+import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                            x_domain, y_domain, z_domain
+
+import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+                           xnode, ynode, znode, λnode, φnode, node,
+                           xnodes, ynodes, znodes, λnodes, φnodes, nodes,
+                           inactive_cell
+
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
@@ -91,7 +88,7 @@ import Oceananigans.TurbulenceClosures:
     νᶠᶠᶜ,
     νᶜᶠᶠ,
     νᶠᶜᶠ,
-    bottom
+    z_bottom
 
 """
     abstract type AbstractImmersedBoundary
@@ -110,12 +107,11 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
     immersed_boundary :: I
     active_cells_map :: M
     
-    # Internal interface
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, wcm::M) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M}
         FT = eltype(grid)
         arch = architecture(grid)
         Arch = typeof(arch)
-        
+
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, wcm)
     end
 end
@@ -144,7 +140,7 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
-@inline bottom(i, j, k, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
+@inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
@@ -223,7 +219,7 @@ As well as
 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
-  
+
 
 #####
 ##### Utilities
@@ -233,20 +229,34 @@ const c = Center()
 const f = Face()
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
-@inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline xnode(LX, i, ibg::IBG) = xnode(LX, i, ibg.underlying_grid)
-@inline ynode(LY, j, ibg::IBG) = ynode(LY, j, ibg.underlying_grid)
-@inline znode(LZ, k, ibg::IBG) = znode(LZ, k, ibg.underlying_grid)
+@inline λnode(i, ibg::IBG, ℓx; kwargs...) = λnode(i, ibg.underlying_grid, ℓx; kwargs...)
+@inline φnode(j, ibg::IBG, ℓy; kwargs...) = φnode(j, ibg.underlying_grid, ℓy; kwargs...)
+@inline xnode(i, ibg::IBG, ℓx; kwargs...) = xnode(i, ibg.underlying_grid, ℓx; kwargs...)
+@inline ynode(j, ibg::IBG, ℓy; kwargs...) = ynode(j, ibg.underlying_grid, ℓy; kwargs...)
+@inline λnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = λnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
+@inline φnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = φnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
+@inline xnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = xnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
+@inline ynode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = ynode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
+@inline znode(k, ibg::IBG, ℓz; kwargs...) = znode(k, ibg.underlying_grid, ℓz; kwargs...)
 
-@inline xnode(LX, LY, LZ, i, j, k, ibg::IBG) = xnode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline ynode(LX, LY, LZ, i, j, k, ibg::IBG) = ynode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline znode(LX, LY, LZ, i, j, k, ibg::IBG) = znode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline λnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = λnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+@inline φnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = φnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+@inline xnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = xnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+@inline ynode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = ynode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+@inline znode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = znode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 
-all_x_nodes(loc, ibg::IBG) = all_x_nodes(loc, ibg.underlying_grid)
-all_y_nodes(loc, ibg::IBG) = all_y_nodes(loc, ibg.underlying_grid)
-all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
+node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+
+nodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+nodes(ibg::IBG, (ℓx, ℓy, ℓz); kwargs...) = nodes(ibg, ℓx, ℓy, ℓz; kwargs...)
+
+λnodes(ibg::IBG, loc; kwargs...) = λnodes(ibg.underlying_grid, loc; kwargs...)
+φnodes(ibg::IBG, loc; kwargs...) = φnodes(ibg.underlying_grid, loc; kwargs...)
+xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
+ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
+znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
 
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)

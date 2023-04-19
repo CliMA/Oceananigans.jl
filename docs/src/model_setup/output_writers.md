@@ -107,16 +107,24 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
+Nx, Ny, Nz = 16, 16, 16
+
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
 model = NonhydrostaticModel(grid=grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
-g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
-h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+
+g(model) = model.clock.time .* exp.(znodes(Center, grid)) # single-column profile output (vector)
+
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+YF = [yF[j] for i in 1:Nx, j in 1:Ny]
+
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # x-y slice output (2D array)
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
@@ -126,18 +134,18 @@ output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-);
+)
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="some_things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./some_things.nc
+├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float64}
@@ -229,16 +237,16 @@ time `interval`. The ``t_i`` specify both the end of the averaging window and th
 
 ### Example
 
-Building an `AveragedTimeInterval` that averages over a 1 year window, every 4 years,
+Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 days,
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
-using Oceananigans.Utils: year, years
+using Oceananigans.Units
 
-schedule = AveragedTimeInterval(4years, window=1year)
+schedule = AveragedTimeInterval(4days, window=1day)
 
 # output
-AveragedTimeInterval(window=1 year, stride=1, interval=4 years)
+AveragedTimeInterval(window=1 day, stride=1, interval=4 days)
 ```
 
 An `AveragedTimeInterval` schedule directs an output writer
@@ -247,20 +255,20 @@ to time-average its outputs before writing them to disk:
 ```jldoctest averaged_time_interval
 using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.Utils: minutes
+using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
-simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           filename = "even_more_averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4years, window=1year, stride=2))
+                                                          schedule = AveragedTimeInterval(4days, window=1day, stride=2))
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(4 years):
+JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
-├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 day, stride=2, interval=4 days)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB

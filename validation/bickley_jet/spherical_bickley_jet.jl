@@ -116,7 +116,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Output: primitive fields + computations
     u, v, w, c = merge(model.velocities, model.tracers)
 
-    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid; computed_dependencies=(u, v))
+    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     ζ = Field(ζ_op)
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))

@@ -1,6 +1,8 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
 
 for closure in closures
     @eval begin
@@ -173,13 +175,19 @@ end
 function compute_closure_specific_diffusive_cfl(closure)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(; grid, closure)
+    model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
+    @test diffusive_flux_x(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_y(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_z(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
 
     tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
+    @test viscous_flux_ux(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_uy(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_uz(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
 
     return nothing
 end
@@ -200,7 +208,7 @@ end
             κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
             κ_dx_c = κ * ∂x(c)
             ν = viscosity(model.closure, model.diffusivity_fields)
-            ν_dx_u = ν * ∂x(c)
+            ν_dx_u = ν * ∂x(u)
             @test ν_dx_u[1, 1, 1] == 0.0
             @test κ_dx_c[1, 1, 1] == 0.0
         end

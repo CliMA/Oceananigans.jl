@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node
+using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
@@ -39,8 +39,8 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              scheme :: S = EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
-@inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
-@inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, Face())
+@inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, Face(), Face())
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
@@ -57,16 +57,16 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
 
 const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:ActiveCellEnstrophyConservingScheme}
 
-@inline revert_peripheral_node(args...) = !peripheral_node(args...)
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
 
 @inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
+    neighbouring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
     return ifelse(neighbouring_active_nodes == 0, zero(grid),
            @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end
 
 @inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
+    neighbouring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
     return ifelse(neighbouring_active_nodes == 0, zero(grid),
            @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end

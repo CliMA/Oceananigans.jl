@@ -32,11 +32,11 @@ end
 Return a scalar diffusivity for the shallow water model.
 
 The diffusivity for the shallow water model is calculated as `h * ν` so that we get a
-viscous term in the form ``h⁻¹ ∇ ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
-a trace, i.e., ``t = 𝛁u + (𝛁u)ᵀ - ξ I ⋅ (𝛁 ⋅ u)``.
+viscous term in the form ``h^{-1} 𝛁 ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
+a trace, i.e., ``t = 𝛁𝐮 + (𝛁𝐮)^T - ξ I ⋅ (𝛁 ⋅ 𝐮)``.
 
 With the `VectorInvariantFormulation()` (that evolves ``u`` and ``v``) we compute
-``h^{-1} 𝛁 ( \nu h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
+``h^{-1} 𝛁(ν h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
 ``u h`` and ``v h``) we compute ``𝛁 (ν h 𝛁 t)``.
 """
 function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false)
@@ -55,8 +55,10 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) =
-        fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
+@kernel function _calculate_shallow_water_viscosity!(νₑ, grid, closure, clock, fields)
+    i, j, k = @index(Global, NTuple)
+    νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
+end
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
 
@@ -65,9 +67,9 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
     clock = model.clock
 
     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
-    
+
     launch!(arch, grid, :xyz,
-            calculate_nonlinear_viscosity!,
+            _calculate_shallow_water_viscosity!,
             diffusivity_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing

@@ -104,6 +104,7 @@ end
 function correct_velocities_and_store_tendecies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
+    return nothing
 end
 
 #####
@@ -155,4 +156,4 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
-@kernel ab2_step_field!(::FunctionField, args...) = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing

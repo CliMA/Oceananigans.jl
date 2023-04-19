@@ -14,9 +14,9 @@ function store_tendencies!(model)
 
     for field_name in keys(model_fields)
         launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
-            model.timestepper.G⁻[field_name],
-            model.grid,
-            model.timestepper.Gⁿ[field_name])
+                model.timestepper.G⁻[field_name],
+                model.grid,
+                model.timestepper.Gⁿ[field_name])
     end
 
     return nothing

@@ -161,12 +161,7 @@ for arch in archs
             @test op isa KernelFunctionOperation
 
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
-            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
-            @test op isa KernelFunctionOperation
-
-            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * ℑxyᶜᶠᵃ(i, j, k, grid, u) * v[i, j, k]
-            op = KernelFunctionOperation{Center, Face, Center}(still_fairly_trivial_kernel_function, grid,
-                                                               computed_dependencies=(u, v), parameters=0.1)
+            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
         end
 

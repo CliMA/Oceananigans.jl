@@ -1,9 +1,12 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
+using Oceananigans.Biogeochemistry: update_tendencies!
 
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
+
+import Oceananigans.TimeSteppers: calculate_tendencies!
 
 """
     compute_tendencies!(model::NonhydrostaticModel)
@@ -34,7 +37,11 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
                                                model.clock,
                                                fields(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
+    for callback in callbacks
+        callback.callsite isa TendencyCallsite && callback(model)
+    end
+
+    update_tendencies!(model.biogeochemistry, model)
 
     return nothing
 end
@@ -48,6 +55,7 @@ function calculate_interior_tendency_contributions!(model)
     advection            = model.advection
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
+    biogeochemistry      = model.biogeochemistry
     stokes_drift         = model.stokes_drift
     closure              = model.closure
     background_fields    = model.background_fields
@@ -62,8 +70,7 @@ function calculate_interior_tendency_contributions!(model)
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    start_momentum_kernel_args = (grid,
-                                  advection,
+    start_momentum_kernel_args = (advection,
                                   coriolis,
                                   stokes_drift,
                                   closure)
@@ -82,33 +89,36 @@ function calculate_interior_tendency_contributions!(model)
     only_active_cells = use_only_active_cells(grid)
 
     launch!(arch, grid, :xyz, calculate_Gu!, 
-            tendencies.u, u_kernel_args...;
+            tendencies.u, grid, u_kernel_args;
             only_active_cells)
-
+            
     launch!(arch, grid, :xyz, calculate_Gv!, 
-            tendencies.v, v_kernel_args...;
+            tendencies.v, grid, v_kernel_args;
             only_active_cells)
 
     launch!(arch, grid, :xyz, calculate_Gw!, 
-            tendencies.w, w_kernel_args...;
+            tendencies.w, grid, w_kernel_args;
             only_active_cells)
 
     start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
-    
+    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
+
     for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index+3]
-        @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_tendency = tendencies[tracer_index + 3]
+        @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
+        @inbounds tracer_name = keys(tracers)[tracer_index]
 
-        launch!(arch, grid, :xyz, calculate_Gc!,
-                c_tendency, grid, Val(tracer_index),
-                start_tracer_kernel_args..., 
-                c_immersed_bc,
-                end_tracer_kernel_args...,
-                forcing, clock;
+        args = tuple(Val(tracer_index), Val(tracer_name),
+                     start_tracer_kernel_args..., 
+                     c_immersed_bc,
+                     end_tracer_kernel_args...,
+                     forcing, clock)
+
+
+        launch!(arch, grid, :xyz, calculate_Gc!, 
+                c_tendency, grid, args;
                 only_active_cells)
-
     end
 
     return nothing
@@ -119,36 +129,36 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, args...)
+@kernel function calculate_Gu!(Gu, grid, args) 
     i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, args...)
+@kernel function calculate_Gv!(Gv, grid, args) 
     i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, args...)
+@kernel function calculate_Gw!(Gw, grid, args) 
     i, j, k = @index(Global, NTuple)
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
@@ -159,12 +169,12 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, args...)
+@kernel function calculate_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
+@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
@@ -178,9 +188,9 @@ end
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
     fields = merge(velocities, tracers)
 
-    foreach(i->apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i->apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i->apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    foreach(i -> apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    foreach(i -> apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
                          
     return nothing
 end

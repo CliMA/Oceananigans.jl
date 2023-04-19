@@ -1,7 +1,10 @@
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
+
+using Oceananigans: UpdateStateCallsite
+using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!, inactive_node
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -23,13 +26,21 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
-    @apply_regionally masking_immersed_model_fields!(model, grid)
+    @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); blocking = false)
 
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+    fill_halo_regions!(model.pressure.pHY′)
+
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
+
+    update_biogeochemical_state!(model.biogeochemistry, model)
     
     compute_tendencies && 
         @apply_regionally compute_tendencies!(model, callbacks)
@@ -38,7 +49,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 end
 
 # Mask immersed fields
-function masking_immersed_model_fields!(model, grid)
+function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
@@ -47,7 +58,9 @@ function masking_immersed_model_fields!(model, grid)
             mask_immersed_field!(field)
         end
     end
-    mask_immersed_reduced_field_xy!(η, k = size(grid, 3) + 1, immersed_function = inactive_node)
+    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
+
+    return nothing
 end
 
 function compute_w_diffusivities_pressure!(model) 

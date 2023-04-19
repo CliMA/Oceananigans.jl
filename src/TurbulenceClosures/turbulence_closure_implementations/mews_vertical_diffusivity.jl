@@ -19,7 +19,6 @@ using Oceananigans.Coriolis: fᶠᶠᵃ
 
 using Oceananigans.TurbulenceClosures:
     wall_vertical_distanceᶜᶜᶠ,
-    opposite_wall_vertical_distanceᶜᶜᶠ,
     getclosure,
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,

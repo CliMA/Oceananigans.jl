@@ -1,4 +1,4 @@
-using Oceananigans.Utils: cell_advection_timescale
+using Oceananigans.Advection: cell_advection_timescale
 using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 
 """
@@ -12,7 +12,7 @@ struct CFL{D, S}
 end
 
 """
-    CFL(Δt [, timescale = Oceananigans.cell_advection_timescale])
+    CFL(Δt [, timescale = Oceananigans.Advection.cell_advection_timescale])
 
 Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and `timescale`.
@@ -79,35 +79,3 @@ julia> dcfl(model)
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 
-#####
-##### Accurate CFL via reduction
-#####
-
-using CUDA, KernelAbstractions, Tullio
-
-using Oceananigans.Models
-using Oceananigans.Grids: halo_size
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
-
-accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.grid, model.velocities)
-
-function accurate_cell_advection_timescale(grid, velocities)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-
-    is = 1+Hx:Nx+Hx
-    js = 1+Hy:Ny+Hy
-    ks = 1+Hz:Nz+Hz
-
-    u = view(velocities.u.data.parent, is, js, ks)
-    v = view(velocities.v.data.parent, is, js, ks)
-    w = view(velocities.w.data.parent, is, js, ks)
-
-    min_timescale = minimum(
-        @tullio (min) timescale[k] := 1 / (  abs(u[i, j, k]) / Δxᶠᶜᶜ(i, j, k, grid)
-                                           + abs(v[i, j, k]) / Δyᶜᶠᶜ(i, j, k, grid)
-                                           + abs(w[i, j, k]) / Δzᶜᶜᶠ(i, j, k, grid))
-    )
-
-    return min_timescale
-end

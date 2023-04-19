@@ -3,7 +3,7 @@ using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
 
-Abstract type for closures with *isotropic* diffusivities.
+Abstract type for closures with scalar diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
@@ -146,27 +146,6 @@ const C = Center
 @inline h_diffusivity(i, j, k, grid, ::F, ::F, ::C, closure::ASD, K, ::Nothing, args...) = νhᶠᶠᶜ(i, j, k, grid, closure, K, args...)
 @inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, closure::ASD, K, ::Nothing, args...) = νhᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, closure::ASD, K, ::Nothing, args...) = νhᶜᶠᶠ(i, j, k, grid, closure, K, args...)
-
-#####
-##### Stress divergences
-#####
-
-#####
-##### Fallback: flux = 0
-#####
-
-for dir in (:x, :y, :z)
-    diffusive_flux = Symbol(:diffusive_flux_, dir)
-    viscous_flux_u = Symbol(:viscous_flux_u, dir)
-    viscous_flux_v = Symbol(:viscous_flux_v, dir)
-    viscous_flux_w = Symbol(:viscous_flux_w, dir)
-    @eval begin
-        @inline $diffusive_flux(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_u(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_v(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_w(i, j, k, grid, args...) = zero(grid)
-    end
-end
 
 
 # Horizontal viscous fluxes for isotropic diffusivities
@@ -325,14 +304,14 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(c, c, c, i, j, k, grid)..., clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(f, c, f, i, j, k, grid)..., clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(c, f, f, i, j, k, grid)..., clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(f, f, c, i, j, k, grid)..., clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, c, c)..., clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, f, f)..., clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, f, c)..., clock.time)
 
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(f, c, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(c, f, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(c, c, f, i, j, k, grid)..., clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, c)..., clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, c)..., clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, c, f)..., clock.time)
 
 # "DiscreteDiffusionFunction"
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clock, fields)

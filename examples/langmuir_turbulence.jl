@@ -355,6 +355,9 @@ ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
 
 Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
+current_figure() # hide
+fig
+
 # And, finally, we record a movie.
 
 frames = 1:length(times)

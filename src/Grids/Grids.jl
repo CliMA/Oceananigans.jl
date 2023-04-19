@@ -9,7 +9,11 @@ export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectil
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
-export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+export node, nodes
+export xnode, ynode, znode, λnode, φnode
+export xnodes, ynodes, znodes, λnodes, φnodes
+export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
 export on_architecture
 
@@ -21,8 +25,11 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show
+import Base: size, length, eltype, show, -
 import Oceananigans.Architectures: architecture
+
+# Physical constants for constructors.
+const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
 
 #####
 ##### Abstract types

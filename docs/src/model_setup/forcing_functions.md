@@ -286,7 +286,7 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 a separate or "slip" velocity relative to the prognostic model velocity field.
 `AdvectiveForcing` is implemented with native Oceananigans advection operators,
 which means that tracers advected by the "flux form" advection term
-``∇ ⋅ u⃗_slip c``. Caution is advised when ``u⃗_slip`` is not divergence free.
+``𝛁⋅𝐮_{\rm slip} c``. Caution is advised when ``𝐮_{\rm slip}`` is not divergence free.
 
 As an example, consider a model for sediment settling at a constant rate:
 
@@ -364,4 +364,3 @@ simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
 # output
 Callback of compute_slip_velocity! on IterationInterval(1)
 ```
-

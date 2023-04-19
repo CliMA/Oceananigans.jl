@@ -2,14 +2,14 @@ using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
 using CUDA: synchronize
 import Oceananigans.Utils: sync_device!
-using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
-                           fill_south_and_north_send_buffers!, 
+using Oceananigans.Fields: fill_west_and_east_send_buffers!,
+                           fill_south_and_north_send_buffers!,
                            fill_west_send_buffers!,
                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
                            fill_north_send_buffers!,
-                           recv_from_buffers!, 
-                           reduced_dimensions, 
+                           recv_from_buffers!,
+                           reduced_dimensions,
                            instantiated_location
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
@@ -20,11 +20,11 @@ using Oceananigans.BoundaryConditions:
     permute_boundary_conditions,
     PBCT, DCBCT, DCBC
 
-import Oceananigans.BoundaryConditions: 
+import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
-    fill_west_and_east_halo!, 
+    fill_west_and_east_halo!,
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
@@ -89,7 +89,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
@@ -129,13 +129,13 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers
     hbc_right = filter(bc -> bc isa DCBC, halo_tuple[3])
 
     # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
-    if length(hbc_left) > 1 
+    if length(hbc_left) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[2])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
         return nothing
     end
 
-    if length(hbc_right) > 1 
+    if length(hbc_right) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[3])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
         return nothing
@@ -145,30 +145,6 @@ end
 @inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-
-### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
-function cooperative_test!(req)
-    done = false
-    while !done
-        done, _ = MPI.Test(req, MPI.Status)
-        yield()
-    end
-end
-
-### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
-function cooperative_wait(task::Task)
-    while !Base.istaskdone(task)
-        MPI.Iprobe(MPI.ANY_SOURCE, MPI.ANY_TAG, MPI.COMM_WORLD)
-        yield()
-    end
-    wait(task)
-end
-
-function cooperative_waitall!(tasks::Array{Task})
-    for task in tasks
-        cooperative_wait(task)
-    end
-end
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)
     fill_halo!  = halo_tuple[1][task]
@@ -194,7 +170,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     end
 
     # Syncronous MPI fill_halo_event!
-    MPI.Waitall!(requests)
+    MPI.Waitall(requests)
     # Reset MPI tag
     arch.mpi_tag[1] -= arch.mpi_tag[1]
 

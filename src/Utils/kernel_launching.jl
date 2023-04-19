@@ -75,7 +75,7 @@ active_cells_work_layout(size, grid) = heuristic_workgroup(size...), size
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
 
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`.
+over the `dims` of `grid` on the architecture `arch`. kernels run on the defaul stream
 """
 function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,

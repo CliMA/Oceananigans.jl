@@ -20,11 +20,10 @@ const ϵ = 0.013
 const μ = 1.0 - δ - γ - ϵ
 
 # Evolution Kernels
-#=
-∂t(η) = -∇⋅U
-∂t(U) = - gH∇η + f
-=#
-
+#
+# ∂t(η) = -∇⋅U
+# ∂t(U) = - gH∇η + f
+# 
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
@@ -36,8 +35,8 @@ const μ = 1.0 - δ - γ - ϵ
 #
 #   `δxᶜᵃᵃ_U` : Hardcodes NoPenetration or Periodic boundary conditions for the zonal barotropic velocity U in x direction 
 #   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for the meridional barotropic velocity V in y direction
-
-# functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
+#
+# The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 @inline δxᶠᵃᵃ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, η★, args...)
 @inline δyᵃᶠᵃ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, η★, args...)
 @inline δxᶜᵃᵃ_U(i, j, k, grid, T, U★::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, U★, args...)
@@ -74,11 +73,8 @@ const μ = 1.0 - δ - γ - ϵ
 @inline ∂xᶠᶜᶠ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ_η(i, j, k, grid, T, η★, args...) / Δxᶠᶜᶠ(i, j, k, grid)
 @inline ∂yᶜᶠᶠ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ_η(i, j, k, grid, T, η★, args...) / Δyᶜᶠᶠ(i, j, k, grid)
                                                                                                                                            
-@inline div_xᶜᶜᶠ_U(i, j, k, grid, TX, U★, args...) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
-
-@inline div_yᶜᶜᶠ_V(i, j, k, grid, TY, V★, args...) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
+@inline div_xᶜᶜᶠ_U(i, j, k, grid, TX, U★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
+@inline div_yᶜᶜᶠ_V(i, j, k, grid, TY, V★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
 
 # Immersed Boundary Operators (Velocities are `0` on `peripheral_node`s and the free surface should ensure no-flux on `inactive_node`s)
 
@@ -200,6 +196,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
             Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper, offsets)
 
     launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!, args...)
+
     launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...)
 
     return nothing
@@ -207,7 +204,7 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function barotropic_mode_kernel!(U, V, grid, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)	
 
     # hand unroll first loop 	
@@ -221,8 +218,8 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v)
+compute_barotropic_mode!(U, V, grid, u, v) = 
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v)
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
@@ -264,7 +261,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    barotropic_mode!(U, V, grid, u, v)
+    compute_barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
@@ -280,35 +277,39 @@ ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ)
     
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
-    @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
+    @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
+
     return nothing
 end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
     grid = free_surface.η.grid
+    arch = architecture(grid)
 
     # Wait for previous set up
     wait_free_surface_communication!(free_surface)
 
-    # reset free surface averages
-    @apply_regionally initialize_free_surface_state!(free_surface.state, free_surface.η)
-
-    # Solve for the free surface at tⁿ⁺¹
-    @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
+    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅))
     
-    # Reset eta for the next timestep
-    # this is the only way in which η̅ is used: as a smoother for the 
-    # substepped η field
-    @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+    @apply_regionally setup_split_explicit!(free_surface.auxiliary, free_surface.state, free_surface.η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
+
+    fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
+    
+    @apply_regionally begin 
+        # Solve for the free surface at tⁿ⁺¹
+        iterate_split_explicit!(free_surface, grid, Δt)
+        # this is the only way in which η̅ is used: as a smoother for the substepped η field
+        set!(free_surface.η, free_surface.state.η̅)
+
+        # Wait for predictor velocity update step to complete and mask it if immersed boundary.
+        mask_immersed_field!(model.velocities.u)
+        mask_immersed_field!(model.velocities.v)
+    end
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; blocking = false)
-
-    # Preparing velocities for the barotropic correction
-    mask_immersed_field!(model.velocities.u)
-    mask_immersed_field!(model.velocities.v)
 
     return nothing
 end

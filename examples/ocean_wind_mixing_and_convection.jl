@@ -35,7 +35,10 @@ using Oceananigans.Units: minute, minutes, hour
 # maintains relatively constant vertical spacing in the mixed layer, which
 # is desirable from a numerical standpoint:
 
+Nx = Ny = 32     # number of points in each of horizontal directions
 Nz = 24          # number of points in the vertical direction
+
+Lx = Ly = 64     # (m) domain horizontal extents
 Lz = 32          # (m) domain depth
 
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
@@ -53,18 +56,18 @@ h(k) = (k - 1) / Nz
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(CPU();
-                       size = (32, 32, Nz), 
-                          x = (0, 64),
-                          y = (0, 64),
+grid = RectilinearGrid(size = (Nx, Nx, Nz), 
+                          x = (0, Lx),
+                          y = (0, Ly),
                           z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
 fig = Figure(resolution=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
-lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
-scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+
+lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 fig
@@ -78,7 +81,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 
 # ## Boundary conditions
 #
-# We calculate the surface temperature flux associated with surface heating of
+# We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
 Qʰ = 200.0  # W m⁻², surface _heat_ flux
@@ -287,6 +290,9 @@ hm_νₑ = heatmap!(ax_νₑ, xT, zT, νₑₙ; colormap = :thermal, colorrange 
 Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
+
+current_figure() # hide
+fig
 
 # And now record a movie.
 
