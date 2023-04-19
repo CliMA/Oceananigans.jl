@@ -21,11 +21,17 @@ end
 outer_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
 inner_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
 
+diffusive_fluxes = [:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z]
+
+viscous_fluxes   = [:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,
+                    :viscous_flux_vx, :viscous_flux_vy, :viscous_flux_vz,
+                    :viscous_flux_wx, :viscous_flux_wy, :viscous_flux_wz]
+
 outer_ivd_functions = [:_ivd_upper_diagonal, :_ivd_lower_diagonal, :_implicit_linear_coefficient]
 inner_ivd_functions = [:ivd_upper_diagonal,  :ivd_lower_diagonal,   :implicit_linear_coefficient]
 
-outer_funcs = vcat(outer_tendency_functions, outer_ivd_functions)
-inner_funcs = vcat(inner_tendency_functions, inner_ivd_functions)
+outer_funcs = vcat(outer_tendency_functions, outer_ivd_functions, diffusive_fluxes, viscous_fluxes)
+inner_funcs = vcat(inner_tendency_functions, inner_ivd_functions, diffusive_fluxes, viscous_fluxes)
 
 for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
     @eval begin
@@ -59,6 +65,7 @@ for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
                   + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
     end
 end
+
 
 #####
 ##### Utilities
