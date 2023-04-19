@@ -77,6 +77,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
     depends_on: "init_gpu"
+    if: !build.pull_request.draft
 
   - label: "🕊️ cpu {{matrix.group}}"
     matrix:
@@ -115,6 +116,7 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+    if: !build.pull_request.draft
 
 #####
 ##### Distributed/MPI
@@ -139,6 +141,8 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+    if: !build.pull_request.draft
+
 
   # We get a SegFault. We probably need more devices to run this test
   # - label: "🐲 gpu distributed unit tests"
@@ -175,3 +179,5 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+    if: !build.pull_request.draft
+
