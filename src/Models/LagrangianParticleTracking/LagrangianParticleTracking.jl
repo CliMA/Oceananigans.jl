@@ -130,7 +130,5 @@ function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt
 
     # Advect particles
     advect_lagrangian_particles!(particles, model, Δt)
-
-    KernelAbstractions.synchronize(device(model.grid.architecture))
 end
 end # module
