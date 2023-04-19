@@ -16,6 +16,7 @@ using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.TimeSteppers: update_lagrangian_particles!
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -98,6 +99,8 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
+
+update_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")

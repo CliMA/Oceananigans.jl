@@ -17,7 +17,6 @@ using Oceananigans.Fields: interpolate, datatuple, compute!, location
 using Oceananigans.Fields: fractional_indices
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
-using Oceananigans.Models.ShallowWaterModels: ShallowWaterModel
 
 import Oceananigans.TimeSteppers: update_lagrangian_particles!
 
@@ -119,9 +118,7 @@ end
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
 
-update_lagrangian_particles!(model, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 update_lagrangian_particles!(::Nothing, model, Δt) = nothing
-update_lagrangian_particle_properties!(::ShallowWaterModel, Δt) = nothing
 
 function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
