@@ -82,9 +82,8 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settin
 function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
     # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
     # help eventually.
-    #event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-    #wait(device(model.architecture), event)
-
+    #explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+    
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
     
@@ -106,15 +105,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
     return nothing
 end
 
-function compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
-
-    event = launch!(arch, grid, :xy,
-                    implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-                    dependencies = device_event(arch))
-    wait(device(arch), event)
-    return nothing
-end
+compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η) =
+    launch!(arch, grid, :xy,
+            implicit_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
 
 """ Compute the divergence of fluxes Qu and Qv. """
 @inline flux_div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
@@ -141,11 +135,8 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     # REMEMBER!!! This is going to create problems!!!!
     fill_halo_regions!(ηⁿ⁺¹)
 
-    event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
-                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
+            L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end
@@ -196,12 +187,10 @@ add to the rhs - H⁻¹ ∇H ⋅ ∇ηⁿ to the rhs...
     Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # assume horizontal regularity
     Lz = grid.Lz 
 
-    event = launch!(arch, grid, :xy,
-                    fft_preconditioner_right_hand_side!,
-                    poisson_solver.storage, r, η, grid, Az, Lz,
-                    dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            fft_preconditioner_right_hand_side!,
+            poisson_solver.storage, r, η, grid, Az, Lz)
 
-    wait(device(arch), event)
 
     return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
@@ -269,11 +258,8 @@ function diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ay
 
     fill_halo_regions!(r)
 
-    event = launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
-                    P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
+            P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end

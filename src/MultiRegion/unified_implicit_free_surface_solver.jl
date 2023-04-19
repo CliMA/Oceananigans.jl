@@ -79,16 +79,19 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::Un
     return nothing
 end
 
-function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
-    arch = architecture(grid)
-    event = launch!(arch, grid, :xy,
+compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
+    launch!(architecture(grid), grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,
+<<<<<<< HEAD
                     rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
                     dependencies = device_event(arch))
 
     wait(Oceananigans.Architectures.device(arch), event)
     return nothing
 end
+=======
+                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
+>>>>>>> main
 
 # linearized right hand side
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
@@ -119,13 +122,8 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     return nothing
 end
 
-function redistribute_lhs!(η, sol, arch, grid, region, partition)
-
-    event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
-                    dependencies = device_event(arch))
-
-    wait(Oceananigans.Architectures.device(arch), event)
-end
+redistribute_lhs!(η, sol, arch, grid, region, partition) = 
+    launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition)
 
 # linearized right hand side
 @kernel function _redistribute_lhs!(η, sol, region, grid, partition)

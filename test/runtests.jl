@@ -8,7 +8,7 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-
+    
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin

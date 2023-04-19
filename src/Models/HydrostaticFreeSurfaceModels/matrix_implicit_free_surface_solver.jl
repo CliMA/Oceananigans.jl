@@ -89,12 +89,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     grid = solver.grid
     arch = architecture(grid)
 
-    event = launch!(arch, grid, :xy,
-                    implicit_linearized_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy,
+            implicit_linearized_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
+    
     return nothing
 end
 
@@ -123,12 +121,9 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    event_c = launch!(arch, grid, :xy, _compute_coefficients!,
-                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration,
-                      dependencies = device_event(arch))
+    launch!(arch, grid, :xy, _compute_coefficients!,
+            diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration)
   
-    wait(event_c)
-
     return (Ax, Ay, Az, C, diag)
 end
 

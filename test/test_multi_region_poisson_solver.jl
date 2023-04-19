@@ -64,11 +64,7 @@ function compute_poisson_weights(grid)
     return (Ax, Ay, Az, C, D)
 end
 
-function poisson_rhs!(r, grid)
-    event = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
-    wait(event)
-    return nothing
-end
+poisson_rhs!(r, grid) = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
 
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: UnifiedDiagonalIterativeSolver

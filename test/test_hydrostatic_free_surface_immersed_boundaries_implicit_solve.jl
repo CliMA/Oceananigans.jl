@@ -55,9 +55,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
             v[imm1, jmm1, 1:Nz] .=  1
             v[imm1, jmp1, 1:Nz] .= -1
             
-            events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
-
-            implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5, events)
+            implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5)
 
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)
