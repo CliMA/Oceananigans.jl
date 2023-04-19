@@ -389,7 +389,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    default_dimension_attributes = get_default_dimension_attributes(grid)
+    default_dimension_attributes = get_default_dimension_attributes(model.grid)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
