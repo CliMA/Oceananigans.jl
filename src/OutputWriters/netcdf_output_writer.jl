@@ -5,6 +5,7 @@ using Dates: AbstractTime, now
 using Oceananigans.Fields
 
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractRectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
