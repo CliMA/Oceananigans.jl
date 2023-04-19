@@ -28,7 +28,7 @@ architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravitational_acceleration::Number; multiple_devices = false)
-    
+
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
 
