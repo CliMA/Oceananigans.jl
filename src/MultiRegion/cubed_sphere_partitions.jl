@@ -120,11 +120,11 @@ end
 #####
 
 """
-    struct CubedSphereConnectivity{flip_indices}
+    struct CubedSphereConnectivity{S, FS}
 
-The connectivity among various regions for a cubed sphere grid. Parameter
-`flip_indices :: Boolean` denotes whether or not the indices of fields need to
-be reversed for the particular connectivity.
+The connectivity among various regions for a cubed sphere grid. Parameters
+`S` and `FS` denote the sides of the current region and the region from which
+the boundary condition is coming from respectively.
 
 $(TYPEDFIELDS)
 """
@@ -279,13 +279,16 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, North(), from_side))
 end
 
-const TrivialCubedSphereConnectivity = Union{Connectivity{East, West}, Connectivity{West, East}, Connectivity{North, South}, Connectivity{South, North}}
+const NonTrivialConnectivity = Union{Connectivity{East, South}, Connectivity{East, North},
+                                     Connectivity{West, South}, Connectivity{West, North},
+                                     Connectivity{South, East}, Connectivity{South, West},
+                                     Connectivity{North, East}, Connectivity{North, West}}
 
-@inline flip_west_and_east_indices(buff, ::TrivialCubedSphereConnectivity) = buff
-@inline flip_west_and_east_indices(buff, conn) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
+@inline flip_west_and_east_indices(buff, conn) = buff
+@inline flip_west_and_east_indices(buff, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
 
-@inline flip_south_and_north_indices(buff, ::TrivialCubedSphereConnectivity) = buff
-@inline flip_south_and_north_indices(buff, conn) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
+@inline flip_south_and_north_indices(buff, conn) = buff
+@inline flip_south_and_north_indices(buff, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
 
 function Base.summary(p::CubedSpherePartition)
     region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
