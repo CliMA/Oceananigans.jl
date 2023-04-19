@@ -298,9 +298,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, grid, Δt)
         # Reset eta for the next timestep
-        set_η!(free_surface.η, free_surface.state.η̅)
+        set!(free_surface.η, free_surface.state.η̅)
     end
-    
+
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; blocking = false)
 
@@ -312,8 +312,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     return nothing
 end
-
-@inline set_η!(η, η̅) = parent(η) .= parent(η̅)
 
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
