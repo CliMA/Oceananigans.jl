@@ -120,6 +120,7 @@ include("lagrangian_particle_advection.jl")
 
 update_lagrangian_particles!(model, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 update_lagrangian_particles!(::Nothing, model, Δt) = nothing
+update_lagrangian_particle_properties!(::ShallowWaterModel, args...) = nothing
 
 function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
