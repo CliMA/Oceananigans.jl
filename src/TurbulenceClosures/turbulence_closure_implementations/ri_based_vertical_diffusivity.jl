@@ -168,11 +168,7 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
-<<<<<<< HEAD
 @kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
-=======
-@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
->>>>>>> origin/main
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
     i′, j′, k′ = @index(Global, NTuple)
@@ -214,12 +210,6 @@ end
     κᶜ★ = κ₀ * τ
     κᵘ★ = ν₀ * τ
 
-<<<<<<< HEAD
-    κⁿ = κᶜ + κᵉ + κ★
-    νⁿ = ν★
-    @inbounds diffusivities.κ[i, j, k] = (0.6 * diffusivities.κ[i, j, k] + κⁿ) / 1.6
-    @inbounds diffusivities.ν[i, j, k] = (0.6 * diffusivities.ν[i, j, k] + νⁿ) / 1.6
-=======
     # Previous diffusivities
     κᶜ = diffusivities.κᶜ
     κᵘ = diffusivities.κᵘ
@@ -231,7 +221,6 @@ end
     # Update by averaging in time
     @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
     @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
->>>>>>> origin/main
 end
 
 #####
