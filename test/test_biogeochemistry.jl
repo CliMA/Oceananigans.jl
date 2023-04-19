@@ -81,9 +81,8 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 end
 
 @inline function update_biogeochemical_state!(bgc::MB, model)
-    event = launch!(architecture(model), model.grid, :xyz, integrate_photosynthetic_active_radiation!,
+    launch!(architecture(model), model.grid, :xyz, integrate_photosynthetic_active_radiation!,
                     bgc.photosynthetic_active_radiation, model.grid)
-    wait(event)
     return nothing
 end
 

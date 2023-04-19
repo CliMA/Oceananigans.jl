@@ -219,25 +219,13 @@ parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
-@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:size(grid, 1)+1])
-@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:size(grid, 3)+1])
+@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, Face(), Center(), Center(); with_halos=true), 1)[1:size(grid, 1)+1])
+@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, Center(), Face(), Center(); with_halos=true), 2)[1:size(grid, 2)+1])
+@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, Center(), Center(), Face(); with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### << Nodes >>
 #####
-
-@inline node(i, j, k, grid, ℓx, ℓy, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                           ynode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                           znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ynode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx, ℓy, ℓz::Nothing) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(xnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
 
 xnodes(grid, ::Nothing; kwargs...) = 1:1
 ynodes(grid, ::Nothing; kwargs...) = 1:1
@@ -294,34 +282,42 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 @inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 """
+    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
+for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+See [`znodes`](@ref) for examples.
+"""
+@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
+
+"""
+    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
+for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+See [`znodes`](@ref) for examples.
+"""
+@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
+
+"""
     nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
     nodes(grid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
 
-Return a 3-tuple of views over the interior nodes
-at the locations in `loc=(ℓx, ℓy, ℓz)` in `x, y, z`.
+Return a 3-tuple of views over the interior nodes of the `grid`'s
+native coordinates at the locations in `loc=(ℓx, ℓy, ℓz)` in `x, y, z`.
 
-If `reshape=true`, the views are reshaped to 3D arrays
-with non-singleton dimensions 1, 2, 3 for `x, y, z`, respectively.
-These reshaped arrays can then be used in broadcast operations with 3D fields
-or arrays.
+If `reshape=true`, the views are reshaped to 3D arrays with non-singleton
+dimensions 1, 2, 3 for `x, y, z`, respectively. These reshaped arrays can then
+be used in broadcast operations with 3D fields or arrays.
 
-See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
+For `RectilinearGrid`s the native coordinates are `x, y, z`; for curvilinear grids,
+like `LatitudeLongitudeGrid` or `OrthogonalSphericalShellGrid` the native coordinates
+are `λ, φ, z`.
+
+See [`xnodes`](@ref), [`ynodes`](@ref), [`znodes`](@ref), [`λnodes`](@ref), and [`φnodes`](@ref).
 """
-function nodes(grid::AbstractGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
-
-    if reshape
-        N = (length(x), length(y), length(z))
-        x = Base.reshape(x, N[1], 1, 1)
-        y = Base.reshape(y, 1, N[2], 1)
-        z = Base.reshape(z, 1, 1, N[3])
-    end
-
-    return (x, y, z)
-end
-
 nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
 
 #####
@@ -353,7 +349,8 @@ julia> xspacings(grid, Center(), Face(), Center())
       1.1058578920188267e6
       1.0950562585518518e6
       1.0789196210678827e6
-      ⋮
+      1.0575265956426917e6
+      1.0309814069457315e6
  999413.38046802
  962976.3124613502
  921847.720658409
@@ -361,7 +358,7 @@ julia> xspacings(grid, Center(), Face(), Center())
  826339.3435524226
  772424.8654621692
  714747.2110712599
- ```
+```
 """
 @inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
 

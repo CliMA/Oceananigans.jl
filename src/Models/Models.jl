@@ -13,9 +13,8 @@ using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans: fields
 
 import Oceananigans: initialize!
-import Oceananigans.Architectures: device_event, architecture
+import Oceananigans.Architectures: architecture
 
-device_event(model::AbstractModel) = device_event(model.architecture)
 architecture(model::AbstractModel) = model.architecture
 initialize!(model::AbstractModel) = nothing
 

@@ -1,6 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.Architectures: device_event
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
@@ -106,6 +105,7 @@ end
 function correct_velocities_and_store_tendecies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
+    return nothing
 end
 
 #####
@@ -117,19 +117,14 @@ function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     arch = model.architecture
-    barrier = device_event(arch)
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
     model_fields = prognostic_fields(model)
-    events = []
 
     for (i, field) in enumerate(model_fields)
 
-        field_event = step_field_kernel!(field, Δt, χ,
-                                         model.timestepper.Gⁿ[i],
-                                         model.timestepper.G⁻[i],
-                                         dependencies = device_event(arch))
-
-        push!(events, field_event)
+        step_field_kernel!(field, Δt, χ,
+                           model.timestepper.Gⁿ[i],
+                           model.timestepper.G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -140,11 +135,8 @@ function ab2_step!(model, Δt, χ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       Δt,
-                       dependencies = field_event)
+                       Δt)
     end
-
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end

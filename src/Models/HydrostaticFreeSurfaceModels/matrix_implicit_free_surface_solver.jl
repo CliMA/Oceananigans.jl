@@ -5,8 +5,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
-import Oceananigans.Solvers: solve!
 
+import Oceananigans.Solvers: solve!
 
 """
     struct MatrixImplicitFreeSurfaceSolver{S, R, T}
@@ -89,12 +89,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     grid = solver.grid
     arch = architecture(grid)
 
-    event = launch!(arch, grid, :xy,
-                    implicit_linearized_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-		            dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            implicit_linearized_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
     
-    wait(device(arch), event)
     return nothing
 end
 
@@ -123,12 +121,9 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    event_c = launch!(arch, grid, :xy, _compute_coefficients!,
-                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration,
-                      dependencies = device_event(arch))
+    launch!(arch, grid, :xy, _compute_coefficients!,
+            diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration)
   
-    wait(event_c)
-
     return (Ax, Ay, Az, C, diag)
 end
 
@@ -140,5 +135,3 @@ end
         diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end
-
-finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)

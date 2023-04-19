@@ -2,7 +2,7 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans.Utils: work_layout
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: device
 
@@ -81,31 +81,24 @@ function calculate_interior_tendency_contributions!(tendencies,
     calculate_Gh_kernel!  =  calculate_Gh!(device(arch), workgroup, worksize)
     calculate_Gc_kernel!  =  calculate_Gc!(device(arch), workgroup, worksize)
 
-    barrier = Event(device(arch))
-
     args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
     args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
                       solution, tracers, diffusivities, forcings, clock, formulation)
 
-    Guh_event = calculate_Guh_kernel!(tendencies[1], args_vel...; dependencies = barrier)
-    Gvh_event = calculate_Gvh_kernel!(tendencies[2], args_vel...; dependencies = barrier)
-    Gh_event  =  calculate_Gh_kernel!(tendencies[3], args_h...;   dependencies = barrier)
-
-    events = [Guh_event, Gvh_event, Gh_event]
+    calculate_Guh_kernel!(tendencies[1], args_vel...)
+    calculate_Gvh_kernel!(tendencies[2], args_vel...)
+     calculate_Gh_kernel!(tendencies[3], args_h...)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_advection = advection[tracer_name]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
-                                        tracers, diffusivities, forcing, clock, formulation, dependencies=barrier)
+        calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
+                             tracers, diffusivities, forcing, clock, formulation)
 
-        push!(events, Gc_event)
     end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -207,23 +200,13 @@ end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracers, clock, model_fields)
-
-    barrier = Event(device(arch))
-
     prognostic_fields = merge(solution, tracers)
-
-    events = []
 
     # Solution fields and tracer fields
     for i in 1:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
-        push!(events, x_bcs_event, y_bcs_event)
+        apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
+        apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
     end
-
-    events = filter(e -> typeof(e) <: Event, events)
-    
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end

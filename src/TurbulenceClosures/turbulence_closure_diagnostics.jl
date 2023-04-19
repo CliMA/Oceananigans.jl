@@ -2,8 +2,6 @@
 ##### Timescale for diffusion across one cell
 #####
 
-using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
-
 function min_Δxyz(grid, ::ThreeDimensionalFormulation)
     Δx = minimum_xspacing(grid, Center(), Center(), Center())
     Δy = minimum_yspacing(grid, Center(), Center(), Center())
