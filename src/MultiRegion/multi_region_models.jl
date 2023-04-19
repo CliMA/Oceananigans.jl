@@ -48,12 +48,12 @@ end
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)        = true
-@inline devices(mrm::MultiRegionModel)           = devices(mrm.grid)
-@inline getdevice(mrm::MultiRegionModel, d)      = getdevice(mrm.grid, d)
+@inline isregional(mrm::MultiRegionModel)   = true
+@inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
+@inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
-      construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
+    construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
@@ -75,4 +75,3 @@ function cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
     return minimum(Δt.regional_objects)
 end
-

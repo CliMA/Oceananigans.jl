@@ -12,6 +12,7 @@ const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation,
                                            MultiRegionMultiaryOperation,
                                            MultiRegionDerivative,
                                            MultiRegionKernelFunctionOperation}
+
 # Utils
 Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 
