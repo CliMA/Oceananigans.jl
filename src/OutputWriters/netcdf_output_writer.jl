@@ -388,11 +388,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    if model.grid isa AbstractRectilinearGrid
-        default_dimension_attributes = default_dimension_attributes_rectilinear
-    elseif model.grid isa AbstractCurvilinearGrid
-        default_dimension_attributes = default_dimension_attributes_curvilinear
-    end
+    default_dimension_attributes = get_default_dimension_attributes(grid)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -430,6 +426,15 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
 end
+
+get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
+    default_dimension_attributes_rectilinear
+
+get_default_dimension_attributes(grid::AbstractCurvilinearGrid) =
+    default_dimension_attributes_curvilinear
+
+get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
+    get_default_dimension_attributes(grid.underlying_grid)
 
 #####
 ##### Variable definition
