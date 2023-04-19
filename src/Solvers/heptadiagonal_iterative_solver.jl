@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array, unsafe_free!, device_event
+using Oceananigans.Architectures: architecture, arch_array, unsafe_free!
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
@@ -175,9 +175,8 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
 
     # Initialize elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
-    event = loop!(diag, D, N; dependencies = device_event(arch))
-    wait(event)
-
+    loop!(diag, D, N)
+    
     # Fill matrix elements that stay constant in time
     fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
 
@@ -305,8 +304,6 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
         unsafe_free!(constructors)
 
-        finalize_solver!(solver.preconditioner)
-
         solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
                                                          solver.matrix,
                                                          solver.preconditioner_settings)
@@ -323,8 +320,6 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
     return nothing
 end
-
-finalize_solver!(p::HeptadiagonalIterativeSolver) = finalize_solver!(p.preconditioner)
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")

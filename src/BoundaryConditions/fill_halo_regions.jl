@@ -1,6 +1,5 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils
-using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -58,14 +57,13 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task in 1:3
-        barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
@@ -74,9 +72,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    event = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-    wait(device(arch), event)
-
+    fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, args...; kwargs...)
     return nothing
 end
 
@@ -113,9 +109,6 @@ function permute_boundary_conditions(boundary_conditions)
 
     return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
-
-@inline validate_event(::Nothing) = NoneEvent()
-@inline validate_event(event)     = event
 
 #####
 ##### Halo filling order
@@ -236,14 +229,14 @@ end
     end
 end
 
-fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, Tuple(args); dependencies=dep, kwargs...)
+fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, Tuple(args); kwargs...)
 
-fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, Tuple(args); dependencies=dep, kwargs...)
+fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, Tuple(args); kwargs...)
 
-fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, Tuple(args); dependencies=dep, kwargs...)
+fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, Tuple(args); kwargs...)
 
 #####
 ##### Calculate kernel size and offset for Windowed and Sliced Fields

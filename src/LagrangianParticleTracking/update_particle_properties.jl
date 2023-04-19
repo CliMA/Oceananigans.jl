@@ -131,8 +131,6 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     arch = architecture(model)
 
-    events = []
-
     for (field_name, tracked_field) in pairs(lagrangian_particles.tracked_fields)
         compute!(tracked_field)
         particle_property = getproperty(lagrangian_particles.properties, field_name)
@@ -140,13 +138,9 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
         update_field_property_kernel! = update_field_property!(device(arch), workgroup, worksize)
 
-        update_event = update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
-                                                     datatuple(tracked_field), LX(), LY(), LZ(),
-                                                     dependencies=Event(device(arch)))
-        push!(events, update_event)
+        update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
+                                                     datatuple(tracked_field), LX(), LY(), LZ())
     end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     # Compute dynamics
 
@@ -155,12 +149,8 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
     # Advect particles
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-
-    advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(model.velocities),
-                                                      dependencies=Event(device(arch)))
-
-    wait(device(arch), advect_particles_event)
+    advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt, datatuple(model.velocities))
+    
     return nothing
 end
 
