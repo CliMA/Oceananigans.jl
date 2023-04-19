@@ -82,16 +82,7 @@ end
 compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
     launch!(architecture(grid), grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,
-<<<<<<< HEAD
-                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
-                    dependencies = device_event(arch))
-
-    wait(Oceananigans.Architectures.device(arch), event)
-    return nothing
-end
-=======
                     rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
->>>>>>> main
 
 # linearized right hand side
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
