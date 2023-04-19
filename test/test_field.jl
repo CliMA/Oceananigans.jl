@@ -111,6 +111,7 @@ function run_field_interpolation_tests(grid)
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid.
 
+    # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
     xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
     f_max = CUDA.@allowscalar maximum(f.(xf, yf, zf))
     ε_max = eps(f_max)
