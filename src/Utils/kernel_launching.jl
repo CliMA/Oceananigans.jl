@@ -84,8 +84,6 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                                       include_right_boundaries,
                                       reduced_dimensions,
                                       location)
-    
-
 
     if !isnothing(only_active_cells)
         workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 

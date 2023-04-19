@@ -1,7 +1,7 @@
-import Oceananigans.Distributed: recompute_boundary_tendencies!
+import Oceananigans.Distributed: compute_boundary_tendencies!
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
+function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 

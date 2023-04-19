@@ -10,13 +10,13 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     end
 
     # HERE we have to put fill_eventual_halo_corners
-    recompute_boundary_tendencies!(model)
+    compute_boundary_tendencies!(model)
 
     return nothing
 end
 
 complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::BlockingDistributedArch) = nothing
-recompute_boundary_tendencies!() = nothing
+compute_boundary_tendencies!(model) = nothing
 
 interior_tendency_kernel_size(grid::DistributedGrid)    = interior_tendency_kernel_size(grid,    architecture(grid))
 interior_tendency_kernel_offsets(grid::DistributedGrid) = interior_tendency_kernel_offsets(grid, architecture(grid))

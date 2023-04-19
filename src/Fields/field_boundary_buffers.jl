@@ -121,7 +121,7 @@ fill_south_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) =
     _fill_south_send_buffer!(parent(c), buffers.south, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
 
 fill_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_north_send_buffer!(parent(c), buffers.north,halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
+    _fill_north_send_buffer!(parent(c), buffers.north, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
 
 fill_southwest_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
     _fill_southwest_send_buffer!(parent(c), buffers.southwest, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))

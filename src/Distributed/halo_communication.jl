@@ -42,13 +42,14 @@ import Oceananigans.BoundaryConditions:
 ##### MPI tags for halo communication BCs
 #####
 
-sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast, :top, :bottom)
+sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
 side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
-    :west => :east, :east => :west,
-    :south => :north, :north => :south,
-    :bottom => :top, :top => :bottom,
+    :west => :east, 
+    :east => :west,
+    :south => :north,
+    :north => :south,
     :southwest => :northeast, 
     :southeast => :northwest, 
     :northwest => :southeast, 
@@ -96,7 +97,6 @@ for side in sides
     end
 end
 
-
 #####
 ##### Filling halos for halo communication boundary conditions
 #####
@@ -129,7 +129,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
     
-    fill_eventual_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     arch.mpi_tag[1] += 1
 
     return nothing
@@ -160,9 +160,9 @@ for (side, dir) in zip([:southwest, :southeast, :northwest, :northeast], [1, 2, 
 end
 
 # If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
-function fill_eventual_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; blocking = true, kwargs...)
+function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; blocking = true, kwargs...)
     
-    requests = []
+    requests = MPI.Request[]
 
     reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -183,8 +183,6 @@ function fill_eventual_corners!(connectivity, c, indices, loc, arch, grid, buffe
         return nothing
     end
 
-    requests = requests |> Array{MPI.Request}
-
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
 
@@ -203,30 +201,6 @@ end
 @inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-
-### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
-function cooperative_test!(req)
-    done = false
-    while !done
-        done, _ = MPI.Test(req, MPI.Status)
-        yield()
-    end
-end
-
-### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
-function cooperative_wait(task::Task)
-    while !Base.istaskdone(task)
-        MPI.Iprobe(MPI.ANY_SOURCE, MPI.ANY_TAG, MPI.COMM_WORLD)
-        yield()
-    end
-    wait(task)
-end
-
-function cooperative_waitall!(tasks::Array{Task})
-    for task in tasks
-        cooperative_wait(task)
-    end
-end
 
 cooperative_wait(req::MPI.Request) = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
