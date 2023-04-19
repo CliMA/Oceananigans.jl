@@ -468,6 +468,34 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
+flip_loc(::Center) = Face()
+flip_loc(::Face) = Center()
+
+active_xspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(i==1, xnode(i,j,k, grid, flip_loc(ℓx), ℓy, ℓz) - xnode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   xnode(i,j,k, grid, ℓx, ℓy, ℓz)           - xnode(i-1,j,k, grid, flip_loc(ℓx), ℓy, ℓz))
+
+active_yspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(j==1, ynode(i,j,k, grid, ℓx, flip_loc(ℓy), ℓz) - ynode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   ynode(i,j,k, grid, ℓx, ℓy, ℓz)           - ynode(i,j-1,k, grid, ℓx, flip_loc(ℓy), ℓz))
+
+active_zspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(k==1, znode(i,j,k, grid, ℓx, ℓy, flip_loc(ℓz)) - znode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   znode(i,j,k, grid, ℓx, ℓy, ℓz)           - znode(i,j,k-1, grid, ℓx, ℓy, flip_loc(ℓz)))
+for dir in (:x, :y, :z)
+    active_spacing = Symbol(:active_, dir, :spacing)
+    spacing = Symbol(dir, :spacing)
+    boundary_spacing = Symbol(active_spacing, :_at_boundary)
+    @eval begin
+        function $active_spacing(i, j, k, grid, ℓx, ℓy, ℓz)
+            Δξ = ifelse(inactive_node(i, j, k, grid, ℓx, ℓy, ℓz),
+                        0, 
+                        ifelse(boundary_node(i, j, k, grid, ℓx, ℓy, ℓz),
+                               $boundary_spacing(i, j, k, grid, ℓx, ℓy, ℓz),
+                               $spacing(i, j, k, grid, ℓx, ℓy, ℓz)))
+            return Δξ
+        end
+    end
+end
+ 
+
 #####
 ##### Convenience functions
 #####
