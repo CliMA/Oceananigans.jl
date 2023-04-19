@@ -118,6 +118,9 @@ end
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
 
+update_lagrangian_particles!(model, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
+update_lagrangian_particles!(::Nothing, model, Δt) = nothing
+
 function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
     update_lagrangian_particle_properties!(particles, model, Δt)
@@ -130,7 +133,4 @@ function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt
 
     KernelAbstractions.synchronize(device(model.grid.architecture))
 end
-
-update_lagrangian_particles!(model, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
-
 end # module
