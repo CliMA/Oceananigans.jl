@@ -55,13 +55,13 @@ $(TYPEDFIELDS)
 """
 struct Connectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
     "the current region rank"
-            rank :: Int
+         rank :: Int
     "the region from which boundary condition comes from"
-       from_rank :: Int
+    from_rank :: Int
     "the current region side"
-            side :: S
+         side :: S
     "the side of the region from which boundary condition comes from"
-       from_side :: FS
+    from_side :: FS
 end
 
 include("multi_region_utils.jl")
