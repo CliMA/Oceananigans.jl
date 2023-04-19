@@ -62,9 +62,8 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
-    arch        = architecture(mrg)
-    halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)
-
+    arch       = architecture(mrg)
+    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
     buff = Reference(buffers.regional_objects)
 
@@ -96,7 +95,7 @@ end
 #####
     
 ## Fill communicating boundary condition halos
-for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
+for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halo!  = Symbol(:fill_, lside, :_and_, rside, :_halo!)
     fill_left_halo!  = Symbol(:fill_, lside, :_halo!)
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
@@ -124,6 +123,7 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
+
     westdst = buffers[westbc.condition.rank].west.recv
     eastdst = buffers[eastbc.condition.rank].east.recv
 
@@ -156,8 +156,8 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
     device_copy_to!(southdst, flip_south_and_north_indices(southsrc, southbc.condition))
     device_copy_to!(northdst, flip_south_and_north_indices(northsrc, northbc.condition))
 
-    view(parent(c), :, 1:H, :, :)        .= southdst
-    view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
+    view(parent(c), :, 1:H, :)        .= southdst
+    view(parent(c), :, N+H+1:N+2H, :) .= northdst
 
     return NoneEvent()
 end
@@ -174,7 +174,8 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid,
     wait(Oceananigans.Architectures.device(arch), dep)
 
     src = buffers[bc.condition.from_rank].east.send
-    device_copy_to!(dst, src)
+
+    device_copy_to!(dst, flip_west_and_east_indices(src, bc.condition))
 
     p  = view(parent(c), 1:H, :, :)
     p .= dst
@@ -191,7 +192,8 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid,
     wait(Oceananigans.Architectures.device(arch), dep)
 
     src = buffers[bc.condition.from_rank].west.send
-    device_copy_to!(dst, src)
+
+    device_copy_to!(dst, flip_west_and_east_indices(src, bc.condition))
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
     p .= dst
@@ -259,22 +261,22 @@ end
 
 
 @inline _getregion(fc::FieldBoundaryConditions, i) =
-FieldBoundaryConditions(getregion(fc.west, i),
-                        getregion(fc.east, i),
-                        getregion(fc.south, i),
-                        getregion(fc.north, i),
-                        getregion(fc.bottom, i),
-                        getregion(fc.top, i),
-                        fc.immersed)
+    FieldBoundaryConditions(getregion(fc.west, i),
+                            getregion(fc.east, i),
+                            getregion(fc.south, i),
+                            getregion(fc.north, i),
+                            getregion(fc.bottom, i),
+                            getregion(fc.top, i),
+                            fc.immersed)
 
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
 ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
-                                   getregion(cf.parameters, i),
-                                   cf.field_dependencies,
-                                   cf.field_dependencies_indices,
-                                   cf.field_dependencies_interp)
+                                       getregion(cf.parameters, i),
+                                       cf.field_dependencies,
+                                       cf.field_dependencies_indices,
+                                       cf.field_dependencies_interp)
 
 @inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
