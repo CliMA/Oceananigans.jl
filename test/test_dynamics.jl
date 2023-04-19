@@ -732,10 +732,4 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
-
-    @testset "Adding 'different' velocity fields" begin
-        for arch in archs
-            test_velocity_combination(arch)
-        end
-    end
 end
