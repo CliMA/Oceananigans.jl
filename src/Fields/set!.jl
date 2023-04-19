@@ -1,5 +1,4 @@
 using CUDA
-using CUDAKernels
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 

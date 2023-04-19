@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: device, device_event
+using Oceananigans.Architectures: device
 using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
@@ -12,20 +12,8 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
-function compute_w_from_continuity!(velocities, arch, grid)
-
-    event = launch!(arch,
-                    grid,
-                    :xy,
-                    _compute_w_from_continuity!,
-                    velocities,
-                    grid,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
-
-    return nothing
-end
+compute_w_from_continuity!(velocities, arch, grid) = 
+    launch!(arch, grid, :xy, _compute_w_from_continuity!, velocities, grid)
 
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)

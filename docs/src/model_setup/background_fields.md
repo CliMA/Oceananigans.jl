@@ -102,4 +102,3 @@ FunctionField located at (Center, Center, Center)
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
-

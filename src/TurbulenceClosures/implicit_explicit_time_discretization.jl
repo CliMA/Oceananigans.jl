@@ -1,5 +1,3 @@
-using KernelAbstractions: NoneEvent
-
 using Oceananigans.Utils: arch_array
 using Oceananigans.Grids: AbstractGrid
 

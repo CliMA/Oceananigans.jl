@@ -93,10 +93,10 @@ end
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, args...)
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, c::AbstractCubedSphereField, arch, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
-        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
+        apply_flux_bcs!(Gcⁿ_face, get_face(c, face_index), arch,
                         Tuple(get_face(a, face_index) for a in args)...)
     end
 
@@ -156,15 +156,15 @@ end
 ##### CFL for cubed sphere fields
 #####
 
-import Oceananigans.Diagnostics: accurate_cell_advection_timescale
+import Oceananigans.Advection: cell_advection_timescale
 
-function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
+function cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
 
     min_timescale_on_faces = []
 
     for (face_index, grid_face) in enumerate(grid.faces)
         velocities_face = get_face(velocities, face_index)
-        min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
+        min_timescale_on_face = cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
     end
 
@@ -175,9 +175,10 @@ end
 ##### compute...
 #####
 
-import Oceananigans.Fields: compute!
 using Oceananigans.AbstractOperations: _compute!
 using Oceananigans.Fields: compute_at!
+
+import Oceananigans.Fields: compute!
 
 const CubedSphereComputedField{LX, LY, LZ} = Field{LX, LY, LZ,
                                                    <:AbstractOperation,
@@ -188,11 +189,10 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
     compute_at!(comp.operand, time)
 
     arch = architecture(comp)
-    events = Tuple(launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
-                   for c in faces(comp))
-
-    wait(device(arch), MultiEvent(events))
-
+    foreach(faces(comp)) do c
+        launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+    end
+    
     fill_halo_regions!(comp)
 
     return comp

@@ -15,7 +15,7 @@ using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ
 @inline _diffusive_flux_y(args...) = diffusive_flux_y(args...)
 @inline _diffusive_flux_z(args...) = diffusive_flux_z(args...)
 
-#####                                                            
+#####
 ##### Viscous flux divergences
 #####
 
