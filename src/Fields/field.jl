@@ -545,7 +545,7 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-isversion8⁺() = VERSION.minor > 7
+isjuliaversion1p8⁺() = VERSION.minor > 7
 
 initialize_reduced_field!(::SumReduction,  f, r::ReducedField, c) = isjuliaversion1p8⁺() ? Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))  : Base.initarray!(interior(r), Base.add_sum, true, interior(c))
 initialize_reduced_field!(::ProdReduction, f, r::ReducedField, c) = isjuliaversion1p8⁺() ? Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c)) : Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
