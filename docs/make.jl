@@ -141,24 +141,20 @@ pages = [
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(
-    collapselevel = 1,
-       prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-       mathengine = MathJax3()
-)
+format = Documenter.HTML(collapselevel = 1,
+                         prettyurls = get(ENV, "CI", nothing) == "true",
+                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+                         mathengine = MathJax3())
 
-makedocs(bib,
-  sitename = "Oceananigans.jl",
-   authors = "Climate Modeling Alliance and contributors",
-    format = format,
-     pages = pages,
-   modules = [Oceananigans],
-   doctest = true,
-    strict = true,
-     clean = true,
- checkdocs = :exports
-)
+makedocs(bib, sitename = "Oceananigans.jl",
+              authors = "Climate Modeling Alliance and contributors",
+              format = format,
+              pages = pages,
+              modules = [Oceananigans],
+              doctest = true,
+              strict = true,
+              clean = true,
+              checkdocs = :exports)
 
 @info "Cleaning up temporary .jld2 and .nc files created by doctests..."
 
@@ -166,10 +162,9 @@ for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
     rm(file)
 end
 
-deploydocs(
-          repo = "github.com/CliMA/OceananigansDocumentation.git",
-      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-     forcepush = true,
-  push_preview = false,
-     devbranch = "main"
-)
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+           versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+           forcepush = true,
+           push_preview = false,
+           devbranch = "main")
+
