@@ -141,8 +141,8 @@ inject_east_boundary(region, p::YPartition, bc) = bc
 function inject_south_boundary(region, p::YPartition, global_bc) 
     if region == 1
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), South(), North())) :
-                bc = global_bc
+            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), South(), North())) :
+            bc = global_bc
     else
         bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, South(), North()))
     end
@@ -152,8 +152,8 @@ end
 function inject_north_boundary(region, p::YPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, North(), South())) : 
-                bc = global_bc
+            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, North(), South())) : 
+            bc = global_bc
     else
         bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, North(), South()))
     end

@@ -85,9 +85,9 @@ end
 #####
 
 function reconstruct_size(mrg, p::XPartition)
+    Nx = sum([grid.Nx for grid in mrg.region_grids.regional_objects])
     Ny = mrg.region_grids[1].Ny
     Nz = mrg.region_grids[1].Nz
-    Nx = sum([grid.Nx for grid in mrg.region_grids.regional_objects])
     return (Nx, Ny, Nz)
 end
 
@@ -131,7 +131,7 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, arch) 
 end
 
 function compact_data!(global_field, global_grid, data::MultiRegionObject, p::EqualXPartition)
-    Nx, Ny, Nz = size(global_grid)
+    Nx, _, _ = size(global_grid)
     n = Nx / length(p)
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
@@ -155,8 +155,8 @@ inject_north_boundary(region, p::XPartition, bc) = bc
 function inject_west_boundary(region, p::XPartition, global_bc)
     if region == 1
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), West(), East())) :
-                bc = global_bc
+            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), West(), East())) :
+            bc = global_bc
     else
         bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, West(), East()))
     end
@@ -166,8 +166,8 @@ end
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, East(), West())) : 
-                bc = global_bc
+            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, East(), West())) : 
+            bc = global_bc
     else
         bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, East(), West()))
     end
