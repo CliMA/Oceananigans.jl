@@ -119,17 +119,18 @@ include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
 
 function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
-
     # Update the properties of the Lagrangian particles
     update_lagrangian_particle_properties!(particles, model, Δt)
     
     # Compute dynamics
-    lagrangian_particles.dynamics(particles, model, Δt)
+    particles.dynamics(particles, model, Δt)
 
     # Advect particles
     advect_lagrangian_particles!(particles, model, Δt)
 
-    return nothing
+    KernelAbstractions.synchronize(device(model.grid.architecture))
 end
+
+update_lagrangian_particles!(model, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 
 end # module

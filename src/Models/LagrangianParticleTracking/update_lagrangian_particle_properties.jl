@@ -21,18 +21,15 @@ function update_lagrangian_particle_properties!(particles, model, Δt)
 
     # Update particle "properties"
     for (name, field) in pairs(particles.tracked_fields)
-        compute_at!(field, time(model))
+        compute!(field)
         particle_property = getproperty(particles.properties, name)
         ℓx, ℓy, ℓz = map(instantiate, location(field))
 
         update_field_property_kernel! = update_property!(device(arch), workgroup, worksize)
 
-        update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
-                                      datatuple(tracked_field), LX(), LY(), LZ())
+        update_field_property_kernel!(particle_property, particles.properties, model.grid,
+                                      datatuple(field), ℓx, ℓy, ℓz)
     end
-    
-    advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-    advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt, datatuple(model.velocities))
 
     return nothing
 end

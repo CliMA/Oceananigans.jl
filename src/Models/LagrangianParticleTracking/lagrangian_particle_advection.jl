@@ -1,5 +1,6 @@
 using Oceananigans.Models.NonhydrostaticModels: NonhydrostaticModel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Utils: instantiate 
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -72,12 +73,12 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
-    advect_particle((x, y, z), p, grid, restitution, velocities, Δt)
+    advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
 
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), grid, restitution, velocities, Δt)
+@inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
     # Obtain current particle indices
     i, j, k = fractional_indices(x, y, z, (c, c, c), grid)
     i = Base.unsafe_trunc(Int, i)
@@ -95,11 +96,11 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
     ξ = x_metric(i, j, grid) 
-    η = y_metric(i, j, grid) 
-        
-    x⁺ = x + ξ * uₚ * Δt
-    y⁺ = y + η * uₚ * Δt
-    z⁺ = z + wₚ * Δt
+    η = y_metric(i, j, grid)
+
+    x⁺ = x + ξ * u * Δt
+    y⁺ = y + η * v * Δt
+    z⁺ = z + w * Δt
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -123,7 +124,6 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
     y⁺ = enforce_boundary_conditions(ty, y⁺, yᴸ, yᴿ, Cʳ)
     z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
-
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
         x⁺, y⁺, z⁺ = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
@@ -135,11 +135,11 @@ end
 # Calculate the metric for particle advection according to the coordinate system of the `grid`:
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
-@inline x_metric(i, j, grid::RectilinearGrid, u) = 1
-@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}, u) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
+@inline x_metric(i, j, grid::RectilinearGrid) = 1
+@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
 
-@inline y_metric(i, j, grid::RectilinearGrid) = v
-@inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = v / grid.radius * FT(360 / 2π)
+@inline y_metric(i, j, grid::RectilinearGrid) = 1
+@inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 
 @kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
     p = @index(Global)
@@ -172,15 +172,7 @@ function advect_lagrangian_particles!(particles, model, Δt)
     worksize = length(particles)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-
-    event = advect_particles_kernel!(particles.properties,
-                                     particles.restitution,
-                                     grid,
-                                     Δt,
-                                     total_velocities(model),
-                                     dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, datatuple(model.velocities))
 
     return nothing
 end

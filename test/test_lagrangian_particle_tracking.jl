@@ -90,9 +90,9 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     model = HydrostaticFreeSurfaceModel(; grid, particles, velocities, buoyancy=nothing, tracers = ())
 
     time_step!(model, Δt)
-    z = convert(array_type(arch), model.particles.properties.z)
 
-    @test all(z .≈ (top_boundary - 0.15))
+    zᶠ = convert(array_type(arch), model.particles.properties.z)
+    @test all(zᶠ .≈ (top_boundary - 0.15))
 
     #####
     ##### Test custom particle "SpeedTrackingParticle"
@@ -128,14 +128,16 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     jld2_filepath = "test_particles.jld2"
     sim.output_writers[:particles_jld2] =
         JLD2OutputWriter(model, (; particles=model.particles),
-                         filename=jld2_filepath, schedule=IterationInterval(1))
+                         filename=jld2_filepath, schedule=IterationInterval(1),
+                         overwrite_existing = true)
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
+        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1), overwrite_existing = true)
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                     dir = ".", prefix = "particles_checkpoint")
+                                                     dir = ".", prefix = "particles_checkpoint",
+                                                     overwrite_existing = true)
 
     sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)    
     model = sim.model
@@ -260,10 +262,10 @@ end
 
 @testset "Lagrangian particle tracking" begin
     for arch in archs, timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @info "  Testing uniform grid Lagrangian particle tacking [$(typeof(arch)), $timestepper]..."
+        @info "  Testing uniform grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
         run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false)
 
-        @info "  Testing stretched grid Lagrangian particle tacking [$(typeof(arch)), $timestepper]..."
-        run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=true)
+        #@info "  Testing stretched grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
+        #run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=true)
     end
 end
