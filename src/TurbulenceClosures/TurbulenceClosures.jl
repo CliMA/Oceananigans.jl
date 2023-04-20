@@ -79,6 +79,23 @@ function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
 #####
+##### Fallback: flux = 0
+#####
+
+for dir in (:x, :y, :z)
+    diffusive_flux = Symbol(:diffusive_flux_, dir)
+    viscous_flux_u = Symbol(:viscous_flux_u, dir)
+    viscous_flux_v = Symbol(:viscous_flux_v, dir)
+    viscous_flux_w = Symbol(:viscous_flux_w, dir)
+    @eval begin
+        @inline $diffusive_flux(i, j, k, grid, clo::AbstractTurbulenceClosure, args...) = zero(grid)
+        @inline $viscous_flux_u(i, j, k, grid, clo::AbstractTurbulenceClosure, args...) = zero(grid)
+        @inline $viscous_flux_v(i, j, k, grid, clo::AbstractTurbulenceClosure, args...) = zero(grid)
+        @inline $viscous_flux_w(i, j, k, grid, clo::AbstractTurbulenceClosure, args...) = zero(grid)
+    end
+end
+
+#####
 ##### The magic
 #####
 

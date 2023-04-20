@@ -242,12 +242,9 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_CATKE_diffusivities!,
-                    diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            calculate_CATKE_diffusivities!,
+            diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     return nothing
 end

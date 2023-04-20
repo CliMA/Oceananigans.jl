@@ -219,6 +219,7 @@ trilinear(x, y, z) = x + y + z
                 end
             end
         end
+
         @testset "Immersed Fields reduction [$(typeof(arch))]" begin
             @info "  Testing reductions of immersed Fields [$(typeof(arch))]"
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))

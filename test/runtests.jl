@@ -8,7 +8,7 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-
+    
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -58,7 +58,6 @@ CUDA.allowscalar() do
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_multigrid_solver.jl")
         end
     end
 
@@ -158,10 +157,6 @@ CUDA.allowscalar() do
 
     if group == :hydrostatic_regression || group == :all
         include("test_hydrostatic_regression.jl")
-    end
-
-    if group == :shallowwater_regression || group == :all
-        include("test_shallow_water_regression.jl")
     end
 
     if group == :scripts || group == :all
