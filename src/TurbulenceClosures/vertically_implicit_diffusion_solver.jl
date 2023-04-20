@@ -2,6 +2,8 @@ using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
+import Oceananigans.Solvers: get_coefficient
+
 #####
 ##### implicit_step! interface
 #####
@@ -123,12 +125,18 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = maybe_tupled_ivd_lower_diagonal,
-                                        diagonal = ivd_diagonal,
-                                        upper_diagonal = maybe_tupled_ivd_upper_diagonal)
+                                        lower_diagonal = Val(:maybe_tupled_ivd_lower_diagonal),
+                                        diagonal       = Val(:ivd_diagonal),
+                                        upper_diagonal = Val(:maybe_tupled_ivd_upper_diagonal))
 
     return z_solver
 end
+
+# Extend the `get_coefficient` function to retrieve the correct `ivd_diagonal`, `ivd_lower_diagonal` and `ivd_upper_diagonal` functions
+# REMEMBER: `get_coefficient(f::Function, args...)` leads to massive performance decrease on the CPU (https://github.com/CliMA/Oceananigans.jl/issues/2996) 
+@inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:ivd_diagonal}, i, j, k, grid, p, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
@@ -179,7 +187,7 @@ function implicit_step!(field::Field,
     if closure isa Tuple
         closure_tuple = closure
         N = length(closure_tuple)
-        vi_closure = Tuple(closure[n] for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_closure            = Tuple(closure[n]            for n = 1:N if is_vertically_implicit(closure[n]))
         vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
     else
         vi_closure = closure
@@ -188,6 +196,6 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz)
+                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz)
 end
 

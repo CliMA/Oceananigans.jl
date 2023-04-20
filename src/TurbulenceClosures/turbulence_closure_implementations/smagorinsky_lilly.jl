@@ -106,7 +106,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 end
 
 
-function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; kwargs...)
+function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
     arch = model.architecture
     grid = model.grid
