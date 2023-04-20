@@ -109,22 +109,22 @@ end
 const c = Center()
 const f = Face()
 
-@inline z_top(i, j, grid)          = znode(i, j, grid.Nz+1, grid, c, c, f)
-@inline z_bottom(i, j,  grid)      = znode(i, j, 1,         grid, c, c, f)
+@inline z_top(i, j, grid)          = znode(c, c, f, i, j, grid.Nz+1, grid)
+@inline z_bottom(i, j,  grid)      = znode(c, c, f, i, j, 1,         grid)
 
-@inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
-@inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
+@inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(c, c, f, i, j, k, grid))
+@inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(c, c, c, i, j, k, grid))
 @inline total_depthᶜᶜᵃ(i, j, grid) = clip(z_top(i, j, grid) - z_bottom(i, j, grid))
 
 @inline function height_above_bottomᶜᶜᶠ(i, j, k, grid)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    h = znode(i, j, k, grid, c, c, f) - z_bottom(i, j, grid)
+    h = znode(c, c, f, i, j, k, grid) - z_bottom(i, j, grid)
     return max(Δz, h)
 end
 
 @inline function height_above_bottomᶜᶜᶜ(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
-    h = znode(i, j, k, grid, c, c, c) - z_bottom(i, j, grid)
+    h = znode(c, c, c, i, j, k, grid) - z_bottom(i, j, grid)
     return max(Δz, h)
 end
 
