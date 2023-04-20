@@ -39,19 +39,19 @@ using Oceananigans.Grids: topology
 @inline function p_kernel_size(grid) 
     Nx, Ny, _ = size(grid)
 
-    Tx, Ty, _ = topology(grid)
+    TX, TY, _ = topology(grid)
 
-    Ax = Tx == Flat ? Nx : Nx + 2 
-    Ay = Ty == Flat ? Ny : Ny + 2 
+    Ax = TX == Flat ? Nx : Nx + 2 
+    Ay = TY == Flat ? Ny : Ny + 2 
 
     return (Ax, Ay)
 end
 
 @inline function p_kernel_offsets(grid)
-    Tx, Ty, _ = topology(grid)
+    TX, TY, _ = topology(grid)
 
-    Ax = Tx == Flat ? 0 : - 1 
-    Ay = Ty == Flat ? 0 : - 1 
+    Ax = TX == Flat ? 0 : - 1 
+    Ay = TY == Flat ? 0 : - 1 
 
     return (Ax, Ay)
 end
