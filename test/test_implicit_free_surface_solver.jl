@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
-using Oceananigans.Architectures: device_event
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
@@ -54,10 +53,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
                                         momentum_advection = nothing,
                                         free_surface)
 
-    events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
-
     set_simple_divergent_velocity!(model)
-    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, events)
+    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
 
     acronym = free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" : "PCG"
 
@@ -165,16 +162,14 @@ end
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
 
-        events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
-
         Δt₁ = 900
         Δt₂ = 920.0
         
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
-            implicit_free_surface_step!(m.free_surface, m, Δt₂, 1.5, events)
+            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
+            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
+            implicit_free_surface_step!(m.free_surface, m, Δt₂, 1.5)
         end
 
         mat_η = mat_model.free_surface.η

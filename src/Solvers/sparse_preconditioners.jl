@@ -134,17 +134,15 @@ function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptoti
     invdiag = arch_array(arch, zeros(eltype(nzval), M))
 
     loop! = _get_inv_diag!(dev, 256, M)
-    event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
-    wait(dev, event)
-
+    loop!(invdiag, colptr, rowval, nzval)
+    
     if asymptotic_order == 0
         Minv_cpu = spdiagm(0=>arch_array(CPU(), invdiag))
         Minv     = arch_sparse_matrix(arch, Minv_cpu)
     elseif asymptotic_order == 1
         loop! = _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(dev, 256, M)
-        event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
-        wait(dev, event)
-    
+        loop!(nzval, colptr, rowval, invdiag)
+        
         constr_new = (colptr, rowval, nzval)
         Minv = arch_sparse_matrix(arch, constructors(arch, M, M, constr_new))
     else

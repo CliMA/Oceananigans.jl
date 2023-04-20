@@ -93,10 +93,10 @@ end
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, args...)
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, c::AbstractCubedSphereField, arch, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
-        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
+        apply_flux_bcs!(Gcⁿ_face, get_face(c, face_index), arch,
                         Tuple(get_face(a, face_index) for a in args)...)
     end
 
@@ -189,11 +189,10 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
     compute_at!(comp.operand, time)
 
     arch = architecture(comp)
-    events = Tuple(launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
-                   for c in faces(comp))
-
-    wait(device(arch), MultiEvent(events))
-
+    foreach(faces(comp)) do c
+        launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+    end
+    
     fill_halo_regions!(comp)
 
     return comp

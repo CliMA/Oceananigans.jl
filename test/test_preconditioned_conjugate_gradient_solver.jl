@@ -33,7 +33,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
-    solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)))
+    solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)

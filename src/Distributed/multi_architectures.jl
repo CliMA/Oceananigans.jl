@@ -3,7 +3,7 @@ using Oceananigans.Grids: topology, validate_tupled_argument
 
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Fields: using_buffered_communication
 
@@ -116,12 +116,11 @@ using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A,
 ##### All the architectures
 #####
 
-child_architecture(arch::DistributedArch) = arch.child_architecture
-device(arch::DistributedArch)             = device(child_architecture(arch))
-device_event(arch::DistributedArch)       = device_event(child_architecture(arch))
-arch_array(arch::DistributedArch, A)      = arch_array(child_architecture(arch), A)
-zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
+child_architecture(arch::DistributedArch)            = arch.child_architecture
+device(arch::DistributedArch)        = device(child_architecture(arch))
+arch_array(arch::DistributedArch, A) = arch_array(child_architecture(arch), A)
+zeros(FT, arch::DistributedArch, N...)               = zeros(FT, child_architecture(arch), N...) 
+array_type(arch::DistributedArch)                    = array_type(child_architecture(arch))
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index

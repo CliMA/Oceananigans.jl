@@ -1,5 +1,4 @@
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Architectures: device_event
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
@@ -52,9 +51,8 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Compute diagonal coefficients for each grid point
     diagonal = arch_array(arch, zeros(Nx, Ny, Nz))
-    event = launch!(arch, grid, :xy, compute_main_diagonals!, diagonal, grid, λx, λy, dependencies=device_event(arch))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xy, compute_main_diagonals!, diagonal, grid, λx, λy)
+    
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = lower_diagonal,
@@ -94,9 +92,8 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # so that the solution has zero-mean.
     ϕ .= ϕ .- mean(ϕ)
 
-    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x), dependencies=device_event(arch))
-    wait(device(arch), copy_event)
-
+    launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
+    
     return nothing
 end
 
@@ -111,8 +108,7 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     arch = architecture(solver)
     solver.source_term .= source_term
 
-    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver.source_term, grid, dependencies=Event(device(arch)))
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver.source_term, grid)
 
     return nothing
 end

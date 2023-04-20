@@ -1,5 +1,5 @@
 using Oceananigans.Operators
-using Oceananigans.Architectures: device, device_event
+using Oceananigans.Architectures: device
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures: 
@@ -68,12 +68,9 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
 
     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
 
-    event = launch!(arch, grid, :xyz,
-                    _calculate_shallow_water_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, clock, model_fields,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            _calculate_shallow_water_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing
 end
