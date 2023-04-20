@@ -232,7 +232,7 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
 
     arch = model.architecture
     grid = model.grid
@@ -242,15 +242,20 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, kernel_size,
             calculate_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+            diffusivities, kernel_offsets, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    i, j, k, = @index(Global, NTuple)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, offs, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+
+    i′, j′, k′ = @index(Global, NTuple)
+
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
+    k = k′ + offs[3]
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
