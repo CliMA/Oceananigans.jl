@@ -10,10 +10,10 @@ the `buoyancy_perturbation` downwards:
 @kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
 
-    @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, z_dot_g_b, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_b(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
 
     @unroll for k in grid.Nz-1 : -1 : 1
-        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, z_dot_g_b, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - z_dot_g_b(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
     end
 end
 
