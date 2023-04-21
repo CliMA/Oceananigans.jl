@@ -39,7 +39,7 @@ end
     @inbounds κₑ[i, j, k] = calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure, tracer, tracer_index, U)
 end
 
-# extend κ kernel to compute also the boundaries
+# # extend κ kernel to compute also the boundaries
 # @inline function κ_kernel_size(grid) 
 #     Nx, Ny, Nz = size(grid)
 #     Tx, Ty, Tz = topology(grid)
