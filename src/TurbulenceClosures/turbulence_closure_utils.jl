@@ -59,5 +59,5 @@ end
     Ay = Ty == Flat ? 0 : - 1 
     Az = Ty == Flat ? 0 : - 1 
 
-    return (Ax, Ay, 0)
+    return (Ax, Ay, Az)
 end
