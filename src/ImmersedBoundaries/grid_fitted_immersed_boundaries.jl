@@ -9,7 +9,7 @@ using Printf
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal,
-                                        bottom
+                                        z_bottom
 
 import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
                                         immersed_∂ⱼ_τ₂ⱼ,

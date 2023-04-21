@@ -57,7 +57,7 @@ end
 
     Ax = Tx == Flat ? 0 : - 1 
     Ay = Ty == Flat ? 0 : - 1 
-    Az = Ty == Flat ? 0 : - 1 
+    Az = Tz == Flat ? 0 : - 1 
 
     return (Ax, Ay, Az)
 end
