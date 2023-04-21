@@ -141,11 +141,11 @@ function size_κ_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
     Rx, Ry, _  = arch.ranks
 
-    size_x = (1, Ny, Nz)
-    size_y = (Nx, 1, Nz)
+    size_x = (2, Ny, Nz)
+    size_y = (Nx, 2, Nz)
 
-    offsᴸx = (-1,  0, 0)
-    offsᴸy = (0,  -1, 0)
+    offsᴸx = (-2,  0, 0)
+    offsᴸy = (0,  -2, 0)
     offsᴿx = (Nx,  0, 0)
     offsᴿy = (0,  Ny, 0)
 

@@ -60,6 +60,3 @@ end
 
     return (Ax, Ay, Az)
 end
-
-# @inline κ_kernel_size(grid)    = :xyz
-# @inline κ_kernel_offsets(grid) = (0, 0, 0)

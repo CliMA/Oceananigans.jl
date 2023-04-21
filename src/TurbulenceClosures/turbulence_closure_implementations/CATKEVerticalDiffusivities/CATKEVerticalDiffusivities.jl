@@ -234,7 +234,7 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; kernel_size = κ_CATKE_kernel_size(model.grid), kernel_offsets = κ_CATKE_kernel_offsets(model.grid))
 
     arch = model.architecture
     grid = model.grid
@@ -250,6 +250,29 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; 
 
     return nothing
 end
+
+# extend κ kernel to compute also the boundaries
+@inline function κ_CATKE_kernel_size(grid) 
+    Nx, Ny, Nz = size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    Ax = Tx == Flat ? Nx : Nx + 4 
+    Ay = Ty == Flat ? Ny : Ny + 4 
+    Az = Tz == Flat ? Nz : Nz + 2
+
+    return (Ax, Ay, Az)
+end
+
+@inline function κ_CATKE_kernel_offsets(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    Ax = Tx == Flat ? 0 : - 2
+    Ay = Ty == Flat ? 0 : - 2 
+    Az = Tz == Flat ? 0 : - 1 
+
+    return (Ax, Ay, Az)
+end
+
 
 @kernel function calculate_CATKE_diffusivities!(diffusivities, offs, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
