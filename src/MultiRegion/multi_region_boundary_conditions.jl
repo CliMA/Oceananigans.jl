@@ -64,6 +64,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     arch       = architecture(mrg)
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
+    neighbors = Reference(c.regional_objects)
     buff = Reference(buffers.regional_objects)
 
     for task = 1:3
