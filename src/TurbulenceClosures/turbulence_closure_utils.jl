@@ -42,7 +42,6 @@ end
 # extend κ kernel to compute also the boundaries
 @inline function κ_kernel_size(grid) 
     Nx, Ny, Nz = size(grid)
-
     Tx, Ty, Tz = topology(grid)
 
     Ax = Tx == Flat ? Nx : Nx + 2 
