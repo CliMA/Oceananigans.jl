@@ -93,11 +93,11 @@ function recompute_auxiliaries!(model, grid, arch)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
     end
 
-    # sizes, offs = size_κ_kernel(grid, arch)
+    sizes, offs = size_κ_kernel(grid, arch)
 
-    # for (kernel_size, kernel_offsets) in zip(sizes, offs)
-    #     calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
-    # end
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
+    end
 end
 
 function size_w_kernel(grid, arch)
