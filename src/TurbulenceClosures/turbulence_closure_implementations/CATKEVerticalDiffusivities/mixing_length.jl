@@ -14,7 +14,7 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
     Cᴺ   :: FT = 0.37
-    Cᵇ   :: FT = 0.01
+    Cᵇ   :: FT = 1.0
     Cᶜc  :: FT = 4.8
     Cᶜe  :: FT = 1.1
     Cᵉc  :: FT = 0.049
@@ -204,10 +204,10 @@ end
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, C⁻, C⁺, velocities, tracers, buoyancy)
 
     ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
+
     return min(H, ℓ★)
 end
 
@@ -226,7 +226,8 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(H, ℓ★ + ℓʰ)
+
+    return min(H, max(ℓ★, ℓʰ))
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -244,7 +245,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(H, ℓ★ + ℓʰ)
+    return min(H, max(ℓ★, ℓʰ))
 end
 
 Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
