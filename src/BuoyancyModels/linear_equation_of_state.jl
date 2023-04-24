@@ -66,13 +66,13 @@ const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfSt
 ##### BuoyancyModels perturbation
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
     @inbounds b.gravitational_acceleration * (b.equation_of_state.thermal_expansion * C.T[i, j, k] -
                                               b.equation_of_state.haline_contraction * C.S[i, j, k])
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
     @inbounds b.gravitational_acceleration * b.equation_of_state.thermal_expansion * C.T[i, j, k]
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
     @inbounds - b.gravitational_acceleration * b.equation_of_state.haline_contraction * C.S[i, j, k]
 
