@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!
+using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
@@ -41,3 +41,6 @@ function fetch_and_convert_output(output, model, writer)
     fetched = fetch_output(output, model)
     return convert_output(fetched, writer)
 end
+
+fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
+
