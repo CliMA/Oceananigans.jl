@@ -192,22 +192,34 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
+        end
+    catch err
+        @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
+    end
+
+    try 
+        jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 
             # Serialize properties in `including`.
             for property in including
                 serializeproperty!(file, "serialized/$property", getproperty(model, property))
             end
-
-            # Serialize the location and boundary conditions of each output.
-            for (i, (field_name, field)) in enumerate(pairs(outputs))
-                file["timeseries/$field_name/serialized/location"] = location(field)
-                file["timeseries/$field_name/serialized/indices"] = indices(field)
-                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
-            end
         end
     catch err
-        @warn """Initialization of $filepath failed because $(typeof(err)): $(sprint(showerror, err))"""
+        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
+    end
+
+    # Serialize the location and boundary conditions of each output.
+    for (name, field) in pairs(outputs)
+        try
+            jldopen(filepath, "a+"; jld2_kw...) do file
+                file["timeseries/$name/serialized/location"] = location(field)
+                file["timeseries/$name/serialized/indices"] = indices(field)
+                serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
+            end
+        catch
+        end
     end
 
     return nothing
