@@ -118,14 +118,59 @@ function FieldTimeSeries(path, name, backend;
     end
 
     isnothing(grid) && (grid = file["serialized/grid"])
-    close(file)
 
     # Default to CPU if neither architecture nor grid is specified
     architecture = isnothing(architecture) ?
         (isnothing(grid) ? CPU() : Architectures.architecture(grid)) : architecture
 
-    # This should be removed in a month or two (4/5/2022).
-    grid = on_architecture(architecture, grid)
+    # This should be removed eventually... (4/5/2022)
+    grid = try
+        on_architecture(architecture, grid)
+    catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
+        if grid isa RectilinearGrid # we can try...
+            @info "Initial attempt to transfer grid to $architecture failed."
+            @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
+
+            Nx = file["grid/Nx"]
+            Ny = file["grid/Ny"]
+            Nz = file["grid/Nz"]
+            Hx = file["grid/Hx"]
+            Hy = file["grid/Hy"]
+            Hz = file["grid/Hz"]
+            xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+            yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+            zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+            x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+            y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+            z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+            topo = topology(grid)
+
+            N = (Nx, Ny, Nz)
+
+            # Reduce for Flat dimensions
+            domain = Dict()
+            for (i, ξ) in enumerate((x, y, z))
+                if topo[i] !== Flat
+                    if !(ξ isa Tuple)
+                        chopped_ξ = ξ[1:N[i]+1]
+                    else
+                        chopped_ξ = ξ
+                    end
+                    sξ = (:x, :y, :z)[i]
+                    domain[sξ] = chopped_ξ
+                end
+            end
+
+            size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
+            halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
+
+            RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+        else
+            throw(err)
+        end
+    end
+
+    close(file)
 
     LX, LY, LZ = Location
     loc = map(instantiate, Location)
