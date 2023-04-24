@@ -139,6 +139,7 @@ end
 
 function size_κ_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
+    Hx, Hy, _ = halo_size(grid)
     Rx, Ry, _  = arch.ranks
 
     size_x = (Hx, Ny, Nz)
