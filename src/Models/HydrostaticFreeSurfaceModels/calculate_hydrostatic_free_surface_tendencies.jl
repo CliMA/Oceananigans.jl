@@ -131,36 +131,6 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     return nothing
 end
-
-#####
-##### Boundary condributions to hydrostatic free surface model
-#####
-
-function apply_flux_bcs!(Gcⁿ, c, arch, args...)
-    apply_x_bcs!(Gcⁿ, c, arch, args...)
-    apply_y_bcs!(Gcⁿ, c, arch, args...)
-    apply_z_bcs!(Gcⁿ, c, arch, args...)
-
-    return nothing
-end
-
-function calculate_free_surface_tendency!(grid, model)
-
-    arch = architecture(grid)
-
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
-
-    launch!(arch, grid, :xy,
-            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, (0, 0),
-            grid, args)
-
-    return nothing
-end
     
 interior_tendency_kernel_size(grid)    = :xyz
 interior_tendency_kernel_offsets(grid) = (0, 0, 0)
@@ -197,11 +167,11 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     kernel_offsets = interior_tendency_kernel_offsets(grid)
     
     launch!(arch, grid, kernel_size,
-            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args;
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args;
             only_active_cells)
 
     launch!(arch, grid, kernel_size,
-            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args;
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args;
             only_active_cells)
 
     calculate_free_surface_tendency!(grid, model)
@@ -224,6 +194,36 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velo
     for i in propertynames(tracers)
         apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
     end
+
+    return nothing
+end
+
+#####
+##### Boundary condributions to hydrostatic free surface model
+#####
+
+function apply_flux_bcs!(Gcⁿ, c, arch, args...)
+    apply_x_bcs!(Gcⁿ, c, arch, args...)
+    apply_y_bcs!(Gcⁿ, c, arch, args...)
+    apply_z_bcs!(Gcⁿ, c, arch, args...)
+
+    return nothing
+end
+
+function calculate_free_surface_tendency!(grid, model)
+
+    arch = architecture(grid)
+
+    args = tuple(model.velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.auxiliary_fields,
+                 model.forcing,
+                 model.clock)
+
+    launch!(arch, grid, :xy,
+            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, (0, 0),
+            grid, args)
 
     return nothing
 end
