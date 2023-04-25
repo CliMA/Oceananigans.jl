@@ -115,40 +115,40 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
 @testset "BuoyancyModels" begin
     @info "Testing buoyancy..."
 
-#    @testset "Equations of State" begin
-#        @info "  Testing equations of state..."
-#        for FT in float_types
-#            @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
-#
-#            for EOS in EquationsOfState
-#                for kwargs in buoyancy_kwargs
-#                    @test instantiate_seawater_buoyancy(FT, EOS; kwargs...)
-#                end
-#            end
-#
-#            for arch in archs
-#                @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
-#            end
-#
-#            buoyancies = (nothing, Buoyancy(model=BuoyancyTracer()), Buoyancy(model=SeawaterBuoyancy(FT)),
-#                          (Buoyancy(model=SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
-#
-#            for arch in archs
-#                for buoyancy in buoyancies
-#                    @test ∂x_b_works(arch, FT, buoyancy)
-#                    @test ∂y_b_works(arch, FT, buoyancy)
-#                    @test ∂z_b_works(arch, FT, buoyancy)
-#                end
-#            end
-#
-#            for arch in archs
-#                for EOS in EquationsOfState
-#                    @test thermal_expansion_works(arch, FT, EOS())
-#                    @test haline_contraction_works(arch, FT, EOS())
-#                end
-#            end
-#        end
-#    end
+    @testset "Equations of State" begin
+        @info "  Testing equations of state..."
+        for FT in float_types
+            @test instantiate_linear_equation_of_state(FT, 0.1, 0.3)
+
+            for EOS in EquationsOfState
+                for kwargs in buoyancy_kwargs
+                    @test instantiate_seawater_buoyancy(FT, EOS; kwargs...)
+                end
+            end
+
+            for arch in archs
+                @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
+            end
+
+            buoyancies = (nothing, Buoyancy(model=BuoyancyTracer()), Buoyancy(model=SeawaterBuoyancy(FT)),
+                          (Buoyancy(model=SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
+
+            for arch in archs
+                for buoyancy in buoyancies
+                    @test ∂x_b_works(arch, FT, buoyancy)
+                    @test ∂y_b_works(arch, FT, buoyancy)
+                    @test ∂z_b_works(arch, FT, buoyancy)
+                end
+            end
+
+            for arch in archs
+                for EOS in EquationsOfState
+                    @test thermal_expansion_works(arch, FT, EOS())
+                    @test haline_contraction_works(arch, FT, EOS())
+                end
+            end
+        end
+    end
 
     @testset "Tilted buoyancy" begin
         @info "  Testing tilted buoyancy..."
