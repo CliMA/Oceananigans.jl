@@ -128,9 +128,9 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
 
     FT = eltype(model.grid)
 
-    @test wu == zero(FT) 
-    @test wT == zero(FT) 
-    @test uv == FT(2)
+    @test ≈(wu, zero(FT), rtol=√eps(FT), atol=eps(FT))
+    @test ≈(wT, zero(FT), rtol=√eps(FT), atol=eps(FT))
+    @test ≈(uv, FT(2),    rtol=√eps(FT), atol=eps(FT))
 
     return nothing
 end

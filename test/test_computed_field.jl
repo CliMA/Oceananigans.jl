@@ -17,7 +17,7 @@ end
 function compute_unary(unary, model)
     set!(model; S=π)
     T, S = model.tracers
-    @compute uS = Field(unary(S), data=model.pressures.pHY′.data)
+    @compute uS = Field(unary(S), data=model.pressures.pNHS.data)
     result = Array(interior(uS))
     return all(result .≈ unary(eltype(model.grid)(π)))
 end
@@ -25,7 +25,7 @@ end
 function compute_plus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S + T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S + T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π + 42))
 end
@@ -42,7 +42,7 @@ end
 function compute_minus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S - T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S - T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π - 42))
 end
@@ -50,7 +50,7 @@ end
 function compute_times(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S * T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S * T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π * 42))
 end
@@ -62,7 +62,7 @@ function compute_kinetic_energy(model)
     set!(w, 3)
 
     kinetic_energy_operation = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
-    @compute kinetic_energy = Field(kinetic_energy_operation, data=model.pressures.pHY′.data)
+    @compute kinetic_energy = Field(kinetic_energy_operation, data=model.pressures.pNHS.data)
 
     return all(interior(kinetic_energy, 2:3, 2:3, 2:3) .≈ 7)
 end
@@ -442,7 +442,7 @@ for arch in archs
                 set!(model; S=π, T=42)
                 T, S = model.tracers
 
-                @compute ST = Field(S + T, data=model.pressures.pHY′.data)
+                @compute ST = Field(S + T, data=model.pressures.pNHS.data)
 
                 Nx, Ny, Nz = size(model.grid)
                 Hx, Hy, Hz = halo_size(model.grid)
