@@ -2,22 +2,20 @@
 ##### Timescale for diffusion across one cell
 #####
 
-using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
-
 function min_Δxyz(grid, ::ThreeDimensionalFormulation)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
+    Δx = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy = minimum_yspacing(grid, Center(), Center(), Center())
+    Δz = minimum_zspacing(grid, Center(), Center(), Center())
     return min(Δx, Δy, Δz)
 end
 
 function min_Δxyz(grid, ::HorizontalFormulation)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
+    Δx = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx, Δy)
 end
 
-min_Δxyz(grid, ::VerticalFormulation) = min_Δz(grid)
+min_Δxyz(grid, ::VerticalFormulation) = minimum_zspacing(grid, Center(), Center(), Center())
 
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivity_fields, model.grid)
@@ -69,5 +67,5 @@ end
 cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyImplicitTimeDiscretization},
                          diffusivities, grid) = Inf
 
-cell_diffusion_timescale(closure::Tuple, diffusivities, grid) =
-    min(Tuple(cell_diffusion_timescale(c, diffusivities, grid) for c in closure)...)
+cell_diffusion_timescale(closure::Tuple, diffusivity_fields, grid) =
+    minimum(cell_diffusion_timescale(c, diffusivities, grid) for (c, diffusivities) in zip(closure, diffusivity_fields))

@@ -6,6 +6,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
+import Oceananigans: initialize!
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: aligned_time_step
@@ -92,6 +93,7 @@ function run!(sim; pickup=false)
 
     sim.initialized = false
     sim.running = true
+    sim.run_wall_time = 0.0
 
     while sim.running
         time_step!(sim)
@@ -100,36 +102,52 @@ function run!(sim; pickup=false)
     return nothing
 end
 
+const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
+
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
 
     if !(sim.initialized) # execute initialization step
-        initialize_simulation!(sim)
+        initialize!(sim)
+        initialize!(sim.model)
 
         if sim.running # check that initialization didn't stop time-stepping
-            @info "Executing initial time step..."
+            if sim.verbose 
+                @info "Executing initial time step..."
+                start_time = time_ns()
+            end
 
-            start_time = time_ns()
             Δt = aligned_time_step(sim, sim.Δt)
-            time_step!(sim.model, Δt)
+            time_step!(sim.model, Δt, callbacks=model_callbacks)
 
-            elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
-            @info "    ... initial time step complete ($elapsed_initial_step_time)."
+            if sim.verbose 
+                elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
+                @info "    ... initial time step complete ($elapsed_initial_step_time)."
+            end
         else
             @warn "Simulation stopped during initialization."
         end
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt)
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
     end
 
     # Callbacks and callback-like things
-    [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
-    [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
-    [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
+    for diag in values(sim.diagnostics)
+        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model) 
+    end
+
+    for callback in values(sim.callbacks)
+        callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
+    end
+
+    for writer in values(sim.output_writers)
+        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+    end
 
     end_time_step = time_ns()
 
@@ -155,7 +173,7 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """ 
-    initialize_simulation!(sim, pickup=false)
+    initialize!(sim::Simulation, pickup=false)
 
 Initialize a simulation:
 
@@ -163,9 +181,11 @@ Initialize a simulation:
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
 """
-function initialize_simulation!(sim)
-    @info "Initializing simulation..."
-    start_time = time_ns()
+function initialize!(sim::Simulation)
+    if sim.verbose
+        @info "Initializing simulation..."
+        start_time = time_ns()
+    end
 
     model = sim.model
     clock = model.clock
@@ -185,9 +205,8 @@ function initialize_simulation!(sim)
             run_diagnostic!(diag, model)
         end
 
-        for callback in values(sim.callbacks)
-            callback.schedule(model)
-            callback(sim)
+        for callback in values(sim.callbacks) 
+            callback.callsite isa TimeStepCallsite && initialize!(callback, sim)
         end
 
         for writer in values(sim.output_writers)
@@ -198,8 +217,10 @@ function initialize_simulation!(sim)
 
     sim.initialized = true
 
-    initialization_time = prettytime(1e-9 * (time_ns() - start_time))
-    @info "    ... simulation initialization complete ($initialization_time)"
+    if sim.verbose
+        initialization_time = prettytime(1e-9 * (time_ns() - start_time))
+        @info "    ... simulation initialization complete ($initialization_time)"
+    end
 
     return nothing
 end

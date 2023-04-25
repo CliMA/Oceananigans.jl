@@ -3,16 +3,18 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrift
+
+using Oceananigans.Biogeochemistry: biogeochemistry_rhs
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 
 "return the ``x``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(eltype(grid))
+hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(grid)
 
 "return the ``y``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure) = ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(eltype(grid))
+hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 
 """
     $(SIGNATURES)
@@ -68,7 +70,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
-             + x_dot_g_b(i, j, k, grid, buoyancy, tracers)
+             + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.u(i, j, k, grid, clock, model_fields))
 end
 
@@ -126,7 +128,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
-             + y_dot_g_b(i, j, k, grid, buoyancy, tracers)
+             + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
@@ -211,10 +213,12 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 """
 @inline function tracer_tendency(i, j, k, grid,
                                  val_tracer_index::Val{tracer_index},
+                                 val_tracer_name,
                                  advection,
                                  closure,
                                  c_immersed_bc,
                                  buoyancy,
+                                 biogeochemistry,
                                  background_fields,
                                  velocities,
                                  tracers,
@@ -232,6 +236,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             + biogeochemistry_rhs(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 

@@ -1,9 +1,9 @@
 module BuoyancyModels
 
 export
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbationᶜᶜᶜ,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, x_dot_g_b, y_dot_g_b, z_dot_g_b,
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
     top_buoyancy_flux,
     buoyancy_frequency_squared,
     BuoyancyField
@@ -15,9 +15,8 @@ using Oceananigans.BoundaryConditions: getbc
 
 import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 
-# Physical constants
-# https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth (30 Oct 2019)
-const g_Earth = 9.80665
+# Physical constants for constructors.
+const g_Earth = 9.80665    # [m s⁻²] conventional standard value for Earth's gravity https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
 
 """
     AbstractBuoyancyModel{EOS}

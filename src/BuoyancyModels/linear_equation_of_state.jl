@@ -12,7 +12,7 @@ Base.summary(eos::LinearEquationOfState) =
     string("LinearEquationOfState(thermal_expansion=", prettysummary(eos.thermal_expansion),
                                ", haline_contraction=", prettysummary(eos.haline_contraction), ")")
 
-Base.show(io, eos::LinearEquationOfState) = print(io, summary(eos))
+Base.show(io::IO, eos::LinearEquationOfState) = print(io, summary(eos))
 
 """
     LinearEquationOfState([FT=Float64;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)
@@ -66,13 +66,13 @@ const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfSt
 ##### BuoyancyModels perturbation
 #####
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
     @inbounds b.gravitational_acceleration * (b.equation_of_state.thermal_expansion * C.T[i, j, k] -
                                               b.equation_of_state.haline_contraction * C.S[i, j, k])
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
     @inbounds b.gravitational_acceleration * b.equation_of_state.thermal_expansion * C.T[i, j, k]
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
     @inbounds - b.gravitational_acceleration * b.equation_of_state.haline_contraction * C.S[i, j, k]
 

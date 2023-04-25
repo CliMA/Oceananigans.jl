@@ -1,5 +1,3 @@
-using KernelAbstractions: NoneEvent
-
 using Oceananigans.Utils: arch_array
 using Oceananigans.Grids: AbstractGrid
 
@@ -8,7 +6,7 @@ abstract type AbstractTimeDiscretization end
 """
     struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
 
-Represents fully-explicit time-discretization of a `TurbulenceClosure`.
+A fully-explicit time-discretization of a `TurbulenceClosure`.
 """
 struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 
@@ -17,9 +15,9 @@ Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 """
     struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
 
-Represents vertically-implicit time-discretization of a `TurbulenceClosure`.
+A vertically-implicit time-discretization of a `TurbulenceClosure`.
 
-This imples that a flux divergence such as ``∇ ⋅ q`` at the n-th timestep is 
+This implies that a flux divergence such as ``𝛁 ⋅ q`` at the n-th timestep is 
 time-discretized as
 
 ```julia

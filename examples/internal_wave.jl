@@ -89,11 +89,11 @@ nothing # hide
 # observe wave propagation.
 
 ## Some Gaussian parameters
-A = 1e-9
-δ = grid.Lx / 15
+gaussian_amplitude = 1e-9
+gaussian_width = grid.Lx / 15
 
 ## A Gaussian envelope centered at ``(x, z) = (0, 0)``.
-a(x, z) = A * exp( -( x^2 + z^2 ) / 2δ^2 )
+a(x, z) = gaussian_amplitude * exp( -( x^2 + z^2 ) / 2gaussian_width^2 )
 nothing # hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
@@ -166,7 +166,7 @@ contourf!(ax, x, z, w;
           extendhigh = :auto)
 
 title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
-fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 using Printf
@@ -175,7 +175,7 @@ frames = 1:length(w_timeseries.times)
 
 @info "Animating a propagating internal wave..."
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
+record(fig, "internal_wave.mp4", frames, framerate=8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i

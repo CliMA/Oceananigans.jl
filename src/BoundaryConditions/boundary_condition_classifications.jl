@@ -62,8 +62,15 @@ and can also be used to describe nested or linked simulation domains.
 struct Open <: AbstractBoundaryConditionClassification end
 
 """
-    struct Communication <: AbstractBoundaryConditionClassification
+    struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
 
-A classification specifying a communicating boundary condition
+A classification specifying a shared memory communicating boundary condition
 """
-struct Communication <: AbstractBoundaryConditionClassification end
+struct MultiRegionCommunication <: AbstractBoundaryConditionClassification end
+
+"""
+    struct DistributedCommunication <: AbstractBoundaryConditionClassification
+
+A classification specifying a distributed memory communicating boundary condition 
+"""
+struct DistributedCommunication <: AbstractBoundaryConditionClassification end

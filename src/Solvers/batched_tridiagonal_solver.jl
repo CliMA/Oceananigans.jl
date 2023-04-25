@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: device_event, arch_array
+using Oceananigans.Architectures: arch_array
 
 import Oceananigans.Architectures: architecture
 
@@ -59,7 +59,7 @@ end
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
-    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))
+    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
                                       
 
 Solve the batched tridiagonal system of linear equations with right hand side
@@ -71,16 +71,13 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver))) 
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args... )
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
 
-    event = launch!(architecture(solver), grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
-                    dependencies = dependencies)
-
-    wait(device(architecture(solver)), event)
+    launch!(architecture(solver), grid, :xy,
+            solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, Tuple(args))
 
     return nothing
 end
@@ -88,7 +85,7 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)
@@ -120,3 +117,4 @@ end
         end
     end
 end
+

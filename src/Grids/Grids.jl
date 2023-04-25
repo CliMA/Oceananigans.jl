@@ -8,8 +8,12 @@ export AbstractRectilinearGrid, RectilinearGrid
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
-export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
+export node, nodes
+export xnode, ynode, znode, λnode, φnode
+export xnodes, ynodes, znodes, λnodes, φnodes
+export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
 export on_architecture
 
@@ -21,8 +25,11 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Architectures
 
-import Base: size, length, eltype, show
+import Base: size, length, eltype, show, -
 import Oceananigans.Architectures: architecture
+
+# Physical constants for constructors.
+const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
 
 #####
 ##### Abstract types
@@ -131,14 +138,14 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 isrectilinear(grid) = false
 
 include("grid_utils.jl")
-include("zeros.jl")
+include("zeros_and_ones.jl")
 include("new_data.jl")
 include("inactive_node.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
-include("conformal_cubed_sphere_face_grid.jl")
+include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

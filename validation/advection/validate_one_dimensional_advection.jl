@@ -1,6 +1,5 @@
 using Oceananigans
 using Oceananigans.Advection: AbstractCenteredAdvectionScheme, AbstractUpwindBiasedAdvectionScheme, VelocityStencil, VorticityStencil
-using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation
 using JLD2
 using OffsetArrays
@@ -24,13 +23,13 @@ validity of the stretched WENO scheme
 arch = CPU()
 
 #parameters
-N    = 100
+N = 100
 
 # regular "stretched" grid
 Freg = range(0, 1, length = N+1)
 
 # center-coarsened grid
-Δstr(i, N) = i < N/4 ? 1 : ( i > N*0.75 ? 1 : ( i < N/2 ? 1.08 * (i - N/4) + 1 : 1.08 * (3*N/4 - i) + 1  )  ) 
+Δstr(i, N) = i < N/4 ? 1 : (i > N*0.75 ? 1 : (i < N/2 ? 1.08 * (i - N/4) + 1 : 1.08 * (3*N/4 - i) + 1))
 Fstr = zeros(Float64, N+1)
 for i = 2:N+1
      Fstr[i] = Fstr[i-1] + Δstr(i-1, N)
@@ -40,14 +39,14 @@ Fstr ./= Fstr[end]
 Freg = vcat(reverse(-Freg)[1:end-1], Freg)
 Fstr = vcat(reverse(-Fstr)[1:end-1], Fstr)
 
-Nx = 2N 
+Nx = 2N
 # solutions
 solution  = Dict()
 error     = Dict()
 
 # 1D grid constructions
-grid_reg  = RectilinearGrid(arch, size = (Nx, 1), x = Freg,  y = (0, 1), halo = (7, 7), topology = (Periodic, Periodic, Flat))    
-grid_str  = RectilinearGrid(arch, size = (Nx, 1), x = Fstr,  y = (0, 1), halo = (7, 7), topology = (Periodic, Periodic, Flat))    
+grid_reg = RectilinearGrid(arch, size = (Nx, 1), x = Freg,  y = (0, 1), halo = (7, 7), topology = (Periodic, Periodic, Flat))
+grid_str = RectilinearGrid(arch, size = (Nx, 1), x = Fstr,  y = (0, 1), halo = (7, 7), topology = (Periodic, Periodic, Flat))
 
 # the initial condition
 @inline G(x, β, z) = exp(-β*(x - z)^2)
@@ -84,18 +83,18 @@ for (gr, grid) in enumerate([grid_str])
     
     @info "testing grid number $gr"
 
-    Δt_max   = 0.2 * min_Δx(grid)
+    Δt_max   = 0.2 * minimum_xspacing(grid)
     end_time = 2.0
     
     @show tot_iter = end_time ÷ Δt_max
     end_iter = tot_iter÷10
-            
+
     c_real = CenterField(grid)
     formulation = ConservativeFormulation()
     
     for Scheme in [Schemes[2]]
         for buffer in buffers, gr in (nothing, grid)
-                    
+
             scheme     = eval(Scheme)(gr, order = advection_order(buffer, eval(Scheme)))
             scheme_mom = eval(Scheme)(gr, order = advection_order(buffer, eval(Scheme))) #, vector_invariant = form(formulation))
             
@@ -128,7 +127,7 @@ for (gr, grid) in enumerate([grid_str])
             c_sol(x, y, z) = @. c₀_1D(x - model.clock.time + 2, y, z)
             set!(c_real, c_sol)
         end
-        
+
         x = adapt(CPU(), grid.xᶜᵃᵃ)
         x = x[1:Nx]
 
@@ -142,7 +141,7 @@ for (gr, grid) in enumerate([grid_str])
             plot!(x, solution[(buffers[2], Int(i), 1.0)], ylims = (-0.3, 1.3), linestyle=:dash, linewidth = 1, linecolor =:blue , legend = false) 
             plot!(x, solution[(buffers[3], Int(i), 1.0)], ylims = (-0.3, 1.3), linestyle=:dash, linewidth = 1, linecolor =:green, legend = false)
             plot!(x, solution[(buffers[4], Int(i), 1.0)], ylims = (-0.3, 1.3), linestyle=:dash, linewidth = 1, linecolor =:yellow, legend = false)
-        end 
+        end
         mp4(anim, "anim_1D_$(gr)_$(Scheme).mp4", fps = 15)
     end
 end

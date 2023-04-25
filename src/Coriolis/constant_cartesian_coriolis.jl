@@ -1,11 +1,11 @@
 using Oceananigans.Grids: ZDirection, validate_unit_vector
 
 """
-    ConstantCartesianCoriolis{FT} <: AbstractRotation
+    struct ConstantCartesianCoriolis{FT} <: AbstractRotation
 
 A Coriolis implementation that accounts for the locally vertical and possibly both local horizontal
-components of a constant rotation vector. A more general implementation of [`FPlane`](@ref), which only
-accounts for the locally vertical component.
+components of a constant rotation vector. This is a more general implementation of [`FPlane`](@ref),
+which only accounts for the locally vertical component.
 """
 struct ConstantCartesianCoriolis{FT} <: AbstractRotation
     fx :: FT
@@ -18,9 +18,9 @@ end
                                             f=nothing, rotation_axis=ZDirection(), 
                                             rotation_rate=Ω_Earth, latitude=nothing)
 
-Returns a parameter object for a constant rotation decomposed into the `x`, `y` and `z` directions.
+Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This
-rotation can be specified in three different ways:
+constant rotation can be specified in three different ways:
 
 - Specifying all components `fx`, `fy` and `fz` directly.
 - Specifying the Coriolis parameter `f` and (optionally) a `rotation_axis` (which defaults to the
@@ -41,7 +41,7 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
     elseif !isnothing(f)
         all(isnothing.((fx, fy, fz, latitude))) || throw(ArgumentError("Only `rotation_axis` can be specified when using `f`."))
 
-        rotation_axis = validate_unit_vector(rotation_axis)
+        rotation_axis = validate_unit_vector(rotation_axis, FT)
         if rotation_axis isa ZDirection
             fx = fy = 0
             fz = f
@@ -63,8 +63,8 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
 end
 
 
-
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
+# Similarly with fᶻu_minus_fˣw to y_f_cross_U, etc.
 @inline fʸw_minus_fᶻv(i, j, k, grid, coriolis, U) =
     coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
 

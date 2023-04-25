@@ -1,3 +1,5 @@
+import Oceananigans: initialize!
+
 """
     AbstractSchedule
 
@@ -9,6 +11,17 @@ abstract type AbstractSchedule end
 
 # Default behavior is no alignment.
 aligned_time_step(schedule, clock, Δt) = Δt
+
+# Fallback initialization for schedule: call the schedule,
+# then return `true`, indicating that the schedule "actuates" at
+# initial call.
+function initialize!(schedule::AbstractSchedule, model)
+    schedule(model)
+
+    # `return true` indicates that the schedule
+    # "actuates" at initial call.
+    return true
+end
 
 #####
 ##### TimeInterval
@@ -155,6 +168,8 @@ function (st::SpecifiedTimes)(model)
     return false
 end
 
+initialize!(st::SpecifiedTimes, model) = st(model)
+
 align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointment_time(schedule) - clock.time)
 
 function specified_times_str(st)
@@ -207,7 +222,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    AndSchedule(schedules...)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -223,7 +238,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    OrSchedule(schedules...)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """

@@ -85,11 +85,17 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 #####
 
 """
-    Calculate the correct stencil needed for each indiviual reconstruction (i.e., symmetric, left biased and right biased, 
+    calc_inactive_stencil(buffer, shift, dir, side;
+                          xside = :ᶠ, yside = :ᶠ, zside = :ᶠ,
+                          xshift = 0, yshift = 0, zshift = 0) 
+
+Calculate the correct stencil needed for each indiviual reconstruction (i.e., symmetric, left biased and right biased, 
 on `Face`s and on `Center`s)
 
-example
+Example
+=======
 
+```
 julia> calc_inactive_cells(2, :none, :z, :ᶜ)
 4-element Vector{Any}:
  :(inactive_node(i, j, k + -1, ibg, c, c, f))
@@ -104,10 +110,12 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
  :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 0,  j, k, ibg, c, c, c))
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
-
+```
 """
-@inline function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ, xshift = 0, yshift = 0, zshift = 0) 
-   
+@inline function calc_inactive_stencil(buffer, shift, dir, side;
+                                       xside = :ᶠ, yside = :ᶠ, zside = :ᶠ,
+                                       xshift = 0, yshift = 0, zshift = 0)
+
     N = buffer * 2
     if shift != :none
         N -=1
@@ -128,7 +136,7 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
                                :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
                                :(inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))                    
+                               :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))
     end
 
     return inactive_cells
@@ -166,15 +174,16 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
                               $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
                               $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
 
-            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...), 
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
+            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
+                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
+                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
                             $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
 
-using Oceananigans.Advection: LOADV, HOADV
+using Oceananigans.Advection: LOADV, HOADV, WENO
+using Oceananigans.Advection: AbstractSmoothnessStencil, VelocityStencil, DefaultStencil
 
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -202,16 +211,14 @@ for bias in (:symmetric, :left_biased, :right_biased)
                            $interp(i, j, k, ibg, scheme, args...))
             
                 # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                             $alt_interp(i, j, k, ibg, scheme.buffer_scheme, ζ, VI, u, v),
                             $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
-            end    
+            end
         end
     end
 end
-
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
 for bias in (:left_biased, :right_biased)
     for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
@@ -222,10 +229,10 @@ for bias in (:left_biased, :right_biased)
 
         @eval begin
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, u, v) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                    $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
-                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
+                    $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), u, v),
+                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), u, v))
         end
     end
 end

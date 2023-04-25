@@ -30,7 +30,6 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
-    grid = on_architecture(CPU(), grid)
 
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
     ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
@@ -41,7 +40,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
     arch = architecture(mrg) 
-    right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
+    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
     storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
@@ -55,7 +54,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
                                 HeptadiagonalIterativeSolver(coeffs; reduced_dim, 
                                                              template = right_hand_side,
-                                                             grid = on_architecture(arch, grid), 
+                                                             grid, 
                                                              settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
@@ -75,16 +74,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::Un
     return nothing
 end
 
-function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
-    arch = architecture(grid)
-    event = launch!(arch, grid, :xy,
+compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
+    launch!(architecture(grid), grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
-		            dependencies = device_event(arch))
-
-    wait(device(arch), event)
-    return nothing
-end
+                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
 
 # linearized right hand side
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
@@ -115,13 +108,8 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     return nothing
 end
 
-function redistribute_lhs!(η, sol, arch, grid, region, partition)
-
-    event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
-		            dependencies = device_event(arch))
-
-    wait(device(arch), event)
-end
+redistribute_lhs!(η, sol, arch, grid, region, partition) = 
+    launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition)
 
 # linearized right hand side
 @kernel function _redistribute_lhs!(η, sol, region, grid, partition)

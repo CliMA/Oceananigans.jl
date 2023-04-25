@@ -43,10 +43,10 @@ function validate_topology(topology)
     return topology
 end
 
-function validate_size(TX, TY, TZ, size)
-    size = tupleit(size)
-    validate_tupled_argument(size, Integer, "size", topological_tuple_length(TX, TY, TZ))
-    return inflate_tuple(TX, TY, TZ, size, default=1)
+function validate_size(TX, TY, TZ, sz)
+    sz = tupleit(sz)
+    validate_tupled_argument(sz, Integer, "size", topological_tuple_length(TX, TY, TZ))
+    return inflate_tuple(TX, TY, TZ, sz, default=1)
 end
 
 # Note that the default halo size is specified to be 1 in the following function.
@@ -110,7 +110,7 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     Nξ = length(ξ)
     N⁺¹ = N + 1
     if Nξ < N⁺¹
-        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $N!"))
+        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $(N)!"))
     elseif Nξ > N⁺¹
         msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
               "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
@@ -173,17 +173,18 @@ function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
     return FT(Lx), FT(Ly), FT.(x), FT.(y)
 end
 
-validate_unit_vector(ê::ZDirection) = ê
+validate_unit_vector(ê::ZDirection, FT::DataType=Float64) = ê
+validate_unit_vector(ê::NegativeZDirection, FT::DataType=Float64) = ê
 
-function validate_unit_vector(ê)
+function validate_unit_vector(ê, FT::DataType=Float64)
     length(ê) == 3 || throw(ArgumentError("unit vector must have length 3"))
 
     ex, ey, ez = ê
 
     ex^2 + ey^2 + ez^2 ≈ 1 ||
-        throw(ArgumentError("unit vector `ê` must have ê[1]² + ê[2]² + ê[3]² ≈ 1"))
+        throw(ArgumentError("unit vector `ê` must satisfy ê[1]² + ê[2]² + ê[3]² ≈ 1"))
 
-    return tuple(ê...)
+    return tuple(FT(ex), FT(ey), FT(ez))
 end
 
 function validate_index(idx, loc, topo, N, H)
@@ -192,15 +193,18 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
 end
 
 validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
 
 validate_indices(indices, loc, grid::AbstractGrid) =
-    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
+    validate_indices(indices, loc, topology(grid), size(grid, loc), halo_size(grid))
+
+validate_indices(indices, loc, topo, sz, halo_sz) =
+    map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)

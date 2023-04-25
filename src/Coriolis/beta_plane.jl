@@ -1,5 +1,5 @@
 """
-    BetaPlane{T} <: AbstractRotation
+    struct BetaPlane{T} <: AbstractRotation
 
 A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + β y`)
 that accounts for the variation of the locally vertical component of the rotation
@@ -14,6 +14,8 @@ end
     BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
+Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y``. 
+
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
 (in degrees), and `radius` that specify the rotation rate and radius of a planet, and
 the central latitude (where ``y = 0``) at which the `β`-plane approximation is to be made.
@@ -22,10 +24,10 @@ If `f₀` and `β` are not specified, they are calculated from `rotation_rate`, 
 and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitude)` and
 `β = 2 * rotation_rate * cosd(latitude) / radius`.
 
-By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
+By default, the `rotation_rate` and planet `radius` are assumed to be Earth's.
 """
 function BetaPlane(T=Float64; f₀=nothing, β=nothing,
-                              rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+                   rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
     use_f_and_β = !isnothing(f₀) && !isnothing(β)
     use_planet_parameters = !isnothing(latitude)
@@ -43,13 +45,15 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
     return BetaPlane{T}(f₀, β)
 end
 
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Face(), Center())
+
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds - (coriolis.f₀ + coriolis.β * ynode(Face(), Center(), Center(), i, j, k, grid)) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+    @inbounds - (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Center(), Center())) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds + (coriolis.f₀ + coriolis.β * ynode(Center(), Face(), Center(), i, j, k, grid)) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+    @inbounds   (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Center(), Face(), Center())) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
+@inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
 
 function Base.summary(βplane::BetaPlane{FT}) where FT 
     fstr = prettysummary(βplane.f₀)
@@ -58,4 +62,3 @@ function Base.summary(βplane::BetaPlane{FT}) where FT
 end
 
 Base.show(io::IO, βplane::BetaPlane) = print(io, summary(βplane))
-

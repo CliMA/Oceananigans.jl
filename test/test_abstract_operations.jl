@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!, indices
+using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
 using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -115,6 +115,34 @@ for arch in archs
                     @test CUDA.@allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
                 end
             end
+
+            @test compute!(Field(ZeroField() + u)) == u
+            @test compute!(Field(u + ZeroField())) == u
+            @test compute!(Field(-ZeroField() + u)) == u
+            @test compute!(Field(u - ZeroField())) == u
+            @test compute!(Field(ZeroField() * u)) == ZeroField()
+            @test compute!(Field(u * ZeroField())) == ZeroField()
+            @test compute!(Field(ZeroField() / u)) == ZeroField()
+            @test u / ZeroField() == ConstantField(Inf)
+
+            @test ZeroField() + 1 == ConstantField(1)
+            @test 1 + ZeroField() == ConstantField(1)
+            @test ZeroField() - 1 == ConstantField(-1)
+            @test 1 - ZeroField() == ConstantField(1)
+            @test ZeroField() * 1 == ZeroField()
+            @test 1 * ZeroField() == ZeroField()
+            @test ZeroField() / 1 == ZeroField()
+            @test 1 / ZeroField() == ConstantField(Inf)
+
+            @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
+            @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
+            @test compute!(Field(ConstantField(1) * u)) == compute!(Field(1 * u))
+            @test compute!(Field(u / ConstantField(1))) == compute!(Field(u / 1))
+
+            @test ConstantField(1) + 1 == ConstantField(2)
+            @test ConstantField(1) - 1 == ConstantField(0)
+            @test ConstantField(1) * 2 == ConstantField(2)
+            @test ConstantField(1) / 2 == ConstantField(1/2)
         end
 
         @testset "Multiary operations [$(typeof(arch))]" begin
@@ -133,12 +161,7 @@ for arch in archs
             @test op isa KernelFunctionOperation
 
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
-            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
-            @test op isa KernelFunctionOperation
-
-            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * ℑxyᶜᶠᵃ(i, j, k, grid, u) * v[i, j, k]
-            op = KernelFunctionOperation{Center, Face, Center}(still_fairly_trivial_kernel_function, grid,
-                                                               computed_dependencies=(u, v), parameters=0.1)
+            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
         end
 

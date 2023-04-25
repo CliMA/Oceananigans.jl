@@ -1,8 +1,8 @@
 include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barotropic_split_explicit_corrector!, set_average_to_zero!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!, barotropic_split_explicit_corrector!, initialize_free_surface_state!
 
 @testset "Barotropic Kernels" begin
 
@@ -18,7 +18,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
         tmp = SplitExplicitFreeSurface()
         sefs = SplitExplicitState(grid)
-        sefs = SplitExplicitAuxiliary(grid)
+        sefs = SplitExplicitAuxiliaryFields(grid)
         sefs = SplitExplicitFreeSurface(grid)
 
         state = sefs.state
@@ -34,7 +34,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             # set equal to something else
             η̅ .= U̅ .= V̅ .= 1.0
             # now set equal to zero
-            set_average_to_zero!(sefs.state)
+            initialize_free_surface_state!(sefs.state, sefs.η)
             # don't forget the ghost points
             fill_halo_regions!(η̅)
             fill_halo_regions!(U̅)
@@ -55,7 +55,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -64,7 +64,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
@@ -74,12 +74,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
             u .= 0.0
             U .= 1.0
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             @test all(Array(U.data.parent) .== 0.0)
 
             u .= 1.0
             U .= 1.0
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -87,7 +87,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -95,7 +95,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 

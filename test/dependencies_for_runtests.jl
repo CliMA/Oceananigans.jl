@@ -41,7 +41,7 @@ using Dates: DateTime, Nanosecond
 using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
-using KernelAbstractions: @kernel, @index, Event
+using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple

@@ -4,16 +4,15 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::ShallowWaterModel)
+    update_state!(model::ShallowWaterModel, callbacks=[])
 
 Fill halo regions for `model.solution` and `model.tracers`.
+If `callbacks` are provided (in an array), they are called in the end.
 """
-function update_state!(model::ShallowWaterModel)
+function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
-
-    wait(device(model.architecture), MultiEvent(masking_events))
+    foreach(mask_immersed_field!, model.solution)
 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
@@ -26,6 +25,11 @@ function update_state!(model::ShallowWaterModel)
 
     compute_velocities!(model.velocities, formulation(model))
 
+    foreach(callbacks) do callback
+        if isa(callback.callsite, UpdateStateCallsite)
+            callback(model)
+        end
+    end
     return nothing
 end
 
@@ -34,4 +38,5 @@ compute_velocities!(U, ::VectorInvariantFormulation) = nothing
 function compute_velocities!(U, ::ConservativeFormulation)
     compute!(U.u)
     compute!(U.v)
+    return nothing
 end

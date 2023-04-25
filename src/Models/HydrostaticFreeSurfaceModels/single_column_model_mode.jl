@@ -1,22 +1,16 @@
-using KernelAbstractions: NoneEvent
-using OffsetArrays: OffsetArray
 using CUDA: @allowscalar
 
-using Oceananigans.Operators: Δzᵃᵃᶜ
-using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
-using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
-using Oceananigans.Architectures: device_event
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
 
-import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
@@ -35,6 +29,15 @@ FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities,             
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 
+function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+    w = ZeroField()
+    return (u=u, v=v, w=w)
+end
+
+validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
+validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
@@ -43,26 +46,28 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
+calculate_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
+    # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
-    fill_halo_regions!(model.diffusivity_fields,
-                       model.clock,
-                       fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
 
     return nothing
 end
-
 
 const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
 
@@ -104,16 +109,6 @@ end
 @inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
 
-""" Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
-    top_tracer_bcs = parameters.top_tracer_boundary_conditions
-    top_velocity_bcs = parameters.top_velocity_boundary_conditions
-    @inbounds closure = closure_array[i, j]
-
-    return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
-                         buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
-end
-
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
@@ -127,20 +122,15 @@ end
 ##### Arrays of Coriolises
 #####
 
-const CoriolisMatrix = AbstractMatrix{<:AbstractRotation}
+const CoriolisArray = AbstractArray{<:AbstractRotation}
 
-@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return x_f_cross_U(i, j, k, grid, coriolis, U)
 end
 
-@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
-end
-
-@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
-    @inbounds coriolis = coriolis_array[i, j]
-    return z_f_cross_U(i, j, k, grid, coriolis, U)
 end
 

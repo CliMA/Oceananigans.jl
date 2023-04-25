@@ -2,7 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
@@ -23,7 +22,7 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
                 Wy == 1 ?
 
                     # Two-dimensional x-z slice models:
-                    (1, min(256, Wx)) :
+                    (min(256, Wx), 1) :
 
                     # Three-dimensional models
                     (16, 16)
@@ -49,7 +48,7 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=(), only_active_cells = false)
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
@@ -62,41 +61,45 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
                workdims == :xz  ? (Nx′, Nz′) :
                workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
 
+
+    if only_active_cells
+        workgroup, worksize = active_cells_work_layout(worksize, grid) 
+    end
+
     return workgroup, worksize
 end
 
+active_cells_work_layout(size, grid) = heuristic_workgroup(size...), size
+
 """
-    launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
+    launch!(arch, grid, layout, kernel!, args...; kwargs...)
 
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`.
-
-Returns an `event` token associated with the `kernel!` launch.
-
-The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
-that must complete before `kernel!` is launched.
+over the `dims` of `grid` on the architecture `arch`. kernels run on the defaul stream
 """
 function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 dependencies = nothing,
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
+                 only_active_cells = false,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, workspec,
-                                      include_right_boundaries = include_right_boundaries,
-                                      reduced_dimensions = reduced_dimensions,
-                                      location = location)
+    workgroup, worksize = work_layout(grid, workspec;
+                                      include_right_boundaries,
+                                      reduced_dimensions,
+                                      location, 
+                                      only_active_cells)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(kernel_args...; dependencies=dependencies)
+    loop!(kernel_args...)
 
-    return event
+    return nothing
 end
 
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
+

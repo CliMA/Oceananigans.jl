@@ -88,7 +88,8 @@ current_figure() # hide
 # Next we set-up a `Simulation` that time-steps the model forward and manages output.
 
 ## Time-scale for diffusion across a grid cell
-diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.T
+min_Δz = minimum_zspacing(model.grid)
+diffusion_time_scale = min_Δz^2 / model.closure.κ.T
 
 simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
 
@@ -140,7 +141,9 @@ lines!(T, z)
 
 label = @lift "t = " * string(round(times[$n], digits=3))
 Label(fig[1, 1], label, tellwidth=false)
+
 current_figure() # hide
+fig
 
 # Finally, we record a movie.
 

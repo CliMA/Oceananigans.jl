@@ -3,8 +3,7 @@ using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
-using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
 
 using Printf
 using TimerOutputs
@@ -19,7 +18,6 @@ const to = TimerOutput()
 using_rectilinear_grid = true
 
 arch = CPU()
-initialize_AMGX(arch)
 
 for N in 10:10:250
     @info "N=$N"
@@ -67,13 +65,11 @@ for N in 10:10:250
     diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
                                                   ν = νz, κ = κz)
 
-    implicit_free_surface_solvers = (#:FastFourierTransform,
-                                     #:PreconditionedConjugateGradient,
+    implicit_free_surface_solvers = (:FastFourierTransform,
+                                     :PreconditionedConjugateGradient,
                                      :HeptadiagonalIterativeSolver,
-                                     :Multigrid,
                                      :HeptadiagonalIterativeSolver_withMGpreconditioner,
-                                     #:PreconditionedConjugateGradient_withFFTpreconditioner,
-                                     #:PreconditionedConjugateGradient_withMGpreconditioner,
+                                     :PreconditionedConjugateGradient_withFFTpreconditioner,
                                     )
 
     if using_rectilinear_grid == true
@@ -91,14 +87,8 @@ for N in 10:10:250
         if implicit_free_surface_solver == :PreconditionedConjugateGradient_withFFTpreconditioner
             fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner, reltol=sqrt(eps(eltype(grid))), abstol=0)
-        elseif implicit_free_surface_solver == :PreconditionedConjugateGradient_withMGpreconditioner
-            maxiter = 2
-            mg_preconditioner = MGImplicitFreeSurfaceSolver(grid, Dict(:maxiter => maxiter))
-            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner, reltol=sqrt(eps(eltype(grid))), abstol=0)
         elseif implicit_free_surface_solver == :HeptadiagonalIterativeSolver
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, tolerance=sqrt(eps(eltype(grid))))
-        elseif implicit_free_surface_solver == :HeptadiagonalIterativeSolver_withMGpreconditioner
-            free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, tolerance=sqrt(eps(eltype(grid))), preconditioner_method=:Multigrid)
         else
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver, reltol=sqrt(eps(eltype(grid))), abstol=0)
         end
@@ -167,10 +157,6 @@ for N in 10:10:250
         string(nameof(typeof(grid)))
         @info "Benchmark with $implicit_free_surface_solver free surface implicit solver on $(nameof(typeof(underlying_grid))):"
         @timeit to "$implicit_free_surface_solver and N=$N" run!(simulation)
-
-        finalize_solver!(model.free_surface.implicit_step_solver)
     end
     show(to)
 end
-
-finalize_AMGX(arch)

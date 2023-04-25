@@ -21,8 +21,10 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    xspacings, yspacings, zspacings,
+    minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
@@ -71,6 +73,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
     FluxTapering,
     VerticallyImplicitTimeDiscretization,
+    viscosity, diffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -94,6 +97,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -114,11 +118,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
     
-    # AMGX
-    @ifhasamgx
-
 using Printf
 using Logging
 using Statistics
@@ -129,7 +130,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -141,19 +141,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-"Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx = @static Sys.islinux() ? true : false
-
-"""
-    @ifhasamgx expr
-
-Evaluate `expr` only if `hasamgx == true`.
-"""
-macro ifhasamgx(expr)
-
-    hasamgx ? :($(esc(expr))) : :(nothing) 
-end
-
+    
 #####
 ##### Abstract types
 #####
@@ -180,12 +168,18 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+# Callsites for Callbacks
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
+
 #####
 ##### Place-holder functions
 #####
 
 function run_diagnostic! end
 function write_output! end
+function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end
@@ -209,7 +203,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -217,8 +210,10 @@ include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

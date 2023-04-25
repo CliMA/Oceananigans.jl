@@ -71,8 +71,11 @@ end
     j = fractional_y_index(particles.y[p], Center(), grid)
     j = Base.unsafe_trunc(Int, j)
 
-    @inbounds particles.x[p] += calc_correct_velocity_u(u, grid, j) * Δt
-    @inbounds particles.y[p] += calc_correct_velocity_v(v, grid)    * Δt
+    # Transform Cartesian velocities into grid-dependent particle coordinate system.
+    # Note that all supported grids use length coordinates in the vertical, so we do not
+    # transform the vertical velocity.
+    @inbounds particles.x[p] += coordinate_transform_u(j, grid, u) * Δt
+    @inbounds particles.y[p] += coordinate_transform_v(j, grid, v) * Δt
     @inbounds particles.z[p] += w * Δt
 
     x, y, z = return_face_metrics(grid)
@@ -101,12 +104,15 @@ end
     particles.z[p] = z
 end
 
-# Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid
-@inline calc_correct_velocity_u(U, g::RectilinearGrid, j)       = U
-@inline calc_correct_velocity_u(U, g::LatitudeLongitudeGrid, j) = U / (g.radius * hack_cosd(g.φᵃᶜᵃ[j])) * 360 / (2π)
+# Transform the particle advection velocity components according to the coordinate system
+# associated with `grid`:
+#     * No transform for `RectilinearGrid` / Cartesian coordinates
+#     * Transform to longitudinal / meridional angular velocity components for `LatitudeLongitudeGrid` and geographic coordinates
+@inline coordinate_transform_u(j, grid::RectilinearGrid, u) = u
+@inline coordinate_transform_u(j, grid::LatitudeLongitudeGrid, v) = u / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * 360 / 2π
 
-@inline calc_correct_velocity_v(V, g::RectilinearGrid)       = V
-@inline calc_correct_velocity_v(V, g::LatitudeLongitudeGrid) = V / g.radius * 360 / (2π)
+@inline coordinate_transform_v(j, grid::RectilinearGrid, v) = v
+@inline coordinate_transform_v(j, grid::LatitudeLongitudeGrid, v) = v / grid.radius * 360 / 2π
 
 @inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
 @inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
@@ -125,8 +131,6 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     arch = architecture(model)
 
-    events = []
-
     for (field_name, tracked_field) in pairs(lagrangian_particles.tracked_fields)
         compute!(tracked_field)
         particle_property = getproperty(lagrangian_particles.properties, field_name)
@@ -134,13 +138,9 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
         update_field_property_kernel! = update_field_property!(device(arch), workgroup, worksize)
 
-        update_event = update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
-                                                     datatuple(tracked_field), LX(), LY(), LZ(),
-                                                     dependencies=Event(device(arch)))
-        push!(events, update_event)
+        update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
+                                                     datatuple(tracked_field), LX(), LY(), LZ())
     end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     # Compute dynamics
 
@@ -149,12 +149,8 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
     # Advect particles
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-
-    advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(model.velocities),
-                                                      dependencies=Event(device(arch)))
-
-    wait(device(arch), advect_particles_event)
+    advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt, datatuple(model.velocities))
+    
     return nothing
 end
 

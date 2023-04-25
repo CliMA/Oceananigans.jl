@@ -8,7 +8,6 @@ using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
 using Adapt
-using KernelAbstractions: NoneEvent
 
 struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
     η :: E
@@ -71,7 +70,6 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
 * `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
-* `:Multigrid` for [`MultigridSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
@@ -89,8 +87,8 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
-    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
+    barotropic_x_volume_flux = Field((Face, Center, Nothing), grid)
+    barotropic_y_volume_flux = Field((Center, Face, Nothing), grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     user_solver_method = free_surface.solver_method # could be = :Default
@@ -119,10 +117,10 @@ end
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events)
+ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
+    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
 
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events)
+function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side
@@ -130,7 +128,6 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
  
-    @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
     fill_halo_regions!(model.velocities)
 
     # Compute right hand side of implicit free surface equation
@@ -148,24 +145,16 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     fill_halo_regions!(η)
     
-    return prognostic_field_events
-end
-
-function wait_velocity_event(arch, prognostic_field_events)
-    velocity_events = prognostic_field_events[1]
-
-    # Wait for predictor velocity update step to complete.
-    wait(device(arch), MultiEvent(velocity_events))
-
-    return MultiEvent(prognostic_field_events[2])
+    return nothing
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
-    masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
-    wait(device(arch), MultiEvent(masking_events))
-
+    foreach(mask_immersed_field!, velocities)
+    
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+
+    return nothing
 end
 

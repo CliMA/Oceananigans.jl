@@ -1,49 +1,13 @@
 module Architectures
 
-export AbstractArchitecture, AbstractMultiArchitecture
+export AbstractArchitecture
 export CPU, GPU, MultiGPU
-export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
+export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
 using KernelAbstractions
-using CUDAKernels
 using Adapt
 using OffsetArrays
-
-# Adapt CUDAKernels to multiple devices by splitting stream pool
-import CUDAKernels: next_stream
-
-if CUDA.has_cuda_gpu()     
-using CUDAKernels: STREAM_GC_LOCK
-
-    DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
-    DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
-    const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
-
-    function next_stream()
-        lock(STREAM_GC_LOCK) do
-            handle = CUDA.device().handle + 1
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
-            end
-
-            if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
-                for stream in DEVICE_STREAMS[handle]
-                    if CUDA.isdone(stream)
-                        push!(DEVICE_FREE_STREAMS[handle], stream)
-                    end
-                end
-            end
-
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
-            end
-            stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
-            push!(DEVICE_STREAMS[handle], stream)
-            return stream
-        end
-    end
-end
 
 """
     AbstractArchitecture
@@ -51,13 +15,6 @@ end
 Abstract supertype for architectures supported by Oceananigans.
 """
 abstract type AbstractArchitecture end
-
-"""
-    AbstractMultiArchitecture
-
-Abstract supertype for Distributed architectures supported by Oceananigans.
-"""
-abstract type AbstractMultiArchitecture <: AbstractArchitecture end
 
 """
     CPU <: AbstractArchitecture
@@ -79,7 +36,7 @@ struct GPU <: AbstractArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDAKernels.CUDADevice()
+device(::GPU) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
@@ -103,6 +60,12 @@ arch_array(::CPU, a::Array)   = a
 arch_array(::CPU, a::CuArray) = Array(a)
 arch_array(::GPU, a::Array)   = CuArray(a)
 arch_array(::GPU, a::CuArray) = a
+
+arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+
+arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
 arch_array(arch, a::AbstractRange) = a
 arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
@@ -135,8 +98,6 @@ end
 end
  
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
-
-device_event(arch) = Event(device(arch))
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing

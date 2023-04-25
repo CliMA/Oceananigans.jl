@@ -1,5 +1,7 @@
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
+using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -7,16 +9,16 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::NonhydrostaticModel)
+    update_state!(model::NonhydrostaticModel, callbacks=[])
 
-Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic pressure) to the current model state.
+Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
+pressure) to the current model state. If `callbacks` are provided (in an array),
+they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel)
+function update_state!(model::NonhydrostaticModel, callbacks=[])
     
     # Mask immersed tracers
-    tracer_masking_events = Tuple(mask_immersed_field!(c) for c in model.tracers)
-
-    wait(device(model.architecture), MultiEvent(tracer_masking_events))
+    foreach(mask_immersed_field!, model.tracers)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers),  model.clock, fields(model))
@@ -33,5 +35,12 @@ function update_state!(model::NonhydrostaticModel)
     update_hydrostatic_pressure!(model)
     fill_halo_regions!(model.pressures.pHY′)
 
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
+
+    update_biogeochemical_state!(model.biogeochemistry, model)
+
     return nothing
 end
+

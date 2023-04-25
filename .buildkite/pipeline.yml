@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.8.2"
+  JULIA_VERSION: "1.8.5"
   JULIA_MINOR_VERSION: "1.8"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
@@ -480,7 +480,7 @@ steps:
 ##### Distributed/MPI
 #####
 
-  - label: "🐉 cpu distributed tests"
+  - label: "🐉 cpu distributed unit tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed"
@@ -494,32 +494,38 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-#####
-##### Regression
-#####
-
-  - label: "🦝 gpu shallow water regression tests"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "shallowwater_regression"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    depends_on: "init_gpu"
-
-  - label: "🦡 cpu shallow water regression tests"
+  - label: "🦾 cpu distributed sovers tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "shallowwater_regression"
+      TEST_GROUP: "distributed_solvers"
       CUDA_VISIBLE_DEVICES: "-1"
+      PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+
+  # We get a SegFault. We probably need more devices to run this test
+  # - label: "🐲 gpu distributed unit tests"
+  # env:
+  #   JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  #   TEST_GROUP: "distributed"
+  #   CUDA_VISIBLE_DEVICES: "0"
+  #   PATH: "$PATH:$SVERDRUP_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+  #   JULIA_BINDIR: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin"
+  # commands:
+  #   - "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+  # agents:
+  #   queue: Oceananigans
+  #   architecture: GPU
+  # depends_on: "init_gpu"
+
+#####
+##### Regression
+#####
 
   - label: "🐫 gpu nonhydrostatic regression tests"
     env:
