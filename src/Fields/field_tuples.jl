@@ -205,16 +205,13 @@ may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function PressureFields(grid, bcs=NamedTuple())
 
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_pressure_boundary_conditions = (; pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
 
     bcs = merge(default_pressure_boundary_conditions, bcs)
 
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′)
     pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
 
-    return (pHY′=pHY′, pNHS=pNHS)
+    return (; pNHS=pNHS)
 end
 
 function PressureFields(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
@@ -225,7 +222,7 @@ function PressureFields(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=Nam
     bcs = merge(default_pressure_boundary_conditions, bcs)
     pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
 
-    return (; pHY′=nothing, pNHS=pNHS)
+    return (; pNHS=pNHS)
 end
 
 """
@@ -301,8 +298,7 @@ in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
 function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
     validate_field_tuple_grid("pressures", proposed_pressures, grid)
 
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′, data=proposed_pressures.pHY′.data)
     pNHS = CenterField(grid, boundary_conditions=bcs.pNHS, data=proposed_pressures.pNHS.data)
 
-    return (pHY′=pHY′, pNHS=pNHS)
+    return (; pNHS=pNHS)
 end

@@ -56,7 +56,6 @@ pressure anomaly.
                                      auxiliary_fields,
                                      diffusivities,
                                      forcings,
-                                     hydrostatic_pressure,
                                      clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -65,7 +64,6 @@ pressure anomaly.
              - div_𝐯u(i, j, k, grid, advection, background_fields.velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-             #- hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
@@ -114,7 +112,6 @@ pressure anomaly.
                                      auxiliary_fields,
                                      diffusivities,
                                      forcings,
-                                     hydrostatic_pressure,
                                      clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -123,7 +120,6 @@ pressure anomaly.
              - div_𝐯v(i, j, k, grid, advection, background_fields.velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             #- hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
