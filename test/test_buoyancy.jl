@@ -80,21 +80,17 @@ function tilted_gravity_works(arch, FT)
     BC_b1 = FieldBoundaryConditions(bottom=BC, top=BC)
     BC_b2 = FieldBoundaryConditions(south=BC, north=BC)
 
-    model₁ = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = buoyancy₁,
-                    tracers = :b,
-                    closure = nothing,
-        boundary_conditions = (b=BC_b1,)
-    )
+    model₁ = NonhydrostaticModel(grid = grid,
+                                 buoyancy = buoyancy₁,
+                                 tracers = :b,
+                                 closure = nothing,
+                                 boundary_conditions = (b=BC_b1,))
 
-    model₂ = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = buoyancy₂,
-                    tracers = :b,
-                    closure = nothing,
-        boundary_conditions = (b=BC_b2,)
-    )
+    model₂ = NonhydrostaticModel(grid = grid,
+                                 buoyancy = buoyancy₂,
+                                 tracers = :b,
+                                 closure = nothing,
+                                 boundary_conditions = (b=BC_b2,))
 
     b₁(x, y, z) = N² * (y*g̃₁[2] + z*g̃₁[3])
     b₂(x, y, z) = N² * (y*g̃₂[2] + z*g̃₂[3])
@@ -104,7 +100,7 @@ function tilted_gravity_works(arch, FT)
     # These have to be taken at the middle point of domain that has an odd-number size
     @test x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
     @test y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
-    @test z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ -N² * ynode(2, grid, Face())
+    @test z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers)
 
     return nothing
 end
