@@ -210,68 +210,70 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
 
-    λcca = Field{Center, Center, Nothing}(grid)
-    φcca = Field{Center, Center, Nothing}(grid)
+    CUDA.@allowscalar begin
+        λcca = Field{Center, Center, Nothing}(grid)
+        φcca = Field{Center, Center, Nothing}(grid)
 
-    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-        getregion(λcca, region).data[i, j] = getregion(grid, region).λᶜᶜᵃ[i, j]
-        getregion(φcca, region).data[i, j] = getregion(grid, region).φᶜᶜᵃ[i, j]
-    end
+        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+            getregion(λcca, region).data[i, j] = getregion(grid, region).λᶜᶜᵃ[i, j]
+            getregion(φcca, region).data[i, j] = getregion(grid, region).φᶜᶜᵃ[i, j]
+        end
 
-    fill_halo_regions!(λcca)
-    fill_halo_regions!(φcca)
+        fill_halo_regions!(λcca)
+        fill_halo_regions!(φcca)
 
-    for region in 1:length(grid)
-        getregion(grid, region).λᶜᶜᵃ .= getregion(λcca, region).data
-        getregion(grid, region).φᶜᶜᵃ .= getregion(φcca, region).data
-    end
+        for region in 1:length(grid)
+            getregion(grid, region).λᶜᶜᵃ .= getregion(λcca, region).data
+            getregion(grid, region).φᶜᶜᵃ .= getregion(φcca, region).data
+        end
 
-    λfca = Field{Face, Center, Nothing}(grid)
-    φfca = Field{Face, Center, Nothing}(grid)
+        λfca = Field{Face, Center, Nothing}(grid)
+        φfca = Field{Face, Center, Nothing}(grid)
 
-    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-        getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
-        getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
-    end
+        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+            getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
+            getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
+        end
 
-    fill_halo_regions!(λfca)
-    fill_halo_regions!(φfca)
+        fill_halo_regions!(λfca)
+        fill_halo_regions!(φfca)
 
-    for region in 1:length(grid)
-        getregion(grid, region).λᶠᶜᵃ .= getregion(λfca, region).data
-        getregion(grid, region).φᶠᶜᵃ .= getregion(φfca, region).data
-    end
+        for region in 1:length(grid)
+            getregion(grid, region).λᶠᶜᵃ .= getregion(λfca, region).data
+            getregion(grid, region).φᶠᶜᵃ .= getregion(φfca, region).data
+        end
 
-    λcfa = Field{Center, Face, Nothing}(grid)
-    φcfa = Field{Center, Face, Nothing}(grid)
+        λcfa = Field{Center, Face, Nothing}(grid)
+        φcfa = Field{Center, Face, Nothing}(grid)
 
-    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-        getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
-        getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
-    end
+        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+            getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
+            getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
+        end
 
-    fill_halo_regions!(λcfa)
-    fill_halo_regions!(φcfa)
+        fill_halo_regions!(λcfa)
+        fill_halo_regions!(φcfa)
 
-    for region in 1:length(grid)
-        getregion(grid, region).λᶜᶠᵃ .= getregion(λcfa, region).data
-        getregion(grid, region).φᶜᶠᵃ .= getregion(φcfa, region).data
-    end
+        for region in 1:length(grid)
+            getregion(grid, region).λᶜᶠᵃ .= getregion(λcfa, region).data
+            getregion(grid, region).φᶜᶠᵃ .= getregion(φcfa, region).data
+        end
 
-    λffa = Field{Face, Face, Nothing}(grid)
-    φffa = Field{Face, Face, Nothing}(grid)
+        λffa = Field{Face, Face, Nothing}(grid)
+        φffa = Field{Face, Face, Nothing}(grid)
 
-    for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-        getregion(λffa, region).data[i, j] = getregion(grid, region).λᶠᶠᵃ[i, j]
-        getregion(φffa, region).data[i, j] = getregion(grid, region).φᶠᶠᵃ[i, j]
-    end
+        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
+            getregion(λffa, region).data[i, j] = getregion(grid, region).λᶠᶠᵃ[i, j]
+            getregion(φffa, region).data[i, j] = getregion(grid, region).φᶠᶠᵃ[i, j]
+        end
 
-    fill_halo_regions!(λffa)
-    fill_halo_regions!(φffa)
+        fill_halo_regions!(λffa)
+        fill_halo_regions!(φffa)
 
-    for region in 1:length(grid)
-        getregion(grid, region).λᶠᶠᵃ .= getregion(λffa, region).data
-        getregion(grid, region).φᶠᶠᵃ .= getregion(φffa, region).data
+        for region in 1:length(grid)
+            getregion(grid, region).λᶠᶠᵃ .= getregion(λffa, region).data
+            getregion(grid, region).φᶠᶠᵃ .= getregion(φffa, region).data
+        end
     end
 
     return grid
