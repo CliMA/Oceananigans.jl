@@ -199,15 +199,16 @@ const f = Face()
     # Convection and entrainment
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
-    convecting = N² < 0
-    entraining = (!convecting) & (N²_above < 0)
+
+    # Conditions
+    convecting = N² < 0 # applies regardless of Qᵇ
+    entraining = (N²_above < 0) & (!convecting) & (Qᵇ > 0)
 
     # Convective adjustment diffusivity
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉⁿ = ifelse(Qᵇ > 0, Cᵉⁿ * Qᵇ / N², zero(grid))
-    κᵉⁿ = ifelse(entraining, Cᵉⁿ, zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
 
     # Shear mixing diffusivity and viscosity
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
