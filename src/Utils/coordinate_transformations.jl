@@ -57,10 +57,10 @@ function get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, Orth
         j₀ = j-1
     end
 
-    λ₁ = xnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    λ₂ = xnode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    λ₃ = xnode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    λ₄ = xnode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ₁ = λnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ₂ = λnode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ₃ = λnode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ₄ = λnode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
 
     return [λ₁; λ₂; λ₃; λ₄]
 end
@@ -86,10 +86,10 @@ function get_latitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, Ortho
         j₀ = j-1
     end
 
-    φ₁ = ynode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    φ₂ = ynode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    φ₃ = ynode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
-    φ₄ = ynode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ₁ = φnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ₂ = φnode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ₃ = φnode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ₄ = φnode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
 
     return [φ₁; φ₂; φ₃; φ₄]
 end
@@ -105,14 +105,14 @@ See [`get_longitude_vertices`](@ref) and [`get_latitude_vertices`](@ref).
 """
 function get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
 
-    TX, TY, TZ = topology(grid)
+    TX, TY, _ = topology(grid)
 
     λ = zeros(eltype(grid), total_length(ℓx, TX(), grid.Nx, 0), total_length(ℓy, TY(), grid.Ny, 0))
     φ = zeros(eltype(grid), total_length(ℓx, TX(), grid.Nx, 0), total_length(ℓy, TY(), grid.Ny, 0))
 
     for j in axes(λ, 2), i in axes(λ, 1)
-        λ[i, j] = xnode(i, j, 1, grid, ℓx, ℓy, ℓz)
-        φ[i, j] = ynode(i, j, 1, grid, ℓx, ℓy, ℓz)
+        λ[i, j] = λnode(i, j, 1, grid, ℓx, ℓy, ℓz)
+        φ[i, j] = φnode(i, j, 1, grid, ℓx, ℓy, ℓz)
     end
 
     λvertices = zeros(4, size(λ)...)
