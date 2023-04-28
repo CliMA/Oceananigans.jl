@@ -305,7 +305,7 @@ end
         # on_side = near_horizontal_boundary(i, j, k, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
 
-        Q_e = - 10.0 * turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure_ij, tracers.e) / Δz * on_bottom
+        Q_e = - 10.0 * turbulent_velocity(i, j, k, grid, closure_ij, tracers.e) / Δz * on_bottom
 
         # Implicit TKE dissipation
         ϵ_e = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
