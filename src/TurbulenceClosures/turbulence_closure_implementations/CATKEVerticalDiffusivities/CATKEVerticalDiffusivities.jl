@@ -120,7 +120,7 @@ optimal_turbulent_kinetic_energy_equation(FT) = TurbulentKineticEnergyEquation(
 
 optimal_mixing_length(FT) = MixingLength(
     Cᵇ   = FT(0.37), 
-    Cᶜc  = FT(4.8),
+    Cᶜc  = FT(1.0),
     Cᶜe  = FT(1.1),
     Cᵉc  = FT(0.049),
     Cᵉe  = FT(0.0),
@@ -301,7 +301,16 @@ end
         dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+        on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+        # on_side = near_horizontal_boundary(i, j, k, grid)
+        Δz = Δzᶜᶜᶜ(i, j, k, grid)
+
+        Q_e = - 10.0 * turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure_ij, tracers.e) / Δz * on_bottom
+
+        # Implicit TKE dissipation
+        ϵ_e = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+
+        diffusivities.Lᵉ[i, j, k] = - wb_e + ϵ_e + Q_e
     end
 end
 
