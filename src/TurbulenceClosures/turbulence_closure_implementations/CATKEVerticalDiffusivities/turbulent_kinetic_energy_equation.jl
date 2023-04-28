@@ -74,7 +74,7 @@ end
     Riᶜ = closure.mixing_length.CRiᶜ
     Riʷ = closure.mixing_length.CRiʷ
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
+    σ  = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ) 
 
     Cᵇ = closure.mixing_length.Cᵇ
     #ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
@@ -98,8 +98,11 @@ end
     #   and thus    L = - Cᴰ √e / ℓ .
 
     τ = closure.negative_turbulent_kinetic_energy_damping_time_scale
+    e_max = 10.0
 
-    return ifelse(eᵢ < 0, -1/τ, -sqrt(abs(eᵢ)) / ℓᴰ)
+    e_limiter = max(one(grid), eᵢ / e_max)
+
+    return ifelse(eᵢ < 0, -1/τ, - sqrt(abs(eᵢ)) / ℓᴰ * e_limiter)
 end
 
 # Fallbacks for explicit time discretization
