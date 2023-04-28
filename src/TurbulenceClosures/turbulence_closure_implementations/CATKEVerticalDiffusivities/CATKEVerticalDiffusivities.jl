@@ -16,6 +16,7 @@ using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCon
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
+using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
