@@ -34,7 +34,9 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, Centered, UpwindBiased} 
+const HOADV = Union{WENO, 
+                    Tuple(Centered{N} for N in 2:2:12)...,
+                    Tuple(UpwindBiased{N} for N in 1:2:11)...} 
 const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :left_biased, :right_biased)
