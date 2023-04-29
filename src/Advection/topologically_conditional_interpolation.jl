@@ -68,10 +68,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
+                               $interp(i, j, k, grid, scheme, ζ, VI, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, args...))
                 end
             elseif ξ == :y
                 @eval begin
@@ -80,10 +80,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
+                               $interp(i, j, k, grid, scheme, ζ, VI, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, args...))
                 end
             elseif ξ == :z
                 @eval begin
