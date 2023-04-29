@@ -51,7 +51,7 @@ end
     return S²
 end
 
-@inline function buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
+@inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     #N² = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ∂z_b, buoyancy, tracers)
@@ -60,7 +60,7 @@ end
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
 
-@inline function buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+@inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     N²⁺ = clip(N²)
@@ -70,7 +70,7 @@ end
 
 @inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
     Cᴺ = closure.mixing_length.Cᴺ
-    ℓᴺ = Cᴺ * buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓᴺ = Cᴺ * stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
 
     Cᵇ = closure.mixing_length.Cᵇ
     d_up   = depthᶜᶜᶠ(i, j, k, grid)
@@ -85,7 +85,7 @@ end
 
 @inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
     Cᴺ = closure.mixing_length.Cᴺ
-    ℓᴺ = Cᴺ * buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓᴺ = Cᴺ * stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
 
     Cᵇ = closure.mixing_length.Cᵇ
     d_up = depthᶜᶜᶜ(i, j, k, grid)
@@ -153,7 +153,7 @@ end
     Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
     w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
-    w★³      = turbulent_velocityᶜᶜᶜ(i, j, grid.Nz, grid, closure, tracers.e)^3
+    w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
     S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
     N²       = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
