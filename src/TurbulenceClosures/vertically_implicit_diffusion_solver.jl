@@ -55,11 +55,11 @@ end
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
-    κᵏ = κz(i, j, k′, grid, closure_ij, K, id, clock)
+    κᵏ⁺¹ = κz(i, j, k′+1, grid, closure_ij, K, id, clock)
 
     return ifelse(k < 1,
                   zero(grid),
-                  - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
+                  - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ⁺¹))
 end
 
 # Vertical velocity kernel functions (at cell interfaces in z)
@@ -88,7 +88,7 @@ end
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
     one(grid) -
-        Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
+        Δt * _implicit_linear_coefficient(i, j, k+0, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
                       _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
                       _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
@@ -99,6 +99,10 @@ end
 #####
 ##### Solver constructor
 #####
+
+struct VerticallyImplicitLowerDiagonal end
+struct VerticallyImplicitDiagonal end
+struct VerticallyImplicitUpperDiagonal end
 
 """
     implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
@@ -125,18 +129,17 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = Val(:_ivd_lower_diagonal),
-                                        diagonal       = Val(:ivd_diagonal),
-                                        upper_diagonal = Val(:_ivd_upper_diagonal))
+                                        lower_diagonal = VerticallyImplicitLowerDiagonal(),
+                                        diagonal       = VerticallyImplicitDiagonal(),
+                                        upper_diagonal = VerticallyImplicitUpperDiagonal())
 
     return z_solver
 end
 
-# Extend the `get_coefficient` function to retrieve the correct `ivd_diagonal`, `ivd_lower_diagonal` and `ivd_upper_diagonal` functions
-# REMEMBER: `get_coefficient(f::Function, args...)` leads to massive performance decrease on the CPU (https://github.com/CliMA/Oceananigans.jl/issues/2996) 
-@inline get_coefficient(::Val{:_ivd_lower_diagonal}, i, j, k, grid, p, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:_ivd_upper_diagonal}, i, j, k, grid, p, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:ivd_diagonal},        i, j, k, grid, p, args...) = ivd_diagonal(i, j, k, grid, args...)
+# Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitLowerDiagonal, p, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitUpperDiagonal, p, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiagonal,      p, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
