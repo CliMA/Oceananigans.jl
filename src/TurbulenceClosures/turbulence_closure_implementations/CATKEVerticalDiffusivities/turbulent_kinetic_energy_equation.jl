@@ -18,8 +18,6 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline ϕ²(i, j, k, grid, ϕ) = ϕ(i, j, k, grid)^2
-
 @inline ν_∂z_u²(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
 @inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
@@ -66,7 +64,6 @@ end
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    #ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_length_scaleᶜᶜᶠ, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
     ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # "Stable" dissipation length
@@ -76,9 +73,7 @@ end
     Riʷ = closure.mixing_length.CRiʷ
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
-
     ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    #ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_length_scaleᶜᶜᶠ, closure, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
@@ -106,7 +101,7 @@ end
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
     L = implicit_dissipation_coefficient(i, j, k, grid, closure, velocities, tracers, args...)
-    return - L * eᵢ
+    return L * eᵢ
 end
 
 @inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)

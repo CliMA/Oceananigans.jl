@@ -34,7 +34,6 @@ end
 ##### Mixing length
 #####
 
-@inline ϕ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function shearᶜᶜᶠ(i, j, k, grid, u, v)
@@ -54,7 +53,6 @@ end
 @inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    #N² = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ∂z_b, buoyancy, tracers)
     N²⁺ = clip(N²)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
@@ -98,8 +96,8 @@ end
     return ℓ
 end
 
-@inline three_halves_tke(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^3
-@inline squared_tke(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
+@inline three_halves_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^3
+@inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
 
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᶜ::Number,
                                             velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -109,8 +107,8 @@ end
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tke, closure, tracers.e)
-    w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tke, closure, tracers.e)
+    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
     S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
     N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
