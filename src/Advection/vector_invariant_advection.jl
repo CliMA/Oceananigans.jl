@@ -178,11 +178,11 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 @inline ζ_ℑx_vᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 @inline ζ_ℑy_uᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 
-@inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v, w) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) / Δxᶠᶜᶜ(i, j, k, grid)
-@inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v, w) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) / Δxᶠᶜᶜ(i, j, k, grid)
+@inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) / Δyᶜᶠᶜ(i, j, k, grid)
 
-@inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v, w) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-@inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v, w) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
+@inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
 ######
 ###### Upwinding schemes
@@ -191,7 +191,7 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 const UpwindVorticityVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, Nothing}
 const UpwindFullVectorInvariant      = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:AbstractUpwindBiasedAdvectionScheme}
 
-@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v, w)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
@@ -202,7 +202,7 @@ const UpwindFullVectorInvariant      = VectorInvariant{<:Any, <:Any, <:AbstractU
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v, w) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v) 
 
     Sζ = scheme.vorticity_stencil
 
@@ -213,7 +213,7 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
 
-@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v, w)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
@@ -233,7 +233,7 @@ end
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ)
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v, w) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v) 
 
     Sζ = scheme.vorticity_stencil
 
