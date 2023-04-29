@@ -61,7 +61,6 @@ closures = (
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
     :ConvectiveAdjustmentVerticalDiffusivity,
-    :RiBasedVerticalDiffusivity,
 )
 
 #####

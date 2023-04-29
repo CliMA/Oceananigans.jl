@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity
 
 using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location
 
@@ -217,8 +217,8 @@ end
         c = Center()
         f = Face()
         ri_based = RiBasedVerticalDiffusivity()
-        @test viscosity_location(catke) == (c, c, f)
-        @test diffusivity_location(catke) == (c, c, f)
+        @test viscosity_location(ri_based) == (c, c, f)
+        @test diffusivity_location(ri_based) == (c, c, f)
 
         catke = CATKEVerticalDiffusivity()
         @test viscosity_location(catke) == (c, c, f)
