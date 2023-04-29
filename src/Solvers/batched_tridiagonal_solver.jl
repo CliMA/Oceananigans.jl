@@ -20,22 +20,42 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 
 """
-    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing)
+    BatchedTridiagonalSolver(grid;
+                             lower_diagonal,
+                             diagonal,
+                             upper_diagonal,
+                             scratch = arch_array(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             parameters = nothing)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
-                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,
-           aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
-           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,
+```
+                    bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,
+    aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
+    aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,
+```
+or in matrix form
+```
+    ⎡ bⁱʲ¹   cⁱʲ¹     0       ⋯         0   ⎤ ⎡ ϕⁱʲ¹ ⎤   ⎡ fⁱʲ¹ ⎤
+    ⎢ aⁱʲ¹   bⁱʲ²   cⁱʲ²      0    ⋯    ⋮   ⎥ ⎢ ϕⁱʲ² ⎥   ⎢ fⁱʲ² ⎥
+    ⎢  0      ⋱      ⋱       ⋱              ⎥ ⎢   .  ⎥   ⎢   .  ⎥
+    ⎢  ⋮                                0   ⎥ ⎢ ϕⁱʲᵏ ⎥   ⎢ fⁱʲᵏ ⎥
+    ⎢  ⋮           aⁱʲᴺ⁻²   bⁱʲᴺ⁻¹   cⁱʲᴺ⁻¹ ⎥ ⎢      ⎥   ⎢   .  ⎥
+    ⎣  0      ⋯      0      aⁱʲᴺ⁻¹    bⁱʲᴺ  ⎦ ⎣ ϕⁱʲᴺ ⎦   ⎣ fⁱʲᴺ ⎦
+```
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
-`ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`
+
+Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+other implementations where, e.g., `aⁱʲ²` may appear for `k = 2` instead of `aⁱʲ¹` as above.
+
+`ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.
 
 `a`, `b`, `c`, and `f` can be specified in three ways:
 
-1. A 1D array means that `aⁱʲᵏ = a[k]`.
+1. A 1D array means, e.g., that `aⁱʲᵏ = a[k]`.
 
-2. A 3D array means that `aⁱʲᵏ = a[i, j, k]`.
+2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
 Other coefficient types can be used by extending `get_coefficient`.
 """
