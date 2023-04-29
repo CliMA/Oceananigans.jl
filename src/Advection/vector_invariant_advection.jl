@@ -159,8 +159,8 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
         
-@inline vertical_advection_U(i, j, k, grid, scheme, w, u) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
-@inline vertical_advection_V(i, j, k, grid, scheme, w, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, w, u) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, w, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Horizontal advection 4 formulations:
@@ -224,8 +224,8 @@ end
     Sδ = scheme.divergence_stencil
     
     @inbounds û = u[i, j, k]
-    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
-    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
+    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶜ, Sδ, div_xyᶜᶜᶜ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
+    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶜ, Sδ, div_xyᶜᶜᶜ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
 
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ)
 end
@@ -241,8 +241,8 @@ end
     Sδ = scheme.divergence_stencil
 
     @inbounds v̂ = v[i, j, k]
-    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
-    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
+    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶜ, Sδ, div_xyᶜᶜᶜ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
+    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶜ, Sδ, div_xyᶜᶜᶜ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
 
     return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ)
 end
