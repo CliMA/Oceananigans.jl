@@ -105,9 +105,11 @@ RiBasedVerticalDiffusivity(FT::DataType; kw...) =
 const RBVD = RiBasedVerticalDiffusivity
 const RBVDArray = AbstractArray{<:RBVD}
 const FlavorOfRBVD = Union{RBVD, RBVDArray}
+const c = Center()
+const f = Face()
 
-@inline viscosity_location(::FlavorOfRBVD)   = (Center(), Center(), Face())
-@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
+@inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
+@inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
