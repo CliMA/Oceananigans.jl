@@ -38,6 +38,8 @@ import Oceananigans.TurbulenceClosures:
     implicit_linear_coefficient,
     viscosity,
     diffusivity,
+    viscosity_location,
+    diffusivity_location,
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z
@@ -204,8 +206,11 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     return (; κᵘ, κᶜ, κᵉ, Lᵉ, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
-@inline viscosity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
-@inline diffusivity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
+const c = Center()
+const f = Face()
+
+@inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
+@inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 @inline clip(x) = max(zero(x), x)
 
@@ -225,9 +230,6 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
     return nothing
 end
-
-const c = Center()
-const f = Face()
 
 @kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     i, j, k = @index(Global, NTuple)

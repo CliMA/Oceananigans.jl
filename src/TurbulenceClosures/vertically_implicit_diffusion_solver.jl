@@ -58,7 +58,7 @@ end
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
-    κᵏ   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
+    κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
     Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
