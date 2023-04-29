@@ -35,8 +35,8 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, 
-                    Tuple(Centered{N} for N in 2:2:12)...,
-                    Tuple(UpwindBiased{N} for N in 1:2:11)...} 
+                    Tuple(Centered{N} for N in 2:6)...,
+                    Tuple(UpwindBiased{N} for N in 2:6)...} 
 const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :left_biased, :right_biased)
