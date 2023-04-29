@@ -211,10 +211,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                            $interp(i, j, k, ibg, scheme, args...))
             
                 # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, ζ, VI, u, v),
-                            $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
+                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, ζ, VI, args...),
+                            $interp(i, j, k, ibg, scheme, ζ, VI, args...))
             end
         end
     end
@@ -229,10 +229,10 @@ for bias in (:left_biased, :right_biased)
 
         @eval begin
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, u, v) =
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                    $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), u, v),
-                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), u, v))
+                    $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
+                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
         end
     end
 end
