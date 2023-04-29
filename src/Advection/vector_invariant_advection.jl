@@ -213,6 +213,12 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
 
+## Upwinding `δ` is not like upwinding `ζ`. `u` is trasporting `ζ`, while 
+## `u` is the transported quantity for the `δ` term that derives from the vertical advection of `u`
+## For this reason, the divergence (`δ`) must be multiplied by the area in z to account for the flux of `w` 
+## (as done for the other advecting velocities). 
+
+
 @inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil

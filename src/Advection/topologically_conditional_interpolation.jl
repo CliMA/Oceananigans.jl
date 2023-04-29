@@ -68,10 +68,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, f::Function, args...) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, args...))
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             elseif ξ == :y
                 @eval begin
@@ -80,10 +80,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, f::Function, args...) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, args...))
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             elseif ξ == :z
                 @eval begin
@@ -91,6 +91,11 @@ for bias in (:symmetric, :left_biased, :right_biased)
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+
+                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, f::Function, args...) =
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             end
         end
