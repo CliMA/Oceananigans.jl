@@ -150,11 +150,11 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 ##### Vertical advection (either conservative or flux form when we upwind the divergence transport)
 #####
 
-# @inline vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u) = 
-#     1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
+@inline vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u) = 
+    1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
 
-# @inline vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, v) = 
-#     1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
+@inline vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, v) = 
+    1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
 
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
@@ -227,9 +227,6 @@ end
     δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
     δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
 
-    δᴸ -= _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, u, v)
-    δᴿ -= _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, u, v)
-
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ)
 end
 
@@ -246,9 +243,6 @@ end
     @inbounds v̂ = v[i, j, k]
     δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
     δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
-
-    δᴸ -= _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, u, v)
-    δᴿ -= _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, u, v)
 
     return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ)
 end
