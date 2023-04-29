@@ -24,9 +24,9 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
-                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,  k = 1
+                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,
            aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
-           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,  k = N
+           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
 `ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`
@@ -54,7 +54,6 @@ end
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
-                                      
 
 Solve the batched tridiagonal system of linear equations with right hand side
 `rhs` and lower diagonal, diagonal, and upper diagonal coefficients described by the

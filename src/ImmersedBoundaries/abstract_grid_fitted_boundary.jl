@@ -13,8 +13,8 @@ const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstract
 ##### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 #####
 
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face())
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center())
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, ℓx, ℓy, Face())
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, ℓx, ℓy, Center())
 
 # Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
