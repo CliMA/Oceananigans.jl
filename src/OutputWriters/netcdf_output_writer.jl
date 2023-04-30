@@ -429,7 +429,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
         sync(dataset)
     end
 
-    close(dataset)ζ
+    close(dataset)
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing,
                               array_type, 0.0, verbose, eltype(model.grid)(mask_immersed))
