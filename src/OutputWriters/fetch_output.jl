@@ -8,7 +8,14 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 time(model) = model.clock.time
 time(::Nothing) = nothing
 
-fetch_output(output, model) = output(model)
+function fetch_output(output, model, mask_value)
+    fetched = output(model)
+    if fetched isa Field
+        !isnothing(mask_value) && mask_immersed!(fetched, mask_value)
+        return parent(fetched)
+    end
+    return fetched
+end
 
 function fetch_output(field::AbstractField, model, mask_value)
     compute_at!(field, time(model))
