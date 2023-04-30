@@ -161,7 +161,7 @@ end
                                    array_type = Array{Float64},
                                       indices = nothing,
                                    with_halos = false,
-                                mask_immersed = NaN,
+                                mask_immersed = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -203,7 +203,7 @@ Keyword arguments
                 Default: `Array{Float64}`.
 
 - `mask_immersed`: The value with which immersed boundary regions are filled with before saving.
-                   Default `NaN`.
+                   You can either choose a numerical value or `NaN`. Default: `nothing`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -335,7 +335,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                    array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
-                                mask_immersed = NaN,
+                                mask_immersed = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -431,8 +431,10 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     close(dataset)
 
+    mask_value = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing,
-                              array_type, 0.0, verbose, eltype(model.grid)(mask_immersed))
+                              array_type, 0.0, verbose, mask_value)
 end
 
 get_default_dimension_attributes(grid::AbstractRectilinearGrid) =

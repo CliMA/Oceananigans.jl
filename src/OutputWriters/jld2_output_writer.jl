@@ -33,7 +33,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                           indices = (:, :, :),
                        with_halos = false,
                        array_type = Array{Float64},
-                    mask_immersed = NaN,
+                    mask_immersed = nothing,
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -81,7 +81,7 @@ Keyword arguments
                 Default: `Array{Float64}`.
 
 - `mask_immersed`: The value with which immersed boundary regions are filled with before saving.
-                   Default `NaN`.
+                   You can either choose a numerical value or `NaN`. Default: `nothing`.
 
 ## File management
 
@@ -168,7 +168,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                indices = (:, :, :),
                             with_halos = false,
                             array_type = Array{Float64},
-                         mask_immersed = NaN,
+                         mask_immersed = nothing,
                           max_filesize = Inf,
                     overwrite_existing = false,
                                   init = noinit,
@@ -190,9 +190,10 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
-    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw,
-                            eltype(model.grid)(mask_immersed))
+    mask_value = mask_immersed is Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+
+    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init, including, part,
+                            max_filesize, overwrite_existing, verbose, jld2_kw, mask_value)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
