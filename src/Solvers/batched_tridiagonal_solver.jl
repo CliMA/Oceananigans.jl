@@ -3,7 +3,7 @@ using Oceananigans.Architectures: arch_array
 import Oceananigans.Architectures: architecture
 
 """
-    BatchedTridiagonalSolver
+    struct BatchedTridiagonalSolver{A, B, C, T, G, P}
 
 A batched solver for large numbers of triadiagonal systems.
 """
@@ -20,22 +20,42 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 
 """
-    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing)
+    BatchedTridiagonalSolver(grid;
+                             lower_diagonal,
+                             diagonal,
+                             upper_diagonal,
+                             scratch = arch_array(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             parameters = nothing)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
-                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,
-           aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
-           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,
+```
+                    bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,
+    aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
+    aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,
+```
+or in matrix form
+```
+    ⎡ bⁱʲ¹   cⁱʲ¹     0       ⋯         0   ⎤ ⎡ ϕⁱʲ¹ ⎤   ⎡ fⁱʲ¹ ⎤
+    ⎢ aⁱʲ¹   bⁱʲ²   cⁱʲ²      0    ⋯    ⋮   ⎥ ⎢ ϕⁱʲ² ⎥   ⎢ fⁱʲ² ⎥
+    ⎢  0      ⋱      ⋱       ⋱              ⎥ ⎢   .  ⎥   ⎢   .  ⎥
+    ⎢  ⋮                                0   ⎥ ⎢ ϕⁱʲᵏ ⎥   ⎢ fⁱʲᵏ ⎥
+    ⎢  ⋮           aⁱʲᴺ⁻²   bⁱʲᴺ⁻¹   cⁱʲᴺ⁻¹ ⎥ ⎢      ⎥   ⎢   .  ⎥
+    ⎣  0      ⋯      0      aⁱʲᴺ⁻¹    bⁱʲᴺ  ⎦ ⎣ ϕⁱʲᴺ ⎦   ⎣ fⁱʲᴺ ⎦
+```
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
-`ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`
+
+Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+other implementations where, e.g., `aⁱʲ²` may appear at the second row, instead of `aⁱʲ¹` as above.
+
+`ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.
 
 `a`, `b`, `c`, and `f` can be specified in three ways:
 
-1. A 1D array means that `aⁱʲᵏ = a[k]`.
+1. A 1D array means, e.g., that `aⁱʲᵏ = a[k]`.
 
-2. A 3D array means that `aⁱʲᵏ = a[i, j, k]`.
+2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
 Other coefficient types can be used by extending `get_coefficient`.
 """
@@ -62,9 +82,11 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
+Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note that
+a slightly different notation from Press et al. is used for indexing the off-diagonal
+elements; see [`BatchedTridiagonalSolver`](@ref).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args... )
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
@@ -79,7 +101,7 @@ end
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args)
-    Nx, Ny, Nz = size(grid)
+    _, _, Nz = size(grid)
 
     i, j = @index(Global, NTuple)
 
@@ -99,7 +121,7 @@ end
             fᵏ = get_coefficient(i, j, k, grid, f, p, args...)
             
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of ϕ.
+            # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
@@ -110,4 +132,3 @@ end
         end
     end
 end
-
