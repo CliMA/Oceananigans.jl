@@ -106,7 +106,7 @@ function hilly_simulation(; Nx = 64,
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
                          schedule = TimeInterval(save_interval),
-                         with_halos = true,
+                         mask_immersed = NaN,
                          filename,
                          overwrite_existing = true)
 
@@ -208,6 +208,7 @@ vlines!(axe, tn, ymin=min_δK, ymax=1.0)
 display(fig)
 
 moviename = @sprintf("flow_over_hills_%dd_h%d.mp4", Nx, 10h)
+
 record(fig, moviename, 1:Nt, framerate=24) do nn
     n[] = nn
 end
