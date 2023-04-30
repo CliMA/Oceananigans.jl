@@ -182,7 +182,7 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
         result = similar(operand)
         result .= operand
     end
-        
+
     return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule, fetch_operand)
 end
 

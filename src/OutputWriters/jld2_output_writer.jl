@@ -9,7 +9,7 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW, FT} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -21,6 +21,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
+    mask_value :: FT
 end
 
 noinit(args...) = nothing
@@ -32,6 +33,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                           indices = (:, :, :),
                        with_halos = false,
                        array_type = Array{Float64},
+                    mask_immersed = NaN,
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -77,6 +79,9 @@ Keyword arguments
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
+
+- `mask_immersed`: The value with which immersed boundary regions are filled with before saving.
+                   Default `NaN`.
 
 ## File management
 
@@ -175,7 +180,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
-    
+
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
@@ -185,7 +190,8 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
+                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw,
+                            eltype(model.grid)(mask_value))
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)

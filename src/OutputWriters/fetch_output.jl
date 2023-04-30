@@ -9,8 +9,9 @@ time(::Nothing) = nothing
 
 fetch_output(output, model) = output(model)
 
-function fetch_output(field::AbstractField, model)
+function fetch_output(field::AbstractField, model, mask_value)
     compute_at!(field, time(model))
+    !isnothing(mask_value) && mask_immersed_field!(field, mask_value)
     return parent(field)
 end
 
@@ -38,6 +39,6 @@ convert_output(outputs::NamedTuple, writer) =
     NamedTuple(name => convert_output(outputs[name], writer) for name in keys(outputs))
 
 function fetch_and_convert_output(output, model, writer)
-    fetched = fetch_output(output, model)
+    fetched = fetch_output(output, mode, writer.mask_value)
     return convert_output(fetched, writer)
 end
