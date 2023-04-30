@@ -429,10 +429,10 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
         sync(dataset)
     end
 
-    close(dataset)
+    close(dataset)ζ
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing,
-                              array_type, 0.0, verbose, eltype(model.grid)(mask_value))
+                              array_type, 0.0, verbose, eltype(model.grid)(mask_immersed))
 end
 
 get_default_dimension_attributes(grid::AbstractRectilinearGrid) =

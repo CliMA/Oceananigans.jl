@@ -192,7 +192,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
                             including, part, max_filesize, overwrite_existing, verbose, jld2_kw,
-                            eltype(model.grid)(mask_value))
+                            eltype(model.grid)(mask_immersed))
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)

@@ -1,6 +1,7 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!
+using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
@@ -39,6 +40,6 @@ convert_output(outputs::NamedTuple, writer) =
     NamedTuple(name => convert_output(outputs[name], writer) for name in keys(outputs))
 
 function fetch_and_convert_output(output, model, writer)
-    fetched = fetch_output(output, mode, writer.mask_value)
+    fetched = fetch_output(output, model, writer.mask_value)
     return convert_output(fetched, writer)
 end
