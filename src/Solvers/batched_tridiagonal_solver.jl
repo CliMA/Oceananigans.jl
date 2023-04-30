@@ -3,7 +3,7 @@ using Oceananigans.Architectures: arch_array
 import Oceananigans.Architectures: architecture
 
 """
-    BatchedTridiagonalSolver
+    struct BatchedTridiagonalSolver{A, B, C, T, G, P}
 
 A batched solver for large numbers of triadiagonal systems.
 """
@@ -86,7 +86,7 @@ Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note
 a slightly different notation from Press et al. is used for indexing the off-diagonal
 elements; see [`BatchedTridiagonalSolver`](@ref).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args... )
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
@@ -101,7 +101,7 @@ end
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args)
-    Nx, Ny, Nz = size(grid)
+    _, _, Nz = size(grid)
 
     i, j = @index(Global, NTuple)
 
@@ -121,7 +121,7 @@ end
             fᵏ = get_coefficient(i, j, k, grid, f, p, args...)
             
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of ϕ.
+            # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
@@ -132,4 +132,3 @@ end
         end
     end
 end
-
