@@ -3,7 +3,6 @@ using Printf
 using Statistics
 using GLMakie
 
-using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.Utils: prettysummary
 
 # Monin-Obukhov drag coefficient
@@ -32,6 +31,7 @@ function hilly_simulation(; Nx = 64,
                                       topology = (Periodic, Flat, Bounded))
 
     min_Δz = 1 / 32
+
     if h > 0
         hills(x, y) = h * (1 + sin(x)) / 2 + 2min_Δz # ensure that the bottom boundary is immersed
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hills))
@@ -71,7 +71,7 @@ function hilly_simulation(; Nx = 64,
     ∂x_ψᵋ(x, z) = 4  * cos(4x) * sin(4π * z) * exp(-(z - h)^2 / 2δh^2)
     bᵢ(x, y, z) = N² * z + 1e-9 * rand()
     uᵢ(x, y, z) = 1.0 + ∂z_ψᵋ(x, z)
-    wᵢ(x, y, z) = - ∂x_ψᵋ(x, z)
+    wᵢ(x, y, z) =     - ∂x_ψᵋ(x, z)
     set!(model, b=bᵢ, u=uᵢ, w=wᵢ)
 
     Δx = 2π / Nx
@@ -110,7 +110,7 @@ function hilly_simulation(; Nx = 64,
                          filename,
                          overwrite_existing = true)
 
-    @info "Made a simulation of"
+    @info "Constructed a simulation of"
     @show model
 
     @info "The grid is"
@@ -157,6 +157,7 @@ KE = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "KE") for exp i
 
 Nt = minimum(length(ξ[exp].times) for exp in experiments)
 t = ξ["reference"].times[1:Nt]
+
 δU_series(U) = [(U[1, 1, 1, n] - U[1, 1, 1, 1]) / U[1, 1, 1, 1] for n = 1:Nt]
 δK_series(K) = [(K[1, 1, 1, n] - K[1, 1, 1, 1]) / K[1, 1, 1, 1] for n = 1:Nt]
 δU = Dict(exp => δU_series(u) for (exp, u) in U)
@@ -177,11 +178,7 @@ title = @lift string("Flow over hills at t = ", prettysummary(t[$n]))
 Label(fig[1, 1:5], title)
 
 # Vorticity heatmaps
-ξi(ξ) = @lift begin
-    ξn = ξ[$n]
-    mask_immersed!(ξn, NaN)
-    interior(ξn, :, 1, :)
-end
+ξi(ξ) = @lift interior(ξ[$n], :, 1, :)
 
 ξⁱ = Dict(exp => ξi(ξ[exp]) for exp in experiments)
 x, y, z = nodes(ξ["reference"])
@@ -214,4 +211,3 @@ moviename = @sprintf("flow_over_hills_%dd_h%d.mp4", Nx, 10h)
 record(fig, moviename, 1:Nt, framerate=24) do nn
     n[] = nn
 end
-
