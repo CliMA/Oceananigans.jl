@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -12,7 +12,7 @@ If `callbacks` are provided (in an array), they are called in the end.
 function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
-    foreach(mask_immersed_field!, model.solution)
+    foreach(mask_immersed!, model.solution)
 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 

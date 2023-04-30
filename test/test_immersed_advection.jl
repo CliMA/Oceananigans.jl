@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed!
 using Oceananigans.Advection: 
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
@@ -103,7 +103,7 @@ for arch in archs
     
         c = CenterField(ibg)
         set!(c, 1.0)
-        mask_immersed_field!(c)
+        mask_immersed!(c)
         fill_halo_regions!(c)
     
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
@@ -141,8 +141,8 @@ for arch in archs
         set!(u, 1.0)
         set!(v, 1.0)
 
-        mask_immersed_field!(u)
-        mask_immersed_field!(v)
+        mask_immersed!(u)
+        mask_immersed!(v)
 
         fill_halo_regions!(u)
         fill_halo_regions!(v)

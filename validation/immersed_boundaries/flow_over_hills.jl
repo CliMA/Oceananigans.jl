@@ -3,7 +3,7 @@ using Printf
 using Statistics
 using GLMakie
 
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.Utils: prettysummary
 
 # Monin-Obukhov drag coefficient
@@ -179,7 +179,7 @@ Label(fig[1, 1:5], title)
 # Vorticity heatmaps
 ξi(ξ) = @lift begin
     ξn = ξ[$n]
-    mask_immersed_field!(ξn, NaN)
+    mask_immersed!(ξn, NaN)
     interior(ξn, :, 1, :)
 end
 

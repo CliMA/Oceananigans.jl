@@ -11,7 +11,7 @@ fetch_output(output, model) = output(model)
 
 function fetch_output(field::AbstractField, model, mask_value)
     compute_at!(field, time(model))
-    !isnothing(mask_value) && mask_immersed_field!(field, mask_value)
+    !isnothing(mask_value) && mask_immersed!(field, mask_value)
     return parent(field)
 end
 

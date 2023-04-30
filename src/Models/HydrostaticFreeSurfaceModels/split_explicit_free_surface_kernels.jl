@@ -301,8 +301,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         set!(free_surface.η, free_surface.state.η̅)
 
         # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-        mask_immersed_field!(model.velocities.u)
-        mask_immersed_field!(model.velocities.v)
+        mask_immersed!(model.velocities.u)
+        mask_immersed!(model.velocities.v)
     end
 
     fill_halo_regions!(free_surface.η)
@@ -336,8 +336,8 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     initialize_free_surface_state!(state, η)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    mask_immersed_field!(Gu)
-    mask_immersed_field!(Gv)
+    mask_immersed!(Gu)
+    mask_immersed!(Gv)
 
     # Compute barotropic mode of tendency fields
     compute_barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
