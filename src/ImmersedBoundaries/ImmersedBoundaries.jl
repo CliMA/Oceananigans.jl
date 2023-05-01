@@ -203,13 +203,13 @@ i-1          i
 
 We then have
 
-    * `inactive_node(i, 1, 1, grid, f, c, c) = false`
+  * `inactive_node(i, 1, 1, grid, f, c, c) = false`
 
-As well as
+as well as
 
-    * `inactive_node(i,   1, 1, grid, c, c, c) = false`
-    * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
-    * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
+  * `inactive_node(i,   1, 1, grid, c, c, c) = false`
+  * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
+  * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
 """
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 
@@ -296,7 +296,7 @@ include("partial_cell_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_derivatives.jl")
-include("mask_immersed_field.jl")
+include("mask_immersed.jl")
 include("immersed_reductions.jl")
 
 end # module
