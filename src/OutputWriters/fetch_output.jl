@@ -8,6 +8,9 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 time(model) = model.clock.time
 time(::Nothing) = nothing
 
+# Default fetch_output with mask_value=nothing
+fetch_output(output, model) = fetch_output(output, model, nothing)
+
 function fetch_output(output, model, mask_value)
     fetched = output(model)
     if fetched isa Field
