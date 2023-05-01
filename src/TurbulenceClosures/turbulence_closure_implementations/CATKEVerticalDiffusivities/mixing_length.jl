@@ -13,21 +13,21 @@ using ..TurbulenceClosures:
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cᴺ   :: FT = 0.37
-    Cᵇ   :: FT = 1.0
-    Cᶜc  :: FT = 4.8
-    Cᶜe  :: FT = 1.1
-    Cᵉc  :: FT = 0.049
+    Cᴺ   :: FT = 0.41
+    Cᵇ   :: FT = 0.1
+    Cᶜc  :: FT = 1.5
+    Cᶜe  :: FT = 1.2
+    Cᵉc  :: FT = 0.085
     Cᵉe  :: FT = 0.0
-    Cˢᶜ  :: FT = 0.29
-    C⁻u  :: FT = 0.36
-    C⁺u  :: FT = 0.24
-    C⁻c  :: FT = 0.41
-    C⁺c  :: FT = 0.12
-    C⁻e  :: FT = 6.7
-    C⁺e  :: FT = 5.4
-    CRiʷ :: FT = 0.011
-    CRiᶜ :: FT = 0.76
+    Cˢᶜ  :: FT = 0.14
+    C⁻u  :: FT = 0.46
+    C⁺u  :: FT = 0.21
+    C⁻c  :: FT = 0.49
+    C⁺c  :: FT = 0.11
+    C⁻e  :: FT = 4.5
+    C⁺e  :: FT = 1.4
+    CRiʷ :: FT = 0.45
+    CRiᶜ :: FT = 0.47
 end
 
 #####

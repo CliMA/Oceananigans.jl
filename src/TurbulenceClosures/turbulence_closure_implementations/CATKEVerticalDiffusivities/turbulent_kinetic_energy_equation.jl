@@ -5,13 +5,13 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    C⁻D   :: FT = 4.4
-    C⁺D   :: FT = 3.3
-    CᶜD   :: FT = 0.23
+    C⁻D   :: FT = 2.3
+    C⁺D   :: FT = 6.7
+    CᶜD   :: FT = 0.88
     CᵉD   :: FT = 0.0
-    Cᵂu★  :: FT = 1.8
-    CᵂwΔ  :: FT = 12.0
-    Cᵂϵ   :: FT = 20.0
+    Cᵂu★  :: FT = 1.1
+    CᵂwΔ  :: FT = 4.0
+    Cᵂϵ   :: FT = 1.0
 end
 
 #####
