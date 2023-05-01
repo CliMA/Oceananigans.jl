@@ -158,20 +158,20 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariant, W, u)
 
-    w̃  =  ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W) / Azᶠᶜᶜ(i, j, k, grid)
+    w̃  =  ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
 
-    return Azᶜᶠᶠ(i, j, k, grid) * upwind_biased_product(w̃, uᴸ, uᴿ)
+    return upwind_biased_product(w̃, uᴸ, uᴿ)
 end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariant, W, v)
 
-    w̃  =  ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W) / Azᶜᶠᶜ(i, j, k, grid)
+    w̃  =  ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W) 
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
 
-    return Azᶜᶠᶠ(i, j, k, grid) * upwind_biased_product(w̃, vᴸ, vᴿ)
+    return upwind_biased_product(w̃, vᴸ, vᴿ)
 end
 
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
