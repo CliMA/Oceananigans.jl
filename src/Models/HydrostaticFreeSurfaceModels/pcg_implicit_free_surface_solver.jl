@@ -2,7 +2,7 @@ using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
-using Oceananigans.Grids: with_halo, isrectilinear
+using Oceananigans.Grids: with_halo, isrectilinear, halo_size
 using Oceananigans.Architectures: device
 
 import Oceananigans.Solvers: solve!, precondition!
@@ -42,9 +42,11 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
+    Hx, Hy, Hz = halo_size(grid)
+
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), with_halo((Hx, Hy, 1), grid))
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), with_halo((Hx, Hy, 1), grid))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
