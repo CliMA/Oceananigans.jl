@@ -489,3 +489,6 @@ end
 @inline zspacings(grid::RectilinearGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 isrectilinear(::RectilinearGrid) = true
+isxregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}) = true
+isyregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
+iszregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
