@@ -9,7 +9,7 @@ const BuoyancyTracerModel = Buoyancy{<:BuoyancyTracer}
 
 required_tracers(::BuoyancyTracer) = (:b,)
 
-@inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
+@inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
 
 @inline ∂x_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂xᶠᶜᶜ(i, j, k, grid, C.b)
 @inline ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂yᶜᶠᶜ(i, j, k, grid, C.b)
