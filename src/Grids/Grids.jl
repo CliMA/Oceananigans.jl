@@ -136,9 +136,19 @@ Abstract supertype for horizontally-curvilinear grids with elements of type `FT`
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
 
 isrectilinear(grid) = false
+
 isxregular(grid) = false
 isyregular(grid) = false
 iszregular(grid) = false
+
+isxflat(grid) = false
+isxflat(grid::AbstractGrid{<:Any, Flat}) = true
+
+isyflat(grid) = false
+isyflat(grid::AbstractGrid{<:Any, <:Any, Flat}) = true
+
+iszflat(grid) = false
+iszflat(grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}) = true
 
 include("grid_utils.jl")
 include("zeros_and_ones.jl")
