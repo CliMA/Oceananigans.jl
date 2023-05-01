@@ -4,7 +4,7 @@ export NonhydrostaticModel
 
 using DocStringExtensions
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
@@ -66,6 +66,5 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("calculate_nonhydrostatic_tendencies.jl")
-include("correct_nonhydrostatic_immersed_tendencies.jl")
 
 end # module

@@ -1,9 +1,9 @@
 module BuoyancyModels
 
 export
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbationᶜᶜᶜ,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, x_dot_g_b, y_dot_g_b, z_dot_g_b,
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
     top_buoyancy_flux,
     buoyancy_frequency_squared,
     BuoyancyField

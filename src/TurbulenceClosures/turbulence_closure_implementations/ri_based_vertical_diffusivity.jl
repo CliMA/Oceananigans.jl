@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: architecture, device_event, arch_array
+using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -129,19 +129,16 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    event = launch!(arch, grid, :xyz,
-                    compute_ri_based_diffusivities!,
-                    diffusivities,
-                    grid,
-                    closure,
-                    velocities,
-                    tracers,
-                    buoyancy,
-                    top_tracer_bcs,
-                    clock,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            compute_ri_based_diffusivities!,
+            diffusivities,
+            grid,
+            closure,
+            velocities,
+            tracers,
+            buoyancy,
+            top_tracer_bcs,
+            clock)
 
     return nothing
 end
