@@ -68,7 +68,7 @@ end
     @inbounds v = interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
     @inbounds w = interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) 
 
-    j = fractional_y_index(particles.y[p], Center(), grid)
+    j = fractional_y_index(particles.y[p], (Center(), Center(), Center()), grid)
     j = Base.unsafe_trunc(Int, j)
 
     # Transform Cartesian velocities into grid-dependent particle coordinate system.
