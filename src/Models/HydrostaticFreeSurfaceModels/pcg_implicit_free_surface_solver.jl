@@ -42,7 +42,10 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
-    Hx, Hy, Hz = halo_size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    Hx = Hx ≤ 3 ? 3 : Hx
+    Hy = Hy ≤ 3 ? 3 : Hy
 
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), with_halo((Hx, Hy, 1), grid))
