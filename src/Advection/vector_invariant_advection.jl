@@ -159,7 +159,7 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariant, W, u)
 
-    w̃  =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    w̃  =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, Az_qᶜᶜᶠ, W)
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
 
@@ -168,7 +168,7 @@ end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariant, W, v)
 
-    w̃  =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    w̃  =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, Az_qᶜᶜᶠ, W)
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
 
