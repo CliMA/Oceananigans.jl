@@ -152,16 +152,10 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 #####
 
 @inline vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u) = 
-    1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme, w, u)
+    1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
 
 @inline vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, v) = 
-    1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme, w, v)
-
-@inline advective_momentum_flux_Wu(i, j, k, grid, ::VectorInvariant, w, u) = 
-    ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ℑzᵃᵃᶠ(i, j, k, grid, u) 
- 
-@inline advective_momentum_flux_Wv(i, j, k, grid, ::VectorInvariant, w, v) = 
-    ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ℑzᵃᵃᶠ(i, j, k, grid, v) 
+    1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
 
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
