@@ -160,8 +160,8 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 @inline function vertical_flux_wuᶠᶜᶜ(i, j, k, grid, scheme, w, u)
 
     @inbounds û = u[i, j, k]
-    wᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w)
-    wᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w)
+    wᴸ = ℑzᵃᵃᶜ(i, j, k, grid,  _left_biased_interpolate_xᶠᵃᵃ, scheme.divergence_scheme, Az_qᶜᶜᶠ, w)
+    wᴿ = ℑzᵃᵃᶜ(i, j, k, grid, _right_biased_interpolate_xᶠᵃᵃ, scheme.divergence_scheme, Az_qᶜᶜᶠ, w)
     
     return upwind_biased_product(û, wᴸ, wᴿ)
 end
@@ -169,8 +169,8 @@ end
 @inline function vertical_flux_wvᶜᶠᶜ(i, j, k, grid, scheme, w, v)
 
     @inbounds v̂ = v[i, j, k]
-    wᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w)
-    wᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w)
+    wᴸ = ℑzᵃᵃᶜ(i, j, k, grid,  _left_biased_interpolate_yᵃᶠᵃ, scheme.divergence_scheme, Az_qᶜᶜᶠ, w)
+    wᴿ = ℑzᵃᵃᶜ(i, j, k, grid, _right_biased_interpolate_yᵃᶠᵃ, scheme.divergence_scheme, Az_qᶜᶜᶠ, w)
     
     return upwind_biased_product(v̂, wᴸ, wᴿ)
 end
