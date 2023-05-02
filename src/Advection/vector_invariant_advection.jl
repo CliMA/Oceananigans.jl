@@ -232,6 +232,22 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
 
+@inline function upwind_Khᶜᶜᶜ(i, j, k, grid, scheme, u, v) 
+
+    û = ℑxᶜᵃᵃ(i, j, k, grid, u)   
+    u²ᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.divergence_scheme, ϕ², u) / 2
+    u²ᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.divergence_scheme, ϕ², u) / 2
+
+    v̂ = ℑxᶜᵃᵃ(i, j, k, grid, v)   
+    v²ᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.divergence_scheme, ϕ², v) / 2
+    v²ᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.divergence_scheme, ϕ², v) / 2
+
+    return ifelse(û > 0, u²ᴸ, u²ᴿ) + ifelse(v̂ > 0, v²ᴸ, v²ᴿ)
+end
+
+@inline bernoulli_head_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, upwind_Khᶜᶜᶜ, scheme, u, v)
+@inline bernoulli_head_V(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, upwind_Khᶜᶜᶜ, scheme, u, v)
+    
 ## Upwinding `δ` is not like upwinding `ζ`. `u` is trasporting `ζ`, while 
 ## `u` is the transported quantity for the `δ` term that derives from the vertical advection of `u`
 ## For this reason, the divergence (`δ`) must be multiplied by the area in z to account for the flux of `w` 
