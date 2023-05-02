@@ -159,26 +159,18 @@ const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any,
 
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariant, W, u)
 
-    û  =     _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
-    w̃ᴸ =   _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
-    w̃ᴿ =  _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
-    uᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
-    uᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
-
-    w̃ = upwind_biased_product(û, w̃ᴸ, w̃ᴿ) / abs(û)
+    w̃  =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
+    uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
+    uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
 
     return upwind_biased_product(w̃, uᴸ, uᴿ)
 end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariant, W, v)
 
-    v̂  =     _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
-    w̃ᴸ =   _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
-    w̃ᴿ =  _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
-    vᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
-    vᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
-
-    w̃ = upwind_biased_product(v̂, w̃ᴸ, w̃ᴿ) / abs(v̂)
+    w̃  =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, W)
+    vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
+    vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
 
     return upwind_biased_product(w̃, vᴸ, vᴿ)
 end
