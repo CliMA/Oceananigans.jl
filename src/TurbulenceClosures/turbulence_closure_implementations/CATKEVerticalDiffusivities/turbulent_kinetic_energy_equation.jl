@@ -108,7 +108,7 @@ end
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
     L = implicit_dissipation_coefficient(i, j, k, grid, closure, velocities, tracers, args...)
-    return L * eᵢ
+    return - L * eᵢ
 end
 
 @inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
