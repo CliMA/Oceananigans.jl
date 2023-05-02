@@ -5,7 +5,7 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.Grids: xnode, ynode, znode, halo_size
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using CairoMakie
 using Printf
@@ -14,8 +14,8 @@ const Lx = 4000kilometers # east-west extent [m]
 const Ly = 6000kilometers # north-south extent [m]
 const Lz = 1.8kilometers  # depth [m]
 
-Δt₀ = 10minutes
-stop_time = 10years
+Δt₀ = 11minutes
+stop_time = 365days
 
 Nx = 160
 Ny = 240
@@ -33,10 +33,13 @@ grid = RectilinearGrid(CPU();
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
+Hx, Hy, Hz = halo_size(grid)
 fig = Figure(resolution=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
 scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+
+Δz_cpu = Array(grid.Δzᵃᵃᶜ.parent)[1+Hz:Nz+Hz]
 
 save("double_gyre_grid_spacing.svg", fig)
 nothing #hide
@@ -165,15 +168,15 @@ run!(simulation)
 
 # # A neat movie
 
-# We open the JLD2 file, and extract the `grid` and the iterations we ended up saving at,
+# We open the JLD2 file, and extract the `grid` and the iterations we ended up saving at.
 
 using JLD2
 
 filename = "double_gyre.jld2"
 
-u_timeseries = FieldTimeSeries(filename, "u"; grid = grid)
-v_timeseries = FieldTimeSeries(filename, "v"; grid = grid)
-s_timeseries = FieldTimeSeries(filename, "speed"; grid = grid)
+u_timeseries = FieldTimeSeries(filename, "u"; architecture = CPU())
+v_timeseries = FieldTimeSeries(filename, "v"; architecture = CPU())
+s_timeseries = FieldTimeSeries(filename, "speed"; architecture = CPU())
 
 times = u_timeseries.times
 
@@ -210,44 +213,46 @@ end
 
 @info "Making an animation from the saved data..."
 
-anim = @animate for i in 1:length(times)
+using CairoMakie
 
-    @info "Drawing frame $i from iteration $(length(times)) \n"
+n = Observable(1)
 
-    t = times[i]
-    u = interior(u_timeseries[i])[:, :, grid.Nz]
-    v = interior(v_timeseries[i])[:, :, grid.Nz]
-    s = interior(s_timeseries[i])[:, :, grid.Nz]
+u = @lift interior(u_timeseries[$n], :, :)
+v = @lift interior(v_timeseries[$n], :, :)
+s = @lift interior(s_timeseries[$n], :, :)
 
-    ulims, ulevels = divergent_levels(u, 0.8)
-    slims, slevels = sequential_levels(s, (0.0, 0.8))
+extrema_reduction_factor = 0.8
 
-    kwargs = (aspectratio=:equal, linewidth=0, xlims=xlims,
-              ylims=ylims, xlabel="x (km)", ylabel="y (km)")
+ulims = extrema(u_timeseries.data) .* extrema_reduction_factor
+vlims = extrema(v_timeseries.data) .* extrema_reduction_factor
+slims = extrema(s_timeseries.data) .* extrema_reduction_factor
 
-    u_plot = contourf(xu_km, yu_km, u';
-                      color = :balance,
-                      clims = ulims,
-                      levels = ulevels,
-                      kwargs...)
+fig = Figure(resolution=(1500,1250)) 
 
-    v_plot = contourf(xv_km, yv_km, v';
-                      color = :balance,
-                      clims = ulims,
-                      levels = ulevels,
-                      kwargs...)
+title_u = @lift "Zonal Velocity after " *string(round(times[$n]/day, digits=1))*" days"
+ax_u = Axis(fig[1,1]; xlabel = "x (km)", ylabel = "y (km)", aspect = 1.0, title = title_u)
+hm_u = heatmap!(ax_u, xu_km, yu_km, u; colorrange = ulims, colormap = :balance)
+Colorbar(fig[1,2], hm_u; label = "Zonal velocity (m s⁻¹)")
 
-    s_plot = contourf(xs_km, ys_km, s';
-                      color = :thermal,
-                      clims = slims,
-                      levels = slevels,
-                      kwargs...)
+title_v = @lift "Meridional Velocity after " *string(round(times[$n]/day, digits=1))*" days"
+ax_v = Axis(fig[1,3]; xlabel = "x (km)", ylabel = "y (km)", aspect = 1.0, title = title_v)
+hm_v = heatmap!(ax_v, xv_km, yv_km, v; colorrange = vlims, colormap = :balance)
+Colorbar(fig[1,4], hm_v; label = "Meridional velocity (m s⁻¹)")
 
-    plot(u_plot, v_plot, s_plot, layout = Plots.grid(1, 3), size=(1200, 500),
-         title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
+title_s = @lift "Speed after " *string(round(times[$n]/day, digits=1))*" days"
+ax_s = Axis(fig[2,1]; xlabel = "x (km)", ylabel = "y (km)", aspect = 1.0, title = title_s)
+hm_s = heatmap!(ax_s, xs_km, ys_km, v; colorrange = slims, colormap = :balance)
+Colorbar(fig[2,2], hm_s; label = "Speed (m s⁻¹)")
+
+frames = 1:length(times)
+
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 
-mp4(anim, "double_gyre.mp4", fps = 8) # hide
+nothing #hide
 
 # Plot the barotropic circulation
 
@@ -256,25 +261,26 @@ filename_barotropic = "double_gyre_circulation.jld2"
 U_timeseries = FieldTimeSeries(filename_barotropic, "u"; grid = grid)
 V_timeseries = FieldTimeSeries(filename_barotropic, "v"; grid = grid)
 
-# average for the last `n_years`
+# Average for the last `n_years`
+
 n_years = 5
 
 using Statistics
 
-U = mean(interior(U_timeseries)[:, :, :, end-n_years*12:end], dims=4)[:, :, 1, 1]
-V = mean(interior(V_timeseries)[:, :, :, end-n_years*12:end], dims=4)[:, :, 1, 1]
+U = mean(interior(U_timeseries)[:, :, :, end:end], dims=4)[:, :, 1, 1]
+V = mean(interior(V_timeseries)[:, :, :, end:end], dims=4)[:, :, 1, 1]
 
-U_plot = contourf(xu_km, yu_km, U', xlims=xlims, ylims=ylims,
+U_plot = contourf(xu_km, yu_km, U, xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
-V_plot = contourf(xv_km, yv_km, V', xlims=xlims, ylims=ylims,
+V_plot = contourf(xv_km, yv_km, V, xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
 Ψ = cumsum(V, dims=1) * grid.Δxᶜᵃᵃ * grid.Lz * 1e-6
 
 Ψlims, Ψlevels = divergent_levels(Ψ, 45)
 
-Ψ_plot = contourf(xv_km, yv_km, Ψ', xlims=xlims, ylims=ylims, levels = Ψlevels, clims = Ψlims,
+Ψ_plot = contourf(xv_km, yv_km, Ψ, xlims=xlims, ylims=ylims, levels = Ψlevels, clims = Ψlims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
 plot(U_plot, V_plot, Ψ_plot, layout = Plots.grid(1, 3), size=(1200, 400),
