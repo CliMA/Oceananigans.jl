@@ -254,7 +254,7 @@ end
     δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶠᶜᶜ(i, j, k, grid)
     δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶠᶜᶜ(i, j, k, grid)
 
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ) / 2
+    return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ) 
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v) 
@@ -271,7 +271,7 @@ end
     δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶜᶠᶜ(i, j, k, grid)
     δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶜᶠᶜ(i, j, k, grid)
 
-    return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ) / 2
+    return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ) 
 end
 
 ######
