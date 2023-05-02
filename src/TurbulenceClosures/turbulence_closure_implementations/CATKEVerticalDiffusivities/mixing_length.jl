@@ -100,12 +100,12 @@ end
 @inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
 
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᶜ::Number,
-                                            velocities, tracers, buoyancy, clock, tracer_bcs)
+                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     u, v, w = velocities
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
     w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
@@ -143,12 +143,12 @@ end
 end
 
 @inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᶜ::Number,
-                                            velocities, tracers, buoyancy, clock, tracer_bcs)
+                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     u, v, w = velocities
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
     w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
@@ -196,7 +196,7 @@ end
     return scale(Ri, C⁻, C⁺, CRiᶜ, CRiʷ)
 end
 
-@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     C⁻ = closure.mixing_length.C⁻u
     C⁺ = closure.mixing_length.C⁺u
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, C⁻, C⁺, velocities, tracers, buoyancy)
@@ -209,11 +209,11 @@ end
     return min(H, ℓ★)
 end
 
-@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     Cᶜ  = closure.mixing_length.Cᶜc
     Cᵉ  = closure.mixing_length.Cᵉc
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     C⁻ = closure.mixing_length.C⁻c
     C⁺ = closure.mixing_length.C⁺c
@@ -228,11 +228,11 @@ end
     return min(H, max(ℓ★, ℓʰ))
 end
 
-@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     Cᶜ  = closure.mixing_length.Cᶜe
     Cᵉ  = closure.mixing_length.Cᵉe
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     C⁻ = closure.mixing_length.C⁻e
     C⁺ = closure.mixing_length.C⁺e

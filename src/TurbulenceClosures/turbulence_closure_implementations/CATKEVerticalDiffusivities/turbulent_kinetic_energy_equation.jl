@@ -55,16 +55,14 @@ end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
-@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE,
-                                                  velocities, tracers, buoyancy, clock, tracer_bcs)
-    e = tracers.e
-    FT = eltype(grid)
+@inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE,
+                                             velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
     # "Stable" dissipation length
     C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
@@ -82,6 +80,15 @@ end
     H = total_depthᶜᶜᵃ(i, j, grid)
     ℓᴰ = min(H, ℓ★ + ℓʰ)
 
+    return ℓᴰ
+end
+
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE,
+                                                  velocities, tracers, buoyancy, surface_buoyancy_flux)
+
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    e = tracers.e
+    FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
     
     # Note:
