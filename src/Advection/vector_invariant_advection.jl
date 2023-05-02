@@ -237,6 +237,9 @@ end
 ## For this reason, the divergence (`δ`) must be multiplied by the area in z to account for the flux of `w` 
 ## (as done for the other advecting velocities). 
 
+@inline upwind_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+                                                 δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
+
 @inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
@@ -248,8 +251,8 @@ end
     Sδ = scheme.divergence_stencil
     
     @inbounds û = u[i, j, k]
-    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
-    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
+    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶠᶜᶜ(i, j, k, grid)
+    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶠᶜᶜ(i, j, k, grid)
 
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) + upwind_biased_product(û, δᴸ, δᴿ) / 2
 end
@@ -265,8 +268,8 @@ end
     Sδ = scheme.divergence_stencil
 
     @inbounds v̂ = v[i, j, k]
-    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
-    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
+    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶜᶠᶜ(i, j, k, grid)
+    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, upwind_div_xyᶜᶜᶜ, Sδ, u, v) / Vᶜᶠᶜ(i, j, k, grid)
 
     return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ) / 2
 end
