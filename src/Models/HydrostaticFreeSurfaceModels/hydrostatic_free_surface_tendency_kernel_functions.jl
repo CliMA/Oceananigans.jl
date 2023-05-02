@@ -178,6 +178,6 @@ end
              - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + shear_production(i, j, k, grid, closure, velocities, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              + forcing(i, j, k, grid, clock, model_fields))
 end

@@ -298,9 +298,9 @@ end
         Q_e = - Cᵂϵ * turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure_ij, tracers.e) / Δz * on_bottom
 
         # Implicit TKE dissipation
-        ϵ_e = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
+        ω_e = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e + ϵ_e + Q_e
+        diffusivities.Lᵉ[i, j, k] = - wb_e + ω_e + Q_e
     end
 end
 

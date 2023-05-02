@@ -56,13 +56,14 @@ end
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE,
-                                             velocities, tracers, buoyancy, surface_buoyancy_flux)
+                                             velocities, tracers, buoyancy, diffusivities)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    Qᵇ = diffusivities.Qᵇ
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, Qᵇ)
 
     # "Stable" dissipation length
     C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
@@ -83,10 +84,10 @@ end
     return ℓᴰ
 end
 
-@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE,
-                                                  velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
+                                  velocities, tracers, buoyancy, diffusivities)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
@@ -107,11 +108,11 @@ end
 # Fallbacks for explicit time discretization
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
-    L = implicit_dissipation_coefficient(i, j, k, grid, closure, velocities, tracers, args...)
-    return - L * eᵢ
+    ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
+    return - ω * eᵢ
 end
 
-@inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
+@inline dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
 
 #####
 ##### For closure tuples...
