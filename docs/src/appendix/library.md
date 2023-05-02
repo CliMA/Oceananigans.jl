@@ -129,6 +129,13 @@ Modules = [Oceananigans.Models.ShallowWaterModels]
 Private = false
 ```
 
+### Lagrangian particle tracking
+
+```@autodocs
+Modules = [Oceananigans.Models.LagrangianParticleTracking]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
