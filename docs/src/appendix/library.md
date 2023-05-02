@@ -93,13 +93,6 @@ Modules = [Oceananigans.ImmersedBoundaries]
 Private = false
 ```
 
-## Lagrangian particle tracking
-
-```@autodocs
-Modules = [Oceananigans.LagrangianParticleTracking]
-Private = false
-```
-
 ## Logger
 
 ```@autodocs
