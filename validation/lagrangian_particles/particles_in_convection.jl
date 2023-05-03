@@ -54,10 +54,9 @@ model = NonhydrostaticModel(; grid, particles,
 bᵢ(x, y, z) = 1e-5 * z + 1e-9 * rand()
 set!(model, b=bᵢ)
 
-simulation = Simulation(model, Δt=10.0, stop_iteration=1)
+simulation = Simulation(model, Δt=10.0, stop_iteration=10)
 wizard = TimeStepWizard(cfl=0.5, max_change=1.1, max_Δt=1minute)
 
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
-# run!(simulation)
-
+run!(simulation)
