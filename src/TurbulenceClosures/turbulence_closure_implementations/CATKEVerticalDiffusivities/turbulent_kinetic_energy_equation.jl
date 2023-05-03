@@ -55,14 +55,14 @@ end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
-@inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE,
-                                             velocities, tracers, buoyancy, diffusivities)
+@inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
+                                             buoyancy, surface_buoyancy_flux)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    Qᵇ = diffusivities.Qᵇ
+    Qᵇ = surface_buoyancy_flux
     ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, Qᵇ)
 
     # "Stable" dissipation length
@@ -87,7 +87,7 @@ end
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
                                   velocities, tracers, buoyancy, diffusivities)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
