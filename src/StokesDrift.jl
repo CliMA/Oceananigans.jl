@@ -39,7 +39,7 @@ abstract type AbstractStokesDrift end
 #####
 
 """
-    UniformStokesDrift{UZ, VZ, UT, VT} <: AbstractStokesDrift
+    UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
 
 Parameter struct for Stokes drift fields associated with surface waves.
 """
@@ -54,7 +54,7 @@ end
 addzero(args...) = 0
 
 """
-    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero)
+    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing)
 
 Construct a set of functions that describes the Stokes drift field beneath
 a uniform surface gravity wave field.
@@ -72,15 +72,15 @@ const USD = UniformStokesDrift
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds          ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), args...)
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds begin (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), args...)
                                                                                  - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), args...) )
-end
+                                                                          end
 
-functions = (:∂t_uˢ, :∂t_vˢ, :∂t_wˢ)
-for func in functions
+stokes_tendecy_functions = (:∂t_uˢ, :∂t_vˢ, :∂t_wˢ)
+for func in stokes_tendecy_functions
     @eval $func(i, j, k, grid::AbstractGrid{FT}, sw::USD{<:NamedTuple}, time) where FT = $func(i, j, k, grid, sw, time, sw.parameters)
 end
 
-functions = (:x_curl_Uˢ_cross_U, :y_curl_Uˢ_cross_U, :z_curl_Uˢ_cross_U)
-for func in functions
+stokes_curl_functions = (:x_curl_Uˢ_cross_U, :y_curl_Uˢ_cross_U, :z_curl_Uˢ_cross_U)
+for func in stokes_curl_functions
     @eval $func(i, j, k, grid, sw::USD{<:NamedTuple}, U, time) = $func(i, j, k, grid, sw, U, time, sw.parameters)
 end
 
