@@ -81,7 +81,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # The vertical derivative of the Stokes drift is
 
-∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+∂z_uˢ(z, t, p) = 1 / p.vertical_scale * Uˢ * exp(z / p.vertical_scale)
 
 # Finally, we note that the time-derivative of the Stokes drift must be provided
 # if the Stokes drift and surface wave field undergoes _forced_ changes in time.
@@ -132,7 +132,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ, parameters = (; vertical_scale)),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
