@@ -68,11 +68,10 @@ const USD = UniformStokesDrift
 @inline ∂t_vˢ(i, j, k, grid, sw::USD, args...) = sw.∂t_vˢ(znode(k, grid, Center()), args...)
 @inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, args...) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds          ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), args...)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds          ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), args...)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds begin (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), args...)
-                                                                                 - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), args...) )
-                                                                          end
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), args...)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), args...)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), args...)
+                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), args...) )
 
 stokes_tendecy_functions = (:∂t_uˢ, :∂t_vˢ, :∂t_wˢ)
 for func in stokes_tendecy_functions
