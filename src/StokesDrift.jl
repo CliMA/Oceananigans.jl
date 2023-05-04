@@ -43,12 +43,12 @@ abstract type AbstractStokesDrift end
 
 Parameter struct for Stokes drift fields associated with surface waves.
 """
-struct UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
-    parameters :: P
+struct UniformStokesDrift{UZ, VZ, UT, VT, P} <: AbstractStokesDrift
     ∂z_uˢ :: UZ
     ∂z_vˢ :: VZ
     ∂t_uˢ :: UT
     ∂t_vˢ :: VT
+    parameters :: P
 end
 
 addzero(args...) = 0
@@ -60,7 +60,7 @@ Construct a set of functions that describes the Stokes drift field beneath
 a uniform surface gravity wave field.
 """
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing) =
-    UniformStokesDrift(parameters, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
+    UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
 const USD = UniformStokesDrift
 
