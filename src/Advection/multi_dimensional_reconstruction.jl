@@ -84,7 +84,7 @@ function fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
     q²⁺ = w₀²⁺ * q̂₀² + w₁²⁺ * q̂₁² + w₂²⁺ * q̂₂²
     q²⁻ = w₀²⁻ * q̂₀² + w₁²⁻ * q̂₁² + w₂²⁻ * q̂₂²
 
-    q² = σ⁺ * q²⁺ - σ⁻ * q²⁻
+    q² = FT(σ⁺) * q²⁺ - FT(σ⁻) * q²⁻
 
     return q¹ / 6 + 2 * q² / 3 + q³ / 6
 end
