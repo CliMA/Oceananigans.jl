@@ -57,10 +57,10 @@ include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
-
+include("multi_dimensional_reconstruction.jl")
 include("vector_invariant_advection.jl")
-include("topologically_conditional_interpolation.jl")
 
+include("topologically_conditional_interpolation.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")
