@@ -63,24 +63,24 @@ UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
 const USD = UniformStokesDrift
+const USDnoP = UniformStokesDrift{<:Any, <:Any, <:Any, <:Any, <:Nothing}
 
-@inline ∂t_uˢ(i, j, k, grid, sw::USD, args...) = sw.∂t_uˢ(znode(k, grid, Center()), args...)
-@inline ∂t_vˢ(i, j, k, grid, sw::USD, args...) = sw.∂t_vˢ(znode(k, grid, Center()), args...)
-@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, args...) where FT = zero(FT)
+@inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = sw.∂t_uˢ(znode(k, grid, Center()), time, sw.parameters)
+@inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(k, grid, Center()), time, sw.parameters)
+@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), args...)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), args...)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, args...) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), args...)
-                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), args...) )
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), time, sw.parameters)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), time, sw.parameters)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), time, sw.parameters)
+                                                                        - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), time, sw.parameters) )
 
-stokes_tendecy_functions = (:∂t_uˢ, :∂t_vˢ, :∂t_wˢ)
-for func in stokes_tendecy_functions
-    @eval $func(i, j, k, grid::AbstractGrid{FT}, sw::USD{<:NamedTuple}, time) where FT = $func(i, j, k, grid, sw, time, sw.parameters)
-end
+# Methods for when `parameters == nothing`
+@inline ∂t_uˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_uˢ(znode(k, grid, Center()), time)
+@inline ∂t_vˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_vˢ(znode(k, grid, Center()), time)
 
-stokes_curl_functions = (:x_curl_Uˢ_cross_U, :y_curl_Uˢ_cross_U, :z_curl_Uˢ_cross_U)
-for func in stokes_curl_functions
-    @eval $func(i, j, k, grid, sw::USD{<:NamedTuple}, U, time) = $func(i, j, k, grid, sw, U, time, sw.parameters)
-end
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), time)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), time)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), time)
+                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), time) )
 
 end # module
