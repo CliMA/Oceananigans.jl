@@ -39,7 +39,7 @@ abstract type AbstractStokesDrift end
 #####
 
 """
-    UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
+    UniformStokesDrift{UZ, VZ, UT, VT, P} <: AbstractStokesDrift
 
 Parameter struct for Stokes drift fields associated with surface waves.
 """
