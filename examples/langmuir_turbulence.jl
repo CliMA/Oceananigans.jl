@@ -53,18 +53,19 @@ wavenumber = 2π / wavelength # m⁻¹
 
 ## The vertical scale over which the Stokes drift of a monochromatic surface wave
 ## decays away from the surface is `1/2wavenumber`, or
-vertical_scale = wavelength / 4π
+const vertical_scale = wavelength / 4π
 
 ## Stokes drift velocity at the surface
-Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
+const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
+# The `const` declarations ensure that Stokes drift functions compile on the GPU.
+# To run this example on the GPU, one only needs to include `architecture = GPU()` in the
+# constructor for `RectilinearGrid` above.
+#
 # We only need the vertical derivative of the Stokes drift, which is
 
-∂z_uˢ(z, t, p) = 1 / p.vertical_scale * p.Uˢ * exp(z / p.vertical_scale)
-stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ, parameters = (; vertical_scale, Uˢ))
+∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
-# Note that passing `vertical_scale` and `Uˢ` as parameters ensures that this simulation
-# runs on GPUs.
 #
 # !!! info "The Craik-Leibovich equations in Oceananigans"
 #     Oceananigans implements the Craik-Leibovich approximation for surface wave effects
@@ -126,7 +127,7 @@ model = NonhydrostaticModel(; grid, coriolis,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = stokes_drift,
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
