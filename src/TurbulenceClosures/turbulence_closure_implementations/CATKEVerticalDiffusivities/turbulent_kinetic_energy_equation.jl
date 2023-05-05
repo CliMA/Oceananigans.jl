@@ -5,12 +5,12 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    C⁻D   :: FT = 2.3
-    C⁺D   :: FT = 6.7
-    CᶜD   :: FT = 0.88
+    CˡᵒD   :: FT = 0.16
+    CʰⁱD   :: FT = 1.1
+    CᶜD   :: FT = 0.87
     CᵉD   :: FT = 0.0
-    Cᵂu★  :: FT = 1.1
-    CᵂwΔ  :: FT = 4.0
+    Cᵂu★  :: FT = 0.26
+    CᵂwΔ  :: FT = 4.1
     Cᵂϵ   :: FT = 1.0
 end
 
@@ -18,31 +18,49 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline ν_∂z_u²(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
+@inline ν_∂z_u²(i, j, k, grid, u, ν, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ν, args...) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
+@inline ν_∂z_v²(i, j, k, grid, u, ν, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ν, args...) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
-@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
-    κᵘ = diffusivities.κᵘ
+@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
+    closure = getclosure(i, j, closure)
     u = velocities.u
     v = velocities.v
 
-    # Separate reconstruction of the u- and v- contributions is essential for numerical stability
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², κᵘ, u) + ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², κᵘ, v)
+    #=
+    # Separate reconstruction of the u- and v- contributions is essential for numerical stability?
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², u, κuᶜᶜᶜ, closure, velocities, tracers, buoyancy, Qᵇ) +
+           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², v, κuᶜᶜᶜ, closure, velocities, tracers, buoyancy, Qᵇ)
+    =#
+
+    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
+
+    return κᵘ * S²
 end
 
+#=
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
     κᶻ = @inbounds diffusivities.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶻ * N²
 end
+=#
+
+@inline function _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    closure = getclosure(i, j, closure)
+    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    wb = - κᶜ * N²
+    return wb
+end
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+    _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
 
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+    wb = _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
@@ -61,27 +79,25 @@ end
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
-    Cˢᶜ = closure.mixing_length.Cˢᶜ
+    Cˢᵖ = closure.mixing_length.Cˢᵖ
     Qᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, Qᵇ)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Qᵇ)
 
     # "Stable" dissipation length
-    C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
-    C⁺D = closure.turbulent_kinetic_energy_equation.C⁺D
-    Riᶜ = closure.mixing_length.CRiᶜ
-    Riʷ = closure.mixing_length.CRiʷ
-    Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
-    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-
-    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
-    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+    Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
+    Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
+    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = ℓ★ / σᴰ
 
     # Dissipation length
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    ℓᴰ = min(H, ℓ★ + ℓʰ)
+    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+    ℓᴰ = max(ℓ★, ℓʰ)
 
-    return ℓᴰ
+    H = total_depthᶜᶜᵃ(i, j, grid)
+
+    return min(H, ℓᴰ)
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
@@ -100,9 +116,10 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    τ = closure.negative_turbulent_kinetic_energy_damping_time_scale
+    ω_numerical = 1 / closure.negative_turbulent_kinetic_energy_damping_time_scale
+    ω_physical = sqrt(abs(eᵢ)) / ℓᴰ
 
-    return ifelse(eᵢ < 0, -1/τ, -sqrt(abs(eᵢ)) / ℓᴰ)
+    return ifelse(eᵢ < 0, ω_numerical, ω_physical)
 end
 
 # Fallbacks for explicit time discretization
@@ -111,8 +128,6 @@ end
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
     return - ω * eᵢ
 end
-
-@inline dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
 
 #####
 ##### For closure tuples...
@@ -298,9 +313,10 @@ end
 Base.summary(::TurbulentKineticEnergyEquation) = "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation"
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
-              "    C⁻D  = $(tke.C⁻D),  \n" *
-              "    C⁺D  = $(tke.C⁺D),  \n" *
-              "    CᶜD  = $(tke.CᶜD),  \n" *
-              "    CᵉD  = $(tke.CᵉD),  \n" *
-              "    Cᵂu★ = $(tke.Cᵂu★), \n" *
-              "    CᵂwΔ = $(tke.CᵂwΔ)")
+              "    CˡᵒD: $(tke.CˡᵒD),  \n" *
+              "    CʰⁱD: $(tke.CʰⁱD),  \n" *
+              "    CᶜD:  $(tke.CᶜD),  \n" *
+              "    CᵉD:  $(tke.CᵉD),  \n" *
+              "    Cᵂu★: $(tke.Cᵂu★), \n" *
+              "    CᵂwΔ: $(tke.CᵂwΔ)")
+

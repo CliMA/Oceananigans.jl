@@ -263,8 +263,6 @@ end
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
-
-    max_K = closure_ij.maximum_diffusivity
     Qᵇ = diffusivities.Qᵇ
 
     @inbounds begin
@@ -278,13 +276,13 @@ end
         κᶜ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ★))
         κᵉ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵉ★))
 
-        diffusivities.κᵘ[i, j, k] = min(max_K, κᵘ★) 
-        diffusivities.κᶜ[i, j, k] = min(max_K, κᶜ★)
-        diffusivities.κᵉ[i, j, k] = min(max_K, κᵉ★)
+        diffusivities.κᵘ[i, j, k] = κᵘ★
+        diffusivities.κᶜ[i, j, k] = κᶜ★
+        diffusivities.κᵉ[i, j, k] = κᵉ★
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        wb = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+        wb = _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
         # See `buoyancy_flux`
@@ -300,7 +298,7 @@ end
         # Implicit TKE dissipation
         ω_e = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e + ω_e + Q_e
+        diffusivities.Lᵉ[i, j, k] = - wb_e - ω_e + Q_e
     end
 end
 
@@ -316,21 +314,43 @@ end
 end
 
 @inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    return ℓu * u★
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᵘ = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵘ = ℓᵘ * w★
+    κ_max = closure.maximum_diffusivity
+    return min(κᵘ, κ_max)
+end
+
+@inline function κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    ℓᵘ = momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵘ = ℓᵘ * w★
+    κ_max = closure.maximum_diffusivity
+    return min(κᵘ, κ_max)
 end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    return ℓc * u★
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᶜ = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᶜ = ℓᶜ * w★
+    κ_max = closure.maximum_diffusivity
+    return min(κᶜ, κ_max)
+end
+
+@inline function κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    ℓᶜ = tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᶜ = ℓᶜ * w★
+    κ_max = closure.maximum_diffusivity
+    return min(κᶜ, κ_max)
 end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    return ℓe * u★
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᵉ = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵉ = ℓᵉ * w★
+    κ_max = closure.maximum_diffusivity
+    return min(κᵉ, κ_max)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κᵘ
@@ -346,7 +366,6 @@ function Base.summary(closure::CATKEVD)
 end
 
 function Base.show(io::IO, closure::FlavorOfCATKE)
-    # └
     print(io, summary(closure))
     print(io, '\n')
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n',
@@ -354,23 +373,23 @@ function Base.show(io::IO, closure::FlavorOfCATKE)
               "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(closure.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
               "├── minimum_convective_buoyancy_flux: ", prettysummary(closure.minimum_convective_buoyancy_flux), '\n',
               "├── mixing_length: ", prettysummary(closure.mixing_length), '\n',
-              "│   ├── Cᴺ:   ", prettysummary(closure.mixing_length.Cᴺ), '\n',
+              "│   ├── Cˢ:   ", prettysummary(closure.mixing_length.Cˢ), '\n',
               "│   ├── Cᵇ:   ", prettysummary(closure.mixing_length.Cᵇ), '\n',
               "│   ├── Cᶜc:  ", prettysummary(closure.mixing_length.Cᶜc), '\n',
               "│   ├── Cᶜe:  ", prettysummary(closure.mixing_length.Cᶜe), '\n',
               "│   ├── Cᵉc:  ", prettysummary(closure.mixing_length.Cᵉc), '\n',
               "│   ├── Cᵉe:  ", prettysummary(closure.mixing_length.Cᵉe), '\n',
-              "│   ├── C⁻u:  ", prettysummary(closure.mixing_length.C⁻u), '\n',
-              "│   ├── C⁻c:  ", prettysummary(closure.mixing_length.C⁻c), '\n',
-              "│   ├── C⁻e:  ", prettysummary(closure.mixing_length.C⁻e), '\n',
-              "│   ├── C⁺u:  ", prettysummary(closure.mixing_length.C⁺u), '\n',
-              "│   ├── C⁺c:  ", prettysummary(closure.mixing_length.C⁺c), '\n',
-              "│   ├── C⁺e:  ", prettysummary(closure.mixing_length.C⁺e), '\n',
-              "│   ├── CRiʷ: ", prettysummary(closure.mixing_length.CRiʷ), '\n',
-              "│   └── CRiᶜ: ", prettysummary(closure.mixing_length.CRiᶜ), '\n',
+              "│   ├── Cˡᵒu: ", prettysummary(closure.mixing_length.Cˡᵒu), '\n',
+              "│   ├── Cˡᵒc: ", prettysummary(closure.mixing_length.Cˡᵒc), '\n',
+              "│   ├── Cˡᵒe: ", prettysummary(closure.mixing_length.Cˡᵒe), '\n',
+              "│   ├── Cʰⁱu: ", prettysummary(closure.mixing_length.Cʰⁱu), '\n',
+              "│   ├── Cʰⁱc: ", prettysummary(closure.mixing_length.Cʰⁱc), '\n',
+              "│   ├── Cʰⁱe: ", prettysummary(closure.mixing_length.Cʰⁱe), '\n',
+              "│   ├── CRiᵟ: ", prettysummary(closure.mixing_length.CRiᵟ), '\n',
+              "│   └── CRi⁰: ", prettysummary(closure.mixing_length.CRi⁰), '\n',
               "└── turbulent_kinetic_energy_equation: ", prettysummary(closure.turbulent_kinetic_energy_equation), '\n',
-              "    ├── C⁻D:  ", prettysummary(closure.turbulent_kinetic_energy_equation.C⁻D),  '\n',
-              "    ├── C⁺D:  ", prettysummary(closure.turbulent_kinetic_energy_equation.C⁺D),  '\n',
+              "    ├── CˡᵒD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CˡᵒD),  '\n',
+              "    ├── CʰⁱD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CʰⁱD),  '\n',
               "    ├── CᶜD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᶜD),  '\n',
               "    ├── CᵉD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵉD),  '\n',
               "    ├── Cᵂu★: ", prettysummary(closure.turbulent_kinetic_energy_equation.Cᵂu★), '\n',
