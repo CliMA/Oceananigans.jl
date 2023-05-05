@@ -39,11 +39,11 @@ abstract type AbstractStokesDrift end
 #####
 
 """
-    UniformStokesDrift{UZ, VZ, UT, VT, P} <: AbstractStokesDrift
+    UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
 
 Parameter struct for Stokes drift fields associated with surface waves.
 """
-struct UniformStokesDrift{UZ, VZ, UT, VT, P} <: AbstractStokesDrift
+struct UniformStokesDrift{P, UZ, VZ, UT, VT} <: AbstractStokesDrift
     ∂z_uˢ :: UZ
     ∂z_vˢ :: VZ
     ∂t_uˢ :: UT
@@ -63,7 +63,7 @@ UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
 const USD = UniformStokesDrift
-const USDnoP = UniformStokesDrift{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+const USDnoP = UniformStokesDrift{<:Nothing}
 
 @inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = sw.∂t_uˢ(znode(k, grid, Center()), time, sw.parameters)
 @inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(k, grid, Center()), time, sw.parameters)
