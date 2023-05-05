@@ -62,7 +62,11 @@ const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 # To run this example on the GPU, one only needs to include `architecture = GPU()` in the
 # constructor for `RectilinearGrid` above.
 #
-# We only need the vertical derivative of the Stokes drift, which is
+# The Stokes drift profile is
+
+uˢ(z) = Uˢ * exp(z / vertical_scale)
+
+# and its `z`-derivative is
 
 ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
