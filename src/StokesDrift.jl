@@ -26,13 +26,13 @@ abstract type AbstractStokesDrift end
 ##### Functions for "no surface waves"
 #####
 
-@inline ∂t_uˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
-@inline ∂t_vˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
-@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
+@inline ∂t_uˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
+@inline ∂t_vˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
+@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, time) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, args...) where FT = zero(FT)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, args...) where FT = zero(FT)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, args...) where FT = zero(FT)
+@inline x_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
 
 #####
 ##### Uniform surface waves
