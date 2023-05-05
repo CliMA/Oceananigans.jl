@@ -102,7 +102,8 @@ end
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
                                             velocities, tracers, buoyancy, surface_buoyancy_flux)
 
-    u, v, w = velocities
+    u = velocities.u
+    v = velocities.v
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
@@ -145,7 +146,8 @@ end
 @inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
                                             velocities, tracers, buoyancy, surface_buoyancy_flux)
 
-    u, v, w = velocities
+    u = velocities.u
+    v = velocities.v
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
