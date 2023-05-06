@@ -173,7 +173,7 @@ end
 ##### Shenanigans for stretched directions
 #####
 
-@inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false;) 
+@inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false) 
     N = buffer * 2
     order = shift == :symm ? N : N - 1
     if shift != :symm
