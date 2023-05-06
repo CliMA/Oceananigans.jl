@@ -46,7 +46,7 @@ right_stencil_yᵃᶜᵃ(i, j, k, args...) = right_stencil_y(i, j+1, k, args...)
 right_stencil_zᵃᵃᶜ(i, j, k, args...) = right_stencil_z(i, j, k+1, args...)
 
 for bias in (:left, :right)
-    for (dir, loc) in zip((:x, :y, :z), (:ᶠᵃᵃ, :ᶜᵃᵃ, :ᵃᶠᵃ, :ᵃᶜᵃ, :ᵃᵃᶠ, :ᵃᵃᶜ))
+    for (dir, loc) in zip((:x, :x, :y, :y, :z, :z), (:ᶠᵃᵃ, :ᶜᵃᵃ, :ᵃᶠᵃ, :ᵃᶜᵃ, :ᵃᵃᶠ, :ᵃᵃᶜ))
         alt_interp = Symbol(:_, bias, :_biased_interpolate_, dir, loc)
         biased_β   = Symbol(bias, :_biased_β)
         stencil    = Symbol(bias, :_stencil_, dir, loc)
