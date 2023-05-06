@@ -28,45 +28,43 @@ Adapt.adapt_structure(to, scheme::HybridOrderWENO{NH, NL, FT}) where {NH, NL, FT
     HybridOrderWENO{NH, NL, FT}(Adapt.adapt(to, scheme.high_order_scheme), 
                                 Adapt.adapt(to, scheme.low_order_scheme))
 
-for (bias, stencil) in zip((:left, :right), (0, -1))
-    for (dir, loc) in zip((:x, :x, :y, :y, :z, :z), (:ᶠᵃᵃ, :ᶜᵃᵃ, :ᵃᶠᵃ, :ᵃᶜᵃ, :ᵃᵃᶠ, :ᵃᵃᶜ))
+
+left_stencil_xᶠᵃᵃ(args...) = left_stencil_x(args...)
+left_stencil_yᵃᶠᵃ(args...) = left_stencil_y(args...)
+left_stencil_zᵃᵃᶠ(args...) = left_stencil_z(args...)
+
+right_stencil_xᶠᵃᵃ(args...) = right_stencil_x(args...)
+right_stencil_yᵃᶠᵃ(args...) = right_stencil_y(args...)
+right_stencil_zᵃᵃᶠ(args...) = right_stencil_z(args...)
+
+left_stencil_xᶜᵃᵃ(i, j, k, args...) = left_stencil_x(i+1, j, k, args...)
+left_stencil_yᵃᶜᵃ(i, j, k, args...) = left_stencil_y(i, j+1, k, args...)
+left_stencil_zᵃᵃᶜ(i, j, k, args...) = left_stencil_z(i, j, k+1, args...)
+
+right_stencil_xᶜᵃᵃ(i, j, k, args...) = right_stencil_x(i+1, j, k, args...)
+right_stencil_yᵃᶜᵃ(i, j, k, args...) = right_stencil_y(i, j+1, k, args...)
+right_stencil_zᵃᵃᶜ(i, j, k, args...) = right_stencil_z(i, j, k+1, args...)
+
+for bias in (:left, :right)
+    for (dir, loc) in zip((:x, :y, :z), (:ᶠᵃᵃ, :ᶜᵃᵃ, :ᵃᶠᵃ, :ᵃᶜᵃ, :ᵃᵃᶠ, :ᵃᵃᶜ))
         alt_interp = Symbol(:_, bias, :_biased_interpolate_, dir, loc)
         biased_β   = Symbol(bias, :_biased_β)
-        
+        stencil    = Symbol(bias, :_stencil_, dir, loc)
+
         @eval begin
-            function $alt_interp(i, j, k, grid, scheme::HybridOrderWENO{5, 3}, f::Function, args...)
+            function $alt_interp(i, j, k, grid, scheme::HybridOrderWENO{5, 3}, ψ, args...)
 
-                rᴴ = $alt_interp(i, j, k, grid, scheme.high_order_scheme, f, args...)
-                rᴸ = $alt_interp(i, j, k, grid, scheme.low_order_scheme,  f, args...)
+                rᴴ = $alt_interp(i, j, k, grid, scheme.high_order_scheme, ψ, args...)
+                rᴸ = $alt_interp(i, j, k, grid, scheme.low_order_scheme,  ψ, args...)
 
-                Sᴴ = $(reconstruction_stencil(5, bias, dir, true))
-                Sᴸ = $(reconstruction_stencil(3, bias, dir, true))
+                Sᴴ = $stencil(i, j, k, scheme.high_order_scheme, ψ, args...)[3]
+                Sᴸ = $stencil(i, j, k, scheme.low_order_scheme,  ψ, args...)[2]
 
-                βᴴ = $biased_β(scheme.high_order_scheme, Sᴴ, Val($stencil))
-                βᴸ = $biased_β(scheme.low_order_scheme,  Sᴸ, Val($stencil)) 
+                βᴴ = $biased_β(scheme.high_order_scheme, Sᴴ, Val(2))
+                βᴸ = $biased_β(scheme.low_order_scheme,  Sᴸ, Val(1)) 
 
-                μᴴ = ((βᴴ + FT(ε))^ƞ)
-                μᴸ = ((βᴸ + FT(ε))^ƞ)
-
-                αᴴ = ifelse(μᴴ >= μᴸ, μᴸ / μᴴ, 1)
-                αᴸ = 1 - αᴴ
-
-                return (rᴴ * αᴴ + rᴸ * αᴸ) 
-            end
-
-            function $alt_interp(i, j, k, grid, scheme::HybridOrderWENO{5, 3}, f) 
-
-                rᴴ = $alt_interp(i, j, k, grid, scheme.high_order_scheme, f)
-                rᴸ = $alt_interp(i, j, k, grid, scheme.low_order_scheme,  f)
-
-                Sᴴ = $(reconstruction_stencil(5, bias, dir, false))
-                Sᴸ = $(reconstruction_stencil(3, bias, dir, false))
-
-                βᴴ = $biased_β(scheme.high_order_scheme, Sᴴ, Val($stencil))
-                βᴸ = $biased_β(scheme.low_order_scheme,  Sᴸ, Val($stencil)) 
-
-                μᴴ = ((βᴴ + FT(ε))^ƞ)
-                μᴸ = ((βᴸ + FT(ε))^ƞ)
+                μᴴ = (βᴴ + FT(ε))^ƞ
+                μᴸ = (βᴸ + FT(ε))^ƞ
 
                 αᴴ = ifelse(μᴴ >= μᴸ, μᴸ / μᴴ, 1)
                 αᴸ = 1 - αᴴ
