@@ -103,3 +103,13 @@ for bias in (:symmetric, :left_biased, :right_biased)
         end
     end
 end
+
+@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
+                    ifelse(outside_symmetric_bufferᶜ(i, grid.Nx, scheme), 
+                           multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...),
+                           interp(i, j, k, grid, scheme, args...))
+
+@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...) = 
+                    ifelse(outside_symmetric_bufferᶜ(j, grid.Ny, scheme), 
+                            multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
+                            interp(i, j, k, grid, scheme, args...))
