@@ -275,7 +275,7 @@ end
     return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ) 
 end
 
-@inline function upwinded_vector_invariant_U(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
@@ -292,7 +292,7 @@ end
     return upwind_biased_product(û, δᴸ, δᴿ) - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
-@inline function upwinded_vector_invariant_V(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v) 
 
     Sζ = scheme.vorticity_stencil
 
