@@ -5,8 +5,8 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    CˡᵒD   :: FT = 0.16
-    CʰⁱD   :: FT = 1.1
+    CˡᵒD  :: FT = 0.16
+    CʰⁱD  :: FT = 1.1
     CᶜD   :: FT = 0.87
     CᵉD   :: FT = 0.0
     Cᵂu★  :: FT = 0.26
@@ -18,40 +18,42 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline ν_∂z_u²(i, j, k, grid, u, ν, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ν, args...) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline ν_∂z_v²(i, j, k, grid, u, ν, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ν, args...) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
+@inline ν_∂z_u²(i, j, k, grid, u, ν) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
+@inline ν_∂z_v²(i, j, k, grid, v, ν) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    closure = getclosure(i, j, closure)
     u = velocities.u
     v = velocities.v
 
     #=
     # Separate reconstruction of the u- and v- contributions is essential for numerical stability?
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², u, κuᶜᶜᶜ, closure, velocities, tracers, buoyancy, Qᵇ) +
-           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², v, κuᶜᶜᶜ, closure, velocities, tracers, buoyancy, Qᵇ)
+    κᵘ = diffusivities.κᵘ
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², κᵘ, u) +
+           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², κᵘ, v)
     =#
 
+    closure = getclosure(i, j, closure)
     κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
-
     return κᵘ * S²
 end
 
 #=
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κᶻ = @inbounds diffusivities.κᶜ[i, j, k]
+    κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return - κᶻ * N²
+    return - κᶜ * N²
 end
+
+@inline _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
+    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 =#
 
 @inline function _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     closure = getclosure(i, j, closure)
     κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    wb = - κᶜ * N²
-    return wb
+    return - κᶜ * N²
 end
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
@@ -88,7 +90,7 @@ end
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
     σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = ℓ★ / σᴰ
+    ℓ★ = ℓ★ / σᴰ 
 
     # Dissipation length
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
