@@ -18,8 +18,8 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline ν_∂z_u²(i, j, k, grid, u, ν) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline ν_∂z_v²(i, j, k, grid, v, ν) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
+@inline ν_∂z_u²(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
+@inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     u = velocities.u
@@ -90,7 +90,7 @@ end
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
     σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = ℓ★ / σᴰ 
+    ℓ★ = ℓ★ / σᴰ
 
     # Dissipation length
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
@@ -98,7 +98,6 @@ end
     ℓᴰ = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-
     return min(H, ℓᴰ)
 end
 
