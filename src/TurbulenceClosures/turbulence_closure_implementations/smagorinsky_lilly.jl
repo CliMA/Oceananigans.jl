@@ -19,7 +19,7 @@ end
 @inline diffusivity(closure::SmagorinskyLilly, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 """
-    SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1)
+    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
@@ -36,19 +36,23 @@ and an eddy diffusivity of the form
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
 the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
-the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson number
-modification to the eddy viscosity.
+the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
+number modification to the eddy viscosity.
+
+Positional arguments
+====================
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                           which integrates the terms involving only ``z``-derivatives in the
+                           viscous and diffusive fluxes with an implicit time discretization.
+  - `FT`: Float type; default `Float64`.
 
 Keyword arguments
 =================
   - `C`: Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
   - `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-          Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
+          Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
   - `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
           tracer, or a `NamedTuple` with fields for each tracer individually.
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                           which integrates the terms involving only ``z``-derivatives in the
-                           viscous and diffusive fluxes with an implicit time discretization.
 
 References
 ==========
@@ -63,10 +67,10 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
     NCAR Manuscript No. 281, 0, 1966.
 """
-SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
-
 SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
         SmagorinskyLilly{TD, FT}(C, Cb, Pr)
+
+SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
@@ -78,7 +82,9 @@ end
 
 Return the stability function
 
-    ``\$ \\sqrt(1 - Cb N^2 / Σ^2 ) \$``
+```math
+    \\sqrt(1 - Cb N^2 / Σ^2 )
+```
 
 when ``N^2 > 0``, and 1 otherwise.
 """
@@ -88,7 +94,7 @@ when ``N^2 > 0``, and 1 otherwise.
     return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, velocities, tracers) where FT
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid, closure::SmagorinskyLilly, buoyancy, velocities, tracers)
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
@@ -134,7 +140,7 @@ end
 "Return the double dot product of strain at `ccc`."
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     return (
-                    tr_Σ²(i, j, k, grid, u, v, w)
+                   tr_Σ²(i, j, k, grid, u, v, w)
             + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
@@ -145,7 +151,7 @@ end
 @inline function ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
     return (
                   ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 *    Σ₁₂²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₁₂²(i, j, k, grid, u, v, w)
             + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
@@ -156,7 +162,7 @@ end
     return (
                   ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 *    Σ₁₃²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₁₃²(i, j, k, grid, u, v, w)
             + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
@@ -167,10 +173,11 @@ end
                   ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
 
+"Return the double dot product of strain at `ccf`."
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶠ(i, j, k, grid, u, v, w)
     return (
                     ℑzᵃᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
@@ -195,4 +202,3 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
 
     return (; νₑ)
 end
-
