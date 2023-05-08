@@ -82,32 +82,29 @@ Return the stability function
 
 when ``N^2 > 0``, and 1 otherwise.
 """
-@inline stability(N²::FT, Σ²::FT, Cb::FT) where FT =
-    ifelse(Σ²==0, zero(FT), sqrt(one(FT) - stability_factor(N², Σ², Cb)))
-
-@inline stability_factor(N²::FT, Σ²::FT, Cb::FT) where FT = min(one(FT), Cb * N² / Σ²)
-
-"""
-    νₑ_deardorff(ς, C, Δᶠ, Σ²)
-
-Return the eddy viscosity for constant Smagorinsky
-given the stability `ς`, model constant `C`,
-filter width `Δᶠ`, and strain tensor dot product `Σ²`.
-"""
-@inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
-
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, velocities, tracers) where FT
-    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
-    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers))
-    Δᶠ = Δᶠ_ccc(i, j, k, grid, closure)
-    ς  = stability(N², Σ², closure.Cb) # Use unity Prandtl number.
-
-    return νₑ_deardorff(ς, closure.C, Δᶠ, Σ²)
+@inline function stability(N²::FT, Σ²::FT, Cb::FT) where FT
+    N²⁺ = max(zero(FT), N²) # clip
+    ς² = one(FT) - min(one(FT), Cb * N²⁺ / Σ²)
+    return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, velocities, tracers) where FT
+    # Strain tensor dot product
+    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
+
+    # Stability function
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    ς  = stability(N², Σ², closure.Cb) # Use unity Prandtl number.
+
+    # Filter width
+    Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
+    Δᶠ = cbrt(Δ³)
+    C = closure.C # free parameter
+
+    return ς * (C * Δᶠ)^2 * sqrt(2Σ²)
+end
 
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
-
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy
@@ -128,16 +125,6 @@ end
 #####
 ##### Double dot product of strain on cell edges (currently unused)
 #####
-
-"Return the filter width for Constant Smagorinsky on a regular rectilinear grid."
-@inline Δᶠ(i, j, k, grid, ::SmagorinskyLilly) = geo_mean_Δᶠ(i, j, k, grid)
-
-# Temporarily set filter widths to cell-size (rather than distance between cell centers, etc.)
-const Δᶠ_ccc = Δᶠ
-const Δᶠ_ccf = Δᶠ
-const Δᶠ_ffc = Δᶠ
-const Δᶠ_fcf = Δᶠ
-const Δᶠ_cff = Δᶠ
 
 # tr_Σ² : ccc
 #   Σ₁₂ : ffc
