@@ -39,23 +39,30 @@ the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
 the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
 number modification to the eddy viscosity.
 
-Positional arguments
-====================
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                           which integrates the terms involving only ``z``-derivatives in the
-                           viscous and diffusive fluxes with an implicit time discretization.
-  - `FT`: Float type; default `Float64`.
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                         which integrates the terms involving only ``z``-derivatives in the
+                         viscous and diffusive fluxes with an implicit time discretization.
+                         Default `VerticallyImplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
 
 Keyword arguments
 =================
-  - `C`: Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
-  - `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-          Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
-  - `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
-          tracer, or a `NamedTuple` with fields for each tracer individually.
+
+* `C`: Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
+
+* `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+        Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
+
+* `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
+        tracer, or a `NamedTuple` with fields for each tracer individually.
 
 References
 ==========
+
 Smagorinsky, J. "On the numerical integration of the primitive equations of motion for
     baroclinic flow in a closed region." Monthly Weather Review (1958)
 
