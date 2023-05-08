@@ -45,7 +45,7 @@ Arguments
 * `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
-                         Default `VerticallyImplicitTimeDiscretization()`.
+                         Default `ExplicitTimeDiscretization()`.
 
 * `FT`: Float type; default `Float64`.
 
