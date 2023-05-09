@@ -282,7 +282,7 @@ end
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        wb = _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+        wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
         # See `buoyancy_flux`

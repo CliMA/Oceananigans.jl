@@ -18,51 +18,51 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline ν_∂z_u²(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline ν_∂z_v²(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
+@inline ν_∂z_u²ᶠᶜᶠ(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
+@inline ν_∂z_v²ᶜᶠᶠ(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     u = velocities.u
     v = velocities.v
 
-    #=
     # Separate reconstruction of the u- and v- contributions is essential for numerical stability?
     κᵘ = diffusivities.κᵘ
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u², κᵘ, u) +
-           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v², κᵘ, v)
-    =#
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
+           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
 
+    #=
     closure = getclosure(i, j, closure)
     κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
     return κᵘ * S²
+    =#
 end
 
-#=
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
     κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶜ * N²
 end
 
-@inline _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
+@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
     ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
-=#
 
-@inline function _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+#=
+@inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     closure = getclosure(i, j, closure)
     κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶜ * N²
 end
+=#
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
 
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = _buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
