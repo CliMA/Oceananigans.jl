@@ -44,6 +44,12 @@ abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 
+# buffer 6 allows up to Centered(order = 12) and UpwindBiased(order = 11)
+# adding valus to advection_buffers implements larger orders for
+# upwinding/symmetric reconstruction (not WENO!)
+# There is a hard cap at buffer 40.
+const advection_buffers = [1, 2, 3, 4, 5, 6]
+
 @inline boundary_buffer(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size(scheme::AbstractAdvectionScheme{B}) where B = B
 

@@ -104,7 +104,7 @@ for side in (:left, :right)
     stencil_y = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
     stencil_z = Symbol(:inner_, side, :_biased_interpolate_zᵃᵃᶠ)
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x, false))
             @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x,  true))
@@ -123,10 +123,10 @@ end
 for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
     stencil = Symbol(:inner_, side, :_biased_interpolate_, dir)
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
         end
     end
 end
