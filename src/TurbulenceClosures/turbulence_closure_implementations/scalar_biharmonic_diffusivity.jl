@@ -47,8 +47,8 @@ Keyword arguments
 
 * `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
 
-* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
-        `NamedTuple` of diffusivities with entries for each tracer.
+* `κ`: Diffusivity. `Number`, three-dimensional `AbstractArray`, `Field`, `Function`, or
+       `NamedTuple` of diffusivities with entries for each tracer.
 
 * `discrete_form`: `Boolean`; default: `False`.
 

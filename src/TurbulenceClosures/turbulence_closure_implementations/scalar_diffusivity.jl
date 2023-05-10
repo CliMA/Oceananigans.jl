@@ -35,10 +35,10 @@ Arguments
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
+* `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
 
 * `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
-        `NamedTuple` of diffusivities with entries for each tracer.
+       `NamedTuple` of diffusivities with entries for each tracer.
 
 * `discrete_form`: `Boolean`; default: `False`.
 
