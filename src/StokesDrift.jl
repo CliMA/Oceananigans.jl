@@ -81,6 +81,6 @@ const USDnoP = UniformStokesDrift{<:Nothing}
 @inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, Center()), time)
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, Center()), time)
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, Face()), time)
-                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), time) )
+                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, Face()), time))
 
 end # module
