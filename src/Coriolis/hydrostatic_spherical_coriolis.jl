@@ -1,7 +1,7 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
-
+using Oceananigans.BoundaryConditions
 
 """
     struct ActiveCellEnstrophyConservingScheme
@@ -16,9 +16,10 @@ struct ActiveCellEnstrophyConservingScheme end
 
 A parameter object for constant rotation around a vertical axis on the sphere.
 """
-struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
+struct HydrostaticSphericalCoriolis{S, FT, F} <: AbstractRotation
     rotation_rate :: FT
     scheme :: S
+    f_field :: F
 end
 
 """
@@ -34,16 +35,34 @@ Keyword arguments
 
 - `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `ActiveCellEnstrophyConservingScheme()`.
 """
-HydrostaticSphericalCoriolis(FT::DataType=Float64;
+function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              rotation_rate = Ω_Earth,
-                             scheme :: S = EnergyConservingScheme()) where S =
-    HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
+                             scheme :: S = EnergyConservingScheme(),
+                             grid = nothing) where S 
+    
+    coriolis = HydrostaticSphericalCoriolis(rotation_rate, scheme, nothing)
+
+    if !isnothing(grid)
+        f_operation = KernelFunctionOperation{Face, Center, Nothing}(fᶠᶠᵃ, grid, coriolis)
+        f_field  = compute!(Field(f_operation))
+        fill_halo_regions!(f_field)
+        coriolis = HydrostaticSphericalCoriolis(rotation_rate, scheme, f_field)
+    end
+
+    return coriolis
+end
+
+const PrecomputedHydrostaticSphericalCoriolis = 
+        HydrostaticSphericalCoriolis{<:Any, <:Any, <:AbstractField}
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, Face())
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, Face(), Face())
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
+
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::PrecomputedHydrostaticSphericalCoriolis) =
+    coriolis.f_field[i, j, 1]
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, U) = zero(grid)
 
@@ -110,7 +129,7 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 
 function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis) 
 
-    rotation_rate = hydrostatic_spherical_coriolis.rotation_rate
+    rotation_rate   = hydrostatic_spherical_coriolis.rotation_rate
     coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate_Earth = rotation_rate / Ω_Earth
 
