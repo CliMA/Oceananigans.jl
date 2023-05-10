@@ -59,7 +59,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, one only needs to include `architecture = GPU()` in the
+# To run this example on the GPU, include `GPU()` in the
 # constructor for `RectilinearGrid` above.
 #
 # The Stokes drift profile is
