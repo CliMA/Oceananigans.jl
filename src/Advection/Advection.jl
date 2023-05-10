@@ -50,6 +50,8 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # There is a hard cap at buffer 40.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
+@inline fᶠᶠᵃ(i, j, k, grid, ::Nothing) = zero(grid)
+
 @inline boundary_buffer(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size(scheme::AbstractAdvectionScheme{B}) where B = B
 

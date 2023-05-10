@@ -1,6 +1,5 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
-using Oceananigans.Coriolis: fᶠᶠᵃ
 
 struct EnergyConservingScheme{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
@@ -26,7 +25,7 @@ struct VectorInvariant{N, FT, Z, D, ZS, DS, V, C, M} <: AbstractAdvectionScheme{
                                        divergence_stencil::DS, vertical_scheme::V, coriolis_scheme::C) where {N, FT, Z, D, ZS, DS, V, C, M}
         return new{N, FT, Z, D, ZS, DS, V, C, M}(vorticity_scheme, divergence_scheme, 
                                                  vorticity_stencil, divergence_stencil, 
-                                                 coriolis_scheme, vertical_scheme)
+                                                 vertical_scheme, coriolis_scheme)
     end
 end
 
@@ -153,8 +152,6 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 ##### Kinetic energy gradient (always the same formulation)
 #####
 
-@inline ωᶠᶠᶜ(i, j, k, grid, coriolis, u, v) = ζᶠᶠᶜ(i, j, k, grid, u, v) + fᶠᶠᵃ(i, j, k, grid, coriolis)
-
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
@@ -224,13 +221,15 @@ end
 const UpwindVorticityVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, Nothing}
 const UpwindFullVectorInvariant      = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:AbstractUpwindBiasedAdvectionScheme}
 
+@inline ωᶠᶠᶜ(i, j, k, grid, u, v, coriolis) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + fᶠᶠᵃ(i, j, k, grid, coriolis)
+
 @inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
 
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
@@ -240,8 +239,8 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
 
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
@@ -256,8 +255,8 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, scheme.coriolis, u, v) 
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, scheme.coriolis, u, v) 
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
 
     Sδ = scheme.divergence_stencil
     
@@ -273,8 +272,8 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, scheme.coriolis, u, v) 
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, scheme.coriolis, u, v) 
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ωᶠᶠᶜ, Sζ, u, v, scheme.coriolis_scheme)
 
     Sδ = scheme.divergence_stencil
 

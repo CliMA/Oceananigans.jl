@@ -225,7 +225,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
                 uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
                 vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-            
+                
                 βᵤ = beta_loop(scheme, uₛ, $biased_β)
                 βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
@@ -374,11 +374,11 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
 
             @inline function $interpolate_func(i, j, k, grid, 
                                                scheme::WENO{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::VelocityStencil, args...) where {N, FT, XT, YT, ZT}
+                                               ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                    w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
+                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, u, v, args...)
+                    w = $weno_weights((i, j, k), scheme, Val($val), VI, u, v)
                     return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
                 end
             end

@@ -126,7 +126,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     arch = architecture(grid)
 
-    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, coriolis, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -221,9 +221,18 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
     return VectorInvariant()
 end
 
-validate_momentum_advection(momentum_advection, grid) = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, coriolis, grid) = momentum_advection
+validate_momentum_advection(momentum_advection, coriolis, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Nothing, coriolis, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+
+function validate_momentum_advection(momentum_advection::VectorInvariant, coriolis, grid::AbstractHorizontallyCurvilinearGrid) 
+  if isnothing(momentum_advection.coriolis_scheme) || isnothing(coriolis)  
+    return momentum_advection
+  end
+  
+  throw(ArgumentError("Cannot have a Coriolis scheme in both the advection and the model!"))
+  return nothing
+end
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing

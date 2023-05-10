@@ -201,11 +201,11 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
-include("Coriolis/Coriolis.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 
 # Physics, time-stepping, and models
+include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
