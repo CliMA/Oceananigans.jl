@@ -59,6 +59,8 @@ When prescribing the viscosities or diffusivities as functions, depending on the
     `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
 * `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+
+For examples see [`ScalarDiffusivity`](@ref).
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,

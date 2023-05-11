@@ -49,6 +49,39 @@ When prescribing the viscosities or diffusivities as functions, depending on the
     `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
   - `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+
+Examples
+========
+
+```jldoctest
+ulia> using Oceananigans
+
+julia> const depth_scale = 100;
+
+julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
+ν (generic function with 1 method)
+
+julia> ScalarDiffusivity(ν = ν)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
+```
+
+```jldoctest
+ulia> using Oceananigans
+
+julia> const depth_scale = 100;
+
+julia> function κ(i, j, k, grid, ℓx, ℓy, ℓz)
+           z = znode(k, grid, ℓz)
+           return κ * exp(z / depth_scale)
+       end
+κ (generic function with 1 method)
+
+julia> ScalarDiffusivity(κ = κ)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=κ (generic function with 1 method))
+
+julia> ScalarDiffusivity(κ = κ, discrete_form = true)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
+```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(), FT=Float64;
