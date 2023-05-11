@@ -45,8 +45,8 @@ Keyword arguments
 When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
 `discrete_form`, the constructor expects:
 
-  - `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for a
-    `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+  - `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
+    a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
   - `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
 
@@ -71,8 +71,8 @@ ulia> using Oceananigans
 julia> const depth_scale = 100;
 
 julia> function κ(i, j, k, grid, ℓx, ℓy, ℓz)
-           z = znode(k, grid, ℓz)
-           return κ * exp(z / depth_scale)
+           z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
+           return 2000 * exp(z / depth_scale)
        end
 κ (generic function with 1 method)
 

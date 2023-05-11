@@ -55,8 +55,8 @@ Keyword arguments
 When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
 `discrete_form`, the constructor expects:
 
-* `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for a
-    `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+* `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
+  a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
 * `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
 
