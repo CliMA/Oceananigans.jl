@@ -53,9 +53,14 @@ When prescribing the viscosities or diffusivities as functions, depending on the
 Examples
 ========
 
-```jldoctest
-ulia> using Oceananigans
+```jldoctest ScalarDiffusivity
+julia> using Oceananigans
 
+julia> ScalarDiffusivity(ν = 1000, κ=2000)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
+```
+
+```jldoctest ScalarDiffusivity
 julia> const depth_scale = 100;
 
 julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
@@ -65,12 +70,8 @@ julia> ScalarDiffusivity(ν = ν)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
 ```
 
-```jldoctest
-julia> using Oceananigans
-
+```jldoctest ScalarDiffusivity
 julia> using Oceananigans.Grids: znode
-
-julia> const depth_scale = 100;
 
 julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
            z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
