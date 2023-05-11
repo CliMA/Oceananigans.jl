@@ -66,11 +66,13 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 met
 ```
 
 ```jldoctest
-ulia> using Oceananigans
+julia> using Oceananigans
+
+julia> using Oceananigans.Grids: znode
 
 julia> const depth_scale = 100;
 
-julia> function κ(i, j, k, grid, ℓx, ℓy, ℓz)
+julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
            z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
            return 2000 * exp(z / depth_scale)
        end
