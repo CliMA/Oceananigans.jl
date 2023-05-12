@@ -219,7 +219,7 @@ its elements to do that. Consider the example below:
 ```julia
 julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(GPU(); size=(1,1,1), extent=(1,1,1))
+julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
 ├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
 ├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
@@ -235,7 +235,7 @@ NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
 
 julia> adapt(Array, model.velocities.u.data)
 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
@@ -253,7 +253,7 @@ julia> adapt(Array, model.velocities.u.data)
  0.0  0.0  0.0
  0.0  0.0  0.0
  0.0  0.0  0.0
-```
+ ```
 
 Notice that to view the `CuArray` that stores values for `u` we first need to transform
 it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
@@ -261,9 +261,9 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}:
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
 ERROR: Scalar indexing is disallowed.
 ```
 
