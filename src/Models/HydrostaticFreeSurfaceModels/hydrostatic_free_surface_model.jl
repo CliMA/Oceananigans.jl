@@ -29,7 +29,7 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSe
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
-PressureField(grid) = (; pHY′ = CenterField(grid))
+PressureField(grid) = CenterField(grid)
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}

@@ -33,7 +33,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-    fill_halo_regions!(model.pressure.pHY′)
+    fill_halo_regions!(model.pressure)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -62,6 +62,6 @@ end
 function compute_w_diffusivities_pressure!(model) 
     compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+    update_hydrostatic_pressure!(model.pressure, model.architecture, model.grid, model.buoyancy, model.tracers)
     return nothing
 end
