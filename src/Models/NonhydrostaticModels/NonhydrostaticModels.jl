@@ -61,7 +61,6 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Nonhyd
 prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
 include("solve_for_pressure.jl")
-include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")

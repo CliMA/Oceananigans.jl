@@ -197,32 +197,21 @@ TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
 #####
 
 """
-    PressureFields(grid, bcs::NamedTuple)
+    PressureField(grid, bcs::NamedTuple)
 
-Return a `NamedTuple` with pressure fields `pHY′` and `pNHS` initialized as
-`CenterField`s on `grid`.  Boundary conditions `bcs`
+Return the pressure field initialized as a `CenterField` on `grid`.  Boundary conditions `bcs`
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function PressureFields(grid, bcs=NamedTuple())
-
-    default_pressure_boundary_conditions = (; pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
+function PressureField(grid, bcs=NamedTuple())
+    default_pressure_boundary_conditions = (; pressure = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_pressure_boundary_conditions, bcs)
-
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (; pNHS=pNHS)
+    return CenterField(grid, boundary_conditions=bcs.pressure)
 end
 
-function PressureFields(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
+function PressureField(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
+    default_pressure_boundary_conditions = (; pressure = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_pressure_boundary_conditions, bcs)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (; pNHS=pNHS)
+    return CenterField(grid, boundary_conditions=bcs.pressure)
 end
 
 """
@@ -254,7 +243,7 @@ end
 #####
 
 VelocityFields(::Nothing, grid, bcs) = VelocityFields(grid, bcs)
-PressureFields(::Nothing, grid, bcs) = PressureFields(grid, bcs)
+PressureField(::Nothing, grid, bcs) = PressureField(grid, bcs)
 
 """
     VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs)
@@ -290,15 +279,13 @@ function TracerFields(proposed_tracers::NamedTuple, grid, bcs)
 end
 
 """
-    PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
+    PressureField(proposed_pressure, grid, bcs)
 
 Return a `NamedTuple` of pressure fields with, overwriting boundary conditions
 in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
 """
-function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
-    validate_field_tuple_grid("pressures", proposed_pressures, grid)
-
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS, data=proposed_pressures.pNHS.data)
-
-    return (; pNHS=pNHS)
+function PressureField(proposed_pressure, grid, bcs)
+    validate_field_grid(grid, proposed_pressure) || throw(ArgumentError("Model grid and pressure grid are not identical! " *
+                                                                        "Check that the grid used to construct pressure has the correct halo size."))
+    return CenterField(grid, boundary_conditions=bcs.pressure, data=proposed_pressure.data)
 end

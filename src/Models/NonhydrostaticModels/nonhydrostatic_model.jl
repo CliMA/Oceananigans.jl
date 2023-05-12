@@ -9,7 +9,8 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
+using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields
+import Oceananigans.Fields: PressureField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -43,7 +44,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
               tracers :: C        # Container for tracer fields
-            pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
+             pressure :: Φ        # Container for hydrostatic and nonhydrostatic pressure
    diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
@@ -67,7 +68,7 @@ end
           particles::ParticlesOrNothing = nothing,
   biogeochemistry::AbstractBGCOrNothing = nothing,
                              velocities = nothing,
-                              pressures = nothing,
+                               pressure = nothing,
                      diffusivity_fields = nothing,
                         pressure_solver = nothing,
                       immersed_boundary = nothing,
@@ -98,7 +99,7 @@ Keyword arguments
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
-  - `pressures`: Hydrostatic and non-hydrostatic pressure fields. Default: `nothing`.
+  - `pressure`: Pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
@@ -120,7 +121,7 @@ function NonhydrostaticModel(;    grid,
          particles::ParticlesOrNothing = nothing,
  biogeochemistry::AbstractBGCOrNothing = nothing,
                             velocities = nothing,
-                             pressures = nothing,
+                              pressure = nothing,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
@@ -155,7 +156,7 @@ function NonhydrostaticModel(;    grid,
     # First, we extract boundary conditions that are embedded within any _user-specified_ field tuples:
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
-                                         extract_boundary_conditions(pressures),
+                                         extract_boundary_conditions(pressure),
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
@@ -173,7 +174,7 @@ function NonhydrostaticModel(;    grid,
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    pressure           = PressureField(pressure,    grid, boundary_conditions)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
@@ -193,7 +194,7 @@ function NonhydrostaticModel(;    grid,
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
+                                pressure, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
                                 auxiliary_fields)
 
     update_state!(model)

@@ -5,7 +5,6 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 
