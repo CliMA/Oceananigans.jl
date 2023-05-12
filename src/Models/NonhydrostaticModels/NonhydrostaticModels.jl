@@ -35,7 +35,6 @@ PressureSolver(arch, grid) = error("None of the implemented pressure solvers for
 #####
 
 include("nonhydrostatic_model.jl")
-include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
 include("set_nonhydrostatic_model.jl")
 
