@@ -95,8 +95,8 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     simulation = Simulation(immersed_model, Δt=wizard, stop_time=stop_time, iteration_interval=100, progress=progress)
 
     # Output: primitive fields + computations
-    u, v, w, pHY′, pNHS, mass  = merge(immersed_model.velocities, immersed_model.pressures, immersed_model.tracers)
-    outputs = merge(immersed_model.velocities, immersed_model.pressures, immersed_model.tracers)
+    u, v, w, pressure, mass  = merge(immersed_model.velocities, immersed_model.pressure, immersed_model.tracers)
+    outputs = merge(immersed_model.velocities, immersed_model.pressure, immersed_model.tracers)
     
     data_path = experiment_name
  
@@ -137,7 +137,7 @@ function visualize_cylinder_steadystate(experiment_name)
 
     v_timeseries = FieldTimeSeries(filepath,  "v")
     
-    p_timeseries = FieldTimeSeries(filepath,  "pNHS")
+    p_timeseries = FieldTimeSeries(filepath,  "pressure")
 
     m_timeseries = FieldTimeSeries(filepath, "mass")
 
@@ -302,7 +302,7 @@ function analyze_cylinder_steadystate(experiment_name)
     u_timeseries = FieldTimeSeries(filepath,  "u")
     v_timeseries = FieldTimeSeries(filepath,  "v")
     w_timeseries = FieldTimeSeries(filepath,  "w")
-    p_timeseries = FieldTimeSeries(filepath,  "pNHS")
+    p_timeseries = FieldTimeSeries(filepath,  "pressure")
     m_timeseries = FieldTimeSeries(filepath,  "mass")
 
     # final iteration for steady state values
