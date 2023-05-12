@@ -181,6 +181,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
   on your GPU and how much of it you're using and you can run it from Julia via
+
   ```julia
   julia> ;
   shell> run(`nvidia-smi`)
@@ -198,6 +199,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   calculations by reusing the same chunk of memory. Have a look at an
   [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
   [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
+
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
@@ -253,7 +255,7 @@ julia> adapt(Array, model.velocities.u.data)
  0.0  0.0  0.0
  0.0  0.0  0.0
  0.0  0.0  0.0
- ```
+```
 
 Notice that to view the `CuArray` that stores values for `u` we first need to transform
 it into a regular `Array` using `Adapt.adapt`. If we naively try to view the `CuArray`
@@ -272,7 +274,6 @@ overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
 prototyping --- never in production-ready scripts.
-
 
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or
