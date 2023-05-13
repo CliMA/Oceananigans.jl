@@ -138,9 +138,9 @@ uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 version = "0.2.2"
 
 [[deps.DataAPI]]
-git-tree-sha1 = "e8119c1a33d267e16108be441a287a6981ba1630"
+git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.14.0"
+version = "1.15.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -489,15 +489,15 @@ version = "2.5.9"
 
 [[deps.PencilArrays]]
 deps = ["Adapt", "JSON3", "LinearAlgebra", "MPI", "OffsetArrays", "Random", "Reexport", "Requires", "StaticArrayInterface", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs", "VersionParsing"]
-git-tree-sha1 = "9d017f3a875a9f22b0649c7d72671b1b25441179"
+git-tree-sha1 = "a4ec0fdc7ada0660730a4cfe61abd519607d91b2"
 uuid = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
-version = "0.17.11"
+version = "0.17.12"
 
 [[deps.PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "602dc6232e4c2747035dd39a0e6569fccb9e9337"
+git-tree-sha1 = "2f140677bf958bec53d3717aff039fe5bba17509"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.14.3"
+version = "0.14.4"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
