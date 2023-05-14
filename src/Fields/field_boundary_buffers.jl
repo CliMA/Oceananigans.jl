@@ -17,13 +17,13 @@ FieldBoundaryBuffers(grid, data, ::Missing) = nothing
 FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
 
 function FieldBoundaryBuffers(grid, data, boundary_conditions)
+    Hx, Hy, _ = halo_size(grid)
+    arch = architecture(grid)
 
-    Hx, Hy, Hz = halo_size(grid)
-
-    west  = create_buffer_x(architecture(grid), data, Hx, boundary_conditions.west)
-    east  = create_buffer_x(architecture(grid), data, Hx, boundary_conditions.east)
-    south = create_buffer_y(architecture(grid), data, Hy, boundary_conditions.south)
-    north = create_buffer_y(architecture(grid), data, Hy, boundary_conditions.north)
+    west  = create_buffer_x(arch, data, Hx, boundary_conditions.west)
+    east  = create_buffer_x(arch, data, Hx, boundary_conditions.east)
+    south = create_buffer_y(arch, data, Hy, boundary_conditions.south)
+    north = create_buffer_y(arch, data, Hy, boundary_conditions.north)
 
     return FieldBoundaryBuffers(west, east, south, north)
 end
@@ -58,38 +58,41 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
                          Adapt.adapt(to, buff.south))
 
 """
-    fill_send_buffers(c, buffers, arch)
+    fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
 
-fills `buffers.send` from OffsetArray `c` preparing for message passing. If we are on CPU
-we do not need to fill the buffers as the transfer can happen through views
+Fill `buffers.send` from OffsetArray `c` preparing for message passing. If on CPU then
+we do not need to fill the `buffers` as the transfer can happen through `views`.
 """
 function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    # Fill x-direction
-    _fill_west_send_buffer!(parent(c), buffers.west, Hx, Nx)
-    _fill_east_send_buffer!(parent(c), buffers.east, Hx, Nx)
-
-    # Fill y-direction
+     _fill_west_send_buffer!(parent(c), buffers.west,  Hx, Nx)
+     _fill_east_send_buffer!(parent(c), buffers.east,  Hx, Nx)
     _fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
     _fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
+
+    return nothing
 end
 
 function fill_west_and_east_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
+    Hx = halo_size(grid)[1]
+    Nx = size(grid)[1]
 
     _fill_west_send_buffer!(parent(c), buffers.west, Hx, Nx)
     _fill_east_send_buffer!(parent(c), buffers.east, Hx, Nx)
+
+    return nothing
 end
 
 function fill_south_and_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
+    Hy = halo_size(grid)[2]
+    Ny = size(grid)[2]
 
     _fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
     _fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
+
+    return nothing
 end
 
 fill_west_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
@@ -105,10 +108,10 @@ fill_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) =
     _fill_north_send_buffer!(parent(c), buffers.north, halo_size(grid)[2], size(grid)[2])
 
 """
-    recv_from_buffers(c, buffers, arch)
+    recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
 
-fills OffsetArray `c` from `buffers.recv` after message passing occurred. If we are on CPU
-we do not need to fill the buffers as the transfer can happen through views
+Fill OffsetArray `c` from `buffers.recv` after message passing occurred. If on CPU then
+we do not need to fill the `buffers` as the transfer can happen through `views`.
 """
 function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
@@ -118,22 +121,28 @@ function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
      _recv_from_east_buffer!(parent(c), buffers.east,  Hx, Nx)
     _recv_from_south_buffer!(parent(c), buffers.south, Hy, Ny)
     _recv_from_north_buffer!(parent(c), buffers.north, Hy, Ny)
+
+    return nothing
 end
 
 function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
+    Hx = halo_size(grid)[1]
+    Nx = size(grid)[1]
 
     _recv_from_west_buffer!(parent(c), buffers.west, Hx, Nx)
     _recv_from_east_buffer!(parent(c), buffers.east, Hx, Nx)
+
+    return nothing
 end
 
 function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
+    Hy = halo_size(grid)[2]
+    Ny = size(grid)[2]
 
-   _recv_from_south_buffer!(parent(c), buffers.south, Hy, Ny)
-   _recv_from_north_buffer!(parent(c), buffers.north, Hy, Ny)
+    _recv_from_south_buffer!(parent(c), buffers.south, Hy, Ny)
+    _recv_from_north_buffer!(parent(c), buffers.north, Hy, Ny)
+
+    return nothing
 end
 
 recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
