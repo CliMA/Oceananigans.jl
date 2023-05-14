@@ -120,7 +120,9 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, arch) 
     global_Nx  = local_size[1] * length(p)
     idxs = default_indices(length(local_size))
     arr_out = zeros(eltype(first(ma.regional_objects)), global_Nx, local_size[2:end]...)
+
     n = local_size[1]
+
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
@@ -131,13 +133,15 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, arch) 
 end
 
 function compact_data!(global_field, global_grid, data::MultiRegionObject, p::EqualXPartition)
-    Nx, _, _ = size(global_grid)
+    Nx = size(global_grid)[1]
     n = Nx / length(p)
+
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
         interior(global_field)[init:fin, :, :] .= data[r][1:fin-init+1, :, :]
     end
+
     fill_halo_regions!(global_field)
 
     return nothing
