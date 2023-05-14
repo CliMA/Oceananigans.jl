@@ -47,7 +47,7 @@ struct South <: AbstractRegionSide end
 abstract type AbstractConnectivity end
 
 """
-    struct Connectivity
+    struct Connectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
 
 The connectivity among various regions in a multi-region partition.
 
