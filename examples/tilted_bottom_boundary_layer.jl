@@ -22,7 +22,7 @@
 #
 # ## The domain
 #
-# We create an grid with finer resolution near the bottom,
+# We create a grid with finer resolution near the bottom,
 
 using Oceananigans
 using Oceananigans.Units
