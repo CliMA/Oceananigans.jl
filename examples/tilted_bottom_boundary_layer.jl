@@ -160,7 +160,7 @@ progress_message(sim) =
             prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(200))
 
 # ## Add outputs to the simulation
 #
