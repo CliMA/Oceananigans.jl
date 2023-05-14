@@ -160,30 +160,29 @@ function inject_regional_bcs(grid, region, partition, loc, indices;
                                top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
-  west  = inject_west_boundary(region, partition, west)
-  east  = inject_east_boundary(region, partition, east)
-  south = inject_south_boundary(region, partition, south)
-  north = inject_north_boundary(region, partition, north)
+    west  = inject_west_boundary(region, partition, west)
+    east  = inject_east_boundary(region, partition, east)
+    south = inject_south_boundary(region, partition, south)
+    north = inject_north_boundary(region, partition, north)
 
-  return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
 
 function Base.show(io::IO, field::MultiRegionField)
+    bcs = field.boundary_conditions
 
-  bcs = field.boundary_conditions
+    prefix =
+        string("$(summary(field))\n",
+                "├── grid: ", summary(field.grid), "\n",
+                "├── boundary conditions: ", summary(bcs), "\n")
+    middle = isnothing(field.operand) ? "" :
+        string("├── operand: ", summary(field.operand), "\n",
+                "├── status: ", summary(field.status), "\n")
 
-  prefix =
-      string("$(summary(field))\n",
-             "├── grid: ", summary(field.grid), "\n",
-             "├── boundary conditions: ", summary(bcs), "\n")
-  middle = isnothing(field.operand) ? "" :
-      string("├── operand: ", summary(field.operand), "\n",
-             "├── status: ", summary(field.status), "\n")
+    suffix = string("└── data: ", summary(field.data), "\n",
+                    "    └── ", data_summary(field))
 
-  suffix = string("└── data: ", summary(field.data), "\n",
-                  "    └── ", data_summary(field))
-
-  print(io, prefix, middle, suffix)
+    print(io, prefix, middle, suffix)
 end
 
 xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)

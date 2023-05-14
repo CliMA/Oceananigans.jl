@@ -12,7 +12,7 @@ function fetch_output(mrf::MultiRegionField, model)
     compute_at!(field, model.clock.time)
     return parent(field)
 end
-  
+
 function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
     # TODO: support non-default indices I guess
     # for that we have to figure out how to partition indices, eg user_indices is "global"
@@ -28,7 +28,7 @@ function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) w
     serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
     serializeproperty!(file, location * "/data", parent(p))
     serializeproperty!(file, location * "/boundary_conditions", p.boundary_conditions)
-  
+
     return nothing
 end
 

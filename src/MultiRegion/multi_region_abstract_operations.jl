@@ -36,4 +36,3 @@ for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :K
                            $T{LX, LY, LZ}(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($T))...)
     end
 end
-

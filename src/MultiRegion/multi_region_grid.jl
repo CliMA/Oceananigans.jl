@@ -54,6 +54,8 @@ Keyword Arguments
              number of GPUs or the specific GPUs to allocate memory on. The number of devices does
              not need to match the number of regions.
 
+- `validate :: Boolean`: Whether to validate `devices`; defautl: `true`.
+
 Example
 =======
 
@@ -100,7 +102,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     global_topo  = topology(global_grid)
 
     FT   = eltype(global_grid)
-    
+
     args = (Reference(global_grid),
             Reference(arch), 
             local_topo, 
@@ -110,7 +112,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
             Iterate(1:length(partition)))
 
     region_grids = construct_regionally(construct_grid, args...)
-    
+
     ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
     maybe_enable_peer_access!(devices)
 
@@ -130,7 +132,7 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
     halo = halo_size(grid)
     FT   = eltype(grid)
     lon, lat, z = extent
-    return LatitudeLongitudeGrid(child_arch, FT; 
+    return LatitudeLongitudeGrid(child_arch, FT;
                                  size = size, halo = halo, radius = grid.radius,
                                  latitude = lat, longitude = lon, z = z, topology = topo,
                                  precompute_metrics = metrics_precomputed(grid))
@@ -141,7 +143,7 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size,
     return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary)
 end
 
-partition_immersed_boundary(b, args...) = 
+partition_immersed_boundary(b, args...) =
     getnamewrapper(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
 function reconstruct_global_grid(mrg)

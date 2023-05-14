@@ -50,9 +50,9 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
 
     reduced_dim = (false, false, true)
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
-                                HeptadiagonalIterativeSolver(coeffs; reduced_dim, 
+                                HeptadiagonalIterativeSolver(coeffs; reduced_dim,
                                                              template = right_hand_side,
-                                                             grid, 
+                                                             grid,
                                                              settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
@@ -78,8 +78,8 @@ end
 
 compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
     launch!(architecture(grid), grid, :xy,
-                    implicit_linearized_unified_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
+            implicit_linearized_unified_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
 
 # linearized right hand side
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
@@ -102,7 +102,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     arch = architecture(solver)
     grid = η.grid
-    
+
     @apply_regionally redistribute_lhs!(η, storage, arch, grid, Iterate(1:length(grid)), grid.partition)
 
     fill_halo_regions!(η)
