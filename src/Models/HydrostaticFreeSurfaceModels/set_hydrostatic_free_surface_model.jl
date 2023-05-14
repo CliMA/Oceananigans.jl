@@ -32,6 +32,17 @@ T₀ = rand(size(model.grid)...)
 T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
+
+model.tracers.T
+
+# output
+
+32×32×32 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 32×32×32 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+└── data: 38×38×38 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, -2:35) with eltype Float64 with indices -2:35×-2:35×-2:35
+    └── max=0.999946, min=0.0, mean=0.37433
 ```
 """
 function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
