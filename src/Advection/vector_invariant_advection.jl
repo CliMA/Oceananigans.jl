@@ -158,7 +158,7 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 ##### Vertical advection (either conservative or flux form when we upwind the divergence transport)
 #####
 
-@inline Az_qᶜᶜᶠ(i, j, k, grid, u, v, w) = Az_qᶜᶜᶠ(i, j, k, grid, w)
+@inline Az_wᶜᶜᶠ(i, j, k, grid, u, v, w) = Az_qᶜᶜᶠ(i, j, k, grid, w)
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
     
@@ -170,16 +170,16 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 
     divergence_term = upwind_biased_product(û, δᴸ, δᴿ) 
     
-    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
-    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme.vertical_scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme.vertical_scheme, u)
 
     F⁺ = ifelse(û > 0, upwind_biased_product(w̃ᴸ, uᴸ, uᴿ),
                        upwind_biased_product(w̃ᴿ, uᴸ, uᴿ))
 
-    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
-    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, u)
 
@@ -201,16 +201,16 @@ end
 
     divergence_term = upwind_biased_product(v̂, δᴸ, δᴿ) 
 
-    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
-    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k+1, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme.vertical_scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme.vertical_scheme, v)
 
     F⁺ = ifelse(v̂ > 0, upwind_biased_product(w̃ᴸ, vᴸ, vᴿ),
                        upwind_biased_product(w̃ᴿ, vᴸ, vᴿ))
 
-    w̃ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
-    w̃ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_qᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+    w̃ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, v)
 
