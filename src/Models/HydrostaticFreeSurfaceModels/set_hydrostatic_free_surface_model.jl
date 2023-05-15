@@ -16,7 +16,7 @@ for which a `set!(ϕ::AbstractField, data)` function exists.
 Example
 =======
 
-```jldoctest; using Random; Random.seed!(1234)
+```jldoctest; setup = :(using Random; Random.seed!(1234))
 using Oceananigans
 
 model = HydrostaticFreeSurfaceModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
