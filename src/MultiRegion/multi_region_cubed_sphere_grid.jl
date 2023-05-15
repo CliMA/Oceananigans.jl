@@ -129,7 +129,7 @@ of each panel.
 Example
 =======
 
-```jldoctest cubedspheregrid
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
 julia> using Oceananigans
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
@@ -142,7 +142,7 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 We can find out all connectivities of the regions of our grid. For example, to determine the
 connectivites on the South boundary of each region we can call
 
-```jldoctest cubedspheregrid
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
 julia> using Oceananigans.MultiRegion: CubedSphereConnectivity, inject_south_boundary, East, West, South, North
 
 julia> for region in 1:length(grid.partition); println("panel ", region, ": ", inject_south_boundary(region, grid.partition, 1).condition); end
@@ -156,7 +156,7 @@ panel 6: CubedSphereConnectivity{South, East}(6, 4, South(), East())
 
 Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
 
-```jldoctest cubedspheregrid
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
 julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North
 
 julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
@@ -174,6 +174,7 @@ CubedSphereConnectivity{East, West}(3, 4, East(), West())
 
 julia> inject_north_boundary(region, grid.partition, 1).condition
 CubedSphereConnectivity{North, West}(3, 5, North(), West())
+```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
