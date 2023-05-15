@@ -13,8 +13,8 @@ end
 """"
     CubedSpherePartition(; R = 1)
 
-Return a cubed sphere partition with `R` partitions in each dimension of each panel
-of the sphere.
+Return a cubed sphere partition with `R` partitions in each horizontal dimension of each
+panel of the sphere.
 """
 function CubedSpherePartition(; R = 1)
     # at the moment only CubedSpherePartitions with Rx = Ry are supported
@@ -40,17 +40,17 @@ Base.length(p::CubedSpherePartition) = p.div
 """
 utilities to get the index of the panel the index within the panel and the global index
 """
-@inline div_per_panel(panel_idx, partition::RegularCubedSpherePartition)  = partition.Rx            * partition.Ry  
+@inline div_per_panel(panel_idx, partition::RegularCubedSpherePartition)  = partition.Rx            * partition.Ry
 @inline div_per_panel(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx            * partition.Ry[panel_idx]
 @inline div_per_panel(panel_idx, partition::YRegularCubedSpherePartition) = partition.Rx[panel_idx] * partition.Ry
 
 @inline Rx(panel_idx, partition::RegularCubedSpherePartition)  = partition.Rx    
 @inline Rx(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx    
-@inline Rx(panel_idx, partition::CubedSpherePartition)         = partition.Rx[panel_idx] 
+@inline Rx(panel_idx, partition::CubedSpherePartition)         = partition.Rx[panel_idx]
 
 @inline Ry(panel_idx, partition::RegularCubedSpherePartition)  = partition.Ry    
 @inline Ry(panel_idx, partition::YRegularCubedSpherePartition) = partition.Ry    
-@inline Ry(panel_idx, partition::CubedSpherePartition)         = partition.Ry[panel_idx] 
+@inline Ry(panel_idx, partition::CubedSpherePartition)         = partition.Ry[panel_idx]
 
 @inline panel_index(r, partition)         = (r - 1) ÷ div_per_panel(r, partition) + 1
 @inline intra_panel_index(r, partition)   = mod(r - 1, div_per_panel(r, partition)) + 1
@@ -83,37 +83,6 @@ end
 
     return (; west, east, south, north)
 end
-
-# Adopted from figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
-# The configuration of the panels for the cubed sphere. Each panel is partitioned in two parts YPartition(2)
-#
-#                              ponel P5      panel P6
-#                           + ---------- + ---------- +
-#                           |     ↑↑     |     ↑↑     |
-#                           |     1W     |     1S     |
- #                           |←3N      6W→|←5E      2S→|
-#                           |------------|------------|
-#                           |←3N      6W→|←5E      2S→|
-#                           |     4N     |     4E     |
-#                 panel P3  |     ↓↓     |     ↓↓     |
-#              + ---------- +------------+------------+
-#              |     ↑↑     |     ↑↑     | 
-#              |     5W     |     5S     | 
-#              |←1N      4W→|←3E      6S→| 
-#              |------------|------------| 
-#              |←1N      4W→|←3E      6S→| 
-#              |     2N     |     2E     | 
-#              |     ↓↓     |     ↓↓     | 
-# + -----------+------------+------------+ 
-# |     ↑↑     |     ↑↑     |  panel P4
-# |     3W     |     3S     |
-# |←5N      2W→|←1E      4S→|
-# |------------|------------|
-# |←5N      2W→|←1E      4S→|
-# |     6N     |     6E     |
-# |     ↓↓     |     ↓↓     |
-# + -----------+------------+
-#    panel P1     panel P2
 
 #####
 ##### Boundary-specific Utils
@@ -182,7 +151,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
             from_panel = pidx - 1
             from_pᵢ    = Rx(from_panel, p)
             from_pⱼ    = pⱼ
-        else    
+        else
             from_side  = North()
             from_panel = mod(pidx + 3, 6) + 1
             from_pᵢ    = Rx(from_panel, p) - pⱼ + 1
@@ -210,7 +179,7 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
             from_panel = pidx + 1
             from_pᵢ    = 1
             from_pⱼ    = pⱼ
-        else    
+        else
             from_side  = South()
             from_panel = mod(pidx + 1, 6) + 1
             from_pᵢ    = Rx(from_panel, p) - pⱼ + 1
@@ -237,7 +206,7 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
             from_panel = mod(pidx + 4, 6) + 1
             from_pᵢ    = pᵢ
             from_pⱼ    = Ry(from_panel, p)
-        else    
+        else
             from_side  = East()
             from_panel = mod(pidx + 3, 6) + 1
             from_pᵢ    = Rx(from_panel, p)
@@ -279,6 +248,7 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, North(), from_side))
 end
 
+"Trivial connectivities are East ↔ West, North ↔ South. Anything else is referred to as non-trivial."
 const NonTrivialConnectivity = Union{CubedSphereConnectivity{East, South}, CubedSphereConnectivity{East, North},
                                      CubedSphereConnectivity{West, South}, CubedSphereConnectivity{West, North},
                                      CubedSphereConnectivity{South, East}, CubedSphereConnectivity{South, West},
