@@ -242,35 +242,25 @@ end
 @inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, w, u, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 @inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, w, u, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
-# @inbounds left_biased_ζ₂wᶠᶜᶠ(i, j, k, grid, scheme, Sδ, u, v, w) = _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
-# @inbounds left_biased_ζ₁wᶜᶠᶠ(i, j, k, grid, scheme, Sδ, u, v, w) = _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
+@inline function vertical_advection_U(i, j, k, grid, scheme, w, u, v)
 
-# @inbounds right_biased_ζ₂wᶠᶜᶠ(i, j, k, grid, scheme, Sδ, u, v, w) = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
-# @inbounds right_biased_ζ₁wᶜᶠᶠ(i, j, k, grid, scheme, Sδ, u, v, w) = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
+    ŵ = ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w) 
 
-# @inline function vertical_advection_U(i, j, k, grid, scheme, w, u, v)
+    ζ₂ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w) 
+    ζ₂ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w) 
 
-#     Sδ = scheme.divergence_stencil
+    return ifelse(ŵ > 0, ζ₂ᴸ, ζ₂ᴿ) / Azᶠᶜᶜ(i, j, k, grid)
+end
 
-#     @inbounds û  = u[i, j, k]
+@inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
 
-#     w̃ᴸ =  ℑzᵃᵃᶜ(i, j, k, grid,  left_biased_ζ₂wᶠᶜᶠ, scheme.divergence_scheme, Sδ, u, v, w) / Azᶠᶜᶜ(i, j, k, grid)
-#     w̃ᴿ =  ℑzᵃᵃᶜ(i, j, k, grid, right_biased_ζ₂wᶠᶜᶠ, scheme.divergence_scheme, Sδ, u, v, w) / Azᶠᶜᶜ(i, j, k, grid)
-
-#     return ifelse(û > 0, w̃ᴸ, w̃ᴿ)
-# end
-
-# @inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
-
-#     Sδ = scheme.divergence_stencil
-
-#     @inbounds v̂ = v[i, j, k]
+    ŵ = ℑyᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w) 
     
-#     w̃ᴸ =  ℑzᵃᵃᶜ(i, j, k, grid,  left_biased_ζ₁wᶜᶠᶠ, scheme.divergence_scheme, Sδ, u, v, w) / Azᶜᶠᶜ(i, j, k, grid)
-#     w̃ᴿ =  ℑzᵃᵃᶜ(i, j, k, grid, right_biased_ζ₁wᶜᶠᶠ, scheme.divergence_scheme, Sδ, u, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    ζ₁ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) 
+    ζ₁ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) 
 
-#     return ifelse(v̂ > 0, w̃ᴸ, w̃ᴿ)
-# end
+    return ifelse(ŵ > 0, ζ₁ᴸ, ζ₁ᴿ) / Azᶜᶠᶜ(i, j, k, grid)
+end
 
 
 #####
