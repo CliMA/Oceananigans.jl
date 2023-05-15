@@ -16,10 +16,10 @@ for which a `set!(ϕ::AbstractField, data)` function exists.
 Example
 =======
 
-```jldoctest
+```jldoctest; using Random; Random.seed!(1234)
 using Oceananigans
 
-model = HydrostaticFreeSurfaceModel(grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 1, 1)))
+model = HydrostaticFreeSurfaceModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -37,12 +37,12 @@ model.tracers.T
 
 # output
 
-32×32×32 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 32×32×32 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 38×38×38 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, -2:35) with eltype Float64 with indices -2:35×-2:35×-2:35
-    └── max=0.999946, min=0.0, mean=0.37433
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+    └── max=0.99985, min=0.0, mean=0.374005
 ```
 """
 function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
