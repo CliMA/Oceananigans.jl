@@ -181,6 +181,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
   on your GPU and how much of it you're using and you can run it from Julia via
+
   ```julia
   julia> ;
   shell> run(`nvidia-smi`)
@@ -198,6 +199,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   calculations by reusing the same chunk of memory. Have a look at an
   [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
   [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
+
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
@@ -219,7 +221,7 @@ its elements to do that. Consider the example below:
 ```julia
 julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(GPU(); size=(1,1,1), extent=(1,1,1))
+julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
 ├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
 ├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
@@ -235,7 +237,7 @@ NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
 
 julia> adapt(Array, model.velocities.u.data)
 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
@@ -261,9 +263,9 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}:
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
 ERROR: Scalar indexing is disallowed.
 ```
 
@@ -272,7 +274,6 @@ overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
 prototyping --- never in production-ready scripts.
-
 
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or
