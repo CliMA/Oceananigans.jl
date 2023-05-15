@@ -160,9 +160,9 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 
 @inline Az_wᶜᶜᶠ(i, j, k, grid, u, v, w) = Az_qᶜᶜᶠ(i, j, k, grid, w)
 
-# @inline function upwind_vertical_flux_U(i, j, k, grid, δ_scheme, w_scheme, Sδ, û, u, v, w)
-#     w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
-#     w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+# @inline function upwind_vertical_flux_U(i, j, k, grid, δ_scheme, w_scheme, û, u, v, w)
+#     w̃ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, u, v, w) 
+#     w̃ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, u, v, w) 
 #     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, u)
 #     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, u)
 
@@ -170,9 +170,9 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 #                          upwind_biased_product(w̃ᴿ, uᴸ, uᴿ))
 # end
 
-# @inline function upwind_vertical_flux_V(i, j, k, grid, δ_scheme, w_scheme, Sδ, v̂, u, v, w)
-#     w̃ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
-#     w̃ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, Sδ, u, v, w) 
+# @inline function upwind_vertical_flux_V(i, j, k, grid, δ_scheme, w_scheme, v̂, u, v, w)
+#     w̃ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, u, v, w) 
+#     w̃ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, Az_wᶜᶜᶠ, u, v, w) 
 #     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, v)
 #     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, v)
 
@@ -181,34 +181,30 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 # end
 
 # @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
-    
-#     Sδ = scheme.divergence_stencil
-    
+        
 #     @inbounds û = u[i, j, k]
-#     δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
-#     δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
+#     δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
+#     δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) / Azᶠᶜᶜ(i, j, k, grid)
 
 #     divergence_term = upwind_biased_product(û, δᴸ, δᴿ) 
 
 #     conservative_advection = 1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, upwind_vertical_flux_U, 
 #                                                            scheme.divergence_scheme, scheme.vertical_scheme,
-#                                                            Sδ, û, u, v, w)
+#                                                            û, u, v, w)
 #     return divergence_term + conservative_advection
 # end
 
 # @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
 
-#     Sδ = scheme.divergence_stencil
-
 #     @inbounds v̂ = v[i, j, k]
-#     δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
-#     δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, Sδ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
+#     δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
+#     δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) / Azᶜᶠᶜ(i, j, k, grid)
 
 #     divergence_term = upwind_biased_product(v̂, δᴸ, δᴿ) 
 
 #     conservative_advection = 1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, upwind_vertical_flux_V, 
 #                                                            scheme.divergence_scheme, scheme.vertical_scheme,
-#                                                            Sδ, v̂, u, v, w)
+#                                                            v̂, u, v, w)
 #     return divergence_term + conservative_advection
 # end
 
@@ -246,22 +242,21 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 
     ŵ = ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w) 
 
-    ζ₂ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w) 
-    ζ₂ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w) 
+    ζ₂ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w)  / Azᶠᶜᶜ(i, j, k, grid)
+    ζ₂ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₂wᶠᶜᶠ, u, w)  / Azᶠᶜᶜ(i, j, k, grid)
 
-    return ifelse(ŵ > 0, ζ₂ᴸ, ζ₂ᴿ) / Azᶠᶜᶜ(i, j, k, grid)
+    return ifelse(ŵ > 0, ζ₂ᴸ, ζ₂ᴿ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
 
     ŵ = ℑyᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Az_qᶜᶜᶠ, w) 
     
-    ζ₁ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) 
-    ζ₁ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) 
+    ζ₁ᴸ =   _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    ζ₁ᴿ =  _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.vertical_scheme, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
-    return ifelse(ŵ > 0, ζ₁ᴸ, ζ₁ᴿ) / Azᶜᶠᶜ(i, j, k, grid)
+    return ifelse(ŵ > 0, ζ₁ᴸ, ζ₁ᴿ)
 end
-
 
 #####
 ##### Horizontal advection 4 formulations:
