@@ -68,6 +68,7 @@ include("hybrid_order_weno.jl")
 include("stretched_weno_smoothness.jl")
 include("multi_dimensional_reconstruction.jl")
 include("vector_invariant_advection.jl")
+include("flux_form_advection.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("momentum_advection_operators.jl")

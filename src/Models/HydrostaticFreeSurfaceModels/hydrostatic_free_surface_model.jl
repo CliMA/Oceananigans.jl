@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, FluxForm
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -126,7 +126,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     arch = architecture(grid)
 
-    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, coriolis, grid)
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -221,18 +221,11 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
     return VectorInvariant()
 end
 
-validate_momentum_advection(momentum_advection, coriolis, grid) = momentum_advection
-validate_momentum_advection(momentum_advection, coriolis, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Nothing, coriolis, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
-
-function validate_momentum_advection(momentum_advection::VectorInvariant, coriolis, grid::AbstractHorizontallyCurvilinearGrid) 
-  if isnothing(momentum_advection.coriolis_scheme) || isnothing(coriolis)  
-    return momentum_advection
-  end
-  
-  throw(ArgumentError("Cannot have a Coriolis scheme in both the advection and the model!"))
-  return nothing
-end
+validate_momentum_advection(momentum_advection, grid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Nothing, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::FluxForm, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
