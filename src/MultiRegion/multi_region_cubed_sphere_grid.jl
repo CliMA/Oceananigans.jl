@@ -17,7 +17,7 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
     ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
                              panel_size,
                              z,
-                             horizontal_direction_halo = 1
+                             horizontal_direction_halo = 1,
                              z_halo = horizontal_direction_halo,
                              z_topology = Bounded,
                              radius = R_Earth,
@@ -32,8 +32,8 @@ The keywords prescribe the properties of each of the panels. Only the topology i
 direction can be prescribed and that's done via the `z_topology` keyword argumet (default: `Bounded`).
 Topologies in both horizontal directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
 
-Halo size in both horizontal dimensions must be equal and they are prescribed via the
-`horizontal_direction_halo` keyword argument. The number of halo points in the ``z``-directions
+Halo size in both horizontal dimensions _must_ be equal and they are prescribed via the
+`horizontal_direction_halo :: Integer` keyword argument. The number of halo points in the ``z``-directions
 is given by `z_halo`.
 
 The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
@@ -139,21 +139,41 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 
-To determine all the connectivities of a grid we can call, e.g.,
+We can find out all connectivities of the regions of our grid. For example, to determine the
+connectivites on the South boundary of each region we can call
 
 ```jldoctest cubedspheregrid
-julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_east_boundary, inject_north_boundary, inject_south_boundary, East, West, South, North
+julia> using Oceananigans.MultiRegion: CubedSphereConnectivity, inject_south_boundary, East, West, South, North
+
+julia> for region in 1:length(grid.partition); println("panel ", region, ": ", inject_south_boundary(region, grid.partition, 1).condition); end
+panel 1: CubedSphereConnectivity{South, North}(1, 6, South(), North())
+panel 2: CubedSphereConnectivity{South, East}(2, 6, South(), East())
+panel 3: CubedSphereConnectivity{South, North}(3, 2, South(), North())
+panel 4: CubedSphereConnectivity{South, East}(4, 2, South(), East())
+panel 5: CubedSphereConnectivity{South, North}(5, 4, South(), North())
+panel 6: CubedSphereConnectivity{South, East}(6, 4, South(), East())
+```
+
+Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
+
+```jldoctest cubedspheregrid
+julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North
 
 julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
 
-julia> for region in 1:length(grid.partition); println("panel ", region, " :", inject_south_boundary(region, grid.partition, 1).condition); end
-panel 1 :CubedSphereConnectivity{South, North}(1, 6, South(), North())
-panel 2 :CubedSphereConnectivity{South, East}(2, 6, South(), East())
-panel 3 :CubedSphereConnectivity{South, North}(3, 2, South(), North())
-panel 4 :CubedSphereConnectivity{South, East}(4, 2, South(), East())
-panel 5 :CubedSphereConnectivity{South, North}(5, 4, South(), North())
-panel 6 :CubedSphereConnectivity{South, East}(6, 4, South(), East())
-```
+julia> region=3;
+
+julia> inject_west_boundary(region, grid.partition, 1).condition
+CubedSphereConnectivity{West, North}(3, 1, West(), North())
+
+julia> inject_south_boundary(region, grid.partition, 1).condition
+CubedSphereConnectivity{South, North}(3, 2, South(), North())
+
+julia> inject_east_boundary(region, grid.partition, 1).condition
+CubedSphereConnectivity{East, West}(3, 4, East(), West())
+
+julia> inject_north_boundary(region, grid.partition, 1).condition
+CubedSphereConnectivity{North, West}(3, 5, North(), West())
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
