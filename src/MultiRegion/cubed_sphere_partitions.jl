@@ -279,10 +279,10 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, North(), from_side))
 end
 
-const NonTrivialConnectivity = Union{Connectivity{East, South}, Connectivity{East, North},
-                                     Connectivity{West, South}, Connectivity{West, North},
-                                     Connectivity{South, East}, Connectivity{South, West},
-                                     Connectivity{North, East}, Connectivity{North, West}}
+const NonTrivialConnectivity = Union{CubedSphereConnectivity{East, South}, CubedSphereConnectivity{East, North},
+                                     CubedSphereConnectivity{West, South}, CubedSphereConnectivity{West, North},
+                                     CubedSphereConnectivity{South, East}, CubedSphereConnectivity{South, West},
+                                     CubedSphereConnectivity{North, East}, CubedSphereConnectivity{North, West}}
 
 @inline flip_west_and_east_indices(buff, conn) = buff
 @inline flip_west_and_east_indices(buff, ::NonTrivialConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
