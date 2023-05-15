@@ -18,16 +18,16 @@ Adapt.adapt_structure(to, scheme::FluxForm{N, FT}) where {N, FT} =
     @inbounds û = U.u[i, j, k]
 
     return div_𝐯u(i, j, k, grid, scheme.advection, U, U.u) - 
-           v̂ * v̂ * δxᶠᶜᶜ(i, j, k, grid, Δyᶜᶜᶜ) / Azᶠᶜᶜ(i, j, k, grid) + 
-           v̂ * û * δyᶠᶜᶜ(i, j, k, grid, Δxᶠᶠᶜ) / Azᶠᶜᶜ(i, j, k, grid)
+           v̂ * v̂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) / Azᶠᶜᶜ(i, j, k, grid) + 
+           v̂ * û * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) / Azᶠᶜᶜ(i, j, k, grid)
 end
 
-@inline function U_dot_∇u(i, j, k, grid, scheme::FluxForm, U) 
+@inline function U_dot_∇v(i, j, k, grid, scheme::FluxForm, U) 
 
-    @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
     @inbounds v̂ = U.v[i, j, k]
 
-    return div_𝐯u(i, j, k, grid, scheme.advection, U, U.v) + 
-           û * v̂ * δxᶜᶠᶜ(i, j, k, grid, Δyᶠᶠᶜ) / Azᶜᶠᶜ(i, j, k, grid) -
-           û * û * δyᶜᶠᶜ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
+    return div_𝐯v(i, j, k, grid, scheme.advection, U, U.v) + 
+           û * v̂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) / Azᶜᶠᶜ(i, j, k, grid) -
+           û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
 end
