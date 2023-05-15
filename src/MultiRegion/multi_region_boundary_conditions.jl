@@ -60,7 +60,6 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
-
     arch       = architecture(mrg)
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
@@ -110,7 +109,7 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :top])
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
             return nothing
-        end   
+        end
     end
 end
 
@@ -120,7 +119,6 @@ getside(x, ::West)  = x.west
 getside(x, ::East)  = x.east
 
 function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -131,14 +129,12 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     eastdst = buffers[eastbc.condition.rank].east.recv
 
     switch_device!(getdevice(w))
-    westsrc = buffers[westbc.condition.from_rank].east.send
-    westsrc .= view(parent(w), N+1:N+H, :, :)
-    
-    switch_device!(getdevice(e))
-    eastsrc = buffers[eastbc.condition.from_rank].west.send
-    eastsrc .= view(parent(e), H+1:2H, :, :)
+    westsrc = flip_west_and_east_indices(getside(buffers[westbc.condition.from_rank], westbc.condition.from_side).send, westbc.condition)
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(e))
+    eastsrc = flip_west_and_east_indices(getside(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send, eastbc.condition)
+
+    switch_device!(getdevice(c))
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
@@ -149,7 +145,6 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
 end
 
 function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
@@ -160,14 +155,13 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
     northdst = buffers[northbc.condition.rank].north.recv
 
     switch_device!(getdevice(s))
-    southsrc = buffers[southbc.condition.from_rank].south.send
-    southsrc .= view(parent(s), :, N+1:N+H, :)
+    southsrc = flip_south_and_north_indices(getside(buffers[southbc.condition.from_rank], southbc.condition.from_side).send, southbc.condition)
 
     switch_device!(getdevice(n))
-    northsrc = buffers[northbc.condition.from_rank].north.send
-    northsrc .= view(parent(n), :, H+1:2H, :)
+    northsrc = flip_south_and_north_indices(getside(buffers[northbc.condition.from_rank], northbc.condition.from_side).send, northbc.condition)
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
+
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
@@ -182,9 +176,9 @@ end
 #####
     
 function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-    
     H = halo_size(grid)[1]
     N = size(grid)[1]
+
     w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
 
@@ -203,9 +197,9 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neig
 end
 
 function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
+
     e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
 
@@ -214,7 +208,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neig
     src .= view(parent(e), H+1:2H, :, :)
     sync_device!(getdevice(e))
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
@@ -223,10 +217,10 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neig
     return nothing
 end
 
-function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-        
+function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)        
     H = halo_size(grid)[2]
     N = size(grid)[2]
+
     s = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].south.recv
 
@@ -244,10 +238,10 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, nei
     return nothing
 end
 
-function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
-    
+function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)    
     H = halo_size(grid)[2]
     N = size(grid)[2]
+
     n = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].north.recv
     
@@ -256,7 +250,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, nei
     src .= view(parent(n), :, H+1:2H, :)
     sync_device!(getdevice(n))
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), :, N+H+1:N+2H, :)
@@ -289,7 +283,6 @@ end
 
 @inline getregion(df::DiscreteBoundaryFunction, i) =
     DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
-
 
 @inline _getregion(fc::FieldBoundaryConditions, i) =
     FieldBoundaryConditions(getregion(fc.west, i),
