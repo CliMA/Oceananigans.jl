@@ -17,7 +17,7 @@ Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 
 A vertically-implicit time-discretization of a `TurbulenceClosure`.
 
-This implies that a flux divergence such as ``𝛁 ⋅ q`` at the n-th timestep is 
+This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is 
 time-discretized as
 
 ```julia
