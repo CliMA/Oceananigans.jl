@@ -227,19 +227,8 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 @inline Az_w_∂zuᶜᶜᶠ(i, j, k, grid, u, w) = Az_qᶜᶜᶠ(i, j, k, grid, w) * ∂zᶜᶜᶠ(i, j, k, grid, ℑxᶠᵃᵃ, u)
 @inline Az_w_∂zvᶜᶜᶠ(i, j, k, grid, v, w) = Az_qᶜᶜᶠ(i, j, k, grid, w) * ∂zᶜᶜᶠ(i, j, k, grid, ℑyᵃᶠᵃ, v)
 
-@inline function biased_ζ₂wᶠᶜᶠ(i, j, k, grid, scheme, u, w)
-    @inbounds û = ℑzᵃᵃᶠ(i, j, k, grid, u)
-    wᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_w_∂zuᶜᶜᶠ, u, w)
-    wᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_w_∂zuᶜᶜᶠ, u, w)
-    return ifelse(û > 0, wᴸ, wᴿ)
-end
-
-@inline function biased_ζ₁wᶜᶠᶠ(i, j, k, grid, scheme, v, w)
-    @inbounds v̂ = ℑzᵃᵃᶠ(i, j, k, grid, v)
-    wᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_w_∂zvᶜᶜᶠ, v, w)
-    wᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_w_∂zvᶜᶜᶠ, v, w)
-    return ifelse(v̂ > 0, wᴸ, wᴿ)
-end
+@inbounds longer_ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_w_∂zuᶜᶜᶠ, u, w)
+@inbounds longer_ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_w_∂zvᶜᶜᶠ, v, w)
 
 # @inline function biased_ζ₂wᶠᶜᶠ(i, j, k, grid, scheme, u, w)
 #     @inbounds û = ℑzᵃᵃᶠ(i, j, k, grid, u)
@@ -256,10 +245,10 @@ end
 # end
 
 @inline vertical_advection_U(i, j, k, grid, scheme, w, u, v) = 
-    ℑzᵃᵃᶜ(i, j, k, grid, biased_ζ₂wᶠᶜᶠ, scheme.divergence_scheme, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+    ℑzᵃᵃᶜ(i, j, k, grid, longer_ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 
 @inline vertical_advection_V(i, j, k, grid, scheme, w, u, v) = 
-    ℑzᵃᵃᶜ(i, j, k, grid, biased_ζ₁wᶜᶠᶠ, scheme.divergence_scheme, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    ℑzᵃᵃᶜ(i, j, k, grid, longer_ζ₂wᶠᶜᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 @inline function Kuᶜᶜᶜ(i, j, k, grid, scheme, u, v) 
     ũ  =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
@@ -270,7 +259,6 @@ end
 end
 
 @inline function Kvᶜᶜᶜ(i, j, k, grid, scheme, u, v) 
-
     ṽ  =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
     vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
     vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
