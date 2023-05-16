@@ -1,7 +1,6 @@
 using Oceananigans
 using Oceananigans.Grids: xspacing
 
-# for `test_velocity_combination`
 struct SinkingParticles <: AbstractBiogeochemistry end
 biogeochemical_drift_velocity(::SinkingParticles, ::Val{:A}) = (u = ConstantField(-1), v = ZeroField(), w = ZeroField())
 
@@ -24,11 +23,6 @@ set!(model, u = 1, A = A₀)
 Nx, _, _ = size(grid)
 A_hist = zeros(1000, Nx)
 
-#=for step in 1:10
-    A_hist[step, :] = model.tracers.A[1:Nx, 1, 1]
-    time_step!(model, Δt)
-end=#
-
 A_truth = [A₀(x, 0, 0) for x in nodes(grid, Center(), Center(), Center())[1]]
 
 #@test all([all(A_hist[it, :] .≈ A_truth) for it in 1:1000])
@@ -42,13 +36,6 @@ set!(model, u = 1, A = A₀)
 
 A_hist = zeros(1000, Nx)
 
-#=for step in 1:1000
-    A_hist[step, :] = model.tracers.A[1:Nx, 1, 1]
-    time_step!(model, Δt)
-end=#
-
-#@test all([all(A_hist[it, :] .≈ A_truth) for it in 1:1000])
-
 model = NonhydrostaticModel(; grid, 
                               tracers=:A, 
                               advection = UpwindBiased(),
@@ -58,10 +45,3 @@ model = NonhydrostaticModel(; grid,
 set!(model, u = 2, A = A₀)
 
 A_hist = zeros(1000, Nx)
-
-#=for step in 1:1000
-    A_hist[step, :] = model.tracers.A[1:Nx, 1, 1]
-    time_step!(model, Δt/2)
-end=#
-
-#@test all([all(A_hist[it, :] .≈ A_truth) for it in 1:1000])

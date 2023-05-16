@@ -46,4 +46,3 @@ include("shallow_water_diffusion_operators.jl")
 include("shallow_water_cell_advection_timescale.jl")
 
 end # module
-

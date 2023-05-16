@@ -59,13 +59,6 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
             y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)    
             z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
 
-            #=
-            # Too paranoid? Correct particle position if it bounces too far.
-            x⁻, y⁻, z⁻ = node(i⁻, j⁻, k⁻, grid, c, c, c)
-            x⁺ = ifelse((x < xᴸ) | (x > xᴿ), x⁻, x⁺)
-            y⁺ = ifelse((y < yᴸ) | (y > yᴿ), y⁻, y⁺)
-            z⁺ = ifelse((z < zᴸ) | (z > zᴿ), z⁻, z⁺)
-            =#
         end
     end
 
