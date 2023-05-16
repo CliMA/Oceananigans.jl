@@ -248,7 +248,7 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
     ℑzᵃᵃᶜ(i, j, k, grid, longer_ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 
 @inline vertical_advection_V(i, j, k, grid, scheme, w, u, v) = 
-    ℑzᵃᵃᶜ(i, j, k, grid, longer_ζ₂wᶠᶜᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    ℑzᵃᵃᶜ(i, j, k, grid, longer_ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 @inline function Kuᶜᶜᶜ(i, j, k, grid, scheme, u, v) 
     ũ  =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
