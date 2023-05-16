@@ -159,16 +159,16 @@ const MultiDimensionalUpwindVectorInvariant      = VectorInvariant{<:Any, <:Any,
 # #####
 
 @inline function upwind_vertical_flux_U(i, j, k, grid, δ_scheme, w_scheme, _, u, w)
-    w̃ =     _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, Az_qᶜᶜᶠ, w) 
-    uᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, u) 
-    uᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, δ_scheme, u) 
+    w̃ =     _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, w_scheme, Az_qᶜᶜᶠ, w) 
+    uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, δ_scheme, u) 
+    uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, δ_scheme, u) 
     return upwind_biased_product(w̃, uᴸ, uᴿ)
 end
 
 @inline function upwind_vertical_flux_V(i, j, k, grid, δ_scheme, w_scheme, _, v, w)
-    w̃ =     _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, w_scheme, Az_qᶜᶜᶠ, w) 
-    vᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, v) 
-    vᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, δ_scheme, v) 
+    w̃ =     _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, w_scheme, Az_qᶜᶜᶠ, w) 
+    vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, δ_scheme, v) 
+    vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, δ_scheme, v) 
     return upwind_biased_product(w̃, vᴸ, vᴿ)
 end
 
