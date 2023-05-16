@@ -240,29 +240,24 @@ end
                          wᴸ * ∂zᶜᶠᶠ(i, j, k, grid, v))
 end
 
-@inline vertical_advection_U(i, j, k, grid, scheme, w, u, v) = 
-    ℑzᵃᵃᶜ(i, j, k, grid, biased_ζ₂wᶠᶜᶠ, scheme.divergence_scheme, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+@inline function vertical_advection_U(i, j, k, grid, scheme, w, u, v) 
+    wsch = scheme.vertical_scheme
+    dsch = scheme.divergence_scheme
+    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 
-#     wsch = scheme.vertical_scheme
-#     dsch = scheme.divergence_scheme
-#     zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
-#     zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+    return ifelse(ŵ > 0, zᴸ, zᴿ)
+end
 
-#     return ifelse(ŵ > 0, zᴸ, zᴿ)
-# end
+@inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
+    wsch = scheme.vertical_scheme
+    dsch = scheme.divergence_scheme
+    ŵ  = ℑyzᵃᶠᶜ(i, j, k, grid, w)
+    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
-@inline vertical_advection_V(i, j, k, grid, scheme, w, u, v) = 
-    ℑzᵃᵃᶜ(i, j, k, grid, biased_ζ₁wᶜᶠᶠ, scheme.divergence_scheme, v, w) / Azᶜᶠᶜ(i, j, k, grid)
-
-# @inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
-#     wsch = scheme.vertical_scheme
-#     dsch = scheme.divergence_scheme
-#     ŵ  = ℑyzᵃᶠᶜ(i, j, k, grid, w)
-#     zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
-#     zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
-
-#     return ifelse(ŵ > 0, zᴸ, zᴿ)
-# end
+    return ifelse(ŵ > 0, zᴸ, zᴿ)
+end
 
 #####
 ##### Horizontal advection 4 formulations:
