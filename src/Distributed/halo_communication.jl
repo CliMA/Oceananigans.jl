@@ -159,7 +159,7 @@ for (side, dir) in zip([:southwest, :southeast, :northwest, :northeast], [1, 2, 
     end
 end
 
-# If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
+# If more than one direction is communicating we need to add a corner passing routine!
 function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; blocking = true, kwargs...)
     
     requests = MPI.Request[]
