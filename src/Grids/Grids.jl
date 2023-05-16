@@ -137,9 +137,9 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 
 isrectilinear(grid) = false
 
-isxregular(grid) = false
-isyregular(grid) = false
-iszregular(grid) = false
+isxregular() = nothing
+isyregular() = nothing
+iszregular() = nothing
 
 isxflat(grid) = false
 isxflat(grid::AbstractGrid{<:Any, Flat}) = true
