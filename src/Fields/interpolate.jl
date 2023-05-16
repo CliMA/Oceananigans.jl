@@ -1,7 +1,9 @@
 using Oceananigans.Grids: isxregular, isyregular, iszregular, 
                           xnodes, ynodes, znodes, 
+                          λnodes, φnodes,
                           topology, 
                           xspacings, yspacings, zspacings,
+                          λspacings, φspacings,
                           isxflat, isyflat, iszflat
 
 # GPU-compatile middle point calculation
@@ -51,19 +53,38 @@ end
     end
 end
 
-####
-#### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-#### Use other methods if a more accurate interpolation is required
-####
+#####
+##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
+##### Use other methods if a more accurate interpolation is required
+#####
+
+first_x_node(grid, loc) = xnode(1, grid, loc)
+first_x_node(grid::LatitudeLongitudeGrid, loc) = λnode(1, grid, loc)
+
+first_y_node(grid, loc) = ynode(1, grid, loc)
+first_y_node(grid::LatitudeLongitudeGrid, loc) = φnode(1, grid, loc)
+
+x_interpolant_spacings(grid, loc) = xspacings(grid, loc...)
+x_interpolant_spacings(grid::LatitudeLongitudeGrid, loc) = λspacings(grid, loc...)
+
+y_interpolant_spacings(grid, loc) = yspacings(grid, loc...)
+y_interpolant_spacings(grid::LatitudeLongitudeGrid, loc) = φspacings(grid, loc...)
+
+x_interpolant_nodes(grid, loc) = xnodes(grid, loc)
+x_interpolant_nodes(grid::LatitudeLongitudeGrid, loc) = λnodes(grid, loc)
+
+y_interpolant_nodes(grid, loc) = ynodes(grid, loc)
+y_interpolant_nodes(grid::LatitudeLongitudeGrid, loc) = φnodes(grid, loc)
+
 
 @inline function fractional_x_index(x::FT, locs, grid) where {FT}
     loc = @inbounds locs[1]
     if isxflat(grid)
         return zero(grid)
     elseif isxregular(grid)
-        return FT((x - xnode(1, grid, loc)) / xspacings(grid, locs...))
+        return FT((x - first_x_node(grid, loc)) / x_interpolant_spacings(grid, locs...))
     else
-        return fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, xnodes(grid, loc)) - 1
+        return fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, x_interpolant_nodes(grid, loc)) - 1
     end
 end
 
@@ -72,9 +93,9 @@ end
     if isyflat(grid)
         return zero(grid)
     elseif isyregular(grid)
-        return FT((y - ynode(1, grid, loc)) / yspacings(grid, locs...))
+        return FT((y - first_y_node(grid, loc)) / y_interpolant_spacings(grid, locs...))
     else
-        return fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, ynodes(grid, loc)) - 1
+        return fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, y_interpolant_nodes(grid, loc)) - 1
     end
 end
 
