@@ -98,18 +98,18 @@ Example
 ```
 julia> calc_inactive_cells(2, :none, :z, :ᶜ)
 4-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, f))
- :(inactive_node(i, j, k + 0,  ibg, c, c, f))
- :(inactive_node(i, j, k + 1,  ibg, c, c, f))
- :(inactive_node(i, j, k + 2,  ibg, c, c, f))
+ :(immersed_inactive_node(i, j, k + -1, ibg, c, c, f))
+ :(immersed_inactive_node(i, j, k + 0,  ibg, c, c, f))
+ :(immersed_inactive_node(i, j, k + 1,  ibg, c, c, f))
+ :(immersed_inactive_node(i, j, k + 2,  ibg, c, c, f))
 
 julia> calc_inactive_cells(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(i + -3, j, k, ibg, c, c, c))
- :(inactive_node(i + -2, j, k, ibg, c, c, c))
- :(inactive_node(i + -1, j, k, ibg, c, c, c))
- :(inactive_node(i + 0,  j, k, ibg, c, c, c))
- :(inactive_node(i + 1,  j, k, ibg, c, c, c))
+ :(immersed_inactive_node(i + -3, j, k, ibg, c, c, c))
+ :(immersed_inactive_node(i + -2, j, k, ibg, c, c, c))
+ :(immersed_inactive_node(i + -1, j, k, ibg, c, c, c))
+ :(immersed_inactive_node(i + 0,  j, k, ibg, c, c, c))
+ :(immersed_inactive_node(i + 1,  j, k, ibg, c, c, c))
 ```
 """
 @inline function calc_inactive_stencil(buffer, shift, dir, side;
@@ -133,10 +133,10 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(immersed_inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))
+                               :(immersed_inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(immersed_inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))
     end
 
     return inactive_cells
@@ -176,8 +176,8 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
             @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
                 @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
@@ -202,19 +202,19 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 using Oceananigans.Advection: $interp
 
                 # Fallback for low order interpolation
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $alt_interp(i, j, k, ibg.underlying_grid, scheme, args...)
 
                 # Conditional high-order interpolation in Bounded directions
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
-            
+                           $alt_interp(i, j, k, ibg.underlying_grid, scheme, args...))
+                            
                 # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                             $alt_interp(i, j, k, ibg, scheme.buffer_scheme, ζ, VI, args...),
-                            $interp(i, j, k, ibg, scheme, ζ, VI, args...))
+                            $alt_interp(i, j, k, ibg.underlying_grid, scheme, ζ, VI, args...))
             end
         end
     end
@@ -232,7 +232,7 @@ for bias in (:left_biased, :right_biased)
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
                     $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
-                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
+                    $alt_interp(i, j, k, ibg.underlying_grid, scheme, ζ, VelocityStencil(), args...))
         end
     end
 end
