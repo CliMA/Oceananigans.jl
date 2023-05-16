@@ -183,8 +183,7 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neig
     dst = buffers[bc.condition.rank].west.recv
 
     switch_device!(getdevice(w))
-    src = buffers[bc.condition.from_rank].east.send
-    src .= view(parent(w), N+1:N+H, :, :)
+    src = flip_west_and_east_indices(getside(buffers[bc.condition.from_rank], bc.condition.from_side).send, bc.condition)
     sync_device!(getdevice(w))
 
     switch_device!(getdevice(c))
@@ -204,8 +203,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neig
     dst = buffers[bc.condition.rank].east.recv
 
     switch_device!(getdevice(e))
-    src = buffers[bc.condition.from_rank].west.send
-    src .= view(parent(e), H+1:2H, :, :)
+    src = flip_west_and_east_indices(getside(buffers[bc.condition.from_rank], bc.condition.from_side).send, bc.condition)
     sync_device!(getdevice(e))
 
     switch_device!(getdevice(c))
@@ -225,9 +223,8 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, nei
     dst = buffers[bc.condition.rank].south.recv
 
     switch_device!(getdevice(s))
-    src = buffers[bc.condition.from_rank].north.send
-    src .= view(parent(s), :, N+1:N+H, :)
-    sync_device!(getdevice(s))
+    src = flip_south_and_north_indices(getside(buffers[bc.condition.from_rank], bc.condition.from_side).send, bc.condition)
+    switch_device!(getdevice(s))
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -246,8 +243,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, nei
     dst = buffers[bc.condition.rank].north.recv
     
     switch_device!(getdevice(n))
-    src = buffers[bc.condition.from_rank].south.send
-    src .= view(parent(n), :, H+1:2H, :)
+    src = flip_south_and_north_indices(getside(buffers[bc.condition.from_rank], bc.condition.from_side).send, bc.condition)
     sync_device!(getdevice(n))
 
     switch_device!(getdevice(c))

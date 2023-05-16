@@ -5,38 +5,43 @@ using Rotations
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
-rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
-                                 idx == 2 ? RotY(π)*RotX(-π/2) :
+"""
+    rotation_from_panel_index(idx)
+
+Return the rotation of each panel for the connectivity described in [`ConformalCubedSphereGrid`](@ref).
+"""
+rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2) * RotY(π/2) :
+                                 idx == 2 ? RotY(π) * RotX(-π/2) :
                                  idx == 3 ? RotZ(π) :
-                                 idx == 4 ? RotX(π)*RotY(-π/2) :
-                                 idx == 5 ? RotY(π/2)*RotX(π/2) :
-                                 idx == 6 ? RotZ(π/2)*RotX(π) :
+                                 idx == 4 ? RotX(π) * RotY(-π/2) :
+                                 idx == 5 ? RotY(π/2) * RotX(π/2) :
+                                 idx == 6 ? RotZ(π/2) * RotX(π) :
                                  error("invalid panel index")
 
 """
     ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
                              panel_size,
                              z,
-                             horizontal_direction_halo = 1,
-                             z_halo = horizontal_direction_halo,
+                             horizontal_halo = 1,
+                             z_halo = horizontal_halo,
                              z_topology = Bounded,
                              radius = R_Earth,
                              partition = CubedSpherePartition(; R=1),
                              devices = nothing)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
-we refer to each of these grids as a "panel". Each panel corresponds
-to a face of the cube.
+we refer to each of these grids as a "panel". Each panel corresponds to a face of the cube.
 
-The keywords prescribe the properties of each of the panels. Only the topology in the vertical
-direction can be prescribed and that's done via the `z_topology` keyword argumet (default: `Bounded`).
-Topologies in both horizontal directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
+The keyword arguments prescribe the properties of each of the panels. Only the topology in
+the vertical direction can be prescribed and that's done via the `z_topology` keyword
+argumet (default: `Bounded`). Topologies in both horizontal directions for a `ConformalCubedSphereGrid`
+are _always_ [`FullyConnected`](@ref).
 
-Halo size in both horizontal dimensions _must_ be equal and they are prescribed via the
-`horizontal_direction_halo :: Integer` keyword argument. The number of halo points in the ``z``-directions
-is given by `z_halo`.
+Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the
+`horizontal_halo :: Integer` keyword argument. The number of halo points in the ``z``-direction
+is prescribed by the `z_halo :: Integer` keyword argument.
 
-The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
+The connectivity between the `ConformalCubedSphereGrid` panels is depicted below.
 
 ```
                           +==========+==========+
@@ -60,12 +65,15 @@ The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
     +==========+==========+
 ```
 
-The North Pole of the sphere is in panel 3 (P3) and the South Pole in panel 6 (P6).
+The North Pole of the sphere lies in the center of panel 3 (P3) and the South Pole
+in the center of panel 6 (P6).
 
-A `CubedSpherePartition(; R=2)` implies partition in 2 in each
-dimension of each panel resulting in 24 regions. In each partition
-the intra-panel `x, y` indices are in written in the center and the
-overall region index on the bottom right.
+The `partition` keyword argument prescribes the partitioning in regions within each 
+panel; see [`CubedSpherePartition`](@ref). For example, a `CubedSpherePartition(; R=2)`
+implies that each of the panels are partitioned into 2 regions in each dimension;
+this adds up, e.g., to 24 regions for the  whole sphere. In the depiction below,
+the intra-panel `x, y` indices are depicted in the center of each region and the overall
+region index is shown at the bottom right of each region.
 
 ```
                                                 +==========+==========+==========+==========+
@@ -101,7 +109,7 @@ overall region index on the bottom right.
     +-------- P 1 --------+-------- P 2 --------+
     ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
     ∥          |          ∥          |          ∥
-    ∥← (1, 1) →|← (2, 1) →∥← (1, 1) →|← (2, 1) →∥ 
+    ∥← (1, 1) →|← (2, 1) →∥← (1, 1) →|← (2, 1) →∥
     ∥          |          ∥          |          ∥
     ∥    ↓   1 |    ↓   2 ∥    ↓   5 |    ↓   6 ∥
     +==========+==========+==========+==========+
@@ -231,6 +239,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
 
+    #=
     CUDA.@allowscalar begin
         λcca = Field{Center, Center, Nothing}(grid)
         φcca = Field{Center, Center, Nothing}(grid)
@@ -243,11 +252,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         fill_halo_regions!(λcca)
         fill_halo_regions!(φcca)
 
-        for region in 1:length(grid)
-            getregion(grid, region).λᶜᶜᵃ .= getregion(λcca, region).data
-            getregion(grid, region).φᶜᶜᵃ .= getregion(φcca, region).data
-        end
-
         λfca = Field{Face, Center, Nothing}(grid)
         φfca = Field{Face, Center, Nothing}(grid)
 
@@ -258,11 +262,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
         fill_halo_regions!(λfca)
         fill_halo_regions!(φfca)
-
-        for region in 1:length(grid)
-            getregion(grid, region).λᶠᶜᵃ .= getregion(λfca, region).data
-            getregion(grid, region).φᶠᶜᵃ .= getregion(φfca, region).data
-        end
 
         λcfa = Field{Center, Face, Nothing}(grid)
         φcfa = Field{Center, Face, Nothing}(grid)
@@ -275,11 +274,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         fill_halo_regions!(λcfa)
         fill_halo_regions!(φcfa)
 
-        for region in 1:length(grid)
-            getregion(grid, region).λᶜᶠᵃ .= getregion(λcfa, region).data
-            getregion(grid, region).φᶜᶠᵃ .= getregion(φcfa, region).data
-        end
-
         λffa = Field{Face, Face, Nothing}(grid)
         φffa = Field{Face, Face, Nothing}(grid)
 
@@ -290,12 +284,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
         fill_halo_regions!(λffa)
         fill_halo_regions!(φffa)
-
-        for region in 1:length(grid)
-            getregion(grid, region).λᶠᶠᵃ .= getregion(λffa, region).data
-            getregion(grid, region).φᶠᶠᵃ .= getregion(φffa, region).data
-        end
     end
+    =#
 
     return grid
 end
@@ -319,7 +309,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                   radius = R_Earth,
                                   devices = nothing)
 
-    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition, i.e. R=1
+    # only 6-panel partition, i.e. R=1, are allowed when loading a ConformalCubedSphereGrid from file
     partition = CubedSpherePartition(; R=1)
 
     devices = validate_devices(partition, arch, devices)
@@ -340,7 +330,6 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 end
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
-    
     region_rotation = []
 
     for r in 1:length(csg.partition)

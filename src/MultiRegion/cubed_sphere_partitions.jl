@@ -10,7 +10,7 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
     CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
 end
 
-""""
+"""
     CubedSpherePartition(; R = 1)
 
 Return a cubed sphere partition with `R` partitions in each horizontal dimension of each
