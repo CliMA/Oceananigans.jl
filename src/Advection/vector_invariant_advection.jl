@@ -242,18 +242,20 @@ end
 
 @inline function vertical_advection_U(i, j, k, grid, scheme, w, u, v)
     wsch = scheme.vertical_scheme
+    dsch = scheme.divergence_scheme
     ŵ  = ℑxzᶠᵃᶜ(i, j, k, grid, w)
-    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, wsch, u, w)
-    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, wsch, u, w)
+    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₂wᶠᶜᶠ, dsch, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 
     return ifelse(ŵ > 0, zᴸ, zᴿ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme, w, u, v)
     wsch = scheme.vertical_scheme
+    dsch = scheme.divergence_scheme
     ŵ  = ℑyzᵃᶠᶜ(i, j, k, grid, w)
-    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, wsch, v, w)
-    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, wsch, v, w)
+    zᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+    zᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, wsch, biased_ζ₁wᶜᶠᶠ, dsch, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
     return ifelse(ŵ > 0, zᴸ, zᴿ)
 end
