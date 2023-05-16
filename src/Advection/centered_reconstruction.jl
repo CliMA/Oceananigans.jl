@@ -80,6 +80,23 @@ Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
 CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
+# symmetric interpolation for UpwindBiased and WENO
+@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
+@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
+@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
+
+@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
+@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
+@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
+
+@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, u, args...) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
+@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, v, args...) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
+@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
+
+@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, u, args...) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
+@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, v, args...) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
+@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
+
 # uniform centered reconstruction
 for buffer in advection_buffers
     @eval begin
