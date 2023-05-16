@@ -16,7 +16,7 @@ for which a `set!(ϕ::AbstractField, data)` function exists.
 Example
 =======
 
-```jldoctest; setup = :(using Random; Random.seed!(1234))
+```jldoctest
 using Oceananigans
 
 model = HydrostaticFreeSurfaceModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
@@ -33,16 +33,16 @@ T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
 
-model.tracers.T
+model.velocities.u
 
 # output
 
-16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
+16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-    └── max=0.99985, min=0.0, mean=0.374005
+    └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
 function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
