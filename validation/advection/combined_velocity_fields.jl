@@ -17,15 +17,10 @@ A₀(x, y, z) = x > 0.4 && x < 0.6 ? 1.0 : 0.0
 
 set!(model, u = 1, A = A₀)
 
-Δx = xspacing(1, 1, 1, grid, Center(), Center(), Center())
-Δt = 0.2 / 1.0 * Δx
-
 Nx, _, _ = size(grid)
 A_hist = zeros(1000, Nx)
 
 A_truth = [A₀(x, 0, 0) for x in nodes(grid, Center(), Center(), Center())[1]]
-
-#@test all([all(A_hist[it, :] .≈ A_truth) for it in 1:1000])
 
 model = NonhydrostaticModel(; grid, 
                               tracers=:A, 
