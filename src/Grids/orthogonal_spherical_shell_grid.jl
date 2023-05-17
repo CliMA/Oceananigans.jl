@@ -977,6 +977,6 @@ end
 @inline zspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = zspacings(grid, ℓz; with_halos)
 
 # assuming we're talking native coordinated (lat/lon) again, irregular z is not currently supported (??)
-isxregular(::OSSG) = false
-isyregular(::OSSG) = false
-iszregular(::OSSG) = true 
+@inline isxregular(::OSSG) = false
+@inline isyregular(::OSSG) = false
+@inline iszregular(::OSSG) = true 
