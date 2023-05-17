@@ -82,7 +82,7 @@ y_interpolant_nodes(grid::LatitudeLongitudeGrid, loc) = φnodes(grid, loc)
     if isxflat(grid)
         return zero(grid)
     elseif isxregular(grid)
-        return FT((x - first_x_node(grid, loc)) / x_interpolant_spacings(grid, locs...))
+        return FT((x - first_x_node(grid, loc)) / x_interpolant_spacings(grid, locs))
     else
         return fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, x_interpolant_nodes(grid, loc)) - 1
     end
@@ -93,7 +93,7 @@ end
     if isyflat(grid)
         return zero(grid)
     elseif isyregular(grid)
-        return FT((y - first_y_node(grid, loc)) / y_interpolant_spacings(grid, locs...))
+        return FT((y - first_y_node(grid, loc)) / y_interpolant_spacings(grid, locs))
     else
         return fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, y_interpolant_nodes(grid, loc)) - 1
     end
