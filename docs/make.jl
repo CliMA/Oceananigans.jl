@@ -160,9 +160,9 @@ makedocs(bib,
  checkdocs = :exports
 )
 
-@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
 
-for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+for file in vcat(glob("docs/**/*.jld2"), glob("docs/**/*.nc"))
     rm(file)
 end
 
