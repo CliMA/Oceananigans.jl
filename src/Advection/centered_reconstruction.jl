@@ -80,7 +80,7 @@ Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
 CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
-# symmetric interpolation for UpwindBiased and WENO
+# left and right biased for Centered reconstruction are just symmetric!
 @inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
 @inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
 @inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AbstractCenteredAdvectionScheme, c, args...) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)

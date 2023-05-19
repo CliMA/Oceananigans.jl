@@ -14,8 +14,6 @@ using Oceananigans.Operators
 using Oceananigans.Grids: R_Earth
 const Ω_Earth = 7.292115e-5 # [s⁻¹] https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
 
-import Oceananigans.Advection: fᶠᶠᵃ
-
 """
     AbstractRotation
 
