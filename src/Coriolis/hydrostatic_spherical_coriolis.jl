@@ -43,13 +43,16 @@ function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              scheme :: S = EnergyConservingScheme(),
                              grid = nothing) where S 
     
-    coriolis = HydrostaticSphericalCoriolis(rotation_rate, scheme, nothing)
+    coriolis = HydrostaticSphericalCoriolis{S, FT, Nothing}(scheme, rotation_rate, nothing)
 
     if !isnothing(grid)
+        FT          = eltype(grid) 
         f_operation = KernelFunctionOperation{Face, Face, Nothing}(fᶠᶠᵃ, grid, coriolis)
-        f_field  = compute!(Field(f_operation))
+        f_field     = compute!(Field(f_operation))
         fill_halo_regions!(f_field)
-        coriolis = HydrostaticSphericalCoriolis(rotation_rate, scheme, f_field)
+
+        F = typeof(f_field)
+        coriolis = HydrostaticSphericalCoriolis{S, FT, F}(rotation_rate, scheme, f_field)
     end
 
     return coriolis
