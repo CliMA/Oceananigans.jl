@@ -12,46 +12,43 @@ end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
-Δξᶜ(i, j, k, grid, ::Val{1}) = Δxᶜᵃᵃ(i, j, k, grid)
-Δξᶠ(i, j, k, grid, ::Val{1}) = Δxᶠᵃᵃ(i, j, k, grid)
-Δξᶜ(i, j, k, grid, ::Val{2}) = Δyᵃᶜᵃ(i, j, k, grid)
-Δξᶠ(i, j, k, grid, ::Val{2}) = Δyᵃᶠᵃ(i, j, k, grid)
-Δξᶜ(i, j, k, grid, ::Val{3}) = Δzᵃᵃᶜ(i, j, k, grid)
-Δξᶠ(i, j, k, grid, ::Val{3}) = Δzᵃᵃᶠ(i, j, k, grid)
 
-@kernel function compute_diagonal_general!(D, grid, dir, λx, λy)
+@kernel function compute_main_diagonals!(D, grid, λ1, λ2, dir::Val{1})
     m, n = @index(Global, NTuple)
-    mn = [m, n]
-    
+    N = getindex(size(grid), 1)
+
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    dir_1 = insert!(copy(mn), dir, 1) # [1, m, n] for dir==1, etc.
-    dir_2 = insert!(copy(mn), dir, 2) # [2, m, n] for dir==1, etc.
-    D[dir_1...] = -1 / Δξᶠ(dir_2..., grid, Val(dir)) - Δξᶜ(dir_1..., grid, Val(dir)) * (λx[m] + λy[n])
-
-    N = getindex(size(grid), dir)
+    D[1, m, n] = -1 / Δxᵃᶠᵃ(2, m, n, grid) - Δxᶜᵃᵃ(1, m, n, grid) * (λ1[m] + λ2[n])
     @unroll for q in 2:N-1
-        dir_q = insert!(copy(mn), dir, q) # [q, m, n] fot dir==1, etc.
-        dir_q_plus_1 = insert!(copy(mn), dir, q + 1) # [q, m, n] fot dir==1, etc.
-        D[dir_q...] = - (1 / Δξᶠ(dir_q_plus_1..., grid, Val(dir)) + 1 / Δξᶠ(dir_q..., grid, Val(dir))) - Δξᶜ(dir_q..., grid, Val(dir)) * (λx[m] + λy[n])
+        D[q, m, n] = - (1 / Δxᶠᵃᵃ(q+1, m, n, grid) + 1 / Δxᶠᵃᵃ(q, m, n, grid)) - Δxᶜᵃᵃ(q, m, n, grid) * (λ1[m] + λ2[n])
     end
-
-    dir_N = insert!(copy(mn), dir, N) # [N, m, n] for dir==1, etc.
-    D[dir_N...] = -1 / Δξᶠ(dir_N..., grid, Val(dir)) - Δξᶜ(dir_N..., grid, Val(dir)) * (λx[m] + λy[n])
+    D[N, m, n] = -1 / Δxᶠᵃᵃ(N, m, n, grid) - Δxᶜᵃᵃ(N, m, n, grid) * (λ1[m] + λ2[n])
 end 
 
-@kernel function compute_main_diagonals!(D, grid, λx, λy)
-    i, j = @index(Global, NTuple)
-    Nz = grid.Nz
+
+@kernel function compute_main_diagonals!(D, grid, λ1, λ2, dir::Val{2})
+    m, n = @index(Global, NTuple)
+    N = getindex(size(grid), 2)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-
-    @unroll for k in 2:Nz-1
-        D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+    D[m, 1, n] = -1 / Δyᵃᶠᵃ(m, 2, n, grid) - Δyᵃᶜᵃ(m, 1, n, grid) * (λ1[m] + λ2[n])
+    @unroll for q in 2:N-1
+        D[m, q, n] = - (1 / Δyᵃᶠᵃ(m, q+1, n, grid) + 1 / Δyᵃᶠᵃ(m, q, n, grid)) - Δyᵃᶜᵃ(m, q, n, grid) * (λ1[m] + λ2[n])
     end
+    D[m, N, n] = -1 / Δyᵃᶠᵃ(m, N, n, grid) - Δyᵃᶜᵃ(m, N, n, grid) * (λ1[m] + λ2[n])
+end 
 
-    D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
-end
+@kernel function compute_main_diagonals!(D, grid, λ1, λ2, dir::Val{3})
+    m, n = @index(Global, NTuple)
+    N = getindex(size(grid), 3)
+
+    # Using a homogeneous Neumann (zero Gradient) boundary condition:
+    D[m, n, 1] = -1 / Δzᵃᵃᶠ(m, n, 2, grid) - Δzᵃᵃᶜ(m, n, 1, grid) * (λ1[m] + λ2[n])
+    @unroll for q in 2:N-1
+        D[m, n, q] = - (1 / Δzᵃᵃᶠ(m, n, q+1, grid) + 1 / Δzᵃᵃᶠ(m, n, q, grid)) - Δzᵃᵃᶜ(m, n, q, grid) * (λ1[m] + λ2[n])
+    end
+    D[m, n, N] = -1 / Δzᵃᵃᶠ(m, n, N, grid) - Δzᵃᵃᶜ(m, n, N, grid) * (λ1[m] + λ2[n])
+end 
 
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     TX, TY, TZ = topology(grid)
@@ -78,7 +75,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Compute diagonal coefficients for each grid point
     diagonal = arch_array(arch, zeros(Nx, Ny, Nz))
-    launch!(arch, grid, :xy, compute_main_diagonals!, diagonal, grid, λx, λy)
+    launch!(arch, grid, :xy, compute_main_diagonals!, diagonal, grid, λx, λy, Val(3))
     
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid;
