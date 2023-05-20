@@ -98,9 +98,11 @@ function tilted_gravity_works(arch, FT)
     set!(model₂, b=b₂)
 
     # These have to be taken at the middle point of domain that has an odd-number size
-    @test x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
-    @test y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
-    @test z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers)
+    CUDA.@allowscalar begin
+        @test x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ x_dot_g_bᶠᶜᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
+        @test y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
+        @test z_dot_g_bᶜᶜᶠ(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ y_dot_g_bᶜᶠᶜ(2, 2, 2, grid, model₂.buoyancy, model₂.tracers)
+    end
 
     return nothing
 end
