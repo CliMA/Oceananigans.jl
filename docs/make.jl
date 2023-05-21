@@ -162,7 +162,11 @@ makedocs(bib,
 
 @info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
 
-for file in vcat(glob("docs/**/*.jld2"), glob("docs/**/*.nc"))
+for file in vcat(glob("docs/*.jld2"),
+                 glob("docs/*.nc"),
+                 glob("docs/build/generated/*.jld2"),
+                 glob("docs/build/generated/*.nc")
+                 )
     rm(file)
 end
 
