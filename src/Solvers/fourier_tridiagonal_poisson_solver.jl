@@ -77,7 +77,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
-    λ2 = poisson_eigenvalues(regular_siz2, regular_siz2, 2, regular_top2())
+    λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
 
     arch = architecture(grid)
     λ1 = arch_array(arch, λ1)
