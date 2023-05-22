@@ -136,6 +136,12 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs),
                             background_fields = (; b=B_field))
 
+# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
+# turbulence:
+
+noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+set!(model, u=noise, w=noise)
+
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
@@ -143,7 +149,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 
 using Oceananigans.Units
 
-simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
