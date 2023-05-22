@@ -162,11 +162,18 @@ makedocs(bib,
 
 @info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
 
-for file in vcat(glob("docs/*.jld2"),
-                 glob("docs/*.nc"),
-                 glob("docs/build/generated/*.jld2"),
-                 glob("docs/build/generated/*.nc")
-                 )
+recursive_find(dir, pattern) =
+    mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
+        joinpath.(root, filter(contains(pattern), files))
+    end
+
+files = []
+
+for pattern in [r"\.jld2", r"\.nc"]
+    files = vcat(files, recursive_find(@__DIR__, pattern))
+end
+
+for file in files
     rm(file)
 end
 
