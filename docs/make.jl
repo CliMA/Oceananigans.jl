@@ -162,8 +162,13 @@ makedocs(bib,
 
 @info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
 
-recursive_find(dir, pattern) =
-    mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
+"""
+    recursive_find(directory, pattern)
+
+Return list of filepaths within `directory` that fall under the `pattern::Regex`, e.g., `pattern = r"\.jl"`.
+"""
+recursive_find(directory, pattern) =
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
         joinpath.(root, filter(contains(pattern), files))
     end
 
