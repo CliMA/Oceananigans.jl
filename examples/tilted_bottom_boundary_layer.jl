@@ -22,13 +22,13 @@
 #
 # ## The domain
 #
-# We create a ``400 × 100`` meter ``x, z`` grid with ``128 × 32`` cells
-# and finer resolution near the bottom,
+# We create a grid with finer resolution near the bottom,
 
 using Oceananigans
+using Oceananigans.Units
 
-Lx = 200 # m
-Lz = 100 # m
+Lx = 200meters
+Lz = 100meters
 Nx = 64
 Nz = 64
 
@@ -136,6 +136,12 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs),
                             background_fields = (; b=B_field))
 
+# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
+# turbulence:
+
+noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+set!(model, u=noise, w=noise)
+
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
@@ -143,7 +149,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 
 using Oceananigans.Units
 
-simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
@@ -160,7 +166,7 @@ progress_message(sim) =
             prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(200))
 
 # ## Add outputs to the simulation
 #
