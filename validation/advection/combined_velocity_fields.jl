@@ -17,7 +17,7 @@ A₀(x, y, z) = x > 0.4 && x < 0.6 ? 1.0 : 0.0
 
 set!(model, u = 1, A = A₀)
 
-Nx, _, _ = size(grid)
+Nx = size(grid, 1)
 A_hist = zeros(1000, Nx)
 
 A_truth = [A₀(x, 0, 0) for x in xnodes(grid, Center(), Center(), Center())]
