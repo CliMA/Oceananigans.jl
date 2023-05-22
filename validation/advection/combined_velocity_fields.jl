@@ -20,7 +20,7 @@ set!(model, u = 1, A = A₀)
 Nx, _, _ = size(grid)
 A_hist = zeros(1000, Nx)
 
-A_truth = [A₀(x, 0, 0) for x in nodes(grid, Center(), Center(), Center())[1]]
+A_truth = [A₀(x, 0, 0) for x in xnodes(grid, Center(), Center(), Center())]
 
 model = NonhydrostaticModel(; grid, 
                               tracers=:A, 
