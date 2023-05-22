@@ -40,10 +40,10 @@ Keyword arguments
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              rotation_rate = Ω_Earth,
-                             scheme :: S = EnergyConservingScheme(),
+                             scheme :: S = EnergyConservingScheme(FT),
                              grid = nothing) where S 
     
-    coriolis = HydrostaticSphericalCoriolis{S, FT, Nothing}(scheme, rotation_rate, nothing)
+    coriolis = HydrostaticSphericalCoriolis{S, FT, Nothing}(rotation_rate, scheme, nothing)
 
     if !isnothing(grid)
         FT          = eltype(grid) 
