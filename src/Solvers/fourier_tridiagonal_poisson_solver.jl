@@ -73,8 +73,6 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     getindex(topology(grid), irregular_dimension(grid)) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the irregular direction's topology is `Bounded`.")
 
-    Nx, Ny, Nz = size(grid)
-
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
     λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
