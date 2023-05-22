@@ -22,13 +22,13 @@
 #
 # ## The domain
 #
-# We create a ``400 × 100`` meter ``x, z`` grid with ``128 × 32`` cells
-# and finer resolution near the bottom,
+# We create a grid with finer resolution near the bottom,
 
 using Oceananigans
+using Oceananigans.Units
 
-Lx = 200 # m
-Lz = 100 # m
+Lx = 200meters
+Lz = 100meters
 Nx = 64
 Nz = 64
 
@@ -160,7 +160,7 @@ progress_message(sim) =
             prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(200))
 
 # ## Add outputs to the simulation
 #
