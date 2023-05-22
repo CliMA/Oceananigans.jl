@@ -46,24 +46,24 @@ end
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
 
-@inline isregional(mrm::MultiRegionModel)        = true
-@inline devices(mrm::MultiRegionModel)           = devices(mrm.grid)
-@inline getdevice(mrm::MultiRegionModel, d)      = getdevice(mrm.grid, d)
+@inline isregional(mrm::MultiRegionModel)   = true
+@inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
+@inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline  getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
-                VectorInvariant{N, FT}(_getregion(t.vorticity_scheme, r), 
-                                       t.vorticity_stencil, 
-                                       _getregion(t.vertical_scheme, r))
+@inline  getregion(t::VectorInvariant{N, FT, M}, r) where {N, FT, M} = 
+                VectorInvariant{N, FT, M}(_getregion(t.vorticity_scheme, r), 
+                                          t.vorticity_stencil, 
+                                          _getregion(t.vertical_scheme, r))
 
-@inline _getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
-                VectorInvariant{N, FT}(getregion(t.vorticity_scheme, r), 
-                                       t.vorticity_stencil, 
-                                       getregion(t.vertical_scheme, r))
+@inline _getregion(t::VectorInvariant{N, FT, M}, r) where {N, FT, M} = 
+                VectorInvariant{N, FT, M}(getregion(t.vorticity_scheme, r), 
+                                          t.vorticity_stencil, 
+                                          getregion(t.vertical_scheme, r))
 
 function cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
