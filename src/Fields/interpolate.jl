@@ -63,17 +63,17 @@ end
     if isxflat(grid)
         return zero(grid)
     elseif isxregular(grid)
-        x₀ = @inbounds node(1, 1, 1, grid, loc...)[1]
+        x₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
 
         if grid isa RectilinearGrid
-            Δx = xspacings(grid, loc...)
+            Δx = xspacings(grid, locs...)
         elseif grid isa LatitudeLongitudeGrid
-            Δx = λspacings(grid, loc...)
+            Δx = λspacings(grid, locs...)
         end      
 
         return FT((x - x₀) / Δx)
     else
-        return @inbounds fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, nodes(grid, loc)[1]) - 1
+        return @inbounds fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, nodes(grid, locs)[1]) - 1
     end
 end
 
@@ -82,17 +82,17 @@ end
     if isyflat(grid)
         return zero(grid)
     elseif isyregular(grid)
-        y₀ = @inbounds node(1, 1, 1, grid, loc...)[1]
+        y₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
 
         if grid isa RectilinearGrid
-            Δy = yspacings(grid, loc...)
+            Δy = yspacings(grid, locs...)
         elseif grid isa LatitudeLongitudeGrid
-            Δy = φspacings(grid, loc...)
+            Δy = φspacings(grid, locs...)
         end      
 
         return FT((y - y₀) / Δy)
     else
-        return @inbounds fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, nodes(grid, loc)[2]) - 1
+        return @inbounds fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, nodes(grid, locs)[2]) - 1
     end
 end
 
