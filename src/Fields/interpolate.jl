@@ -2,9 +2,9 @@ using Oceananigans.Grids: isxregular, isyregular, iszregular,
                           xnodes, ynodes, znodes, 
                           λnodes, φnodes,
                           topology, 
-                          xspacings, yspacings, zspacings,
-                          λspacings, φspacings,
-                          isxflat, isyflat, iszflat
+                          node,
+                          isxflat, isyflat, iszflat,
+                          RectilinearGrid, LatitudeLongitudeGrid
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -58,33 +58,22 @@ end
 ##### Use other methods if a more accurate interpolation is required
 #####
 
-first_x_node(grid, loc) = xnode(1, grid, loc)
-first_x_node(grid::LatitudeLongitudeGrid, loc) = λnode(1, grid, loc)
-
-first_y_node(grid, loc) = ynode(1, grid, loc)
-first_y_node(grid::LatitudeLongitudeGrid, loc) = φnode(1, grid, loc)
-
-x_interpolant_spacings(grid, loc) = xspacings(grid, loc...)
-x_interpolant_spacings(grid::LatitudeLongitudeGrid, loc) = λspacings(grid, loc...)
-
-y_interpolant_spacings(grid, loc) = yspacings(grid, loc...)
-y_interpolant_spacings(grid::LatitudeLongitudeGrid, loc) = φspacings(grid, loc...)
-
-x_interpolant_nodes(grid, loc) = xnodes(grid, loc)
-x_interpolant_nodes(grid::LatitudeLongitudeGrid, loc) = λnodes(grid, loc)
-
-y_interpolant_nodes(grid, loc) = ynodes(grid, loc)
-y_interpolant_nodes(grid::LatitudeLongitudeGrid, loc) = φnodes(grid, loc)
-
-
 @inline function fractional_x_index(x::FT, locs, grid) where {FT}
     loc = @inbounds locs[1]
     if isxflat(grid)
         return zero(grid)
     elseif isxregular(grid)
-        return FT((x - first_x_node(grid, loc)) / x_interpolant_spacings(grid, locs))
+        x₀ = @inbounds node(1, 1, 1, grid, loc...)[1]
+
+        if grid isa RectilinearGrid
+            Δx = xspacings(grid, loc...)
+        elseif grid isa LatitudeLongitudeGrid
+            Δx = λspacings(grid, loc...)
+        end      
+
+        return FT((x - x₀) / Δx)
     else
-        return fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, x_interpolant_nodes(grid, loc)) - 1
+        return @inbounds fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, nodes(grid, loc)[1]) - 1
     end
 end
 
@@ -93,9 +82,17 @@ end
     if isyflat(grid)
         return zero(grid)
     elseif isyregular(grid)
-        return FT((y - first_y_node(grid, loc)) / y_interpolant_spacings(grid, locs))
+        y₀ = @inbounds node(1, 1, 1, grid, loc...)[1]
+
+        if grid isa RectilinearGrid
+            Δy = yspacings(grid, loc...)
+        elseif grid isa LatitudeLongitudeGrid
+            Δy = φspacings(grid, loc...)
+        end      
+
+        return FT((y - y₀) / Δy)
     else
-        return fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, y_interpolant_nodes(grid, loc)) - 1
+        return @inbounds fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, nodes(grid, loc)[2]) - 1
     end
 end
 
