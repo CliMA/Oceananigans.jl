@@ -12,10 +12,16 @@ using CairoMakie
 using Statistics
 using Printf
 
-const Lλ = 40.0 # [°] longitude extent of the domain
-const Lφ = 60.0 # [°] latitude extent of the domain
+const λ_west = -30 # [°] longitude of west boundary
+const λ_east = +30 # [°] longitude of east boundary
+const φ_south = 15 # [°] latitude of south boundary
+const φ_north = 75 # [°] latitude of north boundary
+
+Lλ = λ_east - λ_west   # [°] longitude extent of the domain
+Lφ = φ_north - φ_south # [°] latitude extent of the domain
+φ₀ = φ_south + 0.5Lφ   # [°N] latitude of the center of the domain
+
 const Lz = 1.8kilometers # depth [m]
-const φ₀ = 15.0 # [°N] latitude of the center of the domain
 
 Δt₀ = 11minutes
 stop_time = 365days
@@ -29,10 +35,11 @@ hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
 grid = LatitudeLongitudeGrid(GPU();
                              size = (Nλ, Nφ, Nz),
-                        longitude = (-Lλ/2, Lλ/2),
-                         latitude = (φ₀, φ₀ + Lφ),
+                        longitude = (λ_west, λ_east),
+                         latitude = (φ_south, φ_north),
                                 z = hyperbolically_spaced_faces,
-                         topology = (Bounded, Bounded, Bounded))
+                         topology = (Bounded, Bounded, Bounded),
+                             halo = (4, 4, 4))
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching.
 
@@ -97,7 +104,8 @@ vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDis
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO(), 
+                                                                         vertical_scheme = WENO()),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = HydrostaticSphericalCoriolis(),
