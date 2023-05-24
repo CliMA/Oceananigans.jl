@@ -53,6 +53,7 @@ function BatchedTridiagonalSolver(grid;
                                     scratch, grid, parameters)
 end
 
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
@@ -84,8 +85,8 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{1})
-    N = size(grid, tridiag_direction)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, ::Val{1})
+    N = size(grid, 1)
     m, n = @index(Global, NTuple)
 
     @inbounds begin
@@ -116,8 +117,8 @@ end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{2})
-    N = size(grid, tridiag_direction)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, ::Val{2})
+    N = size(grid, 2)
     m, n = @index(Global, NTuple)
 
     @inbounds begin
@@ -148,9 +149,11 @@ end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{3})
-    N = size(grid, tridiag_direction)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, ::Val{3})
+    N = size(grid, 3)
     m, n = @index(Global, NTuple)
+
+    display(map(typeof, (a, b, c, f)))
 
     @inbounds begin
         β  = get_coefficient(b, m, n, 1, grid, p, args...)
