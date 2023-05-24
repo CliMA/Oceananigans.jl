@@ -1,12 +1,24 @@
 @inline _multi_dimensional_reconstruction_x(args...) = multi_dimensional_reconstruction_x(args...)
 @inline _multi_dimensional_reconstruction_y(args...) = multi_dimensional_reconstruction_y(args...)
 
+#####
+##### Fifth order centered WENO reconstruction scheme
+#####
+
 const two_32 = Int32(2)
 
-## Figure them out!
+## Optimal weights for stencils 1, 2 and 3
+## Stencil 2 requires two different reconstructions to avoid
+## negative weno weights that would arise from a purely centered
+## reconstruction
+
 const γ₀¹  = (1008 + 71 * sqrt(15)) / 5240
 const γ₁¹  =  408 / 655
 const γ₂¹  = (1008 - 71 * sqrt(15)) / 5240
+
+const γ₀³  = (1008 - 71 * sqrt(15)) / 5240
+const γ₁³  =  408 / 655
+const γ₂³  = (1008 + 71 * sqrt(15)) / 5240
 
 const σ⁺ = 214/80
 const σ⁻ =  67/40
@@ -19,11 +31,8 @@ const γ₀²⁻ =   9.0 / 40 / σ⁻
 const γ₁²⁻ =  49.0 / 40 / σ⁻
 const γ₂²⁻ =   9.0 / 40 / σ⁻
 
-const γ₀³  = (1008 - 71 * sqrt(15)) / 5240
-const γ₁³  =  408 / 655
-const γ₂³  = (1008 + 71 * sqrt(15)) / 5240
-
-## Figure them out!
+## Reconstruction weights for stencils 1, 2 and 3 
+## (composed of points 0, 1, 2 each)
 const a₀¹ = ( 2 - 3*sqrt(15), -4 + 12*sqrt(15), 62 - 9 * sqrt(15)) ./ 60
 const a₁¹ = ( 2 + 3*sqrt(15),               56,  2 - 3 * sqrt(15)) ./ 60
 const a₂¹ = (62 + 9*sqrt(15), -4 - 12*sqrt(15),  2 + 3 * sqrt(15)) ./ 60
@@ -88,15 +97,15 @@ function fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
 
     return q¹ / 6 + 2 * q² / 3 + q³ / 6
 end
-@inline function multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _interpolate_y, f::Function, VI::AbstractSmoothnessStencil, args...)
+@inline function multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _interpolate_y, args...)
 
     FT = eltype(grid)
 
-    Q₋₂ = _interpolate_y(i-2, j, k, grid, scheme, f, VI, args...)
-    Q₋₁ = _interpolate_y(i-1, j, k, grid, scheme, f, VI, args...)
-    Q₀  = _interpolate_y(i,   j, k, grid, scheme, f, VI, args...)
-    Q₊₁ = _interpolate_y(i+1, j, k, grid, scheme, f, VI, args...)
-    Q₊₂ = _interpolate_y(i+2, j, k, grid, scheme, f, VI, args...)
+    Q₋₂ = _interpolate_y(i-2, j, k, grid, scheme, args...)
+    Q₋₁ = _interpolate_y(i-1, j, k, grid, scheme, args...)
+    Q₀  = _interpolate_y(i,   j, k, grid, scheme, args...)
+    Q₊₁ = _interpolate_y(i+1, j, k, grid, scheme, args...)
+    Q₊₂ = _interpolate_y(i+2, j, k, grid, scheme, args...)
 
     S₀ = (Q₋₂, Q₋₁, Q₀)
     S₁ = (Q₋₁, Q₀ , Q₊₁)
@@ -105,15 +114,15 @@ end
     return fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
 end
 
-@inline function multi_dimensional_reconstruction_y(i, j, k, grid, scheme, _interpolate_x, f::Function, VI::AbstractSmoothnessStencil, args...)
+@inline function multi_dimensional_reconstruction_y(i, j, k, grid, scheme, _interpolate_x, args...)
 
     FT = eltype(grid)
 
-    Q₋₂ = _interpolate_x(i, j-2, k, grid, scheme, f, VI, args...)
-    Q₋₁ = _interpolate_x(i, j-1, k, grid, scheme, f, VI, args...)
-    Q₀  = _interpolate_x(i, j,   k, grid, scheme, f, VI, args...)
-    Q₊₁ = _interpolate_x(i, j+1, k, grid, scheme, f, VI, args...)
-    Q₊₂ = _interpolate_x(i, j+2, k, grid, scheme, f, VI, args...)
+    Q₋₂ = _interpolate_x(i, j-2, k, grid, scheme, args...)
+    Q₋₁ = _interpolate_x(i, j-1, k, grid, scheme, args...)
+    Q₀  = _interpolate_x(i, j,   k, grid, scheme, args...)
+    Q₊₁ = _interpolate_x(i, j+1, k, grid, scheme, args...)
+    Q₊₂ = _interpolate_x(i, j+2, k, grid, scheme, args...)
 
     S₀ = (Q₋₂, Q₋₁, Q₀)
     S₁ = (Q₋₁, Q₀ , Q₊₁)
