@@ -101,6 +101,9 @@ const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, <:Enstr
 
 const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
+const UpwindVorticityVectorInvariant        = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:AbstractUpwindBiasedAdvectionScheme, true}
+
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
     + vertical_advection_U(i, j, k, grid, scheme, U.w, U.u, U.v)
@@ -148,20 +151,40 @@ end
     return upwind_biased_product(W̃, vᴸ, vᴿ)
 end
 
-@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
     @inbounds û = u[i, j, k]
-    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, flux_div_xyᶜᶜᶜ, u, v) 
-    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, flux_div_xyᶜᶜᶜ, u, v) 
-    
-    return upwind_biased_product(û, δᴸ, δᴿ) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+
+    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
-@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
     @inbounds v̂ = v[i, j, k]
-    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, flux_div_xyᶜᶜᶜ, u, v) 
-    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, flux_div_xyᶜᶜᶜ, u, v) 
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
 
-    return upwind_biased_product(v̂, δᴸ, δᴿ) 
+    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
+end
+
+@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
+    @inbounds û = u[i, j, k]
+    δvˢ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme,    _symmetric_interpolate_xᶠᵃᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme,  _left_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δuᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme, _right_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+
+    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
+end
+
+@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
+    @inbounds v̂ = v[i, j, k]
+    δuˢ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme,    _symmetric_interpolate_yᵃᶠᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme,  _left_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δvᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _right_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+
+    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end
 
 @inline function upwind_vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
@@ -183,20 +206,18 @@ end
 @inline vertical_advection_U(i, j, k, grid, scheme, w, u, v) = upwind_vertical_advection_U(i, j, k, grid, scheme, w, u, v)                         
 @inline vertical_advection_V(i, j, k, grid, scheme, w, u, v) = upwind_vertical_advection_V(i, j, k, grid, scheme, w, u, v)
 
-@inline Kvᶜᶜᶜ(i, j, k, grid, v) = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v) 
-@inline Kuᶜᶜᶜ(i, j, k, grid, u) = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) 
+@inline half_ϕ²(i, j, k, grid, ϕ) = ϕ[i, j, k]^2 / 2
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme, u, v)
 
     @inbounds û = u[i, j, k]
 
-    ∂Kv = ∂xᶠᶜᶜ(i, j, k, grid, Kvᶜᶜᶜ, v)
-
-    ∂Kuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, ∂xᶜᶜᶜ, ϕ², u) 
-    ∂Kuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, ∂xᶜᶜᶜ, ϕ², u) 
+    δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶠᵃᵃ, half_ϕ², v) 
+    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶜᵃᵃ, half_ϕ², u)
+    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶜᵃᵃ, half_ϕ², u)
     
-    ∂Kᴸ = (∂Kuᴸ + ∂Kv) / 2
-    ∂Kᴿ = (∂Kuᴿ + ∂Kv) / 2
+    ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+    ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
 
     return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
 end
@@ -205,13 +226,40 @@ end
 
     @inbounds v̂ = v[i, j, k]
 
-    ∂Ku = ∂yᶜᶠᶜ(i, j, k, grid, Kuᶜᶜᶜ, u)
-
-    ∂Kvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, ∂yᶜᶜᶜ, ϕ², v) 
-    ∂Kvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, ∂yᶜᶜᶜ, ϕ², v) 
+    δKuˢ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_xᶜᵃᵃ, δyᵃᶠᵃ, half_ϕ², u)
+    δKvᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, half_ϕ², v) 
+    δKvᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, half_ϕ², v) 
     
-    ∂Kᴸ = (∂Kvᴸ + ∂Ku) / 2 
-    ∂Kᴿ = (∂Kvᴿ + ∂Ku) / 2
+    ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
+    ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
+
+    return ifelse(v̂ > 0, ∂Kᴸ, ∂Kᴿ)
+end
+
+@inline function bernoulli_head_U(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
+
+    @inbounds û = u[i, j, k]
+
+    δKvˢ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_yᵃᶜᵃ, δxᶠᵃᵃ, half_ϕ², v) 
+    δKuᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, half_ϕ², u)
+    δKuᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, half_ϕ², u)
+    
+    ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+    ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+
+    return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
+end
+
+@inline function bernoulli_head_V(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
+
+    @inbounds v̂ = v[i, j, k]
+
+    δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶠᵃ, half_ϕ², u)
+    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶜᵃ, half_ϕ², v) 
+    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶜᵃ, half_ϕ², v) 
+    
+    ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
+    ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
 
     return ifelse(v̂ > 0, ∂Kᴸ, ∂Kᴿ)
 end
@@ -241,9 +289,6 @@ end
 ######
 ###### Upwinding scheme
 ######
-
-const UpwindVorticityVectorInvariant        = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, true}
 
 @inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v)
     
