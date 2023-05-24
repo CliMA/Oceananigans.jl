@@ -168,12 +168,12 @@ Return list of filepaths within `directory` that fall under the `pattern::Regex`
 """
 recursive_find(directory, pattern) =
     mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
-        joinpath.(root, filter(contains(pattern), files))
+        joinpath.(root, filter(endswith(pattern), files))
     end
 
 files = []
 
-for pattern in [r"\.jld2", r"\.nc"]
+for pattern in [r".jld2", r".nc"]
     files = vcat(files, recursive_find(@__DIR__, pattern))
 end
 
