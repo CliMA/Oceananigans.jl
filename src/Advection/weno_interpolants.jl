@@ -41,10 +41,10 @@ struct VelocityStencil <:AbstractSmoothnessStencil end
 reconstructions, shares arguments with the reconstruced function. the syntax is
 
 ```julia
-@inline   smoothness_function(i, j, k, grid, args...) = custom_function_smoothenss(i, j, k, grid, args...)
-@inline reconstruced_function(i, j, k, grid, args...) = custom_function_reconstruction(i, j, k, grid, args...)
+@inline   smoothness_function(i, j, k, grid, args...) = custom_smoothness_function(i, j, k, grid, args...)
+@inline reconstruced_function(i, j, k, grid, args...) = custom_reconstruction_function(i, j, k, grid, args...)
 
-smoothness_measure = FunctionStencil(smoothness_function)
+smoothness_stencil = FunctionStencil(smoothness_function)
 ```
 """
 struct FunctionStencil{F} <:AbstractSmoothnessStencil 
