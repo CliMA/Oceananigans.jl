@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: arch_array
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, RegRectilinearGrid, LatLonGrid, ImmersedBoundaryGrid
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, RegRectilinearGrid, LatLonGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans.Architectures: architecture
 
