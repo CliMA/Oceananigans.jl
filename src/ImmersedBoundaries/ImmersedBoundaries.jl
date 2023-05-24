@@ -40,6 +40,8 @@ using Oceananigans.Advection:
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z
+
+import Oceananigans.Solvers: launch_config
     
 import Base: show, summary
 import Oceananigans.Advection: cell_advection_timescale
@@ -267,6 +269,8 @@ function on_architecture(arch, ibg::IBG)
     immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
+
+launch_config(ibg::ImmersedBoundaryGrid) = grid.underlying_grid
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
 

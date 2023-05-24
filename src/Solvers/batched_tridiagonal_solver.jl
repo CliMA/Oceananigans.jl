@@ -1,6 +1,5 @@
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, RegRectilinearGrid, LatLonGrid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans.Architectures: architecture
 
@@ -59,7 +58,6 @@ launch_config(::YZRegRectilinearGrid) = :yz
 launch_config(::XZRegRectilinearGrid) = :xz
 launch_config(::XYRegRectilinearGrid) = :xy
 launch_config(::RegRectilinearGrid) = :xy
-launch_config(ibg::ImmersedBoundaryGrid) = grid.underlying_grid
 launch_config(::LatLonGrid) = :xy
 
 """
