@@ -16,10 +16,40 @@
 # where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
 #
 
+""" 
+`AbstractSmoothnessStencil`s control the smoothness polynomials used for weno weights calculation 
+in `VectorInvariant` advection formulation
+
+the syntax for reconstruction is 
+```julia
+_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function, smoothness_stencil, args...)
+```
+"""
 abstract type AbstractSmoothnessStencil end
 
+"""`DefaultStencil` uses the same polynomials used for reconstruction"""
+struct DefaultStencil <:AbstractSmoothnessStencil end
+
+"""
+`VelocityStencil` valid _only_ for vorticity reconstruction calculates the smoothness based on 
+`(Face, Face, Center)` polynomial interpolation of `u` and `v`
+"""
 struct VelocityStencil <:AbstractSmoothnessStencil end
-struct DefaultStencil  <:AbstractSmoothnessStencil end
+
+"""
+`FunctionStencil` allows using a custom function as smoothness indicators. Valid only for functional 
+reconstructions, shares arguments with the reconstruced function. the syntax is
+
+```julia
+@inline   smoothness_function(i, j, k, grid, args...) = custom_function_smoothenss(i, j, k, grid, args...)
+@inline reconstruced_function(i, j, k, grid, args...) = custom_function_reconstruction(i, j, k, grid, args...)
+
+smoothness_measure = FunctionStencil(smoothness_function)
+```
+"""
+struct FunctionStencil{F} <:AbstractSmoothnessStencil 
+    func :: F
+end
 
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
@@ -379,6 +409,18 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                 @inbounds begin
                     ψₜ = $stencil(i, j, k, scheme, ψ, grid, u, v, args...)
                     w = $weno_weights((i, j, k), scheme, Val($val), VI, u, v)
+                    return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
+                end
+            end
+
+            @inline function $interpolate_func(i, j, k, grid, 
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
+                                               ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+
+                @inbounds begin
+                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
+                    ψₛ = $stencil(i, j, k, scheme, VI.func, grid, args...)
+                    w = $weno_weights(ψₛ, scheme, Val($val), VI, args...)
                     return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
                 end
             end
