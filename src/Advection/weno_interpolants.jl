@@ -56,6 +56,8 @@ struct FunctionStencil{F} <:AbstractSmoothnessStencil
     func :: F
 end
 
+Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
+
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
@@ -423,7 +425,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                                                ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
+                    ψₜ = $stencil(i, j, k, scheme, ψ,       grid, args...)
                     ψₛ = $stencil(i, j, k, scheme, VI.func, grid, args...)
                     w = $weno_weights(ψₛ, scheme, Val($val), VI, args...)
                     return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)

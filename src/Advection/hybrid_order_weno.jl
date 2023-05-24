@@ -53,6 +53,14 @@ right_stencil_zᵃᵃᶜ(i, j, k, args...) = right_stencil_z(i, j, k+1, args...)
 
 scaling_weights(β, FT) = sum(β.^ƞ) + FT(ε)^ƞ
 
+_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.low_order_scheme, args...)
+_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.low_order_scheme, args...)
+_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.low_order_scheme, args...)
+
+_symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.low_order_scheme, args...)
+_symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.low_order_scheme, args...)
+_symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::HybridOrderWENO, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.low_order_scheme, args...)
+
 for bias in (:left, :right)
     for (dir, loc) in zip((:x, :x, :y, :y, :z, :z), (:ᶠᵃᵃ, :ᶜᵃᵃ, :ᵃᶠᵃ, :ᵃᶜᵃ, :ᵃᵃᶠ, :ᵃᵃᶜ))
         alt_interp = Symbol(:_, bias, :_biased_interpolate_, dir, loc)
