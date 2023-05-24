@@ -53,10 +53,13 @@ function BatchedTridiagonalSolver(grid;
                                     scratch, grid, parameters)
 end
 
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
-@inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{1},    args...) where {T} = @inbounds a[i]
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{2},    args...) where {T} = @inbounds a[j]
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{3},    args...) where {T} = @inbounds a[k]
+@inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, tridiag_dir, args...) where {T} = @inbounds a[i, j, k]
+
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p,         tridiag_direction, args...) = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, tridiag_direction, args...) = a(i, j, k, grid, args...)
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
@@ -90,19 +93,19 @@ end
     m, n = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, 1, m, n, grid, p, args...)
-        f₁ = get_coefficient(f, 1, m, n, grid, p, args...)
+        β  = get_coefficient(b, 1, m, n, grid, p, tridiag_direction, args...)
+        f₁ = get_coefficient(f, 1, m, n, grid, p, tridiag_direction, args...)
         ϕ[1, m, n] = f₁ / β
 
         @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, q-1, m, n, grid, p, args...)
-            bᵏ   = get_coefficient(b, q,   m, n, grid, p, args...)
-            aᵏ⁻¹ = get_coefficient(a, q-1, m, n, grid, p, args...)
+            cᵏ⁻¹ = get_coefficient(c, q-1, m, n, grid, p, tridiag_direction, args...)
+            bᵏ   = get_coefficient(b, q,   m, n, grid, p, tridiag_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, q-1, m, n, grid, p, tridiag_direction, args...)
 
             t[q, m, n] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[q, m, n]
 
-            fᵏ = get_coefficient(f, q, m, n, grid, p, args...)
+            fᵏ = get_coefficient(f, q, m, n, grid, p, tridiag_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
@@ -122,19 +125,19 @@ end
     m, n = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, m, 1, n, grid, p, args...)
-        f₁ = get_coefficient(f, m, 1, n, grid, p, args...)
+        β  = get_coefficient(b, m, 1, n, grid, p, tridiag_direction, args...)
+        f₁ = get_coefficient(f, m, 1, n, grid, p, tridiag_direction, args...)
         ϕ[m, 1, n] = f₁ / β
 
         @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, m, q-1, n, grid, p, args...)
-            bᵏ   = get_coefficient(b, m, q,   n, grid, p, args...)
-            aᵏ⁻¹ = get_coefficient(a, m, q-1, n, grid, p, args...)
+            cᵏ⁻¹ = get_coefficient(c, m, q-1, n, grid, p, tridiag_direction, args...)
+            bᵏ   = get_coefficient(b, m, q,   n, grid, p, tridiag_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, m, q-1, n, grid, p, tridiag_direction, args...)
 
             t[m, q, n] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[m, q, n]
 
-            fᵏ = get_coefficient(f, m, q, n, grid, p, args...)
+            fᵏ = get_coefficient(f, m, q, n, grid, p, tridiag_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
@@ -149,26 +152,24 @@ end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, ::Val{3})
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{3})
     N = size(grid, 3)
     m, n = @index(Global, NTuple)
 
-    display(map(typeof, (a, b, c, f)))
-
     @inbounds begin
-        β  = get_coefficient(b, m, n, 1, grid, p, args...)
-        f₁ = get_coefficient(f, m, n, 1, grid, p, args...)
+        β  = get_coefficient(b, m, n, 1, grid, p, tridiag_direction, args...)
+        f₁ = get_coefficient(f, m, n, 1, grid, p, tridiag_direction, args...)
         ϕ[m, n, 1] = f₁ / β
 
         @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, m, n, q-1, grid, p, args...)
-            bᵏ   = get_coefficient(b, m, n, q,   grid, p, args...)
-            aᵏ⁻¹ = get_coefficient(a, m, n, q-1, grid, p, args...)
+            cᵏ⁻¹ = get_coefficient(c, m, n, q-1, grid, p, tridiag_direction, args...)
+            bᵏ   = get_coefficient(b, m, n, q,   grid, p, tridiag_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, m, n, q-1, grid, p, tridiag_direction, args...)
 
             t[m, n, q] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[m, n, q]
 
-            fᵏ = get_coefficient(f, m, n, q, grid, p, args...)
+            fᵏ = get_coefficient(f, m, n, q, grid, p, tridiag_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
