@@ -18,12 +18,14 @@
 
 """ 
 `AbstractSmoothnessStencil`s control the smoothness polynomials used for weno weights calculation 
-in `VectorInvariant` advection formulation
+in `VectorInvariant` advection formulation. 
 
-the syntax for reconstruction is 
-```julia
-_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function, smoothness_stencil, args...)
-```
+They can be used only for functional reconstructions:
+`_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function`
+
+For scalar reconstructions as
+`_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField`
+the smoothness is assessed from recontruction polynomials of `reconstruced_field`
 """
 abstract type AbstractSmoothnessStencil end
 
@@ -37,8 +39,11 @@ struct DefaultStencil <:AbstractSmoothnessStencil end
 struct VelocityStencil <:AbstractSmoothnessStencil end
 
 """
-`FunctionStencil` allows using a custom function as smoothness indicators. Valid only for functional 
-reconstructions, shares arguments with the reconstruced function. the syntax is
+`FunctionStencil` allows using a custom function as smoothness indicators. 
+The custom function should share arguments with the reconstruced function. 
+
+Example:
+========
 
 ```julia
 @inline   smoothness_function(i, j, k, grid, args...) = custom_smoothness_function(i, j, k, grid, args...)
