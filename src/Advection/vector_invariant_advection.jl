@@ -144,36 +144,36 @@ const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:Ab
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
 
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
     @inbounds û = u[i, j, k]
-    δvˢ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme,    _symmetric_interpolate_xᶠᵃᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
-    δuᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme,  _left_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
-    δuᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme, _right_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvˢ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_xᶠᵃᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δuᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_xᶠᵃᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
 
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
     @inbounds v̂ = v[i, j, k]
-    δuˢ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme,    _symmetric_interpolate_yᵃᶠᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
-    δvᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme,  _left_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
-    δvᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _right_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δuˢ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_yᵃᶠᵃ, δxᶜᵃᵃ, Ax_qᶠᶜᶜ, u) 
+    δvᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
+    δvᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_yᵃᶠᵃ, δyᵃᶜᵃ, Ay_qᶜᶠᶜ, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end

@@ -15,7 +15,7 @@ using Oceananigans.Advection:
         _right_biased_interpolate_yᵃᶜᵃ,
         _right_biased_interpolate_yᵃᶠᵃ
 
-advection_schemes = [Centered] #, UpwindBiased, WENO]
+advection_schemes = [Centered, UpwindBiased, WENO]
 
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
