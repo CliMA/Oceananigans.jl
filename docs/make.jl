@@ -174,7 +174,7 @@ recursive_find(directory, pattern) =
 files = []
 
 for pattern in [r"\.jld2", r"\.nc"]
-    files = vcat(files, recursive_find(@__DIR__, pattern))
+    global files = vcat(files, recursive_find(@__DIR__, pattern))
 end
 
 @show files
