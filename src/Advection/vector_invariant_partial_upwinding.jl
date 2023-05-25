@@ -1,7 +1,7 @@
 const VectorInvariantPartialVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:PartialUpwinding}
 
 ##### 
-##### Partial Upwinding of Divergence Flux (Most stable formulation)
+##### Partial Upwinding of Divergence Flux 
 #####
 
 @inline δ_U(i, j, k, grid, u, v) =  δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
@@ -30,4 +30,40 @@ end
     δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δ_V, scheme.v_stencil, u, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
+end
+
+#####
+##### Partial Upwinding of Kinetic Energy Gradient 
+#####
+
+const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+
+@inline half_ϕ²(i, j, k, grid, ϕ) = ϕ[i, j, k]^2 / 2
+
+@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
+
+    @inbounds û = u[i, j, k]
+
+    δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δxᶠᵃᵃ, half_ϕ², v) 
+    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δxᶜᵃᵃ, half_ϕ², u)
+    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δxᶜᵃᵃ, half_ϕ², u)
+    
+    ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+    ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+
+    return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
+end
+
+@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
+
+    @inbounds v̂ = v[i, j, k]
+
+    δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δyᵃᶠᵃ, half_ϕ², u)
+    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δyᵃᶜᵃ, half_ϕ², v) 
+    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δyᵃᶜᵃ, half_ϕ², v) 
+    
+    ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
+    ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
+
+    return ifelse(v̂ > 0, ∂Kᴸ, ∂Kᴿ)
 end

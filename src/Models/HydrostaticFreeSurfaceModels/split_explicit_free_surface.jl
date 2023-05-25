@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
 
 using Adapt
@@ -50,8 +51,8 @@ Keyword Arguments
 
 - `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
 """
-SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
-    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(; kwargs...))
+SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) =
+    SplitExplicitFreeSurface(nothing, nothing, nothing, FT(gravitational_acceleration), SplitExplicitSettings(FT; kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -63,13 +64,13 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
                                     free_surface.settings)
 end
 
-function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
+function SplitExplicitFreeSurface(grid::AbstractGrid; gravitational_acceleration = g_Earth,
                                         settings = SplitExplicitSettings(eltype(grid); substeps = 200))
 
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
-                                    gravitational_acceleration, settings)
+                                    eltype(grid)(gravitational_acceleration), settings)
 end
 
 """

@@ -2,11 +2,11 @@ const VectorInvariantSplitVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:A
 
 #####
 ##### Split upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
-##### the difference operator instead of outside. This allows angular momentum conservation.
+##### the difference operator instead of outside. _MOST_ stable formulation
 ##### 
 
 ##### 
-##### Split Upwinding of Divergence flux (untested yet)
+##### Split Upwinding of Divergence flux
 #####
 
 @inline function Auᶜᶜᶜ(i, j, k, grid, scheme, u) 
@@ -30,7 +30,7 @@ end
 @inline Auᶠᶠᶜ(i, j, k, grid, scheme, u) = 
      _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
 
-@inline Avᶠᶠᶜ(i, j, k, grid, scheme, u) = 
+@inline Avᶠᶠᶜ(i, j, k, grid, scheme, v) = 
      _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSplitVerticalUpwinding, u, v) 
@@ -52,7 +52,7 @@ end
 end
 
 ##### 
-##### Split Upwinding of Bernoulli term
+##### Split Upwinding of Kinetic Energy gradient
 #####
 
 @inline function uᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, u) 

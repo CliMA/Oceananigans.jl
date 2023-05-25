@@ -88,9 +88,9 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness v: FunctionStencil f = divergence_smoothness
 ```
 """
-function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
+function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = WENO(order = 9), 
                            vorticity_stencil    = VelocityStencil(),
-                           vertical_scheme      = EnergyConservingScheme(),
+                           vertical_scheme      = WENO(order = 5),
                            upwinding_treatment  = FullUpwinding(),
                            u_stencil            = FunctionStencil(divergence_smoothness),
                            v_stencil            = FunctionStencil(divergence_smoothness),
