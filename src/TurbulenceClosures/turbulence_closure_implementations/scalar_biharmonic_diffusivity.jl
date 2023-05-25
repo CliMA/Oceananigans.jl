@@ -45,12 +45,22 @@ Arguments
 Keyword arguments
 =================
 
-  - `ν`: Viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
 
-  - `κ`: Diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-         `NamedTuple` of diffusivities with entries for each tracer.
+* `κ`: Diffusivity. `Number`, three-dimensional `AbstractArray`, `Field`, `Function`, or
+       `NamedTuple` of diffusivities with entries for each tracer.
 
-  - `discrete_form`: `Boolean`.
+* `discrete_form`: `Boolean`; default: `False`.
+
+When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
+`discrete_form`, the constructor expects:
+
+* `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
+  a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+
+* `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+
+For examples see [`ScalarDiffusivity`](@ref).
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,

@@ -49,23 +49,40 @@ Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependent
                                Riᵟ = 0.4,
                                warning = true)
 
-Return a closure that estimates the vertical viscosity and diffusivit
+Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
 a decreasing function of the Richardson number, ``Ri``. 
 
-Keyword Arguments
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                         which integrates the terms involving only ``z``-derivatives in the
+                         viscous and diffusive fluxes with an implicit time discretization.
+                         Default `VerticallyImplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
+
+Keyword arguments
 =================
 
 * `Ri_dependent_tapering`: The ``Ri``-dependent tapering.
   Options are: `PiecewiseLinearRiDependentTapering()`,
   `HyperbolicTangentRiDependentTapering()` (default), and
   `ExponentialRiDependentTapering()`.
+
 * `ν₀`: Non-convective viscosity.
+
 * `κ₀`: Non-convective diffusivity for tracers.
+
 * `κᶜᵃ`: Convective adjustment diffusivity for tracers.
+
 * `Cᵉⁿ`: Entrainment coefficient for tracers.
+
 * `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity.
+
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
+
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),

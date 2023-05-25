@@ -70,7 +70,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
-             + x_dot_g_b(i, j, k, grid, buoyancy, tracers)
+             + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.u(i, j, k, grid, clock, model_fields))
 end
 
@@ -128,7 +128,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
-             + y_dot_g_b(i, j, k, grid, buoyancy, tracers)
+             + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
