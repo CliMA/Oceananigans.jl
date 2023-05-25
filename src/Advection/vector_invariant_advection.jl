@@ -4,23 +4,31 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
 struct EnergyConservingScheme{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 
+abstract type AbstractUpwindingTreatment end
+
+struct FullUpwinding    <: AbstractUpwindingTreatment end
+struct PartialUpwinding <: AbstractUpwindingTreatment end
+struct SplitUpwinding   <: AbstractUpwindingTreatment end
+
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
-struct VectorInvariant{N, FT, Z, ZS, V, US, VS, M} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, Z, ZS, V, D, US, VS, M} <: AbstractAdvectionScheme{N, FT}
     "reconstruction scheme for vorticity flux"
-    vorticity_scheme   :: Z
+    vorticity_scheme     :: Z
     "stencil used for assessing vorticity smoothness"
-    vorticity_stencil  :: ZS
+    vorticity_stencil    :: ZS
     "stencil used for assessing divergence smoothness"
-    vertical_scheme    :: V
+    vertical_scheme      :: V
+    "treatment of upwinding"
+    upwinding_treatment  :: D
     "stencil used for assessing u-derivative smoothness"
-    u_stencil          :: US
+    u_stencil            :: US
     "stencil used for assessing v-derivative smoothness"
-    v_stencil          :: VS
-
-    function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, u_stencil::US, v_stencil::VS) where {N, FT, Z, ZS, V, US, VS, M}
-        return new{N, FT, Z, ZS, V, US, VS, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, u_stencil, v_stencil)
+    v_stencil            :: VS
+    
+    function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, upwinding_treatment::D, u_stencil::US, v_stencil::VS) where {N, FT, Z, ZS, V, D, US, VS, M}
+        return new{N, FT, Z, ZS, V, D, US, VS, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment, u_stencil, v_stencil)
     end
 end
 
@@ -58,10 +66,10 @@ Examples
 julia> using Oceananigans
 
 julia> VectorInvariant()
-Vector Invariant reconstruction, maximum order 1 
+Vector Invariant, Dimension-by-dimension reconstruction 
  Vorticity flux scheme: 
-    └── EnstrophyConservingScheme{Float64} 
- Vertical advection scheme: 
+    └── EnstrophyConservingScheme{Float64}
+ Vertical advection / Divergence flux scheme: 
     └── EnergyConservingScheme{Float64}
 
 ```
@@ -75,30 +83,31 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
     └── WENO reconstruction order 3
-      └── smoothness u: FunctionStencil f = velocity_smoothness_U 
-      └── smoothness v: FunctionStencil f = velocity_smoothness_V
+      └── upwinding treatment: Oceananigans.Advection.FullUpwinding()
+      └── smoothness u: FunctionStencil f = divergence_smoothness 
+      └── smoothness v: FunctionStencil f = divergence_smoothness
 ```
 """
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
-                           vorticity_stencil = VelocityStencil(),
-                           vertical_scheme   = EnergyConservingScheme(),
-                           u_stencil         = FunctionStencil(divergence_smoothness),
-                           v_stencil         = FunctionStencil(divergence_smoothness),
+                           vorticity_stencil    = VelocityStencil(),
+                           vertical_scheme      = EnergyConservingScheme(),
+                           upwinding_treatment  = FullUpwinding(),
+                           u_stencil            = FunctionStencil(divergence_smoothness),
+                           v_stencil            = FunctionStencil(divergence_smoothness),
                            multi_dimensional_stencil = false) where {N, FT}
         
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, u_stencil, v_stencil)
+    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment, u_stencil, v_stencil)
 end
 
-const VectorInvariantEnergyConserving    = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
-const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
-
+const VectorInvariantEnergyConserving            = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnstrophyConserving         = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
 const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
-const UpwindVorticityVectorInvariant        = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, true}
+const VectorInvariantUpwindVorticity  = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 
-Base.summary(a::VectorInvariant)                       = string("Vector Invariant, Dimension-by-dimension reconstruction")
-Base.summary(a::MultiDimensionalUpwindVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
+Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
+Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
 
 Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
@@ -107,16 +116,18 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               "$(a.vorticity_scheme isa WENO ? "\n      └── smoothness ζ: $(a.vorticity_stencil)\n" : "\n")",
               " Vertical advection / Divergence flux scheme: ", "\n",
               "    └── $(summary(a.vertical_scheme))",
+              "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
               "$(a.vertical_scheme isa WENO ? "\n      └── smoothness u: $(a.u_stencil) \n      └── smoothness v: $(a.v_stencil)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, US, VS, M}) where {N, FT, Z, ZS, V, US, VS, M} =
+Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, M}) where {N, FT, Z, ZS, V, D, US, VS, M} =
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
+                                  Adapt.adapt(to, scheme.upwinding_treatment),
                                   Adapt.adapt(to, scheme.u_stencil),
                                   Adapt.adapt(to, scheme.v_stencil))
 
@@ -130,16 +141,30 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, US, VS, M}) w
     + vertical_advection_V(i, j, k, grid, scheme, U.w, U.u, U.v)
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
+# Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
+for bias in (:_left_biased, :_right_biased, :_symmetric)
+    for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
+        interp_func = Symbol(bias, :_interpolate_, dir1)
+        multidim_interp   = Symbol(:_multi_dimensional_reconstruction_, dir2)
+
+        @eval begin
+            $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) = 
+                    $interp_func(i, j, k, grid, interp_scheme, args...)
+            $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
+                    $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
+        end
+    end
+end
+
 #####
 #####  Vertical advection + Kinetic Energy gradient. 3 Formulations:
 #####  1. Energy conserving
-#####  2. Dimension-By-Dimension Divergence + KE upwinding   
-#####  3. Multi-Dimensional Divergence + KE upwinding     
+#####  2. Dimension-By-Dimension Divergence upwinding (Partial, Split or Full)
+#####  3. Multi-Dimensional Divergence upwinding      (Partial, Split or Full)
 #####
 
 #####
-##### Conservative vertical advection + Kinetic Energy gradient (1)
-##### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
+##### Conservative Kinetic Energy Gradient (1)
 #####
 
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
@@ -147,7 +172,12 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, US, VS, M}) w
 
 @inline bernoulli_head_U(i, j, k, grid, scheme, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
 @inline bernoulli_head_V(i, j, k, grid, scheme, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-    
+
+#####
+##### Conservative vertical advection 
+##### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
+#####
+
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
 
@@ -155,69 +185,23 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, US, VS, M}) w
 @inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, w, u, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 #####
-##### Upwinding vertical advection + Kinetic Energy (2. and 3.)
+##### Upwinding vertical advection (2. and 3.)
 #####
-
-@inline δ_U(i, j, k, grid, u, v) =  δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
-@inline δ_V(i, j, k, grid, u, v) =  δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
-
-# Velocity smoothness for divergence upwinding
-@inline velocity_smoothness_U(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
-@inline velocity_smoothness_V(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
-
-# Divergence smoothness for divergence upwinding
-@inline divergence_smoothness(i, j, k, grid, u, v) = δ_U(i, j, k, grid, u, v) + δ_V(i, j, k, grid, u, v)
-
-@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
-    @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δ_V, u, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δ_U, scheme.u_stencil, u, v) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δ_U, scheme.u_stencil, u, v) 
-
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
-end
-
-@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariant, u, v)
-    @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δ_U, u, v) 
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δ_V, scheme.v_stencil, u, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δ_V, scheme.v_stencil, u, v) 
-
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
-end
-
-@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
-    @inbounds û = u[i, j, k]
-    δvˢ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_xᶠᵃᵃ, δ_V, u, v) 
-    δuᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_xᶠᵃᵃ, δ_U, scheme.u_stencil, u, v) 
-    δuᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_xᶠᵃᵃ, δ_U, scheme.u_stencil, u, v) 
-
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
-end
-
-@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
-    @inbounds v̂ = v[i, j, k]
-    δuˢ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,    _symmetric_interpolate_yᵃᶠᵃ, δ_U, u, v)
-    δvᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme,  _left_biased_interpolate_yᵃᶠᵃ, δ_V, scheme.v_stencil, u, v)
-    δvᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vertical_scheme, _right_biased_interpolate_yᵃᶠᵃ, δ_V, scheme.v_stencil, u, v)
-
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
-end
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
     
-    δt = upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid,       scheme, u, v)
-    ca = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
+    Φᵟ = upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
 
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δt + ca)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
 
-    δt = upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid,       scheme, u, v)
-    ca = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
+    Φᵟ = upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
 
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δt + ca)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 #####
@@ -243,51 +227,29 @@ end
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
-##### Upwinding schemes (3. and 4.)
+##### Upwinding schemes (3. and 4.) 
 #####
 
-@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
     
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
 
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
-end
-
-@inline function horizontal_advection_U(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v)
-    
-    Sζ = scheme.vorticity_stencil
-
-    @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vorticity_scheme,  _left_biased_interpolate_yᵃᶜᵃ, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _multi_dimensional_reconstruction_x(i, j, k, grid, scheme.vorticity_scheme, _right_biased_interpolate_yᵃᶜᵃ, ζ₃ᶠᶠᶜ, Sζ, u, v)
-
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
-end
-
-@inline function horizontal_advection_V(i, j, k, grid, scheme::MultiDimensionalUpwindVectorInvariant, u, v) 
-
-    Sζ = scheme.vorticity_stencil
-
-    @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vorticity_scheme,  _left_biased_interpolate_xᶜᵃᵃ, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _multi_dimensional_reconstruction_y(i, j, k, grid, scheme.vorticity_scheme, _right_biased_interpolate_xᶜᵃᵃ, ζ₃ᶠᶠᶜ, Sζ, u, v)
-
-    return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
 #####
