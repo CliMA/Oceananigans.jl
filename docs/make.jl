@@ -28,17 +28,17 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    # "one_dimensional_diffusion.jl",
-    # "two_dimensional_turbulence.jl",
-    # "internal_wave.jl",
-    # "convecting_plankton.jl",
-    # "ocean_wind_mixing_and_convection.jl",
-    # "langmuir_turbulence.jl",
-    # "baroclinic_adjustment.jl",
-    # "kelvin_helmholtz_instability.jl",
-    # "shallow_water_Bickley_jet.jl",
-    # "horizontal_convection.jl",
-    # "tilted_bottom_boundary_layer.jl"
+    "one_dimensional_diffusion.jl",
+    "two_dimensional_turbulence.jl",
+    "internal_wave.jl",
+    "convecting_plankton.jl",
+    "ocean_wind_mixing_and_convection.jl",
+    "langmuir_turbulence.jl",
+    "baroclinic_adjustment.jl",
+    "kelvin_helmholtz_instability.jl",
+    "shallow_water_Bickley_jet.jl",
+    "horizontal_convection.jl",
+    "tilted_bottom_boundary_layer.jl"
 ]
 
 for example in examples
@@ -51,17 +51,17 @@ end
 #####
 
 example_pages = [
-    # "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
-    # "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
-    # "Internal wave"                      => "generated/internal_wave.md",
-    # "Convecting plankton"                => "generated/convecting_plankton.md",
-    # "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
-    # "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
-    # "Baroclinic adjustment"              => "generated/baroclinic_adjustment.md",
-    # "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    # "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
-    # "Horizontal convection"              => "generated/horizontal_convection.md",
-    # "Tilted bottom boundary layer"       => "generated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                      => "generated/internal_wave.md",
+    "Convecting plankton"                => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+    "Baroclinic adjustment"              => "generated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"              => "generated/horizontal_convection.md",
+    "Tilted bottom boundary layer"       => "generated/tilted_bottom_boundary_layer.md"
  ]
 
 model_setup_pages = [
@@ -159,7 +159,7 @@ makedocs(bib,
  checkdocs = :exports
 )
 
-@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
 """
     recursive_find(directory, pattern)
@@ -172,12 +172,9 @@ recursive_find(directory, pattern) =
     end
 
 files = []
-
 for pattern in [r"\.jld2", r"\.nc"]
     global files = vcat(files, recursive_find(@__DIR__, pattern))
 end
-
-@show files
 
 for file in files
     rm(file)
