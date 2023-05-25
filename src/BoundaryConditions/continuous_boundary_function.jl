@@ -107,8 +107,8 @@ const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBounda
     cbf = bc.condition
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    y = ynode(i′, j, k, grid, Face(), LY(), LZ())
-    z = znode(i′, j, k, grid, Face(), LY(), LZ())
+    y = node(i′, j, k, grid, Face(), LY(), LZ())[2]
+    z = node(i′, j, k, grid, Face(), LY(), LZ())[3]
     return cbf.func(y, z, clock.time, args...)
 end
 
@@ -117,8 +117,8 @@ end
     cbf = bc.condition
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    x = xnode(i, j′, k, grid, LX(), Face(), LZ())
-    z = znode(i, j′, k, grid, LX(), Face(), LZ())
+    x = node(i, j′, k, grid, LX(), Face(), LZ())[1]
+    z = node(i, j′, k, grid, LX(), Face(), LZ())[3]
     return cbf.func(x, z, clock.time, args...)
 end
 
@@ -127,8 +127,8 @@ end
     cbf = bc.condition
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    x = xnode(i, j, k′, grid, LX(), LY(), Face())
-    y = ynode(i, j, k′, grid, LY(), LY(), Face())
+    x = node(i, j, k′, grid, LX(), LY(), Face())[1]
+    y = node(i, j, k′, grid, LX(), LY(), Face())[2]
     return cbf.func(x, y, clock.time, args...)
 end
 
