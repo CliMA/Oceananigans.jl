@@ -45,7 +45,11 @@ Keyword arguments
                      argument has no effect). In case `divergence_scheme` is an `AbstractUpwindBiasedAdvectionScheme`, 
                      `vertical_scheme` describes a flux form reconstruction of vertical momentum advection, and any 
                      advection scheme can be used - `Centered`, `UpwindBiased` and `WENO` (defaults to `EnergyConservingScheme`)
-- `multi_dimensional_stencil` : use a horizontal two dimensional stencil for the reconstruction of vorticity and divergence.
+- `u_stencil`: Stencil used for smoothness indicators of `δ_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
+               which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
+               custom function (defaults to `FunctionStencil(divergence_smoothness)`)
+- `v_stencil`: Same as `u_stencil` but for the smoothness of `δ_V`
+- `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity and divergence.
                                 The tangential (not upwinded) direction is treated with a 5th order centered WENO reconstruction
 
 Examples
@@ -78,8 +82,8 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil = VelocityStencil(),
                            vertical_scheme   = EnergyConservingScheme(),
-                           u_stencil         = FunctionStencil(velocity_smoothness_U),
-                           v_stencil         = FunctionStencil(velocity_smoothness_V),
+                           u_stencil         = FunctionStencil(divergence_smoothness),
+                           v_stencil         = FunctionStencil(divergence_smoothness),
                            multi_dimensional_stencil = false) where {N, FT}
         
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, u_stencil, v_stencil)
@@ -91,7 +95,7 @@ const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, <:Enstr
 const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
 const UpwindVorticityVectorInvariant        = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:AbstractUpwindBiasedAdvectionScheme, true}
+const MultiDimensionalUpwindVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, true}
 
 Base.summary(a::VectorInvariant)                       = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalUpwindVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
