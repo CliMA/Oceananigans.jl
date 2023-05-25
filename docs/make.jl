@@ -28,20 +28,20 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    "One-dimensional diffusion"          => "one_dimensional_diffusion",
-    "Two-dimensional turbulence"         => "two_dimensional_turbulence",
-    "Internal wave"                      => "internal_wave",
-    "Convecting plankton"                => "convecting_plankton",
-    "Ocean wind mixing and convection"   => "ocean_wind_mixing_and_convection",
-    "Langmuir turbulence"                => "langmuir_turbulence",
-    "Baroclinic adjustment"              => "baroclinic_adjustment",
-    "Kelvin-Helmholtz instability"       => "kelvin_helmholtz_instability",
-    "Shallow water Bickley jet"          => "shallow_water_Bickley_jet",
-    "Horizontal convection"              => "horizontal_convection",
-    "Tilted bottom boundary layer"       => "tilted_bottom_boundary_layer"
+    "One-dimensional diffusion"        => "one_dimensional_diffusion",
+    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+    "Internal wave"                    => "internal_wave",
+    "Convecting plankton"              => "convecting_plankton",
+    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+    "Langmuir turbulence"              => "langmuir_turbulence",
+    "Baroclinic adjustment"            => "baroclinic_adjustment",
+    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
+    "Horizontal convection"            => "horizontal_convection",
+    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
 ]
 
-example_scripts = [ val * ".jl" for (key, val) in examples ]
+example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
 for example in example_scripts
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -52,7 +52,7 @@ end
 ##### Organize page hierarchies
 #####
 
-example_pages = [ key => "generated/$val.md" for (key, val) in examples ]
+example_pages = [ title => "generated/$(filename).md" for (title, filename) in examples ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
