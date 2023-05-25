@@ -37,7 +37,7 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 const HOADV = Union{WENO, 
                     Tuple(Centered{N} for N in 2:6)...,
                     Tuple(UpwindBiased{N} for N in 2:6)...} 
-const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
+const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
