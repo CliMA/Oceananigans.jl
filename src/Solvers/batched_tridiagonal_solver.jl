@@ -71,11 +71,11 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args... )
 
     launch_config = if solver.tridiagonal_direction == :x
-                        launch_config = :yz
+                        :yz
                     elseif solver.tridiagonal_direction == :y
-                        launch_config = :xz
+                        :xz
                     elseif solver.tridiagonal_direction == :z
-                        launch_config = :xy
+                        :xy
                     end
 
     launch!(architecture(solver), solver.grid, launch_config,
