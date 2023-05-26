@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using LinearAlgebra
 using Oceananigans.Architectures: array_type
 
-function can_solve_single_tridiagonal_system(arch, N)
+function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=:z)
     ArrayType = array_type(arch)
 
     a = rand(N-1)
@@ -18,14 +18,22 @@ function can_solve_single_tridiagonal_system(arch, N)
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
-
-    grid = RectilinearGrid(arch, size=(1, 1, N), extent=(1, 1, 1))
+    if tridiagonal_direction == :x
+        ϕ = reshape(zeros(N), (N, 1, 1)) |> ArrayType
+        grid = RectilinearGrid(arch, size=(N, 1, 1), extent=(1, 1, 1))
+    elseif tridiagonal_direction == :y
+        ϕ = reshape(zeros(N), (1, N, 1)) |> ArrayType
+        grid = RectilinearGrid(arch, size=(1, N, 1), extent=(1, 1, 1))
+    elseif tridiagonal_direction == :z
+        ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
+        grid = RectilinearGrid(arch, size=(1, 1, N), extent=(1, 1, 1))
+    end
 
     btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
-                                        upper_diagonal = c)
+                                        upper_diagonal = c,
+                                        tridiagonal_direction)
 
     solve!(ϕ, btsolver, f)
 
@@ -139,7 +147,9 @@ end
     for arch in archs
         @testset "Batched tridiagonal solver [$arch]" begin
             for Nz in [8, 11, 18]
-                @test can_solve_single_tridiagonal_system(arch, Nz)
+                for tridiagonal_direction in (:x, :y, :z)
+                    @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
+                end
                 @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
             end
 
