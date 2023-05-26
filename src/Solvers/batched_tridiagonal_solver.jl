@@ -1,6 +1,4 @@
 using Oceananigans.Architectures: arch_array
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, RegRectilinearGrid, LatLonGrid
-
 import Oceananigans.Architectures: architecture
 
 """
@@ -8,13 +6,14 @@ import Oceananigans.Architectures: architecture
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, T, G, P}
-               a :: A
-               b :: B
-               c :: C
-               t :: T
-            grid :: G
-      parameters :: P
+struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
+                        a :: A
+                        b :: B
+                        c :: C
+                        t :: T
+                     grid :: G
+               parameters :: P
+    tridiagonal_direction :: D
 end
 
 architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
@@ -48,17 +47,13 @@ function BatchedTridiagonalSolver(grid;
                                   diagonal,
                                   upper_diagonal,
                                   scratch = arch_array(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
-                                  parameters = nothing)
+                                  parameters = nothing,
+                                  tridiagonal_direction = :z)
 
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    scratch, grid, parameters)
+                                    scratch, grid, parameters, tridiagonal_direction)
 end
 
-launch_config(::YZRegRectilinearGrid) = :yz
-launch_config(::XZRegRectilinearGrid) = :xz
-launch_config(::XYRegRectilinearGrid) = :xy
-launch_config(::RegRectilinearGrid) = :xy
-launch_config(::LatLonGrid) = :xy
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
@@ -75,18 +70,34 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args... )
 
-    a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
-    grid = solver.grid
+    tridiagonal_direction = solver.tridiagonal_direction
 
-    launch!(architecture(solver), grid, launch_config(grid),
-            solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, Tuple(args), Val(3))
+    launch_config = if tridiagonal_direction == :x
+                        launch_config = :yz
+                    elseif tridiagonal_direction == :y
+                        launch_config = :xz
+                    elseif tridiagonal_direction == :z
+                        launch_config = :xy
+                    end
+
+    launch!(architecture(solver), solver.grid, launch_config,
+            solve_batched_tridiagonal_system_kernel!, ϕ,
+            solver.a,
+            solver.b,
+            solver.c,
+            rhs,
+            solver.t,
+            solver.grid,
+            solver.parameters,
+            Tuple(args),
+            Val(tridiagonal_direction))
 
     return nothing
 end
 
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{1},    args...) where {T} = @inbounds a[i]
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{2},    args...) where {T} = @inbounds a[j]
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{3},    args...) where {T} = @inbounds a[k]
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{:x},   args...) where {T} = @inbounds a[i]
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{:y},   args...) where {T} = @inbounds a[j]
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::Val{:z},   args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, tridiag_dir, args...) where {T} = @inbounds a[i, j, k]
 
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, p,         tridiag_direction, args...) = a(i, j, k, grid, p, args...)
@@ -95,7 +106,7 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{1})
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{:x})
     N = size(grid, 1)
     m, n = @index(Global, NTuple)
 
@@ -127,7 +138,7 @@ end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{2})
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{:y})
     N = size(grid, 2)
     m, n = @index(Global, NTuple)
 
@@ -159,7 +170,7 @@ end
     end
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{3})
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiag_direction::Val{:z})
     N = size(grid, 3)
     m, n = @index(Global, NTuple)
 
