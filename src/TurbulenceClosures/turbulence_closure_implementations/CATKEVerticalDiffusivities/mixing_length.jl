@@ -13,21 +13,21 @@ using ..TurbulenceClosures:
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cˢ   :: FT = 0.5
-    Cᵇ   :: FT = 0.1
-    Cᶜc  :: FT = 1.2
-    Cᶜe  :: FT = 1.7
-    Cᵉc  :: FT = 0.1
-    Cᵉe  :: FT = 0.0
-    Cˢᵖ  :: FT = 1.8
-    Cˡᵒu :: FT = 0.9
-    Cʰⁱu :: FT = 0.3
-    Cˡᵒc :: FT = 0.8
-    Cʰⁱc :: FT = 0.2
-    Cˡᵒe :: FT = 1.9
-    Cʰⁱe :: FT = 2.6
-    CRiᵟ :: FT = 0.3
-    CRi⁰ :: FT = 0.1
+    Cˢ   :: FT = 0.36   # Surface distance coefficient for shear length scale
+    Cᵇ   :: FT = 0.1    # Bottom distance coefficient for shear length scale
+    Cᶜc  :: FT = 0.78   # Convective mixing length coefficient for tracers
+    Cᶜe  :: FT = 0.087  # Convective mixing length coefficient for TKE
+    Cᵉc  :: FT = 0.25   # Convective penetration mixing length coefficient for tracers
+    Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
+    Cˢᵖ  :: FT = 0.072  # Sheared convective plume coefficient
+    Cˡᵒu :: FT = 1.1    # Shear mixing length coefficient for momentum at low Ri
+    Cʰⁱu :: FT = 0.28   # Shear mixing length coefficient for momentum at high Ri
+    Cˡᵒc :: FT = 1.9    # Shear mixing length coefficient for tracers at low Ri
+    Cʰⁱc :: FT = 0.22   # Shear mixing length coefficient for tracers at high Ri
+    Cˡᵒe :: FT = 0.71   # Shear mixing length coefficient for TKE at low Ri
+    Cʰⁱe :: FT = 3.5    # Shear mixing length coefficient for TKE at high Ri
+    CRiᵟ :: FT = 0.14   # Stability function width 
+    CRi⁰ :: FT = 0.13   # Stability function lower Ri
 end
 
 #####
