@@ -496,6 +496,16 @@ end
 ##### Directions (for tilted domains)
 #####
 
+struct XDirection end
+
+Base.summary(::XDirection) = "XDirection()"
+Base.show(io::IO, zdir::XDirection) = print(io, summary(zdir))
+
+struct YDirection end
+
+Base.summary(::YDirection) = "YDirection()"
+Base.show(io::IO, zdir::YDirection) = print(io, summary(zdir))
+
 struct ZDirection end
 
 Base.summary(::ZDirection) = "ZDirection()"

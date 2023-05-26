@@ -2,8 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using LinearAlgebra
 using Oceananigans.Architectures: array_type
+using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
-function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=:z)
+function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=ZDirection())
     ArrayType = array_type(arch)
 
     a = rand(N-1)
@@ -18,13 +19,13 @@ function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=:z)
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    if tridiagonal_direction == :x
+    if tridiagonal_direction == XDirection()
         ϕ = reshape(zeros(N), (N, 1, 1)) |> ArrayType
         grid = RectilinearGrid(arch, size=(N, 1, 1), extent=(1, 1, 1))
-    elseif tridiagonal_direction == :y
+    elseif tridiagonal_direction == YDirection()
         ϕ = reshape(zeros(N), (1, N, 1)) |> ArrayType
         grid = RectilinearGrid(arch, size=(1, N, 1), extent=(1, 1, 1))
-    elseif tridiagonal_direction == :z
+    elseif tridiagonal_direction == ZDirection()
         ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
         grid = RectilinearGrid(arch, size=(1, 1, N), extent=(1, 1, 1))
     end
@@ -72,14 +73,14 @@ function can_solve_single_tridiagonal_system_with_functions(arch, N)
     return Array(ϕ[:]) ≈ ϕ_correct
 end
 
-function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction = :y)
+function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction = ZDirection())
     ArrayType = array_type(arch)
 
-    N = if tridiagonal_direction == :x
+    N = if tridiagonal_direction == XDirection()
             Nx
-        elseif tridiagonal_direction == :y
+        elseif tridiagonal_direction == YDirection()
             Ny
-        elseif tridiagonal_direction == :z
+        elseif tridiagonal_direction == ZDirection()
             Nz
         end
     a = rand(N-1)
@@ -91,15 +92,15 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
     ϕ_correct = zeros(Nx, Ny, Nz)
 
     # Solve the systems with backslash on the CPU to avoid scalar operations on the GPU.
-    if tridiagonal_direction == :x
+    if tridiagonal_direction == XDirection()
         for j = 1:Ny, k = 1:Nz
             ϕ_correct[:, j, k] .= M \ f[:, j, k]
         end
-    elseif tridiagonal_direction == :y
+    elseif tridiagonal_direction == YDirection()
         for i = 1:Nx, k = 1:Nz
             ϕ_correct[i, :, k] .= M \ f[i, :, k]
         end
-    elseif tridiagonal_direction == :z
+    elseif tridiagonal_direction == ZDirection()
         for i = 1:Nx, j = 1:Ny
             ϕ_correct[i, j, :] .= M \ f[i, j, :]
         end
@@ -164,14 +165,14 @@ end
     for arch in archs
         @testset "Batched tridiagonal solver [$arch]" begin
             for Nz in [8, 11, 18]
-                for tridiagonal_direction in (:x, :y, :z)
+                for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
                     @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
                 end
                 @test can_solve_single_tridiagonal_system_with_functions(arch, Nz)
             end
 
             for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
-                for tridiagonal_direction in (:x, :y, :z)
+                for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
                     @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction)
                 end
                 @test can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
