@@ -105,97 +105,97 @@ end
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::Val{:x})
-    N = size(grid, 1)
-    m, n = @index(Global, NTuple)
+    Nx = size(grid, 1)
+    j, k = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, 1, m, n, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, 1, m, n, grid, p, tridiagonal_direction, args...)
-        ϕ[1, m, n] = f₁ / β
+        β  = get_coefficient(b, 1, j, k, grid, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(f, 1, j, k, grid, p, tridiagonal_direction, args...)
+        ϕ[1, j, k] = f₁ / β
 
-        @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, q-1, m, n, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, q,   m, n, grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, q-1, m, n, grid, p, tridiagonal_direction, args...)
+        @unroll for i = 2:Nx
+            cᵏ⁻¹ = get_coefficient(c, i-1, j, k, grid, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(b, i,   j, k, grid, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, i-1, j, k, grid, p, tridiagonal_direction, args...)
 
-            t[q, m, n] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[q, m, n]
+            t[i, j, k] = cᵏ⁻¹ / β
+            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, q, m, n, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
-            ϕ[q, m, n] = (fᵏ - aᵏ⁻¹ * ϕ[q-1, m, n]) / β
+            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
 
-        @unroll for q = N-1:-1:1
-            ϕ[q, m, n] -= t[q+1, m, n] * ϕ[q+1, m, n]
+        @unroll for i = Nx-1:-1:1
+            ϕ[i, j, k] -= t[i+1, j, k] * ϕ[i+1, j, k]
         end
     end
 end
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::Val{:y})
-    N = size(grid, 2)
-    m, n = @index(Global, NTuple)
+    Ny = size(grid, 2)
+    i, k = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, m, 1, n, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, m, 1, n, grid, p, tridiagonal_direction, args...)
-        ϕ[m, 1, n] = f₁ / β
+        β  = get_coefficient(b, i, 1, k, grid, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(f, i, 1, k, grid, p, tridiagonal_direction, args...)
+        ϕ[i, 1, k] = f₁ / β
 
-        @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, m, q-1, n, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, m, q,   n, grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, m, q-1, n, grid, p, tridiagonal_direction, args...)
+        @unroll for j = 2:Ny
+            cᵏ⁻¹ = get_coefficient(c, i, j-1, k, grid, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(b, i, j,   k, grid, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, i, j-1, k, grid, p, tridiagonal_direction, args...)
 
-            t[m, q, n] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[m, q, n]
+            t[i, j, k] = cᵏ⁻¹ / β
+            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, m, q, n, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
-            ϕ[m, q, n] = (fᵏ - aᵏ⁻¹ * ϕ[m, q-1, n]) / β
+            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
         end
 
-        @unroll for q = N-1:-1:1
-            ϕ[m, q, n] -= t[m, q+1, n] * ϕ[m, q+1, n]
+        @unroll for j = Ny-1:-1:1
+            ϕ[i, j, k] -= t[i, j+1, k] * ϕ[i, j+1, k]
         end
     end
 end
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::Val{:z})
-    N = size(grid, 3)
-    m, n = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    i, j = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, m, n, 1, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, m, n, 1, grid, p, tridiagonal_direction, args...)
-        ϕ[m, n, 1] = f₁ / β
+        β  = get_coefficient(b, i, j, 1, grid, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(f, i, j, 1, grid, p, tridiagonal_direction, args...)
+        ϕ[i, j, 1] = f₁ / β
 
-        @unroll for q = 2:N
-            cᵏ⁻¹ = get_coefficient(c, m, n, q-1, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, m, n, q,   grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, m, n, q-1, grid, p, tridiagonal_direction, args...)
+        @unroll for k = 2:Nz
+            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(b, i, j, k,   grid, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, tridiagonal_direction, args...)
 
-            t[m, n, q] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[m, n, q]
+            t[i, j, k] = cᵏ⁻¹ / β
+            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, m, n, q, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
-            ϕ[m, n, q] = (fᵏ - aᵏ⁻¹ * ϕ[m, n, q-1]) / β
+            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
-        @unroll for q = N-1:-1:1
-            ϕ[m, n, q] -= t[m, n, q+1] * ϕ[m, n, q+1]
+        @unroll for k = Nz-1:-1:1
+            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
 end
