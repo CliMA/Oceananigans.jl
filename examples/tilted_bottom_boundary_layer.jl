@@ -220,7 +220,7 @@ n = Observable(1)
 
 ωy = @lift ds["ωy"][:, 1, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
-Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
+Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
 
 V = @lift ds["V"][:, 1, :, $n]
 V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
