@@ -76,7 +76,7 @@ end
 function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction = ZDirection())
     ArrayType = array_type(arch)
 
-    N = if tridiagonal_direction == XDirection()
+    N = if tridiagonal_direction isa XDirection
             Nx
         elseif tridiagonal_direction == YDirection()
             Ny
