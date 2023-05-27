@@ -499,7 +499,7 @@ end
 struct XDirection end
 
 Base.summary(::XDirection) = "XDirection()"
-Base.show(io::IO, zdir::XDirection) = print(io, summary(zdir))
+Base.show(io::IO, dir::XDirection) = print(io, summary(dir))
 
 struct YDirection end
 
