@@ -19,13 +19,13 @@ function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=ZDir
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    if tridiagonal_direction == XDirection()
+    if tridiagonal_direction isa XDirection
         ϕ = reshape(zeros(N), (N, 1, 1)) |> ArrayType
         grid = RectilinearGrid(arch, size=(N, 1, 1), extent=(1, 1, 1))
-    elseif tridiagonal_direction == YDirection()
+    elseif tridiagonal_direction isa YDirection
         ϕ = reshape(zeros(N), (1, N, 1)) |> ArrayType
         grid = RectilinearGrid(arch, size=(1, N, 1), extent=(1, 1, 1))
-    elseif tridiagonal_direction == ZDirection()
+    elseif tridiagonal_direction isa ZDirection
         ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
         grid = RectilinearGrid(arch, size=(1, 1, N), extent=(1, 1, 1))
     end
@@ -80,7 +80,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
             Nx
         elseif tridiagonal_direction == YDirection()
             Ny
-        elseif tridiagonal_direction == ZDirection()
+        elseif tridiagonal_direction isa ZDirection
             Nz
         end
     a = rand(N-1)
@@ -92,15 +92,15 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
     ϕ_correct = zeros(Nx, Ny, Nz)
 
     # Solve the systems with backslash on the CPU to avoid scalar operations on the GPU.
-    if tridiagonal_direction == XDirection()
+    if tridiagonal_direction isa XDirection
         for j = 1:Ny, k = 1:Nz
             ϕ_correct[:, j, k] .= M \ f[:, j, k]
         end
-    elseif tridiagonal_direction == YDirection()
+    elseif tridiagonal_direction isa YDirection
         for i = 1:Nx, k = 1:Nz
             ϕ_correct[i, :, k] .= M \ f[i, :, k]
         end
-    elseif tridiagonal_direction == ZDirection()
+    elseif tridiagonal_direction isa ZDirection
         for i = 1:Nx, j = 1:Ny
             ϕ_correct[i, j, :] .= M \ f[i, j, :]
         end

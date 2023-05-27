@@ -504,7 +504,7 @@ Base.show(io::IO, dir::XDirection) = print(io, summary(dir))
 struct YDirection end
 
 Base.summary(::YDirection) = "YDirection()"
-Base.show(io::IO, zdir::YDirection) = print(io, summary(zdir))
+Base.show(io::IO, dir::YDirection) = print(io, summary(dir))
 
 struct ZDirection end
 
