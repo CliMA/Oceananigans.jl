@@ -275,7 +275,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Coriolis" begin
         for arch in archs, FT in [Float64], Coriolis in Planes
-            @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Coriolis]..."
+            @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
             @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
         end
     end
