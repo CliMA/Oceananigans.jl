@@ -496,32 +496,19 @@ end
 ##### Directions (for tilted domains)
 #####
 
-struct XDirection end
-
-Base.summary(::XDirection) = "XDirection()"
-Base.show(io::IO, dir::XDirection) = print(io, summary(dir))
-
-struct YDirection end
-
-Base.summary(::YDirection) = "YDirection()"
-Base.show(io::IO, dir::YDirection) = print(io, summary(dir))
-
-struct ZDirection end
-
-Base.summary(::ZDirection) = "ZDirection()"
-Base.show(io::IO, dir::ZDirection) = print(io, summary(dir))
-
-struct NegativeZDirection end
-
-Base.summary(::NegativeZDirection) = "NegativeZDirection()"
-Base.show(io::IO, dir::NegativeZDirection) = print(io, summary(dir))
-
 -(::NegativeZDirection) = ZDirection()
 -(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils
 #####
+
+Base.summary(::XDirection) = "XDirection()"
+Base.summary(::YDirection) = "YDirection()"
+Base.summary(::ZDirection) = "ZDirection()"
+Base.summary(::NegativeZDirection) = "NegativeZDirection()"
+
+Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
