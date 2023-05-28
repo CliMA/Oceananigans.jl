@@ -63,6 +63,12 @@ regular_dimensions(::XZRegRectilinearGrid) = (1, 3)
 regular_dimensions(::YZRegRectilinearGrid) = (2, 3)
 regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
 
+
+irregular_dimension(::YZRegRectilinearGrid) = 1
+irregular_dimension(::XZRegRectilinearGrid) = 2
+irregular_dimension(::XYRegRectilinearGrid) = 3
+
+
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,

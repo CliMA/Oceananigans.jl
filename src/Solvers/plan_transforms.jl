@@ -11,12 +11,7 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-##### Only for regular grids (FX == FY == FZ <: Number) 
-##### and vertically stretched grids (FX == FY <: Number)
-
-const Regular             = RegRectilinearGrid
-const VerticallyStretched = HRegRectilinearGrid
-
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, irregular_dimension
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
@@ -80,7 +75,7 @@ backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2
 backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
 
 " Used by FFTBasedPoissonSolver "
-function plan_transforms(grid::Regular, storage, planner_flag)
+function plan_transforms(grid::RegRectilinearGrid, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
@@ -152,17 +147,17 @@ end
 
 
 """ Used by FourierTridiagonalPoissonSolver. """
-function plan_transforms(grid::VerticallyStretched, storage, planner_flag)
+function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid}, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    # Limit ourselves to x, y transforms (z uses a tridiagonal solve)
-    periodic_dims = findall(t -> t == Periodic, (TX, TY))
-    bounded_dims = findall(t -> t == Bounded, (TX, TY))
+    irreg_dim     = irregular_dimension(grid)
+    !(topo[irreg_dim] === Bounded) && error("Can plan transforms when the irregular direction's topology is `Bounded`.")
 
-    # Convert Flat to Bounded for ordering purposes (transforms are omitted in Flat directions anyways)
+    periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
+    bounded_dims  = Tuple( dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ irreg_dim )
 
-    !(topo[3] === Bounded) && error("Cannot plan transforms on z-periodic RectilinearGrids.")
+    @show irreg_dim periodic_dims bounded_dims
 
     arch = architecture(grid)
 
@@ -174,16 +169,16 @@ function plan_transforms(grid::VerticallyStretched, storage, planner_flag)
         # domains, or for domains that are `Bounded, Periodic, Bounded`.
         
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
-        forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
+        forward_bounded_plan  = plan_forward_transform(storage, Bounded(),  bounded_dims,  planner_flag)
 
-        forward_transforms = (DiscreteTransform(forward_bounded_plan, Forward(), grid, bounded_dims),
+        forward_transforms = (DiscreteTransform(forward_bounded_plan,  Forward(), grid, bounded_dims),
                               DiscreteTransform(forward_periodic_plan, Forward(), grid, periodic_dims))
 
         backward_periodic_plan = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag)
-        backward_bounded_plan = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag)
+        backward_bounded_plan  = plan_backward_transform(storage, Bounded(),  bounded_dims,  planner_flag)
 
         backward_transforms = (DiscreteTransform(backward_periodic_plan, Backward(), grid, periodic_dims),
-                               DiscreteTransform(backward_bounded_plan, Backward(), grid, bounded_dims))
+                               DiscreteTransform(backward_bounded_plan,  Backward(), grid, bounded_dims))
 
     elseif !(Bounded in (TX, TY))
         # We're on the GPU and either (Periodic, Periodic), (Flat, Periodic), or (Periodic, Flat) in xy.

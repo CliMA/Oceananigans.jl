@@ -1,5 +1,5 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, irregular_dimension
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
@@ -50,10 +50,6 @@ end
 end 
 
 
-irregular_axis(::YZRegRectilinearGrid) = 1
-irregular_axis(::XZRegRectilinearGrid) = 2
-irregular_axis(::XYRegRectilinearGrid) = 3
-
 irregular_direction(::YZRegRectilinearGrid) = XDirection()
 irregular_direction(::XZRegRectilinearGrid) = YDirection()
 irregular_direction(::XYRegRectilinearGrid) = ZDirection()
@@ -65,13 +61,13 @@ irregular_direction(::XYRegRectilinearGrid) = ZDirection()
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
-    irreg_axis = irregular_axis(grid)
+    irreg_dim = irregular_dimension(grid)
 
-    regular_top1, regular_top2 = Tuple( el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_axis)
-    regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_axis)
-    regular_ext1, regular_ext2 = Tuple( el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_axis)
+    regular_top1, regular_top2 = Tuple( el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
+    regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
+    regular_ext1, regular_ext2 = Tuple( el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
 
-    getindex(topology(grid), irreg_axis) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the irregular direction's topology is `Bounded`.")
+    getindex(topology(grid), irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the irregular direction's topology is `Bounded`.")
 
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
@@ -86,7 +82,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid)[irreg_axis] ]
+    lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid)[irreg_dim] ]
     lower_diagonal = arch_array(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
@@ -102,7 +98,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     launch!(arch, grid, launch_config, compute_main_diagonals!, diagonal, grid, λ1, λ2, irregular_direction(grid))
     
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal)
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction = irregular_direction(grid))
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (regular_top1, regular_top2)
