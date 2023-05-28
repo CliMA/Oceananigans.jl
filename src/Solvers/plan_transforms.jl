@@ -157,8 +157,6 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
     periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
     bounded_dims  = Tuple( dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ irreg_dim )
 
-    @show irreg_dim periodic_dims bounded_dims
-
     arch = architecture(grid)
 
     if arch isa CPU

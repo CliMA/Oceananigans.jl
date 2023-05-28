@@ -4,6 +4,7 @@ using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Grids: regular_dimensions
 
 function poisson_solver_instantiates(grid, planner_flag)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
@@ -142,29 +143,40 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64, mode=1)
 end
 
 #####
-##### Vertically stretched Poisson solver
+##### Poisson solver on an irregularly-spaced grid
 #####
 
-get_grid_size(TX, TY, TZ, Nx, Ny, Nz) = (Nx, Ny, Nz)
-get_grid_size(::Type{Flat}, TY, TZ, Nx, Ny, Nz) = (Ny, Nz)
-get_grid_size(TX, ::Type{Flat}, TZ, Nx, Ny, Nz) = (Nx, Nz)
+get_grid_size(TX,           TY,           TZ, Nx, Ny, Nz) = (Nx, Ny, Nz)
+get_grid_size(::Type{Flat}, TY,           TZ, Nx, Ny, Nz) = (Ny, Nz)
+get_grid_size(TX,           ::Type{Flat}, TZ, Nx, Ny, Nz) = (Nx, Nz)
 
-get_xy_interval_kwargs(TX, TY, TZ) = (x=(0, 1), y=(0, 1))
-get_xy_interval_kwargs(TX, ::Type{Flat}, TZ) = (x=(0, 1),)
-get_xy_interval_kwargs(::Type{Flat}, TY, TZ) = (y=(0, 1),)
+get_interval_kwargs(TY, TZ,           faces, ::Val{1}) = (x=faces, y=(0, 1), z=(0, 1))
+get_interval_kwargs(TY, ::Type{Flat}, faces, ::Val{1}) = (x=faces, y=(0, 1),)
+get_interval_kwargs(::Type{Flat}, TZ, faces, ::Val{1}) = (x=faces, z=(0, 1),)
 
-function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, Ny, zF)
-    Nz = length(zF) - 1
-    sz = get_grid_size(topo..., Nx, Ny, Nz)
-    xy_intervals = get_xy_interval_kwargs(topo...)
-    vs_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=zF, xy_intervals...)
-    solver = FourierTridiagonalPoissonSolver(vs_grid)
+get_interval_kwargs(TX, TZ,           faces, ::Val{2}) = (x=(0, 1), y=faces, z=(0, 1))
+get_interval_kwargs(TX, ::Type{Flat}, faces, ::Val{2}) = (x=(0, 1), y=faces,)
+get_interval_kwargs(::Type{Flat}, TZ, faces, ::Val{2}) = (y=faces,  z=(0, 1),)
 
-    p_bcs = FieldBoundaryConditions(vs_grid, (Center, Center, Center))
-    ϕ   = CenterField(vs_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(vs_grid, boundary_conditions=p_bcs)
+get_interval_kwargs(TX, TY,           faces, ::Val{3}) = (x=(0, 1), y=(0, 1), z=faces)
+get_interval_kwargs(TX, ::Type{Flat}, faces, ::Val{3}) = (x=(0, 1), z=faces,)
+get_interval_kwargs(::Type{Flat}, TY, faces, ::Val{3}) = (y=(0, 1), z=faces,)
 
-    R = random_divergence_free_source_term(vs_grid)
+function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; irregular_axis = 3)
+    N = length(faces) - 1
+    unshifted_sizes = [N1, N2, N]
+    sz = get_grid_size(topo..., circshift(unshifted_sizes, irregular_axis)...)
+
+    regular_topos = Tuple( el for (i, el) in enumerate(topo) if i ≠ irregular_axis)
+    intervals = get_interval_kwargs(regular_topos..., faces, Val(irregular_axis))
+    grid = RectilinearGrid(arch, FT; topology=topo, size=sz, intervals...)
+    solver = FourierTridiagonalPoissonSolver(grid)
+
+    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
+
+    R = random_divergence_free_source_term(grid)
 
     set_source_term!(solver, R)
     ϕc = solver.storage
@@ -172,7 +184,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
-    compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
+    compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
     return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end

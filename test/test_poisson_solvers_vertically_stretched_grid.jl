@@ -21,23 +21,26 @@ include("dependencies_for_poisson_solvers.jl")
     ]
 
     for arch in archs, topo in vs_topos
-        @testset "Vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]" begin
-            @info "  Testing vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]..."
+        @testset "Irregular-grid Poisson solver [FACR, $(typeof(arch)), $topo]" begin
 
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, 1:8)
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 7, 1:7)
-            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, topo, 8, 8, 1:8)
+            faces_even = [1, 2, 4, 7, 11, 16, 22, 29, 37]      # Nz = 8
+            faces_odd  = [1, 2, 4, 7, 11, 16, 22, 29, 37, 51]  # Nz = 9
+            for irregular_axis in (1, 2, 3)
+                if topo[irregular_axis] == Bounded
+                    @info "  Testing stretched Poisson solver [FACR, $(typeof(arch)), $topo, $irregular_axis]..."
+                    @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, 1:8; irregular_axis)
+                    @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 7, 1:7; irregular_axis)
+                    @test stretched_poisson_solver_correct_answer(Float32, arch, topo, 8, 8, 1:8; irregular_axis)
 
-            zF_even = [1, 2, 4, 7, 11, 16, 22, 29, 37]      # Nz = 8
-            zF_odd  = [1, 2, 4, 7, 11, 16, 22, 29, 37, 51]  # Nz = 9
-
-            for zF in [zF_even, zF_odd]
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8,  8, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 16, 8, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 16, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 11, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 5,  8, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 13, zF)
+                    for faces in [faces_even, faces_odd]
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 8,  8, faces; irregular_axis)
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 16, 8, faces; irregular_axis)
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 16, faces; irregular_axis)
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 11, faces; irregular_axis)
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 5,  8, faces; irregular_axis)
+                        @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 13, faces; irregular_axis)
+                    end
+                end
             end
         end
     end
