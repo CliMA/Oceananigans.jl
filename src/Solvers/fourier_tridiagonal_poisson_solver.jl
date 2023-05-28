@@ -13,40 +13,40 @@ end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
-@kernel function compute_main_diagonals!(D, grid, λ1, λ2, ::XDirection)
-    m, n = @index(Global, NTuple)
-    N = getindex(size(grid), 1)
+@kernel function compute_main_diagonals!(D, grid, λy, λz, ::XDirection)
+    j, k = @index(Global, NTuple)
+    Nx = getindex(size(grid), 1)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[1, m, n] = -1 / Δxᶠᵃᵃ(2, m, n, grid) - Δxᶜᵃᵃ(1, m, n, grid) * (λ1[m] + λ2[n])
-    @unroll for q in 2:N-1
-        D[q, m, n] = - (1 / Δxᶠᵃᵃ(q+1, m, n, grid) + 1 / Δxᶠᵃᵃ(q, m, n, grid)) - Δxᶜᵃᵃ(q, m, n, grid) * (λ1[m] + λ2[n])
+    D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
+    @unroll for q in 2:Nx-1
+        D[q, j, k] = - (1 / Δxᶠᵃᵃ(q+1, j, k, grid) + 1 / Δxᶠᵃᵃ(q, j, k, grid)) - Δxᶜᵃᵃ(q, j, k, grid) * (λy[j] + λz[k])
     end
-    D[N, m, n] = -1 / Δxᶠᵃᵃ(N, m, n, grid) - Δxᶜᵃᵃ(N, m, n, grid) * (λ1[m] + λ2[n])
+    D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 end 
 
-@kernel function compute_main_diagonals!(D, grid, λ1, λ2, ::YDirection)
-    m, n = @index(Global, NTuple)
-    N = getindex(size(grid), 2)
+@kernel function compute_main_diagonals!(D, grid, λx, λz, ::YDirection)
+    i, k = @index(Global, NTuple)
+    Ny = getindex(size(grid), 2)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[m, 1, n] = -1 / Δyᵃᶠᵃ(m, 2, n, grid) - Δyᵃᶜᵃ(m, 1, n, grid) * (λ1[m] + λ2[n])
-    @unroll for q in 2:N-1
-        D[m, q, n] = - (1 / Δyᵃᶠᵃ(m, q+1, n, grid) + 1 / Δyᵃᶠᵃ(m, q, n, grid)) - Δyᵃᶜᵃ(m, q, n, grid) * (λ1[m] + λ2[n])
+    D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
+    @unroll for q in 2:Ny-1
+        D[i, q, k] = - (1 / Δyᵃᶠᵃ(i, q+1, k, grid) + 1 / Δyᵃᶠᵃ(i, q, k, grid)) - Δyᵃᶜᵃ(i, q, k, grid) * (λx[i] + λz[k])
     end
-    D[m, N, n] = -1 / Δyᵃᶠᵃ(m, N, n, grid) - Δyᵃᶜᵃ(m, N, n, grid) * (λ1[m] + λ2[n])
+    D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 end 
 
-@kernel function compute_main_diagonals!(D, grid, λ1, λ2, ::ZDirection)
-    m, n = @index(Global, NTuple)
-    N = getindex(size(grid), 3)
+@kernel function compute_main_diagonals!(D, grid, λx, λy, ::ZDirection)
+    i, j = @index(Global, NTuple)
+    Nz = getindex(size(grid), 3)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[m, n, 1] = -1 / Δzᵃᵃᶠ(m, n, 2, grid) - Δzᵃᵃᶜ(m, n, 1, grid) * (λ1[m] + λ2[n])
-    @unroll for q in 2:N-1
-        D[m, n, q] = - (1 / Δzᵃᵃᶠ(m, n, q+1, grid) + 1 / Δzᵃᵃᶠ(m, n, q, grid)) - Δzᵃᵃᶜ(m, n, q, grid) * (λ1[m] + λ2[n])
+    D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
+    @unroll for q in 2:Nz-1
+        D[i, j, q] = - (1 / Δzᵃᵃᶠ(i, j, q+1, grid) + 1 / Δzᵃᵃᶠ(i, j, q, grid)) - Δzᵃᵃᶜ(i, j, q, grid) * (λx[i] + λy[j])
     end
-    D[m, n, N] = -1 / Δzᵃᵃᶠ(m, n, N, grid) - Δzᵃᵃᶜ(m, n, N, grid) * (λ1[m] + λ2[n])
+    D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end 
 
 
