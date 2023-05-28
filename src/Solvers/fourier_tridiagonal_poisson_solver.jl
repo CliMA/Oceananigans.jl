@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 import Oceananigans.Architectures: architecture
 
@@ -18,7 +18,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
     N = getindex(size(grid), 1)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[1, m, n] = -1 / Δxᵃᶠᵃ(2, m, n, grid) - Δxᶜᵃᵃ(1, m, n, grid) * (λ1[m] + λ2[n])
+    D[1, m, n] = -1 / Δxᶠᵃᵃ(2, m, n, grid) - Δxᶜᵃᵃ(1, m, n, grid) * (λ1[m] + λ2[n])
     @unroll for q in 2:N-1
         D[q, m, n] = - (1 / Δxᶠᵃᵃ(q+1, m, n, grid) + 1 / Δxᶠᵃᵃ(q, m, n, grid)) - Δxᶜᵃᵃ(q, m, n, grid) * (λ1[m] + λ2[n])
     end
