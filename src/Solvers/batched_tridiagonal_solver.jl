@@ -22,7 +22,7 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 
 """
-    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing, tridiagonal_direction=:z)
+    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing, tridiagonal_direction=ZDirection())
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
