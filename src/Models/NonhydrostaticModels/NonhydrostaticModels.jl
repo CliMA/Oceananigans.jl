@@ -31,7 +31,7 @@ PressureSolver(arch, grid::YZRegRectilinearGrid) = FourierTridiagonalPoissonSolv
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 # fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel support both than one irregularly-spaced direction.")
+PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel support more than one irregularly-spaced direction.")
 
 #####
 ##### NonhydrostaticModel definition
