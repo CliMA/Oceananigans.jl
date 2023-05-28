@@ -19,8 +19,8 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    @unroll for q in 2:Nx-1
-        D[q, j, k] = - (1 / Δxᶠᵃᵃ(q+1, j, k, grid) + 1 / Δxᶠᵃᵃ(q, j, k, grid)) - Δxᶜᵃᵃ(q, j, k, grid) * (λy[j] + λz[k])
+    @unroll for i in 2:Nx-1
+        D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
     end
     D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 end 
@@ -31,8 +31,8 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    @unroll for q in 2:Ny-1
-        D[i, q, k] = - (1 / Δyᵃᶠᵃ(i, q+1, k, grid) + 1 / Δyᵃᶠᵃ(i, q, k, grid)) - Δyᵃᶜᵃ(i, q, k, grid) * (λx[i] + λz[k])
+    @unroll for j in 2:Ny-1
+        D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
     end
     D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 end 
@@ -43,8 +43,8 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-    @unroll for q in 2:Nz-1
-        D[i, j, q] = - (1 / Δzᵃᵃᶠ(i, j, q+1, grid) + 1 / Δzᵃᵃᶠ(i, j, q, grid)) - Δzᵃᵃᶜ(i, j, q, grid) * (λx[i] + λy[j])
+    @unroll for k in 2:Nz-1
+        D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
     D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end 

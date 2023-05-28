@@ -152,7 +152,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
     TX, TY, TZ = topo = topology(grid)
 
     irreg_dim     = irregular_dimension(grid)
-    !(topo[irreg_dim] === Bounded) && error("Can plan transforms when the irregular direction's topology is `Bounded`.")
+    !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the irregular direction's topology is `Bounded`.")
 
     periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
     bounded_dims  = Tuple( dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ irreg_dim )
