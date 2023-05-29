@@ -107,8 +107,8 @@ function reconstruct_extent(mrg, p::XPartition)
     return (; x = x, y = y, z = z)
 end
 
-const FunctionMRO     = MultiRegionObject{<:Tuple{Vararg{<:Function}}}
-const ArrayMRO{T, N}  = MultiRegionObject{<:Tuple{Vararg{<:AbstractArray{T, N}}}} where {T, N}
+const FunctionMRO     = MultiRegionObject{<:Tuple{T, Vararg{T}}} where T<:Function
+const ArrayMRO{T, N}  = MultiRegionObject{<:Tuple{A, Vararg{A}}} where A<:AbstractArray{T, N} where {T, N}
 
 reconstruct_global_array(ma::FunctionMRO, args...) = ma.regional_objects[1]
 
