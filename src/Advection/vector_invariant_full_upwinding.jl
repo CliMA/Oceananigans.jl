@@ -1,8 +1,8 @@
 const VectorInvariantFullVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:FullUpwinding}
 
 #####
-##### Full upwindind results in the largest energy content and lowest
-##### spurious mixing, but because of resence of mixed upwinding leading to cross-double derivatives
+##### Full upwindind results in the largest kinetic energy content,
+##### but because of presence of mixed upwinding leading to cross-double derivatives
 ##### it is slightly unstable at larger orders. 
 #####
 
