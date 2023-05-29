@@ -2,7 +2,7 @@ const VectorInvariantSplitVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:A
 
 #####
 ##### Split upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
-##### the difference operator instead of outside. _MOST_ stable formulation
+##### the difference operator instead of outside. _MOST_ stable formulation, low kinetic energy
 ##### 
 
 ##### 
