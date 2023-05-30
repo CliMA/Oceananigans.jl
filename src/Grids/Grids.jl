@@ -135,6 +135,20 @@ Abstract supertype for horizontally-curvilinear grids with elements of type `FT`
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
 
+#####
+##### Directions (for tilted domains)
+#####
+
+abstract type AbstractDirection end
+
+struct XDirection <: AbstractDirection end
+
+struct YDirection <: AbstractDirection end
+
+struct ZDirection <: AbstractDirection end
+
+struct NegativeZDirection <: AbstractDirection end
+
 isrectilinear(grid) = false
 
 include("grid_utils.jl")

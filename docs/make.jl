@@ -3,7 +3,6 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Glob
 
 using CairoMakie # to avoid capturing precompilation output by Literate
 CairoMakie.activate!(type = "svg")
@@ -29,20 +28,20 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    "One-dimensional diffusion"          => "one_dimensional_diffusion",
-    "Two-dimensional turbulence"         => "two_dimensional_turbulence",
-    "Internal wave"                      => "internal_wave",
-    "Convecting plankton"                => "convecting_plankton",
-    "Ocean wind mixing and convection"   => "ocean_wind_mixing_and_convection",
-    "Langmuir turbulence"                => "langmuir_turbulence",
-    "Baroclinic adjustment"              => "baroclinic_adjustment",
-    "Kelvin-Helmholtz instability"       => "kelvin_helmholtz_instability",
-    "Shallow water Bickley jet"          => "shallow_water_Bickley_jet",
-    "Horizontal convection"              => "horizontal_convection",
-    "Tilted bottom boundary layer"       => "tilted_bottom_boundary_layer"
+    "One-dimensional diffusion"        => "one_dimensional_diffusion",
+    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+    "Internal wave"                    => "internal_wave",
+    "Convecting plankton"              => "convecting_plankton",
+    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+    "Langmuir turbulence"              => "langmuir_turbulence",
+    "Baroclinic adjustment"            => "baroclinic_adjustment",
+    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
+    "Horizontal convection"            => "horizontal_convection",
+    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
 ]
 
-example_scripts = [ val * ".jl" for (key, val) in examples ]
+example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
 for example in example_scripts
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -53,7 +52,7 @@ end
 ##### Organize page hierarchies
 #####
 
-example_pages = [ key => "generated/$val.md" for (key, val) in examples ]
+example_pages = [ title => "generated/$(filename).md" for (title, filename) in examples ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
@@ -150,13 +149,24 @@ makedocs(bib,
  checkdocs = :exports
 )
 
-@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
-for file in vcat(glob("docs/*.jld2"),
-                 glob("docs/*.nc"),
-                 glob("docs/build/generated/*.jld2"),
-                 glob("docs/build/generated/*.nc")
-                 )
+"""
+    recursive_find(directory, pattern)
+
+Return list of filepaths within `directory` that contains the `pattern::Regex`.
+"""
+recursive_find(directory, pattern) =
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
+        joinpath.(root, filter(contains(pattern), files))
+    end
+
+files = []
+for pattern in [r"\.jld2", r"\.nc"]
+    global files = vcat(files, recursive_find(@__DIR__, pattern))
+end
+
+for file in files
     rm(file)
 end
 
