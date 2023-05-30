@@ -17,7 +17,7 @@ Base.@kwdef struct MixingLength{FT}
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
     Cᶜc  :: FT = 1.5    # Convective mixing length coefficient for tracers
     Cᶜe  :: FT = 1.2    # Convective mixing length coefficient for TKE
-    Cᵉc  :: FT = 0.085  # Convective penetration mixing length coefficient for tracers
+    Cᵉc  :: FT = 0.2    # Convective penetration mixing length coefficient for tracers
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
     Cˢᵖ  :: FT = 0.14   # Sheared convective plume coefficient
     Cˡᵒu :: FT = 0.19   # Shear mixing length coefficient for momentum at low Ri
