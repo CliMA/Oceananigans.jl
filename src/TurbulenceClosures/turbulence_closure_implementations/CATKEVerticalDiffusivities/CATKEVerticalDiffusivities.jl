@@ -272,9 +272,10 @@ end
 
         on_periphery = peripheral_node(i, j, k, grid, c, c, f)
         within_inactive = inactive_node(i, j, k, grid, c, c, f)
-        κᵘ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵘ★))
-        κᶜ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ★))
-        κᵉ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵉ★))
+        nan = convert(eltype(grid), NaN)
+        κᵘ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᵘ★))
+        κᶜ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᶜ★))
+        κᵉ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᵉ★))
 
         diffusivities.κᵘ[i, j, k] = κᵘ★
         diffusivities.κᶜ[i, j, k] = κᶜ★

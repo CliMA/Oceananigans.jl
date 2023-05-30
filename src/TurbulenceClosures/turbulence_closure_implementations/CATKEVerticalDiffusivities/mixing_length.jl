@@ -13,21 +13,21 @@ using ..TurbulenceClosures:
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cˢ   :: FT = 0.36   # Surface distance coefficient for shear length scale
-    Cᵇ   :: FT = 0.1    # Bottom distance coefficient for shear length scale
-    Cᶜc  :: FT = 0.78   # Convective mixing length coefficient for tracers
-    Cᶜe  :: FT = 0.087  # Convective mixing length coefficient for TKE
-    Cᵉc  :: FT = 0.25   # Convective penetration mixing length coefficient for tracers
+    Cˢ   :: FT = 2.4    # Surface distance coefficient for shear length scale
+    Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
+    Cᶜc  :: FT = 1.5    # Convective mixing length coefficient for tracers
+    Cᶜe  :: FT = 1.2    # Convective mixing length coefficient for TKE
+    Cᵉc  :: FT = 0.085  # Convective penetration mixing length coefficient for tracers
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
-    Cˢᵖ  :: FT = 0.072  # Sheared convective plume coefficient
-    Cˡᵒu :: FT = 1.1    # Shear mixing length coefficient for momentum at low Ri
-    Cʰⁱu :: FT = 0.28   # Shear mixing length coefficient for momentum at high Ri
-    Cˡᵒc :: FT = 1.9    # Shear mixing length coefficient for tracers at low Ri
-    Cʰⁱc :: FT = 0.22   # Shear mixing length coefficient for tracers at high Ri
-    Cˡᵒe :: FT = 0.71   # Shear mixing length coefficient for TKE at low Ri
-    Cʰⁱe :: FT = 3.5    # Shear mixing length coefficient for TKE at high Ri
-    CRiᵟ :: FT = 0.14   # Stability function width 
-    CRi⁰ :: FT = 0.13   # Stability function lower Ri
+    Cˢᵖ  :: FT = 0.14   # Sheared convective plume coefficient
+    Cˡᵒu :: FT = 0.19   # Shear mixing length coefficient for momentum at low Ri
+    Cʰⁱu :: FT = 0.086  # Shear mixing length coefficient for momentum at high Ri
+    Cˡᵒc :: FT = 0.2    # Shear mixing length coefficient for tracers at low Ri
+    Cʰⁱc :: FT = 0.045  # Shear mixing length coefficient for tracers at high Ri
+    Cˡᵒe :: FT = 1.9    # Shear mixing length coefficient for TKE at low Ri
+    Cʰⁱe :: FT = 0.57   # Shear mixing length coefficient for TKE at high Ri
+    CRiᵟ :: FT = 0.45   # Stability function width 
+    CRi⁰ :: FT = 0.47   # Stability function lower Ri
 end
 
 #####
@@ -67,13 +67,14 @@ end
 end
 
 @inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-    ℓᴺ = stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
-
     Cˢ = closure.mixing_length.Cˢ
     Cᵇ = closure.mixing_length.Cᵇ
+
     d_up   = Cˢ * depthᶜᶜᶠ(i, j, k, grid)
     d_down = Cᵇ * height_above_bottomᶜᶜᶠ(i, j, k, grid)
     d = min(d_up, d_down)
+
+    ℓᴺ = stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
 
     ℓ = min(d, ℓᴺ)
     ℓ = ifelse(isnan(ℓ), d, ℓ)
@@ -82,13 +83,13 @@ end
 end
 
 @inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-    ℓᴺ = stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
-
     Cˢ = closure.mixing_length.Cˢ
     Cᵇ = closure.mixing_length.Cᵇ
     d_up   = Cˢ * depthᶜᶜᶜ(i, j, k, grid)
     d_down = Cᵇ * height_above_bottomᶜᶜᶜ(i, j, k, grid)
     d = min(d_up, d_down)
+
+    ℓᴺ = stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
 
     ℓ = min(d, ℓᴺ)
     ℓ = ifelse(isnan(ℓ), d, ℓ)
