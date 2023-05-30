@@ -35,6 +35,7 @@ end
     closure = getclosure(i, j, closure)
     κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
+
     return κᵘ * S²
 end
 
@@ -128,7 +129,7 @@ end
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
     eᵢ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
-    return - ω * eᵢ
+    return ω * eᵢ
 end
 
 #####
@@ -137,19 +138,19 @@ end
 
 # TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
 
-@inline shear_production(i, j, k, grid, closure, velocities, diffusivities) = zero(grid)
+@inline shear_production(i, j, k, grid, closure, U, C, B, K) = zero(grid)
 
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, velocities, diffusivities) =
-    shear_production(i, j, k, grid, closures[1], velocities, diffusivities[1])
+@inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, U, C, B, K) =
+    shear_production(i, j, k, grid, closures[1], U, C, B, K[1])
 
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any}, velocities, diffusivities) =
-    shear_production(i, j, k, grid, closures[1], velocities, diffusivities[1]) +
-    shear_production(i, j, k, grid, closures[2], velocities, diffusivities[2])
+@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any}, U, C, B, K) =
+    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
+    shear_production(i, j, k, grid, closures[2], U, C, B, K[2])
 
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, velocities, diffusivities) =
-    shear_production(i, j, k, grid, closures[1], velocities, diffusivities[1]) +
-    shear_production(i, j, k, grid, closures[2], velocities, diffusivities[2]) +
-    shear_production(i, j, k, grid, closures[3], velocities, diffusivities[3])
+@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, U, C, B, K) = 
+    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
+    shear_production(i, j, k, grid, closures[2], U, C, B, K[2]) +
+    shear_production(i, j, k, grid, closures[3], U, C, B, K[3])
 
 @inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(grid)
 
