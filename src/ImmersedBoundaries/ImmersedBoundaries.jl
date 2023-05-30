@@ -40,7 +40,7 @@ using Oceananigans.Advection:
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z
-    
+
 import Base: show, summary
 import Oceananigans.Advection: cell_advection_timescale
 

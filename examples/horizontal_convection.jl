@@ -18,7 +18,7 @@
 
 # ## Horizontal convection
 #
-# We consider here two-dimensional horizontal convection of an incompressible flow ``\boldsymbol{u} = (u, w)``
+# We consider two-dimensional horizontal convection of an incompressible flow ``\boldsymbol{u} = (u, w)``
 # on the ``(x, z)``-plane (``-L_x/2 \le x \le L_x/2`` and ``-H \le z \le 0``). The flow evolves
 # under the effect of gravity. The only forcing on the fluid comes from a prescribed, non-uniform
 # buoyancy at the top-surface of the domain.
@@ -100,13 +100,13 @@ model = NonhydrostaticModel(; grid,
 # ## Simulation set-up
 #
 # We set up a simulation that runs up to ``t = 40`` with a `JLD2OutputWriter` that saves the flow
-# speed, ``\sqrt{u^2 + w^2}``, the buoyancy, ``b``, andthe vorticity, ``\partial_z u - \partial_x w``.
+# speed, ``\sqrt{u^2 + w^2}``, the buoyancy, ``b``, and the vorticity, ``\partial_z u - \partial_x w``.
 
 simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
 
 # ### The `TimeStepWizard`
 #
-# The TimeStepWizard manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy 
+# The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy 
 # (CFL) number close to `0.75` while ensuring the time-step does not increase beyond the 
 # maximum allowable value for numerical stability.
 
@@ -142,8 +142,8 @@ nothing # hide
 
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
 # to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
-# to ``|\boldsymbol{\nabla} b|^2) we use the `with_halos = true`. This way, the halos for
-# the fields are saved and thus when we load them as fields the will come with the proper
+# to ``|\boldsymbol{\nabla} b|^2``) we use the `with_halos = true`. This way, the halos for
+# the fields are saved and thus when we load them as fields they will come with the proper
 # boundary conditions.
 #
 # We then add the `JLD2OutputWriter` to the `simulation`.
