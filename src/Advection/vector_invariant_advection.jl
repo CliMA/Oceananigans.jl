@@ -55,15 +55,17 @@ Keyword arguments
 - `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil`)
-- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum. It has to be consistent with the choice of 
-                     `divergence_stencil`. If the latter is a `Nothing`, only `EnergyConservingScheme` is available (this keyword
-                     argument has no effect). In case `divergence_scheme` is an `AbstractUpwindBiasedAdvectionScheme`, 
-                     `vertical_scheme` describes a flux form reconstruction of vertical momentum advection, and any 
-                     advection scheme can be used - `Centered`, `UpwindBiased` and `WENO` (defaults to `EnergyConservingScheme`)
-- `u_stencil`: Stencil used for smoothness indicators of `δ_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
+- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
+- `upwinding_treatment`: Treatment of upwinding in of divergence and kinetic energy gradient. Choices are between
+                         `FullUpwinding`, `PartialUpwinding` and `SplitUpwinding` (defaults to `PartialUpwinding`)
+- `u_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(divergence_smoothness)`)
-- `v_stencil`: Same as `u_stencil` but for the smoothness of `δ_V`
+- `v_stencil`: Same as `u_stencil` but for the smoothness of `δy_V`
+- `u2_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
+               which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
+               custom function (defaults to `FunctionStencil(u2_smoothness)`)
+- `v2_stencil`: Same as `u_stencil` but for the smoothness of `δy_v²`
 - `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity and divergence.
                                 The tangential (not upwinded) direction is treated with a 5th order centered WENO reconstruction
 
@@ -90,14 +92,16 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
     └── WENO reconstruction order 3
-      └── upwinding treatment: Oceananigans.Advection.FullUpwinding()
-      └── smoothness u: FunctionStencil f = divergence_smoothness 
-      └── smoothness v: FunctionStencil f = divergence_smoothness
+      └── upwinding treatment: Oceananigans.Advection.PartialUpwinding()
+            └── smoothness u: FunctionStencil f = divergence_smoothness 
+            └── smoothness v: FunctionStencil f = divergence_smoothness
+            └── smoothness u²: FunctionStencil f = u2_smoothness
+            └── smoothness v²: FunctionStencil f = v2_smoothness
 ```
 """
-function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = WENO(order = 9), 
+function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
-                           vertical_scheme      = WENO(order = 5),
+                           vertical_scheme      = EnergyConservingScheme(),
                            upwinding_treatment  = PartialUpwinding(),
                            u_stencil            = FunctionStencil(divergence_smoothness),
                            v_stencil            = FunctionStencil(divergence_smoothness),
@@ -128,11 +132,11 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               "    └── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
               "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
-              "$(a.vertical_scheme isa WENO ? "
-               \n      └── smoothness u: $(a.u_stencil) 
-               \n      └── smoothness v: $(a.v_stencil)
-               \n      └── smoothness u²: $(a.u2_stencil)
-               \n      └── smoothness v²: $(a.v2_stencil)" : "")")
+              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa PartialUpwinding) ? "
+            └── smoothness u: $(a.u_stencil) 
+            └── smoothness v: $(a.v_stencil)
+            └── smoothness u²: $(a.u2_stencil)
+            └── smoothness v²: $(a.v2_stencil)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
