@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, FluxForm
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -222,10 +222,10 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
 end
 
 validate_momentum_advection(momentum_advection, grid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::LatitudeLongitudeGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
 validate_momentum_advection(momentum_advection::Nothing, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
-validate_momentum_advection(momentum_advection::FluxForm, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing

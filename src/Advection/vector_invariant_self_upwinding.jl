@@ -1,7 +1,7 @@
-const VectorInvariantPartialVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:PartialUpwinding}
+const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:SelfUpwinding}
 
 ##### 
-##### Partial Upwinding of Divergence Flux, the best option!
+##### Self Upwinding of Divergence Flux, the best option!
 #####
 
 @inline δx_U(i, j, k, grid, u, v) =  δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
@@ -14,7 +14,7 @@ const VectorInvariantPartialVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
 
-@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantPartialVerticalUpwinding, u, v)
+@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     @inbounds û = u[i, j, k]
     δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δy_V, u, v) 
     δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δx_U, scheme.u_stencil, u, v) 
@@ -23,7 +23,7 @@ const VectorInvariantPartialVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
-@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantPartialVerticalUpwinding, u, v)
+@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     @inbounds v̂ = v[i, j, k]
     δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δx_U, u, v) 
     δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δy_V, scheme.v_stencil, u, v) 
@@ -33,7 +33,7 @@ end
 end
 
 #####
-##### Partial Upwinding of Kinetic Energy Gradient 
+##### Self Upwinding of Kinetic Energy Gradient 
 #####
 
 const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}

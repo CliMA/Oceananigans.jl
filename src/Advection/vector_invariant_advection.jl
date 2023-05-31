@@ -6,9 +6,9 @@ struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 
 abstract type AbstractUpwindingTreatment end
 
-struct FullUpwinding    <: AbstractUpwindingTreatment end
-struct PartialUpwinding <: AbstractUpwindingTreatment end
-struct SplitUpwinding   <: AbstractUpwindingTreatment end
+struct CrossUpwinding   <: AbstractUpwindingTreatment end
+struct SelfUpwinding   <: AbstractUpwindingTreatment end
+struct VelocityUpwinding  <: AbstractUpwindingTreatment end
 
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
@@ -57,7 +57,7 @@ Keyword arguments
                        being transported (defaults to `VelocityStencil`)
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
 - `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
-                         `FullUpwinding`, `PartialUpwinding` and `SplitUpwinding` (defaults to `PartialUpwinding`)
+                         `CrossUpwinding`, `SelfUpwinding` and `VelocityUpwinding` (defaults to `SelfUpwinding`)
 - `u_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(divergence_smoothness)`)
@@ -92,7 +92,7 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
     └── WENO reconstruction order 3
-      └── upwinding treatment: Oceananigans.Advection.PartialUpwinding()
+      └── upwinding treatment: Oceananigans.Advection.SelfUpwinding()
             └── smoothness u: FunctionStencil f = divergence_smoothness 
             └── smoothness v: FunctionStencil f = divergence_smoothness
             └── smoothness u²: FunctionStencil f = u2_smoothness
@@ -102,7 +102,7 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
-                           upwinding_treatment  = PartialUpwinding(),
+                           upwinding_treatment  = SelfUpwinding(),
                            u_stencil            = FunctionStencil(divergence_smoothness),
                            v_stencil            = FunctionStencil(divergence_smoothness),
                            u2_stencil           = FunctionStencil(u2_smoothness),
@@ -132,7 +132,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               "    └── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
               "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
-              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa PartialUpwinding) ? "
+              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa SelfUpwinding) ? "
             └── smoothness u: $(a.u_stencil) 
             └── smoothness v: $(a.v_stencil)
             └── smoothness u²: $(a.u2_stencil)
@@ -277,8 +277,25 @@ end
 ##### Fallback
 #####
 
-@inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
-@inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
+@inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+
+    @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
+    @inbounds û = U.u[i, j, k]
+
+    return div_𝐯u(i, j, k, grid, advection, U, U.u) - 
+           v̂ * v̂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) / Azᶠᶜᶜ(i, j, k, grid) + 
+           v̂ * û * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) / Azᶠᶜᶜ(i, j, k, grid)
+end
+
+@inline function U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+
+    @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds v̂ = U.v[i, j, k]
+
+    return div_𝐯v(i, j, k, grid, advection, U, U.v) + 
+           û * v̂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) / Azᶜᶠᶜ(i, j, k, grid) -
+           û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
+end
 
 #####
 ##### No advection

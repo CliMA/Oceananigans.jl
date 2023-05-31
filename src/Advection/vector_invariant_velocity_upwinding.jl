@@ -1,12 +1,13 @@
-const VectorInvariantSplitVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:SplitUpwinding}
+const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:VelocityUpwinding}
 
 #####
-##### Split upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
-##### the difference operator instead of outside. _MOST_ stable formulation, low kinetic energy
+##### Velocity upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
+##### the difference operator (i.e velocity upwinding) instead of outside (i.e., derivative upwinding).
+##### _MOST_ stable formulation at the expense of a low kinetic energy
 ##### 
 
 ##### 
-##### Split Upwinding of Divergence flux
+##### Velocity Upwinding of Divergence flux
 #####
 
 @inline function Auᶜᶜᶜ(i, j, k, grid, scheme, u) 
@@ -33,7 +34,7 @@ end
 @inline Avᶠᶠᶜ(i, j, k, grid, scheme, v) = 
      _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
 
-@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSplitVerticalUpwinding, u, v) 
+@inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds û = u[i, j, k] 
     
     δu = δxᶠᵃᵃ(i, j, k, grid, Auᶜᶜᶜ, scheme, u) 
@@ -42,7 +43,7 @@ end
     return û * (δu + δv)
 end
 
-@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSplitVerticalUpwinding, u, v) 
+@inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds v̂ = v[i, j, k] 
 
     δu = δxᶜᵃᵃ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
@@ -52,7 +53,7 @@ end
 end
 
 ##### 
-##### Split Upwinding of Kinetic Energy gradient
+##### Velocity Upwinding of Kinetic Energy gradient
 #####
 
 @inline function uᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
@@ -79,7 +80,7 @@ end
 @inline vˢ²ᶜᶜᶜ(i, j, k, grid, scheme, v) = 
      _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
 
-@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantSplitVerticalUpwinding, u, v)
+@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
 
     δKu = δxᶠᵃᵃ(i, j, k, grid, uᵁ²ᶜᶜᶜ, scheme, u)
     δKv = δxᶠᵃᵃ(i, j, k, grid, vˢ²ᶜᶜᶜ, scheme, v)
@@ -87,7 +88,7 @@ end
     return (δKu + δKv) / Δxᶠᶜᶜ(i, j, k, grid)
 end
 
-@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantSplitVerticalUpwinding, u, v)
+@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
 
     δKu = δyᵃᶠᵃ(i, j, k, grid, uˢ²ᶜᶜᶜ, scheme, u)
     δKv = δyᵃᶠᵃ(i, j, k, grid, vᵁ²ᶜᶜᶜ, scheme, v)
