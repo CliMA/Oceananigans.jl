@@ -16,7 +16,7 @@ using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.TimeSteppers: update_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -101,7 +101,7 @@ displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-update_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
+step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")

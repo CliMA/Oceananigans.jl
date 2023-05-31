@@ -16,7 +16,7 @@ using Oceananigans.Utils: SumOfArrays
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.TimeSteppers: update_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
@@ -64,7 +64,7 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-update_lagrangian_particles!(model::NonhydrostaticModel, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
+step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")

@@ -18,7 +18,7 @@ using Oceananigans.Fields: fractional_indices
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
 
-import Oceananigans.TimeSteppers: update_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 import Base: size, length, show
 
@@ -118,9 +118,9 @@ end
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
 
-update_lagrangian_particles!(::Nothing, model, Δt) = nothing
+step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
-function update_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
+function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
     update_lagrangian_particle_properties!(particles, model, Δt)
     

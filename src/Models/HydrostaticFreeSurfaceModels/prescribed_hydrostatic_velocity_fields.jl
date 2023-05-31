@@ -4,7 +4,7 @@
 
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
-using Oceananigans.TimeSteppers: tick!, update_lagrangian_particles!
+using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
@@ -104,6 +104,6 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 function time_step!(model::OnlyParticleTrackingModel, Δt; euler=false) 
     model.timestepper.previous_Δt = Δt
     tick!(model.clock, Δt)
-    update_lagrangian_particles!(model, Δt)
+    step_lagrangian_particles!(model, Δt)
 end
 
