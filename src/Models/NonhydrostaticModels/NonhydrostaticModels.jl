@@ -62,6 +62,8 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Nonhyd
 """
 prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
+
+# Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 update_lagrangian_particles!(model::NonhydrostaticModel, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 
 include("solve_for_pressure.jl")

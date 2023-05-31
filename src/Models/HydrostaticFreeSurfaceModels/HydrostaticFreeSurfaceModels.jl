@@ -100,6 +100,7 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
+# Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 update_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = update_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
