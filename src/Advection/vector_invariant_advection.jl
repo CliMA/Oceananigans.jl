@@ -95,8 +95,8 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── upwinding treatment: Oceananigans.Advection.SelfUpwinding()
             └── smoothness u: FunctionStencil f = divergence_smoothness 
             └── smoothness v: FunctionStencil f = divergence_smoothness
-            └── smoothness u²: FunctionStencil f = u2_smoothness
-            └── smoothness v²: FunctionStencil f = v2_smoothness
+            └── smoothness u²: FunctionStencil f = u_smoothness
+            └── smoothness v²: FunctionStencil f = v_smoothness
 ```
 """
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
