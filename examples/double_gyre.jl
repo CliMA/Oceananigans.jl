@@ -69,12 +69,12 @@ cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 
 parameters = (Lφ = Lφ,
               Lz = Lz,
-              φ₀ = φ_south,
+              φ₀ = (φ_south + φ_north) / 2, # latitude of the center of the domain [°]
                τ = 0.1 / ρ₀,   # surface kinematic wind stress [m² s⁻²]
                μ = 0.001,      # bottom drag damping parameter [ms⁻¹]
               Δb = 30 * α * g, # surface vertical buoyancy gradient [s⁻²]
-       timescale = 10days,     # relaxation time scale [s]  
-              vˢ = Δzₛ/10days) # buoyancy pumping velocity [ms⁻¹]
+       timescale = 30days,     # relaxation time scale [s]  
+              vˢ = Δzₛ/30days) # buoyancy pumping velocity [ms⁻¹]
 
 ### Boundary conditions
 
@@ -123,26 +123,35 @@ v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
 b_bcs = FieldBoundaryConditions(top = b_relax_bc)
 
 ### Turbulence closure
-vertical_diffusive_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 0.1, 
-                                                                     background_κz = 1e-5,
-                                                                     background_νz = 1e-3)
+vertical_diffusive_closure = RiBasedVerticalDiffusivity()
 
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(κ = 1000, ν = 500)
+Δt_max = 10minutes
+gravitational_acceleration = 9.81 # [m s⁻²]
+gravity_wave_speed = sqrt(gravitational_acceleration*grid.Lz) # [m s⁻¹]
+Δx = minimum_xspacing(grid) # [m]
+Δy = minimum_yspacing(grid) # [m]
+Δh = sqrt(1/(1/Δx^2 + 1/Δy^2)) # [m]
+Δt_barotropic = 0.7Δh/gravity_wave_speed
+
+# CFL = gravity_wave_speed * Δt_barotropic / Δh
+substeps = ceil(Int, 2Δt_max / Δt_barotropic)
 
 ### Model building
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    free_surface = SplitExplicitFreeSurface(; substeps = 50),
-                                    momentum_advection = VectorInvariant(),
+                                    free_surface = SplitExplicitFreeSurface(; gravitational_acceleration, substeps),
+                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO(), 
+                                                                         divergence_scheme = WENO(), 
+                                                                         vertical_scheme = WENO()),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                    closure  = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                    closure  = vertical_diffusive_closure,
                                     tracers  = :b,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
 
 ### Initial conditions
 
-bᵢ(λ, φ, z) = parameters.Δb * (1 + z / grid.Lz)
+bᵢ(λ, φ, z) = parameters.Δb * z / grid.Lz
 
 set!(model, b = bᵢ)
 
