@@ -2,18 +2,19 @@ using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃ�
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, irregular_dimension
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T, D}
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
                        storage :: S
                         buffer :: β
                     transforms :: T
+         tridiagonal_direction :: D
 end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
-@kernel function compute_main_diagonals!(D, grid, λy, λz, ::XDirection)
+@kernel function compute_main_diagonal!(D, grid, λy, λz, ::XDirection)
     j, k = @index(Global, NTuple)
     Nx = getindex(size(grid), 1)
 
@@ -25,7 +26,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
     D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 end 
 
-@kernel function compute_main_diagonals!(D, grid, λx, λz, ::YDirection)
+@kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
     i, k = @index(Global, NTuple)
     Ny = getindex(size(grid), 2)
 
@@ -37,7 +38,7 @@ end
     D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 end 
 
-@kernel function compute_main_diagonals!(D, grid, λx, λy, ::ZDirection)
+@kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
     i, j = @index(Global, NTuple)
     Nz = getindex(size(grid), 3)
 
@@ -95,7 +96,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
                     elseif grid isa XYRegRectilinearGrid
                         :xy
                     end
-    launch!(arch, grid, launch_config, compute_main_diagonals!, diagonal, grid, λ1, λ2, irregular_direction(grid))
+    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, irregular_direction(grid))
     
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction = irregular_direction(grid))
@@ -107,7 +108,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     # Storage space for right hand side of Poisson equation
     rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
+    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, irregular_direction(grid))
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
@@ -119,7 +120,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Apply forward transforms in order
     [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
 
-    # Solve tridiagonal system of linear equations in z at every column.
+    # Solve tridiagonal system of linear equations every column.
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
@@ -142,7 +143,7 @@ end
     set_source_term!(solver, source_term)
 
 Sets the source term in the discrete Poisson equation `solver` to `source_term` by
-multiplying it by the vertical grid spacing at ``z`` cell centers.
+multiplying it by the vertical grid spacing at the cell centers in the stretched direction.
 """
 function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid

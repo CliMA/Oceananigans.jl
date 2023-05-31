@@ -1,6 +1,7 @@
 using Oceananigans.Operators
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 using Oceananigans.Distributed: DistributedFFTBasedPoissonSolver
+using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 using PencilArrays: Permutation
 
@@ -26,7 +27,17 @@ end
     @inbounds rhs[k, j, i] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★, ::XDirection)
+    i, j, k = @index(Global, NTuple)
+    @inbounds rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★, ::YDirection)
+    i, j, k = @index(Global, NTuple)
+    @inbounds rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★, ::ZDirection)
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
@@ -73,7 +84,7 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
     grid = solver.grid
 
     launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
-            rhs, grid, Δt, U★)
+            rhs, grid, Δt, U★, solver.tridiagonal_direction)
 
     # Pressure Poisson rhs, scaled by Δzᶜᶜᶜ, is stored in solver.source_term:
     solve!(pressure, solver)
