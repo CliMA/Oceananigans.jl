@@ -66,8 +66,8 @@ Keyword arguments
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(u2_smoothness)`)
 - `v2_stencil`: Same as `u_stencil` but for the smoothness of `δy_v²`
-- `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity and divergence.
-                                The tangential (not upwinded) direction is treated with a 5th order centered WENO reconstruction
+- `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
+                                The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
 
 Examples
 ========
