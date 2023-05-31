@@ -23,19 +23,19 @@ struct VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} <: AbstractAdvec
     "treatment of upwinding"
     upwinding_treatment  :: D
     "stencil used for assessing u-derivative smoothness"
-    u_stencil            :: US
+    δU_stencil            :: US
     "stencil used for assessing v-derivative smoothness"
-    v_stencil            :: VS
+    δV_stencil            :: VS
     "stencil used for assessing u²-derivative smoothness"
-    u2_stencil           :: KUS
+    δu²_stencil           :: KUS
     "stencil used for assessing v²-derivative smoothness"
-    v2_stencil           :: KVS
+    δv²_stencil           :: KVS
 
     function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                                       upwinding_treatment::D, u_stencil::US, v_stencil::VS,
-                                       u2_stencil::KUS, v2_stencil::KVS) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}
+                                       upwinding_treatment::D, δU_stencil::US, δV_stencil::VS,
+                                       δu²_stencil::KUS, δv²_stencil::KVS) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}
         return new{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, 
-                                                            upwinding_treatment, u_stencil, v_stencil, u2_stencil, v2_stencil)
+                                                            upwinding_treatment, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
     end
 end
 
@@ -58,14 +58,14 @@ Keyword arguments
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
 - `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `CrossUpwinding`, `SelfUpwinding` and `VelocityUpwinding` (defaults to `SelfUpwinding`)
-- `u_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
+- `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(divergence_smoothness)`)
-- `v_stencil`: Same as `u_stencil` but for the smoothness of `δy_V`
-- `u2_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
+- `δV_stencil`: Same as `δU_stencil` but for the smoothness of `δy_V`
+- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(u2_smoothness)`)
-- `v2_stencil`: Same as `u_stencil` but for the smoothness of `δy_v²`
+- `δv²_stencil`: Same as `δU_stencil` but for the smoothness of `δy_v²`
 - `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
                                 The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
 
@@ -103,14 +103,14 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
                            upwinding_treatment  = SelfUpwinding(),
-                           u_stencil            = FunctionStencil(divergence_smoothness),
-                           v_stencil            = FunctionStencil(divergence_smoothness),
-                           u2_stencil           = FunctionStencil(u2_smoothness),
-                           v2_stencil           = FunctionStencil(v2_smoothness),
+                           δU_stencil           = FunctionStencil(divergence_smoothness),
+                           δV_stencil           = FunctionStencil(divergence_smoothness),
+                           δu²_stencil          = FunctionStencil(u_smoothness),
+                           δv²_stencil          = FunctionStencil(v_smoothness),
                            multi_dimensional_stencil = false) where {N, FT}
         
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, 
-                                                             upwinding_treatment, u_stencil, v_stencil, u2_stencil, v2_stencil)
+                                                             upwinding_treatment, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
 end
 
 const VectorInvariantEnergyConserving            = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
@@ -133,10 +133,10 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
               "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
               "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa SelfUpwinding) ? "
-            └── smoothness u: $(a.u_stencil) 
-            └── smoothness v: $(a.v_stencil)
-            └── smoothness u²: $(a.u2_stencil)
-            └── smoothness v²: $(a.v2_stencil)" : "")")
+            └── smoothness u: $(a.δU_stencil) 
+            └── smoothness v: $(a.δV_stencil)
+            └── smoothness u²: $(a.δu²_stencil)
+            └── smoothness v²: $(a.δv²_stencil)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
@@ -147,10 +147,10 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KU
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
                                   Adapt.adapt(to, scheme.upwinding_treatment),
-                                  Adapt.adapt(to, scheme.u_stencil),
-                                  Adapt.adapt(to, scheme.v_stencil),
-                                  Adapt.adapt(to, scheme.u2_stencil),
-                                  Adapt.adapt(to, scheme.v2_stencil))
+                                  Adapt.adapt(to, scheme.δU_stencil),
+                                  Adapt.adapt(to, scheme.δV_stencil),
+                                  Adapt.adapt(to, scheme.δu²_stencil),
+                                  Adapt.adapt(to, scheme.δv²_stencil))
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
