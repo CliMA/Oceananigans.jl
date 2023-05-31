@@ -56,7 +56,7 @@ Keyword arguments
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil`)
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
-- `upwinding_treatment`: Treatment of upwinding in of divergence and kinetic energy gradient. Choices are between
+- `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `FullUpwinding`, `PartialUpwinding` and `SplitUpwinding` (defaults to `PartialUpwinding`)
 - `u_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 

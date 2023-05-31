@@ -17,30 +17,28 @@
 #
 
 """ 
-`AbstractSmoothnessStencil`s control the smoothness polynomials used for weno weights calculation 
-in `VectorInvariant` advection formulation. 
+`AbstractSmoothnessStencil`s specifies the polynomials used for diagnosing stencils' smoothness for weno weights 
+calculation in the `VectorInvariant` advection formulation. 
 
-They can be used only for functional reconstructions:
-`_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function`
+Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
+```julia
+_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function
+```
 
-For scalar reconstructions as
-`_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField`
-the smoothness is assessed from recontruction polynomials of `reconstruced_field`
-"""
-abstract type AbstractSmoothnessStencil end
+For scalar reconstructions 
+```julia
+_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField
+```
+the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
-"""`DefaultStencil` uses the same polynomials used for reconstruction"""
-struct DefaultStencil <:AbstractSmoothnessStencil end
+Options:
+========
 
-"""
-`VelocityStencil` valid _only_ for vorticity reconstruction calculates the smoothness based on 
-`(Face, Face, Center)` polynomial interpolation of `u` and `v`
-"""
-struct VelocityStencil <:AbstractSmoothnessStencil end
-
-"""
-`FunctionStencil` allows using a custom function as smoothness indicators. 
-The custom function should share arguments with the reconstruced function. 
+- `DefaultStencil`: uses the same polynomials used for reconstruction
+- `VelocityStencil`: is valid _only_ for vorticity reconstruction and diagnoses the smoothness based on 
+                     `(Face, Face, Center)` polynomial interpolations of `u` and `v`
+- `FunctionStencil`: allows using a custom function as smoothness indicator. 
+The custom function should share arguments with the reconstructed function. 
 
 Example:
 ========
@@ -49,9 +47,18 @@ Example:
 @inline   smoothness_function(i, j, k, grid, args...) = custom_smoothness_function(i, j, k, grid, args...)
 @inline reconstruced_function(i, j, k, grid, args...) = custom_reconstruction_function(i, j, k, grid, args...)
 
-smoothness_stencil = FunctionStencil(smoothness_function)
+smoothness_stencil = FunctionStencil(smoothness_function)    
 ```
 """
+abstract type AbstractSmoothnessStencil end
+
+"""`DefaultStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
+struct DefaultStencil <:AbstractSmoothnessStencil end
+
+"""`VelocityStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
+struct VelocityStencil <:AbstractSmoothnessStencil end
+
+"""`FunctionStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct FunctionStencil{F} <:AbstractSmoothnessStencil 
     func :: F
 end
