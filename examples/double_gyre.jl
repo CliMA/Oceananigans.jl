@@ -7,6 +7,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: on_architecture
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.Operators
 using JLD2
 using CairoMakie
 using Statistics
@@ -65,71 +66,66 @@ g  = 9.81 # [m s⁻²] gravitational constant
 cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 ρ₀ = 1028 # [kg m⁻³] reference density
 
+Δzₛ = minimum_zspacing(grid) # vertical spacing at the surface [m] 
+
 parameters = (Lφ = Lφ,
               Lz = Lz,
               φ₀ = φ₀,
                τ = 0.1 / ρ₀,   # surface kinematic wind stress [m² s⁻²]
                μ = 1 / 30days, # bottom drag damping time scale [s⁻¹]
               Δb = 30 * α * g, # surface vertical buoyancy gradient [s⁻²]
-       timescale = 30days)     # relaxation time scale [s]  
+       timescale = 10days,     # relaxation time scale [s]  
+              vˢ = Δzₛ/10days) # buoyancy pumping velocity [ms⁻¹]
 
-# ## Boundary conditions
-#
-# ### Wind stress
+### Boundary conditions
+
+### Wind stress
 
 @inline u_stress(λ, φ, t, p) = - p.τ * cos(2π * (φ - p.φ₀) / p.Lφ)
 u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
 
-# ### Bottom drag
+### Bottom drag
 @inline u_drag(λ, φ, t, u, p) = - p.μ * p.Lz * u
 @inline v_drag(λ, φ, t, v, p) = - p.μ * p.Lz * v
 
 u_drag_bc = FluxBoundaryCondition(u_drag; field_dependencies = :u, parameters)
 v_drag_bc = FluxBoundaryCondition(v_drag; field_dependencies = :v, parameters)
 
+### Buoyancy relaxation
+@inline buoyancy_relaxation(λ, φ, t, b, p) =  p.vˢ * (b - p.Δb * (φ - p.φ₀) / p.Lφ)
+b_relax_bc = FluxBoundaryCondition(buoyancy_relaxation; field_dependencies = :b, parameters)
+
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
+b_bcs = FieldBoundaryConditions(top = b_relax_bc)
 
-### Buoyancy relaxation
+### Turbulence closure
+vertical_diffusive_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 0.1, 
+                                                                     background_κz = 1e-5,
+                                                                     background_νz = 1e-3)
 
-@inline buoyancy_relaxation(λ, φ, z, t, b, p) = - 1 / p.timescale * (b - p.Δb * (φ - p.φ₀) / p.Lφ)
-Fb = Forcing(buoyancy_relaxation; parameters, field_dependencies = :b)
+horizontal_diffusive_closure = HorizontalScalarDiffusivity(κ = 200, ν = 200)
 
-# ## Turbulence closure
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = 5000, κ = 1000)
-vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                       ν = 1e-2, κ = 1e-5)
-
-## Model building
-
+### Model building
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO(), 
-                                                                         vertical_scheme = WENO()),
+                                    free_surface = SplitExplicitFreeSurface(; substeps = 50),
+                                    momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                    tracers = :b,
-                                    boundary_conditions = (u = u_bcs, v = v_bcs),
-                                    forcing = (b = Fb,))
+                                    closure  = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                    tracers  = :b,
+                                    boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
 
-# ## Initial conditions
+### Initial conditions
 
 bᵢ(λ, φ, z) = parameters.Δb * (1 + z / grid.Lz)
 
 set!(model, b = bᵢ)
 
-# ## Simulation setup
+### Simulation setup
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
-
-# add timestep wizard callback
-f₀ = 2model.coriolis.rotation_rate*sind(φ₀)
-max_Δt = 1 / 5f₀
-wizard = TimeStepWizard(cfl = 0.15, max_change = 1.1, max_Δt = max_Δt)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
 wall_clock = [time_ns()]
@@ -261,7 +257,7 @@ Colorbar(fig[2:3,4], hm_s; label = "Speed (m s⁻¹)", labelsize = 22.5, labelpa
 
 frames = 1:length(times)
 
-record(fig, filename * ".mp4", frames, framerate = 8) do i
+CairoMakie.record(fig, filename * ".mp4", frames, framerate = 8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
@@ -299,8 +295,8 @@ ax_V = Axis(fig[3:4,1]; xlabel = "Longitude (Degree)", ylabel = "Latitude (Degre
 hm_V = heatmap!(ax_V, λᵥ, φᵥ, V; colorrange = vlims, colormap = :balance)
 Colorbar(fig[3:4,2], hm_V, labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
 
-xspacings_CPU = xspacings(grid_CPU, Center())
-Ψ = cumsum(V, dims = 1) * xspacings_CPU * grid.Lz * 1e-6
+yspacings_CPU = yspacings(grid_CPU, Center(), Center())
+Ψ = cumsum(U, dims = 1) * yspacings_CPU * grid.Lz * 1e-6
 Ψlims, Ψlevels = divergent_levels(Ψ, 45)
 
 title_Ψ = "Barotropic Streamfunction"
