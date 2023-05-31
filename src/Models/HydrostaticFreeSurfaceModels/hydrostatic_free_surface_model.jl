@@ -221,11 +221,13 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
     return VectorInvariant()
 end
 
-validate_momentum_advection(momentum_advection, grid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)       = momentum_advection
 validate_momentum_advection(momentum_advection, grid::LatitudeLongitudeGrid) = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Nothing, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+
+validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
+
+validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = momentum_advection_squawk(momentum_advection, grid)
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
