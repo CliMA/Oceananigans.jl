@@ -11,7 +11,7 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, irregular_dimension
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, regular_dimensions, irregular_dimension
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
@@ -149,9 +149,10 @@ end
 """ Used by FourierTridiagonalPoissonSolver. """
 function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid}, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
-    TX, TY, TZ = topo = topology(grid)
+    topo = topology(grid)
 
-    irreg_dim     = irregular_dimension(grid)
+    irreg_dim = irregular_dimension(grid)
+    reg_dims  = regular_dimensions(grid)
     !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the irregular direction's topology is `Bounded`.")
 
     periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
@@ -178,34 +179,35 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         backward_transforms = (DiscreteTransform(backward_periodic_plan, Backward(), grid, periodic_dims),
                                DiscreteTransform(backward_bounded_plan,  Backward(), grid, bounded_dims))
 
-    elseif !(Bounded in (TX, TY))
-        # We're on the GPU and either (Periodic, Periodic), (Flat, Periodic), or (Periodic, Flat) in xy.
-        # So, we pretend like we need a 2D doubly-periodic transform (even if one dimension is Flat).
-        forward_periodic_plan = plan_forward_transform(storage, Periodic(), [1, 2], planner_flag)
-        backward_periodic_plan = plan_backward_transform(storage, Periodic(), [1, 2], planner_flag)
+    elseif bounded_dims == ()
+        # We're on the GPU and either (Periodic, Periodic), (Flat, Periodic), or
+        # (Periodic, Flat) in the regular dimensions. So, we pretend like we need a 2D
+        # doubly-periodic transform (even if one dimension is Flat).
+        forward_periodic_plan = plan_forward_transform(storage, Periodic(), reg_dims, planner_flag)
+        backward_periodic_plan = plan_backward_transform(storage, Periodic(), reg_dims, planner_flag)
 
-        forward_transforms = tuple(DiscreteTransform(forward_periodic_plan, Forward(), grid, [1, 2]))
-        backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, [1, 2]))
+        forward_transforms = tuple(DiscreteTransform(forward_periodic_plan, Forward(), grid, reg_dims))
+        backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, reg_dims))
 
     else # we are on the GPU and we cannot / should not batch!
         rs_storage = reshape(storage, (Ny, Nx, Nz))
 
-        forward_plan_x = plan_forward_transform(storage,    topo[1](), [1], planner_flag)
-        forward_plan_y = plan_forward_transform(rs_storage, topo[2](), [1], planner_flag)
+        forward_plan_1 = plan_forward_transform(storage,    topo[reg_dims[1]](), [1], planner_flag)
+        forward_plan_2 = plan_forward_transform(rs_storage, topo[reg_dims[2]](), [1], planner_flag)
 
-        backward_plan_x = plan_backward_transform(storage,    topo[1](), [1], planner_flag)
-        backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
+        backward_plan_1 = plan_backward_transform(storage,    topo[reg_dims[1]](), [1], planner_flag)
+        backward_plan_2 = plan_backward_transform(rs_storage, topo[reg_dims[2]](), [1], planner_flag)
 
-        forward_plans = (forward_plan_x, forward_plan_y)
-        backward_plans = (backward_plan_x, backward_plan_y)
+        forward_plans  = Dict(reg_dims[1] => forward_plan_1,  reg_dims[2] => forward_plan_2)
+        backward_plans = Dict(reg_dims[1] => backward_plan_1, reg_dims[2] => backward_plan_2)
 
         unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
 
-        # Extract third dimension
-        f_order = Tuple(f_order[i] for i in findall(d -> d != 3, f_order))
-        b_order = Tuple(b_order[i] for i in findall(d -> d != 3, b_order))
+        # Extract irregularly-spaced dimension
+        f_order = Tuple(f_order[i] for i in findall(d -> d != irreg_dim, f_order))
+        b_order = Tuple(b_order[i] for i in findall(d -> d != irreg_dim, b_order))
 
         forward_transforms = (DiscreteTransform(forward_plans[f_order[1]], Forward(), grid, [f_order[1]]),
                               DiscreteTransform(forward_plans[f_order[2]], Forward(), grid, [f_order[2]]))
