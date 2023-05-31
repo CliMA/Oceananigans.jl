@@ -190,17 +190,20 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, reg_dims))
 
     else # we are on the GPU and we cannot / should not batch!
-        rs_storage = reshape(storage, (Ny, Nx, Nz))
+        grid_size = size(grid)
+        rs_storage1 = reshape(storage, (grid_size[reg_dims[1]], grid_size[reg_dims[2]], grid_size[irreg_dim]))
+        rs_storage2 = reshape(storage, (grid_size[reg_dims[2]], grid_size[reg_dims[1]], grid_size[irreg_dim]))
 
-        forward_plan_1 = plan_forward_transform(storage,    topo[reg_dims[1]](), [1], planner_flag)
-        forward_plan_2 = plan_forward_transform(rs_storage, topo[reg_dims[2]](), [1], planner_flag)
+        forward_plan_1 = plan_forward_transform(rs_storage1, topo[reg_dims[1]](), [1], planner_flag)
+        forward_plan_2 = plan_forward_transform(rs_storage2, topo[reg_dims[2]](), [1], planner_flag)
 
-        backward_plan_1 = plan_backward_transform(storage,    topo[reg_dims[1]](), [1], planner_flag)
-        backward_plan_2 = plan_backward_transform(rs_storage, topo[reg_dims[2]](), [1], planner_flag)
+        backward_plan_1 = plan_backward_transform(rs_storage1, topo[reg_dims[1]](), [1], planner_flag)
+        backward_plan_2 = plan_backward_transform(rs_storage2, topo[reg_dims[2]](), [1], planner_flag)
 
         forward_plans  = Dict(reg_dims[1] => forward_plan_1,  reg_dims[2] => forward_plan_2)
         backward_plans = Dict(reg_dims[1] => backward_plan_1, reg_dims[2] => backward_plan_2)
 
+        # Transform Flat topologies into Bounded
         unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
