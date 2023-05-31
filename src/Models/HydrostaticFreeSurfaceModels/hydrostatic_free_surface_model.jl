@@ -221,8 +221,8 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
     return VectorInvariant()
 end
 
-validate_momentum_advection(momentum_advection, grid::RectilinearGrid)       = momentum_advection
-validate_momentum_advection(momentum_advection, grid::LatitudeLongitudeGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
 validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
