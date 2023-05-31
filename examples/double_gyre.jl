@@ -20,7 +20,6 @@ const φ_north = 75 # [°] latitude of north boundary
 
 Lλ = λ_east - λ_west   # [°] longitude extent of the domain
 Lφ = φ_north - φ_south # [°] latitude extent of the domain
-φ₀ = φ_south + 0.5Lφ   # [°N] latitude of the center of the domain
 
 const Lz = 1.8kilometers # depth [m]
 
@@ -50,9 +49,9 @@ znodes_CPU = znodes(grid_CPU, Center(), Center(), Center())
 
 fig = Figure(resolution = (750, 750))
 ax = Axis(fig[1, 1], xlabel = "Vertical spacing (m)", ylabel = "Depth (m)", xlabelsize = 22.5, ylabelsize = 22.5, 
-          xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
-          title = "Variation of Vertical Spacing with Depth", titlesize = 27.5, titlegap = 15, titlefont = :bold,
-          xminorgridvisible = true, yminorgridvisible = true)
+           xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
+           title = "Variation of Vertical Spacing with Depth", titlesize = 27.5, titlegap = 15, titlefont = :bold,
+           xminorgridvisible = true, yminorgridvisible = true)
 scatterlines!(ax, zspacings_CPU, znodes_CPU, linewidth = 2.0, color = :black, marker = :circle, markersize = 12)
 
 save("double_gyre_grid_spacing.pdf", fig)
@@ -70,9 +69,9 @@ cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 
 parameters = (Lφ = Lφ,
               Lz = Lz,
-              φ₀ = φ₀,
+              φ₀ = φ_south,
                τ = 0.1 / ρ₀,   # surface kinematic wind stress [m² s⁻²]
-               μ = 1 / 30days, # bottom drag damping time scale [s⁻¹]
+               μ = 0.001,      # bottom drag damping parameter [ms⁻¹]
               Δb = 30 * α * g, # surface vertical buoyancy gradient [s⁻²]
        timescale = 10days,     # relaxation time scale [s]  
               vˢ = Δzₛ/10days) # buoyancy pumping velocity [ms⁻¹]
@@ -80,20 +79,44 @@ parameters = (Lφ = Lφ,
 ### Boundary conditions
 
 ### Wind stress
-
-@inline u_stress(λ, φ, t, p) = - p.τ * cos(2π * (φ - p.φ₀) / p.Lφ)
-u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
-
-### Bottom drag
-@inline u_drag(λ, φ, t, u, p) = - p.μ * p.Lz * u
-@inline v_drag(λ, φ, t, v, p) = - p.μ * p.Lz * v
-
-u_drag_bc = FluxBoundaryCondition(u_drag; field_dependencies = :u, parameters)
-v_drag_bc = FluxBoundaryCondition(v_drag; field_dependencies = :v, parameters)
+@inline u_stress(λ, φ, t, p) = p.τ * sin(2π * (φ - p.φ₀) / p.Lφ)
 
 ### Buoyancy relaxation
-@inline buoyancy_relaxation(λ, φ, t, b, p) =  p.vˢ * (b - p.Δb * (φ - p.φ₀) / p.Lφ)
-b_relax_bc = FluxBoundaryCondition(buoyancy_relaxation; field_dependencies = :b, parameters)
+@inline surface_buoyancy(φ, p)             = p.Δb * (φ - p.φ₀) / p.Lφ
+@inline buoyancy_relaxation(λ, φ, t, b, p) = p.vˢ * (b - surface_buoyancy(φ, p))
+
+### Plotting surface forcing functions
+
+φ_array = range(φ_south, φ_north, length = 100)
+u_stress_array = u_stress.(0, φ_array, 0, Ref(parameters))
+surface_buoyancy_array = surface_buoyancy.(φ_array, Ref(parameters))
+
+fig = Figure(resolution = (750, 750))
+ax  = Axis(fig[1, 1], xlabel = "Buoyancy Profile", ylabel = "Latitude (Degree)", xlabelsize = 22.5, ylabelsize = 22.5, 
+           xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
+           title = "Surface Buoyancy Forcing", titlesize = 27.5, titlegap = 15, titlefont = :bold, 
+           xminorgridvisible = true, yminorgridvisible = true)
+scatterlines!(ax, surface_buoyancy_array, φ_array, linewidth = 2.0, color = :black, marker = :circle, markersize = 12)
+
+save("SurfaceBuoyancyForcing.pdf", fig)
+
+fig = Figure(resolution = (750, 750))
+ax = Axis(fig[1, 1], xlabel = "Wind Stress Profile", ylabel = "Latitude (Degree)", xlabelsize = 22.5, ylabelsize = 22.5, 
+          xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
+          title = "Surface Wind Stress", titlesize = 27.5, titlegap = 15, titlefont = :bold, xminorgridvisible = true, 
+          yminorgridvisible = true)
+scatterlines!(ax, u_stress_array, φ_array, linewidth = 2.0, color = :black, marker = :circle, markersize = 12)
+
+save("SurfaceWindStress.pdf", fig)
+
+### Bottom drag
+@inline u_drag(λ, φ, t, u, p) = - p.μ * u
+@inline v_drag(λ, φ, t, v, p) = - p.μ * v
+
+u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
+b_relax_bc  = FluxBoundaryCondition(buoyancy_relaxation; field_dependencies = :b, parameters)
+u_drag_bc   = FluxBoundaryCondition(u_drag; field_dependencies = :u, parameters)
+v_drag_bc   = FluxBoundaryCondition(v_drag; field_dependencies = :v, parameters)
 
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
@@ -104,7 +127,7 @@ vertical_diffusive_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_
                                                                      background_κz = 1e-5,
                                                                      background_νz = 1e-3)
 
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(κ = 200, ν = 200)
+horizontal_diffusive_closure = HorizontalScalarDiffusivity(κ = 1000, ν = 500)
 
 ### Model building
 model = HydrostaticFreeSurfaceModel(; grid,
@@ -150,7 +173,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 run_simulation = true
 
-# ## Output
+### Output
 
 if run_simulation
 
@@ -196,24 +219,6 @@ times = u_timeseries.times
 λᵤ, φᵤ, zᵤ = nodes(u_timeseries[1])
 λᵥ, φᵥ, zᵥ = nodes(v_timeseries[1])
 λₛ, φₛ, zₛ = nodes(s_timeseries[1])
-
-# These utilities are handy for calculating nice contour intervals:
-
-""" Returns colorbar levels equispaced from `(-clim, clim)` and encompassing the extrema of `c`. """
-function divergent_levels(c, clim, nlevels = 21)
-    levels = range(-clim, stop = clim, length = nlevels)
-    cmax = maximum(abs, c)
-    return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
-end
-
-""" Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
-function sequential_levels(c, clims, nlevels = 20)
-    levels = range(clims[1], stop = clims[2], length = nlevels)
-    cmin, cmax = minimum(c), maximum(c)
-    cmin < clims[1] && (levels = vcat([cmin], levels))
-    cmax > clims[2] && (levels = vcat(levels, [cmax]))
-    return clims, levels
-end
 
 # Finally, we're ready to animate.
 
@@ -308,4 +313,4 @@ Colorbar(fig[2:3,4], hm_Ψ, labelsize = 22.5, labelpadding = 10.0, ticksize = 17
 
 save("double_gyre_circulation.pdf", fig)
 
-# ![](assets/double_gyre_circulation.svg)
+![](assets/double_gyre_circulation.svg)
