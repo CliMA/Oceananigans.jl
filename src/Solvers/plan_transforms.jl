@@ -11,7 +11,7 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, regular_dimensions, irregular_dimension
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, regular_dimensions, stretched_dimensions
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
@@ -151,7 +151,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
 
-    irreg_dim = irregular_dimension(grid)
+    irreg_dim = stretched_dimensions(grid)[1]
     reg_dims  = regular_dimensions(grid)
     !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the irregular direction's topology is `Bounded`.")
 

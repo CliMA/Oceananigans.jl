@@ -1,5 +1,5 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, irregular_dimension
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, stretched_dimensions
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T, D}
@@ -62,7 +62,7 @@ irregular_direction(::XYRegRectilinearGrid) = ZDirection()
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
-    irreg_dim = irregular_dimension(grid)
+    irreg_dim = stretched_dimensions(grid)[1]
 
     regular_top1, regular_top2 = Tuple( el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
     regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
