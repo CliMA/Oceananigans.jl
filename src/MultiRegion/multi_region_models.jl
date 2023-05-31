@@ -55,21 +55,25 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
-@inline  getregion(t::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, M}, r) where {N, FT, Z, ZS, V, D, US, VS, M} = 
+@inline  getregion(t::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}, r) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} = 
                 VectorInvariant{N, FT, M}(_getregion(t.vorticity_scheme, r), 
                                           _getregion(t.vorticity_stencil, r), 
                                           _getregion(t.vertical_scheme, r),
                                           _getregion(t.upwinding_treatment, r),
-                                          _getregion(t.u_stencil, r),
-                                          _getregion(t.v_stencil, r))
+                                          _getregion(t.δU_stencil, r),
+                                          _getregion(t.δV_stencil, r)
+                                          _getregion(t.δu²_stencil, r),
+                                          _getregion(t.δv²_stencil, r))
 
-@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, M}, r) where {N, FT, Z, ZS, V, D, US, VS, M} = 
+@inline _getregion(t::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}, r) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} = 
                 VectorInvariant{N, FT, M}(getregion(t.vorticity_scheme, r), 
                                           getregion(t.vorticity_stencil, r), 
                                           getregion(t.vertical_scheme, r),
                                           getregion(t.upwinding_treatment, r),
-                                          getregion(t.u_stencil, r),
-                                          getregion(t.v_stencil, r))
+                                          getregion(t.δU_stencil, r),
+                                          getregion(t.δV_stencil, r),
+                                          getregion(t.δu²_stencil, r),
+                                          getregion(t.δv²_stencil, r))
 
 function cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
