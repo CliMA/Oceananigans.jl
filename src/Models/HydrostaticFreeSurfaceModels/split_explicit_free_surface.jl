@@ -256,7 +256,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
                                timestepper = ForwardBackwardScheme())
 
     if !isnothing(substep) && !isnothing(CFL)
-        throw(ArgumentError("either specify a CFL or a number of substeps"))
+        @warn "Both the number of substeps and a CFL are specified, the number of substeps will be calculated based on the CFL"
     end
 
     if !isnothing(CFL)
