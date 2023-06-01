@@ -8,9 +8,9 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
     `pHY′ = ∫ buoyancy_perturbationᶜᶜᶜ dz` from `z=0` down to `z=-Lz`
 """
 @kernel function _update_hydrostatic_pressure!(pHY′, offs, grid, buoyancy, C)
-    i, j = @index(Global, NTuple)
-    i′ = i + offs[1] 
-    j′ = j + offs[2] 
+    i′, j′ = @index(Global, NTuple)
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
 
     @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
 
