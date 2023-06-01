@@ -251,7 +251,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
                                cfl    = nothing,
                                grid   = nothing,
                                max_Δt = nothing,
-                               gravitational_acceleration,
+                               gravitational_acceleration = g_Earth,
                                barotropic_averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
     
