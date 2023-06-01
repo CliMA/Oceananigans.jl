@@ -4,8 +4,8 @@ using CUDA: synchronize
 using CUDA: cuStreamGetFlags, stream, priority_range, CUstream_flags_enum, CuStream, stream!
 
 import Oceananigans.Utils: sync_device!
-using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
-                           fill_south_and_north_send_buffers!, 
+using Oceananigans.Fields: fill_west_and_east_send_buffers!,
+                           fill_south_and_north_send_buffers!,
                            fill_west_send_buffers!,
                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
@@ -26,11 +26,11 @@ using Oceananigans.BoundaryConditions:
     permute_boundary_conditions,
     PBCT, DCBCT, DCBC
 
-import Oceananigans.BoundaryConditions: 
+import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
-    fill_west_and_east_halo!, 
+    fill_west_and_east_halo!,
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
@@ -101,7 +101,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
@@ -202,7 +202,7 @@ end
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
-cooperative_wait(req::MPI.Request) = MPI.Waitall(req)
+cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)

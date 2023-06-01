@@ -64,7 +64,7 @@ This is kind of hopeless so we will have to find some way to model the Reynolds 
 
 The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@cite), assumes that the transport of scalar fluxes
 such as ``\overline{\boldsymbol{v}^\prime c^\prime}`` and ``\overline{v_i^\prime v_j^\prime}`` occurs down the mean scalar gradient
-``\grad c`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
+``\boldsymbol{\nabla} \overline{c}`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
 molecular motion in a gas can be described by a molecular viscosity.
 
 Taking this assumption we can express the Reynolds stresses and turbulent tracer fluxes in terms of the mean variables

@@ -121,7 +121,11 @@ optimal_turbulent_kinetic_energy_equation(FT) = TurbulentKineticEnergyEquation(
 
 optimal_mixing_length(FT) = MixingLength(
     Cᵇ   = FT(0.37), 
+<<<<<<< HEAD
     Cᶜc  = FT(1.0),
+=======
+    Cᶜc  = FT(4.8),
+>>>>>>> origin/main
     Cᶜe  = FT(1.1),
     Cᵉc  = FT(0.049),
     Cᵉe  = FT(0.0),
@@ -245,13 +249,20 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; 
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
+<<<<<<< HEAD
     launch!(arch, grid, kernel_size,
             calculate_CATKE_diffusivities!,
             diffusivities, kernel_offsets, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+=======
+    launch!(arch, grid, :xyz,
+            calculate_CATKE_diffusivities!,
+            diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+>>>>>>> origin/main
 
     return nothing
 end
 
+<<<<<<< HEAD
 # extend κ kernel to compute also the boundaries
 @inline function κ_CATKE_kernel_size(grid) 
     Nx, Ny, Nz = size(grid)
@@ -282,6 +293,10 @@ end
     i = i′ + offs[1] 
     j = j′ + offs[2] 
     k = k′ + offs[3]
+=======
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+    i, j, k, = @index(Global, NTuple)
+>>>>>>> origin/main
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
@@ -302,6 +317,7 @@ end
         dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
         
+<<<<<<< HEAD
         on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
         # on_side = near_horizontal_boundary(i, j, k, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
@@ -312,6 +328,9 @@ end
         ϵ_e = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
         diffusivities.Lᵉ[i, j, k] = - wb_e + ϵ_e + Q_e
+=======
+        diffusivities.Lᵉ[i, j, k] = - wb_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+>>>>>>> origin/main
     end
 end
 

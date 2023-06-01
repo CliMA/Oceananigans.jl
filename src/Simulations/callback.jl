@@ -2,6 +2,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 
+import Oceananigans: initialize!
+
 struct Callback{P, F, S, CS}
     func :: F
     schedule :: S
@@ -11,6 +13,12 @@ end
 
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
+
+# Fallback initialization: call the schedule, then the callback
+function initialize!(callback::Callback, sim)
+    initialize!(callback.schedule, sim.model) && callback(sim)
+    return nothing
+end
 
 """
     Callback(func, schedule=IterationInterval(1); parameters=nothing)

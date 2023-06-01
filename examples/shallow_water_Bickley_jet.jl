@@ -195,6 +195,9 @@ Colorbar(fig[2, 4], hm_ω′)
 title = @lift @sprintf("t = %.1f", times[$n])
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
+current_figure() # hide
+fig
+
 # Finally, we record a movie.
 
 frames = 1:length(times)

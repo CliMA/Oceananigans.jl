@@ -1,3 +1,5 @@
+using Oceananigans.Grids: ynode, znode
+
 """
     struct NonTraditionalBetaPlane{FT} <: AbstractRotation
 
@@ -67,21 +69,19 @@ end
 @inline two_Ωʸ(P, y, z) = P.fy * (1 -  z/P.R) + P.γ * y
 @inline two_Ωᶻ(P, y, z) = P.fz * (1 + 2z/P.R) + P.β * y
 
-using Oceananigans.Grids: ynode, znode
-
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
-     (  two_Ωʸ(coriolis, ynode(Center(), j, grid), znode(Center(), k, grid)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-      - two_Ωᶻ(coriolis, ynode(Center(), j, grid), znode(Center(), k, grid)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, Center(), Center(), Center()), znode(i, j, k, grid, Center(), Center(), Center())) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
+     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, Center(), Center(), Center()), znode(i, j, k, grid, Center(), Center(), Center())) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    two_Ωᶻ(coriolis,ynode(Face(), j, grid), znode(Center(), k, grid)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+      two_Ωᶻ(coriolis, ynode(i, j, k, grid, Center(), Face(), Center()), znode(i, j, k, grid, Center(), Face(), Center())) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-   -two_Ωʸ(coriolis, ynode(Center(), j, grid), znode(Face(), k, grid)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+    - two_Ωʸ(coriolis, ynode(i, j, k, grid, Center(), Center(), Face()), znode(i, j, k, grid, Center(), Center(), Face())) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
     string("NonTraditionalBetaPlane{$FT}",

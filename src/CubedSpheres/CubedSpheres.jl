@@ -128,9 +128,9 @@ import Oceananigans.Forcings: ContinuousForcing
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
-    λ = λnode(LX(), LY(), LZ(), i, j, k, grid)
-    φ = φnode(LX(), LY(), LZ(), i, j, k, grid)
-    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+    λ = λnode(i, j, k, grid, LX(), LY(), LZ())
+    φ = φnode(i, j, k, grid, LX(), LY(), LZ())
+    z = znode(i, j, k, grid, LX(), LY(), LZ())
 
     return @inbounds forcing.func(λ, φ, z, clock.time, args...)
 end
@@ -156,15 +156,15 @@ end
 ##### CFL for cubed sphere fields
 #####
 
-import Oceananigans.Diagnostics: accurate_cell_advection_timescale
+import Oceananigans.Advection: cell_advection_timescale
 
-function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
+function cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
 
     min_timescale_on_faces = []
 
     for (face_index, grid_face) in enumerate(grid.faces)
         velocities_face = get_face(velocities, face_index)
-        min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
+        min_timescale_on_face = cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
     end
 
@@ -175,9 +175,10 @@ end
 ##### compute...
 #####
 
-import Oceananigans.Fields: compute!
 using Oceananigans.AbstractOperations: _compute!
 using Oceananigans.Fields: compute_at!
+
+import Oceananigans.Fields: compute!
 
 const CubedSphereComputedField{LX, LY, LZ} = Field{LX, LY, LZ,
                                                    <:AbstractOperation,

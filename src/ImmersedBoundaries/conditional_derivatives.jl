@@ -55,4 +55,3 @@ end
     return 1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(c, f, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶠ, u) +
                                       conditional_∂y_c(c, f, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶠ, v))
 end
-

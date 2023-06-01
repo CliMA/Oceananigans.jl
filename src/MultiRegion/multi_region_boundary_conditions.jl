@@ -87,14 +87,14 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...) 
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
-            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
+            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
             return nothing
         end   
-        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...) 
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
-            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
+            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
             return nothing
         end   
     end

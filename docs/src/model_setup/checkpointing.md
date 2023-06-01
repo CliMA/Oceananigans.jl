@@ -22,7 +22,7 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1
 
 simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5years), prefix="model_checkpoint")
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5days), prefix="model_checkpoint")
 
 run!(simulation)
 ```

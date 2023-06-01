@@ -345,12 +345,12 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 end
 
 function test_netcdf_function_output(arch)
-    N = 16
+    Nx = Ny = Nz = N = 16
     L = 1
     Δt = 1.25
     iters = 3
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
@@ -359,10 +359,14 @@ function test_netcdf_function_output(arch)
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
 
-    g(model) = model.clock.time .* exp.(znodes(Center, grid))
+    g(model) = model.clock.time .* exp.(znodes(grid, Center()))
 
-    h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                    .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+    xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+    XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+    YF = [yF[j] for i in 1:Nx, j in 1:Ny]
+
+    h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
     outputs = (scalar=f, profile=g, slice=h)
     dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
@@ -448,7 +452,7 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
     end
 
     @test ds["slice"].attrib["longname"] == "Some slice"
@@ -457,8 +461,7 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+        @test ds["slice"][:, :, n+1] == n*Δt .* sin.(XC) .* cos.(YF)
     end
 
     close(ds)
@@ -492,9 +495,8 @@ function test_netcdf_function_output(arch)
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+        @test ds["profile"][:, n+1] ≈ n*Δt .* exp.(znodes(grid, Center()))
+        @test ds["slice"][:, :, n+1] ≈ n*Δt .* (sin.(XC) .* cos.(YF))
     end
 
     close(ds)

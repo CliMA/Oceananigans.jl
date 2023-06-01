@@ -106,8 +106,8 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: mews_vertical_displacement
 
-computed_dependencies = (; model.closure, model.buoyancy, model.tracers)
-h = KernelFunctionOperation{Center, Center, Face}(mews_vertical_displacement, grid; computed_dependencies)
+h = KernelFunctionOperation{Center, Center, Face}(mews_vertical_displacement, grid,
+                                                  model.closure, model.buoyancy, model.tracers)
 u, v, w = model.velocities
 b = model.tracers.b
 N² = ∂z(b)

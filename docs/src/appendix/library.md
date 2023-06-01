@@ -37,7 +37,7 @@ Modules = [Oceananigans.BoundaryConditions]
 Private = false
 ```
 
-## BuoyancyModels
+## Buoyancy models
 
 ```@autodocs
 Modules = [Oceananigans.BuoyancyModels]
@@ -127,7 +127,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
-]
 ```
 
 ### Shallow-water models
@@ -149,7 +148,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Operators]
 Private = false
-]
 ```
 
 ## Output readers
@@ -157,7 +155,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputReaders]
 Private = false
-]
 ```
 
 ## Output writers
@@ -165,7 +162,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
-]
 ```
 
 ## Simulations

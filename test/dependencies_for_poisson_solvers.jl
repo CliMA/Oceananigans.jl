@@ -59,8 +59,14 @@ function random_divergence_free_source_term(grid)
     arch = architecture(grid)
     fill_halo_regions!((Ru, Rv, Rw))
 
+<<<<<<< HEAD
     compute_w_from_continuity!(U, arch, grid)
     fill_halo_regions!(Rw)
+=======
+    launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid)
+
+    fill_halo_regions!(Rw, nothing, nothing)
+>>>>>>> origin/main
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
@@ -108,7 +114,7 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = FFTBasedPoissonSolver(grid)
 
-    xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
+    xC, yC, zC = nodes(grid, (Center(), Center(), Center()), reshape=true)
 
     TX, TY, TZ = topology(grid)
     Ψ(x, y, z) = ψ(TX, mode, x) * ψ(TY, mode, y) * ψ(TZ, mode, z)

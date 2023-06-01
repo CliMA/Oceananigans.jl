@@ -76,6 +76,10 @@ end
 function compute_computed_field!(comp)
     arch = architecture(comp)
     launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
+<<<<<<< HEAD
+=======
+    return comp
+>>>>>>> origin/main
 end
 
 """Compute an `operand` and store in `data`."""

@@ -134,7 +134,7 @@ end
 # Only numbers, arrays, and functions supported now.
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
 @inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, velocities, tracers)
     FT = eltype(grid)
@@ -186,7 +186,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     buoyancy = model.buoyancy
 
     workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
     diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
     viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
@@ -295,13 +295,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end

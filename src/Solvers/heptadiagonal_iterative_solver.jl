@@ -304,8 +304,6 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
         unsafe_free!(constructors)
 
-        finalize_solver!(solver.preconditioner)
-
         solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
                                                          solver.matrix,
                                                          solver.preconditioner_settings)
@@ -322,8 +320,6 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
     return nothing
 end
-
-finalize_solver!(p::HeptadiagonalIterativeSolver) = finalize_solver!(p.preconditioner)
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
