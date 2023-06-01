@@ -42,6 +42,8 @@ validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
 
+compute_w_from_continuity!(velocities, arch, ::SingleColumnGrid; kwargs...) = nothing
+
 #####
 ##### Time-step optimizations
 #####
