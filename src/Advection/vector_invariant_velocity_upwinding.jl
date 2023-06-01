@@ -37,8 +37,8 @@ end
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds û = u[i, j, k] 
     
-    δu = δxᶠᵃᵃ(i, j, k, grid, Auᶜᶜᶜ, scheme, u) 
-    δv = δyᵃᶜᵃ(i, j, k, grid, Avᶠᶠᶜ, scheme, v)
+    δu = δxᶠᶜᶜ(i, j, k, grid, Auᶜᶜᶜ, scheme, u) 
+    δv = δyᶜᶜᶜ(i, j, k, grid, Avᶠᶠᶜ, scheme, v)
 
     return û * (δu + δv)
 end
@@ -46,8 +46,8 @@ end
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds v̂ = v[i, j, k] 
 
-    δu = δxᶜᵃᵃ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
-    δv = δyᵃᶠᵃ(i, j, k, grid, Avᶜᶜᶜ, scheme, v)
+    δu = δxᶜᶜᶜ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
+    δv = δyᶜᶠᶜ(i, j, k, grid, Avᶜᶜᶜ, scheme, v)
 
     return v̂ * (δu + δv)
 end
@@ -82,16 +82,16 @@ end
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
 
-    δKu = δxᶠᵃᵃ(i, j, k, grid, uᵁ²ᶜᶜᶜ, scheme, u)
-    δKv = δxᶠᵃᵃ(i, j, k, grid, vˢ²ᶜᶜᶜ, scheme, v)
+    δKu = δxᶠᶜᶜ(i, j, k, grid, uᵁ²ᶜᶜᶜ, scheme, u)
+    δKv = δxᶠᶜᶜ(i, j, k, grid, vˢ²ᶜᶜᶜ, scheme, v)
 
     return (δKu + δKv) / Δxᶠᶜᶜ(i, j, k, grid)
 end
 
 @inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
 
-    δKu = δyᵃᶠᵃ(i, j, k, grid, uˢ²ᶜᶜᶜ, scheme, u)
-    δKv = δyᵃᶠᵃ(i, j, k, grid, vᵁ²ᶜᶜᶜ, scheme, v)
+    δKu = δyᶜᶠᶜ(i, j, k, grid, uˢ²ᶜᶜᶜ, scheme, u)
+    δKv = δyᶜᶠᶜ(i, j, k, grid, vᵁ²ᶜᶜᶜ, scheme, v)
 
     return (δKu + δKv) / Δyᶜᶠᶜ(i, j, k, grid)
 end
