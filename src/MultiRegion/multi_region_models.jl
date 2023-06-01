@@ -61,7 +61,7 @@ WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg,
                                           _getregion(t.vertical_scheme, r),
                                           _getregion(t.upwinding_treatment, r),
                                           _getregion(t.δU_stencil, r),
-                                          _getregion(t.δV_stencil, r)
+                                          _getregion(t.δV_stencil, r),
                                           _getregion(t.δu²_stencil, r),
                                           _getregion(t.δv²_stencil, r))
 
