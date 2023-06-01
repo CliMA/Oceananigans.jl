@@ -62,8 +62,8 @@ for ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
     δzᵃ = Symbol(:δz, ℓx, :ᵃ, :ᵃ)
 
     @eval begin
-        δx(i, j, k, grid, args...) = δxᵃ(i, j, k, grid, args...)
-        δy(i, j, k, grid, args...) = δyᵃ(i, j, k, grid, args...)
-        δz(i, j, k, grid, args...) = δzᵃ(i, j, k, grid, args...)
+        $δx(i, j, k, grid, args...) = $δxᵃ(i, j, k, grid, args...)
+        $δy(i, j, k, grid, args...) = $δyᵃ(i, j, k, grid, args...)
+        $δz(i, j, k, grid, args...) = $δzᵃ(i, j, k, grid, args...)
     end
 end
