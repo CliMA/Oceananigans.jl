@@ -59,7 +59,7 @@ for ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
 
     δxᵃ = Symbol(:δx, ℓx, :ᵃ, :ᵃ)
     δyᵃ = Symbol(:δy, :ᵃ, ℓy, :ᵃ)
-    δzᵃ = Symbol(:δz, ℓx, :ᵃ, :ᵃ)
+    δzᵃ = Symbol(:δz, :ᵃ, :ᵃ, ℓz)
 
     @eval begin
         $δx(i, j, k, grid, args...) = $δxᵃ(i, j, k, grid, args...)
