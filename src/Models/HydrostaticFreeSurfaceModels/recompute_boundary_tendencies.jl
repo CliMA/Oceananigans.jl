@@ -13,8 +13,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     u_immersed_bc = immersed_boundary_condition(model.velocities.u)
     v_immersed_bc = immersed_boundary_condition(model.velocities.v)
 
-    start_momentum_kernel_args = (grid,
-                                  model.advection.momentum,
+    start_momentum_kernel_args = (model.advection.momentum,
                                   model.coriolis,
                                   model.closure)
 
@@ -33,10 +32,10 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args)
+                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args)
     
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args)
+                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args)
         
         launch!(arch, grid, kernel_size[1:2],
                 calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, kernel_offsets[1:2],
