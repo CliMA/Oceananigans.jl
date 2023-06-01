@@ -212,7 +212,7 @@ end
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
     
     Φᵟ = upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
@@ -220,7 +220,7 @@ end
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
 
     Φᵟ = upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
 
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end

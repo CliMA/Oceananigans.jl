@@ -16,18 +16,18 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δy_V, u, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, u, v) 
+    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
+    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
 
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δx_U, u, v) 
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, u, v) 
+    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
+    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end
