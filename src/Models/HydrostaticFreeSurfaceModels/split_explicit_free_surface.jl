@@ -248,20 +248,20 @@ the [`SplitExplicitFreeSurface`](@ref).
 """
 function SplitExplicitSettings(FT::DataType=Float64;
                                substeps = nothing, 
-                               CFL    = nothing,
+                               cfl    = nothing,
                                grid   = nothing,
-                               Δt_max = nothing,
+                               max_Δt = nothing,
                                gravitational_acceleration,
                                barotropic_averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
     
-    if (!isnothing(substeps) && !isnothing(CFL)) || (isnothing(substeps) && isnothing(CFL))
-        throw(ArgumentError("either specify a CFL or a number of substeps"))
+    if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
+        throw(ArgumentError("either specify a cfl or a number of substeps"))
     end
 
-    if !isnothing(CFL)
+    if !isnothing(cfl)
         if isnothing(Δt_max) || isnothing(grid)
-            throw(ArgumentError("Need to specify the grid and Δt_max kwargs to calculate the barotropic substeps from the CFL"))
+            throw(ArgumentError("Need to specify the grid and Δt_max kwargs to calculate the barotropic substeps from the cfl"))
         end
 
         Δx = minimum_xspacing(grid)
@@ -270,8 +270,8 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
-        Δtᴮ = CFL * Δs / wave_speed
-        substeps = 2 * Δt_max / Δtᴮ
+        Δtᴮ = cfl * Δs / wave_speed
+        substeps = 2 * max_Δt / Δtᴮ
     end
 
     τᶠ = range(0, 2, length = substeps+1)
