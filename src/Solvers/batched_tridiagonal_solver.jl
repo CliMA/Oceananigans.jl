@@ -200,6 +200,4 @@ end
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
-
-    return nothing
 end
