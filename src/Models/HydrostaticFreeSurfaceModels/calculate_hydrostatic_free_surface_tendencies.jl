@@ -311,35 +311,3 @@ end
     @inbounds Gη[i′, j′, grid.Nz+1] = free_surface_tendency(i′, j′, grid, args...)
 end
 
-<<<<<<< HEAD
-#####
-##### Boundary condributions to hydrostatic free surface model
-#####
-
-function apply_flux_bcs!(Gcⁿ, c, arch, args...)
-    apply_x_bcs!(Gcⁿ, c, arch, args...)
-    apply_y_bcs!(Gcⁿ, c, arch, args...)
-    apply_z_bcs!(Gcⁿ, c, arch, args...)
-
-    return nothing
-end
-
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
-    # Velocity fields
-    for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args...)
-    end
-
-    # Free surface
-    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch,  args...)
-
-    # Tracer fields
-    for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
-    end
-
-    return nothing
-end
-=======
->>>>>>> origin/main

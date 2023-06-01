@@ -161,10 +161,6 @@ end
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
-<<<<<<< HEAD
-        @test  mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
-=======
->>>>>>> origin/main
 
         Δt₁ = 900
         Δt₂ = 920.0

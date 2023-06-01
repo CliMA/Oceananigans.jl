@@ -98,16 +98,8 @@ end
     #   and thus    L = - Cᴰ √e / ℓ .
 
     τ = closure.negative_turbulent_kinetic_energy_damping_time_scale
-<<<<<<< HEAD
-    e_max = 10.0
-
-    e_limiter = max(one(grid), eᵢ / e_max)
-
-    return ifelse(eᵢ < 0, -1/τ, - sqrt(abs(eᵢ)) / ℓᴰ * e_limiter)
-=======
 
     return ifelse(eᵢ < 0, -1/τ, -sqrt(abs(eᵢ)) / ℓᴰ)
->>>>>>> origin/main
 end
 
 # Fallbacks for explicit time discretization

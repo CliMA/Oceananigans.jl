@@ -59,14 +59,8 @@ function random_divergence_free_source_term(grid)
     arch = architecture(grid)
     fill_halo_regions!((Ru, Rv, Rw))
 
-<<<<<<< HEAD
     compute_w_from_continuity!(U, arch, grid)
     fill_halo_regions!(Rw)
-=======
-    launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid)
-
-    fill_halo_regions!(Rw, nothing, nothing)
->>>>>>> origin/main
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
