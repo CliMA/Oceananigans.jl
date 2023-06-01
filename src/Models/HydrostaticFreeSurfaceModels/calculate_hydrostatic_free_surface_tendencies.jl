@@ -94,7 +94,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     calculate_hydrostatic_momentum_tendencies!(model, model.velocities)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-    only_active_cells = use_only_active_cells(grid)
+    only_active_cells = use_only_active_interior_cells(grid)
 
     kernel_size    =   interior_tendency_kernel_size(grid)
     kernel_offsets = interior_tendency_kernel_offsets(grid)
