@@ -62,7 +62,7 @@ Keyword arguments
 function DistributedArch(child_architecture = CPU(); 
                    topology = (Periodic, Periodic, Periodic), 
                    ranks,
-                   use_buffers = false,
+                   use_buffers = true,
                    devices = nothing, 
                    enable_overlapped_computation = true,
                    communicator = MPI.COMM_WORLD)

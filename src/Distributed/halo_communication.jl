@@ -200,7 +200,6 @@ end
 
 @inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
-@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
@@ -242,10 +241,9 @@ end
 #####
 ##### fill_west_and_east_halo!   }
 ##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
-##### fill_bottom_and_top_halo!  }
 #####
 
-for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, :top], [1, 2, 3])
+for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
     fill_both_halo! = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
     fill_side_halo! = Symbol("fill_$(side)_halo!")
     send_side_halo  = Symbol("send_$(side)_halo")
