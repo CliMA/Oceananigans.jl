@@ -247,16 +247,16 @@ Return `SplitExplicitSettings`. For a description of the keyword arguments, see
 the [`SplitExplicitFreeSurface`](@ref).
 """
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = 50, 
+                               substeps = nothing, 
                                CFL    = nothing,
                                grid   = nothing,
                                Δt_max = nothing,
                                gravitational_acceleration,
                                barotropic_averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
-
-    if !isnothing(substep) && !isnothing(CFL)
-        @warn "Both the number of substeps and a CFL are specified, the number of substeps will be calculated based on the CFL"
+    
+    if (!isnothing(substep) && !isnothing(CFL)) || (isnothing(substep) && isnothing(CFL))
+        throw(ArgumentError("either specify a CFL or a number of substeps"))
     end
 
     if !isnothing(CFL)
