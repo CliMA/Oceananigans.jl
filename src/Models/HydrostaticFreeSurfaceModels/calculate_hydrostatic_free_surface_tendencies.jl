@@ -200,11 +200,11 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     kernel_offsets = interior_tendency_kernel_offsets(grid)
     
     launch!(arch, grid, kernel_size,
-            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args;
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args;
             only_active_cells)
 
     launch!(arch, grid, kernel_size,
-            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args;
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args;
             only_active_cells)
 
     calculate_free_surface_tendency!(grid, model)
