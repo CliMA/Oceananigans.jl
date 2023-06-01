@@ -8,8 +8,8 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 @inline δy_V(i, j, k, grid, u, v) =  δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
 # Velocity smoothness for divergence upwinding
-@inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
-@inline V_smoothness(i, j, k, grid, u, v) = ℑyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
+@inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
+@inline V_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
@@ -46,8 +46,8 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 @inline δx_v²(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, half_ϕ², v)
 @inline δy_v²(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, half_ϕ², v)
 
-@inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᶜᶜ(i, j, k, grid, u)
-@inline v_smoothness(i, j, k, grid, u, v) = ℑyᶜᶜᶜ(i, j, k, grid, v)
+@inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)
+@inline v_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
 
