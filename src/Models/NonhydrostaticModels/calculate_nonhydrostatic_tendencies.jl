@@ -186,15 +186,9 @@ end
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
     fields = merge(velocities, tracers)
 
-<<<<<<< HEAD
-    foreach(i->apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i->apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-    foreach(i->apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-=======
     foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
->>>>>>> origin/main
                          
     return nothing
 end
