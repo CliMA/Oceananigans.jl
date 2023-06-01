@@ -33,10 +33,10 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args...)
+                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args)
     
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...)
+                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args)
         
         launch!(arch, grid, kernel_size[1:2],
                 calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, kernel_offsets[1:2],
@@ -52,29 +52,27 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
         @inbounds c_forcing = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        c_kernel_function, closure, diffusivity_fields = tracer_tendency_kernel_function(model,
-                                                                                         Val(tracer_name),
-                                                                                         model.closure,
-                                                                                         model.diffusivity_fields)
+        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model, Val(tracer_name), model.closure, model.diffusivity_fields)
 
-        args = (c_kernel_function,
-                grid,
-                Val(tracer_index),
-                c_advection,
-                closure,
-                c_immersed_bc,
-                model.buoyancy,
-                model.velocities,
-                model.free_surface,
-                model.tracers,
-                top_tracer_bcs,
-                diffusivity_fields,
-                model.auxiliary_fields,
-                c_forcing,
-                model.clock)
+        args = tuple(Val(tracer_index),
+                     Val(tracer_name),
+                     c_advection,
+                     closure,
+                     c_immersed_bc,
+                     model.buoyancy,
+                     model.biogeochemistry,
+                     model.velocities,
+                     model.free_surface,
+                     model.tracers,
+                     top_tracer_bcs,
+                     diffusivity,
+                     model.auxiliary_fields,
+                     c_forcing,
+                     model.clock)
 
         for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-            launch!(arch, grid, kernel_size, calculate_hydrostatic_free_surface_Gc!, c_tendency, kernel_offsets, args...)
+            launch!(arch, grid, kernel_size,
+                    tendency_kernel!, c_tendency, kernel_offsets, grid, args)
         end
     end
 end
