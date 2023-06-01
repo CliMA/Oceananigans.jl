@@ -7,7 +7,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!
 
-import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 import Oceananigans.Distributed: complete_communication_and_compute_boundary

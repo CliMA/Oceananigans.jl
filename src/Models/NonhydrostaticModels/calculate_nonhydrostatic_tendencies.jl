@@ -4,7 +4,7 @@ using Oceananigans.Utils: work_layout
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
 
-import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans.TimeSteppers: compute_tendencies!
 
 """
     compute_tendencies!(model::NonhydrostaticModel)
@@ -186,9 +186,15 @@ end
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
     fields = merge(velocities, tracers)
 
+<<<<<<< HEAD
+    foreach(i->apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    foreach(i->apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+    foreach(i->apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+=======
     foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
+>>>>>>> origin/main
                          
     return nothing
 end
