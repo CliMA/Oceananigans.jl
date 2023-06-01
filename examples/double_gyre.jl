@@ -76,17 +76,16 @@ parameters = (Lφ = Lφ,
        timescale = 30days,     # relaxation time scale [s]  
               vˢ = Δzₛ/30days) # buoyancy pumping velocity [ms⁻¹]
 
-### Boundary conditions
-
-### Wind stress
+# ## Boundary conditions
+#
+# ### Wind stress
 @inline u_stress(λ, φ, t, p) = p.τ * sin(2π * (φ - p.φ₀) / p.Lφ)
 
-### Buoyancy relaxation
+# ### Buoyancy relaxation
 @inline surface_buoyancy(φ, p)             = p.Δb * (φ - p.φ₀) / p.Lφ
 @inline buoyancy_relaxation(λ, φ, t, b, p) = p.vˢ * (b - surface_buoyancy(φ, p))
 
-### Plotting surface forcing functions
-
+# ### Plotting surface forcing functions
 φ_array = range(φ_south, φ_north, length = 100)
 u_stress_array = u_stress.(0, φ_array, 0, Ref(parameters))
 surface_buoyancy_array = surface_buoyancy.(φ_array, Ref(parameters))
@@ -109,7 +108,7 @@ scatterlines!(ax, u_stress_array, φ_array, linewidth = 2.0, color = :black, mar
 
 save("SurfaceWindStress.pdf", fig)
 
-### Bottom drag
+# ### Bottom drag
 @inline u_drag(λ, φ, t, u, p) = - p.μ * u
 @inline v_drag(λ, φ, t, v, p) = - p.μ * v
 
@@ -122,7 +121,7 @@ u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
 b_bcs = FieldBoundaryConditions(top = b_relax_bc)
 
-### Turbulence closure
+# ## Turbulence closure
 vertical_diffusive_closure = RiBasedVerticalDiffusivity()
 
 Δt_max = 10minutes
@@ -132,11 +131,9 @@ gravity_wave_speed = sqrt(gravitational_acceleration*grid.Lz) # [m s⁻¹]
 Δy = minimum_yspacing(grid) # [m]
 Δh = sqrt(1/(1/Δx^2 + 1/Δy^2)) # [m]
 Δt_barotropic = 0.7Δh/gravity_wave_speed
-
-# CFL = gravity_wave_speed * Δt_barotropic / Δh
 substeps = ceil(Int, 2Δt_max / Δt_barotropic)
 
-### Model building
+# ## Model building
 model = HydrostaticFreeSurfaceModel(; grid,
                                     free_surface = SplitExplicitFreeSurface(; gravitational_acceleration, substeps),
                                     momentum_advection = VectorInvariant(vorticity_scheme = WENO(), 
@@ -149,13 +146,13 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers  = :b,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
 
-### Initial conditions
+# ## Initial conditions
 
 bᵢ(λ, φ, z) = parameters.Δb * z / grid.Lz
 
 set!(model, b = bᵢ)
 
-### Simulation setup
+# ## Simulation setup
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -182,7 +179,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 run_simulation = true
 
-### Output
+# ## Output
 
 if run_simulation
 
@@ -322,4 +319,4 @@ Colorbar(fig[2:3,4], hm_Ψ, labelsize = 22.5, labelpadding = 10.0, ticksize = 17
 
 save("double_gyre_circulation.pdf", fig)
 
-![](assets/double_gyre_circulation.svg)
+# ![](assets/double_gyre_circulation.svg)
