@@ -29,7 +29,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-    
+
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         launch!(arch, grid, kernel_size,
                 calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args)
@@ -37,10 +37,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
         launch!(arch, grid, kernel_size,
                 calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args)
         
-        launch!(arch, grid, kernel_size[1:2],
-                calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, kernel_offsets[1:2],
-                grid, model.velocities, model.free_surface, model.tracers, model.auxiliary_fields, model.forcing,
-                model.clock)
+        calculate_free_surface_tendency!(grid, model, kernel_size[1:2], kernel_offsets[1:2])
     end
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)

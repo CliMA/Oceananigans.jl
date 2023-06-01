@@ -147,7 +147,7 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args...)
     return nothing
 end
 
-function calculate_free_surface_tendency!(grid, model)
+function calculate_free_surface_tendency!(grid, model, kernel_size, kernel_offsets)
 
     arch = architecture(grid)
 
@@ -158,8 +158,8 @@ function calculate_free_surface_tendency!(grid, model)
                  model.forcing,
                  model.clock)
 
-    launch!(arch, grid, :xy,
-            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, (0, 0), 
+    launch!(arch, grid, kernel_size,
+            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, kernel_offsets, 
             grid, args)
 
     return nothing
@@ -207,7 +207,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
             calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args;
             only_active_cells)
 
-    calculate_free_surface_tendency!(grid, model)
+    calculate_free_surface_tendency!(grid, model, :xy, (0, 0))
 
     return nothing
 end
@@ -310,4 +310,3 @@ end
     j′ = j + offs[2]
     @inbounds Gη[i′, j′, grid.Nz+1] = free_surface_tendency(i′, j′, grid, args...)
 end
-

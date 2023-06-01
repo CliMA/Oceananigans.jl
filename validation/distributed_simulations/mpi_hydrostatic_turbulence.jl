@@ -58,7 +58,6 @@ run!(simulation)
 
 if rank == 0
     using Printf
-    using NCDatasets
     using GLMakie
 
     iter = Observable(1)
