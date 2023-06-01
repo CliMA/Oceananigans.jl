@@ -255,7 +255,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
                                barotropic_averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
     
-    if (!isnothing(substep) && !isnothing(CFL)) || (isnothing(substep) && isnothing(CFL))
+    if (!isnothing(substeps) && !isnothing(CFL)) || (isnothing(substeps) && isnothing(CFL))
         throw(ArgumentError("either specify a CFL or a number of substeps"))
     end
 
