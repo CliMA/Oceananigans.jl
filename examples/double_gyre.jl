@@ -7,6 +7,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: on_architecture
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.Coriolis: ActiveCellEnstrophyConservingScheme
 using Oceananigans.Operators
 using JLD2
 using CairoMakie
@@ -141,7 +142,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                                                          vertical_scheme = WENO()),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
-                                    coriolis = HydrostaticSphericalCoriolis(),
+                                    coriolis = HydrostaticSphericalCoriolis(scheme = ActiveCellEnstrophyConservingScheme()),
                                     closure  = vertical_diffusive_closure,
                                     tracers  = :b,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
@@ -307,14 +308,14 @@ hm_V = heatmap!(ax_V, λᵥ, φᵥ, V; colorrange = vlims, colormap = :balance)
 Colorbar(fig[3:4,2], hm_V, labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
 
 yspacings_CPU = yspacings(grid_CPU, Center(), Center())
-Ψ = cumsum(U, dims = 1) * yspacings_CPU * grid.Lz * 1e-6
-Ψlims, Ψlevels = divergent_levels(Ψ, 45)
+Ψ = -cumsum(U, dims = 2) * yspacings_CPU * grid.Lz * 1e-6
+Ψlims = extrema(Ψ) .* extrema_reduction_factor
 
 title_Ψ = "Barotropic Streamfunction"
 ax_Ψ = Axis(fig[2:3,3]; xlabel = "Longitude (Degree)", ylabel = "Latitude (Degree)", xlabelsize = 22.5, 
             ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
             aspect = 1.0, title = title_Ψ, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-hm_Ψ = heatmap!(ax_Ψ, λᵥ, φᵥ, Ψ; colorrange = Ψlims, colormap = :balance)
+hm_Ψ = heatmap!(ax_Ψ, λᵤ, φᵤ, Ψ; colorrange = Ψlims, colormap = :balance)
 Colorbar(fig[2:3,4], hm_Ψ, labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
 
 save("double_gyre_circulation.pdf", fig)
