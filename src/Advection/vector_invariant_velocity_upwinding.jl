@@ -38,7 +38,7 @@ end
     @inbounds û = u[i, j, k] 
     
     δu = δxᶠᶜᶜ(i, j, k, grid, Auᶜᶜᶜ, scheme, u) 
-    δv = δyᶜᶜᶜ(i, j, k, grid, Avᶠᶠᶜ, scheme, v)
+    δv = δyᶠᶜᶜ(i, j, k, grid, Avᶠᶠᶜ, scheme, v)
 
     return û * (δu + δv)
 end
@@ -46,7 +46,7 @@ end
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds v̂ = v[i, j, k] 
 
-    δu = δxᶜᶜᶜ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
+    δu = δxᶜᶠᶜ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
     δv = δyᶜᶠᶜ(i, j, k, grid, Avᶜᶜᶜ, scheme, v)
 
     return v̂ * (δu + δv)

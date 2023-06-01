@@ -1,4 +1,4 @@
-const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:SelfUpwinding}
+const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
 
 ##### 
 ##### Self Upwinding of Divergence Flux, the best option!
@@ -41,9 +41,9 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 @inline half_ϕ²(i, j, k, grid, ϕ) = ϕ[i, j, k]^2 / 2
 
 @inline δx_u²(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, half_ϕ², u)
-@inline δy_u²(i, j, k, grid, u, v) = δyᶜᶠᶜ(i, j, k, grid, half_ϕ², u)
+@inline δy_u²(i, j, k, grid, u, v) = δyᶠᶠᶜ(i, j, k, grid, half_ϕ², u)
 
-@inline δx_v²(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, half_ϕ², v)
+@inline δx_v²(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, half_ϕ², v)
 @inline δy_v²(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, half_ϕ², v)
 
 @inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)

@@ -1,4 +1,4 @@
-const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossUpwinding}
+const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
 
 #####
 ##### Cross upwinding results in the largest kinetic energy content,
@@ -10,7 +10,7 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
 ##### Due to the presence of cross derivative terms that generate excessive noise and result in 
 ##### numerical instabilities, it is not possible to perform a complete upwinding of the Kinetic 
 ##### Energy gradient. Consequently, a `SelfUpwinding` scheme is implemented for the Kinetic 
-##### Energy gradient in the case of `CrossUpwinding`. Please refer to the file 
+##### Energy gradient in the case of `CrossAndSelfUpwinding`. Please refer to the file 
 #####
 
 #####

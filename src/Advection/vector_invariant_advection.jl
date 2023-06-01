@@ -6,9 +6,9 @@ struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 
 abstract type AbstractUpwindingTreatment end
 
-struct CrossUpwinding   <: AbstractUpwindingTreatment end
-struct SelfUpwinding   <: AbstractUpwindingTreatment end
-struct VelocityUpwinding  <: AbstractUpwindingTreatment end
+struct CrossAndSelfUpwinding <: AbstractUpwindingTreatment end
+struct OnlySelfUpwinding     <: AbstractUpwindingTreatment end
+struct VelocityUpwinding     <: AbstractUpwindingTreatment end
 
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
@@ -57,7 +57,7 @@ Keyword arguments
                        being transported (defaults to `VelocityStencil`)
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
 - `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
-                         `CrossUpwinding`, `SelfUpwinding` and `VelocityUpwinding` (defaults to `SelfUpwinding`)
+                         `CrossAndSelfUpwinding`, `OnlySelfUpwinding` and `VelocityUpwinding` (defaults to `OnlySelfUpwinding`)
 - `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
                which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
                custom function (defaults to `FunctionStencil(divergence_smoothness)`)
@@ -92,7 +92,7 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
     └── WENO reconstruction order 3
-      └── upwinding treatment: Oceananigans.Advection.SelfUpwinding()
+      └── upwinding treatment: Oceananigans.Advection.OnlySelfUpwinding()
             └── smoothness u: FunctionStencil f = divergence_smoothness 
             └── smoothness v: FunctionStencil f = divergence_smoothness
             └── smoothness u²: FunctionStencil f = u_smoothness
@@ -102,7 +102,7 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
-                           upwinding_treatment  = SelfUpwinding(),
+                           upwinding_treatment  = OnlySelfUpwinding(),
                            δU_stencil           = FunctionStencil(divergence_smoothness),
                            δV_stencil           = FunctionStencil(divergence_smoothness),
                            δu²_stencil          = FunctionStencil(u_smoothness),
@@ -132,7 +132,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               "    └── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
               "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
-              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa SelfUpwinding) ? "
+              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa OnlySelfUpwinding) ? "
             └── smoothness u: $(a.δU_stencil) 
             └── smoothness v: $(a.δV_stencil)
             └── smoothness u²: $(a.δu²_stencil)
