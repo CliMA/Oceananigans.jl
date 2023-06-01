@@ -6,8 +6,7 @@ import Oceananigans.Operators:
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
-# Defining all the First order derivatives for the immersed boundaries
-
+# Defining Difference operators for the immersed boundaries
 @inline conditional_δx_f(LY, LZ, i, j, k, ibg::IBG{FT}, δx, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), δx(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_δx_c(LY, LZ, i, j, k, ibg::IBG{FT}, δx, args...) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), δx(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_δy_f(LX, LZ, i, j, k, ibg::IBG{FT}, δy, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, c, LZ) | inactive_node(i, j-1, k, ibg, LX, c, LZ), zero(FT), δy(i, j, k, ibg.underlying_grid, args...))
