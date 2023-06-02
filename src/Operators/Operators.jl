@@ -60,6 +60,14 @@ export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 
+# Derivatives
+export ℑxᶠᶠᶠ, ℑxᶠᶠᶜ, ℑxᶠᶜᶠ, ℑxᶠᶜᶜ, ℑxᶜᶠᶠ, ℑxᶜᶠᶜ, ℑxᶜᶜᶠ, ℑxᶜᶜᶜ
+export ℑyᶠᶠᶠ, ℑyᶠᶠᶜ, ℑyᶠᶜᶠ, ℑyᶠᶜᶜ, ℑyᶜᶠᶠ, ℑyᶜᶠᶜ, ℑyᶜᶜᶠ, ℑyᶜᶜᶜ
+export ℑzᶠᶠᶠ, ℑzᶠᶠᶜ, ℑzᶠᶜᶠ, ℑzᶠᶜᶜ, ℑzᶜᶠᶠ, ℑzᶜᶠᶜ, ℑzᶜᶜᶠ, ℑzᶜᶜᶜ
+
+export ℑxyᶜᶜᶜ, ℑxyᶠᶜᶜ, ℑxyᶠᶠᶜ, ℑxyᶜᶠᶜ, ℑxzᶜᶜᶜ, ℑxzᶠᶜᶜ, ℑxzᶠᶜᶠ, ℑxzᶜᶜᶠ, ℑyzᶜᶜᶜ, ℑyzᶜᶠᶜ, ℑyzᶜᶠᶠ, ℑyzᶜᶜᶠ
+export ℑxyᶜᶜᶠ, ℑxyᶠᶜᶠ, ℑxyᶠᶠᶠ, ℑxyᶜᶠᶠ, ℑxzᶜᶠᶜ, ℑxzᶠᶠᶜ, ℑxzᶠᶠᶠ, ℑxzᶜᶠᶠ, ℑyzᶠᶜᶜ, ℑyzᶠᶠᶜ, ℑyzᶠᶠᶠ, ℑyzᶠᶜᶠ
+
 using Oceananigans.Grids
 
 import Oceananigans.Grids: xspacing, yspacing, zspacing

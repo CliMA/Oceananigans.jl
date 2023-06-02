@@ -6,6 +6,14 @@ import Oceananigans.Operators:
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
+import Oceananigans.Operators: 
+    ℑxᶠᶜᶜ, ℑxᶠᶜᶠ, ℑxᶠᶠᶜ, ℑxᶠᶠᶠ,
+    ℑxᶜᶜᶜ, ℑxᶜᶜᶠ, ℑxᶜᶠᶜ, ℑxᶜᶠᶠ,
+    ℑyᶜᶠᶜ, ℑyᶜᶠᶠ, ℑyᶠᶠᶜ, ℑyᶠᶠᶠ,
+    ℑyᶜᶜᶜ, ℑyᶜᶜᶠ, ℑyᶠᶜᶜ, ℑyᶠᶜᶠ,
+    ℑzᶜᶜᶠ, ℑzᶜᶠᶠ, ℑzᶠᶜᶠ, ℑzᶠᶠᶠ,
+    ℑzᶜᶜᶜ, ℑzᶜᶠᶜ, ℑzᶠᶜᶜ, ℑzᶠᶠᶜ
+    
 # Defining Difference operators for the immersed boundaries
 @inline conditional_δx_f(LY, LZ, i, j, k, ibg::IBG{FT}, δx, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), δx(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_δx_c(LY, LZ, i, j, k, ibg::IBG{FT}, δx, args...) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), δx(i, j, k, ibg.underlying_grid, args...))
