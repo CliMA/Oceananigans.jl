@@ -58,7 +58,7 @@ end
 ##### Use other methods if a more accurate interpolation is required
 #####
 
-@inline function fractional_x_index(x::FT, locs, grid) where {FT}
+@inline function fractional_x_index(x, locs, grid)
     loc = @inbounds locs[1]
     if isxflat(grid)
         return zero(grid)
@@ -73,11 +73,15 @@ end
 
         return FT((x - x₀) / Δx)
     else
-        return @inbounds fractional_index(length(loc, topology(grid, 1)(), grid.Nx), x, nodes(grid, locs)[1]) - 1
+        Tx = topology(grid, 1)()
+        Nx = grid.Nx
+        L = length(loc, Tx, Nx)
+        xn = nodes(grid, locs)[1]
+        return @inbounds fractional_index(L, x, xn) - 1
     end
 end
 
-@inline function fractional_y_index(y::FT, locs, grid) where {FT}
+@inline function fractional_y_index(y, locs, grid)
     loc = @inbounds locs[2]
     if isyflat(grid)
         return zero(grid)
@@ -92,18 +96,26 @@ end
 
         return FT((y - y₀) / Δy)
     else
-        return @inbounds fractional_index(length(loc, topology(grid, 2)(), grid.Ny), y, nodes(grid, locs)[2]) - 1
+        Ty = topology(grid, 2)()
+        Ny = grid.Ny
+        L = length(loc, Ty, Ny)
+        yn = nodes(grid, locs)[2]
+        return @inbounds fractional_index(L, y, yn) - 1
     end
 end
 
-@inline function fractional_z_index(z::FT, locs, grid) where {FT}
+@inline function fractional_z_index(z, locs, grid)
     loc = @inbounds locs[3]
     if iszflat(grid)
         return zero(grid)
     elseif iszregular(grid)
         return FT((z - znode(1, grid, loc)) / zspacings(grid, locs...))
     else
-        return fractional_index(length(loc, topology(grid, 3)(), grid.Nz), z, znodes(grid, loc)) - 1
+        Tz = topology(grid, 3)()
+        Nz = grid.Nz
+        L = length(loc, Tz, Nz)
+        zn = znodes(grid, loc)
+        return fractional_index(L, z, zn) - 1
     end
 end
 

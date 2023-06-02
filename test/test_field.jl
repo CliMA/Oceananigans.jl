@@ -356,12 +356,12 @@ end
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
             # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
 
-            irreg_grid = RectilinearGrid(arch, size=(4, 5, 7),
-                                         x = [0.0, 0.26, 0.49, 0.78, 1.0],
-                                         y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
-                                         z=[-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
+            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
+                                             x = [0.0, 0.26, 0.49, 0.78, 1.0],
+                                             y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
     
-            grids = [reg_grid, irreg_grid]
+            grids = [reg_grid, stretched_grid]
 
             for grid in grids
                 run_field_interpolation_tests(grid)
