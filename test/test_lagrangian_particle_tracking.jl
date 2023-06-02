@@ -61,13 +61,17 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
     @test particles isa LagrangianParticles
 
-    sim, _, _ = particle_tracking_simulation(; grid, particles, timestepper)
+    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper)
     model = sim.model
     run!(sim)
 
     # Just test we run without errors
     @test length(model.particles) == P
     @test propertynames(model.particles.properties) == (:x, :y, :z)
+
+    rm(jld2_filepath)
+    rm(nc_filepath)
+    rm("particles_checkpoint_iteration0.jld2")
 
     #####
     ##### Test Boundary restitution
@@ -128,17 +132,18 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     jld2_filepath = "test_particles.jld2"
     sim.output_writers[:particles_jld2] =
         JLD2OutputWriter(model, (; particles=model.particles),
-                         filename=jld2_filepath, schedule=IterationInterval(1),
-                         overwrite_existing = true)
+                         filename=jld2_filepath, schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1),
-                           overwrite_existing = true)
+        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                     dir = ".", prefix = "particles_checkpoint",
-                                                     overwrite_existing = true)
+                                                     dir = ".", prefix = "particles_checkpoint")
+
+    rm(jld2_filepath)
+    rm(nc_filepath)
+    rm("particles_checkpoint_iteration1.jld2")
 
     sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)    
     model = sim.model
@@ -257,6 +262,9 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     @test all(v .≈ 1)
     @test all(w .≈ 0)
     @test all(s .≈ √2)
+
+    rm("particles_checkpoint_iteration0.jld2")
+    rm("particles_checkpoint_iteration1.jld2")
 
     return nothing
 end
