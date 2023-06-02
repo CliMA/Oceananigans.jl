@@ -45,6 +45,8 @@ This is the default upwinding treatment for the Vector Invariant formulation.
 Keyword arguments
 =================  
 
+- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
+                  in the kinetic energy gradient and the divergence flux. Defaults to `CenteredSecondOrder()`.
 - `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. 
                 Defaults to `FunctionStencil(divergence_smoothness)`
 - `δV_stencil`: Same as `δU_stencil` but for the smoothness of `δy_V`
@@ -75,6 +77,8 @@ Contrarily, only the Kinetic Energy gradient term corresponding to the transport
 Keyword arguments
 =================  
 
+- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
+                  in the kinetic energy gradient. Defaults to `CenteredSecondOrder()`.
 - `divergence_stencil`: Stencil used for smoothness indicators of `δx_U + δy_V` in case of a 
                         `WENO` upwind reconstruction. Defaults to `DefaultStencil()`.
 - `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. 
