@@ -20,6 +20,7 @@ using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_s
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
+import Oceananigans.Models: total_velocities
 
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
@@ -226,3 +227,5 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing},
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
 
+# return the total advective velocities
+total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities

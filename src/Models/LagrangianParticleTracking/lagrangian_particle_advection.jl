@@ -1,6 +1,5 @@
-using Oceananigans.Models.NonhydrostaticModels: NonhydrostaticModel
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 using Oceananigans.Utils: instantiate 
+using Oceananigans.Models: total_velocities
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -151,12 +150,6 @@ end
         particles.z[p] = z⁺ 
     end
 end
-
-total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
-                                                v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
-                                                w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
-
-total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 
 function advect_lagrangian_particles!(particles, model, Δt)
     grid = model.grid

@@ -18,6 +18,8 @@ import Oceananigans.Architectures: architecture
 architecture(model::AbstractModel) = model.architecture
 initialize!(model::AbstractModel) = nothing
 
+total_velocities() = nothing
+
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::AbstractModel)

@@ -20,6 +20,7 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.Models: total_velocities
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -234,3 +235,8 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
+
+# return the total advective velocities
+total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
+                                                v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
+                                                w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
