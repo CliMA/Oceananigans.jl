@@ -58,7 +58,7 @@ end
 ##### Use other methods if a more accurate interpolation is required
 #####
 
-@inline function fractional_x_index(x, locs, grid)
+@inline function fractional_x_index(x::FT, locs, grid) where {FT}
     loc = @inbounds locs[1]
     if isxflat(grid)
         return zero(grid)
@@ -81,7 +81,7 @@ end
     end
 end
 
-@inline function fractional_y_index(y, locs, grid)
+@inline function fractional_y_index(y::FT, locs, grid) where {FT}
     loc = @inbounds locs[2]
     if isyflat(grid)
         return zero(grid)
@@ -104,7 +104,7 @@ end
     end
 end
 
-@inline function fractional_z_index(z, locs, grid)
+@inline function fractional_z_index(z::FT, locs, grid) where {FT}
     loc = @inbounds locs[3]
     if iszflat(grid)
         return zero(grid)
