@@ -49,9 +49,9 @@ Keyword arguments
                 Defaults to `FunctionStencil(divergence_smoothness)`
 - `δV_stencil`: Same as `δU_stencil` but for the smoothness of `δy_V`
 - `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. 
-                 Defaults to `FunctionStencil(δu²_smoothness)` 
+                 Defaults to `FunctionStencil(u_smoothness)` 
 - `δv²_stencil`: Same as `δu²_stencil` but for the smoothness of `δy_v²`
-                 Defaults to `FunctionStencil(δv²_smoothness)`
+                 Defaults to `FunctionStencil(v_smoothness)`
 """
 OnlySelfUpwinding(; cross_scheme = CenteredSecondOrder(),
                     δU_stencil   = FunctionStencil(divergence_smoothness),
@@ -78,9 +78,9 @@ Keyword arguments
 - `divergence_stencil`: Stencil used for smoothness indicators of `δx_U + δy_V` in case of a 
                         `WENO` upwind reconstruction. Defaults to `DefaultStencil()`.
 - `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. 
-                 Defaults to `FunctionStencil(δu²_smoothness)` 
+                 Defaults to `FunctionStencil(u_smoothness)` 
 - `δv²_stencil`: Same as `δu²_stencil` but for the smoothness of `δy_v²`
-                 Defaults to `FunctionStencil(δv²_smoothness)`
+                 Defaults to `FunctionStencil(v_smoothness)`
 """
 CrossAndSelfUpwinding(; cross_scheme       = CenteredSecondOrder(),
                         divergence_stencil = DefaultStencil(),

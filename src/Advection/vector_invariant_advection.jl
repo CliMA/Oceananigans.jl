@@ -88,9 +88,9 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment)
 end
 
-const VectorInvariantEnergyConserving            = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
-const VectorInvariantEnstrophyConserving         = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
-const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnstrophyConserving        = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
+const VectorInvariantVerticallyEnergyConserving = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
 const VectorInvariantUpwindVorticity  = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
