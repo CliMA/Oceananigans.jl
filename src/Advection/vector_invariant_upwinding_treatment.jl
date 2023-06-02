@@ -38,8 +38,8 @@ end
                         δv²_stencil  = FunctionStencil(v_smoothness),
                         ) = OnlySelfUpwinding(cross_scheme, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
 
-Upwinding treatment for Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, where only 
-the terms correspoding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
+Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only 
+the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
 terms in `v` in the meridional momentum equation). The terms corresponding to the tangential velocities (`v` in zonal 
 direction and `u` in meridional direction) are not upwinded.
 This is the default upwinding treatment for the Vector Invariant formulation.
@@ -71,7 +71,7 @@ OnlySelfUpwinding(; cross_scheme = CenteredSecondOrder(),
                             δv²_stencil        = FunctionStencil(v_smoothness),
                             ) = CrossAndSelfUpwinding(cross_scheme, divergence_stencil, δu²_stencil, δv²_stencil)
                             
-Upwinding treatment for Divergence fluxes in the Vector Invariant formulation, where both terms corresponding to
+Upwinding treatment of Divergence fluxes in the Vector Invariant formulation, whereas both terms corresponding to
 the transporting velocity (`u` in the zonal direction and terms in `v` in the meridional direction) and the 
 tangential velocities (`v` in the zonal direction and terms in `u` in the meridional direction) are upwinded. 
 Contrarily, only the Kinetic Energy gradient term corresponding to the transporting velocity is upwinded.
@@ -97,8 +97,8 @@ CrossAndSelfUpwinding(; cross_scheme       = CenteredSecondOrder(),
 """
     VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(cross_scheme)
                                 
-Upwinding treatment for Divergence fluxes and Kinetic Energy gradient in the Vector Invariant formulation, where only 
-the terms correspoding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
+Upwinding treatment for Divergence fluxes and Kinetic Energy gradient in the Vector Invariant formulation, whereas only 
+the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
 terms in `v` in the meridional momentum equation). Contrarily to `OnlySelfUpwinding`, the reconstruction (and hence the
 upwinding) is done _inside_ the gradient operator, i.e., velocities are reconstructed instead of velocity derivatives.
 
