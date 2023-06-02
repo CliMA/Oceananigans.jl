@@ -165,7 +165,7 @@ function advect_lagrangian_particles!(particles, model, Δt)
     worksize = length(particles)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, datatuple(model.velocities))
+    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
 
     return nothing
 end
