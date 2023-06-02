@@ -50,8 +50,8 @@ Keyword Arguments
 
 - `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
 """
-SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
-    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(; kwargs...))
+SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) = 
+    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -64,7 +64,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(eltype(grid); substeps = 200))
+                                        settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
 
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
@@ -193,7 +193,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     kernel_size    = :xy
     kernel_offsets = (0, 0)
 
-    return SplitExplicitAuxiliaryFields(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """
@@ -247,9 +247,32 @@ Return `SplitExplicitSettings`. For a description of the keyword arguments, see
 the [`SplitExplicitFreeSurface`](@ref).
 """
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = 200, 
+                               substeps = nothing, 
+                               cfl    = nothing,
+                               grid   = nothing,
+                               max_Δt = nothing,
+                               gravitational_acceleration = g_Earth,
                                barotropic_averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
+    
+    if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
+        throw(ArgumentError("either specify a cfl or a number of substeps"))
+    end
+
+    if !isnothing(cfl)
+        if isnothing(Δt_max) || isnothing(grid)
+            throw(ArgumentError("Need to specify the grid and Δt_max kwargs to calculate the barotropic substeps from the cfl"))
+        end
+
+        Δx = minimum_xspacing(grid)
+        Δy = minimum_xspacing(grid)
+        Δs = sqrt(1 / (1 / Δx^2 + 1 / Δy^2))
+
+        wave_speed = sqrt(gravitational_acceleration * grid.Lz)
+        
+        Δtᴮ = cfl * Δs / wave_speed
+        substeps = 2 * max_Δt / Δtᴮ
+    end
 
     τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
