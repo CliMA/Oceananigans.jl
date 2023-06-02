@@ -42,10 +42,6 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
     1 / Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶠ, u) +
                                δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶠ, v))
 
-@inline div_xyᶜᶜᶠ(i, j, k, grid, u, v) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Δy_qᶠᶜᶠ, u) +
-                                δyᶜᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶠ, v))
-
 # Convention
  index_left(i, ::Center) = i
  index_left(i, ::Face)   = i - 1

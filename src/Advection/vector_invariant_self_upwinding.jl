@@ -15,19 +15,27 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
+
+    δU_stencil   = scheme.upwinding_treatment.δU_stencil    
+    cross_scheme = scheme.upwinding_treatment.cross_scheme
+
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, u, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, scheme.δU_stencil, u, v) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
+    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
+    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
 
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
 end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
+    
+    δV_stencil   = scheme.upwinding_treatment.δV_stencil
+    cross_scheme = scheme.upwinding_treatment.cross_scheme
+
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_U, u, v) 
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, scheme.δV_stencil, u, v) 
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
+    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
+    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end
@@ -53,9 +61,12 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 
     @inbounds û = u[i, j, k]
 
-    δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_v², u, v)
-    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_u², scheme.δu²_stencil, u, v)
-    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_u², scheme.δu²_stencil, u, v)
+    δu²_stencil  = scheme.upwinding_treatment.δu²_stencil    
+    cross_scheme = scheme.upwinding_treatment.cross_scheme
+
+    δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
+    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_u², δu²_stencil, u, v)
+    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δx_u², δu²_stencil, u, v)
     
     ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
     ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
@@ -67,9 +78,12 @@ end
 
     @inbounds v̂ = v[i, j, k]
 
-    δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_u², u, v)
-    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_v², scheme.δv²_stencil, u, v) 
-    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_v², scheme.δv²_stencil, u, v) 
+    δv²_stencil   = scheme.upwinding_treatment.δv²_stencil    
+    cross_scheme = scheme.upwinding_treatment.cross_scheme
+
+    δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
+    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_v², δv²_stencil, u, v) 
+    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, δy_v², δv²_stencil, u, v) 
     
     ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
     ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)

@@ -4,16 +4,10 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
 struct EnergyConservingScheme{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 
-abstract type AbstractUpwindingTreatment end
-
-struct CrossAndSelfUpwinding <: AbstractUpwindingTreatment end
-struct OnlySelfUpwinding     <: AbstractUpwindingTreatment end
-struct VelocityUpwinding     <: AbstractUpwindingTreatment end
-
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
-struct VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, Z, ZS, V, D, M} <: AbstractAdvectionScheme{N, FT}
     "reconstruction scheme for vorticity flux"
     vorticity_scheme     :: Z
     "stencil used for assessing vorticity smoothness"
@@ -22,20 +16,10 @@ struct VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} <: AbstractAdvec
     vertical_scheme      :: V
     "treatment of upwinding"
     upwinding_treatment  :: D
-    "stencil used for assessing u-derivative smoothness"
-    δU_stencil            :: US
-    "stencil used for assessing v-derivative smoothness"
-    δV_stencil            :: VS
-    "stencil used for assessing u²-derivative smoothness"
-    δu²_stencil           :: KUS
-    "stencil used for assessing v²-derivative smoothness"
-    δv²_stencil           :: KVS
 
     function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                                       upwinding_treatment::D, δU_stencil::US, δV_stencil::VS,
-                                       δu²_stencil::KUS, δv²_stencil::KVS) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}
-        return new{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, 
-                                                            upwinding_treatment, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
+                                       upwinding_treatment::D) where {N, FT, Z, ZS, V, D, M}
+        return new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment)
     end
 end
 
@@ -58,14 +42,6 @@ Keyword arguments
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
 - `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `CrossAndSelfUpwinding`, `OnlySelfUpwinding` and `VelocityUpwinding` (defaults to `OnlySelfUpwinding`)
-- `δU_stencil`: Stencil used for smoothness indicators of `δx_U` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
-               which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
-               custom function (defaults to `FunctionStencil(divergence_smoothness)`)
-- `δV_stencil`: Same as `δU_stencil` but for the smoothness of `δy_V`
-- `δu²_stencil`: Stencil used for smoothness indicators of `δx_u²` in case of a `WENO` upwind reconstruction. Choices are between `DefaultStencil` 
-               which uses the variable being transported, or `FunctionStencil(smoothness_function)` where `smoothness_function` is a 
-               custom function (defaults to `FunctionStencil(u2_smoothness)`)
-- `δv²_stencil`: Same as `δU_stencil` but for the smoothness of `δy_v²`
 - `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
                                 The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
 
@@ -92,25 +68,24 @@ Vector Invariant, Dimension-by-dimension reconstruction
       └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
     └── WENO reconstruction order 3
-      └── upwinding treatment: Oceananigans.Advection.OnlySelfUpwinding()
-            └── smoothness u: FunctionStencil f = divergence_smoothness 
-            └── smoothness v: FunctionStencil f = divergence_smoothness
-            └── smoothness u²: FunctionStencil f = u_smoothness
-            └── smoothness v²: FunctionStencil f = v_smoothness
+      └── upwinding treatment: OnlySelfUpwinding
+ KE gradient cross terms reconstruction: 
+    └── Centered reconstruction order 2 
+ Smoothness measures: 
+    └── smoothness δU: FunctionStencil f = divergence_smoothness
+    └── smoothness δV: FunctionStencil f = divergence_smoothness
+    └── smoothness δu²: FunctionStencil f = u_smoothness
+    └── smoothness δv²: FunctionStencil f = v_smoothness
+      
 ```
 """
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
-                           upwinding_treatment  = OnlySelfUpwinding(),
-                           δU_stencil           = FunctionStencil(divergence_smoothness),
-                           δV_stencil           = FunctionStencil(divergence_smoothness),
-                           δu²_stencil          = FunctionStencil(u_smoothness),
-                           δv²_stencil          = FunctionStencil(v_smoothness),
+                           upwinding_treatment  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
                            multi_dimensional_stencil = false) where {N, FT}
         
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, 
-                                                             upwinding_treatment, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
+    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment)
 end
 
 const VectorInvariantEnergyConserving            = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
@@ -118,7 +93,7 @@ const VectorInvariantEnstrophyConserving         = VectorInvariant{<:Any, <:Any,
 const VectorInvariantVerticallyEnergyConserving  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
 const VectorInvariantUpwindVorticity  = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 
 Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
@@ -131,26 +106,17 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               " Vertical advection / Divergence flux scheme: ", "\n",
               "    └── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
-              "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")",
-              "$((a.vertical_scheme isa WENO && a.upwinding_treatment isa OnlySelfUpwinding) ? "
-            └── smoothness u: $(a.δU_stencil) 
-            └── smoothness v: $(a.δV_stencil)
-            └── smoothness u²: $(a.δu²_stencil)
-            └── smoothness v²: $(a.δv²_stencil)" : "")")
+              "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M}) where {N, FT, Z, ZS, V, D, US, VS, KUS, KVS, M} =
+Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where {N, FT, Z, ZS, V, D, M} =
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
-                                  Adapt.adapt(to, scheme.upwinding_treatment),
-                                  Adapt.adapt(to, scheme.δU_stencil),
-                                  Adapt.adapt(to, scheme.δV_stencil),
-                                  Adapt.adapt(to, scheme.δu²_stencil),
-                                  Adapt.adapt(to, scheme.δv²_stencil))
+                                  Adapt.adapt(to, scheme.upwinding_treatment))
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
@@ -191,8 +157,8 @@ end
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inline bernoulli_head_U(i, j, k, grid, scheme, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-@inline bernoulli_head_V(i, j, k, grid, scheme, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantVerticallyEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
 
 #####
 ##### Conservative vertical advection 
