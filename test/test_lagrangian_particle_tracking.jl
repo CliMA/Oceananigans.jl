@@ -118,6 +118,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     speed = Field(√(u*u + v*v + w*w))
     tracked_fields = merge(velocities, (; s=speed))
 
+    # applying v component of advection with background field to ensure it is included
     background_v = VelocityFields(grid).v
     background_v .= 1
 

@@ -228,4 +228,4 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 initialize_free_surface!(free_surface, grid, velocities) = nothing
 
 # return the total advective velocities
-total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
