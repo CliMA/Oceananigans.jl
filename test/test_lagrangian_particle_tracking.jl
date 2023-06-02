@@ -118,14 +118,18 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     speed = Field(√(u*u + v*v + w*w))
     tracked_fields = merge(velocities, (; s=speed))
 
+    background_v = VelocityFields(grid).v
+    background_v .= 1
+
     # Test second constructor
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
     @test lagrangian_particles isa LagrangianParticles
 
-    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
-                                velocities=velocities, particles=lagrangian_particles)
+    model = NonhydrostaticModel(; grid, timestepper,
+                                  velocities, particles=lagrangian_particles,
+                                  background_fields = (v = background_v, ))
 
-    set!(model, u=1, v=1)
+    set!(model, u=1)
 
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
