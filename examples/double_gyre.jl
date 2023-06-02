@@ -19,6 +19,8 @@ const λ_east = +30 # [°] longitude of east boundary
 const φ_south = 15 # [°] latitude of south boundary
 const φ_north = 75 # [°] latitude of north boundary
 
+φ₀ = 0.5(φ_south + φ_north) # [°] latitude of the center of the domain
+
 Lλ = λ_east - λ_west   # [°] longitude extent of the domain
 Lφ = φ_north - φ_south # [°] latitude extent of the domain
 
@@ -70,7 +72,7 @@ cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 
 parameters = (Lφ = Lφ,
               Lz = Lz,
-              φ₀ = (φ_south + φ_north) / 2, # latitude of the center of the domain [°]
+              φ₀ = φ₀,         # latitude of the center of the domain [°]
                τ = 0.1 / ρ₀,   # surface kinematic wind stress [m² s⁻²]
                μ = 0.001,      # bottom drag damping parameter [ms⁻¹]
               Δb = 30 * α * g, # surface vertical buoyancy gradient [s⁻²]
@@ -123,7 +125,10 @@ v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
 b_bcs = FieldBoundaryConditions(top = b_relax_bc)
 
 # ## Turbulence closure
-vertical_diffusive_closure = RiBasedVerticalDiffusivity()
+boundary_layer_closure     = RiBasedVerticalDiffusivity()
+vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ = 3e-5, ν = 5e-4)
+
+closures = (boundary_layer_closure, vertical_diffusive_closure)
 
 Δt_max = 10minutes
 gravitational_acceleration = 9.81 # [m s⁻²]
@@ -143,7 +148,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = HydrostaticSphericalCoriolis(scheme = ActiveCellEnstrophyConservingScheme()),
-                                    closure  = vertical_diffusive_closure,
+                                    closure  = closures,
                                     tracers  = :b,
                                     boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
 
