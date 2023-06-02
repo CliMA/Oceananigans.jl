@@ -295,7 +295,7 @@ include("grid_fitted_immersed_boundaries.jl")
 include("partial_cell_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
-include("conditional_differences.jl")
+include("conditional_operators.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
