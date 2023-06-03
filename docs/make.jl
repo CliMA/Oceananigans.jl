@@ -31,6 +31,7 @@ examples = [
     "One-dimensional diffusion"        => "one_dimensional_diffusion",
     "Two-dimensional turbulence"       => "two_dimensional_turbulence",
     "Internal wave"                    => "internal_wave",
+    "Barotropic tide"                  => "barotropic_tide",
     "Convecting plankton"              => "convecting_plankton",
     "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
     "Langmuir turbulence"              => "langmuir_turbulence",
