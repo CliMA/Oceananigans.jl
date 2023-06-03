@@ -36,6 +36,20 @@ end
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 of oceanic free surface dynamics with `gravitational_acceleration`.
 
+The `SplitExplicitSettings` function call is:
+
+```julia
+    SplitExplicitSettings(FT::DataType=Float64;
+                          substeps = nothing,
+                          cfl    = nothing,
+                          grid   = nothing,
+                          max_Δt = nothing,
+                          gravitational_acceleration = g_Earth,
+                          barotropic_averaging_kernel = averaging_shape_function,
+                          timestepper = ForwardBackwardScheme())
+```
+
+
 Keyword Arguments
 =================
 
@@ -43,15 +57,32 @@ Keyword Arguments
               do not require substepping until `2Δt`. The number of substeps is reduced automatically to the last
               index of `averaging_weights` for which `averaging_weights > 0`.
 
+- `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
+  barotropic gravity-wave speed, computed with depth `grid.Lz`.
+
+!!! info "The flux convention in Oceananigans"
+    Either one of `substeps` _or_ `cfl` needs to be prescribed.
+
+- `grid`: Used to compute the corresponding barotropic surface wave speed.
+
+- `max_Δt`: The maximum timestep allowed.
+
+- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
+
 - `barotropic_averaging_kernel`: function of `τ` used to average the barotropic transport `U` and free surface `η`
                                  within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
                                  with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
-                                 centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``.
+                                 centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
+                                 described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
+                                 is chosen.
 
-- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
+- `timestepper`: Time stepping scheme used, either:
+  - `ForwardBackwardScheme()` (default): `η = f(U)`             then `U = f(η)`
+  - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) = 
-    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(; gravitational_acceleration, kwargs...))
+    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration,
+                             SplitExplicitSettings(; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -64,7 +95,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
+                                  settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
 
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
@@ -216,13 +247,6 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     timestepper :: 𝒮
 end
 
-"""
-Possible barotropic time-stepping schemes. 
-
-- `AdamsBashforth3Scheme`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
-- `ForwardBackwardScheme`: `η = f(U)`             then `U = f(η)`
-"""
-
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
@@ -237,15 +261,6 @@ end
 
 @inline constant_averaging_kernel(τ) = 1
 
-"""
-    SplitExplicitSettings([FT=Float64;]
-                          substeps = 200, 
-                          barotropic_averaging_kernel = averaging_shape_function,
-                          timestepper = ForwardBackwardScheme())
-
-Return `SplitExplicitSettings`. For a description of the keyword arguments, see
-the [`SplitExplicitFreeSurface`](@ref).
-"""
 function SplitExplicitSettings(FT::DataType=Float64;
                                substeps = nothing, 
                                cfl    = nothing,
@@ -261,11 +276,11 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
     if !isnothing(cfl)
         if isnothing(Δt_max) || isnothing(grid)
-            throw(ArgumentError("Need to specify the grid and Δt_max kwargs to calculate the barotropic substeps from the cfl"))
+            throw(ArgumentError("Need to specify the grid and max_Δt kwargs to calculate the barotropic substeps from the cfl"))
         end
 
         Δx = minimum_xspacing(grid)
-        Δy = minimum_xspacing(grid)
+        Δy = minimum_yspacing(grid)
         Δs = sqrt(1 / (1 / Δx^2 + 1 / Δy^2))
 
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
