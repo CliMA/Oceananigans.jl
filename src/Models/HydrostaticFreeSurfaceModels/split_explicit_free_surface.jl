@@ -39,9 +39,10 @@ of oceanic free surface dynamics with `gravitational_acceleration`.
 Keyword Arguments
 =================
 
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. Note that some averaging functions
-              do not require substepping until `2Δt`. The number of substeps is reduced automatically to the last
-              index of `averaging_weights` for which `averaging_weights > 0`.
+- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
+              timestep. Note that some averaging functions do not require substepping until `2Δt`.
+              The number of substeps is reduced automatically to the last index of `averaging_weights`
+              for which `averaging_weights > 0`.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
   barotropic gravity-wave speed, computed with depth `grid.Lz`.
@@ -258,6 +259,10 @@ function SplitExplicitSettings(FT::DataType=Float64;
     
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
         throw(ArgumentError("either specify a cfl or a number of substeps"))
+    end
+
+    if !isnothing(grid) && eltype(grid) !== FT
+        throw(ArgumentError("Prescribed FT was different that the one used in `grid`."))
     end
 
     if !isnothing(cfl)
