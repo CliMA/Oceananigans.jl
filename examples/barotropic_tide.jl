@@ -109,7 +109,7 @@ set!(model, u=uᵢ, b=bᵢ)
 # Now let's built a `Simulation`.
 
 Δt = 3minutes
-stop_time = 8T₂
+stop_time = 4days
 
 simulation = Simulation(model, Δt = Δt, stop_time = stop_time)
 
@@ -236,17 +236,17 @@ fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 hm_u = heatmap!(ax_u, xu/1e3, zu, u′ₙ;
                 colorrange = (-ulim, ulim),
                 colormap = :balance)
-Colorbar(fig[2, 2], hm_u)
+Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
 hm_w = heatmap!(ax_w, xw/1e3, zw, wₙ;
                 colorrange = (-wlim, wlim),
                 colormap = :balance)
-Colorbar(fig[3, 2], hm_w)
+Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 hm_N² = heatmap!(ax_N², xN²/1e3, zN², N²ₙ;
                  colorrange = (0.95Nᵢ², 1.05Nᵢ²),
                  colormap = :thermal)
-Colorbar(fig[4, 2], hm_N²)
+Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig
 
