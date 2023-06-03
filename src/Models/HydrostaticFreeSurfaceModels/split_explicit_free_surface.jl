@@ -36,20 +36,6 @@ end
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 of oceanic free surface dynamics with `gravitational_acceleration`.
 
-The `SplitExplicitSettings` function call is:
-
-```julia
-    SplitExplicitSettings(FT::DataType=Float64;
-                          substeps = nothing,
-                          cfl    = nothing,
-                          grid   = nothing,
-                          max_Δt = nothing,
-                          gravitational_acceleration = g_Earth,
-                          barotropic_averaging_kernel = averaging_shape_function,
-                          timestepper = ForwardBackwardScheme())
-```
-
-
 Keyword Arguments
 =================
 
@@ -60,12 +46,12 @@ Keyword Arguments
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
   barotropic gravity-wave speed, computed with depth `grid.Lz`.
 
-!!! info "The flux convention in Oceananigans"
-    Either one of `substeps` _or_ `cfl` needs to be prescribed.
+!!! info "Needed keyword arguments"
+    Either `substeps` _or_ `cfl` needs to be prescribed.
 
 - `grid`: Used to compute the corresponding barotropic surface wave speed.
 
-- `max_Δt`: The maximum timestep allowed.
+- `max_Δt`: The maximum baroclinic timestep that is allowed allowed.
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
@@ -77,7 +63,7 @@ Keyword Arguments
                                  is chosen.
 
 - `timestepper`: Time stepping scheme used, either:
-  - `ForwardBackwardScheme()` (default): `η = f(U)`             then `U = f(η)`
+  - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) = 
