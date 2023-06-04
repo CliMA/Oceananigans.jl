@@ -63,7 +63,7 @@ Keyword Arguments
                                  described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
                                  is chosen.
 
-- `timestepper`: Time stepping scheme used, either:
+- `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
