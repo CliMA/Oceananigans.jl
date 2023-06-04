@@ -10,9 +10,8 @@ struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivi
     ν :: N
     κ :: K
 
-    function ScalarBiharmonicDiffusivity{F}(ν::N, κ::K) where {F, N, K}
-        return new{F, N, K}(ν, κ)
-    end
+    ScalarBiharmonicDiffusivity{F}(ν::N, κ::K) where {F, N, K} =
+        new{F, N, K}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
@@ -58,7 +57,7 @@ When prescribing the viscosities or diffusivities as functions, depending on the
 * `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
   a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-* `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+* `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`, and `ℓz` either `Face()` or `Center()`.
 
 For examples see [`ScalarDiffusivity`](@ref).
 """

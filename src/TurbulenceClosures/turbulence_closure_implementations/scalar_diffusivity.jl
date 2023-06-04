@@ -5,9 +5,8 @@ struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
     ν :: N
     κ :: K
 
-    function ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K}
-        return new{TD, F, N, K}(ν, κ)
-    end
+    ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K} =
+        new{TD, F, N, K}(ν, κ)
 end
 
 """
@@ -78,9 +77,6 @@ julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
            return 2000 * exp(z / depth_scale)
        end
 κ (generic function with 1 method)
-
-julia> ScalarDiffusivity(κ = κ)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=κ (generic function with 1 method))
 
 julia> ScalarDiffusivity(κ = κ, discrete_form = true)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
