@@ -270,9 +270,9 @@ function SplitExplicitSettings(FT::DataType=Float64;
             throw(ArgumentError("Need to specify the grid and max_Δt kwargs to calculate the barotropic substeps from the cfl"))
         end
 
-        Δx = minimum_xspacing(grid)
-        Δy = minimum_yspacing(grid)
-        Δs = sqrt(1 / (1 / Δx^2 + 1 / Δy^2))
+        Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
+        Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
+        Δs = sqrt(1 / (Δx⁻² + Δy⁻²))
 
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
