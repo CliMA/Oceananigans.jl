@@ -207,11 +207,11 @@ N²_t = FieldTimeSeries(saved_output_filename, "N²")
 times = u′_t.times
 nothing #hide
 
-# We retrieve each field's coordinates.
+# We retrieve each field's coordinates and convert from meters to kilometers.
 
-xu,  yu,  zu  = nodes(u′_t[1])
-xw,  yw,  zw  = nodes(w_t[1])
-xN², yN², zN² = nodes(N²_t[1])
+xu,  yu,  zu  = nodes(u′_t[1]) ./ 1e3
+xw,  yw,  zw  = nodes(w_t[1])  ./ 1e3
+xN², yN², zN² = nodes(N²_t[1]) ./ 1e3
 nothing #hide
 
 # ## Visualize
@@ -246,7 +246,7 @@ N²ₙ = @lift mask_and_get_interior(N²_t, $n)
 
 axis_kwargs = (xlabel = "x [km]",
                ylabel = "z [m]",
-               limits = ((-Lx / 2e3, Lx / 2e3), (-H, 0)),
+               limits = ((-Lx / 2e3, Lx / 2e3), (-H / 1e3, 0)), # note conversion to kilometers
                titlesize = 20)
 
 ulim   = 0.8 * maximum(abs, u′_t[end])
@@ -254,30 +254,18 @@ wlim   = 0.8 * maximum(abs, w_t[end])
 
 fig = Figure(resolution = (700, 900))
 
-ax_u = Axis(fig[2, 1];
-            title = "u'-velocity", axis_kwargs...)
-
-ax_w = Axis(fig[3, 1];
-            title = "w-velocity", axis_kwargs...)
-
-ax_N² = Axis(fig[4, 1];
-             title = "stratification N²", axis_kwargs...)
-
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-hm_u = heatmap!(ax_u, xu/1e3, zu, u′ₙ;
-                colorrange = (-ulim, ulim),
-                colormap = :balance)
+ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
+hm_u = heatmap!(ax_u, xu, zu, u′ₙ; colorrange = (-ulim, ulim), colormap = :balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
-hm_w = heatmap!(ax_w, xw/1e3, zw, wₙ;
-                colorrange = (-wlim, wlim),
-                colormap = :balance)
+ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
+hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wlim, wlim), colormap = :balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
-hm_N² = heatmap!(ax_N², xN²/1e3, zN², N²ₙ;
-                 colorrange = (0.95Nᵢ², 1.05Nᵢ²),
-                 colormap = :thermal)
+ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
+hm_N² = heatmap!(ax_N², xN², zN², N²ₙ; colorrange = (0.95Nᵢ², 1.05Nᵢ²), colormap = :thermal)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig
