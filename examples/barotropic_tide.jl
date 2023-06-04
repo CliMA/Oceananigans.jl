@@ -255,13 +255,13 @@ wlim   = 0.8 * maximum(abs, w_t[end])
 fig = Figure(resolution = (700, 900))
 
 ax_u = Axis(fig[2, 1];
-            title = L"$u'$-velocity", axis_kwargs...)
+            title = "u'-velocity", axis_kwargs...)
 
 ax_w = Axis(fig[3, 1];
-            title = L"$w$-velocity", axis_kwargs...)
+            title = "w-velocity", axis_kwargs...)
 
 ax_N² = Axis(fig[4, 1];
-             title = L"stratification $N^2$", axis_kwargs...)
+             title = "stratification N²", axis_kwargs...)
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
