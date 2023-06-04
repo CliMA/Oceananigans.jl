@@ -32,8 +32,9 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
                                   topology = (Periodic, Flat, Bounded))
 
 # Now we can create the non-trivial bathymetry as an immersed boundary. We use `GridFittedBottom` that
-# gets as input a two-dimensional function whose arguments are the grid's native horizontal coordinates,
-# that returns the depth of the bottom.
+# gets as input either *(i)* a two-dimensional function whose arguments are the grid's native horizontal
+# coordinates and it returns the ``z`` of the bottom, or *(i)* a two-dimensional array with the values
+# of ``z`` at the bottom at the cell centers.
 #
 # In this example we'd like to have a small Gaussian hill at the center of the domain.
 
