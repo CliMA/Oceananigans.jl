@@ -16,7 +16,7 @@ using Oceananigans.Units
 
 # ## Grid
 
-# We use an immersed boundary two-dimensional grid (in ``x``-``z``) that is is periodic in
+# We use an immersed boundary two-dimensional grid (in ``x``--``z``) that is is periodic in
 # the ``x``-direction. To construct an immersed boundary grid we first need to create what
 # we refer to as "underlying grid", which the grid that encompasses the immersed boundary.
 
@@ -34,7 +34,7 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
 # Now we want to create a bathymetry as an immersed boundary grid.
 
 # ```math
-# h(x) = -H + h_0 \\exp(-x^2 / 2σ^2)
+# h(x) = -H + h_0 \exp(-x^2 / 2σ^2)
 # ```
 
 h₀ = 50 # m
@@ -63,9 +63,9 @@ fig
 # Now we want to add a barotropic tide forcing. For example, to add the ``M_2`` tidal forcing
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
-# \\partial_t u = \\dotsb + f_0 \\sin(\\omega_2 t)
+# \partial_t u = \dotsb + f_0 \sin(\omega_2 t)
 # ```
-# where ``\\omega_2 = 2\\pi / T_2``, with ``T_2`` the period of the ``M_2`` tide.
+# where ``\omega_2 = 2π / T_2``, with ``T_2`` the period of the ``M_2`` tide.
 
 T₂ = 12.421hours
 const ω₂ = 2π / T₂ # radians/sec
