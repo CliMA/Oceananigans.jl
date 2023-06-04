@@ -245,7 +245,7 @@ u′ₙ = @lift mask_and_get_interior(u′_t, $n)
 N²ₙ = @lift mask_and_get_interior(N²_t, $n)
 
 axis_kwargs = (xlabel = "x [km]",
-               ylabel = "z [m]",
+               ylabel = "z [km]",
                limits = ((-Lx / 2e3, Lx / 2e3), (-H / 1e3, 0)), # note conversion to kilometers
                titlesize = 20)
 
