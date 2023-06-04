@@ -138,7 +138,9 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 # ## Diagnostics/Output
 
-# Add some diagnostics.
+# Add some diagnostics. Instead of ``u`` we save the deviation of ``u`` from its instantaneous
+# domain average, ``u' = u - (L_x H)^{-1} \int u \, \mathrm{d}x \mathrm{d}z``. We also save
+# the stratification ``N^2 = \partial_z b``.
 
 b = model.tracers.b
 u, v, w = model.velocities
@@ -173,7 +175,7 @@ run!(simulation)
 
 using CairoMakie
 
-# We load the saved buoyancy output on the top, bottom, and east surface as `FieldTimeSeries`es.
+# We load the saved valocity and stratification output as `FieldTimeSeries`es.
 
 saved_output_filename = filename * ".jld2"
 
