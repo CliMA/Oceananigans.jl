@@ -87,7 +87,7 @@ fig
 # the tidal velocity and tidal forcing amplitudes are related via:
 #
 # ```math
-# U_{\mathrm{tidal}} = \frac{\omega F_0}{\omega^2 - f^2}
+# U_{\mathrm{tidal}} = \frac{\omega_2 F_0}{\omega_2^2 - f^2}
 # ```
 #
 # The Coriolis frequency is needed, so we start by constructing a Coriolis on an ``f``-plane at the
