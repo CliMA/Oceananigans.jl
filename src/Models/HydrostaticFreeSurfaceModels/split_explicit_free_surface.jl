@@ -277,7 +277,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
         Δtᴮ = cfl * Δs / wave_speed
-        substeps = Int(round(2 * max_Δt / Δtᴮ))
+        substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
     end
 
     τᶠ = range(0, 2, length = substeps+1)
