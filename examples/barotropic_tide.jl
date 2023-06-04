@@ -31,7 +31,11 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
                                   halo = (4, 4),
                                   topology = (Periodic, Flat, Bounded))
 
-# Now we want to create a bathymetry as an immersed boundary grid.
+# Now we can create the non-trivial bathymetry as an immersed boundary. We use `GridFittedBottom` that
+# gets as input a two-dimensional function whose arguments are the grid's native horizontal coordinates,
+# that returns the depth of the bottom.
+#
+# In this example we'd like to have a small Gaussian hill at the center of the domain.
 
 # ```math
 # h(x) = -H + h_0 \exp(-x^2 / 2σ^2)
@@ -39,9 +43,10 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
 
 h₀ = 50 # m
 width = 5kilometers
-bump(x, y) = - H + h₀ * exp(-x^2 / 2width^2)
+hill(x) = h₀ * exp(-x^2 / 2width^2)
+bottom(x, y) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
 # The hill is small; here's how it looks (note that we don't plot all the way to the ocean surface).
 
