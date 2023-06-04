@@ -51,7 +51,7 @@ Keyword Arguments
 
   **With locations**
 
-  If `LX, LY, LZ != (nothing, nothing, nothing)` the function call *does not require*
+  If `LX, LY, LZ != (nothing, nothing, nothing)` the diffusivity is evaluated at `(LX, LY, LZ)` and interpolated onto the required locations. In this case, the function call *does not require*
   locations in the signature. The diffusivity `func` is called with the signature:
 
   1. Without parameters:
