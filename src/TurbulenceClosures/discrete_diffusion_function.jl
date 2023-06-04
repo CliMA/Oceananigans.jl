@@ -29,7 +29,7 @@ Keyword Arguments
 
   **Without locations**
 
-  If `LX == LY == LZ == nothing` the function call requires locations in the signature.
+  If `LX == LY == LZ == nothing` the diffusivity is evaluated at the required locations. In this case, the function call *requires passing* locations `ℓx, ℓy, ℓz` in the signature.
   In this case, the diffusivity `func` is called with the signature:
 
   - Without parameters:
