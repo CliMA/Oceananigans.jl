@@ -64,9 +64,9 @@ Keyword arguments
         and the impact of this approximation has not been tested or validated.
 
 By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
-second-order advection scheme, and `Cb = nothing`, which terns off the buoyancy modification term.
+second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy modification term.
 
-`Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
+`Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
 
 Examples
 ========
