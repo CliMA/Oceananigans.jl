@@ -20,7 +20,7 @@ using Oceananigans.Units
 # the ``x``-direction. To construct an immersed boundary grid we first need to create what
 # we refer to as "underlying grid", which the grid that encompasses the immersed boundary.
 
-Nx, Nz = 200, 60
+Nx, Nz = 200, 80
 
 H  = 2kilometers
 Lx = 2000kilometers
@@ -52,7 +52,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 # The hill is small; here's how it looks (note that we don't plot all the way to the ocean surface).
 
 xC = xnodes(grid, Center())
-bottom = grid.immersed_boundary.bottom_height[1:Nx, 1]
+bottom_boundary = grid.immersed_boundary.bottom_height[1:Nx, 1]
 
 using CairoMakie
 
@@ -62,7 +62,7 @@ ax = Axis(fig[1, 1],
           ylabel="z [m]",
           limits=((-Lx/2e3, Lx/2e3), (-H, -4H/5)))
 
-lines!(ax, xC/1e3, bottom)
+lines!(ax, xC/1e3, bottom_boundary)
 
 fig
 
@@ -109,6 +109,7 @@ U_tidal = ε * ω₂ * width
 const tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
 
 @inline tidal_forcing(x, y, z, t) = tidal_forcing_amplitude * sin(ω₂ * t)
+nothing #hide
 
 # ## Model
 
@@ -164,6 +165,7 @@ function print_progress(sim)
 end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(200))
+nothing #hide
 
 # ## Diagnostics/Output
 
@@ -190,11 +192,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, u′, w, b, N
 
 # We are ready -- let's run!
 
-@info "Running the simulation..."
-
 run!(simulation)
-
-@info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
 # ## Load output
 
@@ -232,6 +230,7 @@ function mask_and_get_interior(φ_t, n; value=NaN)
     mask_immersed_field!(φ_t[n], value)
     return interior(φ_t[n], :, 1, :)
 end
+nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
@@ -256,13 +255,13 @@ wlim   = 0.8 * maximum(abs, w_t[end])
 fig = Figure(resolution = (700, 900))
 
 ax_u = Axis(fig[2, 1];
-            title = "u′-velocity", axis_kwargs...)
+            title = L"$u'$-velocity", axis_kwargs...)
 
 ax_w = Axis(fig[3, 1];
-            title = "w-velocity", axis_kwargs...)
+            title = L"$w$-velocity", axis_kwargs...)
 
 ax_N² = Axis(fig[4, 1];
-             title = "stratification", axis_kwargs...)
+             title = L"stratification $N^2$", axis_kwargs...)
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
