@@ -195,15 +195,9 @@ run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
-# ## Visualization
+# ## Load output
 
-# Now let's visualize our resutls! We use `CairoMakie` in this example.
-# On a system with OpenGL `using GLMakie` is more convenient as figures will be
-# displayed on the screen.
-
-using CairoMakie
-
-# We load the saved valocity and stratification output as `FieldTimeSeries`es.
+# First, we load the saved valocity and stratification output as `FieldTimeSeries`es.
 
 saved_output_filename = filename * ".jld2"
 
@@ -214,14 +208,22 @@ N²_t = FieldTimeSeries(saved_output_filename, "N²")
 times = u′_t.times
 nothing #hide
 
-# We build the coordinates. We rescale horizontal coordinates so that they correspond to kilometers.
+# We retrieve each field's coordinates.
 
 xu,  yu,  zu  = nodes(u′_t[1])
 xw,  yw,  zw  = nodes(w_t[1])
 xN², yN², zN² = nodes(N²_t[1])
 nothing #hide
 
-# A utility to mask the region that is within the immersed boundary with `NaN`s.
+# ## Visualize
+
+# Now we can visualize our resutls! We use `CairoMakie` here. On a system with OpenGL
+# `using GLMakie` is more convenient as figures will be displayed on the screen.
+
+using CairoMakie
+
+# First, a utility to mask the region that is within the immersed boundary with `NaN`s and
+# also select the ``x``-``z`` interior slices of our fields.
 
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
