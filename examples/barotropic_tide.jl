@@ -63,23 +63,45 @@ fig
 # Now we want to add a barotropic tide forcing. For example, to add the ``M_2`` tidal forcing
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
-# \partial_t u = \dotsb + f_0 \sin(\omega_2 t)
+# \partial_t u = \dotsb + F_0 \sin(\omega_2 t)
 # ```
-# where ``\omega_2 = 2π / T_2``, with ``T_2`` the period of the ``M_2`` tide.
+# where ``\omega_2 = 2π / T_2``, with ``T_2 = 12.421 \,\mathrm{hours}`` the period of the ``M_2`` tide.
 
-T₂ = 12.421hours
-const ω₂ = 2π / T₂ # radians/sec
+# The excursion parameter is a nondimensional number that expresses the ratio of the flow movement
+# due to the tide compared to the size of the width of the hill.
+#
+# ```math
+# \epsilon = \frac{U_{\mathrm{tidal}} / \omega_2}{\sigma}
+# ```
+# 
+# We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
+# which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
+# use Fourier decomposition on the inviscid, linearized momentum equations to determine the
+# flow response for a given tidal forcing. Doing so we get that for the sinusoidal forcing above,
+# the tidal velocity and tidal forcing amplitudes are related via:
+#
+# ```math
+# U_{\mathrm{tidal}} = \frac{\omega F_0}{\omega^2 - f^2}
+# ```
+#
+# The Coriolis frequency is needed, so we start by constructing a Coriolis on an ``f``-plane at the
+# mid-latitudes.
 
 coriolis = FPlane(latitude = -45)
 
-ε = 0.25
+# Now we have everything we require to construct the tidal forcing given a value of the
+# excursion parameter.
+#
+T₂ = 12.421hours
+const ω₂ = 2π / T₂ # radians/sec
+
+ε = 0.25 # the excursion parameter
 
 U_tidal = ε * ω₂ * width
 
-const tidal_forcing_amplitude = U_tidal * (coriolis.f^2 - ω₂^2) / ω₂
+const tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
 
 @inline tidal_forcing(x, y, z, t) = tidal_forcing_amplitude * sin(ω₂ * t)
-
 
 # ## Model
 
