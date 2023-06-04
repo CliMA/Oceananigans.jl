@@ -266,7 +266,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
     end
 
     if !isnothing(cfl)
-        if isnothing(Δt_max) || isnothing(grid)
+        if isnothing(max_Δt) || isnothing(grid)
             throw(ArgumentError("Need to specify the grid and max_Δt kwargs to calculate the barotropic substeps from the cfl"))
         end
 
