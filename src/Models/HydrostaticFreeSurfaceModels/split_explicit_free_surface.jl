@@ -52,7 +52,7 @@ Keyword Arguments
 
 - `grid`: Used to compute the corresponding barotropic surface wave speed.
 
-- `max_Δt`: The maximum baroclinic timestep that is allowed allowed.
+- `max_Δt`: The maximum baroclinic timestep that is allowed.
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
