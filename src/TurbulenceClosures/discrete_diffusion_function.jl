@@ -43,7 +43,7 @@ Keyword Arguments
     `clock.iteration` is the current model iteration, and `model_fields` is a
     `NamedTuple` with `u, v, w`, the fields in `model.tracers` and the `model.auxiliary_fields`.
 
-  - With `parameters` is not `nothing`, `func` is called with the signature
+  - When `parameters` is not `nothing`, `func` is called with the signature
 
     ```julia
     func(i, j, k, grid, ℓx, ℓy, ℓz, clock, model_fields, parameters)
