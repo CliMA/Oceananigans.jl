@@ -78,7 +78,7 @@ U_tidal = ε * ω₂ * width
 
 const tidal_forcing_amplitude = U_tidal * (coriolis.f^2 - ω₂^2) / ω₂
 
-@inline tidal_forcing(x, y, z, t) = tidal_forcing_amplitude * cos(ω₂ * t)
+@inline tidal_forcing(x, y, z, t) = tidal_forcing_amplitude * sin(ω₂ * t)
 
 
 # ## Model
