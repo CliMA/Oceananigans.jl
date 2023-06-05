@@ -28,14 +28,14 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    "One-dimensional diffusion"        => "one_dimensional_diffusion",
-    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-    "Internal wave"                    => "internal_wave",
-    "Convecting plankton"              => "convecting_plankton",
-    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-    "Langmuir turbulence"              => "langmuir_turbulence",
-    "Baroclinic adjustment"            => "baroclinic_adjustment",
-    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+    # "One-dimensional diffusion"        => "one_dimensional_diffusion",
+    # "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+    # "Internal wave"                    => "internal_wave",
+    # "Convecting plankton"              => "convecting_plankton",
+    # "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+    # "Langmuir turbulence"              => "langmuir_turbulence",
+    # "Baroclinic adjustment"            => "baroclinic_adjustment",
+    # "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
     "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
     "Horizontal convection"            => "horizontal_convection",
     "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
@@ -48,7 +48,7 @@ asyncmap(1:length(example_scripts)) do n
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
         Literate.markdown(example_filepath, OUTPUT_DIR;
-                         flavor = Literate.DocumenterFlavor(), execute = true)
+                          flavor = Literate.DocumenterFlavor(), execute = true)
     end
 end
 
