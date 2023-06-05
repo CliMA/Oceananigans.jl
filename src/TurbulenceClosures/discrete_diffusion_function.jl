@@ -60,7 +60,7 @@ Keyword Arguments
     func(i, j, k, grid, clock, model_fields)
     ```
 
-  2. With `parameters` is not `nothing`, `func` is called with the signature
+  2. When `parameters` is not `nothing`, `func` is called with the signature
 
     ```julia
     func(i, j, k, grid, clock, model_fields, parameters)
