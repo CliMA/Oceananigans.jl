@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -153,7 +153,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
         @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
     end
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
             @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
@@ -167,7 +167,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
     near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
     
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
                 @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
