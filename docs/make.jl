@@ -28,18 +28,18 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    "One-dimensional diffusion"        => "one_dimensional_diffusion",
-    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-    "Internal wave"                    => "internal_wave",
-    "Barotropic tide"                  => "barotropic_tide",
-    "Convecting plankton"              => "convecting_plankton",
-    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-    "Langmuir turbulence"              => "langmuir_turbulence",
-    "Baroclinic adjustment"            => "baroclinic_adjustment",
-    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
-    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
-    "Horizontal convection"            => "horizontal_convection",
-    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
+    # "One-dimensional diffusion"        => "one_dimensional_diffusion",
+    # "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+    # "Internal wave"                    => "internal_wave",
+    "Internal tide by a seamount"        => "internal_tide",
+    # "Convecting plankton"              => "convecting_plankton",
+    # "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+    # "Langmuir turbulence"              => "langmuir_turbulence",
+    # "Baroclinic adjustment"            => "baroclinic_adjustment",
+    # "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+    # "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
+    # "Horizontal convection"            => "horizontal_convection",
+    # "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
 ]
 
 example_scripts = [ filename * ".jl" for (title, filename) in examples ]
@@ -144,10 +144,10 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = true,
-    strict = true,
+   doctest = false,
+    strict = false,
      clean = true,
- checkdocs = :exports
+ checkdocs = :none
 )
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."

@@ -16,9 +16,8 @@ using Oceananigans.Units
 
 # ## Grid
 
-# We use an immersed boundary two-dimensional grid (in ``x``--``z``) that is is periodic in
-# the ``x``-direction. To construct an immersed boundary grid we first need to create what
-# we refer to as "underlying grid", which the grid that encompasses the immersed boundary.
+# We create an `ImmersedBoundaryGrid` wrapped around an underlying two-dimensional `RectilinearGrid`
+# that is periodic in ``x`` and bounded in ``z``.
 
 Nx, Nz = 200, 80
 
@@ -31,13 +30,13 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
                                   halo = (4, 4),
                                   topology = (Periodic, Flat, Bounded))
 
-# Now we can create the non-trivial bathymetry as an immersed boundary. We use `GridFittedBottom` that
-# gets as input either *(i)* a two-dimensional function whose arguments are the grid's native horizontal
-# coordinates and it returns the ``z`` of the bottom, or *(ii)* a two-dimensional array with the values
-# of ``z`` at the bottom at the cell centers.
+# Now we can create the non-trivial bathymetry. We use `GridFittedBottom` that gets as input either
+# *(i)* a two-dimensional function whose arguments are the grid's native horizontal coordinates and
+# it returns the ``z`` of the bottom, or *(ii)* a two-dimensional array with the values of ``z`` at
+# the bottom cell centers.
 #
 # In this example we'd like to have a small Gaussian hill at the center of the domain.
-
+#
 # ```math
 # h(x) = -H + h_0 \exp(-x^2 / 2σ^2)
 # ```
@@ -113,14 +112,14 @@ nothing #hide
 
 # ## Model
 
-# We built a `HydrostaticFreeSurfaceModel` with an `ImplicitFreeSurface` solver.
+# We built a `HydrostaticFreeSurfaceModel` with a `SplitExplicitFreeSurface` solver.
+# We limit our maximum timestep to 3 minutes.
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
+max_Δt = 3minutes
+free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, max_Δt)
 
-fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
-free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
-
-model = HydrostaticFreeSurfaceModel(; grid, free_surface, coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+                                      free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, max_Δt),
                                       buoyancy = BuoyancyTracer(),
                                       tracers = :b,
                                       momentum_advection = WENO(),
@@ -138,7 +137,7 @@ set!(model, u=uᵢ, b=bᵢ)
 
 # Now let's built a `Simulation`.
 
-Δt = 3minutes
+Δt = max_Δt
 stop_time = 4days
 
 simulation = Simulation(model; Δt, stop_time)
@@ -182,7 +181,7 @@ u′ = u - U
 
 N² = ∂z(b)
 
-filename = "barotropic_tide"
+filename = "internal_tide"
 save_fields_interval = 30minutes
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, u′, w, b, N²);
@@ -196,7 +195,7 @@ run!(simulation)
 
 # ## Load output
 
-# First, we load the saved valocity and stratification output as `FieldTimeSeries`es.
+# First, we load the saved velocities and stratification output as `FieldTimeSeries`es.
 
 saved_output_filename = filename * ".jld2"
 
@@ -282,4 +281,4 @@ record(fig, filename * ".mp4", frames, framerate=16) do i
 end
 nothing #hide
 
-# ![](barotropic_tide.mp4)
+# ![](internal_tide.mp4)
