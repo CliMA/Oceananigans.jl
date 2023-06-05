@@ -101,9 +101,9 @@ coriolis = FPlane(latitude = -45)
 T₂ = 12.421hours
 ω₂ = 2π / T₂ # radians/sec
 
-ε = 0.1 # excursion parameter
+ϵ = 0.1 # excursion parameter
 
-U_tidal = ε * ω₂ * width
+U_tidal = ϵ * ω₂ * width
 
 tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
 
