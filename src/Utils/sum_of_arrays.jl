@@ -23,4 +23,4 @@ end
 @propagate_inbounds getindex(s::SumOfArrays{2}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...)
 @propagate_inbounds getindex(s::SumOfArrays{3}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...)
 
-@propagate_inbounds adapt_structure(sum::SumOfArrays{N}, i...) where N = SumOfArrays{N}((adapt_structure(to, array) for array in sum.arrays)...)
+adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}((adapt_structure(to, array) for array in sum.arrays)...)
