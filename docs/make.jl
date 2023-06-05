@@ -3,6 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
+using Distributed
 
 using CairoMakie # to avoid capturing precompilation output by Literate
 CairoMakie.activate!(type = "svg")
@@ -28,14 +29,14 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    # "One-dimensional diffusion"        => "one_dimensional_diffusion",
-    # "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-    # "Internal wave"                    => "internal_wave",
-    # "Convecting plankton"              => "convecting_plankton",
-    # "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-    # "Langmuir turbulence"              => "langmuir_turbulence",
-    # "Baroclinic adjustment"            => "baroclinic_adjustment",
-    # "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+    "One-dimensional diffusion"        => "one_dimensional_diffusion",
+    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+    "Internal wave"                    => "internal_wave",
+    "Convecting plankton"              => "convecting_plankton",
+    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+    "Langmuir turbulence"              => "langmuir_turbulence",
+    "Baroclinic adjustment"            => "baroclinic_adjustment",
+    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
     "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
     "Horizontal convection"            => "horizontal_convection",
     "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
@@ -43,7 +44,7 @@ examples = [
 
 example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
-asyncmap(1:length(example_scripts)) do n
+pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
