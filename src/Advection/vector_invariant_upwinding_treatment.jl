@@ -2,32 +2,22 @@
 abstract type AbstractUpwindingTreatment end
 
 struct OnlySelfUpwinding{A, U, V, U2, V2} <: AbstractUpwindingTreatment 
-    "advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)"
-    cross_scheme    :: A
-    "stencil used for assessing u-derivative smoothness"
-    δU_stencil      :: U
-    "stencil used for assessing v-derivative smoothness"
-    δV_stencil      :: V
-    "stencil used for assessing u²-derivative smoothness"
-    δu²_stencil     :: U2
-    "stencil used for assessing v²-derivative smoothness"
-    δv²_stencil     :: V2
+    cross_scheme    :: A  # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
+    δU_stencil      :: U  # stencil used for assessing u-derivative smoothness
+    δV_stencil      :: V  # stencil used for assessing v-derivative smoothness
+    δu²_stencil     :: U2 # stencil used for assessing u²-derivative smoothness
+    δv²_stencil     :: V2 # stencil used for assessing v²-derivative smoothness
 end
 
 struct CrossAndSelfUpwinding{A, D, U, V} <: AbstractUpwindingTreatment 
-    "advection scheme for cross-reconstructed terms in the kinetic energy gradient"
-    cross_scheme       :: A
-    "stencil used for assessing divergence smoothness"
-    divergence_stencil :: D
-    "stencil used for assessing u²-derivative smoothness"
-    δu²_stencil        :: U
-    "stencil used for assessing v²-derivative smoothness"
-    δv²_stencil        :: V
+    cross_scheme       :: A # advection scheme for cross-reconstructed terms in the kinetic energy gradient
+    divergence_stencil :: D # stencil used for assessing divergence smoothness
+    δu²_stencil        :: U # stencil used for assessing u²-derivative smoothness
+    δv²_stencil        :: V # stencil used for assessing v²-derivative smoothness
 end
 
 struct VelocityUpwinding{A} <: AbstractUpwindingTreatment     
-    "advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)"
-    cross_scheme    :: A
+    cross_scheme    :: A # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
 end
 
 """

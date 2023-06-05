@@ -49,9 +49,9 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 @inline half_ϕ²(i, j, k, grid, ϕ) = ϕ[i, j, k]^2 / 2
 
 @inline δx_u²(i, j, k, grid, u, v) = δxᶜᵃᵃ(i, j, k, grid, half_ϕ², u)
-@inline δy_u²(i, j, k, grid, u, v) = δyᶠᶠᶜ(i, j, k, grid, half_ϕ², u)
+@inline δy_u²(i, j, k, grid, u, v) = δyᵃᶠᵃ(i, j, k, grid, half_ϕ², u)
 
-@inline δx_v²(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, half_ϕ², v)
+@inline δx_v²(i, j, k, grid, u, v) = δxᶠᵃᵃ(i, j, k, grid, half_ϕ², v)
 @inline δy_v²(i, j, k, grid, u, v) = δyᵃᶜᵃ(i, j, k, grid, half_ϕ², v)
 
 @inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)
