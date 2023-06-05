@@ -145,7 +145,7 @@ makedocs(bib,
      pages = pages,
    modules = [Oceananigans],
    doctest = true,
-    strict = false,
+    strict = true,
      clean = true,
  checkdocs = :exports
 )
