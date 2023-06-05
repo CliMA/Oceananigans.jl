@@ -22,9 +22,11 @@ using Oceananigans.Units
 
 Nx, Nz = 250, 125
 
+H = 2kilometers
+
 underlying_grid = RectilinearGrid(size = (Nx, Nz),
                                   x = (-1000kilometers, 1000kilometers),
-                                  z = (-2kilometers, 0),
+                                  z = (-H, 0),
                                   halo = (4, 4),
                                   topology = (Periodic, Flat, Bounded))
 
