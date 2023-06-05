@@ -243,7 +243,14 @@ end
 ##### Fallback
 #####
 
-@inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+
+@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = flux_form_U_dot_∇u(i, j, k, grid, advection, U)
+@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = flux_form_U_dot_∇v(i, j, k, grid, advection, U)
+
+@inline flux_form_U_dot_∇u(i, j, k, grid::RectilinearGrid, advection, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline flux_form_U_dot_∇v(i, j, k, grid::RectilinearGrid, advection, U) = div_𝐯v(i, j, k, grid, advection, U, U.u)
+
+@inline function flux_form_U_dot_∇u(i, j, k, grid::LatitudeLongitudeGrid, advection::AbstractAdvectionScheme, U) 
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
     @inbounds û = U.u[i, j, k]
@@ -253,7 +260,7 @@ end
            v̂ * û * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) / Azᶠᶜᶜ(i, j, k, grid)
 end
 
-@inline function U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+@inline function flux_form_U_dot_∇v(i, j, k, grid::LatitudeLongitudeGrid, advection::AbstractAdvectionScheme, U) 
 
     @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
     @inbounds v̂ = U.v[i, j, k]
