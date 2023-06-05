@@ -70,7 +70,7 @@ Keyword Arguments
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
     SplitExplicitFreeSurface(nothing, nothing, nothing, FT(gravitational_acceleration),
-                             SplitExplicitSettings(; FT(gravitational_acceleration), kwargs...))
+                             SplitExplicitSettings(; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
