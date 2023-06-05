@@ -19,10 +19,9 @@ struct ActiveCellEnstrophyConservingScheme end
 
 A parameter object for constant rotation around a vertical axis on the sphere.
 """
-struct HydrostaticSphericalCoriolis{S, FT, F} <: AbstractRotation
+struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
     rotation_rate :: FT
     scheme  :: S
-    f_field :: F
 end
 
 """
@@ -38,44 +37,20 @@ Keyword arguments
 
 - `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `ActiveCellEnstrophyConservingScheme()`.
 """
-function HydrostaticSphericalCoriolis(FT::DataType=Float64;
+HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              rotation_rate = Ω_Earth,
-                             scheme :: S = EnergyConservingScheme(FT),
-                             grid = nothing) where S 
-    
-    coriolis = HydrostaticSphericalCoriolis{S, FT, Nothing}(rotation_rate, scheme, nothing)
-
-    if !isnothing(grid)
-        FT          = eltype(grid) 
-        f_operation = KernelFunctionOperation{Face, Face, Nothing}(fᶠᶠᵃ, grid, coriolis)
-        f_field     = compute!(Field(f_operation))
-        fill_halo_regions!(f_field)
-
-        F = typeof(f_field)
-        coriolis = HydrostaticSphericalCoriolis{S, FT, F}(rotation_rate, scheme, f_field)
-    end
-
-    return coriolis
-end
+                             scheme :: S = EnergyConservingScheme(FT)) where S = 
+        HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
     HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), 
-                                 Adapt.adapt(to, coriolis.scheme), 
-                                 Adapt.adapt(to, coriolis.f_field))
-
-const PrecomputedHydrostaticSphericalCoriolis = 
-        HydrostaticSphericalCoriolis{<:Any, <:Any, <:AbstractArray}
+                                 Adapt.adapt(to, coriolis.scheme))
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, Face())
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, Face(), Face())
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
-
-# Computations become too heavy for high order reconstruction of (f + ζ)
-# In that case we want to precompute f.
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::PrecomputedHydrostaticSphericalCoriolis) =
-    coriolis.f_field[i, j, 1]
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, U) = zero(grid)
 
