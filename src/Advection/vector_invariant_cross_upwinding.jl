@@ -9,12 +9,13 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
 ##### 
 ##### Due to the presence of cross derivative terms that generate excessive noise and result in 
 ##### numerical instabilities, it is not possible to perform a complete upwinding of the Kinetic 
-##### Energy gradient. Consequently, a `SelfUpwinding` scheme is implemented for the Kinetic 
-##### Energy gradient in the case of `CrossAndSelfUpwinding`. Please refer to the file 
+##### Energy gradient. Consequently, the `OnlySelfUpwinding` scheme is implemented for the Kinetic 
+##### Energy gradient in the case of `CrossAndSelfUpwinding`.
+##### For details on the implementation refer to the file `vector_invariant_self_upwinding.jl` 
 #####
 
 #####
-##### Cross Upwinding of the Divergence flux
+##### Cross and Self Upwinding of the Divergence flux
 #####
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
