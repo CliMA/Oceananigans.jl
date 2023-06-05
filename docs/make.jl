@@ -46,7 +46,10 @@ example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 asyncmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR; execute=true, flavor = Literate.DocumenterFlavor())
+    withenv("JULIA_DEBUG" => "Literate") do
+        Literate.markdown(example_filepath, OUTPUT_DIR;
+                         flavor = Literate.DocumenterFlavor(), execute = true)
+    end
 end
 
 #####
