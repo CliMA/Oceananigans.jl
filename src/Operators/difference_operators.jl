@@ -47,23 +47,3 @@ using Oceananigans.Grids: Flat
 
 @inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
 @inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
-
-#####
-##### 3D differences
-#####
-
-for ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
-    δx = Symbol(:δx, ℓx, ℓy, ℓz)
-    δy = Symbol(:δy, ℓx, ℓy, ℓz)
-    δz = Symbol(:δz, ℓx, ℓy, ℓz)
-
-    δxᵃ = Symbol(:δx, ℓx, :ᵃ, :ᵃ)
-    δyᵃ = Symbol(:δy, :ᵃ, ℓy, :ᵃ)
-    δzᵃ = Symbol(:δz, :ᵃ, :ᵃ, ℓz)
-
-    @eval begin
-        $δx(i, j, k, grid, args...) = $δxᵃ(i, j, k, grid, args...)
-        $δy(i, j, k, grid, args...) = $δyᵃ(i, j, k, grid, args...)
-        $δz(i, j, k, grid, args...) = $δzᵃ(i, j, k, grid, args...)
-    end
-end
