@@ -1,6 +1,7 @@
-# # Barotropic tide
+# # Internal tide by a seamount
 #
-# In this example, we simulate the evolution of a barotropic tide over a hill.
+# In this example, we show how internal tide is generated from a barotropic tidal flow
+# sloshing back and forth over a sea mount.
 #
 # ## Install dependencies
 #
@@ -19,14 +20,11 @@ using Oceananigans.Units
 # We create an `ImmersedBoundaryGrid` wrapped around an underlying two-dimensional `RectilinearGrid`
 # that is periodic in ``x`` and bounded in ``z``.
 
-Nx, Nz = 200, 80
-
-H  = 2kilometers
-Lx = 2000kilometers
+Nx, Nz = 250, 125
 
 underlying_grid = RectilinearGrid(size = (Nx, Nz),
-                                  x = (-Lx/2, Lx/2),
-                                  z = (-H, 0),
+                                  x = (-1000kilometers, 1000kilometers),
+                                  z = (-2kilometers, 0),
                                   halo = (4, 4),
                                   topology = (Periodic, Flat, Bounded))
 
@@ -41,8 +39,8 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
 # h(x) = -H + h_0 \exp(-x^2 / 2σ^2)
 # ```
 
-h₀ = 50 # m
-width = 5kilometers
+h₀ = 250 # m
+width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x, y) = - H + hill(x)
 
@@ -59,7 +57,7 @@ fig = Figure(resolution = (700, 200))
 ax = Axis(fig[1, 1],
           xlabel="x [km]",
           ylabel="z [m]",
-          limits=((-Lx/2e3, Lx/2e3), (-H, -4H/5)))
+          limits=((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz, -4grid.Lz/5)))
 
 lines!(ax, xC/1e3, bottom_boundary)
 
@@ -99,38 +97,38 @@ coriolis = FPlane(latitude = -45)
 # excursion parameter.
 #
 T₂ = 12.421hours
-const ω₂ = 2π / T₂ # radians/sec
+ω₂ = 2π / T₂ # radians/sec
 
-ε = 0.25 # the excursion parameter
+ε = 0.1 # excursion parameter
 
 U_tidal = ε * ω₂ * width
 
-const tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
+tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
 
-@inline tidal_forcing(x, y, z, t) = tidal_forcing_amplitude * sin(ω₂ * t)
-nothing #hide
+@inline tidal_forcing(x, y, z, t, p) = p.tidal_forcing_amplitude * sin(p.ω₂ * t)
+
+u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂))
 
 # ## Model
 
 # We built a `HydrostaticFreeSurfaceModel` with a `SplitExplicitFreeSurface` solver.
 # We limit our maximum timestep to 3 minutes.
 
-max_Δt = 3minutes
+max_Δt = 5minutes
 free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, max_Δt)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
-                                      free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, max_Δt),
+model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface,
                                       buoyancy = BuoyancyTracer(),
                                       tracers = :b,
                                       momentum_advection = WENO(),
                                       tracer_advection = WENO(),
-                                      forcing = (u = tidal_forcing,))
+                                      forcing = (; u = u_forcing))
 
 # We initialize the model with the tidal flow and a linear stratification.
 
 uᵢ(x, y, z) = U_tidal
 
-Nᵢ² = 2e-4  # [s⁻²] initial buoyancy frequency / stratification
+Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
 bᵢ(x, y, z) = Nᵢ² * z
 
 set!(model, u=uᵢ, b=bᵢ)
@@ -217,39 +215,28 @@ nothing #hide
 
 # Now we can visualize our resutls! We use `CairoMakie` here. On a system with OpenGL
 # `using GLMakie` is more convenient as figures will be displayed on the screen.
-
-using CairoMakie
-
-# First, a utility to mask the region that is within the immersed boundary with `NaN`s and
-# also select the ``x``-``z`` interior slices of our fields.
-
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-
-function mask_and_get_interior(φ_t, n; value=NaN)
-    mask_immersed_field!(φ_t[n], value)
-    return interior(φ_t[n], :, 1, :)
-end
-nothing #hide
-
+#
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+
+using CairoMakie
 
 n = Observable(1)
 
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′ₙ = @lift mask_and_get_interior(u′_t, $n)
- wₙ = @lift mask_and_get_interior(w_t, $n)
-N²ₙ = @lift mask_and_get_interior(N²_t, $n)
+u′ₙ = @lift interior(u′_t[$n], :, 1, :)
+ wₙ = @lift interior( w_t[$n], :, 1, :)
+N²ₙ = @lift interior(N²_t[$n], :, 1, :)
 
 axis_kwargs = (xlabel = "x [km]",
                ylabel = "z [km]",
-               limits = ((-Lx / 2e3, Lx / 2e3), (-H / 1e3, 0)), # note conversion to kilometers
+               limits = ((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz/1e3, 0)), # note conversion to kilometers
                titlesize = 20)
 
-ulim   = 0.8 * maximum(abs, u′_t[end])
-wlim   = 0.8 * maximum(abs, w_t[end])
+ulim = maximum(abs, u′_t[end])
+wlim = maximum(abs, w_t[end])
 
 fig = Figure(resolution = (700, 900))
 
@@ -264,7 +251,7 @@ hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wlim, wlim), colormap = :bala
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
-hm_N² = heatmap!(ax_N², xN², zN², N²ₙ; colorrange = (0.95Nᵢ², 1.05Nᵢ²), colormap = :thermal)
+hm_N² = heatmap!(ax_N², xN², zN², N²ₙ; colorrange = (0.9Nᵢ², 1.1Nᵢ²), colormap = :thermal)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig
