@@ -43,9 +43,10 @@ examples = [
 
 example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
-for example in example_scripts
+asyncmap(1:length(example_scripts)) do n
+    example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
+    Literate.markdown(example_filepath, OUTPUT_DIR; execute=true, flavor = Literate.DocumenterFlavor())
 end
 
 #####
