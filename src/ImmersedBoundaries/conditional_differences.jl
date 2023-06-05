@@ -19,9 +19,9 @@ import Oceananigans.Operators:
 for (d, ξ) in enumerate((:x, :y, :z))
     for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
-        ∂ξ             = Symbol(:δ, ξ, LX, LY, LZ)
+        δξ             = Symbol(:δ, ξ, LX, LY, LZ)
         loc            = translate_loc.((LX, LY, LZ))
-        conditional_∂ξ = Symbol(:conditional_δ, ξ, :_, loc[d])
+        conditional_δξ = Symbol(:conditional_δ, ξ, :_, loc[d])
 
         # `other_locs` contains locations in the two "other" directions not being differenced
         other_locs = []
