@@ -100,7 +100,6 @@ Keyword arguments
 """
 VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(cross_scheme)
                     
-
 Base.summary(a::OnlySelfUpwinding)     = "OnlySelfUpwinding"
 Base.summary(a::CrossAndSelfUpwinding) = "CrossAndSelfUpwinding"
 Base.summary(a::VelocityUpwinding)     = "VelocityUpwinding"

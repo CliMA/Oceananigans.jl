@@ -38,3 +38,21 @@ for (d, ξ) in enumerate((:x, :y, :z))
        end
     end
 end
+
+using  Oceananigans.Operators
+import Oceananigans.Operators: Γᶠᶠᶜ, div_xyᶜᶜᶜ, div_xyᶜᶜᶠ
+
+# Circulation equal to zero on a solid nodes
+@inline Γᶠᶠᶜ(i, j, k, ibg::IBG, u, v) =  
+    conditional_∂x_f(f, c, i, j, k, ibg, δxᶠᵃᵃ, Δy_qᶜᶠᶜ, v) - conditional_∂y_f(f, c, i, j, k, ibg, δyᵃᶠᵃ, Δx_qᶠᶜᶜ, u)
+
+@inline function div_xyᶜᶜᶜ(i, j, k, ibg::IBG, u, v)  
+    return 1 / Azᶜᶜᶜ(i, j, k, ibg) * (conditional_∂x_c(c, c, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) +
+                                      conditional_∂y_c(c, c, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶜ, v))
+end
+
+@inline function div_xyᶜᶜᶠ(i, j, k, ibg::IBG, u, v)  
+    return 1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(c, f, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶠ, u) +
+                                      conditional_∂y_c(c, f, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶠ, v))
+end
+	

@@ -1,5 +1,5 @@
 """ Vertical circulation associated with horizontal velocities u, v. """
-@inline Γᶠᶠᶜ(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
+@inline Γᶠᶠᶜ(i, j, k, grid, u, v) = δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
 
 """
      ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
