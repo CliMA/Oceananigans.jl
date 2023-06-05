@@ -243,8 +243,8 @@ end
 ##### Fallback to flux form advection
 #####
 
-const RectilinearIBG = ImmersedBoundaryGrid{<:RectilinearGrid}
-const LatLongIBG     = ImmersedBoundaryGrid{<:LatitudeLongitudeGrid}
+const RectilinearIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}
+const LatLongIBG     = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}
 
 const RectilinearGrids = Union{RectilinearGrid, RectilinearIBG}
 const LatLongGrids     = Union{LatitudeLongitudeGrid, LatLongIBG}
