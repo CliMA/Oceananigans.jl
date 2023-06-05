@@ -65,10 +65,10 @@ lines!(ax, xC/1e3, bottom_boundary)
 
 fig
 
-# Now we want to add a barotropic tide forcing. For example, to add the ``M_2`` tidal forcing
+# Now we want to add a barotropic tide forcing. For example, to add the lunar semi-diurnal ``M_2`` tide 
 # we need to add forcing in the ``u``-momentum equation of the form:
 # ```math
-# \partial_t u = \dotsb + F_0 \sin(\omega_2 t)
+# F_0 \sin(\omega_2 t)
 # ```
 # where ``\omega_2 = 2π / T_2``, with ``T_2 = 12.421 \,\mathrm{hours}`` the period of the ``M_2`` tide.
 
