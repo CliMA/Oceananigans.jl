@@ -4,7 +4,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Oceananigans.Advection: AbstractAdvectionScheme, OnlySelfUpwinding, CrossAndSelfUpwinding
+using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: VelocityUpwinding, OnlySelfUpwinding, CrossAndSelfUpwinding
 
 import Oceananigans.Advection: WENO, cell_advection_timescale
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
@@ -32,7 +33,8 @@ Types = (:HydrostaticFreeSurfaceModel,
          :SplitExplicitFreeSurface,
          :PrescribedVelocityFields,
          :CrossAndSelfUpwinding,
-         :OnlySelfUpwinding)
+         :OnlySelfUpwinding,
+         :VelocityUpwinding)
 
 for T in Types
     @eval begin
