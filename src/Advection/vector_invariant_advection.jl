@@ -240,9 +240,8 @@ end
 end
 
 #####
-##### Fallback
+##### Fallback to flux form advection
 #####
-
 
 @inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = flux_form_U_dot_∇u(i, j, k, grid, advection, U)
 @inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = flux_form_U_dot_∇v(i, j, k, grid, advection, U)
