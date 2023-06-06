@@ -5,6 +5,51 @@ using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠ�
 
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
+function test_three_dimensional_operators(T=Float64)
+    grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> x < 1))
+    
+    ϕ²  = ϕ.^2
+
+    δx_ϕ_f = T(0)
+    δx_ϕ_c = ϕ²[3, 2, 2] - ϕ²[2, 2, 2]
+
+    δy_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
+    δy_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
+
+    δz_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
+    δz_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
+
+    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+    assess = true 
+
+    for δx in (δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ)
+        assess = assess && δx(2, 2, 2, grid, f, ϕ) == δx_ϕ_c 
+    end
+    for δx in (∂xᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δxᶠᶠᶠ)
+        assess = assess && δx(2, 2, 2, grid, f, ϕ) == δx_ϕ_f 
+    end
+
+    for δy in (∂yᶜᶜᶜ, δyᶜᶜᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ)
+        assess = assess && δy(2, 2, 2, grid, f, ϕ) == δy_ϕ_c 
+    end
+    for δy in (δyᶜᶠᶜ, δyᶠᶠᶜ, δyᶜᶠᶠ, δyᶠᶠᶠ)
+        assess = assess && δy(2, 2, 2, grid, f, ϕ) == δy_ϕ_f 
+    end
+
+    for δz in (δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ)
+        assess = assess && δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_c 
+    end
+    for δz in (δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ)
+        assess = assess && δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_f 
+    end
+
+    return assess
+end
+
 function test_function_differentiation(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
@@ -22,7 +67,6 @@ function test_function_differentiation(T=Float64)
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
     assess = true 
-
 
     for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
         assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c 
