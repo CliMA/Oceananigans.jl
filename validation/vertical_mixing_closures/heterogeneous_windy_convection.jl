@@ -9,16 +9,16 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom
 
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities
 
-Nx = 50
-Ny = 1
+Nx = 1
+Ny = 200
 
-const Lx = 500kilometers
+const Lx = 1000kilometers
 const Ly = Lx
 const Lz = 1000
 
 # Stretched vertical grid
 γ = 1.01
-Δz₀ = 16
+Δz₀ = 8
 h₀ = 128
 z = [-Δz₀ * k for k = 0:ceil(h₀ / Δz₀)]
 while z[end] > -Lz
@@ -29,52 +29,52 @@ Nz = length(z) - 1
 
 grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        halo = (4, 4, 4),
-                       x = (-Lx, 0),
-                       y = (0, Ly),
+                       x = (0, Lx),
+                       y = (-Ly/2, Ly/2),
                        z = z,
-                       topology=(Bounded, Periodic, Bounded))
+                       topology=(Periodic, Bounded, Bounded))
 
-z_bottom(x, y) = - 2 * abs(x) * Lz / Lx
-#grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.2))
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(z_bottom))
+z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.1))
 
 @show grid
-@inline Qᵇ(x, y, t) = 0.0 #1e-7
-@inline Qᵘ(x, y, t) = 0.0
-@inline Qᵛ(x, y, t, p) = + 1e-4 * exp(-x^2 / (2 * p.δx^2))
+@inline Qᵇ(x, y, t) = 1e-7
+@inline Qᵘ(x, y, t) = -1e-3 * cos(π * y / Ly)
 
 b_top_bc = FluxBoundaryCondition(Qᵇ)
 u_top_bc = FluxBoundaryCondition(Qᵘ)
-v_top_bc = FluxBoundaryCondition(Qᵛ, parameters=(; δx=200kilometers))
 
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
-v_bcs = FieldBoundaryConditions(top=v_top_bc)
 
-vertical_mixing = CATKEVerticalDiffusivity(; minimum_turbulent_kinetic_energy=1e-6)
+vertical_mixing = CATKEVerticalDiffusivity(; minimum_turbulent_kinetic_energy=1e-9)
 #vertical_mixing = RiBasedVerticalDiffusivity()
-#
-horizontal_viscosity = HorizontalScalarDiffusivity(ν=1e4)
 
 @show vertical_mixing
-#closure = (vertical_mixing, horizontal_viscosity)
-closure = vertical_mixing
 
-filename = "heterogeneous_cooling.jld2"
+Δy = Ly / Ny
+ν₄ = Δy^4 / 1hours
+hyperviscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄)
+
+#closure = vertical_mixing
+closure = (vertical_mixing, hyperviscosity)
+
+filename = "heterogeneous_cooling_with_hyperviscosity.jld2"
+#filename = "heterogeneous_cooling.jld2"
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
-                                    coriolis = FPlane(latitude=+33),
+                                    coriolis = FPlane(f=1e-4),
                                     tracers = (:b, :e),
-                                    boundary_conditions = (; b=b_bcs, u=u_bcs, v=v_bcs),
+                                    boundary_conditions = (; b=b_bcs, u=u_bcs),
                                     buoyancy = BuoyancyTracer())
 
 N²ᵢ = 1e-5
 bᵢ(x, y, z) = N²ᵢ * z
-set!(model, b=bᵢ, e=1e-6)
+set!(model, b=bᵢ, e=1e-9)
 
-simulation = Simulation(model, Δt=10minute, stop_iteration=1000)
+simulation = Simulation(model, Δt=5minute, stop_time=10days)
 
 κᶜ = if model.closure isa Tuple
     model.diffusivity_fields[1].κᶜ
@@ -88,8 +88,7 @@ outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       filename,
-                                                      #schedule = TimeInterval(1hour),
-                                                      schedule = IterationInterval(10),
+                                                      schedule = TimeInterval(1hour),
                                                       overwrite_existing = true)
 
 function progress(sim)
@@ -129,11 +128,12 @@ end
 
 fig = Figure(resolution=(1600, 800))
 
-ax_vxz = Axis(fig[1, 1], title="v(x, z) - <v(x, z)>")
-ax_wxz = Axis(fig[1, 2], title="w(x, z)")
-ax_Nxz = Axis(fig[1, 3], title="N²(x, z)")
-ax_exz = Axis(fig[1, 4], title="e(x, z)")
-ax_κxz = Axis(fig[1, 5], title="κ(x, z)")
+ax_uyz = Axis(fig[1, 1], title="u(y, z) - <u(y, z)>")
+#ax_vyz = Axis(fig[1, 2], title="v(y, z)")
+ax_wyz = Axis(fig[1, 2], title="w(y, z)")
+ax_Nyz = Axis(fig[1, 3], title="N²(y, z)")
+ax_eyz = Axis(fig[1, 4], title="e(y, z)")
+ax_κyz = Axis(fig[1, 5], title="κ(y, z)")
 
 ax_bz = Axis(fig[2, 1], title="b(z)", xlabel="z")
 ax_uz = Axis(fig[2, 2], title="u(z)", ylabel="z")
@@ -147,73 +147,68 @@ n = slider.value
 title = @lift string("Two-dimensional channel at t = ", prettytime(b_ts.times[$n]))
 Label(fig[0, :], title, fontsize=24)
 
-b_xz = @lift interior(b_ts[$n], :, 1, :)
-e_xz = @lift interior(e_ts[$n], :, 1, :)
+b_yz = @lift interior(b_ts[$n], 1, :, :)
+e_yz = @lift interior(e_ts[$n], 1, :, :)
 
-u_xz = @lift begin
-    u = interior(u_ts[$n], :, 1, :)
+u_yz = @lift begin
+    u = interior(u_ts[$n], 1, :, :)
     u .- mean(filter(!isnan, u))
 end
 
-v_xz = @lift begin
-    v = interior(v_ts[$n], :, 1, :)
-    v .- mean(filter(!isnan, v))
-end
-
-v_xz = @lift interior(v_ts[$n], :, 1, :)
-w_xz = @lift interior(w_ts[$n], :, 1, :)
-w_xz = @lift interior(w_ts[$n], :, 1, :)
-N_xz = @lift interior(N_ts[$n], :, 1, :)
-κ_xz = @lift interior(κ_ts[$n], :, 1, :)
+v_yz = @lift interior(v_ts[$n], 1, :, :)
+w_yz = @lift interior(w_ts[$n], 1, :, :)
+w_yz = @lift interior(w_ts[$n], 1, :, :)
+N_yz = @lift interior(N_ts[$n], 1, :, :)
+κ_yz = @lift interior(κ_ts[$n], 1, :, :)
 
 Nx, Ny, Nz = size(grid)
 
-b_z1 = @lift interior(b_ts[$n], 16, 1, :)
-b_z2 = @lift interior(b_ts[$n], 32, 1, :)
-b_z3 = @lift interior(b_ts[$n], 8,  1, :)
+b_z1 = @lift interior(b_ts[$n], 1, 16, :)
+b_z2 = @lift interior(b_ts[$n], 1, 32, :)
+b_z3 = @lift interior(b_ts[$n], 1, 8, :)
 
-e_z1 = @lift interior(e_ts[$n], 16, 1, :)
-e_z2 = @lift interior(e_ts[$n], 32, 1, :)
-e_z3 = @lift interior(e_ts[$n], 8,  1, :)
+e_z1 = @lift interior(e_ts[$n], 1, 16, :)
+e_z2 = @lift interior(e_ts[$n], 1, 32, :)
+e_z3 = @lift interior(e_ts[$n], 1, 8, :)
 
-κ_z1 = @lift interior(κ_ts[$n], 16, 1, :)
-κ_z2 = @lift interior(κ_ts[$n], 32, 1, :)
-κ_z3 = @lift interior(κ_ts[$n], 8,  1, :)
+κ_z1 = @lift interior(κ_ts[$n], 1, 16, :)
+κ_z2 = @lift interior(κ_ts[$n], 1, 32, :)
+κ_z3 = @lift interior(κ_ts[$n], 1, 8, :)
 
-u_z1 = @lift interior(u_ts[$n], 16, 1, :)
-u_z2 = @lift interior(u_ts[$n], 32, 1, :)
-u_z3 = @lift interior(u_ts[$n], 8,  1, :)
-                                       
-v_z1 = @lift interior(v_ts[$n], 16, 1, :)
-v_z2 = @lift interior(v_ts[$n], 32, 1, :)
-v_z3 = @lift interior(v_ts[$n], 8,  1, :)
+u_z1 = @lift interior(u_ts[$n], 1, 16, :)
+u_z2 = @lift interior(u_ts[$n], 1, 32, :)
+u_z3 = @lift interior(u_ts[$n], 1, 8, :)
+
+v_z1 = @lift interior(v_ts[$n], 1, 16, :)
+v_z2 = @lift interior(v_ts[$n], 1, 32, :)
+v_z3 = @lift interior(v_ts[$n], 1, 8, :)
 
 x, y, z = nodes(b_ts)
 xκ, yκ, zκ = nodes(κ_ts)
 
 elim = 1e-4
 ulim = 0.2
-vlim = 1e-4
-wlim = 1e-7
+vlim = 2e-2
+wlim = 1e-5
 κlim = 1e-3 # 1e1
 
-heatmap!(ax_exz, x, z, e_xz, colormap=:solar, colorrange=(0, elim), nan_color=:gray)
-contour!(ax_exz, x, z, b_xz, levels=15, color=:black)
+heatmap!(ax_eyz, y, z, e_yz, colormap=:solar, colorrange=(0, elim), nan_color=:gray)
+contour!(ax_eyz, y, z, b_yz, levels=15, color=:black)
 
-heatmap!(ax_κxz, x, zκ, κ_xz, colormap=:thermal, colorrange=(0, κlim), nan_color=:gray)
-contour!(ax_κxz, x, z, b_xz, levels=15, color=:black)
+heatmap!(ax_κyz, y, zκ, κ_yz, colormap=:thermal, colorrange=(0, κlim), nan_color=:gray)
+contour!(ax_κyz, y, z, b_yz, levels=15, color=:black)
 
-# heatmap!(ax_uxz, x, z, u_xz, colormap=:balance, colorrange=(-ulim, ulim), nan_color=:gray)
-# contour!(ax_uxz, x, z, b_xz, levels=15, color=:black)
+heatmap!(ax_uyz, y, z, u_yz, colormap=:balance, colorrange=(-ulim, ulim), nan_color=:gray)
+contour!(ax_uyz, y, z, b_yz, levels=15, color=:black)
 
-heatmap!(ax_vxz, x, z, v_xz, colormap=:balance, colorrange=(-vlim, vlim), nan_color=:gray)
-contour!(ax_vxz, x, z, b_xz, levels=15, color=:black)
+# heatmap!(ax_vyz, y, z, v_yz, colormap=:balance, colorrange=(-vlim, vlim), nan_color=:gray)
+# contour!(ax_vyz, y, z, b_yz, levels=15, color=:black)
 
-heatmap!(ax_wxz, x, z, w_xz, colormap=:balance, colorrange=(-wlim, wlim), nan_color=:gray)
-contour!(ax_wxz, x, z, b_xz, levels=15, color=:black)
+heatmap!(ax_wyz, y, z, w_yz, colormap=:balance, colorrange=(-wlim, wlim), nan_color=:gray)
+contour!(ax_wyz, y, z, b_yz, levels=15, color=:black)
 
-heatmap!(ax_Nxz, x, z, N_xz, colormap=:thermal, colorrange=(1e-6, 2e-5), nan_color=:gray)
-contour!(ax_Nxz, x, z, b_xz, levels=15, color=:black)
+heatmap!(ax_Nyz, y, z, N_yz, colormap=:thermal, colorrange=(1e-6, 1e-5), nan_color=:gray)
+contour!(ax_Nyz, y, z, b_yz, levels=15, color=:black)
 
 lines!(ax_bz, b_z1, z)
 lines!(ax_bz, b_z2, z)
