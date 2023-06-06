@@ -6,7 +6,7 @@ using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: R_Earth, metrics_precomputed
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask, resize_immersed_boundary
 
 using Oceananigans.Fields
 using Oceananigans.ImmersedBoundaries
@@ -278,56 +278,6 @@ function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     new_immersed_boundary = resize_immersed_boundary(immersed_boundary, new_underlying_grid)
     new_grid              = ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary)
     return scatter_local_grids(architecture(grid), new_grid)
-end
-
-"""
-    function resize_immersed_boundary!(ib, grid)
-
-If the immersed condition is an `OffsetArray`, resize it to match 
-the total size of `grid`
-"""
-resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
-resize_immersed_boundary(ib::GridFittedBoundary, grid)       = ib
-
-function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
-
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Nz = halo_size(grid)
-
-    mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
-
-    # Check that the size of a bottom field are 
-    # consistent with the size of the grid
-    if any(size(ib.mask) .!= mask_size)
-        @warn "Resizing the mask to match the grids' halos"
-        mask = compute_mask(grid, ib)
-        return getnamewrapper(ib)(mask)
-    end
-    
-    return ib
-end
-
-function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
-
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
-
-    # Check that the size of a bottom field are 
-    # consistent with the size of the grid
-    if any(size(ib.bottom_height) .!= bottom_heigth_size)
-        @warn "Resizing the bottom field to match the grids' halos"
-        bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
-        set!(bottom_field, cpu_bottom)
-        fill_halo_regions!(bottom_field)
-        offset_bottom_array = dropdims(bottom_field.data, dims=3)
-
-        return getnamewrapper(ib)(offset_bottom_array)
-    end
-    
-    return ib
 end
 
 """ 

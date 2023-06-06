@@ -133,7 +133,61 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+function with_halo(halo, ibg::ImmersedBoundaryGrid) 
+    new_underlying_grid   = with_halo(halo, ibg.underlying_grid)
+    new_immersed_boundary = resize_immersed_boundary(ibg.immersed_boundary, new_underlying_grid)
+    return ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary)
+end
+
+"""
+    function resize_immersed_boundary!(ib, grid)
+
+If the immersed condition is an `OffsetArray`, resize it to match 
+the total size of `grid`
+"""
+resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
+resize_immersed_boundary(ib::GridFittedBoundary, grid)       = ib
+
+function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Nz = halo_size(grid)
+
+    mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the grid
+    if any(size(ib.mask) .!= mask_size)
+        @warn "Resizing the mask to match the grids' halos"
+        mask = compute_mask(grid, ib)
+        return getnamewrapper(ib)(mask)
+    end
+    
+    return ib
+end
+
+function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the grid
+    if any(size(ib.bottom_height) .!= bottom_heigth_size)
+        @warn "Resizing the bottom field to match the grids' halos"
+        bottom_field = Field((Center, Center, Nothing), grid)
+        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
+        set!(bottom_field, cpu_bottom)
+        fill_halo_regions!(bottom_field)
+        offset_bottom_array = dropdims(bottom_field.data, dims=3)
+
+        return getnamewrapper(ib)(offset_bottom_array)
+    end
+    
+    return ib
+end
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
 # (which requires checking `Center` nodes at N + H and N + H + 1)
