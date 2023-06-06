@@ -16,7 +16,7 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 
-    @inbounds û = u[i, j, k]
+    @inbounds û  = u[i, j, k]
     δU_stencil   = scheme.upwinding_treatment.δU_stencil    
     cross_scheme = scheme.upwinding_treatment.cross_scheme
     side         = upwinding_direction(û)
@@ -29,7 +29,7 @@ end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     
-    @inbounds v̂ = v[i, j, k]
+    @inbounds v̂  = v[i, j, k]
     δV_stencil   = scheme.upwinding_treatment.δV_stencil
     cross_scheme = scheme.upwinding_treatment.cross_scheme
     side         = upwinding_direction(v̂)
@@ -59,7 +59,7 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
 
-    @inbounds û = u[i, j, k]
+    @inbounds û  = u[i, j, k]
     δu²_stencil  = scheme.upwinding_treatment.δu²_stencil    
     cross_scheme = scheme.upwinding_treatment.cross_scheme
     side         = upwinding_direction(û)
@@ -72,7 +72,7 @@ end
 
 @inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
 
-    @inbounds v̂ = v[i, j, k]
+    @inbounds v̂  = v[i, j, k]
     δv²_stencil  = scheme.upwinding_treatment.δv²_stencil    
     cross_scheme = scheme.upwinding_treatment.cross_scheme
     side         = upwinding_direction(v̂)

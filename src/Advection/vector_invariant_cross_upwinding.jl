@@ -19,20 +19,22 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
 #####
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
+    
     @inbounds û = u[i, j, k]
-    δ_stencil = scheme.upwinding_treatment.divergence_stencil
+    δ_stencil   = scheme.upwinding_treatment.divergence_stencil
+    side        = upwinding_direction(û)
 
-    side = upwinding_direction(û)
     δ    =  _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
     return û * δ
 end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
+    
     @inbounds v̂ = v[i, j, k]
-    δ_stencil = scheme.upwinding_treatment.divergence_stencil
+    δ_stencil   = scheme.upwinding_treatment.divergence_stencil
+    side        = upwinding_direction(v̂)
 
-    side = upwinding_direction(v̂)
     δ    =  _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
     return v̂ * δ
