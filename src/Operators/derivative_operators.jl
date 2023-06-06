@@ -6,7 +6,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     
     x_derivative = Symbol(:∂x, LX, LY, LZ)
     x_spacing    = Symbol(:Δx, LX, LY, LZ)
-    x_difference = Symbol(:δx, LX, :ᵃ, :ᵃ)
+    x_difference = Symbol(:δx, LX, LY, LZ)
 
     y_derivative = Symbol(:∂y, LX, LY, LZ)
     y_spacing    = Symbol(:Δy, LX, LY, LZ)
