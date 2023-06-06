@@ -518,8 +518,8 @@ scatter!(ax_KE, KE_point;
 axislegend(ax_KE; position = :rb)
 
 record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    @info "Plotting frame $i of $(frames[end])..."
+    n[] = i
 end
 nothing #hide
 
