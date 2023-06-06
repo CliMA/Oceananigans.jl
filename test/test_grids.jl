@@ -741,6 +741,17 @@ function test_cubed_sphere_face_array_sizes_and_spacings(FT)
     return nothing
 end
 
+#####
+##### Test with_halo
+#####
+
+function test_with_halo(grid, new_halo)
+    new_grid   = with_halo(grid, new_halo)
+    Hx, Hy, Hz = halo_size(new_grid)
+    
+    @test all((Hx, Hy, Hz) .== new_halo)
+end
+
 
 #####
 ##### Test the tests
@@ -995,6 +1006,20 @@ end
                 @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
                 @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
             end
+        end
+    end
+
+    @testset "Test with_halo function" begin
+        @info "  Testing with_halo on all grids..."
+
+        grids = []
+        push!(grids, RectilinearGrid(size = (5, 5, 5), halo = (1, 1 ,1), extent = (1, 1, 1)))
+        push!(grids, LatitudeLongitudeGrid(size = (5, 5, 5), halo = (1, 1 ,1), latitude = (-10, 10), longitude = (-10, 10), z = (0, 1)))
+        push!(grids, ImmersedBoundaryGrid(grids[1], GridFittedBottom((x, y) -> 0.5)))
+        push!(grids, ImmersedBoundaryGrid(grids[2], GridFittedBottom((x, y) -> 0.5)))
+
+        for grid in grids
+            test_with_halo(grid, (4, 4, 4))
         end
     end
 end
