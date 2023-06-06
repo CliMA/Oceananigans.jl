@@ -272,11 +272,7 @@ end
 
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     global_immmersed_grid = reconstruct_global_grid(grid)
-    immersed_boundary     = global_immmersed_grid.immersed_boundary
-    underlying_grid       = global_immmersed_grid.underlying_grid
-    new_underlying_grid   = with_halo(new_halo, underlying_grid)
-    new_immersed_boundary = resize_immersed_boundary(immersed_boundary, new_underlying_grid)
-    new_grid              = ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary)
+    new_grid = with_halo(new_halo, global_immmersed_grid)
     return scatter_local_grids(architecture(grid), new_grid)
 end
 
