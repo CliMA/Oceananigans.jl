@@ -39,7 +39,7 @@ end
 
     w̃  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
     side = upwinding_direction(w̃)
-    uᴿ =    _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
+    uᴿ =    _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, u)
 
     return w̃ * uᴿ
 end
