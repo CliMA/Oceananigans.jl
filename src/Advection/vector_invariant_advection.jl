@@ -280,12 +280,5 @@ for buffer in 1:6
         @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UY{$buffer}, side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, side, f, idx, loc, args...)
         @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::U{$buffer},  side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, f, idx, loc, args...)
         @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UZ{$buffer}, side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-
-        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::U{$buffer},  side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UX{$buffer}, side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::U{$buffer},  side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UY{$buffer}, side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::U{$buffer},  side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, f, idx, loc, args...)
-        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UZ{$buffer}, side, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, f, idx, loc, args...)
     end
 end
