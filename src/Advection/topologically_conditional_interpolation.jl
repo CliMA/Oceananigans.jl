@@ -23,86 +23,11 @@ const AUGXZ  = AUG{<:Any, <:Bounded, <:Any, <:Bounded}
 const AUGYZ  = AUG{<:Any, <:Any, <:Bounded, <:Bounded}
 const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
-# Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
-# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
-
-@inline    outside_symmetric_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - boundary_buffer(adv))
-@inline    outside_symmetric_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
-@inline  outside_left_biased_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - (boundary_buffer(adv) - 1))
-@inline  outside_left_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - (boundary_buffer(adv) - 1))
-@inline outside_right_biased_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
-@inline outside_right_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
-
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
-
-for bias in (:symmetric, :left_biased, :right_biased)
-
-    for (d, ξ) in enumerate((:x, :y, :z))
-
-        code = [:ᵃ, :ᵃ, :ᵃ]
-
-        for loc in (:ᶜ, :ᶠ)
-            code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(:_, interp)
-
-            # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-
-            # Disambiguation
-            for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
-                @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            end
-
-            outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
-
-            # Conditional high-order interpolation in Bounded directions
-            if ξ == :x
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            elseif ξ == :y
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            elseif ξ == :z
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            end
-        end
-    end
-end
 
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
                     ifelse(outside_symmetric_bufferᶜ(i, grid.Nx, scheme), 
@@ -113,3 +38,139 @@ end
                     ifelse(outside_symmetric_bufferᶜ(j, grid.Ny, scheme), 
                             multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))
+
+# Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
+# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
+
+@inline outside_symmetric_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - boundary_buffer(adv))
+@inline outside_symmetric_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
+
+@inline outside_biased_bufferᶠ(i, N, adv, ::Val{:left})  = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - (boundary_buffer(adv) - 1))
+@inline outside_biased_bufferᶜ(i, N, adv, ::Val{:left})  = (i >= boundary_buffer(adv))     & (i <= N + 1 - (boundary_buffer(adv) - 1))
+@inline outside_biased_bufferᶠ(i, N, adv, ::Val{:right}) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
+@inline outside_biased_bufferᶜ(i, N, adv, ::Val{:right}) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
+
+for (d, ξ) in enumerate((:x, :y, :z))
+
+    code = [:ᵃ, :ᵃ, :ᵃ]
+
+    for loc in (:ᶜ, :ᶠ)
+        code[d] = loc
+        second_order_interp = Symbol(:ℑ, ξ, code...)
+        interp = Symbol(:symmetric_interpolate_, ξ, code...)
+        alt_interp = Symbol(:_, interp)
+
+        # Simple translation for Periodic directions and low-order advection schemes (fallback)
+        @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+        @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+
+        # Disambiguation
+        for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
+            @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+        end
+
+        outside_buffer = Symbol(:outside_symmetric_buffer, loc)
+
+        # Conditional high-order interpolation in Bounded directions
+        if ξ == :x
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ) =
+                    ifelse($outside_buffer(i, grid.Nx, scheme),
+                            $interp(i, j, k, grid, scheme, ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+
+                @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, f::Function, args...) =
+                    ifelse($outside_buffer(i, grid.Nx, scheme),
+                            $interp(i, j, k, grid, scheme, f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
+            end
+        elseif ξ == :y
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ) =
+                    ifelse($outside_buffer(j, grid.Ny, scheme),
+                            $interp(i, j, k, grid, scheme, ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+
+                @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, f::Function, args...) =
+                    ifelse($outside_buffer(j, grid.Ny, scheme),
+                            $interp(i, j, k, grid, scheme, f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
+            end
+        elseif ξ == :z
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ) =
+                    ifelse($outside_buffer(k, grid.Nz, scheme),
+                            $interp(i, j, k, grid, scheme, ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+
+            
+                @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, f::Function, args...) =
+                    ifelse($outside_buffer(k, grid.Nz, scheme),
+                            $interp(i, j, k, grid, scheme, f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
+            end
+        end
+    end
+end
+
+for (d, ξ) in enumerate((:x, :y, :z))
+
+    code = [:ᵃ, :ᵃ, :ᵃ]
+
+    for loc in (:ᶜ, :ᶠ)
+        code[d] = loc
+        second_order_interp = Symbol(:ℑ, ξ, code...)
+        interp = Symbol(:biased_interpolate_, ξ, code...)
+        alt_interp = Symbol(:_, interp)
+
+        # Simple translation for Periodic directions and low-order advection schemes (fallback)
+        @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, ::Val{D}, args...) where D = $interp(i, j, k, grid, scheme, Val(D), args...)
+        @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, ::Val{D}, args...) where D = $interp(i, j, k, grid, scheme, Val(D), args...)
+
+        # Disambiguation
+        for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
+            @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, ::Val{D}, args...) where D = $interp(i, j, k, grid, scheme, Val(D), args...)
+        end
+
+        outside_buffer = Symbol(:outside_biased_buffer, loc)
+
+        # Conditional high-order interpolation in Bounded directions
+        if ξ == :x
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ::Val{D}, ψ) where D =
+                    ifelse($outside_buffer(i, grid.Nx, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), ψ))
+
+                @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ::Val{D}, f::Function, args...) where D =
+                    ifelse($outside_buffer(i, grid.Nx, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), f, args...))
+            end
+        elseif ξ == :y
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ::Val{D}, ψ) where D =
+                    ifelse($outside_buffer(j, grid.Ny, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), ψ))
+
+                @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ::Val{D}, f::Function, args...) where D =
+                    ifelse($outside_buffer(j, grid.Ny, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), f, args...))
+            end
+        elseif ξ == :z
+            @eval begin
+                @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ::Val{D}, ψ) where D =
+                    ifelse($outside_buffer(k, grid.Nz, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), ψ),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), ψ))
+
+                @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ::Val{D}, f::Function, args...) where D =
+                    ifelse($outside_buffer(k, grid.Nz, scheme, Val(D)),
+                            $interp(i, j, k, grid, scheme, Val(D), f, args...),
+                            $alt_interp(i, j, k, grid, scheme.buffer_scheme, Val(D), f, args...))
+            end
+        end
+    end
+end

@@ -125,7 +125,7 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where 
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
-for bias in (:_left_biased, :_right_biased, :_symmetric)
+for bias in (:_biased, :_symmetric)
     for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
         interp_func = Symbol(bias, :_interpolate_, dir1)
         multidim_interp   = Symbol(:_multi_dimensional_reconstruction_, dir2)
@@ -218,10 +218,12 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
+    side = upwinding_direction(v̂) 
+    
+    ζ =  _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, side, ζ₃ᶠᶠᶜ, Sζ, u, v)
+
+    return - v̂ * ζ
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
@@ -229,10 +231,12 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    
+    side = upwinding_direction(û)
 
-    return + upwind_biased_product(û, ζᴸ, ζᴿ)
+    ζ =  _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, side, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    
+    return + û * ζ
 end
 
 #####
