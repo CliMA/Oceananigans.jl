@@ -17,6 +17,10 @@ end
 """
     DiscreteDiffusionFunction(func; parameters, loc)
 
+!!! info "Not user-facing method"
+    This is not a user-facing method but instead it is used via various turbulence closures.
+    Users build the diffusivities via each turbulence closure constructor, e.g., [`ScalarDiffusivity`](@ref).
+
 Return a discrete representation of a diffusivity `func`tion with optional `parameters`
 at specified `loc`ations.
 
@@ -25,12 +29,12 @@ Keyword Arguments
 
 * `parameters`: A named tuple with parameters used by `func`; default: `nothing`.
 
-* `loc`: A tuple with the locations that the diffusivity `func` is applied on.
+* `loc`: A tuple with the locations `(LX, LY, LZ)` that the diffusivity `func` is applied on.
 
   **Without locations**
 
-  If `LX == LY == LZ == nothing` the diffusivity is evaluated at the required locations. In this case, the function call *requires passing* locations `ℓx, ℓy, ℓz` in the signature.
-  In this case, the diffusivity `func` is called with the signature:
+  If `LX == LY == LZ == nothing` the diffusivity is evaluated at the required locations. In this case, the `func`tion
+  call *requires passing* the locations `ℓx, ℓy, ℓz` in the signature:
 
   - Without parameters:
 
@@ -51,8 +55,9 @@ Keyword Arguments
 
   **With locations**
 
-  If `LX, LY, LZ != (nothing, nothing, nothing)` the diffusivity is evaluated at `(LX, LY, LZ)` and interpolated onto the required locations. In this case, the function call *does not require*
-  locations in the signature. The diffusivity `func` is called with the signature:
+  If `LX, LY, LZ != (nothing, nothing, nothing)` the diffusivity is evaluated at `(LX, LY, LZ)` and interpolated onto
+  the required locations. In this case, the function call *does not require* locations in the signature. The diffusivity
+  `func`ion is called with the signature:
 
   1. Without parameters:
 
