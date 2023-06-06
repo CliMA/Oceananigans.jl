@@ -11,21 +11,21 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 #####
 
 @inline function Auᶜᶜᶜ(i, j, k, grid, scheme, u) 
-    û = ℑxᶜᵃᵃ(i, j, k, grid, u)
+    û    = ℑxᶜᵃᵃ(i, j, k, grid, u)
+    side = upwinding_direction(û)
 
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
+    Uᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, Ax_qᶠᶜᶜ, u)
 
-    return ifelse(û > 0, Uᴸ, Uᴿ)
+    return Uᴿ
 end
 
 @inline function Avᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    side = upwinding_direction(v̂)
 
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
+    Vᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, Ay_qᶜᶠᶜ, v)
 
-    return ifelse(v̂ > 0, Vᴸ, Vᴿ)
+    return Vᴿ
 end
 
 @inline Auᶠᶠᶜ(i, j, k, grid, scheme, u) = 
@@ -58,20 +58,20 @@ end
 
 @inline function uᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
+    side = upwinding_direction(û)
 
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
+    Uᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, half_ϕ², u)
 
-    return ifelse(û > 0, Uᴸ, Uᴿ)
+    return Uᴿ
 end
 
 @inline function vᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    side = upwinding_direction(v̂)
 
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
+    Vᴿ = biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, half_ϕ², v)
 
-    return ifelse(v̂ > 0, Vᴸ, Vᴿ)
+    return Vᴿ
 end
 
 @inline uˢ²ᶜᶜᶜ(i, j, k, grid, scheme, u) =
