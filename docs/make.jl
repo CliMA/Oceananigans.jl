@@ -44,6 +44,9 @@ examples = [
 
 example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
+Distributed.addprocs(4)
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
+
 pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -135,24 +138,20 @@ pages = [
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(
-    collapselevel = 1,
-       prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-       mathengine = MathJax3()
-)
+format = Documenter.HTML(collapselevel = 1,
+                         prettyurls = get(ENV, "CI", nothing) == "true",
+                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+                         mathengine = MathJax3())
 
-makedocs(bib,
-  sitename = "Oceananigans.jl",
-   authors = "Climate Modeling Alliance and contributors",
-    format = format,
-     pages = pages,
-   modules = [Oceananigans],
-   doctest = true,
-    strict = true,
-     clean = true,
- checkdocs = :exports
-)
+makedocs(bib, sitename = "Oceananigans.jl",
+              authors = "Climate Modeling Alliance and contributors",
+              format = format,
+              pages = pages,
+              modules = [Oceananigans],
+              doctest = true,
+              strict = true,
+              clean = true,
+              checkdocs = :exports)
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
@@ -175,10 +174,9 @@ for file in files
     rm(file)
 end
 
-deploydocs(
-          repo = "github.com/CliMA/OceananigansDocumentation.git",
-      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-     forcepush = true,
-  push_preview = false,
-     devbranch = "main"
-)
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+           versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+           forcepush = true,
+           push_preview = false,
+           devbranch = "main")
+
