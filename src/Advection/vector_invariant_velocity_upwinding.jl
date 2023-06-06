@@ -20,7 +20,7 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 end
 
 @inline function Avᶜᶜᶜ(i, j, k, grid, scheme, v) 
-    v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    v̂    = ℑyᵃᶜᵃ(i, j, k, grid, v)
     side = upwinding_direction(v̂)
 
     Vᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, Ay_qᶜᶠᶜ, v)
@@ -57,7 +57,7 @@ end
 #####
 
 @inline function uᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
-    û = ℑxᶜᵃᵃ(i, j, k, grid, u)
+    û    = ℑxᶜᵃᵃ(i, j, k, grid, u)
     side = upwinding_direction(û)
 
     Uᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, half_ϕ², u)
@@ -66,7 +66,7 @@ end
 end
 
 @inline function vᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, v) 
-    v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    v̂    = ℑyᵃᶜᵃ(i, j, k, grid, v)
     side = upwinding_direction(v̂)
 
     Vᴿ = biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, side, half_ϕ², v)
