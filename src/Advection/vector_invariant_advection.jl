@@ -214,11 +214,9 @@ end
 #####
 
 @inline function horizontal_advection_U(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
-    
-    Sζ = scheme.vorticity_stencil
-
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 
+    Sζ   = scheme.vorticity_stencil
     side = upwinding_direction(v̂) 
     
     ζ =  _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, side, ζ₃ᶠᶠᶜ, Sζ, u, v)
@@ -227,11 +225,9 @@ end
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
-
-    Sζ = scheme.vorticity_stencil
-
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     
+    Sζ   = scheme.vorticity_stencil
     side = upwinding_direction(û)
 
     ζ =  _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, side, ζ₃ᶠᶠᶜ, Sζ, u, v)
