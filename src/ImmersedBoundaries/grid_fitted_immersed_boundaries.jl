@@ -3,6 +3,7 @@ using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
+using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
@@ -108,14 +109,20 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+    bottom_heigth_size = total_size(grid, (Center, Center, Center))[1:2]
 
     # Check that the size of a bottom field are 
     # consistent with the size of the grid
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
+
         bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
+
+        x_indices = interior_x_indices(grid, Center)
+        y_indices = interior_y_indices(grid, Center)
+
+        cpu_bottom = arch_array(CPU(), ib.bottom_height)[x_indices, y_indices] 
+        
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
         offset_bottom_array = dropdims(bottom_field.data, dims=3)
@@ -186,25 +193,8 @@ struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end
 
+# We do not use `GridFittedBoundary{<:OffsetArray}`
 resize_immersed_boundary(ib::AbstractGridFittedBoundary, grid) = ib
-
-function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
-
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Nz = halo_size(grid)
-
-    mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
-
-    # Check that the size of a bottom field are 
-    # consistent with the size of the grid
-    if any(size(ib.mask) .!= mask_size)
-        @warn "Resizing the mask to match the grids' halos"
-        mask = compute_mask(grid, ib)
-        return getnamewrapper(ib)(mask)
-    end
-    
-    return ib
-end
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
