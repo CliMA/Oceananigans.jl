@@ -115,3 +115,31 @@ const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
 
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+
+#####
+##### Three dimensional Interpolation Operators
+#####
+
+for ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
+    ℑx = Symbol(:ℑx, ℓx, ℓy, ℓz)
+    ℑy = Symbol(:ℑy, ℓx, ℓy, ℓz)
+    ℑz = Symbol(:ℑz, ℓx, ℓy, ℓz)
+
+    ℑxy = Symbol(:ℑxy, ℓx, ℓy, ℓz)
+    ℑyz = Symbol(:ℑyz, ℓx, ℓy, ℓz)
+    ℑxz = Symbol(:ℑxz, ℓx, ℓy, ℓz)
+
+    ℑxᵃ = Symbol(:ℑx, ℓx, :ᵃ, :ᵃ)
+    ℑyᵃ = Symbol(:ℑy, :ᵃ, ℓy, :ᵃ)
+    ℑzᵃ = Symbol(:ℑz, :ᵃ, :ᵃ, ℓz)
+
+    @eval begin
+        $ℑx(i, j, k, grid, args...) = $ℑxᵃ(i, j, k, grid, args...)
+        $ℑy(i, j, k, grid, args...) = $ℑyᵃ(i, j, k, grid, args...)
+        $ℑz(i, j, k, grid, args...) = $ℑzᵃ(i, j, k, grid, args...)
+
+        $ℑxy(i, j, k, grid, args...) = $ℑx(i, j, k, grid, $ℑy, args...)
+        $ℑyz(i, j, k, grid, args...) = $ℑy(i, j, k, grid, $ℑz, args...)
+        $ℑxz(i, j, k, grid, args...) = $ℑz(i, j, k, grid, $ℑx, args...)
+    end
+end

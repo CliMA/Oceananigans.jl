@@ -25,6 +25,9 @@ export Az_qᶠᶠᶠ, Az_qᶠᶠᶜ, Az_qᶠᶜᶠ, Az_qᶠᶜᶜ, Az_qᶜᶠᶠ
 
 # Differences
 export δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ
+export δxᶠᶠᶠ, δxᶠᶠᶜ, δxᶠᶜᶠ, δxᶠᶜᶜ, δxᶜᶠᶠ, δxᶜᶠᶜ, δxᶜᶜᶠ, δxᶜᶜᶜ
+export δyᶠᶠᶠ, δyᶠᶠᶜ, δyᶠᶜᶠ, δyᶠᶜᶜ, δyᶜᶠᶠ, δyᶜᶠᶜ, δyᶜᶜᶠ, δyᶜᶜᶜ
+export δzᶠᶠᶠ, δzᶠᶠᶜ, δzᶠᶜᶠ, δzᶠᶜᶜ, δzᶜᶠᶠ, δzᶜᶠᶜ, δzᶜᶜᶠ, δzᶜᶜᶜ
 
 # Derivatives
 export ∂xᶠᶠᶠ, ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂xᶠᶜᶜ, ∂xᶜᶠᶠ, ∂xᶜᶠᶜ, ∂xᶜᶜᶠ, ∂xᶜᶜᶜ
@@ -56,6 +59,14 @@ export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜ
 export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
+
+# Derivatives
+export ℑxᶠᶠᶠ, ℑxᶠᶠᶜ, ℑxᶠᶜᶠ, ℑxᶠᶜᶜ, ℑxᶜᶠᶠ, ℑxᶜᶠᶜ, ℑxᶜᶜᶠ, ℑxᶜᶜᶜ
+export ℑyᶠᶠᶠ, ℑyᶠᶠᶜ, ℑyᶠᶜᶠ, ℑyᶠᶜᶜ, ℑyᶜᶠᶠ, ℑyᶜᶠᶜ, ℑyᶜᶜᶠ, ℑyᶜᶜᶜ
+export ℑzᶠᶠᶠ, ℑzᶠᶠᶜ, ℑzᶠᶜᶠ, ℑzᶠᶜᶜ, ℑzᶜᶠᶠ, ℑzᶜᶠᶜ, ℑzᶜᶜᶠ, ℑzᶜᶜᶜ
+
+export ℑxyᶜᶜᶜ, ℑxyᶠᶜᶜ, ℑxyᶠᶠᶜ, ℑxyᶜᶠᶜ, ℑxzᶜᶜᶜ, ℑxzᶠᶜᶜ, ℑxzᶠᶜᶠ, ℑxzᶜᶜᶠ, ℑyzᶜᶜᶜ, ℑyzᶜᶠᶜ, ℑyzᶜᶠᶠ, ℑyzᶜᶜᶠ
+export ℑxyᶜᶜᶠ, ℑxyᶠᶜᶠ, ℑxyᶠᶠᶠ, ℑxyᶜᶠᶠ, ℑxzᶜᶠᶜ, ℑxzᶠᶠᶜ, ℑxzᶠᶠᶠ, ℑxzᶜᶠᶠ, ℑyzᶠᶜᶜ, ℑyzᶠᶠᶜ, ℑyzᶠᶠᶠ, ℑyzᶠᶜᶠ
 
 using Oceananigans.Grids
 
