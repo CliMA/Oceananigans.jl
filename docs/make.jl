@@ -1,20 +1,16 @@
 using Distributed
 
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
-
-Distributed.addprocs(4)
+Distributed.addprocs(5)
 
 Distributed.@everywhere begin
+    pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
     using Pkg
     Pkg.activate(@__DIR__)
     Pkg.instantiate()
-end
 
-Distributed.@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
-    using Distributed
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     CairoMakie.activate!(type = "svg")
@@ -161,10 +157,10 @@ makedocs(bib, sitename = "Oceananigans.jl",
               format = format,
               pages = pages,
               modules = [Oceananigans],
-              doctest = false, # set to false to speed things up
+              doctest = true, # set to false to speed things up
               strict = true,
               clean = true,
-              checkdocs = :none) # set to :none to speed things up
+              checkdocs = :exports) # set to :none to speed things up
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
@@ -192,4 +188,3 @@ deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            forcepush = true,
            push_preview = false,
            devbranch = "main")
-
