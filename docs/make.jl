@@ -4,14 +4,13 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 
 Distributed.addprocs(4)
 
-@everywhere begin
+Distributed.@everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
-    @show Pkg.status()
     Pkg.instantiate()
 end
 
-@everywhere begin
+Distributed.@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -43,15 +42,15 @@ end
     examples = [
         "One-dimensional diffusion"        => "one_dimensional_diffusion",
         "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-        #"Internal wave"                    => "internal_wave",
-        #"Convecting plankton"              => "convecting_plankton",
-        #"Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-        #"Langmuir turbulence"              => "langmuir_turbulence",
-        #"Baroclinic adjustment"            => "baroclinic_adjustment",
-        #"Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
-        #"Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
-        #"Horizontal convection"            => "horizontal_convection",
-        #"Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
+        "Internal wave"                    => "internal_wave",
+        "Convecting plankton"              => "convecting_plankton",
+        "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+        "Langmuir turbulence"              => "langmuir_turbulence",
+        "Baroclinic adjustment"            => "baroclinic_adjustment",
+        "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+        "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
+        "Horizontal convection"            => "horizontal_convection",
+        "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
     ]
 
     example_scripts = [ filename * ".jl" for (title, filename) in examples ]
@@ -59,7 +58,7 @@ end
     @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
     
-pmap(1:length(example_scripts)) do n
+Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
@@ -162,10 +161,10 @@ makedocs(bib, sitename = "Oceananigans.jl",
               format = format,
               pages = pages,
               modules = [Oceananigans],
-              doctest = true, # set to false to speed things up
+              doctest = false, # set to false to speed things up
               strict = true,
               clean = true,
-              checkdocs = :exports) # set to :none to speed things up
+              checkdocs = :none) # set to :none to speed things up
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
