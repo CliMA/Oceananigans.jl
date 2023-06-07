@@ -97,8 +97,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     tick!(model.clock, Δt)
     update_state!(model, callbacks; compute_tendencies)
-    update_particle_properties!(model, Δt)
-
+    step_lagrangian_particles!(model, Δt)
+    
     return nothing
 end
 

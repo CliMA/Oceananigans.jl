@@ -107,7 +107,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    update_particle_properties!(model, first_stage_Δt)
+    step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
@@ -121,7 +121,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    update_particle_properties!(model, second_stage_Δt)
+    step_lagrangian_particles!(model, second_stage_Δt)
 
     #
     # Third stage
@@ -133,7 +133,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model, callbacks; compute_tendencies)
-    update_particle_properties!(model, third_stage_Δt)
+    step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
 end
