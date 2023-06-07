@@ -2,7 +2,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 
 using Distributed
 
-Distributed.addprocs(4)
+Distributed.addprocs(3)
 
 @everywhere begin
     pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
