@@ -1,13 +1,19 @@
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
+
 using Distributed
 
-Distributed.addprocs(5)
+Distributed.addprocs(4)
 
-Distributed.@everywhere begin
+@everywhere begin
     pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
     using Pkg
+    Pkg.activate(joinpath(@__DIR__, ".."))
+    Pkg.instantiate()
     Pkg.activate(@__DIR__)
     Pkg.instantiate()
+end
 
+@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -188,3 +194,4 @@ deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            forcepush = true,
            push_preview = false,
            devbranch = "main")
+=#
