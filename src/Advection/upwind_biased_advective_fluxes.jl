@@ -11,7 +11,7 @@ const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
 
 @inline sign_val(u) = Val(Int(sign(u)))
 
-# Upwind interpolate
+# Upwind interpolate -> choose _left_biased if u > 0 and _right_biased if u < 0
 for (d, ξ) in enumerate((:x, :y, :z))
     code = [:ᵃ, :ᵃ, :ᵃ]
 
