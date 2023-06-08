@@ -109,7 +109,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    bottom_heigth_size = total_size(grid, (Center, Center, Center))[1:2]
+    bottom_height_size = total_size(grid, (Center, Center, Center))[1:2]
 
     # Check that the size of a bottom field are 
     # consistent with the size of the grid
