@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent,
+using Oceananigans.Grids: total_extent, with_halo,
                           xspacings, yspacings, zspacings, 
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings, λspacing, φspacing
