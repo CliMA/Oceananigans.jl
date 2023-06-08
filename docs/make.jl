@@ -192,5 +192,6 @@ end
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
            forcepush = true,
-           push_preview = false,
+           repo_previews = "github.com/CliMA/OceananigansDocumentationPreviews.git",
+           push_preview = true,
            devbranch = "main")
