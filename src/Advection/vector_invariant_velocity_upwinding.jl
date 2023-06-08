@@ -11,21 +11,15 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 #####
 
 @inline function Auᶜᶜᶜ(i, j, k, grid, scheme, u) 
-    û = ℑxᶜᵃᵃ(i, j, k, grid, u)
-
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
-
-    return ifelse(û > 0, Uᴸ, Uᴿ)
+    û  = ℑxᶜᵃᵃ(i, j, k, grid, u)
+    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
+    return Uᴿ
 end
 
 @inline function Avᶜᶜᶜ(i, j, k, grid, scheme, v) 
-    v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
-
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
-
-    return ifelse(v̂ > 0, Vᴸ, Vᴿ)
+    v̂  = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    Vᴿ =_upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
+    return Vᴿ
 end
 
 @inline Auᶠᶠᶜ(i, j, k, grid, scheme, u) = 
@@ -58,20 +52,14 @@ end
 
 @inline function uᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
-
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
-
-    return ifelse(û > 0, Uᴸ, Uᴿ)
+    Uᴿ =_upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, half_ϕ², u)
+    return Uᴿ
 end
 
 @inline function vᵁ²ᶜᶜᶜ(i, j, k, grid, scheme, v) 
-    v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
-
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
-
-    return ifelse(v̂ > 0, Vᴸ, Vᴿ)
+    v̂  = ℑyᵃᶜᵃ(i, j, k, grid, v)
+    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, half_ϕ², v)
+    return Vᴿ
 end
 
 @inline uˢ²ᶜᶜᶜ(i, j, k, grid, scheme, u) =
