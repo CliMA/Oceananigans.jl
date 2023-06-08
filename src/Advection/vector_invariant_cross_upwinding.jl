@@ -22,7 +22,7 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
     @inbounds û = u[i, j, k]
     δ_stencil = scheme.upwinding_treatment.divergence_stencil
 
-    δᴿ =_upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
+    δᴿ = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
     return û * δᴿ
 end
@@ -31,7 +31,7 @@ end
     @inbounds v̂ = v[i, j, k]
     δ_stencil = scheme.upwinding_treatment.divergence_stencil
 
-    δᴿ =_upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
+    δᴿ = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
     return upwind_biased_product(v̂, δᴸ, δᴿ) 
 end

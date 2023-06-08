@@ -20,7 +20,7 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
     cross_scheme = scheme.upwinding_treatment.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δu =   _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, û, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
+    δu =    _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, û, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
     δv = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
     
     return û * (δu + δv)
@@ -32,7 +32,7 @@ end
     cross_scheme = scheme.upwinding_treatment.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δv =   _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
+    δv =    _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
     δu = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
 
     return v̂ * (δu + δv)
@@ -62,7 +62,7 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
     δu²_stencil  = scheme.upwinding_treatment.δu²_stencil    
     cross_scheme = scheme.upwinding_treatment.cross_scheme
 
-    δKuᴿ =    _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, δx_u², δu²_stencil, u, v)
+    δKuᴿ =     _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, δx_u², δu²_stencil, u, v)
     δKvˢ =  _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
 
     return (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
@@ -75,7 +75,7 @@ end
     δv²_stencil   = scheme.upwinding_treatment.δv²_stencil    
     cross_scheme = scheme.upwinding_treatment.cross_scheme
 
-    δKvᴿ =   _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, δy_v², δv²_stencil, u, v) 
+    δKvᴿ =    _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, δy_v², δv²_stencil, u, v) 
     δKuˢ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
     
     return (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
