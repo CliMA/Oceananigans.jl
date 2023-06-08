@@ -1,8 +1,6 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
-
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: DistributedArch
 using Oceananigans.Advection: CenteredSecondOrder
@@ -13,17 +11,18 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: AbstractModel
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.Models: total_velocities
 
-const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
@@ -236,3 +235,8 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
+
+# return the total advective velocities
+@inline total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
+                                                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
+                                                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
