@@ -39,7 +39,7 @@ end
 @inline function advective_momentum_flux_Uu(i, j, k, grid, scheme::UpwindScheme, U, u)
 
     ũ  = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    uᴿ =   _upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, ũ, scheme, u)
+    uᴿ =    _upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, ũ, scheme, u)
 
     return ũ * uᴿ
 end
@@ -47,7 +47,7 @@ end
 @inline function advective_momentum_flux_Vu(i, j, k, grid, scheme::UpwindScheme, V, u)
 
     ṽ  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    uᴿ =   _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, ṽ, scheme, u)
+    uᴿ =    _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, ṽ, scheme, u)
 
     return ṽ * uᴿ
 end
@@ -55,7 +55,7 @@ end
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::UpwindScheme, W, u)
 
     w̃  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    uᴿ =   _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, w̃, scheme, u)
+    uᴿ =    _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, w̃, scheme, u)
 
     return w̃ * uᴿ
 end
@@ -63,7 +63,7 @@ end
 @inline function advective_momentum_flux_Uv(i, j, k, grid, scheme::UpwindScheme, U, v)
 
     ũ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    vᴿ =   _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, ũ, scheme, v)
+    vᴿ =    _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, ũ, scheme, v)
  
     return ũ * vᴿ
 end
@@ -71,7 +71,7 @@ end
 @inline function advective_momentum_flux_Vv(i, j, k, grid, scheme::UpwindScheme, V, v)
 
     ṽ  = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    vᴿ =   _upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, ṽ, scheme, v)
+    vᴿ =    _upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, ṽ, scheme, v)
 
     return ṽ * vᴿ
 end
@@ -79,7 +79,7 @@ end
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::UpwindScheme, W, v)
 
     w̃  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    vᴿ =   _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, w̃, scheme, v)
+    vᴿ =    _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, w̃, scheme, v)
 
     return w̃ * vᴿ
 end
@@ -87,7 +87,7 @@ end
 @inline function advective_momentum_flux_Uw(i, j, k, grid, scheme::UpwindScheme, U, w)
 
     ũ  = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    wᴿ =   _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, ũ, scheme, w)
+    wᴿ =    _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, ũ, scheme, w)
 
     return ũ * wᴿ
 end
@@ -95,7 +95,7 @@ end
 @inline function advective_momentum_flux_Vw(i, j, k, grid, scheme::UpwindScheme, V, w)
 
     ṽ  = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    wᴿ =   _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, ṽ, scheme, w)
+    wᴿ =    _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, ṽ, scheme, w)
 
     return ṽ * wᴿ
 end
@@ -103,7 +103,7 @@ end
 @inline function advective_momentum_flux_Ww(i, j, k, grid, scheme::UpwindScheme, W, w)
 
     w̃  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    wᴿ =   _upwind_interpolate_zᵃᵃᶜ(i, j, k, grid, w̃, scheme, w)
+    wᴿ =    _upwind_interpolate_zᵃᵃᶜ(i, j, k, grid, w̃, scheme, w)
 
     return w̃ * wᴿ
 end
