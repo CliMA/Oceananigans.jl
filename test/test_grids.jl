@@ -746,7 +746,7 @@ end
 #####
 
 function test_with_halo(grid, new_halo)
-    new_grid   = with_halo(grid, new_halo)
+    new_grid   = with_halo(new_halo, grid)
     Hx, Hy, Hz = halo_size(new_grid)
     
     @test all((Hx, Hy, Hz) .== new_halo)
