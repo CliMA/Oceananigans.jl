@@ -2,7 +2,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 
 using Distributed
 
-Distributed.addprocs(3)
+Distributed.addprocs(2)
 
 @everywhere begin
     pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
@@ -192,5 +192,6 @@ end
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
            forcepush = true,
-           push_preview = false,
+           repo_previews = "github.com/CliMA/OceananigansDocumentationPreviews.git",
+           push_preview = true,
            devbranch = "main")
