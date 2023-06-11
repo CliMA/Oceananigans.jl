@@ -1,12 +1,12 @@
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
-    ν :: N
+struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
+    ν :: V
     κ :: K
 
-    function ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K}
-        return new{TD, F, N, K}(ν, κ)
+    function ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N}
+        return new{TD, F, V, K, N}(ν, κ)
     end
 end
 
@@ -91,7 +91,8 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
-                           parameters = nothing)
+                           parameters = nothing,
+                           boundary_buffer = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
@@ -100,7 +101,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation)}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), boundary_buffer}(ν, κ)
 end
 
 # Explicit default

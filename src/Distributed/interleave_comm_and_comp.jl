@@ -1,7 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: halo_size
 
-function complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch)
+function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch)
 
     # We iterate over the fields because we have to clear _ALL_ architectures
     # and split explicit variables live on a different grid
@@ -15,7 +15,7 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     return nothing
 end
 
-complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::BlockingDistributedArch) = nothing
+complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributedArch) = nothing
 compute_boundary_tendencies!(model) = nothing
 
 interior_tendency_kernel_size(grid::DistributedGrid)    = interior_tendency_kernel_size(grid,    architecture(grid))

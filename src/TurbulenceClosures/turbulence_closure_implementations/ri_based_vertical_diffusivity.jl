@@ -4,7 +4,7 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: use_only_active_interior_cells
 
-struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT
     κᶜᵃ :: FT
@@ -139,7 +139,8 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κ, ν, Ri)
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = κ_kernel_size(model.grid, closure), 
+                                                                               kernel_offsets = κ_kernel_offsets(model.grid, closure))
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -256,8 +257,8 @@ end
     Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κᶜ★ = κ₀ * τ
-    κᵘ★ = ν₀ * τ
+    κ★ = κ₀ * τ
+    κ★ = ν₀ * τ
 
     κⁿ = κᶜ + κᵉ + κ★
     νⁿ = ν★

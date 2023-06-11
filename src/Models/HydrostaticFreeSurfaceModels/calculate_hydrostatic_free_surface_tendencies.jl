@@ -10,7 +10,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-import Oceananigans.Distributed: complete_communication_and_compute_boundary
+import Oceananigans.Distributed: complete_communication_and_compute_boundary!
 import Oceananigans.Distributed: interior_tendency_kernel_size, interior_tendency_kernel_offsets
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
@@ -26,7 +26,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
-    complete_communication_and_compute_boundary(model, model.grid, model.architecture)
+    complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -49,7 +49,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-complete_communication_and_compute_boundary(model, grid, arch) = nothing
+complete_communication_and_compute_boundary!(model, grid, arch) = nothing
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS

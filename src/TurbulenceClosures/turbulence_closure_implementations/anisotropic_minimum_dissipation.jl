@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), then modified by [Verstappen18](@cite),
 and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
+struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     Cν :: PN
     Cκ :: PK
     Cb :: PB

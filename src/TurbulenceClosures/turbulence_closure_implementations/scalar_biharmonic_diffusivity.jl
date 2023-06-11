@@ -6,12 +6,12 @@ using Oceananigans.Utils: prettysummary
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
-    ν :: N
+struct ScalarBiharmonicDiffusivity{F, V, K, N} <: AbstractScalarBiharmonicDiffusivity{F, N}
+    ν :: V
     κ :: K
 
-    function ScalarBiharmonicDiffusivity{F}(ν::N, κ::K) where {F, N, K}
-        return new{F, N, K}(ν, κ)
+    function ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N}
+        return new{F, V, K, N}(ν, κ)
     end
 end
 
@@ -66,11 +66,12 @@ function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), 
                                      ν=0, κ=0,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
-                                     parameters = nothing)
+                                     parameters = nothing,
+                                     boundary_buffer = 1)
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation), boundary_buffer}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F}) where {F}
