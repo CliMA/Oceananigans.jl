@@ -106,3 +106,13 @@ end
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
 
+# extend w kernel to compute also the boundaries
+# If Flat, do not calculate on halos!
+
+using Oceananigans.Operators: XFlatGrid, YFlatGrid
+using Oceananigans.Grids: topology
+
+struct KernelParameters{S, O} end
+
+KernelParameters(grid::AbstractGrid)          = KernelParameters{kernel_size(grid),  kernel_offsets(grid)}()
+KernelParameters(size::Tuple, offsets::Tuple) = KernelParameters{size, offsets}()

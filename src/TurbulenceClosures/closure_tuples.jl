@@ -86,6 +86,24 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
+@inline function κ_kernel_size(grid, closure_tuple::Tuple)
+    kernel_size = (0, 0, 0)
+    for closure in closure_tuple
+        kernel_size = max.(kernel_size, κ_kernel_size(grid, closure))
+    end
+
+    return kernel_size
+end
+
+@inline function κ_kernel_offsets(grid, closure_tuple::Tuple)
+    kernel_offsets = (0, 0, 0)
+    for closure in closure_tuple
+        kernel_offsets = max.(kernel_offsets, κ_kernel_offsets(grid, closure))
+    end
+
+    return kernel_offsets
+end
+
 #####
 ##### Compiler-inferrable time_discretization for tuples
 #####
