@@ -129,50 +129,44 @@ end
 @kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
                                                                η̅, U̅, V̅, averaging_weight, 
                                                                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                               timestepper, offsets)
+                                                               timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
-
-    i′ = i - offsets[1]
-    j′ = j - offsets[2]
 
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
-        advance_previous_free_surface!(i′, j′, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+        advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
         # ∂τ(η) = - ∇ ⋅ U. 
         # `k_top - 1` is used here to allow `immersed_peripheral_node` to be true 
         # NOTE: `immersed_peripheral_node` is _always_ false on `Nz+1` `Face`s because `peripheral_node` is always true
-        η[i′, j′, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i′, j′, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                  div_yᶜᶜᶠ_V(i′, j′, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
+        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 end
 
 @kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
                                                                       η̅, U̅, V̅, averaging_weight, 
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                                      timestepper, offsets)
+                                                                      timestepper)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    i′ = i - offsets[1]
-    j′ = j - offsets[2]
-
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
-        advance_previous_velocity!(i′, j′, 1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
-        advance_previous_velocity!(i′, j′, 1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
+        advance_previous_velocity!(i, j, 1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
+        advance_previous_velocity!(i, j, 1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
-        U[i′, j′, 1] +=  Δτ * (- g * Hᶠᶜ[i′, j′] * ∂xᶠᶜᶠ_η(i′, j′, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i′, j′, 1])
-        V[i′, j′, 1] +=  Δτ * (- g * Hᶜᶠ[i′, j′] * ∂yᶜᶠᶠ_η(i′, j′, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i′, j′, 1])
+        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i′, j′] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
+        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i′, j′] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
                           
         # time-averaging
-        η̅[i′, j′, k_top] +=  averaging_weight * η[i′, j′, k_top]
-        U̅[i′, j′, 1]     +=  averaging_weight * U[i′, j′, 1]
-        V̅[i′, j′, 1]     +=  averaging_weight * V[i′, j′, 1]
+        η̅[i, j, k_top] +=  averaging_weight * η[i, j, k_top]
+        U̅[i, j, 1]     +=  averaging_weight * U[i, j, 1]
+        V̅[i, j, 1]     +=  averaging_weight * V[i, j, 1]
     end
 end
 
@@ -188,15 +182,14 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     timestepper      = settings.timestepper
     averaging_weight = settings.averaging_weights[substep_index]
     
-    offsets     = auxiliary.kernel_offsets
-    kernel_size = auxiliary.kernel_size
+    parameters = auxiliary.kernel_parameters
 
     args = (grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
             η̅, U̅, V̅, averaging_weight, 
-            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper, offsets)
+            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper)
 
-    launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!,        args...)
-    launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...)
+    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...)
+    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...)
 
     return nothing
 end

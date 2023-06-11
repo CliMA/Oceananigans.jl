@@ -1,3 +1,4 @@
+using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
@@ -23,7 +24,9 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrid)
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
     @apply_regionally kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
+
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
 @inline function calculate_column_height!(height, location)
@@ -34,8 +37,8 @@ end
 @inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
 @inline augmented_kernel_size(grid, ::YPartition) = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
 
-@inline augmented_kernel_offsets(grid, ::XPartition) = (halo_size(grid)[1]-1, 0)
-@inline augmented_kernel_offsets(grid, ::YPartition) = (0, halo_size(grid)[2]-1)
+@inline augmented_kernel_offsets(grid, ::XPartition) = (- halo_size(grid)[1] + 1, 0)
+@inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrid)
 

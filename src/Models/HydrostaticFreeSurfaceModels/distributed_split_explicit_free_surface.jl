@@ -24,9 +24,9 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     kernel_size    = augmented_kernel_size(grid)
     kernel_offsets = augmented_kernel_offsets(grid)
 
-    @show kernel_size, kernel_offsets
+    kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
 """Integrate z at locations `location` and set! `height`` with the result"""
@@ -55,8 +55,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 || Tx == RightConnected ? 0 : Hx - 1
-    Ay = Ry == 1 || Ty == RightConnected ? 0 : Hy - 1
+    Ax = Rx == 1 || Tx == RightConnected ? 0 : - Hx + 1
+    Ay = Ry == 1 || Ty == RightConnected ? 0 : - Hy + 1
 
     return (Ax, Ay)
 end
