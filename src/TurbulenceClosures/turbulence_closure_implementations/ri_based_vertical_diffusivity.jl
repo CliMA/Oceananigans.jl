@@ -139,8 +139,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κ, ν, Ri)
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = κ_kernel_size(model.grid, closure), 
-                                                                               kernel_offsets = κ_kernel_offsets(model.grid, closure))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = KernelParameters(grid, closure))
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -149,10 +148,9 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    launch!(arch, grid, kernel_size,
+    launch!(arch, grid, parameters,
             compute_ri_number!,
             diffusivities,
-            kernel_offsets,
             grid,
             closure,
             velocities,
@@ -161,10 +159,9 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; k
             top_tracer_bcs,
             clock)
 
-    launch!(arch, grid, kernel_size,
+    launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,
             diffusivities,
-            kernel_offsets,
             grid,
             closure,
             velocities,
@@ -199,27 +196,17 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
-@kernel function compute_ri_number!(diffusivities, offs, grid, closure::FlavorOfRBVD,
+@kernel function compute_ri_number!(diffusivities, grid, closure::FlavorOfRBVD,
                                     velocities, tracers, buoyancy, tracer_bcs, clock)
 
-    i′, j′, k′ = @index(Global, NTuple)
-
-    i = i′ + offs[1] 
-    j = j′ + offs[2] 
-    k = k′ + offs[3]
-
+    i, j, k = @index(Global, NTuple)
     @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
 end
 
-@kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
+@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
 
-    i′, j′, k′ = @index(Global, NTuple)
-
-    i = i′ + offs[1] 
-    j = j′ + offs[2] 
-    k = k′ + offs[3]
-
+    i, j, k = @index(Global, NTuple)
     _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
 end
