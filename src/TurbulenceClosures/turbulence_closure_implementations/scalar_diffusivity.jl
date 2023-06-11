@@ -150,9 +150,9 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 required_halo_size(closure::ScalarDiffusivity) = 1 
  
-function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
+function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F}(closure.ν, κ)
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
