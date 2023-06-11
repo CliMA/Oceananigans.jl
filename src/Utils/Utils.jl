@@ -1,6 +1,6 @@
 module Utils
 
-export launch_config, work_layout, launch!
+export launch_config, work_layout, launch!, KernelParameters
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples
 export validate_intervals, time_to_run

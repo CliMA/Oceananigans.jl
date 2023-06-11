@@ -4,6 +4,17 @@
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid
+
+struct KernelParameters{S, O} end
+
+KernelParameters(size, offsets) = KernelParameters{size, offsets}()
+
+worksize(::KernelParameters{S}) where S = S
+offsets(::KernelParameters{S, O}) where {S, O} = O
+
+offsets(workspec)  = nothing
+worksize(workspec) = workspec
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
@@ -80,22 +91,25 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, workspec;
+    workgroup, worksize = work_layout(grid, worksize(workspec);
                                       include_right_boundaries,
                                       reduced_dimensions,
                                       location)
 
+    offset = offsets(workspec)
+
     if !isnothing(only_active_cells)
         workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
+        offset = nothing
     end
 
     if worksize == 0
         return nothing
     end
     
-    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
+    loop! = kernel!(Architectures.device(arch), workgroup, worksize, offset)
 
-    @debug "Launching kernel $kernel! with worksize $worksize"
+    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset"
 
     loop!(kernel_args...)
 
@@ -105,14 +119,3 @@ end
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
-
-# extend w kernel to compute also the boundaries
-# If Flat, do not calculate on halos!
-
-using Oceananigans.Operators: XFlatGrid, YFlatGrid
-using Oceananigans.Grids: topology
-
-struct KernelParameters{S, O} end
-
-KernelParameters(grid::AbstractGrid)          = KernelParameters{kernel_size(grid),  kernel_offsets(grid)}()
-KernelParameters(size::Tuple, offsets::Tuple) = KernelParameters{size, offsets}()

@@ -20,9 +20,10 @@ import Oceananigans.TurbulenceClosures:
                         calc_nonlinear_νᶜᶜᶜ,
                         νᶜᶜᶜ
 
-struct ShallowWaterScalarDiffusivity{N, X} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
-    ν :: N
+struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation, N}
+    ν :: V
     ξ :: X
+    ShallowWaterScalarDiffusivity{N}(ν::V, ξ::X) where {N, V, X} = new{N, V, X}(ν, ξ)
 end
 
 """
@@ -39,10 +40,10 @@ With the `VectorInvariantFormulation()` (that evolves ``u`` and ``v``) we comput
 ``h^{-1} 𝛁(ν h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
 ``u h`` and ``v h``) we compute ``𝛁 (ν h 𝛁 t)``.
 """
-function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false)
+function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false, boundary_buffer = 1)
     ν = convert_diffusivity(FT, ν; discrete_form)
     ξ = convert_diffusivity(FT, ξ; discrete_form)
-    return ShallowWaterScalarDiffusivity(ν, ξ)
+    return ShallowWaterScalarDiffusivity{boundary_buffer}(ν, ξ)
 end
 
 # We have no tracers in the shallow water diffusivity

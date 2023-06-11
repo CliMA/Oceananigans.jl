@@ -8,9 +8,7 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
     `pHY′ = ∫ buoyancy_perturbationᶜᶜᶜ dz` from `z=0` down to `z=-Lz`
 """
 @kernel function _update_hydrostatic_pressure!(pHY′, offs, grid, buoyancy, C)
-    i′, j′ = @index(Global, NTuple)
-    i = i′ + offs[1] 
-    j = j′ + offs[2] 
+    i, j = @index(Global, NTuple)
 
     @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
 
@@ -27,11 +25,11 @@ update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.p
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = p_kernel_offsets(grid)) =
-    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; kernel_size, kernel_offsets)
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = KernelParameters(p_kernel_size(grid), p_kernel_offsets(grid))) =
+    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = p_kernel_offsets(grid)) =  
-    launch!(arch, grid, kernel_size, _update_hydrostatic_pressure!, pHY′, kernel_offsets, grid, buoyancy, tracers)
+update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = KernelParameters(p_kernel_size(grid), p_kernel_offsets(grid))) =  
+    launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
 using Oceananigans.Grids: topology
 

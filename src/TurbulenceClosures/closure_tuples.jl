@@ -86,6 +86,8 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
+KernelParameters(grid::AbstractGrid, closure) = KernelParameters(κ_kernel_size(grid, closure), κ_kernel_offsets(grid, closure))
+
 @inline function κ_kernel_size(grid, closure_tuple::Tuple)
     kernel_size = (0, 0, 0)
     for closure in closure_tuple

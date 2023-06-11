@@ -2,7 +2,7 @@
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "efa1b3c0f878c0fe77caba96f053e1145d126cd0"
+project_hash = "b61348c5ba4009d3da1a3d8c47bdeb84513faa2c"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -277,7 +277,9 @@ version = "1.12.0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "PrecompileTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "47be64f040a7ece575c2b5f53ca6da7b548d69f4"
+git-tree-sha1 = "bbb7ac4a3194c0d1561b9dea2a20e8f1ab68f709"
+repo-rev = "main"
+repo-url = "https://github.com/simone-silvestri/KernelAbstractions.jl"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 version = "0.9.4"
 

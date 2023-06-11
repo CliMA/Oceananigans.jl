@@ -31,13 +31,13 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
 
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        launch!(arch, grid, kernel_size,
+        launch!(arch, grid, KernelParameters(kernel_size, kernel_offsets),
                 calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args)
     
-        launch!(arch, grid, kernel_size,
+        launch!(arch, grid, KernelParameters(kernel_size, kernel_offsets),
                 calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args)
         
-        calculate_free_surface_tendency!(grid, model, kernel_size[1:2], kernel_offsets[1:2])
+        calculate_free_surface_tendency!(grid, model, KernelParameteres(kernel_size[1:2], kernel_offsets[1:2]))
     end
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
@@ -67,7 +67,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
                      model.clock)
 
         for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-            launch!(arch, grid, kernel_size,
+            launch!(arch, grid, KernelParameters(kernel_size, kernel_offsets),
                     tendency_kernel!, c_tendency, kernel_offsets, grid, args)
         end
     end
@@ -78,19 +78,21 @@ function recompute_auxiliaries!(model, grid, arch)
     sizes, offs = size_w_kernel(grid, arch)
 
     for (kernel_size, kernel_offsets) in zip(sizes, offs)
-        compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
+        compute_w_from_continuity!(model.velocities, arch, grid; parameters = KernelParameters(kernel_size, kernel_offsets))
     end
 
     sizes, offs = size_p_kernel(grid, arch)
 
     for (kernel_size, kernel_offsets) in zip(sizes, offs)
-        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; 
+                                     parameters = KernelParameters(kernel_size, kernel_offsets))
     end
 
     sizes, offs = size_κ_kernel(grid, arch)
 
     for (kernel_size, kernel_offsets) in zip(sizes, offs)
-        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model;
+                                 parameters = KernelParameters(kernel_size, kernel_offsets))
     end
 end
 

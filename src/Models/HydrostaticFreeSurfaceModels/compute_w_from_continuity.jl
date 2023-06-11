@@ -13,18 +13,15 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
-compute_w_from_continuity!(velocities, arch, grid; kernel_size = w_kernel_size(grid), kernel_offsets = w_kernel_offsets(grid)) = 
-    launch!(arch, grid, kernel_size, _compute_w_from_continuity!, velocities, kernel_offsets, grid)
+compute_w_from_continuity!(velocities, arch, grid; parameters = KernelParameters(w_kernel_size(grid), w_kernel_offsets(grid))) = 
+    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
-@kernel function _compute_w_from_continuity!(U, offs, grid)
+@kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
-    i′ = i + offs[1] 
-    j′ = j + offs[2] 
-
-    U.w[i′, j′, 1] = 0
+    U.w[i, j, 1] = 0
     @unroll for k in 2:grid.Nz+1
-        @inbounds U.w[i′, j′, k] = U.w[i′, j′, k-1] - Δzᶜᶜᶜ(i′, j′, k-1, grid) * div_xyᶜᶜᶜ(i′, j′, k-1, grid, U.u, U.v)
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v)
     end
 end
 
