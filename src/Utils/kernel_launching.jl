@@ -10,11 +10,11 @@ struct KernelParameters{S, O} end
 
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
-worksize(::KernelParameters{S}) where S = S
+worktuple(::KernelParameters{S}) where S = S
 offsets(::KernelParameters{S, O}) where {S, O} = O
 
 offsets(workspec)  = nothing
-worksize(workspec) = workspec
+worktuple(workspec) = workspec
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
@@ -91,7 +91,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, worksize(workspec);
+    workgroup, worksize = work_layout(grid, worktuple(workspec);
                                       include_right_boundaries,
                                       reduced_dimensions,
                                       location)
