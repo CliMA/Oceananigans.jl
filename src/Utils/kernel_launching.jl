@@ -6,6 +6,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 
+"""Parameters for kernel launch, containing kernel size (`S`) and kernel offsets (`O`)"""
 struct KernelParameters{S, O} end
 
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
