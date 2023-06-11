@@ -146,7 +146,8 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+SpecifiedTimes(times::Tuple{Vararg{T}}) where T<:Number =
+    SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 SpecifiedTimes(times) = SpecifiedTimes(times...)
 
 function next_appointment_time(st::SpecifiedTimes)
