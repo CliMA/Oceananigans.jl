@@ -133,10 +133,10 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ  = Field((Center, Center, Face), grid)
-    ν  = Field((Center, Center, Face), grid)
+    κᶜ = Field((Center, Center, Face), grid)
+    κᵘ = Field((Center, Center, Face), grid)
     Ri = Field((Center, Center, Face), grid)
-    return (; κ, ν, Ri)
+    return (; κᶜ, κᵘ, Ri)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = KernelParameters(grid, closure))
@@ -244,14 +244,19 @@ end
     Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κ★ = κ₀ * τ
-    κ★ = ν₀ * τ
+    κᶜ★ = κ₀ * τ
+    κᵘ★ = ν₀ * τ
 
-    κⁿ = κᶜ + κᵉ + κ★
-    νⁿ = ν★
-    @inbounds diffusivities.κ[i, j, k] = κⁿ
-    @inbounds diffusivities.ν[i, j, k] = νⁿ
+    # Previous diffusivities
+    κᶜ = diffusivities.κᶜ
+    κᵘ = diffusivities.κᵘ
 
+    # New diffusivities
+    κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
+    κᵘ⁺ = κᵘ★
+
+    @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
+    @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
     return nothing
 end
 
