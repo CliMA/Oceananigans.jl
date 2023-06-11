@@ -160,7 +160,7 @@ for (side, dir) in zip([:southwest, :southeast, :northwest, :northeast], [1, 2, 
 end
 
 # If more than one direction is communicating we need to add a corner passing routine!
-function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; blocking = true, kwargs...)
+function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; async = false, kwargs...)
     
     requests = MPI.Request[]
 
@@ -178,7 +178,7 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
         return nothing
     end
 
-    if !blocking && !(arch isa BlockingDistributedArch)
+    if async && !(arch isa BlockingDistributedArch)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -204,7 +204,7 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; async = false, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
@@ -222,7 +222,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon after tendency calculation
-    if !blocking && !(arch isa BlockingDistributedArch)
+    if async && !(arch isa BlockingDistributedArch)
         push!(arch.mpi_requests, requests...)
         return nothing
     end

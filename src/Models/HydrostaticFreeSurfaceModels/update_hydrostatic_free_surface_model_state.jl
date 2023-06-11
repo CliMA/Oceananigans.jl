@@ -28,7 +28,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); blocking = false)
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
 
     @apply_regionally compute_w_diffusivities_pressure!(model)
 

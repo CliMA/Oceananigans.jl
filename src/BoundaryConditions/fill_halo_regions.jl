@@ -187,7 +187,7 @@ end
 
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args)
+@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
@@ -199,7 +199,7 @@ import Oceananigans.Utils: @constprop
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, offset, loc, grid, args) 
+@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, args) 
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
@@ -211,7 +211,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args) 
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args) 
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta

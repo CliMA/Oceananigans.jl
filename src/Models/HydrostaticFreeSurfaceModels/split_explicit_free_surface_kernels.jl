@@ -291,7 +291,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     end
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
-    fill_halo_regions!(fields_to_fill; blocking = false)
+    fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
     @apply_regionally begin 
@@ -354,7 +354,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
-    fill_halo_regions!(fields_to_fill; blocking = false)
+    fill_halo_regions!(fields_to_fill; async = true)
 
     return nothing
 end
