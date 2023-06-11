@@ -40,7 +40,7 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_x,
     diffusive_flux_y
 
-struct MEWSVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct MEWSVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     Cʰ  :: FT
     Cᴷʰ :: FT
     Cᴷᶻ :: FT
