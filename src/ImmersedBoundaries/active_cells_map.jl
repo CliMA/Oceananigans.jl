@@ -58,7 +58,7 @@ end
 function compute_active_cells_surface(ibg)
     one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0.0)
     column    = sum(one_field, dims = 3)
-    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, computed_dependencies = (column, ))
+    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
     active_cells_field = Field{Center, Center, Nothing}(ibg, Bool)
     set!(active_cells_field, is_immersed_column)
     return active_cells_field
@@ -106,6 +106,8 @@ end
 
 @inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
 
+# If we eventually want to perform also barotropic step, `w` computation and `p` 
+# computation only on active `columns`
 function active_cells_map_surface(ibg)
     active_cells_field = compute_active_cells_surface(ibg)
     interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
