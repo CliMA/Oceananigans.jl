@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, ShavedCellBottom
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
@@ -12,7 +12,7 @@ arch = CPU()
 tracer_advection = CenteredSecondOrder()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(16, 8), halo=(3, 3), 
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -25,7 +25,7 @@ L = 0.25 # bump width
 
 use_partial_cells = true
 if use_partial_cells
-    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(seamount, 0.1))
+    grid = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(seamount, 0.1))
 else
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
 end
@@ -149,7 +149,7 @@ title_θ = @lift "Tracer Concentration after " *string(round(times[$n], digits =
 ax_θ = Axis(fig[1,1]; xlabel = "Meridional Distance (m)", ylabel = "Depth (m)", xlabelsize = 22.5, ylabelsize = 22.5, 
             xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
             title = title_θ, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-hm_θ = heatmap!(ax_θ, yGrid, zGrid, θGrid; colorrange = θlims, colormap = :balance)
+hm_θ = contourf!(ax_θ, yGrid, zGrid, θGrid; levels = range(0, 1, length=8), colormap = :balance)
 Colorbar(fig[1,2], hm_θ; label = "Tracer Concentration", labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
 
 frames = 1:length(times)
