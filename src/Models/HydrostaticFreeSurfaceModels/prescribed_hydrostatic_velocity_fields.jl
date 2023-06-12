@@ -76,18 +76,18 @@ end
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 ab2_step_free_surface!(::Nothing, model, Δt, χ) = nothing 
-compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
 FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+FreeSurface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+FreeSurface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
-calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
+calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters) = nothing
 
 apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
