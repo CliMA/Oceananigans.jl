@@ -89,14 +89,14 @@ function plan_transforms(grid::RegRectilinearGrid, storage, planner_flag)
 
     if arch isa GPU && !(unflattened_topo in batchable_GPU_topologies)
 
-        rs_storage = reshape(storage, (Ny, Nx, Nz))
-        forward_plan_x = plan_forward_transform(storage,    topo[1](), [1], planner_flag)
-        forward_plan_y = plan_forward_transform(rs_storage, topo[2](), [1], planner_flag)
-        forward_plan_z = plan_forward_transform(storage,    topo[3](), [3], planner_flag)
+        reshaped_storage = reshape(storage, (Ny, Nx, Nz))
+        forward_plan_x = plan_forward_transform(storage,          topo[1](), [1], planner_flag)
+        forward_plan_y = plan_forward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+        forward_plan_z = plan_forward_transform(storage,          topo[3](), [3], planner_flag)
 
-        backward_plan_x = plan_backward_transform(storage,    topo[1](), [1], planner_flag)
-        backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
-        backward_plan_z = plan_backward_transform(storage,    topo[3](), [3], planner_flag)
+        backward_plan_x = plan_backward_transform(storage,          topo[1](), [1], planner_flag)
+        backward_plan_y = plan_backward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+        backward_plan_z = plan_backward_transform(storage,          topo[3](), [3], planner_flag)
 
         forward_plans = (forward_plan_x, forward_plan_y, forward_plan_z)
         backward_plans = (backward_plan_x, backward_plan_y, backward_plan_z)
@@ -191,14 +191,14 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
 
     else # we are on the GPU and we cannot / should not batch!
         grid_size = size(grid)
-        rs_storage1 = reshape(storage, (grid_size[reg_dims[1]], grid_size[reg_dims[2]], grid_size[irreg_dim]))
-        rs_storage2 = reshape(storage, (grid_size[reg_dims[2]], grid_size[reg_dims[1]], grid_size[irreg_dim]))
+        reshaped_storage1 = reshape(storage, (grid_size[reg_dims[1]], grid_size[reg_dims[2]], grid_size[irreg_dim]))
+        reshaped_storage2 = reshape(storage, (grid_size[reg_dims[2]], grid_size[reg_dims[1]], grid_size[irreg_dim]))
 
-        forward_plan_1 = plan_forward_transform(rs_storage1, topo[reg_dims[1]](), [1], planner_flag)
-        forward_plan_2 = plan_forward_transform(rs_storage2, topo[reg_dims[2]](), [1], planner_flag)
+        forward_plan_1 = plan_forward_transform(reshaped_storage1, topo[reg_dims[1]](), [1], planner_flag)
+        forward_plan_2 = plan_forward_transform(reshaped_storage2, topo[reg_dims[2]](), [1], planner_flag)
 
-        backward_plan_1 = plan_backward_transform(rs_storage1, topo[reg_dims[1]](), [1], planner_flag)
-        backward_plan_2 = plan_backward_transform(rs_storage2, topo[reg_dims[2]](), [1], planner_flag)
+        backward_plan_1 = plan_backward_transform(reshaped_storage1, topo[reg_dims[1]](), [1], planner_flag)
+        backward_plan_2 = plan_backward_transform(reshaped_storage2, topo[reg_dims[2]](), [1], planner_flag)
 
         forward_plans  = Dict(reg_dims[1] => forward_plan_1,  reg_dims[2] => forward_plan_2)
         backward_plans = Dict(reg_dims[1] => backward_plan_1, reg_dims[2] => backward_plan_2)
