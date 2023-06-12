@@ -531,7 +531,7 @@ end
     @testset "Time stepping ShallowWaterModel" begin
         for child_arch in archs
             topo = (Periodic, Periodic, Flat)
-            use_buffers = child_arch isa GPU ? true : false
+            use_buffers = true
             arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))
             grid = RectilinearGrid(arch, topology=topo, size=(8, 2), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
