@@ -23,9 +23,11 @@ contribution from non-hydrostatic pressure.
 """
 function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
+    kernel_parameters = tuple(interior_tendency_kernel_parameters(grid))
+
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
+    calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
@@ -87,22 +89,21 @@ top_tracer_boundary_conditions(grid, tracers) =
     NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
+function calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
 
     arch = model.architecture
     grid = model.grid
 
-    calculate_hydrostatic_momentum_tendencies!(model, model.velocities)
+    calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
     only_active_cells = use_only_active_interior_cells(grid)
-    kernel_parameters = interior_tendency_kernel_parameters(grid)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-        c_tendency    = model.timestepper.Gⁿ[tracer_name]
-        c_advection   = model.advection[tracer_name]
-        c_forcing     = model.forcing[tracer_name]
-        c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+        @inbounds c_advection   = model.advection[tracer_name]
+        @inbounds c_forcing     = model.forcing[tracer_name]
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
         tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model, Val(tracer_name), model.closure, model.diffusivity_fields)
 
@@ -122,12 +123,14 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                      c_forcing,
                      model.clock)
 
-        launch!(arch, grid, kernel_parameters,
-                tendency_kernel!,
-                c_tendency,
-                grid,
-                args;
-                only_active_cells)
+        for parameters in kernel_parameters
+            launch!(arch, grid, parameters,
+                    tendency_kernel!,
+                    c_tendency,
+                    grid,
+                    args;
+                    only_active_cells)
+        end
     end
 
     return nothing
@@ -164,7 +167,7 @@ function calculate_free_surface_tendency!(grid, model, kernel_parameters)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities)
+function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters)
 
     grid = model.grid
     arch = architecture(grid)
@@ -192,13 +195,15 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     only_active_cells = use_only_active_interior_cells(grid)
     kernel_parameters = interior_tendency_kernel_parameters(grid)
     
-    launch!(arch, grid, kernel_parameters,
-            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;
-            only_active_cells)
+    for parameters in kernel_parameters
+        launch!(arch, grid, parameters,
+                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;
+                only_active_cells)
 
-    launch!(arch, grid, kernel_parameters,
-            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, v_kernel_args;
-            only_active_cells)
+        launch!(arch, grid, parameters,
+                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, v_kernel_args;
+                only_active_cells)
+    end
 
     calculate_free_surface_tendency!(grid, model, :xy)
 

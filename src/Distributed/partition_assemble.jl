@@ -1,5 +1,10 @@
 using Oceananigans.Architectures: arch_array
 
+all_reduce(val, grid::DistributedGrid; op = +) = 
+    MPI.Allreduce(val, op, grid.architecture.communicator)
+
+all_reduce(val, grid; kwargs...) = val
+
 """
     concatenate_local_sizes(n, arch::DistributedArch) 
 

@@ -10,91 +10,41 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     # We need new values for `w`, `p` and `κ`
     recompute_auxiliaries!(model, grid, arch)
 
+    # parameters for communicating North / South / East / West side
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
+    calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
 
-    u_immersed_bc = immersed_boundary_condition(model.velocities.u)
-    v_immersed_bc = immersed_boundary_condition(model.velocities.v)
+    return nothing
+end
 
-    start_momentum_kernel_args = (model.advection.momentum,
-                                  model.coriolis,
-                                  model.closure)
-
-    end_momentum_kernel_args = (model.velocities,
-                                model.free_surface,
-                                model.tracers,
-                                model.buoyancy,
-                                model.diffusivity_fields,
-                                model.pressure.pHY′,
-                                model.auxiliary_fields,
-                                model.forcing,
-                                model.clock)
-
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-
-    for parameters in kernel_parameters
-        launch!(arch, grid, parameters,
-                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, grid, u_kernel_args)
+# tendencies need computing in the range 1 : H and N - H + 1 : N 
+function boundary_tendency_kernel_parameters(grid, arch)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, _  = halo_size(grid)
     
-        launch!(arch, grid, parameters,
-                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, grid, v_kernel_args)
+    Sx  = (Hx, Ny, Nz)
+    Sy  = (Nx, Hy, Nz)
+         
+    Oᴸ  = (0,  0,  0)
+    Oᴿx = (Nx-Hx, 0,     0)
+    Oᴿy = (0,     Ny-Hy, 0)
+
+    sizes = (Sx, Sy,  Sx,  Sy)
+    offs  = (Oᴸ, Oᴸ, Oᴿx, Oᴿy)
         
-        η_parameters = KernelParameters(worktuple(parameters)[1:2], offsets(parameters)[1:2])
-
-        calculate_free_surface_tendency!(grid, model, η_parameters)
-    end
-
-    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-        @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection = model.advection[tracer_name]
-        @inbounds c_forcing = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model, Val(tracer_name), model.closure, model.diffusivity_fields)
-
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     closure,
-                     c_immersed_bc,
-                     model.buoyancy,
-                     model.biogeochemistry,
-                     model.velocities,
-                     model.free_surface,
-                     model.tracers,
-                     top_tracer_bcs,
-                     diffusivity,
-                     model.auxiliary_fields,
-                     c_forcing,
-                     model.clock)
-
-        for parameters in kernel_parameters
-            launch!(arch, grid, parameters,
-                    tendency_kernel!, c_tendency, kernel_offsets, grid, args)
-        end
-    end
+    return boundary_parameters(sizes, offs, grid, arch)
 end
 
 function recompute_auxiliaries!(model, grid, arch)
     
-    kernel_parameters = boundary_w_kernel_parameters(grid, arch)
+    w_kernel_parameters = boundary_w_kernel_parameters(grid, arch)
+    p_kernel_parameters = boundary_p_kernel_parameters(grid, arch)
+    κ_kernel_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
-    for parameters in kernel_parameters
-        compute_w_from_continuity!(model.velocities, arch, grid; parameters)
-    end
-
-    kernel_parameters = boundary_p_kernel_parameters(grid, arch)
-
-    for parameters in kernel_parameters
-        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters)
-    end
-
-    kernel_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
-
-    for parameters in kernel_parameters
-        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; parameters)
+    for (wpar, ppar, κpar) in zip(w_kernel_parameters, p_kernel_parameters, κ_kernel_parameters)
+        compute_w_from_continuity!(model.velocities, arch, grid; parameters = wpar)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = ppar)
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κpar)
     end
 end
 
@@ -114,7 +64,7 @@ function boundary_w_kernel_parameters(grid, arch)
     sizes = ( Sx,  Sy,  Sx,  Sy)
     offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
         
-    return communicating_boundaries(arch, sizes, offs, grid)
+    return boundary_parameters(sizes, offs, grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and N + 1 : N + 1
@@ -132,7 +82,7 @@ function boundary_p_kernel_parameters(grid, arch)
     sizes = ( Sx,  Sy,  Sx,  Sy)
     offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
         
-    return communicating_boundaries(arch, sizes, offs, grid)
+    return boundary_parameters(sizes, offs, grid, arch)
 end
 
 # diffusivities need computing in the range 0 : B and N - B : N + 1
@@ -152,31 +102,13 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
     sizes = ( Sx,  Sy,  Sx,  Sy)
     offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
         
-    return communicating_boundaries(arch, sizes, offs, grid)
-end
-
-# tendencies need computing in the range 1 : H and N - H + 1 : N 
-function boundary_tendency_kernel_parameters(grid, arch)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, _  = halo_size(grid)
-    
-    Sx  = (Hx, Ny, Nz)
-    Sy  = (Nx, Hy, Nz)
-         
-    Oᴸx = (0,  0,  0)
-    Oᴸy = (0,  0,  0)
-    Oᴿx = (Nx-Hx, 0,     0)
-    Oᴿy = (0,     Ny-Hy, 0)
-
-    sizes = ( Sx,  Sy,  Sx,  Sy)
-    offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
-        
-    return communicating_boundaries(arch, sizes, offs, grid)
+    return boundary_parameters(sizes, offs, grid, arch)
 end
 
 using Oceananigans.Operators: XFlatGrid, YFlatGrid
 
-function communicating_boundaries(arch, S, O, grid) 
+# Recompute only on communicating sides 
+function boundary_parameters(S, O, grid, arch) 
     Rx, Ry, _ = arch.ranks
 
     include_x = !isa(grid, XFlatGrid) && (Rx != 1)
