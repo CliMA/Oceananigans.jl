@@ -126,8 +126,8 @@ Base.show(io::IO, a::CrossAndSelfUpwinding) =
             " KE gradient cross terms reconstruction: ", "\n",
             "    └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            "    └── smoothness δ: $(a.divergence_stencil)", "\n", 
-            "    └── smoothness δu²: $(a.δu²_stencil)", "\n",
+            "    ├── smoothness δ: $(a.divergence_stencil)", "\n", 
+            "    ├── smoothness δu²: $(a.δu²_stencil)", "\n",
             "    └── smoothness δv²: $(a.δv²_stencil)")
 
 Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) = 
