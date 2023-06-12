@@ -225,8 +225,8 @@ for bias in (:left_biased, :right_biased)
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                    $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
-                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
+                       $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
+                       $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
         end
     end
 end
