@@ -13,9 +13,11 @@ using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRecti
 using Oceananigans.Solvers
 using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Utils: SumOfArrays
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
@@ -62,6 +64,10 @@ fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, mode
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """
 prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
+
+
+# Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
+step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
