@@ -1,6 +1,6 @@
 module LagrangianParticleTracking
 
-export LagrangianParticles, update_particle_properties!
+export LagrangianParticles
 
 using Printf
 using Adapt
@@ -13,8 +13,12 @@ using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices, fractional_y_index
-using Oceananigans.Utils: prettysummary, launch!
+using Oceananigans.Fields: interpolate, datatuple, compute!, location
+using Oceananigans.Fields: fractional_indices
+using Oceananigans.TimeSteppers: AbstractLagrangianParticles
+using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
+
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 import Base: size, length, show
 
@@ -31,7 +35,7 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.y, true) * ", "),
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
-struct LagrangianParticles{P, R, T, D, Π}
+struct LagrangianParticles{P, R, T, D, Π} <: AbstractLagrangianParticles
         properties :: P
        restitution :: R
     tracked_fields :: T
@@ -75,8 +79,11 @@ be a custom particle property.
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
 """
-function LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple(),
-                             dynamics=no_dynamics, parameters=nothing)
+function LagrangianParticles(particles::StructArray;
+                             restitution = 1.0,
+                             tracked_fields::NamedTuple=NamedTuple(),
+                             dynamics = no_dynamics,
+                             parameters = nothing)
 
     for (field_name, tracked_field) in pairs(tracked_fields)
         field_name in propertynames(particles) ||
@@ -108,6 +115,20 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
-include("update_particle_properties.jl")
+include("update_lagrangian_particle_properties.jl")
+include("lagrangian_particle_advection.jl")
+
+step_lagrangian_particles!(::Nothing, model, Δt) = nothing
+
+function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
+    # Update the properties of the Lagrangian particles
+    update_lagrangian_particle_properties!(particles, model, Δt)
+    
+    # Compute dynamics
+    particles.dynamics(particles, model, Δt)
+
+    # Advect particles
+    advect_lagrangian_particles!(particles, model, Δt)
+end
 
 end # module
