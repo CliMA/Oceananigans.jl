@@ -88,7 +88,7 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
-                                    eltype(grid)(gravitational_acceleration), settings)
+                                    convert(eltype(grid), gravitational_acceleration), settings)
 end
 
 """
