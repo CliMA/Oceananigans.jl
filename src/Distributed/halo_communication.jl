@@ -4,16 +4,7 @@ using CUDA: synchronize
 using CUDA: cuStreamGetFlags, stream, priority_range, CUstream_flags_enum, CuStream, stream!
 
 import Oceananigans.Utils: sync_device!
-using Oceananigans.Fields: fill_west_and_east_send_buffers!,
-                           fill_south_and_north_send_buffers!,
-                           fill_west_send_buffers!,
-                           fill_east_send_buffers!,
-                           fill_south_send_buffers!,
-                           fill_north_send_buffers!,
-                           fill_southwest_send_buffers!,
-                           fill_southeast_send_buffers!,
-                           fill_northwest_send_buffers!,
-                           fill_northeast_send_buffers!,
+using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
                            reduced_dimensions, 
                            instantiated_location
@@ -125,6 +116,10 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch       = architecture(grid)
     halo_tuple = permute_boundary_conditions(bcs)
     
+    # This has to be synchronized!!
+    fill_send_buffers!(c, buffers, grid)
+    sync_device!(child_architecture(arch))
+
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
@@ -149,9 +144,6 @@ for (side, dir) in zip([:southwest, :southeast, :northwest, :northeast], [1, 2, 
             local_rank = arch.local_rank
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, corner, buffers)
-            $fill_side_send_buffers!(c, buffers, grid)
-            sync_device!(child_arch)
-
             send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, corner, buffers)
             
             return [send_req, recv_req]
@@ -260,11 +252,6 @@ for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
             recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
-            # This has to be synchronized!!
-            $fill_all_send_buffers!(c, buffers, grid)
-
-            sync_device!(child_architecture(arch))
-
             send_req1 = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
@@ -280,9 +267,6 @@ for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
 
             $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            $fill_side_send_buffers!(c, buffers, grid)
-
-            sync_device!(child_arch)
 
             send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             
@@ -298,9 +282,6 @@ for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
             recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-            $fill_opposite_side_send_buffers!(c, buffers, grid)
-
-            sync_device!(child_arch)
 
             send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 

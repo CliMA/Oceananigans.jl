@@ -101,12 +101,31 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
 fills `buffers.send` from OffsetArray `c` preparing for message passing. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
+function fill_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+     _fill_west_send_buffer!(parent(c), buffers.west, Hx, Hy, Nx, Ny)
+     _fill_east_send_buffer!(parent(c), buffers.east, Hx, Hy, Nx, Ny)
+    _fill_south_send_buffer!(parent(c), buffers.south, Hx, Hy, Nx, Ny)
+    _fill_north_send_buffer!(parent(c), buffers.north, Hx, Hy, Nx, Ny)
+
+    _fill_southwest_send_buffer!(parent(c), buffers.southwest, Hx, Hy, Nx, Ny)
+    _fill_southeast_send_buffer!(parent(c), buffers.southwest, Hx, Hy, Nx, Ny)
+    _fill_northwest_send_buffer!(parent(c), buffers.southwest, Hx, Hy, Nx, Ny)
+    _fill_northeast_send_buffer!(parent(c), buffers.southwest, Hx, Hy, Nx, Ny)
+
+    return nothing
+end
+
 function fill_west_and_east_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
     _fill_west_send_buffer!(parent(c), buffers.west, Hx, Hy, Nx, Ny)
     _fill_east_send_buffer!(parent(c), buffers.east, Hx, Hy, Nx, Ny)
+
+    return nothing
 end
 
 function fill_south_and_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
@@ -115,6 +134,8 @@ function fill_south_and_north_send_buffers!(c::OffsetArray, buffers::FieldBounda
 
     _fill_south_send_buffer!(parent(c), buffers.south, Hx, Hy, Nx, Ny)
     _fill_north_send_buffer!(parent(c), buffers.north, Hx, Hy, Nx, Ny)
+
+    return nothing
 end
 
 fill_west_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
