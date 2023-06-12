@@ -73,15 +73,15 @@ end
 symmetric coefficients are for centered reconstruction (dispersive, even order), 
 left and right are for upwind biased (diffusive, odd order)
 examples:
-julia> using Oceananigans.Advection: coeff2_symm, coeff3_left, coeff3_right, coeff4_symm, coeff5_left
+julia> using Oceananigans.Advection: coeff2_symmetric, coeff3_left, coeff3_right, coeff4_symmetric, coeff5_left
 
-julia> coeff2_symm
+julia> coeff2_symmetric
 (0.5, 0.5)
 
 julia> coeff3_left, coeff3_right
 ((0.33333333333333337, 0.8333333333333334, -0.16666666666666666), (-0.16666666666666669, 0.8333333333333333, 0.3333333333333333))
 
-julia> coeff4_symm
+julia> coeff4_symmetric
 (-0.08333333333333333, 0.5833333333333333, 0.5833333333333333, -0.08333333333333333)
 
 julia> coeff5_left
@@ -95,7 +95,7 @@ for buffer in advection_buffers
     order_bias = 2buffer - 1
     order_symm = 2buffer
 
-    coeff_symm  = Symbol(:coeff, order_symm, :_symm)
+    coeff_symm  = Symbol(:coeff, order_symm, :_symmetric)
     coeff_left  = Symbol(:coeff, order_bias, :_left)
     coeff_right = Symbol(:coeff, order_bias, :_right)
     @eval begin
@@ -128,11 +128,11 @@ julia> calc_reconstruction_stencil(1, :right, :x)
 julia> calc_reconstruction_stencil(1, :left, :x)
 :(+(FT(coeff1_left[1]) * ψ[i + -1, j, k]))
 
-julia> calc_reconstruction_stencil(1, :symm, :x)
-:(FT(coeff2_symm[2]) * ψ[i + -1, j, k] + FT(coeff2_symm[1]) * ψ[i + 0, j, k])
+julia> calc_reconstruction_stencil(1, :symmetric, :x)
+:(FT(coeff2_symmetric[2]) * ψ[i + -1, j, k] + FT(coeff2_symmetric[1]) * ψ[i + 0, j, k])
 
-julia> calc_reconstruction_stencil(2, :symm, :x)
-:(FT(coeff4_symm[4]) * ψ[i + -2, j, k] + FT(coeff4_symm[3]) * ψ[i + -1, j, k] + FT(coeff4_symm[2]) * ψ[i + 0, j, k] + FT(coeff4_symm[1]) * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(2, :symetric, :x)
+:(FT(coeff4_symmetric[4]) * ψ[i + -2, j, k] + FT(coeff4_symmetric[3]) * ψ[i + -1, j, k] + FT(coeff4_symmetric[2]) * ψ[i + 0, j, k] + FT(coeff4_symmetric[1]) * ψ[i + 1, j, k])
 
 julia> calc_reconstruction_stencil(3, :left, :x)
 :(FT(coeff5_left[5]) * ψ[i + -3, j, k] + FT(coeff5_left[4]) * ψ[i + -2, j, k] + FT(coeff5_left[3]) * ψ[i + -1, j, k] + FT(coeff5_left[2]) * ψ[i + 0, j, k] + FT(coeff5_left[1]) * ψ[i + 1, j, k])
@@ -140,8 +140,8 @@ julia> calc_reconstruction_stencil(3, :left, :x)
 """
 @inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
     N = buffer * 2
-    order = shift == :symm ? N : N - 1
-    if shift != :symm
+    order = shift == :symmetric ? N : N - 1
+    if shift != :symmetric
         N = N .- 1
     end
     rng = 1:N
@@ -175,8 +175,8 @@ end
 
 @inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false) 
     N = buffer * 2
-    order = shift == :symm ? N : N - 1
-    if shift != :symm
+    order = shift == :symmetric ? N : N - 1
+    if shift != :symmetric
         N = N .- 1
     end
     rng = 1:N
