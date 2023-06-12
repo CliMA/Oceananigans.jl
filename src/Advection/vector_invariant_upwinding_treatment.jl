@@ -109,9 +109,9 @@ Base.show(io::IO, a::OnlySelfUpwinding) =
             " KE gradient and Divergence flux cross terms reconstruction: ", "\n",
             "    └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            "    └── smoothness δU: $(a.δU_stencil)", "\n", 
-            "    └── smoothness δV: $(a.δV_stencil)", "\n",
-            "    └── smoothness δu²: $(a.δu²_stencil)", "\n",
+            "    ├── smoothness δU: $(a.δU_stencil)", "\n", 
+            "    ├── smoothness δV: $(a.δV_stencil)", "\n",
+            "    ├── smoothness δu²: $(a.δu²_stencil)", "\n",
             "    └── smoothness δv²: $(a.δv²_stencil)")
 
 Adapt.adapt_structure(to, scheme::OnlySelfUpwinding) = 
