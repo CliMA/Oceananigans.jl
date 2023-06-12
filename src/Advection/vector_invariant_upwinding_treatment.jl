@@ -139,8 +139,8 @@ Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) =
 
 Base.show(io::IO, a::VelocityUpwinding) =
     print(io, summary(a), " \n",
-            " KE gradient and Divergence flux cross terms reconstruction: ", "\n",
-            "    └── $(summary(a.cross_scheme))")
+            "KE gradient and Divergence flux cross terms reconstruction: ", "\n",
+            "└── $(summary(a.cross_scheme))")
 
 Adapt.adapt_structure(to, scheme::VelocityUpwinding) = 
     VelocityUpwinding(Adapt.adapt(to, scheme.cross_scheme))
