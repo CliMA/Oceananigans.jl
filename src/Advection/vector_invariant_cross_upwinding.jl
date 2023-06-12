@@ -3,7 +3,7 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
 #####
 ##### Cross upwinding results in the largest kinetic energy content,
 ##### but because of presence of mixed upwinding leading to cross-double derivatives
-##### it is slightly unstable at larger orders. 
+##### it is unstable at larger orders. 
 #####
 
 ##### 
