@@ -10,7 +10,7 @@ Nranks = MPI.Comm_size(comm)
 
 topology = (Periodic, Periodic, Flat)
 arch = DistributedArch(CPU(); topology, ranks=(1, Nranks, 1))
-grid = RectilinearGrid(arch; topology, size=(16, 16), halo=(3, 3), extent=(2π, 2π))
+grid = RectilinearGrid(arch; topology, size=(16 ÷ Nranks, 16), halo=(3, 3), extent=(2π, 2π))
 
 model = NonhydrostaticModel(; grid)
 
