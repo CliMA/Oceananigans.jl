@@ -61,9 +61,7 @@ end
 
 using_buffered_communication(arch) = true
 
-const PassingBC = Union{MCBC, DCBC}
-
-function create_buffer_x(arch, grid, data, H, ::PassingBC) 
+function create_buffer_x(arch, grid, data, H, ::DCBC) 
     if !using_buffered_communication(arch)
         return nothing
     end
@@ -71,13 +69,21 @@ function create_buffer_x(arch, grid, data, H, ::PassingBC)
             recv = arch_array(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))    
 end
 
-function create_buffer_y(arch, grid, data, H, ::PassingBC)
+function create_buffer_y(arch, grid, data, H, ::DCBC)
     if !using_buffered_communication(arch)
         return nothing
     end
     return (send = arch_array(arch, zeros(eltype(data), size(grid, 1), H, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), size(grid, 1), H, size(parent(data), 3))))
 end
+
+create_buffer_x(arch, grid, data, H, ::MCBC) = 
+           (send = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
+            recv = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+
+create_buffer_y(arch, grid, data, H, ::MCBC) = 
+           (send = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
+            recv = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 

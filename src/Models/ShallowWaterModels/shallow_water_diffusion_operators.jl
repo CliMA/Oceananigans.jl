@@ -23,7 +23,7 @@ import Oceananigans.TurbulenceClosures:
 struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation, N}
     ν :: V
     ξ :: X
-    ShallowWaterScalarDiffusivity{N}(ν::V, ξ::X) where {N, V, X} = new{N, V, X}(ν, ξ)
+    ShallowWaterScalarDiffusivity{N}(ν::V, ξ::X) where {N, V, X} = new{V, X, N}(ν, ξ)
 end
 
 """

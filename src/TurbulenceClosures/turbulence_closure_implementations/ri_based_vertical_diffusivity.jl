@@ -139,7 +139,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κᶜ, κᵘ, Ri)
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = KernelParameters(grid, closure))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = KernelParameters(model.grid, closure))
     arch = model.architecture
     grid = model.grid
     clock = model.clock
