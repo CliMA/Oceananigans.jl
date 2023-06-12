@@ -55,26 +55,30 @@ opposite_side = Dict(
 #   digits 5-6: the "from" rank
 #   digits 7-8: the "to" rank
 
-RANK_DIGITS = 2
-ID_DIGITS   = 1
+ID_DIGITS   = 2
+
+@inline loc_id(::Face)    = 0
+@inline loc_id(::Center)  = 1
+@inline loc_id(::Nothing) = 2
+@inline loc_id(LX, LY, LZ) = loc_id(LZ)
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
-            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
-            from_digits = string(local_rank, pad=RANK_DIGITS)
-            to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
-            return parse(Int, field_id * from_digits * to_digits)
+        function $send_tag_fn_name(arch, location)
+            field_id   = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            loc_digit  = string(loc_id(location...)) 
+            side_digit = string(side_id[Symbol($side_str)])
+            return parse(Int, field_id * loc_digit * side_digit)
         end
 
-        function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
-            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
-            from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
-            to_digits   = string(local_rank, pad=RANK_DIGITS)
-            return parse(Int, field_id * from_digits * to_digits)
+        function $recv_tag_fn_name(arch, location)
+            field_id   = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            loc_digit  = string(loc_id(location...)) 
+            side_digit = string(side_id[opposite_side[Symbol($side_str)]])
+            return parse(Int, field_id * loc_digit * side)
         end
     end
 end
@@ -116,7 +120,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
     
     fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-
+    
     # Switch to the next field to send
     arch.mpi_tag[1] += 1
 
@@ -297,7 +301,7 @@ for side in sides
     @eval begin
         function $send_side_halo(c, grid, arch, side_location, location, local_rank, rank_to_send_to, buffers)
             send_buffer = $get_side_send_buffer(c, grid, side_location, buffers, arch)
-            send_tag = $side_send_tag(arch, location, local_rank, rank_to_send_to)
+            send_tag = $side_send_tag(arch, location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
@@ -325,7 +329,7 @@ for side in sides
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, arch, side_location, location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, side_location, buffers, arch)
-            recv_tag = $side_recv_tag(arch, location, local_rank, rank_to_recv_from)
+            recv_tag = $side_recv_tag(arch, location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
