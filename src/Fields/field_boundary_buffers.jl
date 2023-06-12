@@ -101,7 +101,7 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
 fills `buffers.send` from OffsetArray `c` preparing for message passing. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
-function fill_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
