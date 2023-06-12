@@ -85,7 +85,7 @@ function boundary_p_kernel_parameters(grid, arch)
     return boundary_parameters(sizes, offs, grid, arch)
 end
 
-# diffusivities need computing in the range 0 : B and N - B : N + 1
+# diffusivities need computing in the range 0 : B and N - B + 1 : N + 1
 function boundary_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
@@ -115,11 +115,11 @@ function boundary_parameters(S, O, grid, arch)
     include_y = !isa(grid, YFlatGrid) && (Ry != 1)
 
     if include_x && include_y
-        return tuple(KernelParameters(S[i], O[i]) for i in 1:4)
+        return Tuple(KernelParameters(S[i], O[i]) for i in 1:4)
     elseif include_x && !(include_y)
-        return tuple(KernelParameters(S[i], O[i]) for i in 1:2:3)
+        return Tuple(KernelParameters(S[i], O[i]) for i in 1:2:3)
     elseif !(include_x) && include_y
-        return tuple(KernelParameters(S[i], O[i]) for i in 2:2:4)
+        return Tuple(KernelParameters(S[i], O[i]) for i in 2:2:4)
     else
         return ()
     end
