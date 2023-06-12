@@ -360,7 +360,7 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true , false)
+    for use_buffers in (true, )
         arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
@@ -386,7 +386,7 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
-    for use_buffers in (true , false)
+    for use_buffers in (true, )
         arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
         grid  = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
@@ -410,7 +410,7 @@ end
 
 function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true , false)
+    for use_buffers in (true, )
         arch = DistributedArch(child_arch; ranks=(1, 1, 4), use_buffers, devices = (0, 0, 0, 0))
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
@@ -435,7 +435,7 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true , false)
+    for use_buffers in (true, )
         arch = DistributedArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
         grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)

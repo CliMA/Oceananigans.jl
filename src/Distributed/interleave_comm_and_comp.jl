@@ -9,7 +9,7 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
         complete_halo_communication!(field)
     end
 
-    # HERE we have to put fill_eventual_halo_corners
+    # Recompute tendencies near the boundary halos
     compute_boundary_tendencies!(model)
 
     return nothing

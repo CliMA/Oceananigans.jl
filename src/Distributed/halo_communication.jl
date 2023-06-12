@@ -58,29 +58,20 @@ opposite_side = Dict(
 RANK_DIGITS = 2
 ID_DIGITS   = 1
 
-# REMEMBER!!! This won't work for tracers!!! (It assumes you are passing maximum 4 at a time)
-@inline loc_id(::Nothing, tag) = tag + 5
-@inline loc_id(::Face,    tag) = tag
-@inline loc_id(::Center,  tag) = tag
-@inline location_id(X, Y, Z, tag) = loc_id(Z, tag)
-
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        # REMEMBER, we need to reset the tag not more than once every four passes!!
         function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
-            side_digit  = side_id[Symbol($side_str)]
-            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
             return parse(Int, field_id * from_digits * to_digits)
         end
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
-            side_digit  = side_id[opposite_side[Symbol($side_str)]]
-            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             return parse(Int, field_id * from_digits * to_digits)
