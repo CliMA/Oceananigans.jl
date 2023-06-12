@@ -116,6 +116,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
     
     fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+
+    # Switch to the next field to send
     arch.mpi_tag[1] += 1
 
     return nothing
