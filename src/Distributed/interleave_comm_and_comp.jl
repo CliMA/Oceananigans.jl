@@ -29,13 +29,13 @@ function interior_tendency_kernel_parameters(grid, arch)
 
     Nx, Ny, Nz = size(grid)
     
-    Sx = Rx == 1 ? 0 : Hx
-    Sy = Ry == 1 ? 0 : Hy
+    Sx = Rx == 1 ? Nx : Nx - 2Hx
+    Sy = Ry == 1 ? Ny : Nx - 2Hy
 
     Ox = Rx == 1 ? 0 : Hx
     Oy = Ry == 1 ? 0 : Hy
      
-    return KernelParameters((Nx-2Ax, Ny-2Ay, Nz), (Ax, Ay, 0))
+    return KernelParameters((Sx, Sy, Nz), (Ox, Oy, 0))
 end
 
 """

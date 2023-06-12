@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: device
+using Oceananigans.Grids: halo_size, topology
 using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
-using Oceananigans.Grids: halo_size
+using Oceananigans.Operators: XFlatGrid, YFlatGrid
 
 """
     compute_w_from_continuity!(model)
@@ -13,7 +14,7 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
-compute_w_from_continuity!(velocities, arch, grid; parameters = KernelParameters(w_kernel_parameters(grid))) = 
+compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) = 
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
 @kernel function _compute_w_from_continuity!(U, grid)
@@ -31,14 +32,9 @@ end
 
 # extend w kernel to compute also the boundaries
 # If Flat, do not calculate on halos!
-
-using Oceananigans.Operators: XFlatGrid, YFlatGrid
-using Oceananigans.Grids: topology
-
 @inline function w_kernel_parameters(grid) 
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
-
     Tx, Ty, _ = topology(grid)
 
     Sx = Tx == Flat ? Nx : Nx + 2Hx - 2 
@@ -47,5 +43,5 @@ using Oceananigans.Grids: topology
     Ox = Tx == Flat ? 0 : - Hx + 1 
     Oy = Ty == Flat ? 0 : - Hy + 1 
 
-    return KernelParameters((Ax, Ay), (Ox, Oy))
+    return KernelParameters((Sx, Sy), (Ox, Oy))
 end

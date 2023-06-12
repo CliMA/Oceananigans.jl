@@ -1,5 +1,7 @@
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
 using Oceananigans.ImmersedBoundaries: PartialCellBottom, ImmersedBoundaryGrid
+using Oceananigans.Grids: topology
+using Oceananigans.Operators: XFlatGrid, YFlatGrid
 
 """
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating
@@ -25,18 +27,15 @@ update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.p
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = KernelParameters(p_kernel_size(grid), p_kernel_offsets(grid))) =
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = KernelParameters(p_kernel_size(grid), p_kernel_offsets(grid))) =  
+update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =  
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
-
-using Oceananigans.Grids: topology
 
 # extend p kernel to compute also the boundaries
 @inline function p_kernel_parameters(grid) 
     Nx, Ny, _ = size(grid)
-
     TX, TY, _ = topology(grid)
 
     Sx = TX == Flat ? Nx : Nx + 2 
