@@ -10,7 +10,7 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 ##### Velocity Upwinding of Divergence flux
 #####
 
-@inline function Auᶜᶜᶜ(i, j, k, grid, scheme, u) 
+@inline function Ax_uᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
 
     Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
@@ -19,7 +19,7 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
     return ifelse(û > 0, Uᴸ, Uᴿ)
 end
 
-@inline function Avᶜᶜᶜ(i, j, k, grid, scheme, v) 
+@inline function Ay_vᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
     Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
@@ -28,17 +28,17 @@ end
     return ifelse(v̂ > 0, Vᴸ, Vᴿ)
 end
 
-@inline Auᶠᶠᶜ(i, j, k, grid, scheme, u) = 
+@inline Ax_uᶠᶠᶜ(i, j, k, grid, scheme, u) = 
      _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, Ax_qᶠᶜᶜ, u)
 
-@inline Avᶠᶠᶜ(i, j, k, grid, scheme, v) = 
+@inline Ay_vᶠᶠᶜ(i, j, k, grid, scheme, v) = 
      _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, Ay_qᶜᶠᶜ, v)
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds û = u[i, j, k] 
     
-    δu = δxᶠᶜᶜ(i, j, k, grid, Auᶜᶜᶜ, scheme, u) 
-    δv = δyᶠᶜᶜ(i, j, k, grid, Avᶠᶠᶜ, scheme, v)
+    δu = δxᶠᶜᶜ(i, j, k, grid, Ax_uᶜᶜᶜ, scheme, u) 
+    δv = δyᶠᶜᶜ(i, j, k, grid, Ay_vᶠᶠᶜ, scheme, v)
 
     return û * (δu + δv)
 end
@@ -46,8 +46,8 @@ end
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds v̂ = v[i, j, k] 
 
-    δu = δxᶜᵃᵃ(i, j, k, grid, Auᶠᶠᶜ, scheme, u) 
-    δv = δyᵃᶠᵃ(i, j, k, grid, Avᶜᶜᶜ, scheme, v)
+    δu = δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶠᶜ, scheme, u) 
+    δv = δyᵃᶠᵃ(i, j, k, grid, Ay_vᶜᶜᶜ, scheme, v)
 
     return v̂ * (δu + δv)
 end
