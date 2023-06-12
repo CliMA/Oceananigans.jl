@@ -26,11 +26,11 @@ function boundary_tendency_kernel_parameters(grid, arch)
     Sy  = (Nx, Hy, Nz)
          
     Oᴸ  = (0,  0,  0)
-    Oᴿx = (Nx-Hx, 0,     0)
-    Oᴿy = (0,     Ny-Hy, 0)
+    Oxᴿ = (Nx-Hx, 0,     0)
+    Oyᴿ = (0,     Ny-Hy, 0)
 
-    sizes = (Sx, Sy,  Sx,  Sy)
-    offs  = (Oᴸ, Oᴸ, Oᴿx, Oᴿy)
+    sizes = (Sx, Sy, Sx,  Sy)
+    offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
@@ -56,13 +56,13 @@ function boundary_w_kernel_parameters(grid, arch)
     Sx  = (Hx, Ny)
     Sy  = (Nx, Hy)
              
-    Oᴸx = (-Hx+1, 0)
-    Oᴸy = (0, -Hy+1)
-    Oᴿx = (Nx-1,  0)
-    Oᴿy = (0,  Ny-1)
+    Oxᴸ = (-Hx+1, 0)
+    Oyᴸ = (0, -Hy+1)
+    Oxᴿ = (Nx-1,  0)
+    Oyᴿ = (0,  Ny-1)
 
-    sizes = ( Sx,  Sy,  Sx,  Sy)
-    offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
+    sizes = (Sx,  Sy,  Sx,  Sy)
+    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
@@ -74,13 +74,13 @@ function boundary_p_kernel_parameters(grid, arch)
     Sx  = (1, Ny)
     Sy  = (Nx, 1)
              
-    Oᴸx = (-1, 0)
-    Oᴸy = (0, -1)
-    Oᴿx = (Nx, 0)
-    Oᴿy = (0, Ny)
+    Oxᴸ = (-1, 0)
+    Oyᴸ = (0, -1)
+    Oxᴿ = (Nx, 0)
+    Oyᴿ = (0, Ny)
 
-    sizes = ( Sx,  Sy,  Sx,  Sy)
-    offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
+    sizes = (Sx,  Sy,  Sx,  Sy)
+    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
@@ -94,13 +94,13 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
     Sx  = (B+1, Ny, Nz)
     Sy  = (Nx, B+1, Nz)
         
-    Oᴸx = (-1, 0, 0)
-    Oᴸy = (0, -1, 0)
-    Oᴿx = (Nx-B,  0, 0)
-    Oᴿy = (0,  Ny-B, 0)
+    Oxᴸ = (-1, 0, 0)
+    Oyᴸ = (0, -1, 0)
+    Oxᴿ = (Nx-B,  0, 0)
+    Oyᴿ = (0,  Ny-B, 0)
 
-    sizes = ( Sx,  Sy,  Sx,  Sy)
-    offs  = (Oᴸx, Oᴸy, Oᴿx, Oᴿy)
+    sizes = (Sx,  Sy,  Sx,  Sy)
+    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
