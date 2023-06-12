@@ -18,32 +18,24 @@ end
 complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributedArch) = nothing
 compute_boundary_tendencies!(model) = nothing
 
-interior_tendency_kernel_size(grid::DistributedGrid)    = interior_tendency_kernel_size(grid,    architecture(grid))
-interior_tendency_kernel_offsets(grid::DistributedGrid) = interior_tendency_kernel_offsets(grid, architecture(grid))
+interior_tendency_kernel_parameters(grid::DistributedGrid) = 
+            interior_tendency_kernel_parameters(grid, architecture(grid))
 
-interior_tendency_kernel_size(grid, ::BlockingDistributedArch) = :xyz
-interior_tendency_kernel_offsets(grid, ::BlockingDistributedArch) = (0, 0, 0)
+interior_tendency_kernel_parameters(grid, ::BlockingDistributedArch) = :xyz
 
-function interior_tendency_kernel_size(grid, arch)
+function interior_tendency_kernel_parameters(grid, arch)
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
 
     Nx, Ny, Nz = size(grid)
     
-    Ax = Rx == 1 ? 0 : Hx
-    Ay = Ry == 1 ? 0 : Hy
+    Sx = Rx == 1 ? 0 : Hx
+    Sy = Ry == 1 ? 0 : Hy
 
-    return (Nx-2Ax, Ny-2Ay, Nz)
-end
-
-function interior_tendency_kernel_offsets(grid, arch)
-    Rx, Ry, _ = arch.ranks
-    Hx, Hy, _ = halo_size(grid)
-    
-    Ax = Rx == 1 ? 0 : Hx
-    Ay = Ry == 1 ? 0 : Hy
-
-    return (Ax, Ay, 0)
+    Ox = Rx == 1 ? 0 : Hx
+    Oy = Ry == 1 ? 0 : Hy
+     
+    return KernelParameters((Nx-2Ax, Ny-2Ay, Nz), (Ax, Ay, 0))
 end
 
 """

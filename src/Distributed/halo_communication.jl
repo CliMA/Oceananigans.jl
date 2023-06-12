@@ -193,11 +193,6 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
     return nothing
 end
 
-@inline mpi_communication_side(::Val{fill_southwest_halo!}) = :southwest
-@inline mpi_communication_side(::Val{fill_southeast_halo!}) = :southeast
-@inline mpi_communication_side(::Val{fill_northwest_halo!}) = :northwest
-@inline mpi_communication_side(::Val{fill_northeast_halo!}) = :northeast
-
 @inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 

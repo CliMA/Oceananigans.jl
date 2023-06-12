@@ -34,24 +34,16 @@ update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters =
 using Oceananigans.Grids: topology
 
 # extend p kernel to compute also the boundaries
-@inline function p_kernel_size(grid) 
+@inline function p_kernel_parameters(grid) 
     Nx, Ny, _ = size(grid)
 
     TX, TY, _ = topology(grid)
 
-    Ax = TX == Flat ? Nx : Nx + 2 
-    Ay = TY == Flat ? Ny : Ny + 2 
+    Sx = TX == Flat ? Nx : Nx + 2 
+    Sy = TY == Flat ? Ny : Ny + 2 
 
-    return (Ax, Ay)
+    Ox = TX == Flat ? 0 : - 1 
+    Oy = TY == Flat ? 0 : - 1 
+
+    return KernelParameters((Sx, Sy), (Ox, Oy))
 end
-
-@inline function p_kernel_offsets(grid)
-    TX, TY, _ = topology(grid)
-
-    Ax = TX == Flat ? 0 : - 1 
-    Ay = TY == Flat ? 0 : - 1 
-
-    return (Ax, Ay)
-end
-        
-        

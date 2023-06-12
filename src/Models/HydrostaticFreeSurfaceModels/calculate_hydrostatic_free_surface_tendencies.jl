@@ -11,7 +11,7 @@ import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 import Oceananigans.Distributed: complete_communication_and_compute_boundary!
-import Oceananigans.Distributed: interior_tendency_kernel_size, interior_tendency_kernel_offsets
+import Oceananigans.Distributed: interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
 
@@ -50,6 +50,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 end
 
 complete_communication_and_compute_boundary!(model, grid, arch) = nothing
+interior_tendency_kernel_parameters(grid) = :xyz
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
@@ -95,11 +96,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
     only_active_cells = use_only_active_interior_cells(grid)
-
-    kernel_size = interior_tendency_kernel_size(grid)
-    kernel_offsets = interior_tendency_kernel_offsets(grid)
-
-    kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
+    kernel_parameters = interior_tendency_kernel_parameters(grid)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         c_tendency    = model.timestepper.Gⁿ[tracer_name]
@@ -165,9 +162,6 @@ function calculate_free_surface_tendency!(grid, model, kernel_parameters)
 
     return nothing
 end
-    
-interior_tendency_kernel_size(grid)    = :xyz
-interior_tendency_kernel_offsets(grid) = (0, 0, 0)
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities)
@@ -196,12 +190,8 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
     
     only_active_cells = use_only_active_interior_cells(grid)
-
-    kernel_size = interior_tendency_kernel_size(grid)
-    kernel_offsets = interior_tendency_kernel_offsets(grid)
+    kernel_parameters = interior_tendency_kernel_parameters(grid)
     
-    kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
-
     launch!(arch, grid, kernel_parameters,
             calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;
             only_active_cells)
@@ -210,7 +200,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
             calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, v_kernel_args;
             only_active_cells)
 
-    calculate_free_surface_tendency!(grid, model, KernelParameters(:xy, (0, 0)))
+    calculate_free_surface_tendency!(grid, model, :xy)
 
     return nothing
 end
