@@ -193,7 +193,6 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_pa
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
     
     only_active_cells = use_only_active_interior_cells(grid)
-    kernel_parameters = interior_tendency_kernel_parameters(grid)
     
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
