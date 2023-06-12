@@ -91,13 +91,13 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 
 ```jldoctest ScalarDiffusivity
-julia> @inline function κ(i, j, k, grid, p)
+julia> @inline function another_κ(i, j, k, grid, p)
            z = znode(i, j, k, grid)
            return 2000 * exp(z / p.depth_scale)
        end
-κ (generic function with 1 method)
+another_κ (generic function with 1 method)
 
-julia> ScalarDiffusivity(κ = κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
+julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(κ)})
 ```
 """
