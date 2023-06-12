@@ -9,8 +9,8 @@ import Base
 ##### General halo filling functions
 #####
 
-fill_halo_regions!(::Nothing, args...) = nothing
-fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...) = nothing
+fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
+fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...; kwargs...) = nothing
 
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)

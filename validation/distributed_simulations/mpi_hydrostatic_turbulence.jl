@@ -16,7 +16,7 @@ ranks = (2, 2, 1)
 topo  = (Periodic, Periodic, Bounded)
 arch  = DistributedArch(CPU(), ranks=ranks, topology=topo, use_buffers=true)
 
-grid  = RectilinearGrid(arch, topology=topo, size=(28, 28, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
+grid  = RectilinearGrid(arch, topology=topo, size=(28 ÷ 4, 28, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
 
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
