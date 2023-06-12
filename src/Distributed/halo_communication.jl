@@ -78,7 +78,7 @@ for side in sides
             field_id   = string(arch.mpi_tag[1], pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...)) 
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, field_id * loc_digit * side)
+            return parse(Int, field_id * loc_digit * side_digit)
         end
     end
 end
