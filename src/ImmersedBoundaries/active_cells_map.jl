@@ -83,6 +83,9 @@ function active_cells_map_interior(ibg)
     return active_indices
 end
 
+# Cannot `findall` on very large grids, so we split the computation in levels.
+# This makes the computation a little heavier but avoids OOM errors (this computation
+# is performed only once on setup)
 function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
     
     for k in 1:size(ibg, 3)

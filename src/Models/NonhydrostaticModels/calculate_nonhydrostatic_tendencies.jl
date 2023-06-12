@@ -113,7 +113,6 @@ function calculate_interior_tendency_contributions!(model)
                      end_tracer_kernel_args...,
                      forcing, clock)
 
-
         launch!(arch, grid, :xyz, calculate_Gc!, 
                 c_tendency, grid, args;
                 only_active_cells)
