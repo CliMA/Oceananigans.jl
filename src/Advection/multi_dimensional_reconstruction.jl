@@ -7,10 +7,11 @@
 
 const two_32 = Int32(2)
 
-## Optimal weights for stencils 1, 2 and 3
-## Stencil 2 requires two different reconstructions to avoid
-## negative weno weights that would arise from a purely centered
-## reconstruction
+# γ are optimal WENO weights for stencils 1 (upwind), 2 (centered) and 3 (downwind)
+# 3-points stencils for optimal WENO reconstruction
+# Subscripts 0, 1, and 2 refer to the points in the 3-point stencil.
+# Stencil 2 (the centered stencil) requires two different weno weighting procedures to avoid
+# negative weights that would arise from a purely centered reconstruction
 
 const γ₀¹  = (1008 + 71 * sqrt(15)) / 5240
 const γ₁¹  =  408 / 655
@@ -31,8 +32,9 @@ const γ₀²⁻ =   9.0 / 40 / σ⁻
 const γ₁²⁻ =  49.0 / 40 / σ⁻
 const γ₂²⁻ =   9.0 / 40 / σ⁻
 
-## Reconstruction weights for stencils 1, 2 and 3 
-## (composed of points 0, 1, 2 each)
+# coeffiecients `a` are the reconstruction weights for stencils 1, 2 and 3 
+# (composed of points 0, 1, 2 each) where vʳ = ∑aⱼʳvⱼ
+
 const a₀¹ = ( 2 - 3*sqrt(15), -4 + 12*sqrt(15), 62 - 9 * sqrt(15)) ./ 60
 const a₁¹ = ( 2 + 3*sqrt(15),               56,  2 - 3 * sqrt(15)) ./ 60
 const a₂¹ = (62 + 9*sqrt(15), -4 - 12*sqrt(15),  2 + 3 * sqrt(15)) ./ 60
