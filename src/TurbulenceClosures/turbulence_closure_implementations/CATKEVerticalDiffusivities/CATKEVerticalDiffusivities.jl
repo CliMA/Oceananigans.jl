@@ -252,7 +252,7 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; 
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, offs, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     i, j, k = @index(Global, NTuple)
 
