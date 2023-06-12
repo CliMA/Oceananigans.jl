@@ -1,9 +1,10 @@
 const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
 
 #####
-##### Cross upwinding results in the largest kinetic energy content,
-##### but because of presence of mixed upwinding leading to cross-double derivatives
-##### it is unstable at larger orders. 
+##### Cross upwinding results in the largest kinetic energy content, 
+##### but because of presence of mixed upwinding the truncation error of 
+##### the numerical discretization is not always negative definite at 
+##### leading (diffusive) order. This scheme might be unstable at larger orders. 
 #####
 
 ##### 
