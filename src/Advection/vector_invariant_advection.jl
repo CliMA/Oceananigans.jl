@@ -11,11 +11,11 @@ struct VectorInvariant{N, FT, Z, ZS, V, D, M} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme     :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil    :: ZS # stencil used for assessing vorticity smoothness
     vertical_scheme      :: V  # stencil used for assessing divergence smoothness
-    upwinding_treatment  :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
+    upwinding  :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
 
     function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                                       upwinding_treatment::D) where {N, FT, Z, ZS, V, D, M}
-        return new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment)
+                                       upwinding::D) where {N, FT, Z, ZS, V, D, M}
+        return new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
     end
 end
 
@@ -36,7 +36,7 @@ Keyword arguments
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil`)
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. defaults to `EnergyConservingScheme`)
-- `upwinding_treatment`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
+- `upwinding`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `CrossAndSelfUpwinding`, `OnlySelfUpwinding` and `VelocityUpwinding` (defaults to `OnlySelfUpwinding`)
 - `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
                                 The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
@@ -78,10 +78,10 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
-                           upwinding_treatment  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
+                           upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
                            multi_dimensional_stencil = false) where {N, FT}
         
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding_treatment)
+    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
 end
 
 const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
@@ -102,7 +102,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
               " Vertical advection / Divergence flux scheme: ", "\n",
               "    └── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
-              "\n      └── upwinding treatment: $(a.upwinding_treatment)" : "")")
+              "\n      └── upwinding treatment: $(a.upwinding)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
@@ -112,7 +112,7 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where 
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
-                                  Adapt.adapt(to, scheme.upwinding_treatment))
+                                  Adapt.adapt(to, scheme.upwinding))
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)

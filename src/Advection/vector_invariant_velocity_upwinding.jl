@@ -29,10 +29,10 @@ end
 end
 
 @inline Ax_uᶠᶠᶜ(i, j, k, grid, scheme, u) = 
-     _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, Ax_qᶠᶜᶜ, u)
+     _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Ax_qᶠᶜᶜ, u)
 
 @inline Ay_vᶠᶠᶜ(i, j, k, grid, scheme, v) = 
-     _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, Ay_qᶜᶠᶜ, v)
+     _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, Ay_qᶜᶠᶜ, v)
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v) 
     @inbounds û = u[i, j, k] 
@@ -75,10 +75,10 @@ end
 end
 
 @inline uˢ²ᶜᶜᶜ(i, j, k, grid, scheme, u) =
-     _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, half_ϕ², u)
+     _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, half_ϕ², u)
 
 @inline vˢ²ᶜᶜᶜ(i, j, k, grid, scheme, v) = 
-     _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.upwinding_treatment.cross_scheme, half_ϕ², v)
+     _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, half_ϕ², v)
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
 

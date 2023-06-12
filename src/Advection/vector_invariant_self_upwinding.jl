@@ -16,8 +16,8 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 
 @inline function upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 
-    δU_stencil   = scheme.upwinding_treatment.δU_stencil    
-    cross_scheme = scheme.upwinding_treatment.cross_scheme
+    δU_stencil   = scheme.upwinding.δU_stencil    
+    cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
     δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, cross_scheme, δy_V, u, v) 
@@ -29,8 +29,8 @@ end
 
 @inline function upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     
-    δV_stencil   = scheme.upwinding_treatment.δV_stencil
-    cross_scheme = scheme.upwinding_treatment.cross_scheme
+    δV_stencil   = scheme.upwinding.δV_stencil
+    cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
     δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, cross_scheme, δx_U, u, v)
@@ -61,8 +61,8 @@ const VectorInvariantVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:
 
     @inbounds û = u[i, j, k]
 
-    δu²_stencil  = scheme.upwinding_treatment.δu²_stencil    
-    cross_scheme = scheme.upwinding_treatment.cross_scheme
+    δu²_stencil  = scheme.upwinding.δu²_stencil    
+    cross_scheme = scheme.upwinding.cross_scheme
 
     δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, cross_scheme, δx_v², u, v)
     δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.vertical_scheme, δx_u², δu²_stencil, u, v)
@@ -78,8 +78,8 @@ end
 
     @inbounds v̂ = v[i, j, k]
 
-    δv²_stencil   = scheme.upwinding_treatment.δv²_stencil    
-    cross_scheme = scheme.upwinding_treatment.cross_scheme
+    δv²_stencil   = scheme.upwinding.δv²_stencil    
+    cross_scheme = scheme.upwinding.cross_scheme
 
     δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, cross_scheme, δy_u², u, v)
     δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.vertical_scheme, δy_v², δv²_stencil, u, v) 
