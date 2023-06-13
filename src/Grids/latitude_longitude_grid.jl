@@ -680,8 +680,8 @@ end
     view(grid.Δyᶠᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
 @inline yspacings(grid::YRegLatLonGrid, ℓx, ℓy; with_halos=false) = yspacings(grid, ℓy; with_halos)
-@inline yspacings(grid, ℓy::Center; kwargs...) = grid.Δyᶠᶜᵃ
-@inline yspacings(grid, ℓy::Face; kwargs...)   = grid.Δyᶜᶠᵃ
+@inline yspacings(grid::LatLonGrid, ℓy::Center; kwargs...) = grid.Δyᶠᶜᵃ
+@inline yspacings(grid::LatLonGrid, ℓy::Face; kwargs...)   = grid.Δyᶜᶠᵃ
 
 @inline zspacings(grid::LatLonGrid,     ℓz::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
 @inline zspacings(grid::ZRegLatLonGrid, ℓz::Center; with_halos=false) = grid.Δzᵃᵃᶜ
