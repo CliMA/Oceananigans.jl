@@ -8,7 +8,7 @@ Pkg.instantiate()
 
 using Distributed
 
-@show use_extra_workers = 2
+@show use_extra_workers = 0
 
 if use_extra_workers > 0
     Distributed.addprocs(use_extra_workers)
@@ -257,6 +257,5 @@ end
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
            forcepush = true,
-           repo_previews = "github.com/CliMA/OceananigansDocumentationPreviews.git",
-           push_preview = true,
+           push_preview = false,
            devbranch = "main")
