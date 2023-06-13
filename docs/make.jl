@@ -8,7 +8,7 @@ Pkg.instantiate()
 
 using Distributed
 
-@show use_extra_workers = 2
+@show use_extra_workers = 3
 
 if use_extra_workers > 0
     Distributed.addprocs(use_extra_workers)
