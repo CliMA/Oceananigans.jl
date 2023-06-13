@@ -49,9 +49,9 @@ julia> using Oceananigans
 julia> VectorInvariant()
 Vector Invariant, Dimension-by-dimension reconstruction 
  Vorticity flux scheme: 
-    └── EnstrophyConservingScheme{Float64}
+ └── EnstrophyConservingScheme{Float64} 
  Vertical advection / Divergence flux scheme: 
-    └── EnergyConservingScheme{Float64}
+ └── EnergyConservingScheme{Float64}
 
 ```
 ```jldoctest
@@ -60,18 +60,18 @@ julia> using Oceananigans
 julia> VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO(order = 3))
 Vector Invariant, Dimension-by-dimension reconstruction 
  Vorticity flux scheme: 
-    └── WENO reconstruction order 5
-      └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
+ ├── WENO reconstruction order 5 
+ └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
  Vertical advection / Divergence flux scheme: 
-    └── WENO reconstruction order 3
-      └── upwinding treatment: OnlySelfUpwinding 
+ ├── WENO reconstruction order 3
+ └── upwinding treatment: OnlySelfUpwinding 
  KE gradient and Divergence flux cross terms reconstruction: 
-    └── WENO reconstruction order 3
+ └── WENO reconstruction order 3
  Smoothness measures: 
-    └── smoothness δU: FunctionStencil f = divergence_smoothness
-    └── smoothness δV: FunctionStencil f = divergence_smoothness
-    └── smoothness δu²: FunctionStencil f = u_smoothness
-    └── smoothness δv²: FunctionStencil f = v_smoothness
+ ├── smoothness δU: FunctionStencil f = divergence_smoothness
+ ├── smoothness δV: FunctionStencil f = divergence_smoothness
+ ├── smoothness δu²: FunctionStencil f = u_smoothness
+ └── smoothness δv²: FunctionStencil f = v_smoothness
       
 ```
 """
@@ -97,12 +97,12 @@ Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Mul
 Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " Vorticity flux scheme: ", "\n",
-              "    └── $(summary(a.vorticity_scheme))",
-              "$(a.vorticity_scheme isa WENO ? "\n      └── smoothness ζ: $(a.vorticity_stencil)\n" : "\n")",
+              " $(a.vorticity_scheme isa WENO ? "├" : "└")── $(summary(a.vorticity_scheme))",
+              " $(a.vorticity_scheme isa WENO ? "\n └── smoothness ζ: $(a.vorticity_stencil)\n" : "\n")",
               " Vertical advection / Divergence flux scheme: ", "\n",
-              "    └── $(summary(a.vertical_scheme))",
+              " $(a.vertical_scheme isa WENO ? "├" : "└")── $(summary(a.vertical_scheme))",
               "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
-              "\n      └── upwinding treatment: $(a.upwinding)" : "")")
+              "\n └── upwinding treatment: $(a.upwinding)" : "")")
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection

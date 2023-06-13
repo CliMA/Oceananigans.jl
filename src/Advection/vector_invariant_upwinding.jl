@@ -107,12 +107,12 @@ Base.summary(a::VelocityUpwinding)     = "VelocityUpwinding"
 Base.show(io::IO, a::OnlySelfUpwinding) =
     print(io, summary(a), " \n",
             " KE gradient and Divergence flux cross terms reconstruction: ", "\n",
-            "    └── $(summary(a.cross_scheme))", "\n",
+            " └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            "    ├── smoothness δU: $(a.δU_stencil)", "\n", 
-            "    ├── smoothness δV: $(a.δV_stencil)", "\n",
-            "    ├── smoothness δu²: $(a.δu²_stencil)", "\n",
-            "    └── smoothness δv²: $(a.δv²_stencil)")
+            " ├── smoothness δU: $(a.δU_stencil)", "\n", 
+            " ├── smoothness δV: $(a.δV_stencil)", "\n",
+            " ├── smoothness δu²: $(a.δu²_stencil)", "\n",
+            " └── smoothness δv²: $(a.δv²_stencil)")
 
 Adapt.adapt_structure(to, scheme::OnlySelfUpwinding) = 
     OnlySelfUpwinding(Adapt.adapt(to, scheme.cross_scheme),
@@ -124,11 +124,11 @@ Adapt.adapt_structure(to, scheme::OnlySelfUpwinding) =
 Base.show(io::IO, a::CrossAndSelfUpwinding) =
     print(io, summary(a), " \n",
             " KE gradient cross terms reconstruction: ", "\n",
-            "    └── $(summary(a.cross_scheme))", "\n",
+            " └── $(summary(a.cross_scheme))", "\n",
             " Smoothness measures: ", "\n",
-            "    ├── smoothness δ: $(a.divergence_stencil)", "\n", 
-            "    ├── smoothness δu²: $(a.δu²_stencil)", "\n",
-            "    └── smoothness δv²: $(a.δv²_stencil)")
+            " ├── smoothness δ: $(a.divergence_stencil)", "\n", 
+            " ├── smoothness δu²: $(a.δu²_stencil)", "\n",
+            " └── smoothness δv²: $(a.δv²_stencil)")
 
 Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) = 
     CrossAndSelfUpwinding(Adapt.adapt(to, scheme.cross_scheme),

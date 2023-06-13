@@ -131,7 +131,7 @@ julia> calc_reconstruction_stencil(1, :left, :x)
 julia> calc_reconstruction_stencil(1, :symmetric, :x)
 :(FT(coeff2_symmetric[2]) * ψ[i + -1, j, k] + FT(coeff2_symmetric[1]) * ψ[i + 0, j, k])
 
-julia> calc_reconstruction_stencil(2, :symetric, :x)
+julia> calc_reconstruction_stencil(2, :symmetric, :x)
 :(FT(coeff4_symmetric[4]) * ψ[i + -2, j, k] + FT(coeff4_symmetric[3]) * ψ[i + -1, j, k] + FT(coeff4_symmetric[2]) * ψ[i + 0, j, k] + FT(coeff4_symmetric[1]) * ψ[i + 1, j, k])
 
 julia> calc_reconstruction_stencil(3, :left, :x)
