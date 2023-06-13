@@ -9,15 +9,8 @@ Holds viscosity and diffusivities for models with prescribed isotropic diffusivi
 struct ScalarBiharmonicDiffusivity{F, V, K, N} <: AbstractScalarBiharmonicDiffusivity{F, N}
     ν :: V
     κ :: K
-
-<<<<<<< HEAD
-    function ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N}
-        return new{F, V, K, N}(ν, κ)
-    end
-=======
-    ScalarBiharmonicDiffusivity{F}(ν::N, κ::K) where {F, N, K} =
-        new{F, N, K}(ν, κ)
->>>>>>> main
+    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} =
+        new{F, V, K, N}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
