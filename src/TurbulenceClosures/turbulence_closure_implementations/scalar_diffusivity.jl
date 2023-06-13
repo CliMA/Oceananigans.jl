@@ -98,7 +98,7 @@ julia> @inline function another_κ(i, j, k, grid, p)
 another_κ (generic function with 1 method)
 
 julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(κ)})
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(another_κ)})
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
