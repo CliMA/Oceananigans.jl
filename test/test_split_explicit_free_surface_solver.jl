@@ -19,7 +19,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo=(1, 1, 1))
 
-            settings = SplitExplicitSettings(; barotropic_averaging_kernel = constant_averaging_kernel)
+            settings = SplitExplicitSettings(; substeps = 200, barotropic_averaging_kernel = constant_averaging_kernel)
             sefs = SplitExplicitFreeSurface(grid; settings)
 
             sefs.η .= 0
