@@ -37,9 +37,9 @@ end
 
 return_metrics(grid::IBG) = return_metrics(grid.underlying_grid)
 
-xspacing(grid::IBG, args...) = xspacing(grid.underlying_grid, args...)
-yspacing(grid::IBG, args...) = yspacing(grid.underlying_grid, args...)
-zspacing(grid::IBG, args...) = zspacing(grid.underlying_grid, args...)
+xspacing(i, j, k, grid::IBG, args...) = xspacing(i, j, k, grid.underlying_grid, args...)
+yspacing(i, j, k, grid::IBG, args...) = yspacing(i, j, k, grid.underlying_grid, args...)
+zspacing(i, j, k, grid::IBG, args...) = zspacing(i, j, k, grid.underlying_grid, args...)
 
 xspacings(grid::IBG, args...; kwargs...) = xspacings(grid.underlying_grid, args...; kwargs...)
 yspacings(grid::IBG, args...; kwargs...) = yspacings(grid.underlying_grid, args...; kwargs...)
