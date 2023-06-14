@@ -3,34 +3,34 @@ using Oceananigans.Architectures: arch_array
 using Printf
 
 #####
-##### ShavedCellBottom
+##### CutCellBottom
 #####
 
-struct ShavedCellBottom{H, E} <: AbstractGridFittedBottom{H}
+struct CutCellBottom{H, E} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     minimum_fractional_Δz :: E
 end
 
-function Base.summary(ib::ShavedCellBottom)
+function Base.summary(ib::CutCellBottom)
     hmax = maximum(ib.bottom_height)
     hmin = minimum(ib.bottom_height)
-    return @sprintf("ShavedCellBottom(min(h)=%.2e, max(h)=%.2e, ϵ=%.1f)",
+    return @sprintf("CutCellBottom(min(h)=%.2e, max(h)=%.2e, ϵ=%.1f)",
                     hmin, hmax, ib.minimum_fractional_Δz)
 end
 
-Base.summary(ib::ShavedCellBottom{<:Function}) = @sprintf("GridFittedBottom(%s, ϵ=%.1f)", ib.bottom_height, ib.minimum_fractional_Δz)
+Base.summary(ib::CutCellBottom{<:Function}) = @sprintf("GridFittedBottom(%s, ϵ=%.1f)", ib.bottom_height, ib.minimum_fractional_Δz)
 
 
 # TODO: nicer show method?
-Base.show(io::IO, ib::ShavedCellBottom) = print(io, summary(ib))
+Base.show(io::IO, ib::CutCellBottom) = print(io, summary(ib))
 
 """
-    ShavedCellBottom(bottom, minimum_height)
+    CutCellBottom(bottom, minimum_height)
 
 Return an immersed boundary...
 """
-ShavedCellBottom(bottom_height; minimum_fractional_Δz=0.1) =
-    ShavedCellBottom(bottom_height, minimum_fractional_Δz)
+CutCellBottom(bottom_height; minimum_fractional_Δz=0.1) =
+    CutCellBottom(bottom_height, minimum_fractional_Δz)
 
 """
 
@@ -43,17 +43,17 @@ ShavedCellBottom(bottom_height; minimum_fractional_Δz=0.1) =
 Criterion is h >= z - ϵ Δz
 
 """
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::ShavedCellBottom)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::CutCellBottom)
     # Face node above current cell
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
 
-const SCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:ShavedCellBottom}
+const SCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:CutCellBottom}
 
-on_architecture(arch, ib::ShavedCellBottom) = ShavedCellBottom(arch_array(arch, ib.bottom_height), ib.minimum_fractional_Δz)
-Adapt.adapt_structure(to, ib::ShavedCellBottom) = ShavedCellBottom(adapt(to, ib.bottom_height), ib.minimum_fractional_Δz)     
+on_architecture(arch, ib::CutCellBottom) = CutCellBottom(arch_array(arch, ib.bottom_height), ib.minimum_fractional_Δz)
+Adapt.adapt_structure(to, ib::CutCellBottom) = CutCellBottom(adapt(to, ib.bottom_height), ib.minimum_fractional_Δz)     
 
 bottom_cell(i, j, k, ibg::SCIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
                                     immersed_cell(i, j, k-1, ibg.underlying_grid, ibg.immersed_boundary)
@@ -72,9 +72,9 @@ bottom_cell(i, j, k, ibg::SCIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid
     at_the_bottom = bottom_cell(i, j, k, ibg)
 
     full_Δz = Δzᶜᶠᶜ(i, j, k, ibg.underlying_grid)
-    Shaved_Δz = max(ϵ * full_Δz, z - h)
+    Cut_Δz = max(ϵ * full_Δz, z - h)
 
-    return ifelse(at_the_bottom, Shaved_Δz, full_Δz)
+    return ifelse(at_the_bottom, Cut_Δz, full_Δz)
 end
 
 @inline function Δzᶜᶠᶠ(i, j, k, ibg::SCIBG)
@@ -83,9 +83,9 @@ end
     zf = znode(i, j, k, ibg.underlying_grid, c, f, f)
 
     full_Δz = Δzᶜᶠᶠ(i, j, k, ibg.underlying_grid)
-    Shaved_Δz = zc - zf + Δzᶜᶠᶜ(i, j, k-1, ibg) / 2
+    Cut_Δz = zc - zf + Δzᶜᶠᶜ(i, j, k-1, ibg) / 2
 
-    Δz = ifelse(just_above_bottom, Shaved_Δz, full_Δz)
+    Δz = ifelse(just_above_bottom, Cut_Δz, full_Δz)
 
     return Δz
 end
@@ -104,9 +104,9 @@ end
     at_the_bottom = bottom_cell(i, j, k, ibg)
 
     full_Δz = Δzᶠᶜᶜ(i, j, k, ibg.underlying_grid)
-    Shaved_Δz = max(ϵ * full_Δz, z - h)
+    Cut_Δz = max(ϵ * full_Δz, z - h)
 
-    return ifelse(at_the_bottom, Shaved_Δz, full_Δz)
+    return ifelse(at_the_bottom, Cut_Δz, full_Δz)
 end
 
 @inline function Δzᶠᶜᶠ(i, j, k, ibg::SCIBG)
@@ -115,9 +115,9 @@ end
     zf = znode(i, j, k, ibg.underlying_grid, f, c, f)
 
     full_Δz = Δzᶠᶜᶠ(i, j, k, ibg.underlying_grid)
-    Shaved_Δz = zc - zf + Δzᶠᶜᶜ(i, j, k-1, ibg) / 2
+    Cut_Δz = zc - zf + Δzᶠᶜᶜ(i, j, k-1, ibg) / 2
 
-    Δz = ifelse(just_above_bottom, Shaved_Δz, full_Δz)
+    Δz = ifelse(just_above_bottom, Cut_Δz, full_Δz)
 
     return Δz
 end

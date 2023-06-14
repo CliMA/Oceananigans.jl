@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, ShavedCellBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, CutCellBottom
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
@@ -25,7 +25,7 @@ L = 0.25 # bump width
 
 use_partial_cells = true
 if use_partial_cells
-    grid = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(seamount, 0.1))
+    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount, 0.1))
 else
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
 end
