@@ -60,7 +60,7 @@ other implementations where, e.g., `aⁱʲ²` may appear at the second row, inst
 
 2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
-Other coefficient types can be used by extending `get_coefficient`.
+Other coefficient types can be implemented by extending `get_coefficient`.
 """
 function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
@@ -113,10 +113,10 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
     return nothing
 end
 
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::XDirection,   args...) where {T} = @inbounds a[i]
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::YDirection,   args...) where {T} = @inbounds a[j]
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, ::ZDirection,   args...) where {T} = @inbounds a[k]
-@inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, tridiag_dir, args...) where {T} = @inbounds a[i, j, k]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::XDirection,          args...) = @inbounds a[i]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::YDirection,          args...) = @inbounds a[j]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
@@ -126,8 +126,8 @@ end
     j, k = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, 1, j, k, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, 1, j, k, grid, p, tridiagonal_direction, args...)
+        β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[1, j, k] = f₁ / β
 
         @unroll for i = 2:Nx
@@ -138,7 +138,7 @@ end
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
@@ -158,19 +158,19 @@ end
     i, k = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, i, 1, k, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, i, 1, k, grid, p, tridiagonal_direction, args...)
+        β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, 1, k] = f₁ / β
 
         @unroll for j = 2:Ny
-            cᵏ⁻¹ = get_coefficient(c, i, j-1, k, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, i, j,   k, grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, i, j-1, k, grid, p, tridiagonal_direction, args...)
+            cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
@@ -190,18 +190,18 @@ end
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, i, j, 1, grid, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(f, i, j, 1, grid, p, tridiagonal_direction, args...)
+        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(i, j, 1, f, grid, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, i, j, k,   grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, tridiagonal_direction, args...)
+            cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-            fᵏ = get_coefficient(f, i, j, k, grid, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
