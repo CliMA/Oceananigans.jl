@@ -310,11 +310,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 end
 
 const ASPS = SplitExplicitSettings{<:AdaptiveSubsteps}
+const FSPS = SplitExplicitSettings{<:FixedSubsteps}
 
-@inline calculate_substeps(settings, Δt)       = settings.substeps
-@inline calculate_substeps(settings::ASPS, Δt) =  ceil(Int, 2 * Δt / Δtᴮ)
+@inline calculate_substeps(settings::FSPS, Δt) = nothing
+@inline calculate_substeps(settings::ASPS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
 
-@inline calculate_adaptive_settings(settings, substeps)       = setting.Δτ, settings.averaging_weights
+@inline calculate_adaptive_settings(settings::FSPS, substeps) = setting.substeps.Δτ, settings.substeps.averaging_weights
 @inline calculate_adaptive_settings(settings::ASPS, substeps) = weights_from_substeps(substeps, settings.substeps.barotropic_averaging_kernel)
 
 function iterate_split_explicit!(free_surface, grid, Δt)

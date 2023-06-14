@@ -224,10 +224,6 @@ $(FIELDS)
 struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     "`substeps`: (`Int`)"
     substeps :: 𝒩
-    "`averaging_weights`: (`Vector`)"
-    averaging_weights :: ℳ
-    "fractional step: (`Number`), the barotropic time step is `Δτ ⋅ Δt`" 
-    Δτ :: 𝒯
     "time-stepping scheme"
     timestepper :: 𝒮
 end
@@ -251,6 +247,11 @@ struct AdaptiveSubsteps{B, F}
     barotropic_averaging_kernel :: F
 end
 
+struct FixedSubsteps{B, F}
+    Δτ :: B
+    averaging_weights :: F
+end
+    
 AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
 
 @inline function weights_from_substeps(substeps, barotropic_averaging_kernel)
@@ -292,15 +293,13 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
         Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
         Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
-        Δs = sqrt(1 / (Δx⁻² + Δy⁻²))
+        Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
 
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
         Δtᴮ = cfl * Δs / wave_speed
         if substeps isa AdaptiveSubsteps
             return SplitExplicitSettings(AdaptiveSubsteps(Δtᴮ, barotropic_averaging_kernel), 
-                                         nothing, 
-                                         nothing, 
                                          timestepper)
         end
         substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
@@ -308,9 +307,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
     Δτ, averaging_weights = weights_from_substeps(substeps, barotropic_averaging_kernel)
 
-    return SplitExplicitSettings(substeps,
-                                 averaging_weights,
-                                 Δτ,
+    return SplitExplicitSettings(FixedSubsteps(Δτ, averaging_weights),
                                  timestepper)
 end
 

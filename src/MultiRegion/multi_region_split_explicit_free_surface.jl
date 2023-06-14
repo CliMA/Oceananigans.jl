@@ -43,8 +43,9 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
 
         switch_device!(grid.devices[1])
         old_halos = halo_size(getregion(grid, 1))
+        substeps  = length(settings.substeps.averaging_weights)
 
-        new_halos = split_explicit_halos(old_halos, settings.substeps+1, grid.partition)         
+        new_halos = split_explicit_halos(old_halos, substeps+1, grid.partition)         
         new_grid  = with_halo(new_halos, grid)
 
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
