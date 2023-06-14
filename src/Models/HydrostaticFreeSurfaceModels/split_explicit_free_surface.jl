@@ -226,8 +226,6 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     substeps :: 𝒩
     "`averaging_weights`: (`Vector`)"
     averaging_weights :: ℳ
-    "`mass_flux_weights`: (`Vector`)"
-    mass_flux_weights :: ℳ
     "fractional step: (`Number`), the barotropic time step is `Δτ ⋅ Δt`" 
     Δτ :: 𝒯
     "time-stepping scheme"
@@ -247,6 +245,28 @@ end
 @inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? FT(1 + cos(2π * (τ - 1))) : zero(FT)
 
 @inline constant_averaging_kernel(τ) = 1
+
+struct AdaptiveSubsteps{B, F}
+    Δtᴮ :: B
+    barotropic_averaging_kernel :: F
+end
+
+AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
+
+@inline function weights_from_substeps(substeps, barotropic_averaging_kernel)
+
+    τᶠ = range(0, 2, length = substeps+1)
+    Δτ = τᶠ[2] - τᶠ[1]
+
+    averaging_weights = FT.(barotropic_averaging_kernel.(τᶠ[2:end]))
+    idx = searchsortedlast(averaging_weights, 0, rev=true)
+    substeps = idx
+
+    averaging_weights = averaging_weights[1:idx]
+    averaging_weights ./= sum(averaging_weights)
+
+    return Δτ, averaging_weights
+end
 
 function SplitExplicitSettings(FT::DataType=Float64;
                                substeps = nothing, 
@@ -277,32 +297,19 @@ function SplitExplicitSettings(FT::DataType=Float64;
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
         Δtᴮ = cfl * Δs / wave_speed
+        if substeps isa AdaptiveSubsteps
+            return SplitExplicitSettings(AdaptiveSubsteps(Δtᴮ, barotropic_averaging_kernel), 
+                                         nothing, 
+                                         nothing, 
+                                         timestepper)
+        end
         substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
     end
 
-    τᶠ = range(0, 2, length = substeps+1)
-    Δτ = τᶠ[2] - τᶠ[1]
-
-    averaging_weights = FT.(barotropic_averaging_kernel.(τᶠ[2:end]))
-    idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
-
-    averaging_weights = averaging_weights[1:idx]
-    mass_flux_weights = similar(averaging_weights)
-
-    M = searchsortedfirst(τᶠ, 1) - 1
-
-    averaging_weights ./= sum(averaging_weights)
-
-    for i in substeps:-1:1
-        mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
-    end
-
-    mass_flux_weights ./= sum(mass_flux_weights)
+    Δτ, averaging_weights = weights_from_substeps(substeps, barotropic_averaging_kernel)
 
     return SplitExplicitSettings(substeps,
                                  averaging_weights,
-                                 mass_flux_weights,
                                  Δτ,
                                  timestepper)
 end
