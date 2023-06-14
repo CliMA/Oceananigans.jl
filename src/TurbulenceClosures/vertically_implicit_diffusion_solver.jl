@@ -146,9 +146,9 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, args...) = ivd_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::VerticallyImplicitDiffusionLowerDiagonal, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::VerticallyImplicitDiffusionUpperDiagonal, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::VerticallyImplicitDiffusionDiagonal,      i, j, k, grid, p, tridiag_dir, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
