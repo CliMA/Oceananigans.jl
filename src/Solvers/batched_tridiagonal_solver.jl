@@ -131,9 +131,9 @@ end
         ϕ[1, j, k] = f₁ / β
 
         @unroll for i = 2:Nx
-            cᵏ⁻¹ = get_coefficient(c, i-1, j, k, grid, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(b, i,   j, k, grid, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(a, i-1, j, k, grid, p, tridiagonal_direction, args...)
+            cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
@@ -191,7 +191,7 @@ end
 
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, j, 1, f, grid, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
