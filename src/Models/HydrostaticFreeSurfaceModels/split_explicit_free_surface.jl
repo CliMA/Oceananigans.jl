@@ -239,22 +239,19 @@ struct ForwardBackwardScheme end
 end
 
 @inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? FT(1 + cos(2π * (τ - 1))) : zero(FT)
-
 @inline constant_averaging_kernel(τ) = 1
 
-struct AdaptiveSubsteps{FT, B, F}
+struct AdaptiveSubsteps{B, F}
     Δtᴮ :: B
     averaging_kernel :: F
-    AdaptiveSubsteps{FT}(Δtᴮ::B, averaging_kernel::F) = new{FT, B, F}(Δτ, averaging_kernel)
 end
 
-struct FixedSubsteps{FT, B, F}
+struct FixedSubsteps{B, F}
     Δτ :: B
     averaging_weights :: F
-    FixedSubsteps{FT}(Δτ::B, averaging_weights::F) = new{FT, B, F}(Δτ, averaging_weights)
 end
     
-AdaptiveSubsteps() = AdaptiveSubsteps{FT}(nothing, nothing)
+AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
 
 @inline function weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
 
@@ -299,9 +296,9 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
         wave_speed = sqrt(gravitational_acceleration * grid.Lz)
         
-        Δtᴮ = cfl * Δs / wave_speed
+        Δtᴮ = FT(cfl * Δs / wave_speed)
         if substeps isa AdaptiveSubsteps
-            return SplitExplicitSettings(AdaptiveSubsteps{FT}(Δtᴮ, barotropic_averaging_kernel), 
+            return SplitExplicitSettings(AdaptiveSubsteps(Δtᴮ, barotropic_averaging_kernel), 
                                          timestepper)
         end
         substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
@@ -309,7 +306,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
 
     Δτ, averaging_weights = weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
 
-    return SplitExplicitSettings(FixedSubsteps{FT}(Δτ, averaging_weights),
+    return SplitExplicitSettings(FixedSubsteps(Δτ, averaging_weights),
                                  timestepper)
 end
 
