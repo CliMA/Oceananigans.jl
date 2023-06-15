@@ -23,11 +23,15 @@ L = 0.25 # bump width
 @inline h(y) = h₀ * exp(- y^2 / L^2)
 @inline seamount(x, y) = - 1 + h(y)
 
-use_partial_cells = true
-if use_partial_cells
-    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount, 0.1))
-else
+immersed_boundary_type = "cut_cell_bottom"
+minimum_fractional_Δz = 0.1
+# Choose immersed_boundary_type to be one of "grid_fitted_bottom", "partial_cell_bottom", and "cut_cell_bottom".
+if immersed_boundary_type == "grid_fitted_bottom"
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
+elseif immersed_boundary_type == "partial_cell_bottom"
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(seamount, minimum_fractional_Δz))
+elseif immersed_boundary_type == "cut_cell_bottom"
+    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount, minimum_fractional_Δz))
 end
 
 # Terrain following coordinate
@@ -55,9 +59,7 @@ D = compute!(Field(∂y(v) + ∂z(w)))
 
 ## Set up Model
 velocities = PrescribedVelocityFields(; v, w)
-model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection,
-                                    tracers = :θ,
-                                    buoyancy = nothing)
+model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection, tracers = :θ, buoyancy = nothing)
 
 θᵢ(x, y, z) = 1 + z
 set!(model, θ = θᵢ)
@@ -114,7 +116,8 @@ if run_simulation
     simulation.output_writers[:fields] = JLD2OutputWriter(model, (θ = model.tracers.θ,),
                                                           schedule = TimeInterval(0.02),
                                                           filename = "tracer_advection_over_bump",
-                                                          overwrite_existing = true)
+                                                          overwrite_existing = true,
+                                                          with_halos = true)  
 
     run!(simulation)
 
@@ -124,13 +127,13 @@ end
 
 # We open the JLD2 file, and extract the `grid` and the iterations we ended up saving at.
 
-filename = "tracer_advection_over_bump.jld2"
+filename = "tracer_advection_over_bump"
 
-θ_timeseries = FieldTimeSeries(filename, "θ"; architecture = CPU())
+θ_timeseries = FieldTimeSeries(filename * ".jld2", "θ"; architecture = CPU())
 
 times = θ_timeseries.times
 
-xGrid, yGrid, zGrid = nodes(θ_timeseries[1])
+xGrid, yGrid, zGrid = nodes(θ_timeseries)
 
 # Finally, we're ready to animate.
 
@@ -138,23 +141,32 @@ xGrid, yGrid, zGrid = nodes(θ_timeseries[1])
 
 n = Observable(1)
 
-θGrid = @lift interior(θ_timeseries[$n], 1, :, :)
+θlims = 0, 1
 
-extrema_reduction_factor = 1.0
+θGrid = @lift begin
+    interior(θ_timeseries[$n], 1, :, :)
+end
 
-θlims = extrema(θ_timeseries.data) .* extrema_reduction_factor
-
+plot_type = "heat_map" # Choose plot_type to be either "filled_contour_plot" or "heat_map".
 fig = Figure(resolution = (850, 750))
 title_θ = @lift "Tracer Concentration after " *string(round(times[$n], digits = 1))*" seconds"
 ax_θ = Axis(fig[1,1]; xlabel = "Meridional Distance (m)", ylabel = "Depth (m)", xlabelsize = 22.5, ylabelsize = 22.5, 
             xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
             title = title_θ, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-hm_θ = contourf!(ax_θ, yGrid, zGrid, θGrid; levels = range(0, 1, length=8), colormap = :balance)
+if plot_type == "filled_contour_plot"
+    hm_θ = contourf!(ax_θ, yGrid, zGrid, θGrid; levels = range(θlims..., length=size(zGrid)[1]), 
+                     colormap = :balance)  
+elseif plot_type == "heat_map"
+    hm_θ = heatmap!(ax_θ, yGrid, zGrid, θGrid; colorrange = θlims, colormap = :balance)
+end
+ySeaMount = -1:0.01:1
+depthSeaMount = seamount.(0,ySeaMount)
+lines!(ax_θ, ySeaMount, depthSeaMount, linewidth = 2.5, color = :black)
 Colorbar(fig[1,2], hm_θ; label = "Tracer Concentration", labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
 
 frames = 1:length(times)
 
-CairoMakie.record(fig, filename * ".mp4", frames, framerate = 8) do i
+CairoMakie.record(fig, filename * "_" * immersed_boundary_type * "_" * plot_type * ".mp4", frames, framerate = 8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
