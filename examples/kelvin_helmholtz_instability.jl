@@ -151,9 +151,10 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
 # it becomes nonlinear.
 
-# Here, we take ``\Delta \tau = 15``.
+# Here, we take ``\Delta \tau = 15``. We also set `verbose=false` so that `run!(simulation)`
+# is a little quieter.
 
-simulation = Simulation(model, Δt=0.1, stop_iteration=150)
+simulation = Simulation(model, Δt=0.1, stop_iteration=150, verbose=false)
 
 # Now some helper functions that will be used during for the power method algorithm.
 #
@@ -285,7 +286,6 @@ perturbation_vorticity = Field(∂z(u) - ∂x(w))
 xω, yω, zω = nodes(perturbation_vorticity)
 xb, yb, zb = nodes(b)
 
-
 # # Rev your engines...
 #
 # We initialize the power iteration with random noise and rescale to have a `target_kinetic_energy`
@@ -347,7 +347,6 @@ scatter!(ax_σ, σₙ; color = :blue)
 frames = 1:length(power_method_data)
 
 record(fig, "powermethod.mp4", frames, framerate=1) do i
-       @info "Plotting frame $i of $(frames[end])..."
        n[] = i
 end
 
