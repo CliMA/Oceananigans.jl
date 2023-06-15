@@ -242,19 +242,21 @@ end
 
 @inline constant_averaging_kernel(τ) = 1
 
-struct AdaptiveSubsteps{B, F}
+struct AdaptiveSubsteps{FT, B, F}
     Δtᴮ :: B
-    barotropic_averaging_kernel :: F
+    averaging_kernel :: F
+    AdaptiveSubsteps{FT}(Δtᴮ::B, averaging_kernel::F) = new{FT, B, F}(Δτ, averaging_kernel)
 end
 
-struct FixedSubsteps{B, F}
+struct FixedSubsteps{FT, B, F}
     Δτ :: B
     averaging_weights :: F
+    FixedSubsteps{FT}(Δτ::B, averaging_weights::F) = new{FT, B, F}(Δτ, averaging_weights)
 end
     
-AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
+AdaptiveSubsteps() = AdaptiveSubsteps{FT}(nothing, nothing)
 
-@inline function weights_from_substeps(substeps, barotropic_averaging_kernel)
+@inline function weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
 
     τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
@@ -299,15 +301,15 @@ function SplitExplicitSettings(FT::DataType=Float64;
         
         Δtᴮ = cfl * Δs / wave_speed
         if substeps isa AdaptiveSubsteps
-            return SplitExplicitSettings(AdaptiveSubsteps(Δtᴮ, barotropic_averaging_kernel), 
+            return SplitExplicitSettings(AdaptiveSubsteps{FT}(Δtᴮ, barotropic_averaging_kernel), 
                                          timestepper)
         end
         substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
     end
 
-    Δτ, averaging_weights = weights_from_substeps(substeps, barotropic_averaging_kernel)
+    Δτ, averaging_weights = weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
 
-    return SplitExplicitSettings(FixedSubsteps(Δτ, averaging_weights),
+    return SplitExplicitSettings(FixedSubsteps{FT}(Δτ, averaging_weights),
                                  timestepper)
 end
 
