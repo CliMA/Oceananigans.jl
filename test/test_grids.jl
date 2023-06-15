@@ -182,8 +182,12 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     variably_spaced_grid = RectilinearGrid(arch, FT; size, topology,
                                            x=domain, y=domain, z=domain)
 
-    grids_types = ["regularly spaced", "variably spaced"]
-    grids       = [regular_spaced_grid, variably_spaced_grid]
+    ibg_regular_spaced_grid = ImmersedBoundaryGrid(regular_spaced_grid, GridFittedBottom((x, y) -> 0))
+
+    ibg_variably_spaced_grid = ImmersedBoundaryGrid(variably_spaced_grid, GridFittedBottom((x, y) -> 0))
+
+    grids_types = ["regularly spaced", "variably spaced", "IBG regularly spaced", "IBG variably spaced"]
+    grids       = [regular_spaced_grid, variably_spaced_grid, ibg_regular_spaced_grid, ibg_variably_spaced_grid]
 
     for (grid_type, grid) in zip(grids_types, grids)
         @info "        Testing grid utils on $grid_type grid...."
