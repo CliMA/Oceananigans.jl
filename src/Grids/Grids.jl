@@ -151,6 +151,19 @@ struct NegativeZDirection <: AbstractDirection end
 
 isrectilinear(grid) = false
 
+isxregular() = nothing
+isyregular() = nothing
+iszregular() = nothing
+
+isxflat(grid) = false
+isxflat(grid::AbstractGrid{<:Any, Flat}) = true
+
+isyflat(grid) = false
+isyflat(grid::AbstractGrid{<:Any, <:Any, Flat}) = true
+
+iszflat(grid) = false
+iszflat(grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}) = true
+
 include("grid_utils.jl")
 include("zeros_and_ones.jl")
 include("new_data.jl")
