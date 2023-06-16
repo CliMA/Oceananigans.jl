@@ -131,9 +131,9 @@ for bias in (:_left_biased, :_right_biased, :_symmetric)
         multidim_interp   = Symbol(:_multi_dimensional_reconstruction_, dir2)
 
         @eval begin
-            $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) = 
+            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) = 
                     $interp_func(i, j, k, grid, interp_scheme, args...)
-            $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
+            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
                     $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
         end
     end
