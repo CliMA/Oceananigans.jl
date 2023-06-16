@@ -236,7 +236,7 @@ end
 end
 
 #####
-##### Fallback to flux form advection
+##### Fallback to flux form advection (LatitudeLongitudeGrid)
 #####
 
 @inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
@@ -258,6 +258,17 @@ end
            û * v̂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) / Azᶜᶠᶜ(i, j, k, grid) -
            û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
 end
+
+#####
+##### Fallback for `RectilinearGrid` with 
+##### ACAS == `AbstractCenteredAdvectionScheme`
+##### AUAS == `AbstractUpwindBiasedAdvectionScheme`
+#####
+
+@inline U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
+@inline U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
 
 #####
 ##### No advection
