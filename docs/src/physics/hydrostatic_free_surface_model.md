@@ -16,7 +16,9 @@ The mass conservation equation is
     0 = \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} + \partial_z w \, .  
 ```
 
-The above is integrated from the bottom of the fluid up to ``z = 0`` to obtain ``w(x, y, z, t)``.
+Given the horizontal flow ``\boldsymbol{u}`` we use the above to diagnose the vertical velocity ``w``.
+We integrate the mass conservation equation from the bottom of the fluid (where ``w = 0``) up t
+depth ``z`` and recover ``w(x, y, z, t)``.
 
 The free surface displacement ``\eta(x, y, t)`` satisfies the linearized kinematic boundary 
 condition at the surface
@@ -26,7 +28,7 @@ condition at the surface
 
 ## The momentum conservation equation
 
-The equations governing the conservation of momentum in a rotating fluid, including buoyancy
+The equations governing the conservation of horizontal momentum in a rotating fluid, including buoyancy
 via the Boussinesq approximation are
 ```math
     \begin{align}
@@ -35,11 +37,12 @@ via the Boussinesq approximation are
                         - \boldsymbol{\nabla}_h (p + g \eta)
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                         + \boldsymbol{F_u} \, , \label{eq:momentum}\\
-                        0 & = b - \partial_z p \, , \label{eq:hydrostatic}
+    0 & = b - \partial_z p \, , \label{eq:hydrostatic}
     \end{align}
 ```
 where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the hydrostatic kinematic stress tensor, 
-``\boldsymbol{F_u}`` denotes an internal forcing of the velocity field ``\boldsymbol{u}``, 
+``\boldsymbol{F_u}`` denotes an internal forcing of the horizontal flow ``\boldsymbol{u}``,
+``\boldsymbol{v} = \boldsymbol{u} + w \hat{\boldsymbol{z}}`` is the three-dimensional flow,
 ``p`` is kinematic pressure, ``\eta`` is the free-surface displacement, and ``\boldsymbol{f}`` 
 is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
 rotation of the frame of reference.
