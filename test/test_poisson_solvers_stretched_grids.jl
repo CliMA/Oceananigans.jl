@@ -28,7 +28,7 @@ include("dependencies_for_poisson_solvers.jl")
 
             faces_even = [1, 2, 4, 7, 11, 16, 22, 29, 37]      # Nz = 8
             faces_odd  = [1, 2, 4, 7, 11, 16, 22, 29, 37, 51]  # Nz = 9
-            for stretched_axis in (3,)
+            for stretched_axis in (1, 2, 3,)
                 if topo[stretched_axis] == Bounded
                     @info "  Testing stretched Poisson solver [FACR, $(typeof(arch)), $topo, stretched axis = $stretched_axis]..."
                     @test stretched_poisson_solver_correct_answer(Float64, arch, topo, 4, 5, 1:4; stretched_axis)

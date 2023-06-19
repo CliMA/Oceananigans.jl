@@ -168,14 +168,14 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
 
     regular_topos = Tuple( el for (i, el) in enumerate(topo) if i ≠ stretched_axis)
     intervals = get_interval_kwargs(regular_topos..., faces, Val(stretched_axis))
-    vs_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=faces, intervals...)
-    solver = FourierTridiagonalPoissonSolver(vs_grid)
+    stretched_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=faces, intervals...)
+    solver = FourierTridiagonalPoissonSolver(stretched_grid)
 
-    p_bcs = FieldBoundaryConditions(vs_grid, (Center, Center, Center))
-    ϕ   = CenterField(vs_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(vs_grid, boundary_conditions=p_bcs)
+    p_bcs = FieldBoundaryConditions(stretched_grid, (Center, Center, Center))
+    ϕ   = CenterField(stretched_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(stretched_grid, boundary_conditions=p_bcs)
 
-    R = random_divergence_free_source_term(vs_grid)
+    R = random_divergence_free_source_term(stretched_grid)
 
     set_source_term!(solver, R)
     ϕc = solver.storage
@@ -183,7 +183,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
-    compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
+    compute_∇²!(∇²ϕ, ϕ, arch, stretched_grid)
 
-    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
+    return Array(interior(∇²ϕ)) ≈ Array(R)
 end
