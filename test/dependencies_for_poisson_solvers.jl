@@ -4,7 +4,6 @@ using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Grids: regular_dimensions
 
 function poisson_solver_instantiates(grid, planner_flag)
     solver = FFTBasedPoissonSolver(grid, planner_flag)
@@ -143,7 +142,7 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64, mode=1)
 end
 
 #####
-##### Poisson solver on an irregularly-spaced grid
+##### Poisson solver on a stretched grid
 #####
 
 get_grid_size(TX,           TY,           TZ, Nx, Ny, Nz) = (Nx, Ny, Nz)
@@ -163,20 +162,20 @@ get_interval_kwargs(TX, ::Type{Flat}, faces, ::Val{3}) = (x=(0, 1), z=faces,)
 get_interval_kwargs(::Type{Flat}, TY, faces, ::Val{3}) = (y=(0, 1), z=faces,)
 
 function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; stretched_axis = 3)
-    N = length(faces) - 1
-    unshifted_sizes = [N1, N2, N]
+    N_stretched = length(faces) - 1
+    unshifted_sizes = [N1, N2, N_stretched]
     sz = get_grid_size(topo..., circshift(unshifted_sizes, stretched_axis)...)
 
     regular_topos = Tuple( el for (i, el) in enumerate(topo) if i ≠ stretched_axis)
     intervals = get_interval_kwargs(regular_topos..., faces, Val(stretched_axis))
-    grid = RectilinearGrid(arch, FT; topology=topo, size=sz, intervals...)
-    solver = FourierTridiagonalPoissonSolver(grid)
+    vs_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=faces, intervals...)
+    solver = FourierTridiagonalPoissonSolver(vs_grid)
 
-    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
-    ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
+    p_bcs = FieldBoundaryConditions(vs_grid, (Center, Center, Center))
+    ϕ   = CenterField(vs_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(vs_grid, boundary_conditions=p_bcs)
 
-    R = random_divergence_free_source_term(grid)
+    R = random_divergence_free_source_term(vs_grid)
 
     set_source_term!(solver, R)
     ϕc = solver.storage
@@ -184,7 +183,7 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
-    compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
 
-    return CUDA.@allowscalar all(isapprox.(Array(interior(∇²ϕ)), Array(R), atol=100eps()))
+    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
