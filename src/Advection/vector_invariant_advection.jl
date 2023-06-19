@@ -66,7 +66,7 @@ Vector Invariant, Dimension-by-dimension reconstruction
  ├── WENO reconstruction order 3
  └── upwinding treatment: OnlySelfUpwinding 
  KE gradient and Divergence flux cross terms reconstruction: 
- └── WENO reconstruction order 3
+ └── Centered reconstruction order 2
  Smoothness measures: 
  ├── smoothness δU: FunctionStencil f = divergence_smoothness
  ├── smoothness δV: FunctionStencil f = divergence_smoothness
