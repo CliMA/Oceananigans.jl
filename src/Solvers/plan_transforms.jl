@@ -166,7 +166,6 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         #
         # On the GPU and for vertically Bounded grids, batching is possible either in horizontally-periodic
         # domains, or for domains that are `Bounded, Periodic, Bounded`.
-        
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
         forward_bounded_plan  = plan_forward_transform(storage, Bounded(),  bounded_dims,  planner_flag)
 
@@ -190,15 +189,30 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), grid, reg_dims))
 
     else # we are on the GPU and we cannot / should not batch!
-        grid_size = size(grid)
-        reshaped_storage1 = reshape(storage, (grid_size[reg_dims[1]], grid_size[reg_dims[2]], grid_size[irreg_dim]))
-        reshaped_storage2 = reshape(storage, (grid_size[reg_dims[2]], grid_size[reg_dims[1]], grid_size[irreg_dim]))
+        Nx, Ny, Nz = size(grid)
+        reshaped_storage = reshape(storage, (Ny, Nx, Nz))
 
-        forward_plan_1 = plan_forward_transform(reshaped_storage1, topo[reg_dims[1]](), [1], planner_flag)
-        forward_plan_2 = plan_forward_transform(reshaped_storage2, topo[reg_dims[2]](), [1], planner_flag)
+        if irreg_dim == 1
+            forward_plan_1 = plan_forward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+            forward_plan_2 = plan_forward_transform(storage,          topo[3](), [3], planner_flag)
 
-        backward_plan_1 = plan_backward_transform(reshaped_storage1, topo[reg_dims[1]](), [1], planner_flag)
-        backward_plan_2 = plan_backward_transform(reshaped_storage2, topo[reg_dims[2]](), [1], planner_flag)
+            backward_plan_1 = plan_backward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+            backward_plan_2 = plan_backward_transform(storage,          topo[3](), [3], planner_flag)
+
+        elseif irreg_dim == 2
+            forward_plan_1 = plan_forward_transform(storage, topo[1](), [1], planner_flag)
+            forward_plan_2 = plan_forward_transform(storage, topo[3](), [3], planner_flag)
+
+            backward_plan_1 = plan_backward_transform(storage, topo[1](), [1], planner_flag)
+            backward_plan_2 = plan_backward_transform(storage, topo[3](), [3], planner_flag)
+
+        elseif irreg_dim == 3
+            forward_plan_1 = plan_forward_transform(storage,          topo[1](), [1], planner_flag)
+            forward_plan_2 = plan_forward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+
+            backward_plan_1 = plan_backward_transform(storage,          topo[1](), [1], planner_flag)
+            backward_plan_2 = plan_backward_transform(reshaped_storage, topo[2](), [1], planner_flag)
+        end
 
         forward_plans  = Dict(reg_dims[1] => forward_plan_1,  reg_dims[2] => forward_plan_2)
         backward_plans = Dict(reg_dims[1] => backward_plan_1, reg_dims[2] => backward_plan_2)
@@ -208,7 +222,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
 
-        # Extract irregularly-spaced dimension
+        # Extract stretched dimension
         f_order = Tuple(f_order[i] for i in findall(d -> d != irreg_dim, f_order))
         b_order = Tuple(b_order[i] for i in findall(d -> d != irreg_dim, b_order))
 
