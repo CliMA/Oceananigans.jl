@@ -17,7 +17,7 @@ The mass conservation equation is
 ```
 
 Given the horizontal flow ``\boldsymbol{u}`` we use the above to diagnose the vertical velocity ``w``.
-We integrate the mass conservation equation from the bottom of the fluid (where ``w = 0``) up t
+We integrate the mass conservation equation from the bottom of the fluid (where ``w = 0``) up to
 depth ``z`` and recover ``w(x, y, z, t)``.
 
 The free surface displacement ``\eta(x, y, t)`` satisfies the linearized kinematic boundary 
