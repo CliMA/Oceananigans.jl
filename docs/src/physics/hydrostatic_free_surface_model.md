@@ -28,7 +28,7 @@ condition at the surface
 
 ## The momentum conservation equation
 
-The equations governing the conservation of horizontal momentum in a rotating fluid, including buoyancy
+The equations governing the conservation of momentum in a rotating fluid, including buoyancy
 via the Boussinesq approximation are
 ```math
     \begin{align}
