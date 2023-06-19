@@ -153,7 +153,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
 
     irreg_dim = stretched_dimensions(grid)[1]
     reg_dims  = regular_dimensions(grid)
-    !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the irregular direction's topology is `Bounded`.")
+    !(topo[irreg_dim] === Bounded) && error("Transforms can be planned only when the stretched direction's topology is `Bounded`.")
 
     periodic_dims = Tuple( dim for dim in findall(t -> t == Periodic, topo) if dim ≠ irreg_dim )
     bounded_dims  = Tuple( dim for dim in findall(t -> t == Bounded,  topo) if dim ≠ irreg_dim )
@@ -166,6 +166,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         #
         # On the GPU and for vertically Bounded grids, batching is possible either in horizontally-periodic
         # domains, or for domains that are `Bounded, Periodic, Bounded`.
+
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
         forward_bounded_plan  = plan_forward_transform(storage, Bounded(),  bounded_dims,  planner_flag)
 
@@ -182,6 +183,7 @@ function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid,
         # We're on the GPU and either (Periodic, Periodic), (Flat, Periodic), or
         # (Periodic, Flat) in the regular dimensions. So, we pretend like we need a 2D
         # doubly-periodic transform (even if one dimension is Flat).
+
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), reg_dims, planner_flag)
         backward_periodic_plan = plan_backward_transform(storage, Periodic(), reg_dims, planner_flag)
 

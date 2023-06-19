@@ -51,9 +51,9 @@ end
 end 
 
 
-irregular_direction(::YZRegRectilinearGrid) = XDirection()
-irregular_direction(::XZRegRectilinearGrid) = YDirection()
-irregular_direction(::XYRegRectilinearGrid) = ZDirection()
+stretched_direction(::YZRegRectilinearGrid) = XDirection()
+stretched_direction(::XZRegRectilinearGrid) = YDirection()
+stretched_direction(::XYRegRectilinearGrid) = ZDirection()
 
 Δξᶠ(i, grid::YZRegRectilinearGrid) = Δxᶠᵃᵃ(i, 1, 1, grid)
 Δξᶠ(j, grid::XZRegRectilinearGrid) = Δyᵃᶠᵃ(1, j, 1, grid)
@@ -68,7 +68,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
     regular_ext1, regular_ext2 = Tuple( el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
 
-    getindex(topology(grid), irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the irregular direction's topology is `Bounded`.")
+    getindex(topology(grid), irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
@@ -96,10 +96,10 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
                     elseif grid isa XYRegRectilinearGrid
                         :xy
                     end
-    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, irregular_direction(grid))
+    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, stretched_direction(grid))
     
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction = irregular_direction(grid))
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction = stretched_direction(grid))
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (regular_top1, regular_top2)
@@ -108,7 +108,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     # Storage space for right hand side of Poisson equation
     rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, irregular_direction(grid))
+    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, stretched_direction(grid))
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
@@ -120,7 +120,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Apply forward transforms in order
     [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
 
-    # Solve tridiagonal system of linear equations every column.
+    # Solve tridiagonal system of linear equations at every column.
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
@@ -150,23 +150,23 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     arch = architecture(solver)
     solver.source_term .= source_term
 
-    launch!(arch, grid, :xyz, multiply_by_irregular_spacing!, solver.source_term, grid)
+    launch!(arch, grid, :xyz, multiply_by_stretched_spacing!, solver.source_term, grid)
 
     return nothing
 end
 
 
-@kernel function multiply_by_irregular_spacing!(a, grid::YZRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::YZRegRectilinearGrid)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_irregular_spacing!(a, grid::XZRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::XZRegRectilinearGrid)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_irregular_spacing!(a, grid::XYRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::XYRegRectilinearGrid)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
