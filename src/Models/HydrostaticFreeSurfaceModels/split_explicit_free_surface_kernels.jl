@@ -309,6 +309,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     return nothing
 end
 
+# Change name
 const ASPS = SplitExplicitSettings{<:AdaptiveSubsteps}
 const FSPS = SplitExplicitSettings{<:FixedSubsteps}
 
