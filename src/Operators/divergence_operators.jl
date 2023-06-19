@@ -32,8 +32,8 @@ at `i, j, k`, where `Azᶜᶜᵃ` is the area of the cell centered on (Center, C
 and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v` cell).
 `div_xyᶜᶜᵃ` ends up at the location `cca`.
 """
-@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
-                                               δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
+@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+                                               δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
 
 @inline div_xyᶜᶜᶜ(i, j, k, grid, u, v) = 
     1 / Vᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
