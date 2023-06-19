@@ -20,6 +20,9 @@ struct VelocityUpwinding{A} <: AbstractUpwindingTreatment
     cross_scheme    :: A # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
 end
 
+@inline extract_centered_scheme(scheme::ACAS) = scheme
+@inline extract_centered_scheme(scheme::AUAS) = scheme.advecting_velocity_scheme
+
 """
     OnlySelfUpwinding(; cross_scheme = CenteredSecondOrder(),
                         δU_stencil   = FunctionStencil(divergence_smoothness),
@@ -52,7 +55,7 @@ OnlySelfUpwinding(; cross_scheme = CenteredSecondOrder(),
                     δV_stencil   = FunctionStencil(divergence_smoothness),
                     δu²_stencil  = FunctionStencil(u_smoothness),
                     δv²_stencil  = FunctionStencil(v_smoothness),
-                    ) = OnlySelfUpwinding(cross_scheme, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
+                    ) = OnlySelfUpwinding(extract_centered_scheme(cross_scheme), δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
 
 """
     CrossAndSelfUpwinding(; cross_scheme       = CenteredSecondOrder(),
@@ -82,7 +85,7 @@ CrossAndSelfUpwinding(; cross_scheme       = CenteredSecondOrder(),
                         divergence_stencil = DefaultStencil(),
                         δu²_stencil        = FunctionStencil(u_smoothness),
                         δv²_stencil        = FunctionStencil(v_smoothness),
-                        ) = CrossAndSelfUpwinding(cross_scheme, divergence_stencil, δu²_stencil, δv²_stencil)
+                        ) = CrossAndSelfUpwinding(extract_centered_scheme(cross_scheme), divergence_stencil, δu²_stencil, δv²_stencil)
 
 """
     VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(cross_scheme)
@@ -98,7 +101,7 @@ Keyword arguments
 - `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
                     in the kinetic energy gradient and the divergence flux. Defaults to `CenteredSecondOrder()`.
 """
-VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(cross_scheme)
+VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(extract_centered_scheme(cross_scheme))
                     
 Base.summary(a::OnlySelfUpwinding)     = "OnlySelfUpwinding"
 Base.summary(a::CrossAndSelfUpwinding) = "CrossAndSelfUpwinding"
