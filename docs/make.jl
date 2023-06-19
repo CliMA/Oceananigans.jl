@@ -1,53 +1,83 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
-using Documenter
-using DocumenterCitations
-using Literate
+using Pkg
+Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.instantiate()
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
 
-using CairoMakie # to avoid capturing precompilation output by Literate
-CairoMakie.activate!(type = "svg")
+using Distributed
 
-using Oceananigans
-using Oceananigans.Operators
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.TurbulenceClosures
-using Oceananigans.TimeSteppers
-using Oceananigans.AbstractOperations
+Distributed.addprocs(2)
 
-using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+@everywhere begin
+    pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
-bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-bib = CitationBibliography(bib_filepath)
-
-#####
-##### Generate examples
-#####
-
-const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
-const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
-
-examples = [
-    "One-dimensional diffusion"        => "one_dimensional_diffusion",
-    "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-    "Internal wave"                    => "internal_wave",
-    "Internal tide by a seamount"      => "internal_tide",
-    "Convecting plankton"              => "convecting_plankton",
-    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-    "Langmuir turbulence"              => "langmuir_turbulence",
-    "Baroclinic adjustment"            => "baroclinic_adjustment",
-    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
-    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
-    "Horizontal convection"            => "horizontal_convection",
-    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
-]
-
-example_scripts = [ filename * ".jl" for (title, filename) in examples ]
-
-for example in example_scripts
-    example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
+    using Pkg
+    Pkg.activate(joinpath(@__DIR__, ".."))
+    Pkg.instantiate()
+    Pkg.activate(@__DIR__)
+    Pkg.instantiate()
 end
+
+@everywhere begin
+    using Documenter
+    using DocumenterCitations
+    using Literate
+
+    using CairoMakie # to avoid capturing precompilation output by Literate
+    CairoMakie.activate!(type = "svg")
+
+    using Oceananigans
+    using Oceananigans.Operators
+    using Oceananigans.Diagnostics
+    using Oceananigans.OutputWriters
+    using Oceananigans.TurbulenceClosures
+    using Oceananigans.TimeSteppers
+    using Oceananigans.AbstractOperations
+
+    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+
+    bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
+    bib = CitationBibliography(bib_filepath)
+
+    #####
+    ##### Generate examples
+    #####
+
+    const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
+    const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
+
+    examples = [
+        "One-dimensional diffusion"        => "one_dimensional_diffusion",
+        "Two-dimensional turbulence"       => "two_dimensional_turbulence",
+        "Internal wave"                    => "internal_wave",
+        "Internal tide by a seamount"      => "internal_tide",
+        "Convecting plankton"              => "convecting_plankton",
+        "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
+        "Langmuir turbulence"              => "langmuir_turbulence",
+        "Baroclinic adjustment"            => "baroclinic_adjustment",
+        "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
+        "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
+        "Horizontal convection"            => "horizontal_convection",
+        "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
+    ]
+
+    example_scripts = [ filename * ".jl" for (title, filename) in examples ]
+
+    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
+end
+    
+Distributed.pmap(1:length(example_scripts)) do n
+    example = example_scripts[n]
+    example_filepath = joinpath(EXAMPLES_DIR, example)
+    withenv("JULIA_DEBUG" => "Literate") do
+        Literate.markdown(example_filepath, OUTPUT_DIR;
+                        flavor = Literate.DocumenterFlavor(), execute = true)
+    end
+end
+
+Distributed.rmprocs()
 
 #####
 ##### Organize page hierarchies
@@ -131,24 +161,20 @@ pages = [
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(
-    collapselevel = 1,
-       prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-       mathengine = MathJax3()
-)
+format = Documenter.HTML(collapselevel = 1,
+                         prettyurls = get(ENV, "CI", nothing) == "true",
+                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+                         mathengine = MathJax3())
 
-makedocs(bib,
-  sitename = "Oceananigans.jl",
-   authors = "Climate Modeling Alliance and contributors",
-    format = format,
-     pages = pages,
-   modules = [Oceananigans],
-   doctest = true,
-    strict = true,
-     clean = true,
- checkdocs = :exports
-)
+makedocs(bib, sitename = "Oceananigans.jl",
+              authors = "Climate Modeling Alliance and contributors",
+              format = format,
+              pages = pages,
+              modules = [Oceananigans],
+              doctest = true, # set to false to speed things up
+              strict = true,
+              clean = true,
+              checkdocs = :exports) # set to :none to speed things up
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
@@ -171,10 +197,8 @@ for file in files
     rm(file)
 end
 
-deploydocs(
-          repo = "github.com/CliMA/OceananigansDocumentation.git",
-      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-     forcepush = true,
-  push_preview = false,
-     devbranch = "main"
-)
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+           versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+           forcepush = true,
+           push_preview = false,
+           devbranch = "main")
