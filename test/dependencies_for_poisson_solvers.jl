@@ -162,13 +162,13 @@ get_interval_kwargs(TX, TY,           faces, ::Val{3}) = (x=(0, 1), y=(0, 1), z=
 get_interval_kwargs(TX, ::Type{Flat}, faces, ::Val{3}) = (x=(0, 1), z=faces,)
 get_interval_kwargs(::Type{Flat}, TY, faces, ::Val{3}) = (y=(0, 1), z=faces,)
 
-function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; irregular_axis = 3)
+function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; stretched_axis = 3)
     N = length(faces) - 1
     unshifted_sizes = [N1, N2, N]
-    sz = get_grid_size(topo..., circshift(unshifted_sizes, irregular_axis)...)
+    sz = get_grid_size(topo..., circshift(unshifted_sizes, stretched_axis)...)
 
-    regular_topos = Tuple( el for (i, el) in enumerate(topo) if i ≠ irregular_axis)
-    intervals = get_interval_kwargs(regular_topos..., faces, Val(irregular_axis))
+    regular_topos = Tuple( el for (i, el) in enumerate(topo) if i ≠ stretched_axis)
+    intervals = get_interval_kwargs(regular_topos..., faces, Val(stretched_axis))
     grid = RectilinearGrid(arch, FT; topology=topo, size=sz, intervals...)
     solver = FourierTridiagonalPoissonSolver(grid)
 
@@ -186,5 +186,5 @@ function stretched_poisson_solver_correct_answer(FT, arch, topo, N1, N2, faces; 
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
-    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
+    return CUDA.@allowscalar all(isapprox.(Array(interior(∇²ϕ)), Array(R), atol=100eps()))
 end
