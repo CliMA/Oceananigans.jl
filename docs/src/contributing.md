@@ -157,8 +157,6 @@ You can preview how the Documentation will look like after merging by building t
 locally. From the main directory of your local repository call
 
 ```
-julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project=docs/ -e 'using Pkg; Pkg.instantiate()'
 JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
 
