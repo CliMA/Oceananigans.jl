@@ -112,7 +112,6 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
         FT = eltype(grid)
         arch = architecture(grid)
         Arch = typeof(arch)
-        
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, mi)
     end
 end
@@ -207,13 +206,13 @@ i-1          i
 
 We then have
 
-    * `inactive_node(i, 1, 1, grid, f, c, c) = false`
+* `inactive_node(i, 1, 1, grid, f, c, c) = false`
 
 As well as
 
-    * `inactive_node(i,   1, 1, grid, c, c, c) = false`
-    * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
-    * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
+* `inactive_node(i,   1, 1, grid, c, c, c) = false`
+* `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
+* `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
 """
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 

@@ -60,12 +60,12 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function DistributedArch(child_architecture = CPU(); 
-                   topology = (Periodic, Periodic, Periodic), 
-                   ranks,
-                   use_buffers = true,
-                   devices = nothing, 
-                   enable_overlapped_computation = true,
-                   communicator = MPI.COMM_WORLD)
+                         topology = (Periodic, Periodic, Periodic), 
+                         ranks,
+                         use_buffers = true,
+                         devices = nothing, 
+                         enable_overlapped_computation = true,
+                         communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 

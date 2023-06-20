@@ -9,10 +9,8 @@ Holds viscosity and diffusivities for models with prescribed isotropic diffusivi
 struct ScalarBiharmonicDiffusivity{F, V, K, N} <: AbstractScalarBiharmonicDiffusivity{F, N}
     ν :: V
     κ :: K
-
-    function ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N}
-        return new{F, V, K, N}(ν, κ)
-    end
+    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} =
+        new{F, V, K, N}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
@@ -24,9 +22,12 @@ HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...)
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
 """
-    ScalarBiharmonicDiffusivity([formulation=ThreeDimensionalFormulation(), FT=Float64;]
-                                ν=0, κ=0,
-                                discrete_form = false)
+    ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
+                                ν = 0,
+                                κ = 0,
+                                discrete_form = false,
+                                loc = (nothing, nothing, nothing),
+                                parameters = nothing)
 
 Return a scalar biharmonic diffusivity turbulence closure with viscosity coefficient `ν` and tracer
 diffusivities `κ` for each tracer field in `tracers`. If a single `κ` is provided, it is applied to
@@ -56,14 +57,20 @@ When prescribing the viscosities or diffusivities as functions, depending on the
 `discrete_form`, the constructor expects:
 
 * `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
-  a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+                                     a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-* `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+* `discrete_form = true`: 
+  * with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz`
+                                                        either `Face()` or `Center()`.
+  * with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
+* `parameters`: `NamedTuple` with parameters used by the functions that compute viscosity and/or diffusivity; default: `nothing`.
 
 For examples see [`ScalarDiffusivity`](@ref).
 """
-function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
-                                     ν=0, κ=0,
+function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
+                                     ν = 0,
+                                     κ = 0,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
