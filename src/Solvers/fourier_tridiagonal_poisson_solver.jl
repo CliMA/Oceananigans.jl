@@ -16,7 +16,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
 
 @kernel function compute_main_diagonal!(D, grid, λy, λz, ::XDirection)
     j, k = @index(Global, NTuple)
-    Nx = getindex(size(grid), 1)
+    Nx = size(grid, 1)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
@@ -28,7 +28,7 @@ end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
     i, k = @index(Global, NTuple)
-    Ny = getindex(size(grid), 2)
+    Ny = size(grid, 2)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
@@ -40,7 +40,7 @@ end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
     i, j = @index(Global, NTuple)
-    Nz = getindex(size(grid), 3)
+    Nz = size(grid, 3)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
@@ -68,7 +68,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
     regular_ext1, regular_ext2 = Tuple( el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
 
-    getindex(topology(grid), irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
+    topology(grid, irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
