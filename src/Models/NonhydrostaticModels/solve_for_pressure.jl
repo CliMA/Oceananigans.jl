@@ -84,7 +84,7 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
     grid = solver.grid
 
     launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
-            rhs, grid, Δt, U★, solver.tridiagonal_direction)
+            rhs, grid, Δt, U★, solver.batched_tridiagonal_solver.tridiagonal_direction)
 
     # Pressure Poisson rhs, scaled by the spacing in the stretched direction at ᶜᶜᶜ, is stored in solver.source_term:
     solve!(pressure, solver)
