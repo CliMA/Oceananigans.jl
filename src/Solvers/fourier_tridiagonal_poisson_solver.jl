@@ -96,10 +96,12 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
                     elseif grid isa XYRegRectilinearGrid
                         :xy
                     end
-    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, stretched_direction(grid))
+
+    tridiagonal_direction = stretched_direction(grid)
+    launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
     
     # Set up batched tridiagonal solver
-    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction = stretched_direction(grid))
+    btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (regular_top1, regular_top2)
@@ -108,7 +110,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     # Storage space for right hand side of Poisson equation
     rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, stretched_direction(grid))
+    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, tridiagonal_direction)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
