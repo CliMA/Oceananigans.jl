@@ -2,13 +2,14 @@ using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃ�
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, stretched_dimensions
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T, D}
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
                        storage :: S
                         buffer :: β
                     transforms :: T
+         tridiagonal_direction :: D
 end
 
 architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
@@ -107,7 +108,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     # Storage space for right hand side of Poisson equation
     rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
+    return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms, stretched_direction(grid))
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
