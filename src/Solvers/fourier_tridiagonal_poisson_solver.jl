@@ -126,8 +126,6 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Apply backward transforms in order
     [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
 
-    ϕ .= real.(ϕ)
-
     # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
