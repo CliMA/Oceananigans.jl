@@ -30,7 +30,7 @@ function interior_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     
     Sx = Rx == 1 ? Nx : Nx - 2Hx
-    Sy = Ry == 1 ? Ny : Nx - 2Hy
+    Sy = Ry == 1 ? Ny : Ny - 2Hy
 
     Ox = Rx == 1 ? 0 : Hx
     Oy = Ry == 1 ? 0 : Hy
