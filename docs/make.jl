@@ -1,11 +1,3 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
-
-using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
-Pkg.instantiate()
-Pkg.activate(@__DIR__)
-Pkg.instantiate()
-
 using Distributed
 
 Distributed.addprocs(2)
@@ -24,6 +16,7 @@ end
     using Documenter
     using DocumenterCitations
     using Literate
+    using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     CairoMakie.activate!(type = "svg")
@@ -48,31 +41,34 @@ end
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
-    examples = [
-        "One-dimensional diffusion"        => "one_dimensional_diffusion",
-        "Two-dimensional turbulence"       => "two_dimensional_turbulence",
-        "Internal wave"                    => "internal_wave",
-        "Convecting plankton"              => "convecting_plankton",
-        "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection",
-        "Langmuir turbulence"              => "langmuir_turbulence",
-        "Baroclinic adjustment"            => "baroclinic_adjustment",
-        "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability",
-        "Shallow water Bickley jet"        => "shallow_water_Bickley_jet",
-        "Horizontal convection"            => "horizontal_convection",
-        "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer"
+    # The examples that take longer to run should be first. This ensures thats
+    # docs built using extra workers is as efficient as possible.
+    example_scripts = [
+        "baroclinic_adjustment.jl",
+        "kelvin_helmholtz_instability.jl",
+        "convecting_plankton.jl",
+        "ocean_wind_mixing_and_convection.jl",
+        "langmuir_turbulence.jl",
+        "horizontal_convection.jl",
+        "tilted_bottom_boundary_layer.jl",
+        "shallow_water_Bickley_jet.jl",
+        "two_dimensional_turbulence.jl",
+        "internal_wave.jl",
+        "one_dimensional_diffusion.jl",
     ]
-
-    example_scripts = [ filename * ".jl" for (title, filename) in examples ]
 
     @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
-    
+
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
     example_filepath = joinpath(EXAMPLES_DIR, example)
     withenv("JULIA_DEBUG" => "Literate") do
+        start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
-                        flavor = Literate.DocumenterFlavor(), execute = true)
+                          flavor = Literate.DocumenterFlavor(), execute = true)
+        elapsed = 1e-9 * (time_ns() - start_time)
+        @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
     end
 end
 
@@ -82,7 +78,19 @@ Distributed.rmprocs()
 ##### Organize page hierarchies
 #####
 
-example_pages = [ title => "generated/$(filename).md" for (title, filename) in examples ]
+example_pages = [
+    "One-dimensional diffusion"        => "one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"       => "two_dimensional_turbulence.md",
+    "Internal wave"                    => "internal_wave.md",
+    "Convecting plankton"              => "convecting_plankton.md",
+    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"              => "langmuir_turbulence.md",
+    "Baroclinic adjustment"            => "baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet.md",
+    "Horizontal convection"            => "horizontal_convection.md",
+    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer.md"
+]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
@@ -197,7 +205,7 @@ for file in files
 end
 
 deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
            forcepush = true,
            push_preview = false,
            devbranch = "main")
