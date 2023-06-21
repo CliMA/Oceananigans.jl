@@ -4,6 +4,7 @@ include("data_dependencies.jl")
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: correct_horizontal_velocity_halos!
 
 function get_halo_data(field, side, k_index=1)
     Nx, Ny, _ = size(field)
@@ -188,7 +189,8 @@ end
 
             fill_halo_regions!(u)
             fill_halo_regions!(v)
-            
+            @apply_regionally correct_horizontal_velocity_halos!((; u, v), grid)
+
             Hx, Hy, Hz = halo_size(u.grid)
 
             west_indices  = 1:Hx, 1:Ny

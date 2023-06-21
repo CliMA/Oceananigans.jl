@@ -166,3 +166,6 @@ _fill_north_send_buffer!(c, buff, H, N) = buff.send .= view(c, :, 1+N:N+H, :)
  _recv_from_east_buffer!(c, buff, H, N) = view(c, 1+N+H:N+2H, :, :) .= buff.recv
 _recv_from_south_buffer!(c, buff, H, N) = view(c, :, 1:H,        :) .= buff.recv
 _recv_from_north_buffer!(c, buff, H, N) = view(c, :, 1+N+H:N+2H, :) .= buff.recv
+
+# Switch around halos for cubed sphere by exhanging buffer informations
+correct_horizontal_velocity_halos!(vel, grid::AbstractGrid) = nothing

@@ -1,6 +1,7 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
 using DocStringExtensions
+import Oceananigans.Fields: correct_horizontal_velocity_halos!
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
@@ -265,6 +266,43 @@ function Base.summary(p::CubedSpherePartition)
 
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
+
+function correct_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid)
+
+    u, v, _ = velocities
+
+    ubuff = u.buondary_buffers
+    vbuff = v.buondary_buffers
+    
+    conn_west  = u.boundary_conditions.west.connectivity.from_side
+    conn_east  = u.boundary_conditions.east.connectivity.from_side
+    conn_south = u.boundary_conditions.south.connectivity.from_side
+    conn_north = u.boundary_conditions.north.connectivity.from_side
+
+    replace_u_west!(u, vbuff, conn_west)
+    replace_u_east!(u, vbuff, conn_east)
+    replace_v_west!(v, ubuff, conn_west)
+    replace_v_east!(v, ubuff, conn_east)
+    replace_u_south!(u, vbuff, conn_south)
+    replace_u_north!(u, vbuff, conn_north)
+    replace_v_south!(v, ubuff, conn_south)
+    replace_v_north!(v, ubuff, conn_north)
+
+    return nothing
+end
+
+for vel in (:u, :v), dir in (:east, :west, :north, :south)
+    @eval $(Symbol(:replace_, vel, :_, dir))(u, v, conn) = nothing
+end
+
+ replace_u_west!(u, vbuff, conn_west::North) =    
+ replace_v_west!(v, ubuff, conn_west::North) =
+ replace_u_east!(u, vbuff, conn_east::South) =
+ replace_v_east!(v, ubuff, conn_east::South) =
+replace_u_south!(u, vbuff, conn_south::East) = 
+replace_v_south!(v, ubuff, conn_south::East) = 
+replace_u_north!(u, vbuff, conn_north::West) = 
+replace_v_north!(v, ubuff, conn_north::West) = 
 
 Base.show(io::IO, p::CubedSpherePartition) =
     print(io, summary(p), "\n",
