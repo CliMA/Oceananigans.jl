@@ -74,8 +74,13 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+    return ImmersedBoundaryGrid(grid, new_ib)
+end
+
+function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+    validate_ib_size(grid, ib)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
