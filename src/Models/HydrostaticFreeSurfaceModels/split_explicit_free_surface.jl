@@ -313,7 +313,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
             throw(ArgumentError("Need to specify the grid kwarg to calculate the barotropic substeps from the cfl"))
         end
         substepping = FixedTimeStepSize(FT; cfl, grid, gravitational_acceleration, averaging_kernel)
-        if !isnothing(fixed_Δt)
+        if isnothing(fixed_Δt)
             return SplitExplicitSettings(substepping, timestepper)
         else
             substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
