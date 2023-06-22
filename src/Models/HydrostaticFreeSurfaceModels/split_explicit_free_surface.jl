@@ -45,14 +45,17 @@ Keyword Arguments
               for which `averaging_weights > 0`.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
-  barotropic gravity-wave speed, computed with depth `grid.Lz`.
+         barotropic gravity-wave speed, computed with depth `grid.Lz`. If `fixed_Δt` is provided then the number of
+         `substeps` will adapt to maintain an exact cfl. If not the effective cfl will be always lower than the 
+         specified `cfl` provided that the baroclinic time step `Δt_baroclinic < fixed_Δt`
 
 !!! info "Needed keyword arguments"
-    Either `substeps` _or_ `cfl` needs to be prescribed.
+    Either `substeps` _or_ `cfl` (with `grid`) need to be prescribed.
 
 - `grid`: Used to compute the corresponding barotropic surface wave speed.
 
-- `max_Δt`: The maximum baroclinic timestep that is allowed.
+- `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided, then
+              the number of substeps will be computed on the fly from the baroclinic time step to maintain a constant cfl.
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
@@ -222,8 +225,8 @@ A type containing settings for the split-explicit free surface.
 $(FIELDS)
 """
 struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
-    "`substeps`: (`Int`)"
-    substeps :: 𝒩
+    "either `FixedSubstepNumber` or `FixedTimeStepSize`: (`Int`)"
+    substepping :: 𝒩
     "time-stepping scheme"
     timestepper :: 𝒮
 end
@@ -238,20 +241,40 @@ struct ForwardBackwardScheme end
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
-@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? FT(1 + cos(2π * (τ - 1))) : zero(FT)
+@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ) = 1
 
-struct AdaptiveSubsteps{B, F}
-    Δtᴮ :: B
+""" an internal type for the `SplitExplicitFreeSurface` that allows substepping with
+a fixed `Δt_barotopic` based on a CFL condition """
+struct FixedTimeStepSize{B, F}
+    Δt_barotopic     :: B
     averaging_kernel :: F
 end
 
-struct FixedSubsteps{B, F}
-    Δτ :: B
-    averaging_weights :: F
+""" an internal type for the `SplitExplicitFreeSurface` that allows substepping with
+a fixed number of substeps with time step size of `fractional_step_size * Δt_baroclinic` """
+struct FixedSubstepNumber{B, F}
+    fractional_step_size :: B
+    averaging_weights    :: F
 end
     
-AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
+FixedTimeStepSize() = FixedTimeStepSize(nothing, nothing)
+
+function FixedTimeStepSize(FT::DataType = Float64;
+                           cfl = 0.7, 
+                           grid, 
+                           averaging_kernel = averaging_shape_function, 
+                           gravitational_acceleration = g_Earth)
+    Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
+    Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
+    Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
+
+    wave_speed = sqrt(gravitational_acceleration * grid.Lz)
+    
+    Δt_barotopic = FT(cfl * Δs / wave_speed)
+
+    return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
+end
 
 @inline function weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
 
@@ -269,12 +292,12 @@ AdaptiveSubsteps() = AdaptiveSubsteps(nothing, nothing)
 end
 
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = nothing, 
-                               cfl    = nothing,
-                               grid   = nothing,
-                               max_Δt = nothing,
+                               substeps = 200, 
+                               cfl      = nothing,
+                               grid     = nothing,
+                               fixed_Δt = nothing,
                                gravitational_acceleration = g_Earth,
-                               barotropic_averaging_kernel = averaging_shape_function,
+                               averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
     
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
@@ -286,28 +309,21 @@ function SplitExplicitSettings(FT::DataType=Float64;
     end
 
     if !isnothing(cfl)
-        if isnothing(max_Δt) || isnothing(grid)
-            throw(ArgumentError("Need to specify the grid and max_Δt kwargs to calculate the barotropic substeps from the cfl"))
+        if isnothing(grid)
+            throw(ArgumentError("Need to specify the grid kwarg to calculate the barotropic substeps from the cfl"))
         end
-
-        Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
-        Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
-        Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
-
-        wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-        
-        Δtᴮ = FT(cfl * Δs / wave_speed)
-        if substeps isa AdaptiveSubsteps
-            return SplitExplicitSettings(AdaptiveSubsteps(Δtᴮ, barotropic_averaging_kernel), 
-                                         timestepper)
+        substepping = FixedTimeStepSize(FT; cfl, grid, gravitational_acceleration, averaging_kernel)
+        if !isnothing(fixed_Δt)
+            return SplitExplicitSettings(substepping, timestepper)
+        else
+            substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
         end
-        substeps = ceil(Int, 2 * max_Δt / Δtᴮ)
     end
 
-    Δτ, averaging_weights = weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
+    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
 
-    return SplitExplicitSettings(FixedSubsteps(Δτ, averaging_weights),
-                                 timestepper)
+    return SplitExplicitSettings(substepping, timestepper)
 end
 
 # Convenience Functions for grabbing free surface
@@ -321,7 +337,10 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings) =
     SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substeps) steps")
+Base.summary(s::FixedTimeStepSize) = string("Barotropic time step equal to $(s.Δt_barotopic)")
+Base.summary(s::FixedTimeStepSize) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
+
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substepping)")
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 function reset!(sefs::SplitExplicitFreeSurface)

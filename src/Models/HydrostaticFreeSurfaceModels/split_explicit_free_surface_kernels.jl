@@ -310,14 +310,15 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 end
 
 # Change name
-const ASPS = SplitExplicitSettings{<:AdaptiveSubsteps}
-const FSPS = SplitExplicitSettings{<:FixedSubsteps}
+const FNS = SplitExplicitSettings{<:FixedSubstepNumber}
+const FTS = SplitExplicitSettings{<:FixedTimeStepSize}
 
-@inline calculate_substeps(settings::FSPS, Δt) = nothing
-@inline calculate_substeps(settings::ASPS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
+@inline calculate_substeps(settings::FNS, Δt) = nothing
+@inline calculate_substeps(settings::FTS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
 
-@inline calculate_adaptive_settings(settings::FSPS, substeps) = settings.substeps.Δτ, settings.substeps.averaging_weights
-@inline calculate_adaptive_settings(settings::ASPS, substeps) = weights_from_substeps(eltype(settings.substeps.Δtᴮ), substeps, settings.substeps.barotropic_averaging_kernel)
+@inline calculate_adaptive_settings(settings::FNS, substeps) = settings.substepping.fractional_step_size, settings.substepping.averaging_weights
+@inline calculate_adaptive_settings(settings::FTS, substeps) = weights_from_substeps(eltype(settings.substepping.Δt_barotopic), 
+                                                                                     substeps, settings.substepping.averaging_kernel)
 
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
@@ -328,14 +329,14 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
 
-    preliminary_substeps = calculate_substeps(settings, Δt)
-    Δτ, weights = calculate_adaptive_settings(settings, preliminary_substeps) # barotropic time step in fraction of baroclinic step and averaging weights
+    Nsubsteps  = calculate_substeps(settings, Δt)
+    fractional_Δt, weights = calculate_adaptive_settings(settings, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
     
-    substeps = length(weights)
+    Nsubsteps = length(weights)
 
-    Δτᴮ = Δτ * Δt  # barotropic time step in seconds
+    Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
 
-    for substep in 1:substeps
+    for substep in 1:Nsubsteps
         split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτᴮ, substep)
     end
 end
