@@ -192,7 +192,7 @@ end
 #####  1. Energy conservative         
 #####  2. Enstrophy conservative      
 #####  3. Dimension-By-Dimension Vorticity upwinding   
-#####  4. Multi-Dimensional Vorticity upwinding         
+#####  4. Two-Dimensional (x and y) Vorticity upwinding         
 #####
 
 #####
