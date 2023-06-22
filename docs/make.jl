@@ -1,5 +1,4 @@
 using Distributed
-
 Distributed.addprocs(2)
 
 @everywhere begin
@@ -79,17 +78,17 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "two_dimensional_turbulence.md",
-    "Internal wave"                    => "internal_wave.md",
-    "Convecting plankton"              => "convecting_plankton.md",
-    "Ocean wind mixing and convection" => "ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"        => "shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                    => "generated/internal_wave.md",
+    "Convecting plankton"              => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
+    "Baroclinic adjustment"            => "generated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"        => "generated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"            => "generated/horizontal_convection.md",
+    "Tilted bottom boundary layer"     => "generated/tilted_bottom_boundary_layer.md"
 ]
 
 model_setup_pages = [
