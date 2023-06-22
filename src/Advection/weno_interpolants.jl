@@ -269,7 +269,6 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
                 uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
                 vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-                
                 βᵤ = beta_loop(scheme, uₛ, $biased_β)
                 βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
