@@ -45,10 +45,10 @@ end
     example_scripts = [
         "baroclinic_adjustment.jl",
         "kelvin_helmholtz_instability.jl",
-        "convecting_plankton.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "langmuir_turbulence.jl",
+        "ocean_wind_mixing_and_convection.jl",
         "horizontal_convection.jl",
+        "convecting_plankton.jl",
         "tilted_bottom_boundary_layer.jl",
         "shallow_water_Bickley_jet.jl",
         "two_dimensional_turbulence.jl",
