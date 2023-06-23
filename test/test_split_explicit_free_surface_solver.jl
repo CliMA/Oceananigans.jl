@@ -19,7 +19,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo=(1, 1, 1))
 
-            settings = SplitExplicitSettings(; substeps = 200, barotropic_averaging_kernel = constant_averaging_kernel)
+            settings = SplitExplicitSettings(; substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = SplitExplicitFreeSurface(grid; settings)
 
             sefs.η .= 0
@@ -76,7 +76,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                settings = SplitExplicitSettings(; substeps = Nt, barotropic_averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(; substeps = Nt, averaging_kernel = constant_averaging_kernel)
 
                 # set!(η, f(x,y))
                 η₀(x, y, z) = sin(x)
@@ -206,7 +206,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 Gᵁ .= gu_c
                 Gⱽ .= gv_c
 
-                settings = SplitExplicitSettings(substeps = Nt + 1, barotropic_averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
                 for i in 1:Nt

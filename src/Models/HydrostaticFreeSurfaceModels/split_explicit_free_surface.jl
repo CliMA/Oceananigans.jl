@@ -224,7 +224,7 @@ A type containing settings for the split-explicit free surface.
 
 $(FIELDS)
 """
-struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
+struct SplitExplicitSettings{𝒩, 𝒮}
     "either `FixedSubstepNumber` or `FixedTimeStepSize`: (`Int`)"
     substepping :: 𝒩
     "time-stepping scheme"
