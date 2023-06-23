@@ -2,6 +2,10 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed!
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
+using Oceananigans.Fields: ZeroField, ConstantField
+
+import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), u_num.grid)

@@ -2,7 +2,7 @@ using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!
 using Oceananigans.ImmersedBoundaries: mask_immersed!
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
 time(model) = model.clock.time
