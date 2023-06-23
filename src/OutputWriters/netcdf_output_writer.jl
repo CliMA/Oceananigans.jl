@@ -395,7 +395,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   compression=compression, attrib=default_dimension_attributes[dim_name])
+                   deflatelevel=compression, attrib=default_dimension_attributes[dim_name])
         end
 
         # DateTime and TimeDate are both <: AbstractTime
@@ -446,7 +446,7 @@ function define_output_variable!(dataset, output, name, array_type, compression,
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
     defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           compression=compression, attrib=output_attributes)
+           deflatelevel=compression, attrib=output_attributes)
 
     return nothing
 end
@@ -456,7 +456,7 @@ end
 define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           compression=compression, attrib=output_attributes)
+           deflatelevel=compression, attrib=output_attributes)
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
@@ -573,7 +573,7 @@ function define_output_variable!(dataset, output::LagrangianParticles, name, arr
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     for particle_field in particle_fields
         defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), compression=compression)
+               ("particle_id", "time"), deflatelevel=compression)
     end
 end
 
