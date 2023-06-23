@@ -59,12 +59,12 @@ Keyword Arguments
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
-- `barotropic_averaging_kernel`: function of `τ` used to average the barotropic transport `U` and free surface `η`
-                                 within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
-                                 with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
-                                 centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
-                                 described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-                                 is chosen.
+- `averaging_kernel`: function of `τ` used to average the barotropic transport `U` and free surface `η`
+                      within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
+                      with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
+                      centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
+                      described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
+                      is chosen.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
@@ -276,12 +276,12 @@ function FixedTimeStepSize(FT::DataType = Float64;
     return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
 end
 
-@inline function weights_from_substeps(FT, substeps, barotropic_averaging_kernel)
+@inline function weights_from_substeps(FT, substeps, averaging_kernel)
 
     τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = FT.(barotropic_averaging_kernel.(τᶠ[2:end]))
+    averaging_weights = FT.(averaging_kernel.(τᶠ[2:end]))
     idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
