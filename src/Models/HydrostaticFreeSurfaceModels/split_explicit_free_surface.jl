@@ -225,10 +225,8 @@ A type containing settings for the split-explicit free surface.
 $(FIELDS)
 """
 struct SplitExplicitSettings{𝒩, 𝒮}
-    "either `FixedSubstepNumber` or `FixedTimeStepSize`: (`Int`)"
-    substepping :: 𝒩
-    "time-stepping scheme"
-    timestepper :: 𝒮
+    substepping :: 𝒩 # Either `FixedSubstepNumber` or `FixedTimeStepSize`"
+    timestepper :: 𝒮 # time-stepping scheme
 end
 
 struct AdamsBashforth3Scheme end
@@ -244,14 +242,14 @@ end
 @inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ) = 1
 
-""" an internal type for the `SplitExplicitFreeSurface` that allows substepping with
+""" An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotopic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
     Δt_barotopic     :: B
     averaging_kernel :: F
 end
 
-""" an internal type for the `SplitExplicitFreeSurface` that allows substepping with
+""" An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed number of substeps with time step size of `fractional_step_size * Δt_baroclinic` """
 struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
