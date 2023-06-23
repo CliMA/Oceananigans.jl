@@ -122,31 +122,33 @@ struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurviline
     face_connectivity :: C
 end
 
-function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, radius=R_Earth)
+function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_halo=(1, 1, 1), radius=R_Earth)
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    # +z face (face 1)
-    z⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=nothing)
+    size, halo = face_size, face_halo
 
-    # +x face (face 2)
-    x⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
+    # +x face (face 1)
+    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2)*RotY(π/2))
 
-    # +y face (face 3)
-    y⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
+    # +y face (face 2)
+    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π)*RotX(-π/2))
+
+    # +z face (face 3)
+    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π))
 
     # -x face (face 4)
-    x⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
+    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π)*RotY(-π/2))
 
     # -y face (face 5)
-    y⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
+    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2)*RotX(π/2))
 
     # -z face (face 6)
-    z⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
+    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π/2)*RotX(π))
 
     faces = (
-        z⁺_face_grid,
         x⁺_face_grid,
         y⁺_face_grid,
+        z⁺_face_grid,
         x⁻_face_grid,
         y⁻_face_grid,
         z⁻_face_grid
@@ -161,9 +163,9 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Flo
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     face_topo = (FullyConnected, FullyConnected, Bounded)
-    face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
+    face_kwargs = (; Nz, z, topology=face_topo, radius, halo)
 
-    faces = Tuple(ConformalCubedSphereFaceGrid(filepath, arch, FT; face=n, face_kwargs...) for n in 1:6)
+    faces = Tuple(OrthogonalSphericalShellGrid(filepath, arch, FT; face=n, face_kwargs...) for n in 1:6)
 
     face_connectivity = default_face_connectivity()
 
@@ -181,54 +183,57 @@ function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
 end
 
 #####
-##### Nodes for ConformalCubedSphereFaceGrid
+##### Nodes for OrthogonalSphericalShellGrid
 #####
 
-@inline λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline λnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline λnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
+const OSSG = OrthogonalSphericalShellGrid
 
-@inline φnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline φnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline φnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline φnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Face,   LY::Face,   LZ; kwargs...) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Face,   LY::Center, LZ; kwargs...) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Center, LY::Face,   LZ; kwargs...) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Center, LY::Center, LZ; kwargs...) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline znode(LX, LY, LZ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline φnode(i, j, k, grid::OSSG, LX::Face,   LY::Face,   LZ; kwargs...) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Face,   LY::Center, LZ; kwargs...) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Center, LY::Face,   LZ; kwargs...) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Center, LY::Center, LZ; kwargs...) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-λnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Face  ; kwargs...) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Center; kwargs...) = @inbounds grid.zᵃᵃᶜ[k]
 
-λnodes(LX::Face, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶠᶠᵃ : view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-λnodes(LX::Center, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶠᶜᵃ : view(grid.λᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-λnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Center, LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶜᶠᵃ : view(grid.λᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Center, LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶜᶜᵃ : view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(LX::Face, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+φnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.φᶠᶠᵃ : view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(LX::Center, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+φnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.φᶠᶜᵃ : view(grid.φᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+φnodes(grid::OSSG{TX, TY}, LX::Center, LY::Face,   LZ; with_halos=false) where {TX, TY} =
+    with_halos ? grid.φᶜᶠᵃ : view(grid.φᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+φnodes(grid::OSSG{TX, TY}, LX::Center, LY::Center, LZ; with_halos=false) where {TX, TY} =
+    with_halos ? grid.φᶜᶜᵃ : view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
 #####
 ##### Grid utils
 #####
 
-Base.size(grid::ConformalCubedSphereGrid)      = (size(grid.faces[1])..., length(grid.faces))
-Base.size(loc, grid::ConformalCubedSphereGrid) = size(loc, grid.faces[1])
-Base.size(grid::ConformalCubedSphereGrid, i)   = size(grid)[i]
-halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.faces)) # hack
+Base.size(grid::ConformalCubedSphereGrid)             = (size(grid.faces[1])..., length(grid.faces))
+Base.size(grid::ConformalCubedSphereGrid, loc::Tuple) = size(grid.faces[1], loc)
+Base.size(grid::ConformalCubedSphereGrid, i::Int)     = size(grid)[i]
+
+halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg.faces)) # hack
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 

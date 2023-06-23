@@ -31,7 +31,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                               dir = ".",
                           indices = (:, :, :),
                        with_halos = false,
-                       array_type = Array{Float32},
+                       array_type = Array{Float64},
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -51,59 +51,59 @@ functions, or callable objects.
 Keyword arguments
 =================
 
-  ## Filenaming
+## Filenaming
 
-  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path
-                           if `filename` does not end in ".jld2".
+- `filename` (required): Descriptive filename. `".jld2"` is appended to `filename` in the file path
+                        if `filename` does not end in `".jld2"`.
 
-  - `dir`: Directory to save output to. Default: "." (current working directory).
+- `dir`: Directory to save output to. Default: `"."` (current working directory).
 
-  ## Output frequency and time-averaging
+## Output frequency and time-averaging
 
-  - `schedule` (required): `AbstractSchedule` that determines when output is saved.
+- `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
-  ## Slicing and type conversion prior to output
+## Slicing and type conversion prior to output
 
-  - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
-               or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
-               Defaults to `(:, :, :)` or "all indices". If `!with_halos`,
-               halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
-               will save xy-slices of the bottom-most index.
+- `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
+             or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
+             Defaults to `(:, :, :)` or "all indices". If `!with_halos`,
+             halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
+             will save xy-slices of the bottom-most index.
 
-  - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
-                         Note, that to postprocess saved output (e.g., compute derivatives, etc)
-                         information about the boundary conditions is often crucial. In that case
-                         you might need to set `with_halos = true`.
+- `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
+                       Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                       information about the boundary conditions is often crucial. In that case
+                       you might need to set `with_halos = true`.
 
-  - `array_type`: The array type to which output arrays are converted to prior to saving.
-                  Default: `Array{Float32}`.
+- `array_type`: The array type to which output arrays are converted to prior to saving.
+                Default: `Array{Float64}`.
 
-  ## File management
+## File management
 
-  - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
-                    and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
-                    Defaults to `Inf`.
+- `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
+                  and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
+                  Defaults to `Inf`.
 
-  - `overwrite_existing`: Remove existing files if their filenames conflict.
-                          Default: `false`.
+- `overwrite_existing`: Remove existing files if their filenames conflict.
+                        Default: `false`.
 
-  ## Output file metadata management
+## Output file metadata management
 
-  - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
-            Default: `noinit(args...) = nothing`.
+- `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
+          Default: `noinit(args...) = nothing`.
 
-  - `including`: List of model properties to save with every file.
-                 Default: `[:grid, :coriolis, :buoyancy, :closure]`
+- `including`: List of model properties to save with every file.
+               Default: `[:grid, :coriolis, :buoyancy, :closure]`
 
-  ## Miscellaneous keywords
+## Miscellaneous keywords
 
-  - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
-               Default: `false`.
+- `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
+             Default: `false`.
 
-  - `part`: The starting part number used if `max_filesize` is finite.
-            Default: 1.
+- `part`: The starting part number used if `max_filesize` is finite.
+          Default: 1.
 
-  - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+- `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 
 Example
 =======
@@ -136,7 +136,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_data.jld2
 ├── 3 outputs: (u, v, w)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -153,7 +153,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -162,7 +162,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
                             with_halos = false,
-                            array_type = Array{Float32},
+                            array_type = Array{Float64},
                           max_filesize = Inf,
                     overwrite_existing = false,
                                   init = noinit,

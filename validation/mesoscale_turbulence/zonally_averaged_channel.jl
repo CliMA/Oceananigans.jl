@@ -242,20 +242,20 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b, c = model.tracers.b, model.tracers.c
 
-dependencies = (gent_mcwilliams_diffusivity,
-                b,
-                Val(1),
-                model.clock,
-                model.diffusivity_fields,
-                model.tracers,
-                model.buoyancy,
-                model.velocities)
+arguments = (gent_mcwilliams_diffusivity,
+             b,
+             Val(1),
+             model.clock,
+             model.diffusivity_fields,
+             model.tracers,
+             model.buoyancy,
+             model.velocities)
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_y, diffusive_flux_z, ∇_dot_qᶜ
 
-vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=architecture, computed_dependencies=dependencies)
-wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=architecture, computed_dependencies=dependencies)
-∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
+vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, arguments...)
+wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, arguments...)
+∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, arguments...)
 
 vb = Field(vb_op)
 wb = Field(wb_op)

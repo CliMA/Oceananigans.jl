@@ -2,8 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
-using KernelAbstractions: @index
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
@@ -65,27 +63,21 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 
 
     if only_active_cells
-        workgroup, worksize = only_active_cells_in_worksize(worksize, grid) 
+        workgroup, worksize = active_cells_work_layout(worksize, grid) 
     end
 
     return workgroup, worksize
 end
 
-only_active_cells_in_worksize(size, grid) = heuristic_workgroup(size...), size
+active_cells_work_layout(size, grid) = heuristic_workgroup(size...), size
 
 """
-    launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
+    launch!(arch, grid, layout, kernel!, args...; kwargs...)
 
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`.
-
-Returns an `event` token associated with the `kernel!` launch.
-
-The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
-that must complete before `kernel!` is launched.
+over the `dims` of `grid` on the architecture `arch`. kernels run on the defaul stream
 """
 function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 dependencies = nothing,
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
@@ -102,13 +94,12 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(kernel_args...; dependencies=dependencies)
+    loop!(kernel_args...)
 
-    return event
+    return nothing
 end
 
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
 
-@inline calc_tendency_index(idx, i, j, k, args...) = i, j, k

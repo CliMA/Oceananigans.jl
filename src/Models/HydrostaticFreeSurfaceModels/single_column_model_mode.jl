@@ -1,7 +1,8 @@
-using KernelAbstractions: NoneEvent
 using CUDA: @allowscalar
 
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
@@ -28,6 +29,15 @@ FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities,             
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 
+function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+    w = ZeroField()
+    return (u=u, v=v, w=w)
+end
+
+validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
+validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
@@ -36,7 +46,7 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
+calculate_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
 
 # Fast state update and halo filling
 
@@ -52,11 +62,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    for callback in callbacks
+        callback.callsite isa UpdateStateCallsite && callback(model)
+    end
 
     return nothing
 end
-
 
 const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
 
@@ -123,7 +134,3 @@ end
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end
 
-@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
-    @inbounds coriolis = coriolis_array[i, j]
-    return z_f_cross_U(i, j, k, grid, coriolis, U)
-end

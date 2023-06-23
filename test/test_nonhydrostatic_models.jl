@@ -110,8 +110,8 @@ include("dependencies_for_runtests.jl")
 
             set!(model, enforce_incompressibility=false, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
-            xC, yC, zC = nodes((Center, Center, Center), model.grid; reshape=true)
-            xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
+            xC, yC, zC = nodes(model.grid, (Center(), Center(), Center()), reshape=true)
+            xF, yF, zF = nodes(model.grid, (Face(),   Face(),   Face()), reshape=true)
 
             # Form solution arrays
             u_answer = u₀.(xF, yC, zC) |> Array 

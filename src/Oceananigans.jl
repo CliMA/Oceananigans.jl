@@ -21,8 +21,10 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    xspacings, yspacings, zspacings,
+    minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
@@ -71,6 +73,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
     FluxTapering,
     VerticallyImplicitTimeDiscretization,
+    viscosity, diffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -165,6 +168,7 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+# Callsites for Callbacks
 struct TimeStepCallsite end
 struct TendencyCallsite end
 struct UpdateStateCallsite end
@@ -175,6 +179,7 @@ struct UpdateStateCallsite end
 
 function run_diagnostic! end
 function write_output! end
+function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end
@@ -198,7 +203,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -206,9 +210,10 @@ include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
+include("Distributed/Distributed.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -237,7 +242,6 @@ using .Coriolis
 using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
-using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .ImmersedBoundaries
@@ -258,7 +262,7 @@ function __init__()
         @info "Oceananigans will use $threads threads"
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4*threads)
+        FFTW.set_num_threads(4threads)
     end
 
     if CUDA.has_cuda()

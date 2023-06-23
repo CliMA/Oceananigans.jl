@@ -1,5 +1,5 @@
 using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getname
+using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getnamewrapper
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary
 
 devices(::CPU, num) = nothing
@@ -20,13 +20,13 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                                GridFittedBoundary(arch_array(arch, [false for i in 1:20, j in 1:20, k in 1:1]))]
         
         for grid in grids, P in partitioning, regions in region_num
-            @info "Testing multi region $(getname(grid)) on $regions $(P)s"
+            @info "Testing multi region $(getnamewrapper(grid)) on $regions $(P)s"
             mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices(arch, regions))
 
             @test reconstruct_global_grid(mrg) == grid
 
             for FieldType in [CenterField, XFaceField, YFaceField]
-                @info "Testing multi region $(FieldType) on $(getname(grid)) on $regions $(P)s"
+                @info "Testing multi region $(FieldType) on $(getnamewrapper(grid)) on $regions $(P)s"
 
                 par_field = FieldType(mrg)
                 ser_field = FieldType(grid)
@@ -43,7 +43,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             end
 
             for immersed_boundary in immersed_boundaries
-                @info "Testing multi region immersed boundaries on $(getname(grid)) on $regions $(P)s"
+                @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(P)s"
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
                 mrg = MultiRegionGrid(ibg, partition = P(regions), devices = devices(arch, regions))
 

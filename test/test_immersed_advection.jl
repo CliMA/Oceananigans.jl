@@ -103,7 +103,7 @@ for arch in archs
     
         c = CenterField(ibg)
         set!(c, 1.0)
-        wait(mask_immersed_field!(c))
+        mask_immersed_field!(c)
         fill_halo_regions!(c)
     
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
@@ -141,8 +141,8 @@ for arch in archs
         set!(u, 1.0)
         set!(v, 1.0)
 
-        wait(mask_immersed_field!(u))
-        wait(mask_immersed_field!(v))
+        mask_immersed_field!(u)
+        mask_immersed_field!(v)
 
         fill_halo_regions!(u)
         fill_halo_regions!(v)

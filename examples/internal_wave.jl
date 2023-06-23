@@ -89,11 +89,11 @@ nothing # hide
 # observe wave propagation.
 
 ## Some Gaussian parameters
-A = 1e-9
-δ = grid.Lx / 15
+gaussian_amplitude = 1e-9
+gaussian_width = grid.Lx / 15
 
 ## A Gaussian envelope centered at ``(x, z) = (0, 0)``.
-a(x, z) = A * exp( -( x^2 + z^2 ) / 2δ^2 )
+a(x, z) = gaussian_amplitude * exp( -( x^2 + z^2 ) / 2gaussian_width^2 )
 nothing # hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
@@ -175,9 +175,7 @@ frames = 1:length(w_timeseries.times)
 
 @info "Animating a propagating internal wave..."
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
+record(fig, "internal_wave.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide

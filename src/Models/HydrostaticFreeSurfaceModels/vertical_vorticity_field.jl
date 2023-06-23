@@ -17,7 +17,7 @@ VerticalVorticityField(model; kw...) = VerticalVorticityField(model.grid, model.
 
 function VerticalVorticityField(grid, velocities; kw...)
     u, v, w = velocities
-    vorticity_operation = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+    vorticity_operation = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
     return Field(vorticity_operation; kw...)
 end
 

@@ -1,6 +1,10 @@
-using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid
-using Oceananigans.Grids: XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-using Oceananigans.Grids: xnodes, ynodes, znodes, topology
+using Oceananigans.Grids: isxregular, isyregular, iszregular, 
+                          xnodes, ynodes, znodes, 
+                          λnodes, φnodes,
+                          topology, 
+                          node,
+                          isxflat, isyflat, iszflat,
+                          RectilinearGrid, LatitudeLongitudeGrid
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -49,33 +53,71 @@ end
     end
 end
 
-####
-#### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-#### Use other methods if a more accurate interpolation is required
-####
+#####
+##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
+##### Use other methods if a more accurate interpolation is required
+#####
 
-@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid))
-@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid))
-@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(Center, grid))
+@inline function fractional_x_index(x::FT, locs, grid) where {FT}
+    loc = @inbounds locs[1]
+    if isxflat(grid)
+        return zero(grid)
+    elseif isxregular(grid)
+        x₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
 
-@inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[1], grid.Nx), x, xnodes(Face, grid)) - 1
-@inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(Face, grid)) - 1
-@inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[3], grid.Nz), z, znodes(Face, grid)) - 1
+        if grid isa RectilinearGrid
+            Δx = xspacings(grid, locs...)
+        elseif grid isa LatitudeLongitudeGrid
+            Δx = λspacings(grid, locs...)
+        end      
 
-@inline fractional_x_index(x::FT, ::Face,   grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
-@inline fractional_x_index(x::FT, ::Center, grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)
-@inline fractional_y_index(y::FT, ::Face,   grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ)
-@inline fractional_y_index(y::FT, ::Center, grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ)
+        return FT((x - x₀) / Δx)
+    else
+        Tx = topology(grid, 1)()
+        Nx = grid.Nx
+        L = length(loc, Tx, Nx)
+        xn = nodes(grid, locs)[1]
+        return @inbounds fractional_index(L, x, xn) - 1
+    end
+end
 
-@inline fractional_x_index(λ::FT, ::Face,   grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶠᵃᵃ[1]) / grid.Δλᶠᵃᵃ)
-@inline fractional_x_index(λ::FT, ::Center, grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶜᵃᵃ[1]) / grid.Δλᶜᵃᵃ)
-@inline fractional_y_index(φ::FT, ::Face,   grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶠᵃ[1]) / grid.Δφᵃᶠᵃ)
-@inline fractional_y_index(φ::FT, ::Center, grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶜᵃ[1]) / grid.Δφᵃᶜᵃ)
+@inline function fractional_y_index(y::FT, locs, grid) where {FT}
+    loc = @inbounds locs[2]
+    if isyflat(grid)
+        return zero(grid)
+    elseif isyregular(grid)
+        y₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
 
-const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
+        if grid isa RectilinearGrid
+            Δy = yspacings(grid, locs...)
+        elseif grid isa LatitudeLongitudeGrid
+            Δy = φspacings(grid, locs...)
+        end      
 
-@inline fractional_z_index(z, ::Face,   grid::ZReg) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
-@inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
+        return FT((y - y₀) / Δy)
+    else
+        Ty = topology(grid, 2)()
+        Ny = grid.Ny
+        L = length(loc, Ty, Ny)
+        yn = nodes(grid, locs)[2]
+        return @inbounds fractional_index(L, y, yn) - 1
+    end
+end
+
+@inline function fractional_z_index(z::FT, locs, grid) where {FT}
+    loc = @inbounds locs[3]
+    if iszflat(grid)
+        return zero(grid)
+    elseif iszregular(grid)
+        return FT((z - znode(1, grid, loc)) / zspacings(grid, locs...))
+    else
+        Tz = topology(grid, 3)()
+        Nz = grid.Nz
+        L = length(loc, Tz, Nz)
+        zn = znodes(grid, loc)
+        return fractional_index(L, z, zn) - 1
+    end
+end
 
 """
     fractional_indices(x, y, z, loc, grid)
@@ -84,10 +126,10 @@ Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectili
 where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
 grid points.
 """
-@inline function fractional_indices(x, y, z, loc, grid)
-    i = fractional_x_index(x, loc[1], grid)
-    j = fractional_y_index(y, loc[2], grid)
-    k = fractional_z_index(z, loc[3], grid)
+@inline function fractional_indices(x, y, z, locs, grid)
+    i = fractional_x_index(x, locs, grid)
+    j = fractional_y_index(y, locs, grid)
+    k = fractional_z_index(z, locs, grid)
     
     return (i, j, k)
 end

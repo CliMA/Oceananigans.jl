@@ -6,7 +6,6 @@ using LinearAlgebra
 using OffsetArrays
 
 using Oceananigans
-using Oceananigans.Grids: min_Δx    
 using Oceananigans.Models: ShallowWaterModel
 
 rate_of_convergence(::UpwindBiased) = 5
@@ -19,7 +18,7 @@ rate_of_convergence(::WENO{6})      = 11
 
 labels(::Centered)     = "Center4ᵗʰ"
 labels(::UpwindBiased) = "Upwind5ᵗʰ"
-labels(::WENO)         =  "WENOᵗʰ "
+labels(::WENO)         = "WENOᵗʰ "
 
 shapes(::Centered)     = :diamond
 shapes(::UpwindBiased) = :square
@@ -52,31 +51,32 @@ W  = 0.1
 Ns = 2 .^ (5:8)
 pnorm = 1
 
-c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 )
-   h(x, y, z) = 1
-  uh(x, y, z) = U * h(x, y, z)
+ c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 )
+ h(x, y, z) = 1
+uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
- CenteredFourthOrder(), 
- UpwindBiasedFifthOrder(), 
- WENO(order = 3),
- WENO(order = 5),
- WENO(order = 7),
- WENO(order = 9),
- WENO(order = 11)
-);
+    CenteredFourthOrder(), 
+    UpwindBiasedFifthOrder(), 
+    WENO(order = 3),
+    WENO(order = 5),
+    WENO(order = 7),
+    WENO(order = 9),
+    WENO(order = 11)
+)s
 
 error = Dict()
 ROC   = Dict()
 
 for N in Ns, (adv, scheme) in enumerate(schemes)
 
-    grid = RectilinearGrid(Float64; size=N, 
-                                x=(-1, 1), 
-                                halo=(halos(scheme)),
-                                topology=(Periodic, Flat, Flat))
+    grid = RectilinearGrid(Float64;
+                           size = N, 
+                           x = (-1, 1), 
+                           halo = (halos(scheme)),
+                           topology = (Periodic, Flat, Flat))
 
-    Δt = 0.1 * min_Δx(grid)
+    Δt = 0.1 * minimum_xspacing(grid, Center(), Center(), Center())
 
     model = ShallowWaterModel(grid = grid,
                               momentum_advection = scheme,

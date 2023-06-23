@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 using Oceananigans.TurbulenceClosures
 
@@ -19,7 +21,7 @@ using Oceananigans.TurbulenceClosures
 
             bump(x, y, z) = z < exp(-x^2 - y^2)
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
-            
+
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
                             ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
 
@@ -32,8 +34,8 @@ using Oceananigans.TurbulenceClosures
                 b = model.tracers.b
 
                 # Linear stratification
-                set!(model, u = 1, b = (x, y, z) -> 4 * z)
-            
+                set!(model, u = 1, b = (x, y, z) -> 4z)
+
                 # Inside the bump
                 @test b[4, 4, 2] == 0 
                 @test u[4, 4, 2] == 0
@@ -163,4 +165,3 @@ using Oceananigans.TurbulenceClosures
         end
     end
 end
-

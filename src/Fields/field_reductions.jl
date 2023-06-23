@@ -49,7 +49,7 @@ location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 function Field(reduction::Reduction;
                data = nothing,
                indices = indices(reduction.operand),
-               recompute_safely = false)
+               recompute_safely = true)
 
     operand = reduction.operand
     grid = operand.grid

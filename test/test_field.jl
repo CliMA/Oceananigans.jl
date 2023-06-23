@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: regrid!, ReducedField, has_velocities
+using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
 using Oceananigans.Fields: reduced_location
 
@@ -98,10 +98,7 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
-function run_field_interpolation_tests(FT, arch)
-
-    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
-
+function run_field_interpolation_tests(grid)
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)
 
@@ -109,11 +106,16 @@ function run_field_interpolation_tests(FT, arch)
 
     # Choose a trilinear function so trilinear interpolation can return values that
     # are exactly correct.
-    f(x, y, z) = exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z
+    f(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
 
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid.
-    ε_max = f.(nodes((Face, Face, Face), grid, reshape=true)...) |> maximum |> eps
+
+    # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
+    xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
+    f_max = CUDA.@allowscalar maximum(f.(xf, yf, zf))
+    ε_max = eps(f_max)
+    tolerance = 10 * ε_max
 
     set!(u, f)
     set!(v, f)
@@ -129,10 +131,10 @@ function run_field_interpolation_tests(FT, arch)
         ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
         ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-        @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
-        @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
-        @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
@@ -149,10 +151,10 @@ function run_field_interpolation_tests(FT, arch)
 
         F = f.(xs, ys, zs)
 
-        @test all(isapprox.(ℑu, F, atol=ε_max))
-        @test all(isapprox.(ℑv, F, atol=ε_max))
-        @test all(isapprox.(ℑw, F, atol=ε_max))
-        @test all(isapprox.(ℑc, F, atol=ε_max))
+        @test all(isapprox.(ℑu, F, atol=tolerance))
+        @test all(isapprox.(ℑv, F, atol=tolerance))
+        @test all(isapprox.(ℑw, F, atol=tolerance))
+        @test all(isapprox.(ℑc, F, atol=tolerance))
     end
 
     return nothing
@@ -351,7 +353,19 @@ end
         @info "  Testing field interpolation..."
 
         for arch in archs, FT in float_types
-            run_field_interpolation_tests(FT, arch)
+            reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
+            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
+
+            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
+                                             x = [0.0, 0.26, 0.49, 0.78, 1.0],
+                                             y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
+    
+            grids = [reg_grid, stretched_grid]
+
+            for grid in grids
+                run_field_interpolation_tests(grid)
+            end
         end
     end
 
@@ -377,103 +391,6 @@ end
                     f = Field(loc, grid)
                     run_similar_field_tests(f)
                 end
-            end
-        end
-    end
-
-    @testset "Regridding" begin
-        @info "  Testing field regridding..."
-
-        Lz = 1.1
-        ℓz = 0.5
-        topology = (Flat, Flat, Bounded)
-
-        for arch in archs
-            fine_regular_grid                = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z=(0, Lz), topology=(Periodic, Periodic, Bounded))
-            fine_stretched_grid              = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z = [0, ℓz, Lz], topology=(Periodic, Periodic, Bounded))
-            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz); topology)
-            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz); topology)
-            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz]; topology)
-            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz]; topology)
-            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz]; topology)
-            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz); topology)
-            
-            fine_stretched_c              = CenterField(fine_stretched_grid)
-            coarse_column_regular_c       = CenterField(coarse_column_regular_grid)
-            fine_column_regular_c         = CenterField(fine_column_regular_grid)
-            fine_column_stretched_c       = CenterField(fine_column_stretched_grid)
-            very_fine_column_stretched_c  = CenterField(very_fine_column_stretched_grid)
-            super_fine_column_stretched_c = CenterField(super_fine_column_stretched_grid)
-            super_fine_column_regular_c   = CenterField(super_fine_column_regular_grid)
-            super_fine_from_reduction_regular_c = CenterField(super_fine_column_regular_grid)
-
-            # we initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
-            # grids, and check whether we get the anticipated results
-            c₁ = 1
-            c₂ = 3
-
-            CUDA.@allowscalar begin
-                fine_column_stretched_c[1, 1, 1] = c₁
-                fine_column_stretched_c[1, 1, 2] = c₂
-            end
-
-            fine_stretched_c[:, :, 1] .= c₁
-            fine_stretched_c[:, :, 2] .= c₂
-
-            # Coarse-graining
-            regrid!(coarse_column_regular_c, fine_column_stretched_c)
-
-            CUDA.@allowscalar begin
-                @test coarse_column_regular_c[1, 1, 1] ≈ ℓz/Lz * c₁ + (1 - ℓz/Lz) * c₂
-            end
-
-            regrid!(fine_column_regular_c, fine_column_stretched_c)
-
-            CUDA.@allowscalar begin
-                @test fine_column_regular_c[1, 1, 1] ≈ ℓz/(Lz/2) * c₁ + (1 - ℓz/(Lz/2)) * c₂
-                @test fine_column_regular_c[1, 1, 2] ≈ c₂
-            end            
-
-            # Fine-graining
-            regrid!(very_fine_column_stretched_c, fine_column_stretched_c)
-
-            CUDA.@allowscalar begin
-                @test very_fine_column_stretched_c[1, 1, 1] ≈ c₁
-                @test very_fine_column_stretched_c[1, 1, 2] ≈ (ℓz - 0.2)/0.4 * c₁ + (0.6 - ℓz)/0.4 * c₂
-                @test very_fine_column_stretched_c[1, 1, 3] ≈ c₂
-            end
-            
-            regrid!(super_fine_column_stretched_c, fine_column_stretched_c)
-
-            CUDA.@allowscalar begin
-                @test super_fine_column_stretched_c[1, 1, 1] ≈ c₁
-                @test super_fine_column_stretched_c[1, 1, 2] ≈ c₁
-                @test super_fine_column_stretched_c[1, 1, 3] ≈ (ℓz - 0.3)/0.35 * c₁ + (0.65 - ℓz)/0.35 * c₂
-                @test super_fine_column_stretched_c[1, 1, 4] ≈ c₂
-            end
-            
-            regrid!(super_fine_column_regular_c, fine_column_stretched_c)
-            
-            CUDA.@allowscalar begin
-                @test super_fine_column_regular_c[1, 1, 1] ≈ c₁
-                @test super_fine_column_regular_c[1, 1, 2] ≈ c₁
-                @test super_fine_column_regular_c[1, 1, 3] ≈ (3 - ℓz/(Lz/5)) * c₂ + (-2 + ℓz/(Lz/5)) * c₁
-                @test super_fine_column_regular_c[1, 1, 4] ≈ c₂
-                @test super_fine_column_regular_c[1, 1, 5] ≈ c₂
-            end
-
-            # Fine-graining from reduction
-            fine_stretched_c_mean_xy = Field(Reduction(mean!, fine_stretched_c, dims=(1, 2)))
-            compute!(fine_stretched_c_mean_xy)
-
-            regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
-            
-            CUDA.@allowscalar begin
-                @test super_fine_from_reduction_regular_c[1, 1, 1] ≈ c₁
-                @test super_fine_from_reduction_regular_c[1, 1, 2] ≈ c₁
-                @test super_fine_from_reduction_regular_c[1, 1, 3] ≈ (3 - ℓz/(Lz/5)) * c₂ + (-2 + ℓz/(Lz/5)) * c₁
-                @test super_fine_from_reduction_regular_c[1, 1, 4] ≈ c₂
-                @test super_fine_from_reduction_regular_c[1, 1, 5] ≈ c₂
             end
         end
     end

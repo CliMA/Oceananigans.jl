@@ -27,12 +27,14 @@ within an immersed boundary. Cells that are staggered with respect to tracer cel
 which lie _on_ the boundary are considered active.
 """
 @inline inactive_cell(i, j, k, grid) = false
+@inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
 # We use metaprogramming to handle all the permutations between
 # Bounded, LeftConnected, and RightConnected topologies.
 # Note that LeftConnected is equivalent to "RightBounded" and
 # RightConnected is equivalent to "LeftBounded".
 # So LeftConnected and RightConnected are "half Bounded" topologies.
+
 Topos = (:Bounded, :LeftConnected, :RightConnected)
 
 for PrimaryTopo in Topos

@@ -58,16 +58,14 @@ function random_divergent_source_term(grid)
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
-    event = launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R,
-                    dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
+    
     return R
 end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=ranks, topology = topo)
+    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
@@ -84,11 +82,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     # Solve it
     ϕc = first(solver.storage)
 
-    event = launch!(arch, local_grid, :xyz,
-                    set_distributed_solver_input!, ϕc, R, solver.input_permutation,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, local_grid, :xyz, set_distributed_solver_input!, ϕc, R, solver.input_permutation)
 
     solve!(ϕ, solver)
 

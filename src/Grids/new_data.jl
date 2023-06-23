@@ -2,7 +2,6 @@ using Oceananigans.Grids: total_length, topology
 
 using OffsetArrays: OffsetArray
 
-default_indices(n) = Tuple(Colon() for i=1:n)
 
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
@@ -19,19 +18,24 @@ offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
 is `Bounded` and has length `N` and with halo points `H`.
 """
-offset_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
 """
-offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
+offset_indices(::Nothing, topo, N, H=0) = 1:1
 
-offset_indices(L, T, N, H, ::Colon) = offset_indices(L, T, N, H)
-offset_indices(L, T, N, H, r::UnitRange) = r
-offset_indices(::Type{Nothing}, T, N, H, ::UnitRange) = 1:1
+offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
+offset_indices(ℓ,         topo, N, H, r::UnitRange) = r
+offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
+
+instantiate(T::Type) = T()
+instantiate(t) = t
 
 function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=default_indices(length(loc)))
-    ii = offset_indices.(loc, topo, N, H, indices)
+    loc = map(instantiate, loc)
+    topo = map(instantiate, topo)
+    ii = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     extra_ii = Tuple(axes(underlying_data, d) for d in length(ii)+1:ndims(underlying_data))
     return OffsetArray(underlying_data, ii..., extra_ii...)
@@ -48,18 +52,19 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
-    new_data(FT, grid, loc, indices)
+    new_data(FT, arch, loc, topo, sz, halo_sz, indices)
 
 Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
-    arch = architecture(grid)
-    Tx, Ty, Tz = total_size(loc, grid, indices)
+function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+    Tx, Ty, Tz = total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
-    indices = validate_indices(indices, loc, grid)
-    return offset_data(underlying_data, grid, loc, indices)
+    indices = validate_indices(indices, loc, topo, sz, halo_sz)
+    return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
 
-new_data(grid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)
+new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+    new_data(FT, architecture(grid), loc, topology(grid), size(grid), halo_size(grid), indices)
 
+new_data(grid::AbstractGrid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)

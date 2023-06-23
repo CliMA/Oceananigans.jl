@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz
+import Oceananigans.Grids: return_metrics
 
 const c = Center()
 const f = Face()
@@ -33,8 +33,7 @@ end
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
-
-return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
-min_Δx(grid::ImmersedBoundaryGrid) = min_Δx(grid.underlying_grid)
-min_Δy(grid::ImmersedBoundaryGrid) = min_Δy(grid.underlying_grid)
-min_Δz(grid::ImmersedBoundaryGrid) = min_Δz(grid.underlying_grid)
+return_metrics(grid::IBG) = return_metrics(grid.underlying_grid)
+xspacings(X, grid::IBG) = xspacings(X, grid.underlying_grid)
+yspacings(Y, grid::IBG) = yspacings(Y, grid.underlying_grid)
+zspacings(Z, grid::IBG) = zspacings(Z, grid.underlying_grid)

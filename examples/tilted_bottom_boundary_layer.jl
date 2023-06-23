@@ -22,14 +22,14 @@
 #
 # ## The domain
 #
-# We create a ``400 × 100`` meter ``x, z`` grid with ``128 × 32`` cells
-# and finer resolution near the bottom,
+# We create a grid with finer resolution near the bottom,
 
 using Oceananigans
+using Oceananigans.Units
 
-Lx = 400 # m
-Lz = 100 # m
-Nx = 128
+Lx = 200meters
+Lz = 100meters
+Nx = 64
 Nz = 64
 
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
@@ -59,11 +59,11 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+lines(zspacings(grid, Center()), znodes(grid, Center()),
       axis = (ylabel = "Depth (m)",
               xlabel = "Vertical spacing (m)"))
 
-scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 
@@ -76,12 +76,12 @@ current_figure() # hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-sloce direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = (sind(θ), 0, cosd(θ))
+ĝ = [sind(θ), 0, cosd(θ)]
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = ĝ)
+buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
@@ -109,7 +109,7 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
 κ = 0.4 # von Karman constant
-z₁ = znodes(Center, grid)[1] # Closest grid center to the bottom
+z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
@@ -125,11 +125,9 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity.
+# and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
 
-ν = 1e-4 # m² s⁻¹, small-ish
-κ = ν
-closure = ScalarDiffusivity(; ν, κ)
+closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
@@ -138,15 +136,20 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs),
                             background_fields = (; b=B_field))
 
+# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
+# turbulence:
+
+noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+set!(model, u=noise, w=noise)
+
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
 # conservatively, based on the smallest grid size of our domain and set-up a 
 
 using Oceananigans.Units
-using Oceananigans.Grids: min_Δz
 
-simulation = Simulation(model, Δt = 0.5 * min_Δz(grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
@@ -163,7 +166,7 @@ progress_message(sim) =
             prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(200))
 
 # ## Add outputs to the simulation
 #
@@ -217,7 +220,7 @@ n = Observable(1)
 
 ωy = @lift ds["ωy"][:, 1, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
-Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
+Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
 
 V = @lift ds["V"][:, 1, :, $n]
 V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
@@ -229,13 +232,14 @@ times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
+current_figure() # hide
+fig
+
 # Finally, we record a movie.
 
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide

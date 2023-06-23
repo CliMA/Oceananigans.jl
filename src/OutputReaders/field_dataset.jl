@@ -24,7 +24,7 @@ linearly.
 - `grid`: May be specified to override the grid used in the JLD2 file.
 """
 function FieldDataset(filepath;
-                    architecture=CPU(), grid=nothing, backend=InMemory(), metadata_paths=["metadata"])
+                      architecture=CPU(), grid=nothing, backend=InMemory(), metadata_paths=["metadata"])
 
   file = jldopen(filepath)
 

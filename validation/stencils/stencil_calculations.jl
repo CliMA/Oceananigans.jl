@@ -38,9 +38,8 @@ function ∇²_KA!(∇²ϕ, ϕ)
 
     fill_halo_regions!(ϕ)
     loop! = _∇²_KA!(device(arch), workgroup, worksize)
-    event = loop!(∇²ϕ, grid, ϕ)
-    wait(device(arch), event)
-
+    loop!(∇²ϕ, grid, ϕ)
+    
     return nothing
 end
 

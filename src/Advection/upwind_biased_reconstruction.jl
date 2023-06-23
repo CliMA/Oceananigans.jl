@@ -30,6 +30,7 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionS
                                  coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
                                  coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
                                  buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, XT, YT, ZT, CA, SI}
+
         return new{N, FT, XT, YT, ZT, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
                                               coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
                                               coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
@@ -81,7 +82,7 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
                         Adapt.adapt(to, scheme.buffer_scheme),
                         Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-# Usefull aliases
+# Useful aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
 
 UpwindBiasedFirstOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 1)
