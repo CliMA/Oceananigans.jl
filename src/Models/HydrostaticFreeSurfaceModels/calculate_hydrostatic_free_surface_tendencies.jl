@@ -220,7 +220,6 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     grid = model.grid
     Nx, Ny, Nz = N = size(grid)
 
-    barrier = device_event(model)
     Ix, Iy, Iz = 2, 2, 2
     for t in [2, 3, 4, 5, 6, 7, 8]
         if mod(Nx, t) == 0
@@ -241,17 +240,9 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     halo       = arch_array(arch, [min.(size(grid), halo_size(grid))...])
 
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
-    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-                                                      grid,
-                                                      model.advection,
-                                                      model.velocities,
-                                                      model.tracers,
-                                                      array_size,
-                                                      halo;
-                                                      dependencies = barrier)
+    advection_contribution!(model.timestepper.Gⁿ, grid, model.advection, model.velocities,
+                            model.tracers, array_size, halo)
     
-    wait(device(arch), advection_event)
-
     return nothing
 end
 
@@ -284,6 +275,12 @@ end
 end
 
 using Oceananigans.Grids: halo_size
+using Base: @propagate_inbounds
+
+struct DisplacedSharedArray{S, V}
+    s_array :: S
+    v :: V
+end
 
 @inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
