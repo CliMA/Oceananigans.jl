@@ -29,8 +29,8 @@ Keyword arguments
 =================
 
 - `vorticity_scheme`: Scheme used for `Center` reconstruction of vorticity, options are upwind advection schemes
-                      - `UpwindBiased` and `WENO` - in addition to an `EnergyConservingScheme` and an `EnstrophyConservingScheme`
-                      (defaults to `EnstrophyConservingScheme`)
+                      - `UpwindBiased()` and `WENO()` - in addition to an `EnergyConservingScheme()` and an `EnstrophyConservingScheme()`
+                      (defaults to `EnstrophyConservingScheme()`).
 - `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil()`)
