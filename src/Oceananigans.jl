@@ -215,7 +215,6 @@ include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Distributed/Distributed.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -243,7 +242,6 @@ using .Coriolis
 using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
-using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .ImmersedBoundaries
@@ -263,7 +261,7 @@ function __init__()
         @info "Oceananigans will use $threads threads"
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4*threads)
+        FFTW.set_num_threads(4threads)
     end
 
     if CUDA.has_cuda()

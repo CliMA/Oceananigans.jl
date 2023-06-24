@@ -136,6 +136,12 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs),
                             background_fields = (; b=B_field))
 
+# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
+# turbulence:
+
+noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+set!(model, u=noise, w=noise)
+
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
@@ -143,7 +149,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 
 using Oceananigans.Units
 
-simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 2days)
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
 
 # We use `TimeStepWizard` to adapt our time-step and print a progress message,
 
@@ -214,7 +220,7 @@ n = Observable(1)
 
 ωy = @lift ds["ωy"][:, 1, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
-Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
+Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
 
 V = @lift ds["V"][:, 1, :, $n]
 V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
@@ -234,8 +240,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide

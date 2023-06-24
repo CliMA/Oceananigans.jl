@@ -719,3 +719,11 @@ end
 
 @inline λspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
+
+@inline isxregular(::LatitudeLongitudeGrid) = false
+@inline isyregular(::LatitudeLongitudeGrid) = false
+@inline iszregular(::LatitudeLongitudeGrid) = false
+
+@inline isxregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
+@inline isyregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
+@inline iszregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
