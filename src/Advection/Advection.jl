@@ -59,7 +59,6 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
-include("flat_advective_fluxes.jl")
 
 include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")
@@ -74,6 +73,7 @@ include("vector_invariant_cross_upwinding.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_velocity_upwinding.jl")
 
+include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")

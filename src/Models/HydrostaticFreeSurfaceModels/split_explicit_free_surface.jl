@@ -82,15 +82,6 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
                                     free_surface.settings)
 end
 
-function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                  settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
-
-    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
-                                    convert(eltype(grid), gravitational_acceleration), settings)
-end
-
 """
     struct SplitExplicitState
 

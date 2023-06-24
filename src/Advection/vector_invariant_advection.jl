@@ -116,12 +116,12 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where 
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
-    + vertical_advection_U(i, j, k, grid, scheme, U.w, U.u, U.v)
+    + vertical_advection_U(i, j, k, grid, scheme, U)
     + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))
     
 @inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)
-    + vertical_advection_V(i, j, k, grid, scheme, U.w, U.u, U.v)
+    + vertical_advection_V(i, j, k, grid, scheme, U)
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
@@ -164,25 +164,25 @@ end
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
 
-@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, w, u, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
-@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, w, u, v) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, U.u, U.w) / Azᶠᶜᶜ(i, j, k, grid)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, U.v, U.w) / Azᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
-@inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
+@inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U) 
     
-    Φᵟ = upwind_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, w, u)
+    Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, U.w, U.u)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
-@inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, w, u, v) 
+@inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U) 
 
-    Φᵟ = upwind_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, w, v)
+    Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, U.w, U.v)
 
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
