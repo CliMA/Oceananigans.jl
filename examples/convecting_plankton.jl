@@ -274,8 +274,6 @@ frames = 1:length(times)
 @info "Making an animation of convecting plankton..."
 
 record(fig, "convecting_plankton.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
