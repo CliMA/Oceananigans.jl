@@ -36,9 +36,9 @@ Keyword arguments
                        being transported (defaults to `VelocityStencil`)
 - `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. Defaults to `EnergyConservingScheme()`.)
 - `upwinding`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
-                         `CrossAndSelfUpwinding`, `OnlySelfUpwinding` and `VelocityUpwinding` (defaults to `OnlySelfUpwinding`)
-- `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
-                                The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
+                         `CrossAndSelfUpwinding()`, `OnlySelfUpwinding()`, and `VelocityUpwinding()` (defaults to `OnlySelfUpwinding()`).
+- `multi_dimensional_stencil` : if `true`, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
+                                The tangential direction is _always_ treated with a 5th-order centered WENO reconstruction.
 
 Examples
 ========
