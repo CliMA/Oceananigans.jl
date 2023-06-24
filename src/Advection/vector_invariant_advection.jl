@@ -13,10 +13,9 @@ struct VectorInvariant{N, FT, Z, ZS, V, D, M} <: AbstractAdvectionScheme{N, FT}
     vertical_scheme   :: V  # stencil used for assessing divergence smoothness
     upwinding         :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
 
-    function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                                       upwinding::D) where {N, FT, Z, ZS, V, D, M}
+    VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
+                              upwinding::D) where {N, FT, Z, ZS, V, D, M} =
         return new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
-    end
 end
 
 """
