@@ -11,7 +11,7 @@ steps:
 ##### Setup 
 #####
 
-  - label: "🐿️ gpu setup"
+  - label: "gpu 🎪 setup"
     key: "init_gpu"
     env:
       TEST_GROUP: "none"
@@ -24,7 +24,7 @@ steps:
       queue: Oceananigans
       architecture: GPU
 
-  - label: "🐇 cpu setup"
+  - label: "cpu 🏕️ setup"
     key: "init_cpu"
     env:
       TEST_GROUP: "none"
@@ -39,32 +39,32 @@ steps:
       architecture: CPU
 
 #####
-##### Solver tests
+##### Tests
 #####
 
-  - label: "🦅 gpu {{matrix.group}}"
+  - label: "gpu {{matrix.group}}"
     matrix:
       setup:
         group:
-          - "unit"
-          - "poisson_solvers_1"
-          - "poisson_solvers_2"
-          - "matrix_poisson_solvers"
-          - "general_solvers"
-          - "time_stepping_1"
-          - "time_stepping_2"
-          - "time_stepping_3"
-          - "turbulence_closures"
-          - "hydrostatic_free_surface"
-          - "shallow_water"
-          - "simulation"
-          - "lagrangian"
-          - "abstract_operations"
-          - "cubed_sphere"
-          - "multi_region"
-          - "nonhydrostatic_regression"
-          - "hydrostatic_regression"
-          - "scripts"
+          - "🐿️ unit"
+          - "🦅 poisson_solvers_1"
+          - "🦖 poisson_solvers_2"
+          - "🌷 matrix_poisson_solvers"
+          - "🦤 general_solvers"
+          - "🦀 time_stepping_1"
+          - "🦈 time_stepping_2"
+          - "🦟 time_stepping_3"
+          - "🎣 turbulence_closures"
+          - "🐙 hydrostatic_free_surface"
+          - "🦢 shallow_water"
+          - "🐳 simulation"
+          - "🍂 lagrangian"
+          - "👻 abstract_operations"
+          - "🐡 cubed_sphere"
+          - "🧅 multi_region"
+          - "🐉 nonhydrostatic_regression"
+          - "🐫 hydrostatic_regression"
+          - "🙈 scripts"
     env:
       TEST_GROUP: "{{matrix.group}}"
     plugins:
@@ -79,29 +79,29 @@ steps:
     depends_on: "init_gpu"
     if: !build.pull_request.draft
 
-  - label: "🕊️ cpu {{matrix.group}}"
+  - label: "cpu {{matrix.group}}"
     matrix:
       setup:
         group:
-          - "unit"
-          - "poisson_solvers_1"
-          - "poisson_solvers_2"
-          - "matrix_poisson_solvers"
-          - "general_solvers"
-          - "time_stepping_1"
-          - "time_stepping_2"
-          - "time_stepping_3"
-          - "turbulence_closures"
-          - "hydrostatic_free_surface"
-          - "shallow_water"
-          - "simulation"
-          - "lagrangian"
-          - "abstract_operations"
-          - "cubed_sphere"
-          - "multi_region"
-          - "nonhydrostatic_regression"
-          - "hydrostatic_regression"
-          - "scripts"
+          - "🐇 unit"
+          - "🕊️ poisson_solvers_1"
+          - "🦕 poisson_solvers_2"
+          - "🌹 matrix_poisson_solvers"
+          - "🦃 general_solvers"
+          - "🦞 time_stepping_1"
+          - "🐬 time_stepping_2"
+          - "🦗 time_stepping_3"
+          - "🎏 turbulence_closures"
+          - "🦑 hydrostatic_free_surface"
+          - "🦆 shallow_water"
+          - "🐋 simulation"
+          - "🍃 lagrangian"
+          - "🤖 abstract_operations"
+          - "🦔 cubed_sphere"
+          - "🧄 multi_region"
+          - "🦾 nonhydrostatic_regression"
+          - "🐪 hydrostatic_regression"
+          - "🙉 scripts"
 
     env:
       TEST_GROUP: "{{matrix.group}}"
@@ -122,7 +122,7 @@ steps:
 ##### Distributed/MPI
 #####
 
-  - label: "🐉 cpu distributed {{matrix.group}} tests"
+  - label: "cpu 🐉 distributed {{matrix.group}} tests"
     matrix:
       setup:
         group:
@@ -145,7 +145,7 @@ steps:
 
 
   # We get a SegFault. We probably need more devices to run this test
-  # - label: "🐲 gpu distributed unit tests"
+  # - label: "gpu 🐲 distributed unit tests"
   # env:
   #   JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   #   TEST_GROUP: "distributed"
@@ -178,4 +178,3 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
     if: !build.pull_request.draft
-
