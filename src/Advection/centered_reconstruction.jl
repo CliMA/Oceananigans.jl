@@ -47,6 +47,8 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
     N  = Int(order ÷ 2)
     if N > 1 
         coefficients  = Tuple(nothing for i in 1:6)
+        # Stretched coefficient seem to be more unstable that constant spacing ones for centered reconstruction.
+        # Some tests are needed to verify why this is the case (and if it is expected). We keep constant coefficients for the moment
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
         buffer_scheme = Centered(FT; grid, order = order - 2)
     else
