@@ -268,23 +268,23 @@ function Base.summary(p::CubedSpherePartition)
 end
 
 function correct_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid)
+    u, v = velocities
 
-    u, v, _ = velocities
+    ubuff = u.boundary_buffers
+    vbuff = v.boundary_buffers
 
-    ubuff = u.buondary_buffers
-    vbuff = v.buondary_buffers
-    
-    conn_west  = u.boundary_conditions.west.connectivity.from_side
-    conn_east  = u.boundary_conditions.east.connectivity.from_side
-    conn_south = u.boundary_conditions.south.connectivity.from_side
-    conn_north = u.boundary_conditions.north.connectivity.from_side
+    conn_west  = u.boundary_conditions.west.condition.from_side
+    conn_east  = u.boundary_conditions.east.condition.from_side
+    conn_south = u.boundary_conditions.south.condition.from_side
+    conn_north = u.boundary_conditions.north.condition.from_side
 
-    replace_u_west!(u, vbuff, conn_west)
-    replace_u_east!(u, vbuff, conn_east)
-    replace_v_west!(v, ubuff, conn_west)
-    replace_v_east!(v, ubuff, conn_east)
+     replace_u_west!(u, vbuff, conn_west)
+     replace_u_east!(u, vbuff, conn_east)
     replace_u_south!(u, vbuff, conn_south)
     replace_u_north!(u, vbuff, conn_north)
+
+     replace_v_west!(v, ubuff, conn_west)
+     replace_v_east!(v, ubuff, conn_east)
     replace_v_south!(v, ubuff, conn_south)
     replace_v_north!(v, ubuff, conn_north)
 
@@ -292,17 +292,64 @@ function correct_horizontal_velocity_halos!(velocities, grid::OrthogonalSpherica
 end
 
 for vel in (:u, :v), dir in (:east, :west, :north, :south)
-    @eval $(Symbol(:replace_, vel, :_, dir))(u, v, conn) = nothing
+    @eval $(Symbol(:replace_, vel, :_, dir, :!))(velocity, buffer, conn) = nothing
 end
 
- replace_u_west!(u, vbuff, conn_west::North) =    
- replace_v_west!(v, ubuff, conn_west::North) =
- replace_u_east!(u, vbuff, conn_east::South) =
- replace_v_east!(v, ubuff, conn_east::South) =
-replace_u_south!(u, vbuff, conn_south::East) = 
-replace_v_south!(v, ubuff, conn_south::East) = 
-replace_u_north!(u, vbuff, conn_north::West) = 
-replace_v_north!(v, ubuff, conn_north::West) = 
+function replace_u_west!(u, vbuff, ::North)
+    Nx, Ny, _ = size(u)
+    Hx, Hy, _ = halo_size(u.grid)
+    @inbounds u[-Hx+1:0, :, :] .= vbuff.west.recv
+    return nothing
+end
+
+function replace_v_west!(v, ubuff, ::North)
+    Nx, Ny, _ = size(v)
+    Hx, Hy, _ = halo_size(v.grid)
+    @inbounds v[-Hx+1:0, :, :] .= - ubuff.west.recv
+    return nothing
+end
+
+function replace_u_east!(u, vbuff, ::South)
+    Nx, Ny, _ = size(u)
+    Hx, Hy, _ = halo_size(u.grid)
+    @inbounds u[Nx+1:Nx+Hx, :, :] .= vbuff.east.recv
+    return nothing
+end
+
+function replace_v_east!(v, ubuff, ::South)
+    Nx, Ny, _ = size(v)
+    Hx, Hy, _ = halo_size(v.grid)
+    @inbounds v[Nx+1:Nx+Hx, :, :].= - ubuff.east.recv
+    return nothing
+end
+
+function replace_u_south!(u, vbuff, ::East)
+    Nx, Ny, _ = size(u)
+    Hx, Hy, _ = halo_size(u.grid)
+    @inbounds u[:, -Hy+1:0, :] .= - vbuff.south.recv
+    return nothing
+end
+
+function replace_v_south!(v, ubuff, ::East)
+    Nx, Ny, _ = size(v)
+    Hx, Hy, _ = halo_size(v.grid)
+    @inbounds v[:, -Hy+1:0, :] .= ubuff.south.recv
+    return nothing
+end
+
+function replace_u_north!(u, vbuff, ::West)
+    Nx, Ny, _ = size(u)
+    Hx, Hy, _ = halo_size(u.grid)
+    @inbounds u[:, Ny+1:Ny+Hy, :] .= - vbuff.north.recv
+    return nothing
+end
+
+function replace_v_north!(v, ubuff, ::West)
+    Nx, Ny, _ = size(v)
+    Hx, Hy, _ = halo_size(v.grid)
+    @inbounds v[:, Ny+1:Ny+Hy, :] .= ubuff.north.recv
+    return nothing
+end
 
 Base.show(io::IO, p::CubedSpherePartition) =
     print(io, summary(p), "\n",
