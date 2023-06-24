@@ -2,7 +2,7 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 
 #####
 ##### Velocity upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
-##### the difference operator (i.e velocity upwinding) instead of outside (i.e., derivative upwinding).
+##### the difference operator (i.e., velocity upwinding) instead of outside (i.e., derivative upwinding).
 ##### _MOST_ stable formulation at the expense of a low kinetic energy
 ##### 
 

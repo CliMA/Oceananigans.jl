@@ -21,7 +21,7 @@ A parameter object for constant rotation around a vertical axis on the sphere.
 """
 struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
     rotation_rate :: FT
-    scheme  :: S
+    scheme :: S
 end
 
 """

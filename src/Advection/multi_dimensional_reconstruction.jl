@@ -35,9 +35,9 @@ const γ₂²⁻ =   9.0 / 40 / σ⁻
 # coeffiecients `a` are the reconstruction weights for stencils 1, 2 and 3 
 # (composed of points 0, 1, 2 each) where vʳ = ∑aⱼʳvⱼ
 
-const a₀¹ = ( 2 - 3*sqrt(15), -4 + 12*sqrt(15), 62 - 9 * sqrt(15)) ./ 60
-const a₁¹ = ( 2 + 3*sqrt(15),               56,  2 - 3 * sqrt(15)) ./ 60
-const a₂¹ = (62 + 9*sqrt(15), -4 - 12*sqrt(15),  2 + 3 * sqrt(15)) ./ 60
+const a₀¹ = ( 2 - 3 * sqrt(15), -4 + 12 * sqrt(15), 62 - 9 * sqrt(15)) ./ 60
+const a₁¹ = ( 2 + 3 * sqrt(15),                 56,  2 - 3 * sqrt(15)) ./ 60
+const a₂¹ = (62 + 9 * sqrt(15), -4 - 12 * sqrt(15),  2 + 3 * sqrt(15)) ./ 60
 
 const a₀² = (-1, 2,  23) ./ 24
 const a₁² = (-1, 26, -1) ./ 24

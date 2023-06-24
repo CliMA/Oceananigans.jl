@@ -8,15 +8,14 @@ EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
 struct VectorInvariant{N, FT, Z, ZS, V, D, M} <: AbstractAdvectionScheme{N, FT}
-    vorticity_scheme     :: Z  # reconstruction scheme for vorticity flux
-    vorticity_stencil    :: ZS # stencil used for assessing vorticity smoothness
-    vertical_scheme      :: V  # stencil used for assessing divergence smoothness
-    upwinding  :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
+    vorticity_scheme  :: Z  # reconstruction scheme for vorticity flux
+    vorticity_stencil :: ZS # stencil used for assessing vorticity smoothness
+    vertical_scheme   :: V  # stencil used for assessing divergence smoothness
+    upwinding         :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
 
-    function VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                                       upwinding::D) where {N, FT, Z, ZS, V, D, M}
+    VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
+                              upwinding::D) where {N, FT, Z, ZS, V, D, M} =
         return new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
-    end
 end
 
 """
@@ -30,16 +29,16 @@ Keyword arguments
 =================
 
 - `vorticity_scheme`: Scheme used for `Center` reconstruction of vorticity, options are upwind advection schemes
-                      - `UpwindBiased` and `WENO` - in addition to an `EnergyConservingScheme` and an `EnstrophyConservingScheme`
-                      (defaults to `EnstrophyConservingScheme`)
+                      - `UpwindBiased()` and `WENO()` - in addition to an `EnergyConservingScheme()` and an `EnstrophyConservingScheme()`
+                      (defaults to `EnstrophyConservingScheme()`).
 - `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
-                       being transported (defaults to `VelocityStencil`)
-- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. Defaults to `EnergyConservingScheme`)
+                       being transported (defaults to `VelocityStencil()`)
+- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. Defaults to `EnergyConservingScheme()`.)
 - `upwinding`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
-                         `CrossAndSelfUpwinding`, `OnlySelfUpwinding` and `VelocityUpwinding` (defaults to `OnlySelfUpwinding`)
-- `multi_dimensional_stencil` : if true, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
-                                The tangential direction is _always_ treated with a 5th order centered WENO reconstruction
+                         `CrossAndSelfUpwinding()`, `OnlySelfUpwinding()`, and `VelocityUpwinding()` (defaults to `OnlySelfUpwinding()`).
+- `multi_dimensional_stencil` : if `true`, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
+                                The tangential direction is _always_ treated with a 5th-order centered WENO reconstruction.
 
 Examples
 ========

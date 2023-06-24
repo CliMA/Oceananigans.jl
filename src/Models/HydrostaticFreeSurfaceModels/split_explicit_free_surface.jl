@@ -69,7 +69,7 @@ Keyword Arguments
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
-    SplitExplicitFreeSurface(nothing, nothing, nothing, FT(gravitational_acceleration),
+    SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
                              SplitExplicitSettings(; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
