@@ -240,8 +240,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide

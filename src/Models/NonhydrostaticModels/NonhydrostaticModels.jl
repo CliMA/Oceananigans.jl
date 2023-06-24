@@ -9,6 +9,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
+using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
 using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -23,14 +24,16 @@ function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::RegRectilinearGrid)   = FFTBasedPoissonSolver(grid)
+PressureSolver(arch, grid::XYRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::XZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::YZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 # fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel support horizontally-stretched grids.")
+PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel currently support more than one stretched direction.")
 
 #####
 ##### NonhydrostaticModel definition

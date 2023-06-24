@@ -362,8 +362,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
