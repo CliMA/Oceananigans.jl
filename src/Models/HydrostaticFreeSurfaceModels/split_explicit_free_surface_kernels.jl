@@ -310,15 +310,15 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 end
 
 # Change name
-const FNS = SplitExplicitSettings{<:FixedSubstepNumber}
-const FTS = SplitExplicitSettings{<:FixedTimeStepSize}
+const FNS = FixedSubstepNumber
+const FTS = FixedTimeStepSize
 
-@inline calculate_substeps(settings::FNS, Δt) = nothing
-@inline calculate_substeps(settings::FTS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
+@inline calculate_substeps(substepping::FNS, Δt) = length(substepping.averaging_weights)
+@inline calculate_substeps(substepping::FTS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
 
-@inline calculate_adaptive_settings(settings::FNS, substeps) = settings.substepping.fractional_step_size, settings.substepping.averaging_weights
-@inline calculate_adaptive_settings(settings::FTS, substeps) = weights_from_substeps(eltype(settings.substepping.Δt_barotopic), 
-                                                                                     substeps, settings.substepping.averaging_kernel)
+@inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotopic), 
+                                                                                     substeps, substepping.averaging_kernel)
 
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
@@ -329,8 +329,8 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
 
-    Nsubsteps  = calculate_substeps(settings, Δt)
-    fractional_Δt, weights = calculate_adaptive_settings(settings, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+    Nsubsteps  = calculate_substeps(settings.substepping, Δt)
+    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
     
     Nsubsteps = length(weights)
 

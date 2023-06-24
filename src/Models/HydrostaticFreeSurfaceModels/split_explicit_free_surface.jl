@@ -233,14 +233,14 @@ struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
-@inline function averaging_shape_function(τ; p = 2, q = 4, r = 0.18927) 
+@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT 
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
 
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
 @inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
-@inline constant_averaging_kernel(τ) = 1
+@inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotopic` based on a CFL condition """
@@ -276,10 +276,10 @@ end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
 
-    τᶠ = range(0, 2, length = substeps+1)
+    τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = FT.(averaging_kernel.(τᶠ[2:end]))
+    averaging_weights = averaging_kernel.(τᶠ[2:end])
     idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 

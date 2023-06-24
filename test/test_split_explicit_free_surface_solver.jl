@@ -52,7 +52,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 Gᵁ .= 0
                 Gⱽ .= 0
 
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+                Nsubsteps  = calculate_substeps(settings.substepping, 1)
+                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτᴮ, 1)
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
 
@@ -92,12 +95,15 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 Gᵁ .= 0
                 Gⱽ .= 0
 
+                Nsubsteps  = calculate_substeps(settings.substepping, 1)
+                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+    
                 for i in 1:Nt
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ, i)
+                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, weights, arch, grid, g, Δτ, i)
                 end
 
                 # + correction for exact time
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ_end, 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, weights, arch, grid, g, Δτ_end, 1)
 
                 U_computed = Array(parent(U))[2:Nx+1, 2:Ny+1]
                 η_computed = Array(parent(η))[2:Nx+1, 2:Ny+1]
@@ -145,8 +151,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 Gⱽ .= 0
                 settings = sefs.settings
 
+                Nsubsteps  = calculate_substeps(settings.substepping, 1)
+                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+    
                 for i in 1:settings.substeps
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
+                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ, i)
                 end
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
@@ -209,11 +218,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kerne
                 settings = SplitExplicitSettings(substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
+                Nsubsteps  = calculate_substeps(settings.substepping, 1)
+                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+    
                 for i in 1:Nt
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
+                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ, i)
                 end
                 # + correction for exact time
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ_end, Nt + 1)
 
                 η_mean_after = mean(Array(interior(η)))
 
