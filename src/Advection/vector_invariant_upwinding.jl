@@ -149,5 +149,4 @@ Base.show(io::IO, a::VelocityUpwinding) =
 
 Adapt.adapt_structure(to, scheme::VelocityUpwinding) = 
     VelocityUpwinding(Adapt.adapt(to, scheme.cross_scheme))
-                          
 
