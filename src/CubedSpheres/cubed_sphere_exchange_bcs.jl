@@ -5,8 +5,6 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
-using KernelAbstractions: NoneEvent
-
 import Base: show
 
 import Oceananigans.BoundaryConditions: bc_str
@@ -96,5 +94,5 @@ Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing
 @inline apply_y_north_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 @inline apply_y_south_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 
-apply_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
-apply_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = nothing
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = nothing

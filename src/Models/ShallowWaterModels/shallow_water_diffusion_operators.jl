@@ -1,5 +1,5 @@
 using Oceananigans.Operators
-using Oceananigans.Architectures: device, device_event
+using Oceananigans.Architectures: device
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures: 
@@ -32,11 +32,11 @@ end
 Return a scalar diffusivity for the shallow water model.
 
 The diffusivity for the shallow water model is calculated as `h * ν` so that we get a
-viscous term in the form ``h⁻¹ ∇ ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
-a trace, i.e., ``t = 𝛁u + (𝛁u)ᵀ - ξ I ⋅ (𝛁 ⋅ u)``.
+viscous term in the form ``h^{-1} 𝛁 ⋅ (h ν t)``, where ``t`` is the 2D stress tensor plus
+a trace, i.e., ``t = 𝛁𝐮 + (𝛁𝐮)^T - ξ I ⋅ (𝛁 ⋅ 𝐮)``.
 
 With the `VectorInvariantFormulation()` (that evolves ``u`` and ``v``) we compute
-``h^{-1} 𝛁 ( \nu h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
+``h^{-1} 𝛁(ν h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
 ``u h`` and ``v h``) we compute ``𝛁 (ν h 𝛁 t)``.
 """
 function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false)
@@ -68,12 +68,9 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
 
     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
 
-    event = launch!(arch, grid, :xyz,
-                    _calculate_shallow_water_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, clock, model_fields,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            _calculate_shallow_water_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing
 end

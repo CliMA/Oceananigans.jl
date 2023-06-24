@@ -111,7 +111,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    update_particle_properties!(model, first_stage_Δt)
+    step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
@@ -129,7 +129,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    update_particle_properties!(model, second_stage_Δt)
+    step_lagrangian_particles!(model, second_stage_Δt)
 
     #
     # Third stage
@@ -146,7 +146,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model, callbacks)
-    update_particle_properties!(model, third_stage_Δt)
+    step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
 end
@@ -161,16 +161,13 @@ stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
-    barrier = Event(device(architecture(model)))
     substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
     model_fields = prognostic_fields(model)
-    events = []
 
     for (i, field) in enumerate(model_fields)
-        field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
-                                            model.timestepper.Gⁿ[i],
-                                            model.timestepper.G⁻[i],
-                                            dependencies=barrier)
+        substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
+                              model.timestepper.Gⁿ[i],
+                              model.timestepper.G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -181,13 +178,8 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       stage_Δt(Δt, γⁿ, ζⁿ),
-                       dependencies = field_event)
-
-        push!(events, field_event)
+                       stage_Δt(Δt, γⁿ, ζⁿ))
     end
-
-    wait(device(architecture(model)), MultiEvent(Tuple(events)))
 
     return nothing
 end

@@ -149,7 +149,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 └── coriolis: Nothing
 ```
 
-To model flows near the surface of Europa where `gravitational_acceleration = 1.3 \, \text{m}\,\text{s}^{-2}`,
+To model flows near the surface of Europa where `gravitational_acceleration = 1.3` ``\text{m}\,\text{s}^{-2}``,
 we might alternatively specify
 
 ```jldoctest buoyancy
@@ -184,20 +184,25 @@ SeawaterBuoyancy{Float64}:
 
 ### Idealized nonlinear equations of state
 
-Instead of a linear equation of state, five idealized (second-order) nonlinear equation of state
+Instead of a linear equation of state, six idealized (second-order) nonlinear equations of state
 as described by [Roquet15Idealized](@cite) may be used. These equations of state are provided
 via the [SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
 
 ```jldoctest buoyancy
 julia> using SeawaterPolynomials.SecondOrderSeawaterPolynomials
 
-julia> eos = RoquetSeawaterPolynomial(:Freezing)
-0.7718 Sᴬ - 0.0491 Θ + 0.0 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² - 0.005027 Sᴬ Z + 0.0 Sᴬ Θ
+julia> eos = RoquetEquationOfState(:Freezing)
+BoussinesqEquationOfState{Float64}:
+    ├── seawater_polynomial: SecondOrderSeawaterPolynomial{Float64}
+    └── reference_density: 1024.6
+    
+julia> eos.seawater_polynomial # the density anomaly
+ρ' = 0.7718 Sᴬ - 0.0491 Θ - 0.005027 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² + 0.0 Sᴬ Z + 0.0 Sᴬ Θ
 
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: SecondOrderSeawaterPolynomial{Float64}
+└── equation of state: BoussinesqEquationOfState{Float64}
 ```
 
 ### TEOS-10 equation of state

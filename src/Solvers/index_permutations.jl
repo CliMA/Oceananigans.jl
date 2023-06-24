@@ -83,12 +83,8 @@ unpermute_kernel! = Dict(
     3 => unpermute_z_indices!
 )
 
-function permute_indices!(dst, src, arch, grid, dim)
-    event = launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-end
-
-function unpermute_indices!(dst, src, arch, grid, dim)
-    event = launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-end
+permute_indices!(dst, src, arch, grid, dim) = 
+    launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid)
+    
+unpermute_indices!(dst, src, arch, grid, dim) = 
+    launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid)

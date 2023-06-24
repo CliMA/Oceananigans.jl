@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: architecture, device_event, arch_array
+using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -95,13 +95,10 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    event = launch!(arch, grid, :xyz,
-                    ## If we can figure out how to only precompute the "stability" of a cell:
-                    # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
-                    compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            ## If we can figure out how to only precompute the "stability" of a cell:
+            # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
+            compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy)
 
     return nothing
 end

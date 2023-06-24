@@ -12,7 +12,6 @@ using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: TendencyFields
-using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """
@@ -47,6 +46,10 @@ function calculate_tendencies! end
 
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing
+
+# Interface for time-stepping Lagrangian particles
+abstract type AbstractLagrangianParticles end
+step_lagrangian_particles!(model, Δt) = nothing
 
 reset!(timestepper) = nothing
 

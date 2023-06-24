@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: architecture, device_event, arch_array
+using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -49,23 +49,40 @@ Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependent
                                Riᵟ = 0.4,
                                warning = true)
 
-Return a closure that estimates the vertical viscosity and diffusivit
+Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
 a decreasing function of the Richardson number, ``Ri``. 
 
-Keyword Arguments
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                         which integrates the terms involving only ``z``-derivatives in the
+                         viscous and diffusive fluxes with an implicit time discretization.
+                         Default `VerticallyImplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
+
+Keyword arguments
 =================
 
 * `Ri_dependent_tapering`: The ``Ri``-dependent tapering.
   Options are: `PiecewiseLinearRiDependentTapering()`,
   `HyperbolicTangentRiDependentTapering()` (default), and
   `ExponentialRiDependentTapering()`.
+
 * `ν₀`: Non-convective viscosity.
+
 * `κ₀`: Non-convective diffusivity for tracers.
+
 * `κᶜᵃ`: Convective adjustment diffusivity for tracers.
+
 * `Cᵉⁿ`: Entrainment coefficient for tracers.
+
 * `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity.
+
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
+
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -129,19 +146,16 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    event = launch!(arch, grid, :xyz,
-                    compute_ri_based_diffusivities!,
-                    diffusivities,
-                    grid,
-                    closure,
-                    velocities,
-                    tracers,
-                    buoyancy,
-                    top_tracer_bcs,
-                    clock,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            compute_ri_based_diffusivities!,
+            diffusivities,
+            grid,
+            closure,
+            velocities,
+            tracers,
+            buoyancy,
+            top_tracer_bcs,
+            clock)
 
     return nothing
 end

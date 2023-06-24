@@ -5,17 +5,18 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
+using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, SumOfArrays
 using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -39,7 +40,6 @@ include("explicit_free_surface.jl")
 include("implicit_free_surface_utils.jl")
 include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
-include("mg_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
@@ -99,6 +99,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
+
+# Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
+step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")

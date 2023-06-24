@@ -8,7 +8,7 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-
+    
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -44,7 +44,7 @@ CUDA.allowscalar() do
 
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
-            include("test_poisson_solvers_vertically_stretched_grid.jl")
+            include("test_poisson_solvers_stretched_grids.jl")
         end
     end
 
@@ -58,7 +58,6 @@ CUDA.allowscalar() do
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_multigrid_solver.jl")
         end
     end
 

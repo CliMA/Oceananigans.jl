@@ -189,11 +189,8 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     xc = first(solver.storage)
 	
     # Copy the real component of xc to x.
-    copy_event = launch!(arch, solver.local_grid, :xyz,
-                         copy_permuted_real_component!, x, parent(xc), solver.input_permutation,
-                         dependencies = device_event(arch))
-
-    wait(device(arch), copy_event)
+    launch!(arch, solver.local_grid, :xyz,
+            copy_permuted_real_component!, x, parent(xc), solver.input_permutation)
 
     return x
 end

@@ -1,4 +1,3 @@
-using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC, MCBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 

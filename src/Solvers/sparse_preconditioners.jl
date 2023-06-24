@@ -3,7 +3,6 @@ using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
-using AlgebraicMultigrid: aspreconditioner
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
@@ -135,17 +134,15 @@ function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptoti
     invdiag = arch_array(arch, zeros(eltype(nzval), M))
 
     loop! = _get_inv_diag!(dev, 256, M)
-    event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
-    wait(dev, event)
-
+    loop!(invdiag, colptr, rowval, nzval)
+    
     if asymptotic_order == 0
         Minv_cpu = spdiagm(0=>arch_array(CPU(), invdiag))
         Minv     = arch_sparse_matrix(arch, Minv_cpu)
     elseif asymptotic_order == 1
         loop! = _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(dev, 256, M)
-        event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
-        wait(dev, event)
-    
+        loop!(nzval, colptr, rowval, invdiag)
+        
         constr_new = (colptr, rowval, nzval)
         Minv = arch_sparse_matrix(arch, constructors(arch, M, M, constr_new))
     else
@@ -179,29 +176,3 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
    return SparseInversePreconditioner(Minv)
 end
-
-multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
-
-multigrid_preconditioner(A::CuSparseMatrixCSC) = MultigridGPUPreconditioner(AMGXMultigridSolver(A))
-
-struct MultigridGPUPreconditioner{AMGXMultigridSolver}
-    amgx_solver :: AMGXMultigridSolver
-end
-
-import LinearAlgebra: \, *, ldiv!, mul!
-
-ldiv!(p::MultigridGPUPreconditioner, b) = copyto!(b, p \ b)
-
-function ldiv!(x, p::MultigridGPUPreconditioner, b)
-    x .= 0
-    AMGX.upload!(p.amgx_solver.device_b, b)
-    AMGX.upload!(p.amgx_solver.device_x, x)
-    AMGX.solve!(p.amgx_solver.device_x, p.amgx_solver.solver, p.amgx_solver.device_b)
-    AMGX.copy!(x, p.amgx_solver.device_x)
-end
-
-mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
-
-\(p::MultigridGPUPreconditioner, b) = ldiv!(similar(b), p, b)
-
-finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amgx_solver)

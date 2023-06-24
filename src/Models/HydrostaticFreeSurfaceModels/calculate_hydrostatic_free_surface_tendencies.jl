@@ -1,5 +1,4 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Architectures: device_event
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
@@ -24,7 +23,6 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                                           model.grid,
                                                            model.architecture,
                                                            model.velocities,
                                                            model.free_surface,
@@ -83,9 +81,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     arch = model.architecture
     grid = model.grid
 
-    barrier = device_event(model)
-
-    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
+    calculate_hydrostatic_momentum_tendencies!(model, model.velocities)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
     only_active_cells = use_only_active_cells(grid)
@@ -114,18 +110,13 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                      c_forcing,
                      model.clock)
 
-        Gc_event = launch!(arch, grid, :xyz,
-                           tendency_kernel!,
-                           c_tendency,
-                           grid,
-                           args;
-                           dependencies = barrier, 
-                           only_active_cells)
-
-        push!(events, Gc_event)
+        launch!(arch, grid, :xyz,
+                tendency_kernel!,
+                c_tendency,
+                grid,
+                args;
+                only_active_cells)
     end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -134,17 +125,15 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
-    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
-    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
-    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
-
-    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+function apply_flux_bcs!(Gcⁿ, c, arch, args...)
+    apply_x_bcs!(Gcⁿ, c, arch, args...)
+    apply_y_bcs!(Gcⁿ, c, arch, args...)
+    apply_z_bcs!(Gcⁿ, c, arch, args...)
 
     return nothing
 end
 
-function calculate_free_surface_tendency!(grid, model, dependencies)
+function calculate_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
@@ -155,18 +144,16 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
                  model.forcing,
                  model.clock)
 
-    Gη_event = launch!(arch, grid, :xy,
-                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-                       grid,
-                       args;
-                       dependencies = dependencies)
+    launch!(arch, grid, :xy,
+            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+            grid, args)
 
-    return Gη_event
+    return nothing
 end
     
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
+function calculate_hydrostatic_momentum_tendencies!(model, velocities)
 
     grid = model.grid
     arch = architecture(grid)
@@ -193,43 +180,34 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     
     only_active_cells = use_only_active_cells(grid)
 
-    Gu_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;
-                       dependencies = dependencies, only_active_cells)
+    launch!(arch, grid, :xyz,
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;
+            only_active_cells)
 
-    Gv_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, v_kernel_args;
-                       dependencies = dependencies, only_active_cells)
+    launch!(arch, grid, :xyz,
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, v_kernel_args;
+            only_active_cells)
 
-    Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
+    calculate_free_surface_tendency!(grid, model)
 
-    events = [Gu_event, Gv_event, Gη_event]
-
-    return events
+    return nothing
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
-
-    barrier = device_event(arch)
-    events = []
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args...)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, args...)
+    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args...)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
     end
-
-    events = filter(e -> typeof(e) <: Event, events)
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end

@@ -147,27 +147,6 @@ const C = Center
 @inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, closure::ASD, K, ::Nothing, args...) = νhᶠᶜᶠ(i, j, k, grid, closure, K, args...)
 @inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, closure::ASD, K, ::Nothing, args...) = νhᶜᶠᶠ(i, j, k, grid, closure, K, args...)
 
-#####
-##### Stress divergences
-#####
-
-#####
-##### Fallback: flux = 0
-#####
-
-for dir in (:x, :y, :z)
-    diffusive_flux = Symbol(:diffusive_flux_, dir)
-    viscous_flux_u = Symbol(:viscous_flux_u, dir)
-    viscous_flux_v = Symbol(:viscous_flux_v, dir)
-    viscous_flux_w = Symbol(:viscous_flux_w, dir)
-    @eval begin
-        @inline $diffusive_flux(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_u(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_v(i, j, k, grid, args...) = zero(grid)
-        @inline $viscous_flux_w(i, j, k, grid, args...) = zero(grid)
-    end
-end
-
 
 # Horizontal viscous fluxes for isotropic diffusivities
 @inline ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)

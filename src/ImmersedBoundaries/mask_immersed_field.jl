@@ -1,46 +1,14 @@
 using KernelAbstractions: @kernel, @index
-using KernelAbstractions: NoneEvent
 using Statistics
-using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.Fields: location, Field
+using Oceananigans.Architectures: architecture
+using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-#####
-##### Outer functions
-#####
-
-function mask_immersed_field!(field::Field, value=zero(field.grid); blocking=true)
-    if blocking
-        event = mask_immersed_field!(field, field.grid, location(field), value)
-        wait(device(architecture(field)), event)
-        return nothing
-    else
-        return mask_immersed_field!(field, field.grid, location(field), value)
-    end
-end
-
-function mask_immersed_field_xy!(field::Field, value=zero(field.grid); k, blocking=true, mask=peripheral_node)
-    if blocking
-        event = mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
-        wait(device(architecture(field)), event)
-        return nothing
-    else
-        return mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
-    end
-end
-
-#####
-##### Implementations
-#####
-
-mask_immersed_field!(field; kw...) = NoneEvent()
-mask_immersed_field!(field, value; kw...) = NoneEvent()
-mask_immersed_field!(field, grid, loc, value; kw...) = NoneEvent()
-mask_immersed_field_xy!(field; kw...) = NoneEvent()
-mask_immersed_field_xy!(field, value; kw...) = NoneEvent()
-mask_immersed_field_xy!(field, grid, loc, value; kw...) = NoneEvent()
+mask_immersed_field!(field, grid, loc, value) = nothing
+mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
+    mask_immersed_field!(field, field.grid, location(field), value)
 
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
@@ -50,7 +18,8 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc = instantiate.(loc)
-    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value; dependencies = device_event(arch))
+    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+    return nothing
 end
 
 
@@ -59,6 +28,10 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
+mask_immersed_field_xy!(field,     args...; kw...) = nothing
+mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
+mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
+    mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
 
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)
@@ -69,21 +42,13 @@ function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, 
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
-                   _mask_immersed_field_xy!, field, loc, grid, value, k, mask;
-                   dependencies = device_event(arch))
+                   _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
 end
 
 @kernel function _mask_immersed_field_xy!(field, loc, grid, value, k, mask)
     i, j = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
 end
-
-#####
-##### mask_immersed_velocities for NonhydrostaticModel
-#####
-
-mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
-mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q; blocking=false) for q in U)
 
 #####
 ##### Masking for GridFittedBoundary

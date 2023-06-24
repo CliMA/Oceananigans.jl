@@ -2,11 +2,10 @@ module Architectures
 
 export AbstractArchitecture
 export CPU, GPU, MultiGPU
-export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
+export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
 using KernelAbstractions
-using CUDAKernels
 using Adapt
 using OffsetArrays
 
@@ -37,7 +36,7 @@ struct GPU <: AbstractArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDAKernels.CUDADevice(;always_inline=true)
+device(::GPU) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
@@ -99,8 +98,6 @@ end
 end
  
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
-
-device_event(arch) = Event(device(arch))
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing

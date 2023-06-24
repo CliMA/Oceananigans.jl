@@ -22,5 +22,6 @@ end
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
 
     inverse_timescale = @inbounds abs(u[i, j, k]) / Δx + abs(v[i, j, k]) / Δy + abs(w[i, j, k]) / Δz
+     
     return 1 / inverse_timescale
 end

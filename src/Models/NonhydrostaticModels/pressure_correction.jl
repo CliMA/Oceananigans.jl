@@ -1,5 +1,3 @@
-using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!
-
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """
@@ -10,8 +8,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
-    velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
-    wait(device(model.architecture), MultiEvent(velocity_masking_events))
+    foreach(mask_immersed_field!, model.velocities)
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
@@ -42,15 +39,12 @@ end
 "Update the solution variables (velocities and tracers)."
 function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
 
-    event = launch!(model.architecture, model.grid, :xyz,
-                    _pressure_correct_velocities!,
-                    model.velocities,
-                    model.grid,
-                    Δt,
-                    model.pressures.pNHS,
-                    dependencies = device_event(model.architecture)) 
-
-    wait(device(model.architecture), event)
-
+    launch!(model.architecture, model.grid, :xyz,
+            _pressure_correct_velocities!,
+            model.velocities,
+            model.grid,
+            Δt,
+            model.pressures.pNHS)
+    
     return nothing
 end

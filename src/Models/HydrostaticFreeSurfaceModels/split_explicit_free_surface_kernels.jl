@@ -1,4 +1,4 @@
-using KernelAbstractions: @index, @kernel, Event
+using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Grids: topology
 using Oceananigans.Utils
@@ -190,18 +190,16 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
             η̅, U̅, V̅, averaging_weight, 
             Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper, offsets)
 
-    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!, args...;
-            dependencies=Event(device(arch)))
+    launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!, args...)
 
-    event = launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...;
-            dependencies=event)
+    launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...)
 
-    wait(device(arch), event)
+    return nothing
 end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function barotropic_mode_kernel!(U, V, grid, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)	
 
     # hand unroll first loop 	
@@ -215,14 +213,8 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-function barotropic_mode!(U, V, grid, u, v)
-
-    arch  = architecture(grid)
-    event = launch!(arch, grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
-                   dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
-end
+compute_barotropic_mode!(U, V, grid, u, v) = 
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v)
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
@@ -262,14 +254,11 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    barotropic_mode!(U, V, grid, u, v)
+    compute_barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
-    event = launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
-        dependencies = Event(device(arch)))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
+        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
 end
 
 @kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ)
@@ -280,15 +269,15 @@ end
 """
 Explicitly step forward η in substeps.
 """
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
-    split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
+ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
+    split_explicit_free_surface_step!(free_surface, model, Δt, χ)
     
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
-    @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
-    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
+    @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
+    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
 end
 
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
     grid = free_surface.η.grid
     arch = architecture(grid)
@@ -299,31 +288,26 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
 
-    velocities = model.velocities
-
     fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅))
     
-    @apply_regionally velocities_update = setup_split_explicit!(free_surface.auxiliary, free_surface.state, free_surface.η, 
-                                                                grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
+    @apply_regionally setup_split_explicit!(free_surface.auxiliary, free_surface.state, free_surface.η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
 
     fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
-
-    # Solve for the free surface at tⁿ⁺¹
-    @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
     
-    # Reset eta for the next timestep
-    # this is the only way in which η̅ is used: as a smoother for the 
-    # substepped η field
-    @apply_regionally set!(free_surface.η, free_surface.state.η̅)
+    @apply_regionally begin 
+        # Solve for the free surface at tⁿ⁺¹
+        iterate_split_explicit!(free_surface, grid, Δt)
+        # this is the only way in which η̅ is used: as a smoother for the substepped η field
+        set!(free_surface.η, free_surface.state.η̅)
 
-    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), velocities_update)
-    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in model.velocities)
-    wait(device(arch), MultiEvent(masking_events))
+        # Wait for predictor velocity update step to complete and mask it if immersed boundary.
+        mask_immersed_field!(model.velocities.u)
+        mask_immersed_field!(model.velocities.v)
+    end
 
     fill_halo_regions!(free_surface.η)
 
-    return velocities_update
+    return nothing
 end
 
 function iterate_split_explicit!(free_surface, grid, Δt)
@@ -342,26 +326,22 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     end
 end
 
-function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
+function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
     arch = architecture(grid)
 
-    event_Gu = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu, Guⁿ, χ)
-    event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv, Gvⁿ, χ)
+    launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu, Guⁿ, χ)
+    launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv, Gvⁿ, χ)
 
     # reset free surface averages
     initialize_free_surface_state!(state, η)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))
-
-    masking_events = [mask_immersed_field!(q, blocking=false) for q in velocities]
-    push!(masking_events, mask_immersed_field!(Gu, blocking=false))
-    push!(masking_events, mask_immersed_field!(Gv, blocking=false))
-    wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
+    mask_immersed_field!(Gu)
+    mask_immersed_field!(Gv)
 
     # Compute barotropic mode of tendency fields
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
+    compute_barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
 
-    return MultiEvent(tuple(velocities_update[2]...))
+    return nothing
 end
 

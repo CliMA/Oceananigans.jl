@@ -2,7 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Architectures: device_event
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
@@ -51,11 +50,14 @@ function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
-    Nz = size(grid, 3)
-    masking_events = Any[mask_immersed_field!(field; blocking=false) for field in fields_to_mask if field !== η]
-    push!(masking_events, mask_immersed_field_xy!(η, k=Nz+1, mask=inactive_node, blocking=false))
+    foreach(fields_to_mask) do field
+        if field !== η
+            mask_immersed_field!(field)
+        end
+    end
+    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
 
-    wait(device(architecture(grid)), MultiEvent(Tuple(masking_events)))
+    return nothing
 end
 
 function compute_w_diffusivities_pressure!(model) 

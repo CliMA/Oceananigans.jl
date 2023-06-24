@@ -31,7 +31,7 @@ import Oceananigans.Solvers: get_coefficient
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
-implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
@@ -134,9 +134,9 @@ end
 
 # Extend the `get_coefficient` function to retrieve the correct `ivd_diagonal`, `ivd_lower_diagonal` and `ivd_upper_diagonal` functions
 # REMEMBER: `get_coefficient(f::Function, args...)` leads to massive performance decrease on the CPU (https://github.com/CliMA/Oceananigans.jl/issues/2996) 
-@inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:ivd_diagonal}, i, j, k, grid, p, args...) = ivd_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(::Val{:ivd_diagonal},                    i, j, k, grid, p, tridiag_dir, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
@@ -150,8 +150,7 @@ is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImp
 
 """
     implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
-                   closure, diffusivity_fields, tracer_index, clock, Δt;
-                   dependencies)
+                   closure, diffusivity_fields, tracer_index, clock, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments
@@ -167,7 +166,7 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        Δt; dependencies)
+                        Δt)
     
    loc = location(field)
 
@@ -197,7 +196,6 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz;
-                  dependencies)
+                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz)
 end
 

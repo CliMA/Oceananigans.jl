@@ -6,8 +6,6 @@ using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 using CUDA
 
-using Oceananigans.Architectures: device_event
-
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
@@ -72,10 +70,7 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
 
     return dest
 end

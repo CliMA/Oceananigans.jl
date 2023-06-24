@@ -141,6 +141,7 @@ for arch in archs
         set!(u, 1.0)
         set!(v, 1.0)
 
+        mask_immersed_field!(u)
         mask_immersed_field!(v)
 
         fill_halo_regions!(u)

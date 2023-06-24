@@ -99,12 +99,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FF
     grid = implicit_solver.three_dimensional_grid
     Lz = grid.Lz
 
-    event = launch!(arch, grid, :xy,
-                    fft_implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, Lz, Δt, ∫ᶻQ, η,
-                    dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            fft_implicit_free_surface_right_hand_side!,
+            rhs, grid, g, Lz, Δt, ∫ᶻQ, η)
     
-    wait(device(arch), event)
     return nothing
 end
 

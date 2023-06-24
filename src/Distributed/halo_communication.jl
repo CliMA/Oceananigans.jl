@@ -1,4 +1,4 @@
-using KernelAbstractions: @kernel, @index, Event, MultiEvent
+using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
 using CUDA: synchronize
 import Oceananigans.Utils: sync_device!
@@ -98,36 +98,32 @@ end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
     arch       = architecture(grid)
-    child_arch = child_architecture(arch)
     halo_tuple = permute_boundary_conditions(bcs)
 
     for task = 1:3
-        barrier = device_event(child_arch)
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
-    barrier = device_event(child_arch)
-
-    fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
 
     return nothing
 end
 
 # If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
-function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     hbc_left  = filter(bc -> bc isa DCBC, halo_tuple[2])
     hbc_right = filter(bc -> bc isa DCBC, halo_tuple[3])
 
     # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
     if length(hbc_left) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[2])
-        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
         return nothing
     end
 
     if length(hbc_right) > 1
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[3])
-        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
         return nothing
     end
 end
@@ -136,7 +132,7 @@ end
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; kwargs...)
     fill_halo! = halo_tuple[1][task]
     bc_left    = halo_tuple[2][task]
     bc_right   = halo_tuple[3][task]
@@ -145,10 +141,9 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
-
-    if events_and_requests isa Event
-        wait(device(child_architecture(arch)), events_and_requests)
+    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+    
+    if isnothing(events_and_requests)
         return nothing
     end
 
@@ -180,7 +175,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
     @eval begin
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
-                                   barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+                                   grid::DistributedGrid, buffers, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
@@ -200,15 +195,13 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
         end
 
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
-            barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+                                   grid::DistributedGrid, buffers, args...; kwargs...)
 
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
-            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
-
-            wait(device(child_arch), event)    
-
+            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+            
             $fill_side_send_buffers!(c, buffers, grid)
 
             sync_device!(child_arch)
@@ -220,14 +213,12 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
         end
 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
-                barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+                                   grid::DistributedGrid, buffers, args...; kwargs...)
 
             child_arch = child_architecture(arch)
             local_rank = bc_opposite_side.condition.from
 
-            event = $fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
-
-            wait(device(child_arch), event)    
+            event = $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
 
             $fill_opposite_side_send_buffers!(c, buffers, grid)
 

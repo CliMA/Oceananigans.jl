@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device, device_event
+using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
@@ -33,9 +33,8 @@ using SparseArrays: fkeep!
 function update_diag!(constr, arch, M, N, diag, Δt, disp)   
     colptr, rowval, nzval = unpack_constructors(arch, constr)
     loop! = _update_diag!(device(arch), min(256, M), M)
-    event = loop!(nzval, colptr, rowval, diag, Δt, disp; dependencies=device_event(arch))
-    wait(device(arch), event)
-
+    loop!(nzval, colptr, rowval, diag, Δt, disp)
+    
     constr = constructors(arch, M, N, (colptr, rowval, nzval))
 end
 

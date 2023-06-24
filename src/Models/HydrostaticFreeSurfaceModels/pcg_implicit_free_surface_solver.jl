@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
+import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
@@ -50,7 +50,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
-    
+
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
@@ -81,15 +81,14 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settin
 function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
     # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
     # help eventually.
-    #event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-    #wait(device(model.architecture), event)
-
+    #explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+    
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
     
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
-    
+
     return nothing
 end
 
@@ -100,12 +99,10 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
     arch = architecture(solver)
     grid = solver.grid
 
-    event = launch!(arch, grid, :xy,
-                    implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-		            dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            implicit_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
     
-    wait(device(arch), event)
     return nothing
 end
 
@@ -132,11 +129,8 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     arch = architecture(L_ηⁿ⁺¹)
     fill_halo_regions!(ηⁿ⁺¹)
 
-    event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
-                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
+            L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end
@@ -187,12 +181,10 @@ add to the rhs - H⁻¹ ∇H ⋅ ∇ηⁿ to the rhs...
     Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # assume horizontal regularity
     Lz = grid.Lz 
 
-    event = launch!(arch, grid, :xy,
-                    fft_preconditioner_right_hand_side!,
-                    poisson_solver.storage, r, η, grid, Az, Lz,
-                    dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            fft_preconditioner_right_hand_side!,
+            poisson_solver.storage, r, η, grid, Az, Lz)
 
-    wait(device(arch), event)
 
     return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
@@ -227,18 +219,6 @@ end
 # The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
 =#
 
-"""
-Multigrid preconditioner
-"""
-@inline function precondition!(z, preconditioner::MGImplicitFreeSurfaceSolver, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-    parent(z) .= 0
-    solve!(z, preconditioner, r, g, Δt)
-    return z
-end
-
-finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
-    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
-
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
 #####
@@ -272,11 +252,8 @@ function diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ay
 
     fill_halo_regions!(r)
 
-    event = launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
-                    P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
+            P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end
