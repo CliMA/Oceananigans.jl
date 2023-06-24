@@ -172,9 +172,7 @@ steps:
       - JuliaCI/julia#v1:
           version: "1.8"
     command: |
-      julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'
-      julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate()'
-      julia --color=yes --project=docs/ docs/make.jl
+      - "julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: Oceananigans
       architecture: CPU

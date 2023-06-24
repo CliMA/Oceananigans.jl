@@ -87,7 +87,7 @@ Base.nameof(::Type{SalinitySeawaterBuoyancy}) = "SalinitySeawaterBuoyancy"
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
     return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, T, S)
               / b.equation_of_state.reference_density)

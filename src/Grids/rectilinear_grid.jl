@@ -63,6 +63,11 @@ regular_dimensions(::XZRegRectilinearGrid) = (1, 3)
 regular_dimensions(::YZRegRectilinearGrid) = (2, 3)
 regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
 
+stretched_dimensions(::YZRegRectilinearGrid) = tuple(1)
+stretched_dimensions(::XZRegRectilinearGrid) = tuple(2)
+stretched_dimensions(::XYRegRectilinearGrid) = tuple(3)
+
+
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,
@@ -488,4 +493,12 @@ end
 @inline yspacings(grid::RectilinearGrid, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓy; kwargs...)
 @inline zspacings(grid::RectilinearGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
-isrectilinear(::RectilinearGrid) = true
+@inline isrectilinear(::RectilinearGrid) = true
+
+@inline isxregular(::RectilinearGrid) = false
+@inline isyregular(::RectilinearGrid) = false
+@inline iszregular(::RectilinearGrid) = false
+
+@inline isxregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}) = true
+@inline isyregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
+@inline iszregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true

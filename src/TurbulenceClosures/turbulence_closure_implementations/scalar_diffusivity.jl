@@ -5,16 +5,18 @@ struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
     ν :: N
     κ :: K
 
-    function ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K}
-        return new{TD, F, N, K}(ν, κ)
-    end
+    ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K} =
+        new{TD, F, N, K}(ν, κ)
 end
 
 """
-    ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                      formulation=ThreeDimensionalFormulation(), FT=Float64];
-                      ν=0, κ=0,
-                      discrete_form = false) 
+    ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
+                      formulation = ThreeDimensionalFormulation(), FT = Float64;
+                      ν = 0,
+                      κ = 0,
+                      discrete_form = false,
+                      loc = (nothing, nothing, nothing),
+                      parameters = nothing)
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -35,10 +37,69 @@ Arguments
 Keyword arguments
 =================
 
-`ν` and the fields of `κ` may be constants (converted to `FT`), arrays, fields or
-  - functions of `(x, y, z, t)` if `discrete_form = false`
-  - functions of `(i, j, k, grid, LX, LY, LZ)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
-    `discrete_form = true`.
+* `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
+
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+       `NamedTuple` of diffusivities with entries for each tracer.
+
+* `discrete_form`: `Boolean`; default: `False`.
+
+When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
+`discrete_form`, the constructor expects:
+
+  - `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
+    a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+
+  - `discrete_form = true`: 
+    - with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+    - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
+  - `parameters`: `NamedTuple` with parameters used by the functions that compute viscosity and/or diffusivity; default: `nothing`.
+
+
+Examples
+========
+
+```jldoctest ScalarDiffusivity
+julia> using Oceananigans
+
+julia> ScalarDiffusivity(ν = 1000, κ=2000)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
+```
+
+```jldoctest ScalarDiffusivity
+julia> const depth_scale = 100;
+
+julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
+ν (generic function with 1 method)
+
+julia> ScalarDiffusivity(ν = ν)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
+```
+
+```jldoctest ScalarDiffusivity
+julia> using Oceananigans.Grids: znode
+
+julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
+           z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
+           return 2000 * exp(z / depth_scale)
+       end
+κ (generic function with 1 method)
+
+julia> ScalarDiffusivity(κ = κ, discrete_form = true)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
+```
+
+```jldoctest ScalarDiffusivity
+julia> @inline function another_κ(i, j, k, grid, p)
+           z = znode(i, j, k, grid)
+           return 2000 * exp(z / p.depth_scale)
+       end
+another_κ (generic function with 1 method)
+
+julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(another_κ)})
+```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(), FT=Float64;
