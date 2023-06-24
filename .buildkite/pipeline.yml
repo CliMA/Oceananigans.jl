@@ -33,7 +33,7 @@ steps:
       - JuliaCI/julia#v1:
           version: "1.8"
       - JuliaCI/julia-test#v1:
-          coverage: false
+          coverage: true
     agents:
       queue: Oceananigans
       architecture: CPU
