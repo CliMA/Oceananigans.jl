@@ -31,8 +31,7 @@ end
                         δU_stencil   = FunctionStencil(divergence_smoothness),
                         δV_stencil   = FunctionStencil(divergence_smoothness),
                         δu²_stencil  = FunctionStencil(u_smoothness),
-                        δv²_stencil  = FunctionStencil(v_smoothness),
-                        ) = OnlySelfUpwinding(cross_scheme, δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
+                        δv²_stencil  = FunctionStencil(v_smoothness))
 
 Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only 
 the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
