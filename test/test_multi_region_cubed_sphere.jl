@@ -95,8 +95,6 @@ end
     end
 end
 
-float_types = (Float64,)
-
 @testset "Testing conformal cubed sphere fill halos for tracers" begin
     for FT in float_types
         for arch in archs
@@ -219,32 +217,32 @@ end
             end
 
             # Confirm that the meridional velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
-            CUDA.@allowscalar begins
+            CUDA.@allowscalar begin
                 @test get_halo_data(getregion(v, 1), :west)  == - reverse(create_u_test_data(grid, 5)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 1), :east)  ==           create_v_test_data(grid, 2)[west_indices...]
                 @test get_halo_data(getregion(v, 1), :south) ==           create_v_test_data(grid, 6)[north_indices...]
                 @test get_halo_data(getregion(v, 1), :north) ==   reverse(create_u_test_data(grid, 3)[west_indices...], dims=2)'
-                
+
                 @test get_halo_data(getregion(v, 2), :west)  ==           create_v_test_data(grid, 1)[east_indices...]
                 @test get_halo_data(getregion(v, 2), :east)  == - reverse(create_u_test_data(grid, 4)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 2), :south) ==   reverse(create_u_test_data(grid, 6)[east_indices...], dims=2)'
                 @test get_halo_data(getregion(v, 2), :north) ==           create_v_test_data(grid, 3)[south_indices...]
-                
+
                 @test get_halo_data(getregion(v, 3), :west)  == - reverse(create_u_test_data(grid, 1)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 3), :east)  ==           create_v_test_data(grid, 4)[west_indices...]
                 @test get_halo_data(getregion(v, 3), :south) ==           create_v_test_data(grid, 2)[north_indices...]
                 @test get_halo_data(getregion(v, 3), :north) ==   reverse(create_u_test_data(grid, 5)[west_indices...], dims=2)'
-                
+
                 @test get_halo_data(getregion(v, 4), :west)  ==           create_v_test_data(grid, 3)[east_indices...]
                 @test get_halo_data(getregion(v, 4), :east)  == - reverse(create_u_test_data(grid, 6)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 4), :south) ==   reverse(create_u_test_data(grid, 2)[east_indices...], dims=2)'
                 @test get_halo_data(getregion(v, 4), :north) ==           create_v_test_data(grid, 5)[south_indices...]
-                
+
                 @test get_halo_data(getregion(v, 5), :west)  == - reverse(create_u_test_data(grid, 3)[north_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 5), :east)  ==           create_v_test_data(grid, 6)[west_indices...]
                 @test get_halo_data(getregion(v, 5), :south) ==           create_v_test_data(grid, 4)[north_indices...]
                 @test get_halo_data(getregion(v, 5), :north) ==   reverse(create_u_test_data(grid, 1)[west_indices...], dims=2)'
-                
+
                 @test get_halo_data(getregion(v, 6), :west)  ==           create_v_test_data(grid, 5)[east_indices...]
                 @test get_halo_data(getregion(v, 6), :east)  == - reverse(create_u_test_data(grid, 2)[south_indices...], dims=1)'
                 @test get_halo_data(getregion(v, 6), :south) ==   reverse(create_u_test_data(grid, 4)[east_indices...], dims=2)'
