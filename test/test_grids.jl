@@ -219,6 +219,55 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         end
     end
 
+    @info "        Testing grid utils more on variably spaced grid...."
+
+    N = 4
+
+    size=(N, N, N)
+    topology = (Periodic, Periodic, Bounded)
+
+    domain_faces = [0, 1, 2, 4, 8]
+
+    grid = RectilinearGrid(arch, FT; size, topology,
+                           x=domain_faces, y=domain_faces, z=domain_faces)
+
+    CUDA.@allowscalar begin
+
+        for k in 1:N+1
+            @test znode(k, grid, Face()) ≈ domain[k]
+            @test zspacing(1, 1, m, grid, Center(), Center(), Center()) ≈ zspacings(grid, Center())[m]
+        end
+
+        for m in 1:N
+            @test xnode(m, grid, Face()) ≈ domain_faces[m]
+            @test ynode(m, grid, Face()) ≈ domain_faces[m]
+
+            @test xnode(m, grid, Center()) ≈ (domain_faces[m] + domain_faces[m+1]) / 2
+            @test ynode(m, grid, Center()) ≈ (domain_faces[m] + domain_faces[m+1]) / 2
+            @test znode(m, grid, Center()) ≈ (domain_faces[m] + domain_faces[m+1]) / 2
+
+            @test xspacing(m, 1, 1, grid, Face(),   Center(), Center()) ≈ xspacings(grid, Face())[m]
+            @test yspacing(1, m, 1, grid, Center(), Face(),   Center()) ≈ yspacings(grid, Face())[m]
+            @test zspacing(1, 1, m, grid, Center(), Center(), Face())   ≈ zspacings(grid, Face())[m]
+            @test xspacing(m, 1, 1, grid, Center(), Center(), Center()) ≈ xspacings(grid, Center())[m]
+            @test yspacing(1, m, 1, grid, Center(), Center(), Center()) ≈ yspacings(grid, Center())[m]
+        end
+
+        @test minimum_xspacing(grid) ≈ minimum_yspacing(grid) ≈ minimum_zspacing(grid) ≈ 1
+
+        @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
+        @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
+        @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+
+        @test xspacings(grid, Center()) ≈ diff(domain_faces)
+        @test yspacings(grid, Center()) ≈ diff(domain_faces)
+        @test zspacings(grid, Center()) ≈ diff(domain_faces)
+
+        @test sum(xspacings(grid, Face())) ≈ sum(xspacings(grid, Center())) ≈ grid.Lx
+        @test sum(yspacings(grid, Face())) ≈ sum(yspacings(grid, Center())) ≈ grid.Ly
+        @test sum(zspacings(grid, Face())) ≈ sum(zspacings(grid, Center())) ≈ grid.Lz
+    end
+
     return nothing
 end
 
