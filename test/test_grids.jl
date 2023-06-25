@@ -235,7 +235,7 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
 
         for k in 1:N+1
             @test znode(k, grid, Face()) ≈ domain[k]
-            @test zspacing(1, 1, m, grid, Center(), Center(), Center()) ≈ zspacings(grid, Center())[m]
+            @test zspacing(1, 1, k, grid, Center(), Center(), Center()) ≈ zspacings(grid, Center())[m]
         end
 
         for m in 1:N
