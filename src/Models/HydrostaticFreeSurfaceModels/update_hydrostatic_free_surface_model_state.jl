@@ -30,7 +30,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
-    @apply_regionally correct_horizontal_velocity_halos!(model.velocities)
+    @apply_regionally correct_horizontal_velocity_halos!(model.velocities, model.grid)
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
