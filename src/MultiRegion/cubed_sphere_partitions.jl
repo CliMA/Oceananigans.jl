@@ -267,7 +267,9 @@ function Base.summary(p::CubedSpherePartition)
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
 
-function correct_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid)
+correct_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid) = nothing
+
+function correct_horizontal_velocity_halos!(velocities, ::OrthogonalSphericalShellGrid)
     u, v = velocities
 
     ubuff = u.boundary_buffers
@@ -296,58 +298,54 @@ for vel in (:u, :v), dir in (:east, :west, :north, :south)
 end
 
 function replace_u_west!(u, vbuff, ::North)
-    Nx, Ny, _ = size(u)
-    Hx, Hy, _ = halo_size(u.grid)
-    @inbounds u[-Hx+1:0, :, :] .= vbuff.west.recv
+    Hx = halo_size(u.grid)[1]
+    view(u, -Hx+1:0, :, :) .= vbuff.west.recv
     return nothing
 end
 
 function replace_v_west!(v, ubuff, ::North)
-    Nx, Ny, _ = size(v)
-    Hx, Hy, _ = halo_size(v.grid)
-    @inbounds v[-Hx+1:0, :, :] .= - ubuff.west.recv
+    Hx = halo_size(v.grid)[1]
+    view(v, -Hx+1:0, :, :) .= - ubuff.west.recv
     return nothing
 end
 
 function replace_u_east!(u, vbuff, ::South)
-    Nx, Ny, _ = size(u)
-    Hx, Hy, _ = halo_size(u.grid)
-    @inbounds u[Nx+1:Nx+Hx, :, :] .= vbuff.east.recv
+    Nx = size(u)[1]
+    Hx = halo_size(u.grid)[1]
+    view(u, Nx+1:Nx+Hx, :, :) .= vbuff.east.recv
     return nothing
 end
 
 function replace_v_east!(v, ubuff, ::South)
-    Nx, Ny, _ = size(v)
-    Hx, Hy, _ = halo_size(v.grid)
-    @inbounds v[Nx+1:Nx+Hx, :, :].= - ubuff.east.recv
+    Nx = size(v)[1]
+    Hx = halo_size(v.grid)[1]
+    view(v, Nx+1:Nx+Hx, :, :) .= - ubuff.east.recv
     return nothing
 end
 
 function replace_u_south!(u, vbuff, ::East)
-    Nx, Ny, _ = size(u)
-    Hx, Hy, _ = halo_size(u.grid)
-    @inbounds u[:, -Hy+1:0, :] .= - vbuff.south.recv
+    Hy = halo_size(u.grid)[2]
+    view(u, :, -Hy+1:0, :) .= - vbuff.south.recv
     return nothing
 end
 
 function replace_v_south!(v, ubuff, ::East)
-    Nx, Ny, _ = size(v)
-    Hx, Hy, _ = halo_size(v.grid)
-    @inbounds v[:, -Hy+1:0, :] .= ubuff.south.recv
+    Hy = halo_size(v.grid)[2]
+    view(v, :, -Hy+1:0, :) .= ubuff.south.recv
     return nothing
 end
 
 function replace_u_north!(u, vbuff, ::West)
-    Nx, Ny, _ = size(u)
-    Hx, Hy, _ = halo_size(u.grid)
-    @inbounds u[:, Ny+1:Ny+Hy, :] .= - vbuff.north.recv
+    Ny = size(u)[2]
+    Hy = halo_size(u.grid)[2]
+    view(u, :, Ny+1:Ny+Hy, :) .= - vbuff.north.recv
     return nothing
 end
 
 function replace_v_north!(v, ubuff, ::West)
-    Nx, Ny, _ = size(v)
-    Hx, Hy, _ = halo_size(v.grid)
-    @inbounds v[:, Ny+1:Ny+Hy, :] .= ubuff.north.recv
+    Ny = size(v)[2]
+    Hy = halo_size(v.grid)[2]
+    view(v, :, Ny+1:Ny+Hy, :) .= ubuff.north.recv
     return nothing
 end
 
