@@ -239,7 +239,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
 
-    #=
     CUDA.@allowscalar begin
         λcca = Field{Center, Center, Nothing}(grid)
         φcca = Field{Center, Center, Nothing}(grid)
@@ -252,6 +251,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         fill_halo_regions!(λcca)
         fill_halo_regions!(φcca)
 
+        for region in 1:6
+            getregion(grid, region).λᶜᶜᵃ .= getregion(λcca, region).data
+            getregion(grid, region).φᶜᶜᵃ .= getregion(φcca, region).data
+        end
+    end
+
+    #=
         λfca = Field{Face, Center, Nothing}(grid)
         φfca = Field{Face, Center, Nothing}(grid)
 
