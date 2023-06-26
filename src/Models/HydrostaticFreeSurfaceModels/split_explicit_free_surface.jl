@@ -256,8 +256,6 @@ struct FixedSubstepNumber{B, F}
     averaging_weights    :: F
 end
     
-FixedTimeStepSize() = FixedTimeStepSize(nothing, nothing)
-
 function FixedTimeStepSize(FT::DataType = Float64;
                            cfl = 0.7, 
                            grid, 
@@ -335,8 +333,8 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings) =
     SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
 
-Base.summary(s::FixedTimeStepSize) = string("Barotropic time step equal to $(s.Δt_barotopic)")
-Base.summary(s::FixedTimeStepSize) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
+Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(s.Δt_barotopic)")
+Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
 Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substepping)")
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
