@@ -277,7 +277,7 @@ end
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = averaging_kernel.(τᶠ[2:end])
+    averaging_weights = map(averaging_kernel, τᶠ[2:end])
     idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
