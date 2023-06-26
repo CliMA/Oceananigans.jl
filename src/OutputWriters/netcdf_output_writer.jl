@@ -164,7 +164,7 @@ end
                             output_attributes = Dict(),
                                    dimensions = Dict(),
                            overwrite_existing = false,
-                                  compression = 0,
+                                 deflatelevel = 0,
                                       verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
@@ -209,7 +209,9 @@ Keyword arguments
                         Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
                         for more information about its `mode` option.
 
-- `compression`: Determines the compression level of data (0-9; default: 0).
+- `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  for more information.
 
 ## Miscellaneous keywords
 
@@ -334,7 +336,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                             output_attributes = Dict(),
                                    dimensions = Dict(),
                            overwrite_existing = nothing,
-                                  compression = 0,
+                                 deflatelevel = 0,
                                       verbose = false)
 
     mkpath(dir)
@@ -395,7 +397,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=compression, attrib=default_dimension_attributes[dim_name])
+                   deflatelevel=deflatelevel, attrib=default_dimension_attributes[dim_name])
         end
 
         # DateTime and TimeDate are both <: AbstractTime
@@ -417,7 +419,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
+            define_output_variable!(dataset, output, name, array_type, deflatelevel, attributes, dimensions)
         end
 
         sync(dataset)
@@ -442,21 +444,21 @@ get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
 #####
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
     defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           deflatelevel=compression, attrib=output_attributes)
+           deflatelevel=deflatelevel, attrib=output_attributes)
 
     return nothing
 end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
+define_output_variable!(dataset, output::AbstractField, name, array_type, deflatelevel, output_attributes, dimensions) =
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           deflatelevel=compression, attrib=output_attributes)
+           deflatelevel=deflatelevel, attrib=output_attributes)
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
@@ -569,11 +571,11 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, deflatelevel, output_attributes, dimensions)
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     for particle_field in particle_fields
         defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), deflatelevel=compression)
+               ("particle_id", "time"), deflatelevel=deflatelevel)
     end
 end
 
