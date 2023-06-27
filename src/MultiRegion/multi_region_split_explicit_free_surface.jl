@@ -60,4 +60,4 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
 end
 
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (step_halo, old_halos[2], old_halos[3])
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], step_halo, old_halos[3])>>>>>>> main
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], step_halo, old_halos[3])
