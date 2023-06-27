@@ -4,7 +4,7 @@ using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
 using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
-using Oceananigans.Fields: fill_halo_regions!
+using Oceananigans.Fields: fill_halo_regions!, instantiate
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
 using Printf
@@ -113,10 +113,11 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     if any(size(ib.bottom_height) .!= bottom_height_size)
         @warn "Resizing the bottom field to match the grids' halos"
 
-        bottom_field = Field((Center, Center, Nothing), grid)
+        bottom_field_location = (Center, Center, Nothing)
+        bottom_field = Field(bottom_field_location, grid)
 
-        x_indices = interior_x_indices(grid, Center())
-        y_indices = interior_y_indices(grid, Center())
+        x_indices = interior_x_indices(grid, instantiate(bottom_field_location))
+        y_indices = interior_y_indices(grid, instantiate(bottom_field_location))
 
         cpu_bottom = arch_array(CPU(), ib.bottom_height)[x_indices, y_indices] 
         

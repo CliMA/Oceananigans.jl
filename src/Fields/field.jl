@@ -358,6 +358,7 @@ interior_view_indices(::Colon,       interior_indices) = interior_indices
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+instantiate(T::Tuple) = map(instantiate, T)
 
 function interior(a::OffsetArray,
                   Loc::Tuple,
@@ -366,8 +367,8 @@ function interior(a::OffsetArray,
                   halo_sz::NTuple{N, Int},
                   ind::Tuple=default_indices(3)) where N
 
-    loc = map(instantiate, Loc)
-    topo = map(instantiate, Topo)
+    loc  = instantiate(Loc)
+    topo = instantiate(Topo)
     i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     i_view = map(interior_view_indices, ind, i_interior)
     return view(parent(a), i_view...)
