@@ -4,9 +4,12 @@ using Oceananigans.Utils: Iterate,
                           get_lat_lon_nodes_and_vertices,
                           get_cartesian_nodes_and_vertices
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using .CubedSpherePlot: heatsphere!
+using GeoMakie, GLMakie
+GLMakie.activate!()
 
 
-function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_field)
+function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
 
     grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=1, horizontal_direction_halo = 1, 
                                     partition = CubedSpherePartition(; R = 1))
@@ -38,7 +41,7 @@ function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_field)
     #                                                   prefix = "multi_region_tracer_advection")
 
     function save_tracer(sim)
-        push!(tracer_field, sim.model.tracers.θ)
+        push!(tracer_fields, sim.model.tracers.θ)
     end
 
     simulation.callbacks[:save_tracer] = Callback(save_tracer, TimeInterval(1.0))
@@ -49,39 +52,43 @@ function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_field)
 end 
 
 
-Nx = 10
-Ny = 10
-Nt = 10
+function test_multi_region_tracer_advection()
 
-tracer_fields = Field[]
-multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
-tracer = tracer_fields[1]
+    Nx = 10
+    Ny = 10
+    Nt = 10
+    
+    tracer_fields = Field[]
+    multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
+    
+    @info "Making an animation from the saved data..."
+    
+    n = Observable(1)
+    
+    θ = @lift begin
+        tracer_fields[$n]
+    end
+    
+    # Note that the interior field data at iterate level n is given by tracer_fields[$n].data[1][1:Nx, 1:Ny, 1] 
+    # or θGrid.val.data[1][1:Nx, 1:Ny, 1].
+    
+    fig = Figure(resolution = (850, 750))
+    title = "Tracer Concentration"
+    
+    ax = Axis3(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
+               titlefont = :bold)
+    
+    @apply_regionally heatsphere!(ax, θ.val)
 
-@info "Making an animation from the saved data..."
-
-n = Observable(1)
-
-θGrid = @lift begin
-    interior(tracer_fields[$n], :, :, 1)
+    frames = 1:length(tracer_fields)
+    
+    CairoMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 1) do i
+        msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+        n[] = i
+    end
+    
 end
 
-fig = Figure(resolution = (850, 750))
-title_θ = @lift "Tracer Concentration after " *string(round(times[$n], digits = 1))*" seconds"
 
-@apply_regionally heatsphere!(ax, θGrid)
-
-ax_θ = Axis3(fig[1,1]; xlabel = "Longitude (m)", ylabel = "Meridional Distance (m)", xlabelsize = 22.5, ylabelsize = 22.5, 
-             xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
-             title = title_θ, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-
-@apply_regionally heatsphere!(ax_θ, model.tracers.θ)
-
-Colorbar(fig[1,2], hm_θ; label = "Tracer Concentration", labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
-
-frames = 1:length(times)
-
-CairoMakie.record(fig, filename * "_" * immersed_boundary_type * "_" * plot_type * ".mp4", frames, framerate = 8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
-    n[] = i
-end
+test_multi_region_tracer_advection()
