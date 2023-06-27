@@ -115,8 +115,8 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
 
         bottom_field = Field((Center, Center, Nothing), grid)
 
-        x_indices = interior_x_indices(grid, Center)
-        y_indices = interior_y_indices(grid, Center)
+        x_indices = interior_x_indices(grid, Center())
+        y_indices = interior_y_indices(grid, Center())
 
         cpu_bottom = arch_array(CPU(), ib.bottom_height)[x_indices, y_indices] 
         
@@ -191,7 +191,7 @@ struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
 end
 
 # We do not use `GridFittedBoundary{<:OffsetArray}`
-resize_immersed_boundary(ib::AbstractGridFittedBoundary, grid) = ib
+resize_immersed_boundary(ib::AbstractGridFittedBoundary{<:Field}, grid) = ib
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
