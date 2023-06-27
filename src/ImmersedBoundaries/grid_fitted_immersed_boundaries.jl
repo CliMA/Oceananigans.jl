@@ -191,7 +191,7 @@ struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
 end
 
 # We do not use `GridFittedBoundary{<:OffsetArray}`
-resize_immersed_boundary(ib::AbstractGridFittedBoundary{<:Field}, grid) = ib
+resize_immersed_boundary(ib::AbstractGridFittedBoundary, grid) = ib
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
