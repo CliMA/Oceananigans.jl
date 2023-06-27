@@ -49,8 +49,11 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
     N  = Int((order + 1) ÷ 2)
 
     if N > 1
-        coefficients     = Tuple(nothing for i in 1:6)
-        # coefficients     = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
+        coefficients = Tuple(nothing for i in 1:6)
+        # Stretched coefficient seem to be more unstable that constant spacing ones for 
+        # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
+        # Some tests are needed to verify why this is the case (and if it is expected)
+        # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
         buffer_scheme  = UpwindBiased(FT; grid, order = order - 2)
     else
@@ -89,14 +92,16 @@ UpwindBiasedFirstOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, 
 UpwindBiasedThirdOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 3)
 UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 5)
 
-# symmetric interpolation for UpwindBiased and WENO
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
+const AUAS = AbstractUpwindBiasedAdvectionScheme
 
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, u) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, v) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, w) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w)
+# symmetric interpolation for UpwindBiased and WENO
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, u, args...) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, v, args...) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
 
 # uniform upwind biased reconstruction
 for side in (:left, :right)
@@ -104,7 +109,7 @@ for side in (:left, :right)
     stencil_y = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
     stencil_z = Symbol(:inner_, side, :_biased_interpolate_zᵃᵃᶠ)
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x, false))
             @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x,  true))
@@ -114,7 +119,6 @@ for side in (:left, :right)
         
             @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z, false))
             @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z,  true))
-    
         end
     end
 end
@@ -123,10 +127,10 @@ end
 for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
     stencil = Symbol(:inner_, side, :_biased_interpolate_, dir)
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
         end
     end
 end
