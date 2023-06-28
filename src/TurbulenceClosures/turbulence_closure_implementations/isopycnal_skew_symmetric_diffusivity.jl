@@ -80,14 +80,14 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) w
     end
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = KernelParameters(model.grid, closure)))
 
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
 
     return nothing

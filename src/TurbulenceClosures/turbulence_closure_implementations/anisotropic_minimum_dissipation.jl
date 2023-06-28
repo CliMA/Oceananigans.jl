@@ -185,22 +185,20 @@ end
     return max(zero(FT), κˢᵍˢ)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model)
+function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = KernelParameters(model.grid, closure))
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
-    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
-
-    viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+    launch!(arch, grid, calculate_nonlinear_viscosity!, parameters, 
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        diffusivity_kernel!(κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+        launch!(arch, grid, calculate_nonlinear_tracer_diffusivity!, parameters, 
+                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
     return nothing

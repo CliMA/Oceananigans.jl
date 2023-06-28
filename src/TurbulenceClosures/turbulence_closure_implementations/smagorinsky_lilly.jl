@@ -117,14 +117,14 @@ end
     return ς * (C * Δᶠ)^2 * sqrt(2Σ²)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
+function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = KernelParameters(model.grid, closure))
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy
     velocities = model.velocities
     tracers = model.tracers
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             calculate_nonlinear_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 

@@ -90,14 +90,14 @@ end
     (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(   abs²_∇h_ζ(i, j, k, grid, velocities)
                                                       + abs²_∇h_wz(i, j, k, grid, velocities.w))
 
-function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
+function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = KernelParameters(model.grid, closure))
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             calculate_nonlinear_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 

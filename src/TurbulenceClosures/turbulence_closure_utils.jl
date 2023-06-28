@@ -43,7 +43,7 @@ end
 
     Ax = Tx == Flat ? Nx : Nx + 2B 
     Ay = Ty == Flat ? Ny : Ny + 2B 
-    Az = Tz == Flat ? Nz : Nz + 2B
+    Az = Tz == Flat ? Nz : Nz + 2
 
     return (Ax, Ay, Az)
 end
@@ -53,7 +53,7 @@ end
 
     Ax = Tx == Flat ? 0 : - B
     Ay = Ty == Flat ? 0 : - B 
-    Az = Tz == Flat ? 0 : - B
+    Az = Tz == Flat ? 0 : - 1
 
     return (Ax, Ay, Az)
 end
