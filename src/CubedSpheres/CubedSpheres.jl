@@ -14,6 +14,7 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
+using Oceananigans.Utils
 import Oceananigans.Grids: validate_index
 import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
@@ -190,7 +191,8 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
 
     arch = architecture(comp)
     foreach(faces(comp)) do c
-        launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+        parameters = KernelParameters(size(c), map(offset_index, c.indices))
+        launch!(arch, c.grid, parameters, _compute!, c.data, c.operand)
     end
     
     fill_halo_regions!(comp)

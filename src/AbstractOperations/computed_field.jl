@@ -76,7 +76,7 @@ end
 function compute_computed_field!(comp)
     arch = architecture(comp)
     parameters = KernelParameters(size(comp), map(offset_index, comp.indices))
-    launch!(arch, comp.grid, parameters, _compute!, comp.data, comp.operand, comp.indices)
+    launch!(arch, comp.grid, parameters, _compute!, comp.data, comp.operand)
     return comp
 end
 
