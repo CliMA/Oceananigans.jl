@@ -488,10 +488,11 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ```
 
 !!! warning "`ImmersedBoundaryCondition`"
-    Manually building `ImmersedBoundaryCondition` should be done with care.
-    While convenient for some applications, using bespoke `ImmersedBoundaryCondition`s
-    can obscure the physical interpreation of a model setup. As with all model setups, it is important
-    to test important model choices in idealized situations where their impact can be easily discerned.
+    `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+    Therefore, one should use it only when a finer level of control over the boundary conditions
+    at the immersed boundary is required, and the user is familiar with the implementation of boundary 
+    conditions on staggered grids. For all other cases , using the `immersed` argument of
+    `FieldBoundaryConditions` is preferred.
 
 A boundary condition that depends on the fields may be prescribed using the `immersed`
 keyword argument in [`FieldBoundaryConditions`](@ref).
