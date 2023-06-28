@@ -26,7 +26,52 @@ MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.Distributed: DistributedArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
+using Oceananigans.Distributed: DistributedArch, index2rank
+using Oceananigans.Fields: AbstractField
+using Oceananigans.Grids:
+    interior_indices,
+    left_halo_indices, right_halo_indices,
+    underlying_left_halo_indices, underlying_right_halo_indices
+
+#####
+##### Viewing halos
+#####
+
+west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
+                      view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx),
+                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                                   interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
+
+east_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, right_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
+                      view(f.data, right_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx),
+                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                                   interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
+
+south_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, :, left_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy), :) :
+                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                                   left_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy),
+                                   interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
+
+north_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, :, right_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy), :) :
+                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                                   right_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy),
+                                   interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
+
+bottom_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, :, :, left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
+                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                                   left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
+
+top_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
+    include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
+                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                                   right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD
@@ -305,7 +350,7 @@ end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(1, 4, 1))
+    arch = DistributedArch(ranks=(1, 4, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 2, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -322,7 +367,7 @@ end
 
 function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(1, 1, 4))
+    arch = DistributedArch(ranks=(1, 1, 4), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 2), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -339,7 +384,7 @@ end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(2, 2, 1))
+    arch = DistributedArch(ranks=(2, 2, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -360,24 +405,22 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true, )
-        arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
-        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
-        model = NonhydrostaticModel(grid=grid)
+    arch = DistributedArch(child_arch; ranks=(4, 1, 1), topology=topo, devices = (0, 0, 0, 0))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
-        for field in merge(fields(model))
-            interior(field) .= arch.local_rank
-            fill_halo_regions!(field)
+    for field in merge(fields(model))
+        interior(field) .= arch.local_rank
+        fill_halo_regions!(field)
 
-            @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-            @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
 
-            @test all(interior(field) .== arch.local_rank)
-            @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        end
+        @test all(interior(field) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
 
@@ -386,48 +429,44 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
-    for use_buffers in (true, )
-        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
-        grid  = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
-        model = NonhydrostaticModel(grid=grid)
+    arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology=topo, devices = (0, 0, 0, 0))
+    grid  = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
-        for field in merge(fields(model), model.pressures)
-            interior(field) .= arch.local_rank
-            fill_halo_regions!(field)
+    for field in merge(fields(model), model.pressures)
+        interior(field) .= arch.local_rank
+        fill_halo_regions!(field)
 
-            @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-            @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-            @test all(interior(field) .== arch.local_rank)
-            @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        end
+        @test all(interior(field) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
     return nothing
 end
 
 function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true, )
-        arch = DistributedArch(child_arch; ranks=(1, 1, 4), use_buffers, devices = (0, 0, 0, 0))
-        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
-        model = NonhydrostaticModel(grid=grid)
+    arch = DistributedArch(child_arch; ranks=(1, 1, 4), topology=topo, devices = (0, 0, 0, 0))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
-        for field in merge(fields(model))
-            interior(field) .= arch.local_rank
-            fill_halo_regions!(field)
+    for field in merge(fields(model))
+        interior(field) .= arch.local_rank
+        fill_halo_regions!(field)
 
-            @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
-            @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
+        @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
+        @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
 
-            @test all(interior(field) .== arch.local_rank)
-            @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-        end
+        @test all(interior(field) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -435,24 +474,22 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    for use_buffers in (true, )
-        arch = DistributedArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
-        grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
-        model = NonhydrostaticModel(grid=grid)
+    arch = DistributedArch(child_arch; ranks=(2, 2, 1), topology=topo, devices = (0, 0, 0, 0))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
-        for field in merge(fields(model))
-            interior(field) .= arch.local_rank
-            fill_halo_regions!(field)
+    for field in merge(fields(model))
+        interior(field) .= arch.local_rank
+        fill_halo_regions!(field)
 
-            @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-            @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
-            @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-            @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-            @test all(interior(field) .== arch.local_rank)
-            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        end
+        @test all(interior(field) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -512,7 +549,7 @@ end
             for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
                 topo = (Periodic, Periodic, Periodic)
-                arch = DistributedArch(; ranks)
+                arch = DistributedArch(; ranks, topology=topo)
                 grid = RectilinearGrid(arch, topology=topo, size=(8, 2, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
@@ -531,8 +568,7 @@ end
     @testset "Time stepping ShallowWaterModel" begin
         for child_arch in archs
             topo = (Periodic, Periodic, Flat)
-            use_buffers = true
-            arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))
+            arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology = topo, devices = (0, 0, 0, 0))
             grid = RectilinearGrid(arch, topology=topo, size=(8, 2), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 

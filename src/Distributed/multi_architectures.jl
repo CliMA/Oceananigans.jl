@@ -23,7 +23,7 @@ end
 
 """
     DistributedArch(child_architecture = CPU(); 
-                    topology = (Periodic, Periodic, Periodic), 
+                    topology, 
                     ranks, 
                     devices = nothing, 
                     communicator = MPI.COMM_WORLD)
@@ -40,9 +40,8 @@ Positional arguments
 Keyword arguments
 =================
 
-- `topology`: the topology we want the grid to have. It is used to establish connectivity.
-              Default: `topology = (Periodic, Periodic, Periodic)`.
-
+- `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
+                        
 - `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
@@ -55,7 +54,7 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function DistributedArch(child_architecture = CPU(); 
-                         topology = (Periodic, Periodic, Periodic), 
+                         topology, 
                          ranks,
                          devices = nothing, 
                          enable_overlapped_computation = true,
