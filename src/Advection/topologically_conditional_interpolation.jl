@@ -34,8 +34,10 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, Centered, UpwindBiased} 
-const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
+const HOADV = Union{WENO, 
+                    Tuple(Centered{N} for N in advection_buffers[2:end])...,
+                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
@@ -50,12 +52,12 @@ for bias in (:symmetric, :left_biased, :right_biased)
             alt_interp = Symbol(:_, interp)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
-                @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+                @eval @inline $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             end
 
             outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
@@ -68,10 +70,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, f::Function, args...) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             elseif ξ == :y
                 @eval begin
@@ -80,10 +82,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, f::Function, args...) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             elseif ξ == :z
                 @eval begin
@@ -91,8 +93,23 @@ for bias in (:symmetric, :left_biased, :right_biased)
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+
+                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, f::Function, args...) =
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
+                               $interp(i, j, k, grid, scheme, f, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
                 end
             end
         end
     end
 end
+
+@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
+                    ifelse(outside_symmetric_bufferᶜ(i, grid.Nx, scheme), 
+                           multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...),
+                           interp(i, j, k, grid, scheme, args...))
+
+@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...) = 
+                    ifelse(outside_symmetric_bufferᶜ(j, grid.Ny, scheme), 
+                            multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
+                            interp(i, j, k, grid, scheme, args...))
