@@ -66,7 +66,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
         settings  = free_surface.settings 
 
         old_halos  = halo_size(grid)
-        Nsubsteps  = length(settings.substeps.averaging_weights)
+        Nsubsteps  = length(settings.substepping.averaging_weights)
 
         new_halos = distributed_split_explicit_halos(old_halos, Nsubsteps+1, grid)         
         new_grid  = with_halo(new_halos, grid)

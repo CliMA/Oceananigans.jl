@@ -1,22 +1,28 @@
 using Oceananigans
 using MPI
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
+using Printf
+using CairoMakie
 
 MPI.Initialized() || MPI.Init()
 
      comm = MPI.COMM_WORLD
 mpi_ranks = MPI.Comm_size(comm)
 
-@assert mpi_ranks == 4
+@assert mpi_ranks == 16
 
 using Statistics
 using Oceananigans
 using Oceananigans.Distributed
 
-ranks = (2, 2, 1)
+ranks = (4, 4, 1)
 topo  = (Periodic, Periodic, Bounded)
 arch  = DistributedArch(CPU(), ranks=ranks, topology=topo)
 
-grid  = RectilinearGrid(arch, topology=topo, size=(28 ÷ 2, 28 ÷ 2, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
+N = 28
+nx, ny = N ÷ ranks[1], N ÷ ranks[2] 
+
+grid  = RectilinearGrid(arch, topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
 
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -40,12 +46,16 @@ if local_rank == 0
 end
 
 u, v, _ = model.velocities
-outputs = merge(model.velocities, model.tracers)
+ζ = VerticalVorticityField(model)
+outputs = merge(model.velocities, model.tracers, (; ζ))
 
-progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time)"
-simulation = Simulation(model, Δt=0.001, stop_time=100.0)
+progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
+simulation = Simulation(model, Δt=0.01, stop_time=100.0)
+
+wizard = TimeStepWizard(cfl = 0.7, max_change = 1.2)
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(10))
 
 filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
 simulation.output_writers[:fields] =
@@ -55,30 +65,34 @@ simulation.output_writers[:fields] =
 MPI.Barrier(MPI.COMM_WORLD)
 
 run!(simulation)
+MPI.Barrier(MPI.COMM_WORLD)
 
 if rank == 0
-    using Printf
-    using GLMakie
-
     iter = Observable(1)
 
-    z1 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank0.jld2", "u")
-    z2 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank1.jld2", "u")
-    z3 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank2.jld2", "u")
-    z4 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank3.jld2", "u")
+    vort = []
+    ζ = []
+    x = []
+    y = []
+    for i in 0:15
+        push!(vort, FieldTimeSeries("mpi_hydrostatic_turbulence_rank$i.jld2", "u"))
+        z1 = @lift(interior(vort[i][$iter], 1:nx, 1:ny, 1))
+        push!(ζ, z1)
 
-    ζ1 = @lift(interior(z1[$iter], 1:14, 1:14, 1))
-    ζ2 = @lift(interior(z2[$iter], 1:14, 1:14, 1))
-    ζ3 = @lift(interior(z3[$iter], 1:14, 1:14, 1))
-    ζ4 = @lift(interior(z4[$iter], 1:14, 1:14, 1))
-
-    x1, y1 = z1.grid.xᶠᵃᵃ[1:14], z1.grid.yᵃᶜᵃ[1:14]
-    x2, y2 = z4.grid.xᶠᵃᵃ[1:14], z4.grid.yᵃᶜᵃ[1:14]
+        push!(x, vort[i].grid.xᶠᵃᵃ[1:nx])
+        push!(y, vort[i].grid.yᵃᶠᵃ[1:ny])
+    end
 
     fig = Figure()
     ax = Axis(fig[1, 1])
-    heatmap!(ax, x1, y1, ζ1, colorrange = (-1.0, 1.0))
-    heatmap!(ax, x1, y2, ζ2, colorrange = (-1.0, 1.0))
-    heatmap!(ax, x2, y1, ζ3, colorrange = (-1.0, 1.0))
-    heatmap!(ax, x2, y2, ζ4, colorrange = (-1.0, 1.0))
+    for i in 0:15
+        heatmap!(ax, x[i], y[i], ζ[i], colorrange = (-1.0, 1.0))
+    end
+
+    CairoMakie.record(fig, "hydrostatic_test.mp4", iterations, framerate = 11) do i
+        @info "step $i"; 
+        iter[] = i; 
+    end
 end
+
+MPI.Barrier(MPI.COMM_WORLD)
