@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 1}
      C :: FT
     Cb :: FT
     Pr :: P
