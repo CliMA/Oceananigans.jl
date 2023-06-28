@@ -101,7 +101,9 @@ when ``N^2 > 0``, and 1 otherwise.
     return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid, closure::SmagorinskyLilly, buoyancy, velocities, tracers)
+@kernel function _compute_smagorinsky_viscosity!(νₑ, grid, closure, buoyancy, velocities, tracers)
+    i, j, k = @index(Global, NTuple)
+
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
@@ -114,7 +116,7 @@ end
     Δᶠ = cbrt(Δ³)
     C = closure.C # free parameter
 
-    return ς * (C * Δᶠ)^2 * sqrt(2Σ²)
+    @inbounds νₑ[i, j, k] = ς * (C * Δᶠ)^2 * sqrt(2Σ²)
 end
 
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = KernelParameters(model.grid, closure))
@@ -125,7 +127,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly,
     tracers = model.tracers
 
     launch!(arch, grid, parameters,
-            calculate_nonlinear_viscosity!,
+            _compute_smagorinsky_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing

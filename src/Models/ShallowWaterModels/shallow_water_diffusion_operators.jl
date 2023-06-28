@@ -14,10 +14,8 @@ using Oceananigans.TurbulenceClosures:
 import Oceananigans.TurbulenceClosures:
                         DiffusivityFields,
                         calculate_diffusivities!,
-                        calculate_nonlinear_viscosity!,
                         viscosity,
                         with_tracers,
-                        calc_nonlinear_νᶜᶜᶜ,
                         νᶜᶜᶜ
 
 struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation, N}

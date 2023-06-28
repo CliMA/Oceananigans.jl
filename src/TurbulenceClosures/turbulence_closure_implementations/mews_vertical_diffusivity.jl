@@ -125,7 +125,7 @@ function calculate_diffusivities!(diffusivities, closure::MEWS, model)
     velocities = model.velocities
 
     launch!(arch, grid, :xyz,
-            compute_mews_diffusivities!,
+            _compute_mews_diffusivities!,
             diffusivities,
             grid,
             closure,
@@ -156,7 +156,7 @@ end
     return h
 end
 
-@kernel function compute_mews_diffusivities!(diffusivities, grid, maybe_closure_ensemble,
+@kernel function _compute_mews_diffusivities!(diffusivities, grid, maybe_closure_ensemble,
                                              velocities, tracers, buoyancy, coriolis)
 
     i, j, k, = @index(Global, NTuple)

@@ -86,9 +86,14 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz² + wyz²
 end
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT =
-    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(   abs²_∇h_ζ(i, j, k, grid, velocities)
-                                                      + abs²_∇h_wz(i, j, k, grid, velocities.w))
+@kernel function _compute_leith_viscosity!(νₑ, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT 
+    i, j, k = @index(Global, NTuple)
+
+    prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3 
+    dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, velocities) + abs²_∇h_wz(i, j, k, grid, velocities.w))
+    
+    @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
+end
 
 function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = KernelParameters(model.grid, closure))
     arch = model.architecture
@@ -97,8 +102,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLei
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, parameters,
-            calculate_nonlinear_viscosity!,
+    launch!(arch, grid, parameters, _compute_leith_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing

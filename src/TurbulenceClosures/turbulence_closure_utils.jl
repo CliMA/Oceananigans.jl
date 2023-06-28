@@ -26,16 +26,6 @@ function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothi
     return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form, loc, parameters) for κi in κ))
 end
 
-@kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, velocities, tracers) 
-    i, j, k = @index(Global, NTuple)
-    @inbounds νₑ[i, j, k] = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, velocities, tracers)
-end
-
-@kernel function calculate_nonlinear_tracer_diffusivity!(κₑ, grid, closure, tracer, tracer_index, U)
-    i, j, k = @index(Global, NTuple)
-    @inbounds κₑ[i, j, k] = calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure, tracer, tracer_index, U)
-end
-
 # extend κ kernel to compute also the boundaries
 @inline function κ_kernel_size(grid, ::AbstractTurbulenceClosure{TD, B}) where{TD, B}
     Nx, Ny, Nz = size(grid)
