@@ -126,8 +126,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly,
     velocities = model.velocities
     tracers = model.tracers
 
-    launch!(arch, grid, parameters,
-            _compute_smagorinsky_viscosity!,
+    launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing

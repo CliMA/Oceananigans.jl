@@ -200,7 +200,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, _compute_AMD_diffusivity!, parameters, 
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
