@@ -18,7 +18,7 @@ they are called in the end.
 function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
     
     # Mask immersed tracers
-    foreach(mask_immersed_field!, model.tracers)
+    @apply_regionally foreach(mask_immersed_field!, model.tracers)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); async = true)
