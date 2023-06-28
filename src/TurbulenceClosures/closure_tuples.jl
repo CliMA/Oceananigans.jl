@@ -89,19 +89,10 @@ end
 @inline κ_kernel_size(grid, closure::AbstractArray) = κ_kernel_size(grid, closure[1])
 @inline κ_kernel_offsets(grid, closure::AbstractArray) = κ_kernel_offsets(grid, closure[1])
 
-@inline function κ_kernel_offsets(grid, closure_tuple::Tuple)
-    kernel_offsets = (0, 0, 0)
-    for closure in closure_tuple
-        kernel_offsets = max.(kernel_offsets, κ_kernel_offsets(grid, closure))
-    end
-
-    return kernel_offsets
-end
-
 @inline function κ_kernel_size(grid, closure_tuple::Tuple)
     kernel_size = (0, 0, 0)
     for closure in closure_tuple
-        kernel_size = max.(kernel_size, κ_kernel_size(grid, closure))
+        kernel_size = map(max, kernel_size, κ_kernel_size(grid, closure))
     end
 
     return kernel_size
@@ -110,7 +101,7 @@ end
 @inline function κ_kernel_offsets(grid, closure_tuple::Tuple)
     kernel_offsets = (0, 0, 0)
     for closure in closure_tuple
-        kernel_offsets = max.(kernel_offsets, κ_kernel_offsets(grid, closure))
+        kernel_offsets = map(min, kernel_offsets, κ_kernel_offsets(grid, closure))
     end
 
     return kernel_offsets

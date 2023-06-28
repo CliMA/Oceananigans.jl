@@ -4,7 +4,6 @@ using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
-import Oceananigans.Fields: using_buffered_communication
 import Oceananigans.Utils: sync_device!
 
 struct DistributedArch{A, R, I, ρ, C, γ, M, T} <: AbstractArchitecture
@@ -63,12 +62,6 @@ function DistributedArch(child_architecture = CPU();
                          communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
-
-    (use_buffers && child_architecture isa CPU) && 
-            @warn "Using buffers on CPU architectures is not required (but useful for testing)"
-
-    (!use_buffers && child_architecture isa GPU) && 
-            @warn "On GPU architectures not using buffers will lead to a substantial slowdown https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-support"
 
     validate_tupled_argument(ranks, Int, "ranks")
 
