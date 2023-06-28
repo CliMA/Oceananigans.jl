@@ -80,7 +80,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) w
     end
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = KernelParameters(model.grid, closure)))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = KernelParameters(model.grid, closure))
 
     arch = model.architecture
     grid = model.grid
