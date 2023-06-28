@@ -15,8 +15,13 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
     return nothing
 end
 
+# Fallback
 complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributedArch) = nothing
+complete_communication_and_compute_boundary!(model, grid, arch) = nothing
+
 compute_boundary_tendencies!(model) = nothing
+
+interior_tendency_kernel_parameters(grid) = :xyz
 
 interior_tendency_kernel_parameters(grid::DistributedGrid) = 
             interior_tendency_kernel_parameters(grid, architecture(grid))

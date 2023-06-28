@@ -51,9 +51,6 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-complete_communication_and_compute_boundary!(model, grid, arch) = nothing
-interior_tendency_kernel_parameters(grid) = :xyz
-
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
 

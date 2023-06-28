@@ -1,6 +1,7 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
+using Oceananigans.Distributed: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, active_linear_index_to_interior_tuple
 
@@ -24,8 +25,11 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(model)
-                                               
+    kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
+
+    calculate_interior_tendency_contributions!(model, kernel_parameters)
+    complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
+                      
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
@@ -45,7 +49,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model)
+function calculate_interior_tendency_contributions!(model, kernel_parameters)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -86,17 +90,19 @@ function calculate_interior_tendency_contributions!(model)
     
     only_active_cells = use_only_active_interior_cells(grid)
 
-    launch!(arch, grid, :xyz, calculate_Gu!, 
-            tendencies.u, grid, u_kernel_args;
-            only_active_cells)
-            
-    launch!(arch, grid, :xyz, calculate_Gv!, 
-            tendencies.v, grid, v_kernel_args;
-            only_active_cells)
+    for parameters in kernel_parameters
+        launch!(arch, grid, parameters, calculate_Gu!, 
+                tendencies.u, grid, u_kernel_args;
+                only_active_cells)
 
-    launch!(arch, grid, :xyz, calculate_Gw!, 
-            tendencies.w, grid, w_kernel_args;
-            only_active_cells)
+        launch!(arch, grid, parameters, calculate_Gv!, 
+                tendencies.v, grid, v_kernel_args;
+                only_active_cells)
+
+        launch!(arch, grid, parameters, calculate_Gw!, 
+                tendencies.w, grid, w_kernel_args;
+                only_active_cells)
+    end
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
@@ -113,9 +119,11 @@ function calculate_interior_tendency_contributions!(model)
                      end_tracer_kernel_args...,
                      forcing, clock)
 
-        launch!(arch, grid, :xyz, calculate_Gc!, 
-                c_tendency, grid, args;
-                only_active_cells)
+        for parameters in kernel_parameters
+            launch!(arch, grid, parameters, calculate_Gc!, 
+                    c_tendency, grid, args;
+                    only_active_cells)
+        end
     end
 
     return nothing
