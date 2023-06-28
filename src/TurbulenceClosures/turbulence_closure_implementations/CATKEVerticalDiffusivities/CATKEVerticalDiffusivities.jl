@@ -23,7 +23,7 @@ using Oceananigans.TurbulenceClosures:
     time_discretization,
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
-    VerticalFormulation,
+    VerticalFormulation
     
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
