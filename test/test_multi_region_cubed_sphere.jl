@@ -171,7 +171,7 @@ end
 
             u = XFaceField(grid)
             v = YFaceField(grid)
-
+            
             region = Iterate(1:6)
             @apply_regionally u_data = create_u_test_data(grid, region)
             @apply_regionally v_data = create_v_test_data(grid, region)
@@ -180,7 +180,7 @@ end
 
             fill_halo_regions!(u)
             fill_halo_regions!(v)
-            @apply_regionally replace_horizontal_velocity_halos!((; u, v), grid)
+            @apply_regionally replace_horizontal_velocity_halos!((; u, v, w = nothing), grid)
 
             Hx, Hy, Hz = halo_size(u.grid)
 

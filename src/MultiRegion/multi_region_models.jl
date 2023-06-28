@@ -33,7 +33,7 @@ Types = (:HydrostaticFreeSurfaceModel,
          :SplitExplicitState,
          :SplitExplicitFreeSurface,
          :PrescribedVelocityFields,
-         :PreconditionedConjugateGradientSolver)
+         :PreconditionedConjugateGradientSolver,
          :CrossAndSelfUpwinding,
          :OnlySelfUpwinding,
          :VelocityUpwinding)
