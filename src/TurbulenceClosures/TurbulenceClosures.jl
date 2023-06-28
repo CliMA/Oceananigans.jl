@@ -69,9 +69,14 @@ validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
 calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
-
+ 
+# The required halo size to calculate diffusivities. Take care that if the diffusivity can
+# be calculated from local information, still `B = 1`, because we need at least one additional
+# point at each side to calculate viscous fluxes at the edge of the domain. 
+# If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
+# or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
 @inline boundary_buffer(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
-@inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
+@inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs

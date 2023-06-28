@@ -175,6 +175,7 @@ end
     end 
 end
 
+@inline sync_device!(::Nothing)  = nothing
 @inline sync_device!(::CPU)      = nothing
 @inline sync_device!(::GPU)      = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()

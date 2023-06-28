@@ -41,7 +41,7 @@ function recompute_auxiliaries!(model::NonhydrostaticModel, grid, arch)
     κ_kernel_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
     for (ppar, κpar) in zip(p_kernel_parameters, κ_kernel_parameters)
-        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = ppar)
+        update_hydrostatic_pressure!(model.pressures.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = ppar)
         calculate_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κpar)
     end
 end
@@ -64,7 +64,7 @@ function boundary_p_kernel_parameters(grid, arch)
     return boundary_parameters(sizes, offs, grid, arch)
 end
 
-# diffusivities need computing in the range 0 : B and N - B + 1 : N + 1
+# diffusivities need recomputing in the range 0 : B and N - B + 1 : N + 1
 function boundary_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
