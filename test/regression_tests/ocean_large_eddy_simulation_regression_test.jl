@@ -80,23 +80,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     Nz = grid.Nz
 
-    model.velocities.u.data.parent .= ArrayType(solution₀.u)
-    model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
-    model.tracers.T.data.parent    .= ArrayType(solution₀.T)
-    model.tracers.S.data.parent    .= ArrayType(solution₀.S)
+    interior(model.velocities.u) .= ArrayType(solution₀.u[1:Nx, 1:Ny])
+    interior(model.velocities.v) .= ArrayType(solution₀.v[1:Nx, 1:Ny])
+    interior(model.velocities.w) .= ArrayType(solution₀.w[1:Nx, 1:Ny])
+    interior(model.tracers.T)    .= ArrayType(solution₀.T[1:Nx, 1:Ny])
+    interior(model.tracers.S)    .= ArrayType(solution₀.S[1:Nx, 1:Ny])
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
-    model.timestepper.Gⁿ.T.data.parent .= ArrayType(Gⁿ₀.T)
-    model.timestepper.Gⁿ.S.data.parent .= ArrayType(Gⁿ₀.S)
+    interior(model.timestepper.Gⁿ.u) .= ArrayType(Gⁿ₀.u[1:Nx, 1:Ny])
+    interior(model.timestepper.Gⁿ.v) .= ArrayType(Gⁿ₀.v[1:Nx, 1:Ny])
+    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gⁿ₀.w[1:Nx, 1:Ny])
+    interior(model.timestepper.Gⁿ.T) .= ArrayType(Gⁿ₀.T[1:Nx, 1:Ny])
+    interior(model.timestepper.Gⁿ.S) .= ArrayType(Gⁿ₀.S[1:Nx, 1:Ny])
 
-    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
-    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
-    model.timestepper.G⁻.T.data.parent .= ArrayType(G⁻₀.T)
-    model.timestepper.G⁻.S.data.parent .= ArrayType(G⁻₀.S)
+    interior(model.timestepper.G⁻.u) .= ArrayType(G⁻₀.u[1:Nx, 1:Ny])
+    interior(model.timestepper.G⁻.v) .= ArrayType(G⁻₀.v[1:Nx, 1:Ny])
+    interior(model.timestepper.G⁻.w) .= ArrayType(G⁻₀.w[1:Nx, 1:Ny])
+    interior(model.timestepper.G⁻.T) .= ArrayType(G⁻₀.T[1:Nx, 1:Ny])
+    interior(model.timestepper.G⁻.S) .= ArrayType(G⁻₀.S[1:Nx, 1:Ny])
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps

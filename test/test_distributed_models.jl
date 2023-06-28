@@ -37,6 +37,9 @@ using Oceananigans.Grids:
 ##### Viewing halos
 #####
 
+instantiate(T::Type) = T()
+instantiate(t) = t
+
 west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
     include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
                       view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx),
