@@ -78,23 +78,21 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    Nz = grid.Nz
-
     interior(model.velocities.u) .= ArrayType(solution₀.u[1:N, 1:N, 1:N])
     interior(model.velocities.v) .= ArrayType(solution₀.v[1:N, 1:N, 1:N])
-    interior(model.velocities.w) .= ArrayType(solution₀.w[1:N, 1:N, 1:N])
+    interior(model.velocities.w) .= ArrayType(solution₀.w[1:N, 1:N, 1:N+1])
     interior(model.tracers.T)    .= ArrayType(solution₀.T[1:N, 1:N, 1:N])
     interior(model.tracers.S)    .= ArrayType(solution₀.S[1:N, 1:N, 1:N])
 
     interior(model.timestepper.Gⁿ.u) .= ArrayType(Gⁿ₀.u[1:N, 1:N, 1:N])
     interior(model.timestepper.Gⁿ.v) .= ArrayType(Gⁿ₀.v[1:N, 1:N, 1:N])
-    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gⁿ₀.w[1:N, 1:N, 1:N])
+    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gⁿ₀.w[1:N, 1:N, 1:N+1])
     interior(model.timestepper.Gⁿ.T) .= ArrayType(Gⁿ₀.T[1:N, 1:N, 1:N])
     interior(model.timestepper.Gⁿ.S) .= ArrayType(Gⁿ₀.S[1:N, 1:N, 1:N])
 
     interior(model.timestepper.G⁻.u) .= ArrayType(G⁻₀.u[1:N, 1:N, 1:N])
     interior(model.timestepper.G⁻.v) .= ArrayType(G⁻₀.v[1:N, 1:N, 1:N])
-    interior(model.timestepper.G⁻.w) .= ArrayType(G⁻₀.w[1:N, 1:N, 1:N])
+    interior(model.timestepper.G⁻.w) .= ArrayType(G⁻₀.w[1:N, 1:N, 1:N+1])
     interior(model.timestepper.G⁻.T) .= ArrayType(G⁻₀.T[1:N, 1:N, 1:N])
     interior(model.timestepper.G⁻.S) .= ArrayType(G⁻₀.S[1:N, 1:N, 1:N])
 
@@ -115,7 +113,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
                                      v = Array(interior(model.velocities.v)),
-                                     w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:N+1]),
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
