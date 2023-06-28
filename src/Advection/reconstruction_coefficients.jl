@@ -128,11 +128,11 @@ julia> calc_reconstruction_stencil(1, :right, :x)
 julia> calc_reconstruction_stencil(1, :left, :x)
 :(+(convert(FT, coeff1_left[1]) * ψ[i + -1, j, k]))
 
-julia> calc_reconstruction_stencil(1, :symm, :x)
-:(convert(FT, coeff2_symm[2]) * ψ[i + -1, j, k] + convert(FT, coeff2_symm[1]) * ψ[i + 0, j, k])
+julia> calc_reconstruction_stencil(1, :symmetric, :x)
+:(convert(FT, coeff2_symmetric[2]) * ψ[i + -1, j, k] + convert(FT, coeff2_symmetric[1]) * ψ[i + 0, j, k])
 
-julia> calc_reconstruction_stencil(2, :symm, :x)
-:(convert(FT, coeff4_symm[4]) * ψ[i + -2, j, k] + convert(FT, coeff4_symm[3]) * ψ[i + -1, j, k] + convert(FT, coeff4_symm[2]) * ψ[i + 0, j, k] + convert(FT, coeff4_symm[1]) * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(2, :symmetric, :x)
+:(convert(FT, coeff4_symmetric[4]) * ψ[i + -2, j, k] + convert(FT, coeff4_symmetric[3]) * ψ[i + -1, j, k] + convert(FT, coeff4_symmetric[2]) * ψ[i + 0, j, k] + convert(FT, coeff4_symmetric[1]) * ψ[i + 1, j, k])
 
 julia> calc_reconstruction_stencil(3, :left, :x)
 :(convert(FT, coeff5_left[5]) * ψ[i + -3, j, k] + convert(FT, coeff5_left[4]) * ψ[i + -2, j, k] + convert(FT, coeff5_left[3]) * ψ[i + -1, j, k] + convert(FT, coeff5_left[2]) * ψ[i + 0, j, k] + convert(FT, coeff5_left[1]) * ψ[i + 1, j, k])
