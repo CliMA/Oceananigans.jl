@@ -73,15 +73,15 @@ end
 symmetric coefficients are for centered reconstruction (dispersive, even order), 
 left and right are for upwind biased (diffusive, odd order)
 examples:
-julia> using Oceananigans.Advection: coeff2_symm, coeff3_left, coeff3_right, coeff4_symm, coeff5_left
+julia> using Oceananigans.Advection: coeff2_symmetric, coeff3_left, coeff3_right, coeff4_symmetric, coeff5_left
 
-julia> coeff2_symm
+julia> coeff2_symmetric
 (0.5, 0.5)
 
 julia> coeff3_left, coeff3_right
 ((0.33333333333333337, 0.8333333333333334, -0.16666666666666666), (-0.16666666666666669, 0.8333333333333333, 0.3333333333333333))
 
-julia> coeff4_symm
+julia> coeff4_symmetric
 (-0.08333333333333333, 0.5833333333333333, 0.5833333333333333, -0.08333333333333333)
 
 julia> coeff5_left
@@ -91,11 +91,11 @@ const coeff1_left  = 1.0
 const coeff1_right = 1.0
 
 # buffer in [1:6] allows up to Centered(order = 12) and UpwindBiased(order = 11)
-for buffer in [1, 2, 3, 4, 5, 6]
+for buffer in advection_buffers
     order_bias = 2buffer - 1
     order_symm = 2buffer
 
-    coeff_symm  = Symbol(:coeff, order_symm, :_symm)
+    coeff_symm  = Symbol(:coeff, order_symm, :_symmetric)
     coeff_left  = Symbol(:coeff, order_bias, :_left)
     coeff_right = Symbol(:coeff, order_bias, :_right)
     @eval begin
@@ -140,8 +140,8 @@ julia> calc_reconstruction_stencil(3, :left, :x)
 """
 @inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
     N = buffer * 2
-    order = shift == :symm ? N : N - 1
-    if shift != :symm
+    order = shift == :symmetric ? N : N - 1
+    if shift != :symmetric
         N = N .- 1
     end
     rng = 1:N
@@ -173,10 +173,10 @@ end
 ##### Shenanigans for stretched directions
 #####
 
-@inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false;) 
+@inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false) 
     N = buffer * 2
-    order = shift == :symm ? N : N - 1
-    if shift != :symm
+    order = shift == :symmetric ? N : N - 1
+    if shift != :symmetric
         N = N .- 1
     end
     rng = 1:N

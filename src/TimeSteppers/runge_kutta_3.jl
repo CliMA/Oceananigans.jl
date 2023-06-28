@@ -99,6 +99,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
+    calculate_tendencies!(model, callbacks)
+
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -113,6 +115,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
+    calculate_tendencies!(model, callbacks)
+
     rk3_substep!(model, Δt, γ², ζ²)
 
     calculate_pressure_correction!(model, second_stage_Δt)
@@ -126,6 +130,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
     # Third stage
     #
+
+    calculate_tendencies!(model, callbacks)
+    
     rk3_substep!(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)

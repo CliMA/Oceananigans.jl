@@ -65,9 +65,10 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
 
         settings  = free_surface.settings 
 
-        old_halos = halo_size(grid)
+        old_halos  = halo_size(grid)
+        Nsubsteps  = length(settings.substeps.averaging_weights)
 
-        new_halos = split_explicit_halos(old_halos, settings.substeps+1, grid)         
+        new_halos = distributed_split_explicit_halos(old_halos, Nsubsteps+1, grid)         
         new_grid  = with_halo(new_halos, grid)
 
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
@@ -79,7 +80,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
                                         free_surface.settings)
 end
 
-@inline function split_explicit_halos(old_halos, step_halo, grid::DistributedGrid)
+@inline function distributed_split_explicit_halos(old_halos, step_halo, grid::DistributedGrid)
 
     Rx, Ry, _ = architecture(grid).ranks
 

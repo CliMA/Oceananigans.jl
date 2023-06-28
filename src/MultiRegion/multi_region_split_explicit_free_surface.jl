@@ -46,8 +46,9 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
 
         switch_device!(grid.devices[1])
         old_halos = halo_size(getregion(grid, 1))
+        Nsubsteps = length(settings.substepping.averaging_weights)
 
-        new_halos = split_explicit_halos(old_halos, settings.substeps+1, grid.partition)         
+        new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)         
         new_grid  = with_halo(new_halos, grid)
 
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
@@ -59,5 +60,5 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
                                         free_surface.settings)
 end
 
-@inline split_explicit_halos(old_halos, step_halo, ::XPartition) = (step_halo, old_halos[2], old_halos[3])
-@inline split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], step_halo, old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (step_halo, old_halos[2], old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], step_halo, old_halos[3])

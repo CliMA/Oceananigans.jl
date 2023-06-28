@@ -170,7 +170,7 @@ end
     end
 end
 
-function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
+function split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτ, substep_index)
     # unpack state quantities, parameters and forcing terms 
     U, V             = state.U,    state.V
     Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
@@ -180,7 +180,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
     
     timestepper      = settings.timestepper
-    averaging_weight = settings.averaging_weights[substep_index]
+    averaging_weight = weights[substep_index]
     
     parameters = auxiliary.kernel_parameters
 
@@ -276,7 +276,6 @@ end
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
     grid = free_surface.η.grid
-    arch = architecture(grid)
 
     # Wait for previous set up
     wait_free_surface_communication!(free_surface)
@@ -302,6 +301,17 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     return nothing
 end
 
+# Change name
+const FNS = FixedSubstepNumber
+const FTS = FixedTimeStepSize
+
+@inline calculate_substeps(substepping::FNS, Δt) = length(substepping.averaging_weights)
+@inline calculate_substeps(substepping::FTS, Δt) = ceil(Int, 2 * Δt / settings.Δtᴮ)
+
+@inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotopic), 
+                                                                                     substeps, substepping.averaging_kernel)
+
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
 
@@ -311,10 +321,15 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
 
-    Δτ = settings.Δτ * Δt  # we evolve for two times the Δt 
+    Nsubsteps  = calculate_substeps(settings.substepping, Δt)
+    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+    
+    Nsubsteps = length(weights)
 
-    for substep in 1:settings.substeps
-        split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
+    Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
+
+    for substep in 1:Nsubsteps
+        split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτᴮ, substep)
     end
 
     return nothing
