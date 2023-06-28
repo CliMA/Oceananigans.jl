@@ -177,7 +177,7 @@ end
 #####
 
 using Oceananigans.AbstractOperations: _compute!
-using Oceananigans.Fields: compute_at!
+using Oceananigans.Fields: compute_at!, offset_index
 
 import Oceananigans.Fields: compute!
 
