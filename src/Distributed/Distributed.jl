@@ -10,7 +10,6 @@ using MPI
 using Oceananigans.Utils
 using Oceananigans.Grids
 
-include("distributed_utils.jl")
 include("multi_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")

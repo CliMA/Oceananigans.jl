@@ -1,9 +1,7 @@
 using KernelAbstractions: @kernel, @index, priority!
 using OffsetArrays: OffsetArray
-using CUDA: synchronize
 using CUDA: cuStreamGetFlags, stream, priority_range, CUstream_flags_enum, CuStream, stream!
 
-import Oceananigans.Utils: sync_device!
 using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
                            reduced_dimensions, 
@@ -24,10 +22,6 @@ import Oceananigans.BoundaryConditions:
     fill_west_and_east_halo!,
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
-
-@inline sync_device!(::CPU)                 = nothing
-@inline sync_device!(::GPU)                 = synchronize()
-@inline sync_device!(arch::DistributedArch) = sync_device!(arch.child_architecture)
 
 #####
 ##### MPI tags for halo communication BCs
@@ -310,8 +304,7 @@ for side in sides
             return send_req
         end
 
-        @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_boundary(c, grid, side_location)
-        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch)                   = buffers.$side.send     
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch) = buffers.$side.send     
     end
 end
 
@@ -337,7 +330,6 @@ for side in sides
             return recv_req
         end
 
-        @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_halo(c, grid, side_location)
-        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch)                   = buffers.$side.recv
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch) = buffers.$side.recv
     end
 end

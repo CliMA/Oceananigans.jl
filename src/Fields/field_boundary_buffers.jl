@@ -52,27 +52,16 @@ create_buffer_y(arch, grid, data, H, bc) = nothing
 create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing) = nothing
 
 function create_buffer_corner(arch, grid, data, Hx, Hy, side)
-    if !using_buffered_communication(arch)
-        return nothing
-    end
     return (send = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
 end
 
-using_buffered_communication(arch) = true
-
 function create_buffer_x(arch, grid, data, H, ::DCBC) 
-    if !using_buffered_communication(arch)
-        return nothing
-    end
     return (send = arch_array(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), H, size(grid, 2), size(parent(data), 3))))    
 end
 
 function create_buffer_y(arch, grid, data, H, ::DCBC)
-    if !using_buffered_communication(arch)
-        return nothing
-    end
     return (send = arch_array(arch, zeros(eltype(data), size(grid, 1), H, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), size(grid, 1), H, size(parent(data), 3))))
 end

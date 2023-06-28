@@ -175,8 +175,9 @@ end
     end 
 end
 
+@inline sync_device!(::CPU)      = nothing
+@inline sync_device!(::GPU)      = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
-@inline sync_device!(dev)        = nothing
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the 

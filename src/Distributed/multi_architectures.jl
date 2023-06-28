@@ -5,8 +5,9 @@ using CUDA: ndevices, device!
 import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Fields: using_buffered_communication
+import Oceananigans.Utils: sync_device!
 
-struct DistributedArch{A, R, I, ρ, C, γ, B, M, T} <: AbstractArchitecture
+struct DistributedArch{A, R, I, ρ, C, γ, M, T} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -25,7 +26,6 @@ end
     DistributedArch(child_architecture = CPU(); 
                     topology = (Periodic, Periodic, Periodic), 
                     ranks, 
-                    use_buffers = false,
                     devices = nothing, 
                     communicator = MPI.COMM_WORLD)
 
@@ -48,10 +48,6 @@ Keyword arguments
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
 
-- `use_buffers`: if `true`, buffered halo communication is implemented. If `false`, halos will be 
-                 exchanged through views. Buffered communication is not necessary in case of `CPU`
-                 execution, but it is necessary for `GPU` execution without CUDA-aware MPI
-
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
              If `nothing`, the devices will be assigned automatically based on the available resources
@@ -62,7 +58,6 @@ Keyword arguments
 function DistributedArch(child_architecture = CPU(); 
                          topology = (Periodic, Periodic, Periodic), 
                          ranks,
-                         use_buffers = true,
                          devices = nothing, 
                          enable_overlapped_computation = true,
                          communicator = MPI.COMM_WORLD)
@@ -107,17 +102,13 @@ function DistributedArch(child_architecture = CPU();
 
     mpi_requests = enable_overlapped_computation ? MPI.Request[] : nothing
 
-    B = use_buffers
     M = typeof(mpi_requests)
     T = typeof([0])
 
-    return DistributedArch{A, R, I, ρ, C, γ, B, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, [0])
+    return DistributedArch{A, R, I, ρ, C, γ, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, [0])
 end
 
-const ViewsDistributedArch   = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
-const BlockingDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-
-using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
+const BlockingDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 
 #####
 ##### All the architectures
@@ -128,6 +119,7 @@ device(arch::DistributedArch)             = device(child_architecture(arch))
 arch_array(arch::DistributedArch, A)      = arch_array(child_architecture(arch), A)
 zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...)
 array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
+sync_device!(arch::DistributedArch)       = sync_device!(arch.child_architecture)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
