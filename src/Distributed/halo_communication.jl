@@ -235,8 +235,10 @@ for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
 
     @eval begin
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
-                                  grid::DistributedGrid, buffers, args...; kwargs...)
+                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
+            only_local_halos && return nothing
+                        
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
@@ -250,29 +252,32 @@ for (side, opposite_side, dir) in zip([:west, :south], [:east, :north], [1, 2])
         end
 
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
-                                  grid::DistributedGrid, buffers, args...; kwargs...)
+                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
+            $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+
+            only_local_halos && return nothing
+            
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
-
-            $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-
             send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             
             return [send_req, recv_req]
         end
 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
-                                  grid::DistributedGrid, buffers, args...; kwargs...)
+                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
+
+            $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+
+            only_local_halos && return nothing
 
             child_arch = child_architecture(arch)
             local_rank = bc_opposite_side.condition.from
 
             recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
-
-            $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
 
             send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 

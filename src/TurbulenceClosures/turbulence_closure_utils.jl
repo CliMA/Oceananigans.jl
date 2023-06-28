@@ -25,27 +25,3 @@ function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothi
     κ_names = propertynames(κ)
     return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form, loc, parameters) for κi in κ))
 end
-
-# extend κ kernel to compute also the boundaries 
-# Since the viscous calculation is _always_ second order 
-# we need just +1 in each direction
-@inline function κ_kernel_size(grid, ::AbstractTurbulenceClosure)
-    Nx, Ny, Nz = size(grid)
-    Tx, Ty, Tz = topology(grid)
-
-    Ax = Tx == Flat ? Nx : Nx + 2 
-    Ay = Ty == Flat ? Ny : Ny + 2 
-    Az = Tz == Flat ? Nz : Nz + 2
-
-    return (Ax, Ay, Az)
-end
-
-@inline function κ_kernel_offsets(grid, ::AbstractTurbulenceClosure)  
-    Tx, Ty, Tz = topology(grid)
-
-    Ax = Tx == Flat ? 0 : - 1 
-    Ay = Ty == Flat ? 0 : - 1  
-    Az = Tz == Flat ? 0 : - 1 
-
-    return (Ax, Ay, Az)
-end

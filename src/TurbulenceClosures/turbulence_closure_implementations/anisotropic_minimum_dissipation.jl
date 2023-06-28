@@ -188,7 +188,7 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = KernelParameters(model.grid, closure))
+function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities

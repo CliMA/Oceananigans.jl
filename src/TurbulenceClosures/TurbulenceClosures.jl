@@ -83,8 +83,7 @@ add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = 
 
 import Oceananigans.Utils: KernelParameters
 
-KernelParameters(grid::AbstractGrid, closure) =
-        KernelParameters(κ_kernel_size(grid, closure), κ_kernel_offsets(grid, closure))
+KernelParameters(grid::AbstractGrid, closure) = KernelParameters(size(grid), (0, 0, 0))
 
 # Interface for KE-based closures
 function shear_production end

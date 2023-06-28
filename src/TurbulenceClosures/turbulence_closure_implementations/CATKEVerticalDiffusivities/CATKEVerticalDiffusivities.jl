@@ -24,9 +24,7 @@ using Oceananigans.TurbulenceClosures:
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation,
-    κ_kernel_size,
-    κ_kernel_offsets
-
+    
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
@@ -235,7 +233,7 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = KernelParameters(model.grid, closure))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid

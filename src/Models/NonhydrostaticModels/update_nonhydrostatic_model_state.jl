@@ -36,6 +36,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
         update_hydrostatic_pressure!(model)
     end
 
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
+    
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end

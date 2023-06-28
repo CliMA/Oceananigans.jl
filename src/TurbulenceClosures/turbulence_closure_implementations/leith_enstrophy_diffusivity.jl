@@ -66,7 +66,7 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
-@inline function abs²_∇h_ζ(i, j, k, grid, velocities)
+@inline function abs²_∇h_ζ(i, j, k, grid, u, v)
     ζx = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ζ₃ᶠᶠᶜ, u, v)
     ζy = ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶜᶜ, ζ₃ᶠᶠᶜ, u, v)
     return ζx^2 + ζy^2
@@ -85,14 +85,14 @@ end
 
 @kernel function _compute_leith_viscosity!(νₑ, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT 
     i, j, k = @index(Global, NTuple)
-
+    u, v, w = velocities
     prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3 
-    dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, velocities) + abs²_∇h_wz(i, j, k, grid, velocities.w))
+    dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, u, v) + abs²_∇h_wz(i, j, k, grid, w))
     
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = KernelParameters(model.grid, closure))
+function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
