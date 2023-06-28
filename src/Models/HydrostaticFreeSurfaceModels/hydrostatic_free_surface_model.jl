@@ -1,7 +1,6 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
@@ -13,15 +12,15 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_model_halo
+using Oceananigans.Models: AbstractModel, validate_model_halo
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
+import Oceananigans.Models: total_velocities
 
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
@@ -31,7 +30,7 @@ validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
-const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
@@ -113,7 +112,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
-    particles::Union{Nothing, LagrangianParticles} = nothing,
+                     particles::ParticlesOrNothing = nothing,
              biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
@@ -221,10 +220,18 @@ function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCur
     return VectorInvariant()
 end
 
-validate_momentum_advection(momentum_advection, grid) = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
+
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+
+validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
+
+validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = momentum_advection_squawk(momentum_advection, grid)
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
 
+# return the total advective velocities
+@inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities

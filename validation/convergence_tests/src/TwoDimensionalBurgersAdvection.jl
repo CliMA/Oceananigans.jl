@@ -6,7 +6,7 @@ using Statistics
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
-using Oceananigans.Advection: boundary_buffer, VelocityStencil, VorticityStencil, MultiDimensionalScheme
+using Oceananigans.Advection: boundary_buffer
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation, shallow_water_velocities
 using Oceananigans.Fields: interior
 
@@ -44,7 +44,7 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 0.0,
-                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
+                 momentum_advection = VectorInvariant(vorticity_scheme = WENO(; order)),
                 boundary_conditions = (u = u_bcs, v = v_bcs),
                            coriolis = nothing,
                         formulation = VectorInvariantFormulation())
@@ -88,7 +88,7 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 0.0,
-                 momentum_advection = WENO(order = order),
+                 momentum_advection = WENO(; order),
                 boundary_conditions = (uh = u_bcs, vh = v_bcs),
                            coriolis = nothing)
 
