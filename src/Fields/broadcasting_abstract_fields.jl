@@ -43,14 +43,12 @@ end
 @inline offset_compute_index(::Colon, i) = i
 @inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
 
-@kernel function broadcast_kernel!(dest, bc, index_ranges)
+@inline offset_index(::Colon) = 0
+@inline offset_index(range::UnitRange) = range[1] - 1
+
+@kernel function _broadcast_kernel!(dest, bc)
     i, j, k = @index(Global, NTuple)
-
-    i′ = offset_compute_index(index_ranges[1], i)
-    j′ = offset_compute_index(index_ranges[2], j)
-    k′ = offset_compute_index(index_ranges[3], k)
-
-    @inbounds dest[i′, j′, k′] = bc[i′, j′, k′]
+    @inbounds dest[i, j, k] = bc[i, j, k]
 end
 
 # Interface for getting AbstractOperation right
@@ -70,7 +68,8 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
+    param = KernelParameters(size(dest), map(offset_index, dest.indices))
+    launch!(arch, grid, param, _broadcast_kernel!, dest, bc′)
 
     return dest
 end

@@ -37,9 +37,6 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                 closure = closure,
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
-    # We will manually change the stop_iteration as needed.
-    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
-
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
 
@@ -78,28 +75,33 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    interior(model.velocities.u) .= ArrayType(solution₀.u[1:N, 1:N, 1:N])
-    interior(model.velocities.v) .= ArrayType(solution₀.v[1:N, 1:N, 1:N])
-    interior(model.velocities.w) .= ArrayType(solution₀.w[1:N, 1:N, 1:N+1])
-    interior(model.tracers.T)    .= ArrayType(solution₀.T[1:N, 1:N, 1:N])
-    interior(model.tracers.S)    .= ArrayType(solution₀.S[1:N, 1:N, 1:N])
+    Nz = grid.Nz
 
-    interior(model.timestepper.Gⁿ.u) .= ArrayType(Gⁿ₀.u[1:N, 1:N, 1:N])
-    interior(model.timestepper.Gⁿ.v) .= ArrayType(Gⁿ₀.v[1:N, 1:N, 1:N])
-    interior(model.timestepper.Gⁿ.w) .= ArrayType(Gⁿ₀.w[1:N, 1:N, 1:N+1])
-    interior(model.timestepper.Gⁿ.T) .= ArrayType(Gⁿ₀.T[1:N, 1:N, 1:N])
-    interior(model.timestepper.Gⁿ.S) .= ArrayType(Gⁿ₀.S[1:N, 1:N, 1:N])
+    solution_indices   = [2:N+3, 2:N+3, 2:N+3]
+    w_solution_indices = [2:N+3, 2:N+3, 2:N+4]
 
-    interior(model.timestepper.G⁻.u) .= ArrayType(G⁻₀.u[1:N, 1:N, 1:N])
-    interior(model.timestepper.G⁻.v) .= ArrayType(G⁻₀.v[1:N, 1:N, 1:N])
-    interior(model.timestepper.G⁻.w) .= ArrayType(G⁻₀.w[1:N, 1:N, 1:N+1])
-    interior(model.timestepper.G⁻.T) .= ArrayType(G⁻₀.T[1:N, 1:N, 1:N])
-    interior(model.timestepper.G⁻.S) .= ArrayType(G⁻₀.S[1:N, 1:N, 1:N])
+    parent(model.velocities.u)[solution_indices...]   .= ArrayType(solution₀.u)
+    parent(model.velocities.v)[solution_indices...]   .= ArrayType(solution₀.v)
+    parent(model.velocities.w)[w_solution_indices...] .= ArrayType(solution₀.w)
+    parent(model.tracers.T)[solution_indices...]      .= ArrayType(solution₀.T)
+    parent(model.tracers.S)[solution_indices...]      .= ArrayType(solution₀.S)
+
+    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= ArrayType(Gⁿ₀.u)
+    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= ArrayType(Gⁿ₀.v)
+    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= ArrayType(Gⁿ₀.w)
+    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= ArrayType(Gⁿ₀.T)
+    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= ArrayType(Gⁿ₀.S)
+
+    parent(model.timestepper.G⁻.u)[solution_indices...]   .= ArrayType(G⁻₀.u)
+    parent(model.timestepper.G⁻.v)[solution_indices...]   .= ArrayType(G⁻₀.v)
+    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= ArrayType(G⁻₀.w)
+    parent(model.timestepper.G⁻.T)[solution_indices...]   .= ArrayType(G⁻₀.T)
+    parent(model.timestepper.G⁻.S)[solution_indices...]   .= ArrayType(G⁻₀.S)
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
 
-    update_state!(model)
+    update_state!(model; compute_tendencies = true)
     model.timestepper.previous_Δt = Δt
 
     for n in 1:test_steps
@@ -117,11 +119,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
-                      v = Array(interior(solution₁.v, model.grid)),
-                      w = Array(interior(solution₁.w, model.grid)),
-                      T = Array(interior(solution₁.T, model.grid)),
-                      S = Array(interior(solution₁.S, model.grid)))
+    correct_fields = (u = Array(solution₁.u)[2:N+1, 2:N+1, 2:N+1],
+                      v = Array(solution₁.v)[2:N+1, 2:N+1, 2:N+1],
+                      w = Array(solution₁.w)[2:N+1, 2:N+1, 2:N+1],
+                      T = Array(solution₁.T)[2:N+1, 2:N+1, 2:N+1],
+                      S = Array(solution₁.S)[2:N+1, 2:N+1, 2:N+1])
 
     summarize_regression_test(test_fields, correct_fields)
 

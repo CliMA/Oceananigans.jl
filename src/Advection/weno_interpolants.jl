@@ -104,8 +104,8 @@ for buffer in [2, 3, 4, 5, 6]
             @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds Cl(scheme, Val($(buffer-stencil-1)))
 
             # uniform coefficients are independent on direction and location
-            @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds convert.(Ref(FT), $(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
-            @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds convert.(Ref(FT), $(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
+            @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
+            @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
             @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,     dir, i, loc)

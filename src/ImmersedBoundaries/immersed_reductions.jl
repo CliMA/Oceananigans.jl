@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, offset_compute_index, indices
+using Oceananigans.Fields: AbstractField, indices
 
 import Oceananigans.AbstractOperations: ConditionalOperation, get_condition, truefunc
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -58,8 +58,8 @@ const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
 @inline function immersed_column(field::IRF)
     reduced_dims  = reduced_dimensions(field)
-    full_location = fill_location.(location(field)) 
-    one_field    = ConditionalOperation{full_location...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
+    full_location = map(fill_location, location(field)) 
+    one_field     = ConditionalOperation{full_location...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
 
     return sum(one_field, dims = reduced_dims)
 end

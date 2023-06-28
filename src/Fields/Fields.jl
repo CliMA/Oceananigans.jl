@@ -12,6 +12,7 @@ export interpolate
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
+using Oceananigans.Utils
 
 include("abstract_field.jl")
 include("constant_field.jl")
