@@ -107,50 +107,6 @@ function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     return nothing
 end
 
-function fill_west_and_east_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
-
-    _fill_west_send_buffer!(parent(c), buffers.west, Hx, Hy, Nx, Ny)
-    _fill_east_send_buffer!(parent(c), buffers.east, Hx, Hy, Nx, Ny)
-
-    return nothing
-end
-
-function fill_south_and_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
-
-    _fill_south_send_buffer!(parent(c), buffers.south, Hx, Hy, Nx, Ny)
-    _fill_north_send_buffer!(parent(c), buffers.north, Hx, Hy, Nx, Ny)
-
-    return nothing
-end
-
-fill_west_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_west_send_buffer!(parent(c), buffers.west, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_east_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_east_send_buffer!(parent(c), buffers.east, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_south_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_south_send_buffer!(parent(c), buffers.south, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_north_send_buffer!(parent(c), buffers.north, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_southwest_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_southwest_send_buffer!(parent(c), buffers.southwest, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_southeast_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_southeast_send_buffer!(parent(c), buffers.southeast, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_northwest_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_northwest_send_buffer!(parent(c), buffers.northwest, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-fill_northeast_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
-    _fill_northeast_send_buffer!(parent(c), buffers.northeast, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
 """
     recv_from_buffers(c, buffers, arch)
 
@@ -208,17 +164,9 @@ end
 
 recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
 
-recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:southwest}) = 
-        _recv_from_southwest_buffer!(c, buffers.southwest, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:southeast}) = 
-        _recv_from_southeast_buffer!(c, buffers.southeast, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:northwest}) = 
-        _recv_from_northwest_buffer!(c, buffers.northwest, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
-
-recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:northeast}) = 
-        _recv_from_northeast_buffer!(c, buffers.northeast, halo_size(grid)[1], halo_size(grid)[2], size(grid, 1), size(grid, 2))
+#####
+##### Individual _fill_send_buffers and _recv_from_buffer kernels
+#####
 
  _fill_west_send_buffer!(c, ::Nothing, args...) = nothing
  _fill_east_send_buffer!(c, ::Nothing, args...) = nothing
