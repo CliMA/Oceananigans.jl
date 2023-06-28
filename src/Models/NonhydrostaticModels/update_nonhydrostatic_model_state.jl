@@ -28,9 +28,11 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
         compute!(aux_field)
     end
 
-    # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    update_hydrostatic_pressure!(model)
+    # Calculate diffusivities and hydrostatic pressure
+    @apply_regionally begin
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
+        update_hydrostatic_pressure!(model)
+    end
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
