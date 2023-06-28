@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "efa1b3c0f878c0fe77caba96f053e1145d126cd0"
+project_hash = "c19e7e0747cdfab35ec6d8d8bd4d66290cc1b731"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -471,15 +471,15 @@ version = "2.7.1"
 
 [[deps.PencilArrays]]
 deps = ["Adapt", "JSON3", "LinearAlgebra", "MPI", "OffsetArrays", "Random", "Reexport", "Requires", "StaticArrayInterface", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs", "VersionParsing"]
-git-tree-sha1 = "a4ec0fdc7ada0660730a4cfe61abd519607d91b2"
+git-tree-sha1 = "9c4392960200c813913a45b2e24f72128e1e5406"
 uuid = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
-version = "0.17.12"
+version = "0.18.0"
 
 [[deps.PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "2f140677bf958bec53d3717aff039fe5bba17509"
+git-tree-sha1 = "af200cef52069f3428127b237919d7c69eb6b10d"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.14.4"
+version = "0.15.0"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
