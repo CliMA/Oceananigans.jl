@@ -14,9 +14,9 @@ using Oceananigans.Distributed
 
 ranks = (2, 2, 1)
 topo  = (Periodic, Periodic, Bounded)
-arch  = DistributedArch(CPU(), ranks=ranks, topology=topo, use_buffers=true)
+arch  = DistributedArch(CPU(), ranks=ranks, topology=topo)
 
-grid  = RectilinearGrid(arch, topology=topo, size=(28 ÷ 4, 28, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
+grid  = RectilinearGrid(arch, topology=topo, size=(28 ÷ 2, 28 ÷ 2, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
 
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -67,13 +67,13 @@ if rank == 0
     z3 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank2.jld2", "u")
     z4 = FieldTimeSeries("mpi_hydrostatic_turbulence_rank3.jld2", "u")
 
-    ζ1 = @lift(interior(z1[$iter], 1:28, 1:28, 1))
-    ζ2 = @lift(interior(z2[$iter], 1:28, 1:28, 1))
-    ζ3 = @lift(interior(z3[$iter], 1:28, 1:28, 1))
-    ζ4 = @lift(interior(z4[$iter], 1:28, 1:28, 1))
+    ζ1 = @lift(interior(z1[$iter], 1:14, 1:14, 1))
+    ζ2 = @lift(interior(z2[$iter], 1:14, 1:14, 1))
+    ζ3 = @lift(interior(z3[$iter], 1:14, 1:14, 1))
+    ζ4 = @lift(interior(z4[$iter], 1:14, 1:14, 1))
 
-    x1, y1 = z1.grid.xᶠᵃᵃ[1:28], z1.grid.yᵃᶜᵃ[1:28]
-    x2, y2 = z4.grid.xᶠᵃᵃ[1:28], z4.grid.yᵃᶜᵃ[1:28]
+    x1, y1 = z1.grid.xᶠᵃᵃ[1:14], z1.grid.yᵃᶜᵃ[1:14]
+    x2, y2 = z4.grid.xᶠᵃᵃ[1:14], z4.grid.yᵃᶜᵃ[1:14]
 
     fig = Figure()
     ax = Axis(fig[1, 1])
