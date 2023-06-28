@@ -257,7 +257,7 @@ for LX in (:Center, :Face)
 
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
-                volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
             end
 
             for op in (:Δ, :A), dir in (:x, :y, :z)
@@ -265,7 +265,7 @@ for LX in (:Center, :Face)
                 metric = Symbol(op, dir, location_code(LXe, LYe, LZe))
 
                 @eval begin
-                    $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
             end
         end

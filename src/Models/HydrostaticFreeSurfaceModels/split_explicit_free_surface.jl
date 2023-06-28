@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
 
 using Adapt
@@ -70,8 +71,8 @@ Keyword Arguments
   - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
-SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) = 
-    SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration,
+SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
+    SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
                              SplitExplicitSettings(; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
@@ -85,12 +86,17 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                  settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
+    settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
 
+    if eltype(settings) != eltype(grid)
+        @warn "Using $(eltype(settings)) settings for the SplitExplicitFreeSurface on a $(eltype(grid)) grid"
+    end
+    
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
-                                    gravitational_acceleration, settings)
+           gravitational_acceleration, settings)
 end
 
 """
