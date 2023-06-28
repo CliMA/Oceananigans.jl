@@ -1,6 +1,9 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 
 """
@@ -36,8 +39,12 @@ Keyword arguments
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              rotation_rate = Ω_Earth,
-                             scheme :: S = EnergyConservingScheme()) where S =
-    HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
+                             scheme :: S = EnergyConservingScheme(FT)) where S = 
+        HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
+
+Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
+    HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), 
+                                 Adapt.adapt(to, coriolis.scheme))
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, Face())
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, Face(), Face())
@@ -110,7 +117,7 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 
 function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis) 
 
-    rotation_rate = hydrostatic_spherical_coriolis.rotation_rate
+    rotation_rate   = hydrostatic_spherical_coriolis.rotation_rate
     coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate_Earth = rotation_rate / Ω_Earth
 
