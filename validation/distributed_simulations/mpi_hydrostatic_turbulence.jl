@@ -2,97 +2,119 @@ using Oceananigans
 using MPI
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Printf
-using CairoMakie
-
-MPI.Initialized() || MPI.Init()
-
-     comm = MPI.COMM_WORLD
-mpi_ranks = MPI.Comm_size(comm)
-
-@assert mpi_ranks == 16
-
 using Statistics
-using Oceananigans
-using Oceananigans.Distributed
-
-ranks = (4, 4, 1)
-topo  = (Periodic, Periodic, Bounded)
-arch  = DistributedArch(CPU(), ranks=ranks, topology=topo)
-
-N = 28
-nx, ny = N ÷ ranks[1], N ÷ ranks[2] 
-
-grid  = RectilinearGrid(arch, topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(3, 3, 3))
-
-local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-
-free_surface = SplitExplicitFreeSurface(; substeps = 30)
-
-model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                     momentum_advection = WENO(),
-                     tracer_advection = WENO(),
-                     buoyancy = nothing,
-                     coriolis = FPlane(f = 1),
-                     tracers = :c)
-
+using Oceananigans.BoundaryConditions
+using Oceananigans.Distributed    
 using Random
-Random.seed!(1234 * (local_rank +1))
+using GLMakie
 
-set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
+# Run with 
+#
+# ```julia 
+#   mpiexec -n 4 julia --project mpi_hydrostatic_turbulence.jl
+# ```
 
-mask(x, y, z) = x > π && x < 2π && y > π && y < 2π ? 1.0 : 0.0
-if local_rank == 0
-    set!(model.tracers.c, mask)
+function run_simulation(nx, ny, arch, topo)
+
+    grid  = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
+
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+
+    free_surface = SplitExplicitFreeSurface(; substeps = 10)
+
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+                         momentum_advection = VectorInvariant(vorticity_scheme = WENO(order = 9)),
+                         tracer_advection = WENO(),
+                         buoyancy = nothing,
+                         coriolis = FPlane(f = 1),
+                         tracers = :c)
+
+    # Scale seed with rank to avoid symmetry
+    Random.seed!(1234 * (local_rank + 1))
+
+    set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
+    
+    mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
+    c = model.tracers.c
+
+    set!(c, mask)
+
+    u, v, _ = model.velocities
+    ζ = VerticalVorticityField(model)
+    η = model.free_surface.η
+    outputs = merge(model.velocities, model.tracers, (; ζ, η))
+
+    progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
+    simulation = Simulation(model, Δt=0.02, stop_time=100.0)
+
+    wizard = TimeStepWizard(cfl = 0.2, max_change = 1.1)
+
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+    simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(10))
+
+    filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
+                         overwrite_existing=true)
+
+    run!(simulation)
+    MPI.Barrier(MPI.COMM_WORLD)
 end
 
-u, v, _ = model.velocities
-ζ = VerticalVorticityField(model)
-outputs = merge(model.velocities, model.tracers, (; ζ))
-
-progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
-simulation = Simulation(model, Δt=0.01, stop_time=100.0)
-
-wizard = TimeStepWizard(cfl = 0.7, max_change = 1.2)
-
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(10))
-
-filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
-                     overwrite_existing=true)
-
-MPI.Barrier(MPI.COMM_WORLD)
-
-run!(simulation)
-MPI.Barrier(MPI.COMM_WORLD)
-
-if rank == 0
+# Produce a video for variable `var`
+function visualize_simulation(var)
     iter = Observable(1)
 
-    vort = []
-    ζ = []
-    x = []
-    y = []
-    for i in 0:15
-        push!(vort, FieldTimeSeries("mpi_hydrostatic_turbulence_rank$i.jld2", "u"))
-        z1 = @lift(interior(vort[i][$iter], 1:nx, 1:ny, 1))
-        push!(ζ, z1)
+    v = Vector(undef, 4)
+    V = Vector(undef, 4)
+    x = Vector(undef, 4)
+    y = Vector(undef, 4)
 
-        push!(x, vort[i].grid.xᶠᵃᵃ[1:nx])
-        push!(y, vort[i].grid.yᵃᶠᵃ[1:ny])
+    for r in 1:4
+        v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(i-1).jld2", var))
+        nx, ny, _ = size(v[r])
+        V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
+
+        x[r] = xnodes(v[i])
+        y[r] = ynodes(v[i])
     end
 
     fig = Figure()
     ax = Axis(fig[1, 1])
-    for i in 0:15
-        heatmap!(ax, x[i], y[i], ζ[i], colorrange = (-1.0, 1.0))
+    for r in 1:4
+        heatmap!(ax, x[r], y[r], V[r], colorrange = (-1.0, 1.0))
     end
 
-    CairoMakie.record(fig, "hydrostatic_test.mp4", iterations, framerate = 11) do i
+    GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
         @info "step $i"; 
         iter[] = i; 
     end
 end
 
-MPI.Barrier(MPI.COMM_WORLD)
+MPI.Init()
+
+topo = (Periodic, Periodic, Bounded)
+
+Nranks = MPI.Comm_size(MPI.COMM_WORLD)
+Rx = 2
+Ry = 2
+
+@assert Nranks == 4
+
+# Enable overlapped communication!
+arch  = DistributedArch(CPU(), ranks = (Rx, Ry, 1), 
+                        topology=topo, 
+                        enable_overlapped_computation = true)
+
+# Example of non-uniform partitioning
+nx = [90, 128-90][arch.local_index[1]]
+ny = [56, 128-56][arch.local_index[2]]
+
+# Run the simulation
+run_simulation(nx, ny, arch, topo)
+
+# Visualize the plane
+visualize_simulation("u")
+visualize_simulation("v")
+visualize_simulation("ζ")
+visualize_simulation("c")

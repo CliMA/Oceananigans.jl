@@ -176,10 +176,10 @@ recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bott
 
 for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
-    _recv_from_buffer! = Symbol(:_recv_, dir, :_from_buffer!)
+    _recv_from_buffer! = Symbol(:_recv_from_, dir, :_buffer!)
 
-    @eval $_fill_send_buffer!(c, buff, ::Nothing, args...) = nothing
-    @eval $_recv_from_buffer!(c, buff, ::Nothing, args...) = nothing
+    @eval $_fill_send_buffer!(c, b, ::Nothing, args...) = nothing
+    @eval $_recv_from_buffer!(c, b, ::Nothing, args...) = nothing
     @eval $_fill_send_buffer!(c, ::OneDBuffers, ::Nothing, args...) = nothing
     @eval $_recv_from_buffer!(c, ::OneDBuffers, ::Nothing, args...) = nothing
 end
