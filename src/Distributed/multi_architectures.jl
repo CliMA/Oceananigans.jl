@@ -174,8 +174,8 @@ function decrement_index(i, R, topo)
     end
 end
 
-function RankConnectivity(model_index, ranks, topology)
-    i, j, k = model_index
+function RankConnectivity(local_index, ranks, topology)
+    i, j, k = local_index
     Rx, Ry, Rz = ranks
     TX, TY, TZ = topology
 
