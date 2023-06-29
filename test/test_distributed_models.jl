@@ -63,18 +63,18 @@ north_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ
                       view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
                                    right_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy),
                                    interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
-
+                        
 bottom_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
-    include_corners ? view(f.data, :, :, left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
-                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
-                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
-                                   left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
+include_corners ? view(f.data, :, :, left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
+                  view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                               interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                               left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 top_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
-    include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
-                      view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
-                                   interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
-                                   right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
+include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
+                  view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
+                               interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
+                               right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD
@@ -94,11 +94,9 @@ function test_triply_periodic_rank_connectivity_with_411_ranks()
 
     connectivity = arch.connectivity
 
-    # No communication in y and z.
+    # No communication in y.
     @test isnothing(connectivity.south)
     @test isnothing(connectivity.north)
-    @test isnothing(connectivity.top)
-    @test isnothing(connectivity.bottom)
 
     # +---+---+---+---+
     # | 0 | 1 | 2 | 3 |
@@ -130,11 +128,9 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
 
     connectivity = arch.connectivity
 
-    # No communication in x and z.
+    # No communication in x.
     @test isnothing(connectivity.east)
     @test isnothing(connectivity.west)
-    @test isnothing(connectivity.top)
-    @test isnothing(connectivity.bottom)
 
     # +---+
     # | 3 |
@@ -163,51 +159,6 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
     return nothing
 end
 
-function test_triply_periodic_rank_connectivity_with_114_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
-
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
-
-    connectivity = arch.connectivity
-
-    # No communication in x and y.
-    @test isnothing(connectivity.east)
-    @test isnothing(connectivity.west)
-    @test isnothing(connectivity.north)
-    @test isnothing(connectivity.south)
-
-    #   /---/
-    #  / 3 /
-    # /---/
-    #   /---/
-    #  / 2 /
-    # /---/
-    #   /---/
-    #  / 1 /
-    # /---/
-    #   /---/
-    #  / 0 /
-    # /---/
-
-    if local_rank == 0
-        @test connectivity.top == 1
-        @test connectivity.bottom == 3
-    elseif local_rank == 1
-        @test connectivity.top == 2
-        @test connectivity.bottom == 0
-    elseif local_rank == 2
-        @test connectivity.top == 3
-        @test connectivity.bottom == 1
-    elseif local_rank == 3
-        @test connectivity.top == 0
-        @test connectivity.bottom == 2
-    end
-
-    return nothing
-end
-
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
@@ -216,11 +167,7 @@ function test_triply_periodic_rank_connectivity_with_221_ranks()
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
-
-    # No communication in z.
-    @test isnothing(connectivity.top)
-    @test isnothing(connectivity.bottom)
-
+    
     # +---+---+
     # | 0 | 2 |
     # +---+---+
@@ -292,24 +239,6 @@ function test_triply_periodic_local_grid_with_141_ranks()
     return nothing
 end
 
-function test_triply_periodic_local_grid_with_114_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 2), extent=(1, 2, 3))
-    
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    nx, ny, nz = size(local_grid)
-
-    @test local_grid.xᶠᵃᵃ[1] == 0
-    @test local_grid.xᶠᵃᵃ[nx+1] == 1
-    @test local_grid.yᵃᶠᵃ[1] == 0
-    @test local_grid.yᵃᶠᵃ[ny+1] == 2
-    @test local_grid.zᵃᵃᶠ[1] == -3 + 0.75*local_rank
-    @test local_grid.zᵃᵃᶠ[nz+1] == -3 + 0.75*(local_rank+1)
-
-    return nothing
-end
-
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
@@ -365,23 +294,6 @@ function test_triply_periodic_bc_injection_with_141_ranks()
         @test fbcs.south isa DCBC
         @test !isa(fbcs.top, DCBC)
         @test !isa(fbcs.bottom, DCBC)
-    end
-end
-
-function test_triply_periodic_bc_injection_with_114_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(1, 1, 4), topology=topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 2), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
-
-    for field in merge(fields(model))
-        fbcs = field.boundary_conditions
-        @test !isa(fbcs.east, DCBC)
-        @test !isa(fbcs.west, DCBC)
-        @test !isa(fbcs.north, DCBC)
-        @test !isa(fbcs.south, DCBC)
-        @test fbcs.top isa DCBC
-        @test fbcs.bottom isa DCBC
     end
 end
 
@@ -452,29 +364,6 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
     return nothing
 end
 
-function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
-    topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(child_arch; ranks=(1, 1, 4), topology=topo, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
-
-    for field in merge(fields(model))
-        interior(field) .= arch.local_rank
-        fill_halo_regions!(field)
-
-        @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
-        @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
-
-        @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-    end
-
-    return nothing
-end
-
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     arch = DistributedArch(child_arch; ranks=(2, 2, 1), topology=topo, devices = (0, 0, 0, 0))
@@ -514,7 +403,6 @@ end
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
         test_triply_periodic_rank_connectivity_with_141_ranks()
-        # test_triply_periodic_rank_connectivity_with_114_ranks()
         test_triply_periodic_rank_connectivity_with_221_ranks()
     end
 
@@ -522,7 +410,6 @@ end
         @info "  Testing local grids for distributed models..."
         test_triply_periodic_local_grid_with_411_ranks()
         test_triply_periodic_local_grid_with_141_ranks()
-        # test_triply_periodic_local_grid_with_114_ranks()
         test_triply_periodic_local_grid_with_221_ranks()
     end
 
@@ -530,7 +417,6 @@ end
         @info "  Testing injection of halo communication BCs..."
         test_triply_periodic_bc_injection_with_411_ranks()
         test_triply_periodic_bc_injection_with_141_ranks()
-        # test_triply_periodic_bc_injection_with_114_ranks()
         test_triply_periodic_bc_injection_with_221_ranks()
     end
 
@@ -540,7 +426,6 @@ end
             for H in 1:3
                 test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
                 test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
-                # test_triply_periodic_halo_communication_with_114_ranks((H, H, H), child_arch)
                 test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
             end
         end
