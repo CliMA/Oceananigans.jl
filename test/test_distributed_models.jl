@@ -76,6 +76,12 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
+
+southwest_halo(f::AbstractField) = view(f.data, -halo_size(grid)[1]:0, -halo_size(grid)[2]:0, :)
+southeast_halo(f::AbstractField) = view(f.data, size(grid, 1)+1:size(grid, 1)+halo_size(grid)[1], -halo_size(grid)[2]:0, :)
+northeast_halo(f::AbstractField) = view(f.data, size(grid, 1)+1:size(grid, 1)+halo_size(grid)[1], size(grid, 2)+1:size(grid, 2)+halo_size(grid)[2], :)
+northwest_halo(f::AbstractField) = view(f.data, -halo_size(grid)[1]:0, size(grid, 2)+1:size(grid, 2)+halo_size(grid)[2], :)
+
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD
 mpi_ranks = MPI.Comm_size(comm)
@@ -382,6 +388,11 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
         @test all(interior(field) .== arch.local_rank)
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+
+        @test all(southwest_halo(field) .== arch.connectivity.southwest) 
+        @test all(southeast_halo(field) .== arch.connectivity.southeast) 
+        @test all(northwest_halo(field) .== arch.connectivity.northwest) 
+        @test all(northeast_halo(field) .== arch.connectivity.northeast) 
     end
 
     return nothing
