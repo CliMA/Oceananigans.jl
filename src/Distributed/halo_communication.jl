@@ -224,7 +224,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
 end
 
 #####
-##### fill_west_and_east_halo!   }
+##### fill_west_and_east_halo!  }
 ##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
 #####
 
