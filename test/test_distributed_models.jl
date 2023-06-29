@@ -29,6 +29,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.Distributed: DistributedArch, index2rank
 using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids:
+    halo_size,
     interior_indices,
     left_halo_indices, right_halo_indices,
     underlying_left_halo_indices, underlying_right_halo_indices
@@ -77,10 +78,29 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 
-southwest_halo(f::AbstractField) = view(f.data, -halo_size(f.grid)[1]:0, -halo_size(f.grid)[2]:0, :)
-southeast_halo(f::AbstractField) = view(f.data, size(f.grid, 1)+1:size(f.grid, 1)+halo_size(f.grid)[1], -halo_size(f.grid)[2]:0, :)
-northeast_halo(f::AbstractField) = view(f.data, size(f.grid, 1)+1:size(f.grid, 1)+halo_size(f.grid)[1], size(f.grid, 2)+1:size(grid, 2)+halo_size(f.grid)[2], :)
-northwest_halo(f::AbstractField) = view(f.data, -halo_size(f.grid)[1]:0, size(f.grid, 2)+1:size(f.grid, 2)+halo_size(f.grid)[2], :)
+function southwest_halo(f::AbstractField) 
+    Nx, Ny, _ = size(f.grid)
+    Hx, Hy, _ = halo_size(f.grid)
+    return view(parent(f), 1:Hx, 1:Hy, :)
+end
+
+function southeast_halo(f::AbstractField) 
+    Nx, Ny, _ = size(f.grid)
+    Hx, Hy, _ = halo_size(f.grid)
+    return view(parent(f), Nx+Hx+1:Nx+2Hx, 1:Hy, :)
+end
+
+function northeast_halo(f::AbstractField) 
+    Nx, Ny, _ = size(f.grid)
+    Hx, Hy, _ = halo_size(f.grid)
+    return view(parent(f), Nx+Hx+1:Nx+2Hx, Ny+Hy+1:Ny+2Hy, :)
+end
+
+function northwest_halo(f::AbstractField) 
+    Nx, Ny, _ = size(f.grid)
+    Hx, Hy, _ = halo_size(f.grid)
+    return view(parent(f), 1:Hx, Ny+Hy+1:Ny+2Hy, :)
+end
 
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD
