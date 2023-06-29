@@ -189,10 +189,10 @@ function RankConnectivity(model_index, ranks, topology)
     r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
     r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
 
-    r_northeast = isnothing(i_east) && isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
-    r_northwest = isnothing(i_west) && isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
-    r_southeast = isnothing(i_east) && isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
-    r_southwest = isnothing(i_west) && isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
+    r_northeast = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
+    r_northwest = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
+    r_southeast = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
+    r_southwest = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
     return RankConnectivity(west=r_west, east=r_east, 
                             south=r_south, north=r_north,
