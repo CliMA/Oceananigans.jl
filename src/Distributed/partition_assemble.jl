@@ -43,7 +43,6 @@ end
 # Used for grid constructors (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)
 # which means that we need to repeat the value at the right boundary
 
-# Have to fix this! This won't work for face constructors??
 function partition(c::AbstractVector, n, R, r)
     nl = concatenate_local_sizes(n, R, r)
     return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]

@@ -31,12 +31,9 @@ function ImmersedBoundaryGrid(grid, ib, active_cells_map::Bool)
     if active_cells_map 
         map_interior = active_cells_map_interior(ibg)
         map_interior = arch_array(architecture(ibg), map_interior)
-
-        map_surface  = nothing
         # map_surface = active_cells_map_surface(ibg)
         # map_surface = arch_array(architecture(ibg), map_surface)
     else
-        map_surface  = nothing
         map_interior = nothing
     end
 

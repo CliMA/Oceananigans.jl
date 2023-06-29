@@ -115,7 +115,7 @@ function Base.show(io::IO, closure::MEWS)
                  "    Cᴰ  : ", closure.Cᴰ))
 end
 
-function calculate_diffusivities!(diffusivities, closure::MEWS, model)
+function calculate_diffusivities!(diffusivities, closure::MEWS, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -124,7 +124,7 @@ function calculate_diffusivities!(diffusivities, closure::MEWS, model)
     buoyancy = model.buoyancy
     velocities = model.velocities
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             _compute_mews_diffusivities!,
             diffusivities,
             grid,

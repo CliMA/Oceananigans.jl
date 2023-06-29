@@ -349,8 +349,8 @@ end
     end	
 end
 
-@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ) = ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ))
-@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ) = ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ))
+@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
 # Setting up the RHS for the barotropic step (tendencies of the barotopic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`

@@ -14,8 +14,8 @@ KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 worktuple(::KernelParameters{S}) where S = S
 offsets(::KernelParameters{S, O}) where {S, O} = O
 
-offsets(workspec)  = nothing
 worktuple(workspec) = workspec
+offsets(workspec)  = nothing
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 

@@ -55,7 +55,7 @@ function aligned_time_step(sim::Simulation, Δt)
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
     aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
 
-    return FT(aligned_Δt)
+    return convert(FT, aligned_Δt)
 end
 
 """

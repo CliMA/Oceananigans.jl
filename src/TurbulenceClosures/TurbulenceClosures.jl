@@ -81,10 +81,6 @@ calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs.
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
-import Oceananigans.Utils: KernelParameters
-
-KernelParameters(grid::AbstractGrid, closure) = KernelParameters(size(grid), (0, 0, 0))
-
 # Interface for KE-based closures
 function shear_production end
 function buoyancy_flux end

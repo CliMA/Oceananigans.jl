@@ -71,10 +71,10 @@ Keyword Arguments
   - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
-SplitExplicitFreeSurface(FT::DataType=Float64; gravitational_acceleration = g_Earth, kwargs...) =
-    SplitExplicitFreeSurface(nothing, nothing, nothing,
-                             FT(gravitational_acceleration), SplitExplicitSettings(FT; kwargs...))
-
+SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
+    SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
+                             SplitExplicitSettings(; gravitational_acceleration, kwargs...))
+                             
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
@@ -270,7 +270,7 @@ function FixedTimeStepSize(FT::DataType = Float64;
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
-    Δt_barotopic = FT(cfl * Δs / wave_speed)
+    Δt_barotopic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
 end

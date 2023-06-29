@@ -51,12 +51,6 @@ end
 end
 
 #####
-##### mask_immersed_velocities for NonhydrostaticModel
-#####
-
-mask_immersed_velocities!(U, arch, grid) = nothing
-
-#####
 ##### Masking for GridFittedBoundary
 #####
 

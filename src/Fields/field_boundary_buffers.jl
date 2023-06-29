@@ -16,7 +16,7 @@ struct FieldBoundaryBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
-FieldBoundaryBuffers() = FieldBoundaryBuffers(nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+FieldBoundaryBuffers() = nothing
 FieldBoundaryBuffers(grid, data, ::Missing) = nothing
 FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
 

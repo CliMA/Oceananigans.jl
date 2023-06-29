@@ -47,7 +47,7 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
-    χ  = FT(χ)
+    χ  = convert(FT, χ)
 
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
 end
@@ -151,8 +151,8 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
-    one_point_five = FT(1.5)
-    oh_point_five  = FT(0.5)
+    one_point_five = convert(FT, 1.5)
+    oh_point_five  = convert(FT, 0.5)
 
     @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
