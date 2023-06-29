@@ -77,10 +77,10 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 
-southwest_halo(f::AbstractField) = view(f.data, -halo_size(grid)[1]:0, -halo_size(grid)[2]:0, :)
-southeast_halo(f::AbstractField) = view(f.data, size(grid, 1)+1:size(grid, 1)+halo_size(grid)[1], -halo_size(grid)[2]:0, :)
-northeast_halo(f::AbstractField) = view(f.data, size(grid, 1)+1:size(grid, 1)+halo_size(grid)[1], size(grid, 2)+1:size(grid, 2)+halo_size(grid)[2], :)
-northwest_halo(f::AbstractField) = view(f.data, -halo_size(grid)[1]:0, size(grid, 2)+1:size(grid, 2)+halo_size(grid)[2], :)
+southwest_halo(f::AbstractField) = view(f.data, -halo_size(f.grid)[1]:0, -halo_size(f.grid)[2]:0, :)
+southeast_halo(f::AbstractField) = view(f.data, size(f.grid, 1)+1:size(f.grid, 1)+halo_size(f.grid)[1], -halo_size(f.grid)[2]:0, :)
+northeast_halo(f::AbstractField) = view(f.data, size(f.grid, 1)+1:size(f.grid, 1)+halo_size(f.grid)[1], size(f.grid, 2)+1:size(grid, 2)+halo_size(f.grid)[2], :)
+northwest_halo(f::AbstractField) = view(f.data, -halo_size(f.grid)[1]:0, size(f.grid, 2)+1:size(f.grid, 2)+halo_size(f.grid)[2], :)
 
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD

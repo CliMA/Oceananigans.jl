@@ -278,7 +278,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     grid = free_surface.η.grid
 
     # Wait for previous set up
-    wait_free_surface_communication!(free_surface)
+    wait_free_surface_communication!(free_surface, architecture(grid))
 
     # reset free surface averages
     @apply_regionally begin 
@@ -377,4 +377,4 @@ end
 setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
-wait_free_surface_communication!(free_surface) = nothing
+wait_free_surface_communication!(free_surface, arch) = nothing
