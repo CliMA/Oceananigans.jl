@@ -43,6 +43,7 @@ end
     # The examples that take longer to run should be first. This ensures thats
     # docs built using extra workers is as efficient as possible.
     example_scripts = [
+        "shallow_water_Bickley_jet.jl",
         "baroclinic_adjustment.jl",
         "kelvin_helmholtz_instability.jl",
         "langmuir_turbulence.jl",
@@ -50,7 +51,6 @@ end
         "tilted_bottom_boundary_layer.jl",
         "ocean_wind_mixing_and_convection.jl",
         "convecting_plankton.jl",
-        "shallow_water_Bickley_jet.jl",
         "internal_tide",
         "two_dimensional_turbulence.jl",
         "internal_wave.jl",
