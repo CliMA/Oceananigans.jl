@@ -104,10 +104,6 @@ end
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
     arch       = architecture(grid)
     halo_tuple = permute_boundary_conditions(bcs)
-    
-    # This has to be synchronized!!
-    fill_send_buffers!(c, buffers, grid)
-    sync_device!(arch)
 
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -121,61 +117,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     return nothing
 end
 
-# corner passing routine
-function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
-    
-    if only_local_halos 
-        return nothing
-    end
-
-    requests = MPI.Request[]
-
-    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-
-    !isnothing(reqsw) && push!(requests, reqsw...)
-    !isnothing(reqse) && push!(requests, reqse...)
-    !isnothing(reqnw) && push!(requests, reqnw...)
-    !isnothing(reqne) && push!(requests, reqne...)
-
-    if isempty(requests)
-        return nothing
-    end
-
-    if async && !(arch isa BlockingDistributedArch)
-        push!(arch.mpi_requests, requests...)
-        return nothing
-    end
-
-    # Syncronous MPI fill_halo_event!
-    cooperative_waitall!(requests)
-
-    # Reset MPI tag
-    arch.mpi_tag[1] -= arch.mpi_tag[1]
-    recv_from_buffers!(c, buffers, grid, Val(:corners))    
-
-    return nothing
-end
-
-@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
-@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
-
-cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
-cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
-
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; async = false, kwargs...)
-    fill_halo!  = halo_tuple[1][task]
-    bc_left     = halo_tuple[2][task]
-    bc_right    = halo_tuple[3][task]
-
-    # Calculate size and offset of the fill_halo kernel
-    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
-    offset = fill_halo_offset(size, fill_halo!, indices)
-
-    requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-
+function pool_requests_or_complete_comm!(c, buffers, requests, arch, side)
+   
     # if `isnothing(requests)`, `fill_halo!` did not involve MPI 
     if isnothing(requests)
         return nothing
@@ -193,8 +136,65 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     # Reset MPI tag
     arch.mpi_tag[1] -= arch.mpi_tag[1]
 
+    recv_from_buffers!(c, buffers, grid, Val(side))    
+
+    return nothing
+end
+
+# corner passing routine
+function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+    
+    if only_local_halos # No corner filling needed!
+        return nothing
+    end
+
+    # This has to be synchronized!!
+    fill_send_buffers!(c, buffers, grid, Val(:corners))
+    sync_device!(arch)
+
+    requests = MPI.Request[]
+
+    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+
+    !isnothing(reqsw) && push!(requests, reqsw...)
+    !isnothing(reqse) && push!(requests, reqse...)
+    !isnothing(reqnw) && push!(requests, reqnw...)
+    !isnothing(reqne) && push!(requests, reqne...)
+
+    pool_requests_or_complete_comm!(c, buffers, requests, arch, :corners)
+
+    return nothing
+end
+
+@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
+@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
+@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
+
+cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
+cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
+
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+    fill_halo!  = halo_tuple[1][task]
+    bc_left     = halo_tuple[2][task]
+    bc_right    = halo_tuple[3][task]
+
     buffer_side = mpi_communication_side(Val(fill_halo!))
-    recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
+
+    if !only_local_halos # Then we need to fill the `send` buffers
+        fill_send_buffers!(c, buffers, grid, Val(buffer_side))
+        sync_device!(arch)
+    end
+
+    # Calculate size and offset of the fill_halo kernel
+    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
+    offset = fill_halo_offset(size, fill_halo!, indices)
+
+    requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+
+    pool_requests_or_complete_comm!(c, buffers, requests, arch, buffer_side)
 
     return nothing
 end

@@ -114,6 +114,36 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid)
     return nothing
 end
 
+function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:corners})
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+    _fill_southwest_send_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
+    _fill_southeast_send_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
+    _fill_northwest_send_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
+    _fill_northeast_send_buffer!(parent(c), buff, buff.northeast, Hx, Hy, Nx, Ny)
+
+    return nothing
+end
+
+function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+     _fill_west_send_buffer!(parent(c), buff, buff.west,  Hx, Hy, Nx, Ny)
+     _fill_east_send_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
+end
+
+function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+    _fill_south_send_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
+    _fill_north_send_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
+end
+
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
+
 """
     recv_from_buffers(c, buffers, arch)
 
