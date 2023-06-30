@@ -611,8 +611,6 @@ steps:
       JULIA_DEBUG: "Documenter"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.instantiate()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: Oceananigans

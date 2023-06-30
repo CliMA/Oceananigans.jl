@@ -152,8 +152,6 @@ frames = 1:length(times)
 @info "Making an animation..."
 
 record(fig, "one_dimensional_diffusion.mp4", frames, framerate=24) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
