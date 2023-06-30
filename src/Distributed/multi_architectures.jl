@@ -46,6 +46,10 @@ Keyword arguments
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
 
+- enable_overlapped_computation: if `true` the prognostic halo communication will be overlapped
+                                 with tendency calculations, and the barotropic halo communication
+                                 with the implicit vertical solver (defaults to `true`)
+
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
              If `nothing`, the devices will be assigned automatically based on the available resources
