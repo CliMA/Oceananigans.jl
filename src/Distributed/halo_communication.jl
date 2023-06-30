@@ -117,7 +117,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     return nothing
 end
 
-@inline function pool_requests_or_complete_comm!(c, buffers, requests, arch, async, side)
+@inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
    
     # if `isnothing(requests)`, `fill_halo!` did not involve MPI 
     if isnothing(requests)
@@ -164,7 +164,7 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
     !isnothing(reqnw) && push!(requests, reqnw...)
     !isnothing(reqne) && push!(requests, reqne...)
 
-    pool_requests_or_complete_comm!(c, buffers, requests, arch, async, :corners)
+    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, :corners)
 
     return nothing
 end
@@ -194,7 +194,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::Distrib
 
     requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
-    pool_requests_or_complete_comm!(c, buffers, requests, arch, async, buffer_side)
+    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
 
     return nothing
 end
