@@ -62,14 +62,14 @@ for side in sides
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
         function $send_tag_fn_name(arch, location)
-            field_id   = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...)) 
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_digit * side_digit)
         end
 
         function $recv_tag_fn_name(arch, location)
-            field_id   = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...)) 
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, field_id * loc_digit * side_digit)
@@ -112,7 +112,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     
     # Switch to the next field to send
-    arch.mpi_tag[1] += 1
+    arch.mpi_tag[] += 1
 
     return nothing
 end
@@ -134,7 +134,7 @@ end
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
     # Reset MPI tag
-    arch.mpi_tag[1] -= arch.mpi_tag[1]
+    arch.mpi_tag[] -= arch.mpi_tag[]
 
     recv_from_buffers!(c, buffers, grid, Val(side))    
 

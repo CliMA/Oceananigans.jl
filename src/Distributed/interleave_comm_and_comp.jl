@@ -56,7 +56,7 @@ function complete_halo_communication!(field)
         cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag
-        arch.mpi_tag[1] -= arch.mpi_tag[1]
+        arch.mpi_tag[] -= arch.mpi_tag[]
     
         # Reset MPI requests
         empty!(arch.mpi_requests)
