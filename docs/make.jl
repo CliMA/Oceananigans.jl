@@ -46,15 +46,16 @@ end
         "baroclinic_adjustment.jl",
         "kelvin_helmholtz_instability.jl",
         "langmuir_turbulence.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "horizontal_convection.jl",
-        "convecting_plankton.jl",
         "tilted_bottom_boundary_layer.jl",
+        "ocean_wind_mixing_and_convection.jl",
+        "convecting_plankton.jl",
         "shallow_water_Bickley_jet.jl",
         "internal_tide",
         "two_dimensional_turbulence.jl",
         "internal_wave.jl",
         "one_dimensional_diffusion.jl",
+    ]
 
     @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
