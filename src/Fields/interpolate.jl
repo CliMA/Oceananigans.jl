@@ -1,7 +1,4 @@
-using Oceananigans.Grids: xnodes, ynodes, znodes,
-                          λnodes, φnodes,
-                          topology, 
-                          node,
+using Oceananigans.Grids: topology, node, spacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid,
                           XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid,
