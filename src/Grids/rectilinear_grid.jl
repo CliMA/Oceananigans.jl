@@ -474,14 +474,6 @@ end
 ##### Grid spacings
 #####
 
-function spacings(grid::RectilinearGrid, ℓx, ℓy, ℓz; with_halos=false)
-    Δx = xspacings(grid, ℓx, ℓy, ℓz; with_halos)
-    Δy = yspacings(grid, ℓx, ℓy, ℓz; with_halos)
-    Δz = zspacings(grid, ℓx, ℓy, ℓz; with_halos)
-
-    return (Δx, Δy, Δz)
-end
-
 @inline xspacings(grid::RectilinearGrid,     ℓx::Center; with_halos=false) = with_halos ? grid.Δxᶜᵃᵃ : view(grid.Δxᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
 @inline xspacings(grid::XRegRectilinearGrid, ℓx::Center; with_halos=false) = grid.Δxᶜᵃᵃ
 @inline xspacings(grid::RectilinearGrid,     ℓx::Face;   with_halos=false) = with_halos ? grid.Δxᶠᵃᵃ : view(grid.Δxᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
