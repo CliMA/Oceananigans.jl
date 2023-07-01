@@ -57,7 +57,10 @@ end
 ##### Use other methods if a more accurate interpolation is required
 #####
 
+# aliases for regularly-spaced grids
 XRegGrid = Union{XRegRectilinearGrid, XRegLatLonGrid}
+YRegGrid = Union{YRegRectilinearGrid, YRegLatLonGrid}
+ZRegGrid = Union{ZRegRectilinearGrid, ZRegLatLonGrid, ZRegOrthogonalSphericalShellGrid}
 
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
 
@@ -78,9 +81,6 @@ end
     return fractional_index(L, x, xn) - 1
 end
 
-
-YRegGrid = Union{YRegRectilinearGrid, YRegLatLonGrid}
-
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
 @inline function fractional_y_index(y::FT, locs, grid::YRegGrid) where FT
@@ -99,9 +99,6 @@ end
 
     return fractional_index(L, y, yn) - 1
 end
-
-
-ZRegGrid = Union{ZRegRectilinearGrid, ZRegLatLonGrid, ZRegOrthogonalSphericalShellGrid}
 
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
 
