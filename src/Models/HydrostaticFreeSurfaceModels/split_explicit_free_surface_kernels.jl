@@ -300,7 +300,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # this is the only way in which η̅ is used: as a smoother for the substepped η field
         set!(free_surface.η, free_surface.state.η̅)
 
-        # Wait for predictor velocity update step to complete and mask it if immersed boundary.
         mask_immersed!(model.velocities.u)
         mask_immersed!(model.velocities.v)
     end
@@ -335,7 +334,6 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     # reset free surface averages
     initialize_free_surface_state!(state, η)
 
-    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     mask_immersed!(Gu)
     mask_immersed!(Gv)
 
