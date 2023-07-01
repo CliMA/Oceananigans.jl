@@ -4,11 +4,12 @@ export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
-export AbstractRectilinearGrid, RectilinearGrid 
-export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
+export AbstractRectilinearGrid, RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+export XFlatGrid, YFlatGrid, ZFlatGrid
+export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
+export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
 export node, nodes
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes
@@ -149,20 +150,15 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
+const XFlatGrid = AbstractGrid{<:Any, Flat}
+const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
+const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
+
 isrectilinear(grid) = false
 
 isxregular() = nothing
 isyregular() = nothing
-iszregular() = nothing
-
-isxflat(grid) = false
-isxflat(grid::AbstractGrid{<:Any, Flat}) = true
-
-isyflat(grid) = false
-isyflat(grid::AbstractGrid{<:Any, <:Any, Flat}) = true
-
-iszflat(grid) = false
-iszflat(grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}) = true
+uiszregular() = nothing
 
 include("grid_utils.jl")
 include("zeros_and_ones.jl")

@@ -73,12 +73,12 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
 end
 
 const LatLonGrid = LatitudeLongitudeGrid
-const HNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
 const XRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const YRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
-const YNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
-const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any, <:Number}
+const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
 const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const HNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
+const YNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 
 regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
@@ -722,11 +722,3 @@ end
 
 @inline λspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
-
-@inline isxregular(::LatitudeLongitudeGrid) = false
-@inline isyregular(::LatitudeLongitudeGrid) = false
-@inline iszregular(::LatitudeLongitudeGrid) = false
-
-@inline isxregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
-@inline isyregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
-@inline iszregular(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
