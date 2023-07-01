@@ -29,24 +29,23 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_field_xy!(field,     args...; kw...) = nothing
-mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
-mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
-    mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
+mask_immersed_horizontal!(field,     args...; kw...) = nothing
+mask_immersed_horizontal!(::Nothing, args...; kw...) = nothing
+mask_immersed_horizontal!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
+    mask_immersed_horizontal!(field, field.grid, location(field), value; k, mask)
 
 """
-    mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)
+    mask_immersed_horizontal!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `mask` is `true`.
 """
-function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+function mask_immersed_horizontal!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
     arch = architecture(field)
     loc = instantiate.(loc)
-    return launch!(arch, grid, :xy,
-                   _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
+    return launch!(arch, grid, :xy, _mask_immersed_horizontal!, field, loc, grid, value, k, mask)
 end
 
-@kernel function _mask_immersed_field_xy!(field, loc, grid, value, k, mask)
+@kernel function _mask_immersed_horizontal!(field, loc, grid, value, k, mask)
     i, j = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
 end

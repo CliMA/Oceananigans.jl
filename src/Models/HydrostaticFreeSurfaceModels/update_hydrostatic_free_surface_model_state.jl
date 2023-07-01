@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed!, mask_immersed_field_xy!, inactive_node
+using Oceananigans.ImmersedBoundaries: mask_immersed!, mask_immersed_horizontal!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -55,7 +55,7 @@ function mask_immersed_model_fields!(model, grid)
             mask_immersed!(field)
         end
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
+    mask_immersed_horizontal!(η, k=size(grid, 3)+1, mask = inactive_node)
 
     return nothing
 end

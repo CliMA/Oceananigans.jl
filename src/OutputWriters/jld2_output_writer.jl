@@ -21,7 +21,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW, FT} <: AbstractOutputWriter
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
-    mask_value :: FT
+    mask_immersed :: FT
 end
 
 noinit(args...) = nothing
@@ -190,10 +190,10 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
-    mask_value = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+    mask_immersed = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
 
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init, including, part,
-                            max_filesize, overwrite_existing, verbose, jld2_kw, mask_value)
+                            max_filesize, overwrite_existing, verbose, jld2_kw, mask_immersed)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)

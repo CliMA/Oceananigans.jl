@@ -19,7 +19,7 @@ mutable struct NetCDFOutputWriter{D, O, T, A, FT} <: AbstractOutputWriter
     array_type :: A
     previous :: Float64
     verbose :: Bool
-    mask_value :: FT
+    mask_immersed :: FT
 end
 
 ext(::Type{NetCDFOutputWriter}) = ".nc"
@@ -431,10 +431,10 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     close(dataset)
 
-    mask_value = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+    mask_immersed = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing,
-                              array_type, 0.0, verbose, mask_value)
+                              array_type, 0.0, verbose, mask_immersed)
 end
 
 get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
