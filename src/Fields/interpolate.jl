@@ -70,12 +70,12 @@ end
     return FT((x - x₀) / Δx)
 end
 
-@inline function fractional_x_index(x::FT, locs, grid::XRegLatLonGrid) where FT
+@inline function fractional_x_index(λ::FT, locs, grid::XRegLatLonGrid) where FT
     loc = @inbounds locs[1]
-    x₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
-    Δx = λspacings(grid, locs...)
+    λ₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
+    Δλ = λspacings(grid, locs...)
 
-    return FT((x - x₀) / Δx)
+    return FT((λ - λ₀) / Δλ)
 end
 
 @inline function fractional_x_index(x::FT, locs, grid) where FT
@@ -98,12 +98,12 @@ end
     return FT((y - y₀) / Δy)
 end
 
-@inline function fractional_y_index(y::FT, locs, grid::YRegLatLonGrid) where FT
+@inline function fractional_y_index(φ::FT, locs, grid::YRegLatLonGrid) where FT
     loc = @inbounds locs[2]
-    y₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
-    Δy = φspacings(grid, locs...)
+    φ₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
+    Δφ = φspacings(grid, locs...)
 
-    return FT((y - y₀) / Δy)
+    return FT((φ - φ₀) / Δφ)
 end
 
 @inline function fractional_y_index(y::FT, locs, grid) where FT
