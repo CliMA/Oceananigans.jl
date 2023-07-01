@@ -13,6 +13,7 @@ export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSph
 export node, nodes
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes
+export spacings
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
@@ -155,10 +156,6 @@ const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
 const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
 
 isrectilinear(grid) = false
-
-isxregular() = nothing
-isyregular() = nothing
-uiszregular() = nothing
 
 include("grid_utils.jl")
 include("zeros_and_ones.jl")
