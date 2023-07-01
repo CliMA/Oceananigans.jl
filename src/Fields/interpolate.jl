@@ -2,7 +2,7 @@ using Oceananigans.Grids: topology, node, spacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid,
                           XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid,
-                          ZRegOSSGrid,
+                          ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
 
 # GPU-compatile middle point calculation
