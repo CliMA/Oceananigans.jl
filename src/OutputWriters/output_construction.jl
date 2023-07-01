@@ -54,4 +54,3 @@ function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, i
     output = construct_output(averaged_output.operand, grid, indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
 end
-
