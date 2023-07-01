@@ -953,6 +953,14 @@ end
 ##### Grid spacings in x, y, z (in meters)
 #####
 
+function spacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false)
+    Δλ = λspacings(grid, ℓx, ℓy, ℓz; with_halos)
+    Δφ = φspacings(grid, ℓx, ℓy, ℓz; with_halos)
+    Δz = zspacings(grid, ℓx, ℓy, ℓz; with_halos)
+
+    return (Δλ, Δφ, Δz)
+end
+
 @inline xspacings(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) =
     with_halos ? grid.Δxᶜᶜᵃ : view(grid.Δxᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 @inline xspacings(grid::OSSG, ℓx::Face  , ℓy::Center; with_halos=false) =

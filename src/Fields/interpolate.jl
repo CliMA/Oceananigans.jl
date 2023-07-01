@@ -60,61 +60,49 @@ end
 ##### Use other methods if a more accurate interpolation is required
 #####
 
+XRegGrid = Union{XRegRectilinearGrid, XRegLatLonGrid}
+
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
 
-@inline function fractional_x_index(x::FT, locs, grid::XRegRectilinearGrid) where FT
+@inline function fractional_x_index(x::FT, locs, grid::XRegGrid) where FT
     loc = @inbounds locs[1]
     x₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
-    Δx = xspacings(grid, locs...)
+    Δx = @inbounds spacings(grid, locs...)[1]
 
     return FT((x - x₀) / Δx)
 end
 
-@inline function fractional_x_index(λ::FT, locs, grid::XRegLatLonGrid) where FT
-    loc = @inbounds locs[1]
-    λ₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
-    Δλ = λspacings(grid, locs...)
-
-    return FT((λ - λ₀) / Δλ)
-end
-
-@inline function fractional_x_index(x::FT, locs, grid) where FT
+@inline function fractional_x_index(x, locs, grid)
     loc = @inbounds locs[1]
     Tx = topology(grid, 1)()
-    Nx = grid.Nx
-    L = length(loc, Tx, Nx)
-    xn = nodes(grid, locs)[1]
+    L = length(loc, Tx, grid.Nx)
+    xn = @inbounds nodes(grid, locs)[1]
 
-    return @inbounds fractional_index(L, x, xn) - 1
+    return fractional_index(L, x, xn) - 1
 end
+
+
+YRegGrid = Union{YRegRectilinearGrid, YRegLatLonGrid}
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
-@inline function fractional_y_index(y::FT, locs, grid::YRegRectilinearGrid) where FT
+@inline function fractional_y_index(y::FT, locs, grid::YRegGrid) where FT
     loc = @inbounds locs[2]
     y₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
-    Δy = yspacings(grid, locs...)
+    Δy = @inbounds spacings(grid, locs...)[2]
 
     return FT((y - y₀) / Δy)
 end
 
-@inline function fractional_y_index(φ::FT, locs, grid::YRegLatLonGrid) where FT
-    loc = @inbounds locs[2]
-    φ₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
-    Δφ = φspacings(grid, locs...)
-
-    return FT((φ - φ₀) / Δφ)
-end
-
-@inline function fractional_y_index(y::FT, locs, grid) where FT
+@inline function fractional_y_index(y, locs, grid)
     loc = @inbounds locs[2]
     Ty = topology(grid, 2)()
-    Ny = grid.Ny
-    L = length(loc, Ty, Ny)
+    L = length(loc, Ty, grid.Ny)
     yn = nodes(grid, locs)[2]
 
-    return @inbounds fractional_index(L, y, yn) - 1
+    return fractional_index(L, y, yn) - 1
 end
+
 
 ZRegGrid = Union{ZRegRectilinearGrid, ZRegLatLonGrid, ZRegOrthogonalSphericalShellGrid}
 
@@ -122,14 +110,16 @@ ZRegGrid = Union{ZRegRectilinearGrid, ZRegLatLonGrid, ZRegOrthogonalSphericalShe
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     loc = @inbounds locs[3]
-    return FT((z - znode(1, grid, loc)) / zspacings(grid, locs...))
+    z₀ = znode(1, grid, loc)
+    Δz = @inbounds spacings(grid, locs...)[3]
+
+    return FT((z - z₀) / Δz)
 end
 
-@inline function fractional_z_index(z::FT, locs, grid) where FT
+@inline function fractional_z_index(z, locs, grid)
     loc = @inbounds locs[3]
     Tz = topology(grid, 3)()
-    Nz = grid.Nz
-    L = length(loc, Tz, Nz)
+    L = length(loc, Tz, grid.Nz)
     zn = znodes(grid, loc)
 
     return fractional_index(L, z, zn) - 1
