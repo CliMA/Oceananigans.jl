@@ -53,22 +53,21 @@ struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD
     negative_turbulent_kinetic_energy_damping_time_scale :: FT
 end
 
-function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
-                                      turbulent_kinetic_energy_equation::TKE,
-                                      maximum_diffusivity::FT,
-                                      minimum_turbulent_kinetic_energy::FT,
-                                      minimum_convective_buoyancy_flux::FT,
-                                      negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT}
+CATKEVerticalDiffusivity{TD}(mixing_length::CL,
+                             turbulent_kinetic_energy_equation::TKE,
+                             maximum_diffusivity::FT,
+                             minimum_turbulent_kinetic_energy::FT,
+                             minimum_convective_buoyancy_flux::FT,
+                             negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT} =
+    CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
+                                              turbulent_kinetic_energy_equation,
+                                              maximum_diffusivity,
+                                              minimum_turbulent_kinetic_energy,
+                                              minimum_convective_buoyancy_flux,
+                                              negative_turbulent_kinetic_energy_damping_time_scale)
 
-    return CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
-                                                     turbulent_kinetic_energy_equation,
-                                                     maximum_diffusivity,
-                                                     minimum_turbulent_kinetic_energy,
-                                                     minimum_convective_buoyancy_flux,
-                                                     negative_turbulent_kinetic_energy_damping_time_scale)
-end
-
-CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
+CATKEVerticalDiffusivity(FT::DataType; kw...) =
+    CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
@@ -183,7 +182,7 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    return ifelse(N² <= 0, zero(grid), Ri)
+    return ifelse(N² ≤ 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
