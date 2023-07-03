@@ -18,6 +18,10 @@ function run_simulation(nx, ny, arch, topo)
 
     grid  = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
 
+    bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
     free_surface = SplitExplicitFreeSurface(; substeps = 10)
@@ -71,12 +75,12 @@ function visualize_simulation(var)
     y = Vector(undef, 4)
 
     for r in 1:4
-        v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(i-1).jld2", var))
+        v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(r-1).jld2", var)
         nx, ny, _ = size(v[r])
         V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
 
-        x[r] = xnodes(v[i])
-        y[r] = ynodes(v[i])
+        x[r] = xnodes(v[r])
+        y[r] = ynodes(v[r])
     end
 
     fig = Figure()
@@ -114,7 +118,12 @@ ny = [56, 128-56][arch.local_index[2]]
 run_simulation(nx, ny, arch, topo)
 
 # Visualize the plane
-visualize_simulation("u")
-visualize_simulation("v")
-visualize_simulation("ζ")
-visualize_simulation("c")
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    visualize_simulation("u")
+    visualize_simulation("v")
+    visualize_simulation("ζ")
+    visualize_simulation("c")
+end
+
+MPI.Barrier(MPI.COMM_WORLD)
+MPI.Finalize()
