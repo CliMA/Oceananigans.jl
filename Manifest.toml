@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "c19e7e0747cdfab35ec6d8d8bd4d66290cc1b731"
+project_hash = "ebc1c2cc7c4c668c561fa03bad677c6aac41f239"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -348,15 +348,15 @@ version = "2023.1.0+0"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "Requires", "Serialization", "Sockets"]
-git-tree-sha1 = "97d9313b6bb7ac04f5b8cfb33569cd30d0441efe"
+git-tree-sha1 = "6d72bafd3960f9c119ceb8f034fef28346490fe5"
 uuid = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-version = "0.20.0"
+version = "0.20.8"
 
 [[deps.MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
-git-tree-sha1 = "8a5b4d2220377d1ece13f49438d71ad20cf1ba83"
+git-tree-sha1 = "d790fbd913f85e8865c55bf4725aff197c5155c8"
 uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
-version = "4.1.2+0"
+version = "4.1.1+1"
 
 [[deps.MPIPreferences]]
 deps = ["Libdl", "Preferences"]
