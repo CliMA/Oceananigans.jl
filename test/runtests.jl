@@ -67,6 +67,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
+            include("test_netcdf_output_writer.jl")
             include("test_output_readers.jl")
         end
     end
