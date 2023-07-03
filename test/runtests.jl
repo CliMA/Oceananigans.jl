@@ -44,7 +44,7 @@ CUDA.allowscalar() do
 
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
-            include("test_poisson_solvers_vertically_stretched_grid.jl")
+            include("test_poisson_solvers_stretched_grids.jl")
         end
     end
 
@@ -67,6 +67,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
+            include("test_netcdf_output_writer.jl")
             include("test_output_readers.jl")
         end
     end

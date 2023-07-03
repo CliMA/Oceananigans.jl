@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -153,7 +153,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
         @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
     end
 
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
             @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
@@ -167,7 +167,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
     near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
     
-    for buffer in [1, 2, 3, 4, 5, 6]
+    for buffer in advection_buffers
         @eval begin
             @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
                 @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
@@ -176,8 +176,8 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
             @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
                 @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
-                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
+                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
@@ -202,19 +202,13 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 using Oceananigans.Advection: $interp
 
                 # Fallback for low order interpolation
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
 
                 # Conditional high-order interpolation in Bounded directions
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
-            
-                # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, ζ, VI, u, v),
-                            $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
             end
         end
     end
@@ -229,10 +223,10 @@ for bias in (:left_biased, :right_biased)
 
         @eval begin
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, u, v) =
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                    $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), u, v),
-                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), u, v))
+                       $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
+                       $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
         end
     end
 end
