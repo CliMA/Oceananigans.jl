@@ -1,6 +1,6 @@
 env:
-  JULIA_VERSION: "1.8.5"
-  JULIA_MINOR_VERSION: "1.8"
+  JULIA_VERSION: "1.9.1"
+  JULIA_MINOR_VERSION: "1.9"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
@@ -17,7 +17,7 @@ steps:
       TEST_GROUP: "none"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
       - JuliaCI/julia-test#v1:
           coverage: false
     agents:
@@ -31,7 +31,7 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
       - JuliaCI/julia-test#v1:
           coverage: true
     agents:
@@ -69,7 +69,7 @@ steps:
       TEST_GROUP: "{{matrix.group}}"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
       - JuliaCI/julia-test#v1:
           update_registry: false
           coverage: false
@@ -170,7 +170,7 @@ steps:
       JULIA_DEBUG: "Documenter"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
     command: |
       - "julia --color=yes --project=docs/ docs/make.jl"
     agents:
