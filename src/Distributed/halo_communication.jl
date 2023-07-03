@@ -50,34 +50,35 @@ opposite_side = Dict(
 #   digits 7-8: the "to" rank
 
 RANK_DIGITS = 2
-ID_DIGITS   = 1
+ID_DIGITS   = 2
+LOC_DIGITS  = 1
 
-# REMEMBER!!! This won't work for tracers!!! (It assumes you are passing maximum 4 at a time)
-@inline loc_id(::Nothing, tag) = tag + 5
-@inline loc_id(::Face,    tag) = tag
-@inline loc_id(::Center,  tag) = tag
-@inline location_id(X, Y, Z, tag) = loc_id(Z, tag)
+@inline loc_id(::Nothing) = 0
+@inline loc_id(::Face)    = 1
+@inline loc_id(::Center)  = 2
+@inline location_id(X, Y, Z) = loc_id(Z)
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        # REMEMBER, we need to reset the tag not more than once every four passes!!
         function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
-            side_digit  = side_id[Symbol($side_str)]
-            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            loc_id      = string(location_id(location...), pad=LOC_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
-            return parse(Int, field_id * from_digits * to_digits)
+            side_digit  = string(side_id[Symbol($side_str)])
+            return parse(Int, loc_id * field_id * side_digit * from_digits * to_digits)
         end
 
         function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
-            side_digit  = side_id[opposite_side[Symbol($side_str)]]
-            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
+            loc_id      = string(location_id(location...), pad=LOC_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
-            return parse(Int, field_id * from_digits * to_digits)
+            side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
+            return parse(Int, loc_id * field_id * side_digit * from_digits * to_digits)
         end
     end
 end
@@ -249,7 +250,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
-            only_local_halos && return nothing
+            # only_local_halos && return nothing
                         
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
@@ -268,7 +269,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
 
             $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
 
-            only_local_halos && return nothing
+            # only_local_halos && return nothing
             
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
@@ -284,7 +285,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
 
             $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
 
-            only_local_halos && return nothing
+            # only_local_halos && return nothing
 
             child_arch = child_architecture(arch)
             local_rank = bc_opposite_side.condition.from
