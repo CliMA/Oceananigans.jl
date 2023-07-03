@@ -7,9 +7,10 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 TimesDates = "bdfc003b-8df8-5c39-adcd-3a9087f5df4a"
 
 [compat]
-CairoMakie = "0.10 - 0.10.4" # v0.10.5, v0.10.6 very slow with contourf + prescribed levels
+CairoMakie = "0.10 - 0.10.4"
 Literate = "≥2.9.0"
