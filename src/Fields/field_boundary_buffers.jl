@@ -62,14 +62,16 @@ end
 
 function create_buffer_x(arch, grid, data, H, ::DCBC) 
     # Either we pass corners or it is a 1D parallelization in x
-    size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
+    # size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
+    size_y = size(grid, 2)
     return (send = arch_array(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))    
 end
 
 function create_buffer_y(arch, grid, data, H, ::DCBC)
     # Either we pass corners or it is a 1D parallelization in y
-    size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
+    # size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
+    size_x = size(grid, 1)
     return (send = arch_array(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
 end
