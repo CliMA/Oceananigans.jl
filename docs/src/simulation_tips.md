@@ -45,7 +45,7 @@ its definition. This is more suited for small functions that are called often. H
 an implementation of the Heaviside function that forces it to be inlined:
 
 ```julia
-@inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
+@inline heaviside(x) = ifelse(x < 0, zero(x), one(x))
 ```
 
 In practice it's hard to say whether inlining a function will bring runtime benefits _with
@@ -86,12 +86,13 @@ fixes the issue by indicating to the compiler that `T₀` will not change.
 Note that the _literal_ `2π / 86400` is not an issue -- it's only the
 _variable_ `T₀` that must be declared `const`.
 
-Alternatively, passing the variable as a parameter to `GradientBoundaryCondition` also works:
+Alternatively, we can pass the variable as a parameter to `GradientBoundaryCondition`. To do that
+we need to pass a named tuple as `parameter` keyword argument:
 
 ```julia
 T₀ = 20 # ᵒC
 surface_temperature(x, y, t, p) = p.T₀ * sin(2π / 86400 * t)
-T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature, parameters=(T₀=T₀,)))
+T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature, parameters=(; T₀)))
 ```
 
 ### Complex diagnostics using computed `Field`s may not work on GPUs
@@ -134,7 +135,7 @@ operators.
 using Oceananigans.Operators
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
-@inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
+@inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
 
 function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣˣ² = ∂xᶜᶜᶜ(i, j, k, grid, u)^2
@@ -145,7 +146,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶠᶜᶠ, u, ∂xᶠᶜᶠ, w) / 4
     Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶜᶠᶠ, v, ∂yᶜᶠᶠ, w) / 4
 
-    return ν * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+    return 2ν * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
 
 ε_op = KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc,
@@ -188,8 +189,9 @@ For large simulations on the GPU, careful management of memory allocation may be
   ```
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
-  fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
-  provides two high-order advection schemes: 5th-order WENO method (WENO) and 3rd-order upwind.
+  fewer grid points to achieve the same accuracy that you would with a lower-order one. Refer to the
+  [documentation](https://clima.github.io/OceananigansDocumentation/stable/appendix/library/#Advection)
+  for available advection schemes.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
   diagnostic is calculated the compiler reserves a new chunk of memory for that calculation, usually
