@@ -99,9 +99,9 @@ function DistributedArch(child_architecture = CPU();
     mpi_requests = enable_overlapped_computation ? MPI.Request[] : nothing
 
     M = typeof(mpi_requests)
-    T = typeof(Ref(0))
+    T = typeof([0])
 
-    return DistributedArch{A, R, I, ρ, C, γ, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
+    return DistributedArch{A, R, I, ρ, C, γ, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, [0])
 end
 
 const BlockingDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}

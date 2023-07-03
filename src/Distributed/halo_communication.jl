@@ -28,7 +28,7 @@ import Oceananigans.BoundaryConditions:
 #####
 
 sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
-side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
+side_id = Dict(side => n for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
     :west => :east, 
@@ -49,30 +49,35 @@ opposite_side = Dict(
 #   digits 5-6: the "from" rank
 #   digits 7-8: the "to" rank
 
-ID_DIGITS   = 2
+RANK_DIGITS = 2
+ID_DIGITS   = 1
 
-@inline loc_id(::Face)    = 0
-@inline loc_id(::Center)  = 1
-@inline loc_id(::Nothing) = 2
-@inline loc_id(LX, LY, LZ) = loc_id(LZ)
+# REMEMBER!!! This won't work for tracers!!! (It assumes you are passing maximum 4 at a time)
+@inline loc_id(::Nothing, tag) = tag + 5
+@inline loc_id(::Face,    tag) = tag
+@inline loc_id(::Center,  tag) = tag
+@inline location_id(X, Y, Z, tag) = loc_id(Z, tag)
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, location)
-            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
-            side_digit = string(side_id[Symbol($side_str)])
-            return parse(Int, field_id * loc_digit * side_digit)
+        # REMEMBER, we need to reset the tag not more than once every four passes!!
+        function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
+            side_digit  = side_id[Symbol($side_str)]
+            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            from_digits = string(local_rank, pad=RANK_DIGITS)
+            to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
+            return parse(Int, field_id * from_digits * to_digits)
         end
 
-        function $recv_tag_fn_name(arch, location)
-            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
-            side_digit = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, field_id * loc_digit * side_digit)
+        function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
+            side_digit  = side_id[opposite_side[Symbol($side_str)]]
+            field_id    = string(location_id(location..., arch.mpi_tag[1]) + side_digit, pad=ID_DIGITS)
+            from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
+            to_digits   = string(local_rank, pad=RANK_DIGITS)
+            return parse(Int, field_id * from_digits * to_digits)
         end
     end
 end
@@ -112,7 +117,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     
     # Switch to the next field to send
-    arch.mpi_tag[] += 1
+    arch.mpi_tag[1] += 1
 
     return nothing
 end
@@ -134,7 +139,7 @@ end
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
     # Reset MPI tag
-    arch.mpi_tag[] -= arch.mpi_tag[]
+    arch.mpi_tag[1] -= arch.mpi_tag[1]
 
     recv_from_buffers!(c, buffers, grid, Val(side))    
 
@@ -285,7 +290,6 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             local_rank = bc_opposite_side.condition.from
 
             recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
-
             send_req = $send_opposite_side_halo(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req, recv_req]
