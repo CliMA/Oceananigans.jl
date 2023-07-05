@@ -86,7 +86,7 @@ end
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
-    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convenction
+    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
