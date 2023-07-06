@@ -1,6 +1,7 @@
 using Oceananigans.Grids: isxregular, isyregular, iszregular, 
                           xnodes, ynodes, znodes, 
                           λnodes, φnodes,
+                          λspacings, φspacings, zspacings,
                           topology, 
                           node,
                           isxflat, isyflat, iszflat,
