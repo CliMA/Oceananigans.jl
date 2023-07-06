@@ -174,8 +174,13 @@ align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointmen
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
-    str = string("[", str_elems...)    
-    return string(str[1:end-2], "]")
+    str = string("[", str_elems...)
+
+    # Remove final separator ", "
+    str = str[1:end-2]
+
+    # Add closing bracket
+    return string(str, "]")
 end
 
 #####
