@@ -108,7 +108,7 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
       - JuliaCI/julia-test#v1:
           update_registry: false
           coverage: false
@@ -133,9 +133,9 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.8"
+          version: "1.9"
     command: |
-      julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl(;destdir=".")'
+      julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl(; destdir=".")'
       ./mpiexecjl -np 4 julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
       queue: Oceananigans
