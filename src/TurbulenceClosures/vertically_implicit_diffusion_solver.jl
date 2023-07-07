@@ -1,6 +1,7 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz
+using Oceananigans.Operators: Δz
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
+using Oceananigans.Grids: ZDirection
 
 import Oceananigans.Solvers: get_coefficient
 
@@ -85,7 +86,7 @@ end
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
-    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convenction
+    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
@@ -146,9 +147,9 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, args...) = ivd_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions

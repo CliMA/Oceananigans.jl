@@ -78,6 +78,12 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
+function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
+    TX, TY, TZ = topology(grid)
+    validate_ib_size(grid, ib)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
+
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j, 1]
