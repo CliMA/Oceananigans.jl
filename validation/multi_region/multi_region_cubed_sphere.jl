@@ -7,6 +7,7 @@ using Oceananigans.Utils: Iterate, get_lat_lon_nodes_and_vertices, get_cartesian
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using GeoMakie, GLMakie
+Makie.inline!(false)
 GLMakie.activate!()
 
 function recreate_with_bounded_panels(grid::ConformalCubedSphereGrid)
