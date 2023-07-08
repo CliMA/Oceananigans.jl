@@ -216,7 +216,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
         Δσxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
 
-    Notice that point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
+    Notice that, e.g., point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
     In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
 
         Δσxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
@@ -228,108 +228,108 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
     Δxᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
+    @inbounds begin
+        #Δxᶜᶜᵃ
 
-    #Δxᶜᶜᵃ
+        for i in 1:Nξ, j in 1:Nη
+            Δxᶜᶜᵃ[i, j] =  haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
+        end
 
-    for i in 1:Nξ, j in 1:Nη
-        Δxᶜᶜᵃ[i, j] =  haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
+
+        # Δxᶠᶜᵃ
+
+        for j in 1:Nη, i in 2:Nξ
+            Δxᶠᶜᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
+        end
+
+        for j in 1:Nη
+            i = 1
+            Δxᶠᶜᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶠᶜᵃ[ i , j], φᶠᶜᵃ[ i , j]), radius)
+        end
+
+        for j in 1:Nη
+            i = Nξ+1
+            Δxᶠᶜᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
+        end
+
+
+        # Δσxᶜᶠᵃ
+
+        for j in 1:Nη+1, i in 1:Nξ
+            Δxᶜᶠᵃ[i, j] =  haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+        end
+
+
+        # Δσxᶠᶠᵃ
+
+        for j in 1:Nη+1, i in 2:Nξ
+            Δxᶠᶠᵃ[i, j] =   haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
+        end
+
+        for j in 1:Nη+1
+            i = 1
+            Δxᶠᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶠᶠᵃ[ i , j], φᶠᶠᵃ[ i , j]), radius)
+        end
+
+        for j in 1:Nη+1
+            i = Nξ+1
+            Δxᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
+        end
     end
-
-
-    # Δxᶠᶜᵃ
-
-    for j in 1:Nη, i in 2:Nξ
-        Δxᶠᶜᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
-    end
-
-    for j in 1:Nη
-        i = 1
-        Δxᶠᶜᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶠᶜᵃ[ i , j], φᶠᶜᵃ[ i , j]), radius)
-    end
-
-    for j in 1:Nη
-        i = Nξ+1
-        Δxᶠᶜᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
-    end
-
-
-    # Δσxᶜᶠᵃ
-
-    for j in 1:Nη+1, i in 1:Nξ
-        Δxᶜᶠᵃ[i, j] =  haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
-    end
-
-
-    # Δσxᶠᶠᵃ
-
-    for j in 1:Nη+1, i in 2:Nξ
-        Δxᶠᶠᵃ[i, j] =   haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
-    end
-
-    for j in 1:Nη+1
-        i = 1
-        Δxᶠᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶠᶠᵃ[ i , j], φᶠᶠᵃ[ i , j]), radius)
-    end
-
-    for j in 1:Nη+1
-        i = Nξ+1
-        Δxᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
-    end
-
 
     Δyᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
     Δyᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
     Δyᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
     Δyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
+    @inbounds begin
+        # Δσyᶜᶜᵃ
 
-    # Δσyᶜᶜᵃ
+        for j in 1:Nη, i in 1:Nξ
+            Δyᶜᶜᵃ[i, j] =  haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
+        end
 
-    for j in 1:Nη, i in 1:Nξ
-        Δyᶜᶜᵃ[i, j] =  haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
+
+        # Δσyᶜᶠᵃ
+
+        for j in 2:Nη, i in 1:Nξ
+            Δyᶜᶠᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+        end
+
+        for i in 1:Nξ
+            j = 1
+            Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶠᵃ[i,  j ], φᶜᶠᵃ[i,  j ]), radius)
+        end
+
+        for i in 1:Nξ
+            j = Nη+1
+            Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+        end
+
+
+        # Δσyᶠᶜᵃ
+
+        for j in 1:Nη, i in 1:Nξ+1
+            Δyᶠᶜᵃ[i, j] =  haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+        end
+
+
+        # Δσyᶠᶠᵃ
+
+        for j in 2:Nη, i in 1:Nξ+1
+            Δyᶠᶠᵃ[i, j] =  haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+        end
+
+        for i in 1:Nξ+1
+            j = 1
+            Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶠᵃ[i,  j ], φᶠᶠᵃ[i,  j ]), radius)
+        end
+        
+        for i in 1:Nξ+1
+            j = Nη+1  
+            Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+        end
     end
-
-
-    # Δσyᶜᶠᵃ
-
-    for j in 2:Nη, i in 1:Nξ
-        Δyᶜᶠᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
-    end
-
-    for i in 1:Nξ
-        j = 1
-        Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶠᵃ[i,  j ], φᶜᶠᵃ[i,  j ]), radius)
-    end
-
-    for i in 1:Nξ
-        j = Nη+1
-        Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
-    end
-
-
-    # Δσyᶠᶜᵃ
-
-    for j in 1:Nη, i in 1:Nξ+1
-        Δyᶠᶜᵃ[i, j] =  haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
-    end
-
-
-    # Δσyᶠᶠᵃ
-
-    for j in 2:Nη, i in 1:Nξ+1
-        Δyᶠᶠᵃ[i, j] =  haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
-    end
-
-    for i in 1:Nξ+1
-        j = 1
-        Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶠᵃ[i,  j ], φᶠᶠᵃ[i,  j ]), radius)
-    end
-    
-    for i in 1:Nξ+1
-        j = Nη+1  
-        Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
-    end
-
 
     # Area metrics
 
@@ -340,7 +340,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Az = spherical_area_quadrilateral(a, b, c, d) * radius^2
 
     For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid some of the 
-    vertices lie outside the grid! For example, the area Azᶠᶜᵃ[1, j] corressponds to a
+    vertices lie outside the grid! For example, the area Azᶠᶜᵃ[1, j] corresponds to a
     quadrilateral with vertices:
 
         a = (φᶜᶠᵃ[0,  j ], λᶜᶠᵃ[0,  j ])
@@ -353,7 +353,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
         2 * spherical_area_quadrilateral(ã, b, c, d̃) * radius^2
 
-    where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
+    where, ã = (φᶠᶠᵃ[1, j], λᶠᶠᵃ[1, j]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
     =#
 
     Azᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
@@ -361,170 +361,170 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
     Azᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
+    @inbounds begin
+        # Azᶜᶜᵃ
 
-    # Azᶜᶜᵃ
+        for j in 1:Nη, i in 1:Nξ
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
 
-    for j in 1:Nη, i in 1:Nξ
-        a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
-        c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
-        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
-
-        Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
+            Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
 
 
-    # Azᶠᶜᵃ
+        # Azᶠᶜᵃ
 
-    for j in 1:Nη, i in 2:Nξ
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-        b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
+        for j in 1:Nη, i in 2:Nξ
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
 
-        Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
+            Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
 
-    for j in 1:Nη
+        for j in 1:Nη
+            i = 1
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+
+            Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for j in 1:Nη
+            i = Nξ+1
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
+
+            Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+
+        # Azᶜᶠᵃ
+
+        for j in 2:Nη, i in 1:Nξ
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ], 1)
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+
+            Azᶜᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for i in 1:Nξ
+            j = 1
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j ], 1)
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j ], λᶠᶠᵃ[i+1, j ], 1)
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j ], λᶠᶜᵃ[i+1, j ], 1)
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
+
+            Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for i in 1:Nξ
+            j = Nη+1
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+
+            Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+
+        # Azᶠᶠᵃ
+
+        for j in 2:Nη, i in 2:Nξ
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
+
+            Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for i in 2:Nξ
+            j = 1
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j ], 1)
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j ], λᶜᶠᵃ[ i , j ], 1)
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j ], λᶜᶜᵃ[ i , j ], 1)
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j ], 1)
+
+            Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for i in 2:Nξ
+            j = Nη+1
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+
+            Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for j in 2:Nη
+            i = 1
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+
+            Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
+        for j in 2:Nη
+            i = Nξ+1
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
+
+            Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        end
+
         i = 1
-        a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
-        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+        j = 1
+        a = lat_lon_to_cartesian(φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j], 1)
+        b = lat_lon_to_cartesian(φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j], 1)
+        c = lat_lon_to_cartesian(φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j], 1)
+        d = lat_lon_to_cartesian(φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j], 1)
 
-        Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
+        Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-    for j in 1:Nη
         i = Nξ+1
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
-
-        Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-
-    # Azᶜᶠᵃ
-
-    for j in 2:Nη, i in 1:Nξ
-        a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-        b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
-        c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ], 1)
-        d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
-
-        Azᶜᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-    for i in 1:Nξ
-        j = 1
-        a = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j ], 1)
-        b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j ], λᶠᶠᵃ[i+1, j ], 1)
-        c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j ], λᶠᶜᵃ[i+1, j ], 1)
-        d = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
-
-        Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-    for i in 1:Nξ
         j = Nη+1
-        a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-        b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
-        c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
-        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+        a = lat_lon_to_cartesian(φᶠᶠᵃ[i-1, j-1], λᶠᶠᵃ[i-1, j-1], 1)
+        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j-1], λᶠᶠᵃ[ i , j-1], 1)
+        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+        d = lat_lon_to_cartesian(φᶠᶠᵃ[i-1,  j ], λᶠᶠᵃ[i-1,  j ], 1)
 
-        Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
+        Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-
-    # Azᶠᶠᵃ
-
-    for j in 2:Nη, i in 2:Nξ
-        a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-        b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
-
-        Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-    for i in 2:Nξ
+        i = Nξ+1
         j = 1
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j ], 1)
-        b = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j ], λᶜᶠᵃ[ i , j ], 1)
-        c = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j ], λᶜᶜᵃ[ i , j ], 1)
+        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j], 1)
+        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j], 1)
+        c = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
         d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j ], 1)
 
-        Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
+        Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-    for i in 2:Nξ
-        j = Nη+1
-        a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-        b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-
-        Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-    for j in 2:Nη
         i = 1
+        j = Nη+1
         a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
         b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
+        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
 
-        Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+        Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
-
-    for j in 2:Nη
-        i = Nξ+1
-        a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-        b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
-
-        Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
-    i = 1
-    j = 1
-    a = lat_lon_to_cartesian(φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j], 1)
-    b = lat_lon_to_cartesian(φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j], 1)
-    c = lat_lon_to_cartesian(φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j], 1)
-    d = lat_lon_to_cartesian(φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j], 1)
-
-    Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-
-    i = Nξ+1
-    j = Nη+1
-    a = lat_lon_to_cartesian(φᶠᶠᵃ[i-1, j-1], λᶠᶠᵃ[i-1, j-1], 1)
-    b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j-1], λᶠᶠᵃ[ i , j-1], 1)
-    c = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-    d = lat_lon_to_cartesian(φᶠᶠᵃ[i-1,  j ], λᶠᶠᵃ[i-1,  j ], 1)
-
-    Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-
-    i = Nξ+1
-    j = 1
-    a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j], 1)
-    b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j], 1)
-    c = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
-    d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j ], 1)
-
-    Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-
-    i = 1
-    j = Nη+1
-    a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-    b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-    c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-    d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-
-    Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-
 
     # In all computations above we used (Bounded, Bounded, topology[3]) for ξ-η grid.
     # This was done to ensure that we had information for the faces at the boundary of
