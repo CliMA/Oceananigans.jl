@@ -66,6 +66,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
+    update_biogeochemical_state!(model.biogeochemistry, model)
+
     return nothing
 end
 
