@@ -3,7 +3,6 @@ env:
   JULIA_MINOR_VERSION: "1.9"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
 
 steps:
 
@@ -18,8 +17,7 @@ steps:
     plugins:
       - JuliaCI/julia#v1:
           version: "1.9"
-      - JuliaCI/julia-test#v1:
-          coverage: false
+      - JuliaCI/julia-test#v1: ~
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -111,7 +109,7 @@ steps:
           version: "1.9"
       - JuliaCI/julia-test#v1:
           update_registry: false
-          coverage: false
+          coverage: true
     agents:
       queue: Oceananigans
       architecture: CPU
