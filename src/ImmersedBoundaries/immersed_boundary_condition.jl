@@ -51,6 +51,7 @@ function ImmersedBoundaryCondition(; west = nothing,
                                      bottom = nothing,
                                      top = nothing)
 
+    @warn "`ImmersedBoundaryCondition` is considered an experimental API and may change in the future."
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
