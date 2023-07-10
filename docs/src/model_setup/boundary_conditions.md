@@ -434,7 +434,7 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```jldoctest
+```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
 julia> underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded));
 
 julia> hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
@@ -451,6 +451,12 @@ julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.0));
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
+┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 
 julia> model.velocities.w.boundary_conditions.immersed
 ImmersedBoundaryCondition:
@@ -466,8 +472,10 @@ An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potentia
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```jldoctest
+```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
+┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
@@ -513,7 +521,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```jldoctest immersed_bc
+```jldoctest immersed_bc; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
 julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_linear_drag (generic function with 1 method)
 
@@ -521,6 +529,8 @@ julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_depen
 FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
 
 julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
+┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
