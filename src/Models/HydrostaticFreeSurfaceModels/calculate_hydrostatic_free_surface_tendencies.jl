@@ -265,7 +265,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
@@ -277,7 +277,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_ntuple(idx, grid)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
