@@ -451,11 +451,11 @@ julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.0));
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
-┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+┌ Warning: `ImmersedBoundaryCondition` is experimental.
 └ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
-┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+┌ Warning: `ImmersedBoundaryCondition` is experimental.
 └ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
-┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+┌ Warning: `ImmersedBoundaryCondition` is experimental.
 └ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 
 julia> model.velocities.w.boundary_conditions.immersed
@@ -474,7 +474,7 @@ cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
 ```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
-┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+┌ Warning: `ImmersedBoundaryCondition` is experimental.
 └ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
@@ -496,7 +496,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ```
 
 !!! warning "`ImmersedBoundaryCondition`"
-    `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+    `ImmersedBoundaryCondition` is experimental.
     Therefore, one should use it only when a finer level of control over the boundary conditions
     at the immersed boundary is required, and the user is familiar with the implementation of boundary 
     conditions on staggered grids. For all other cases , using the `immersed` argument of
@@ -529,7 +529,7 @@ julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_depen
 FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
 
 julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
-┌ Warning: `ImmersedBoundaryCondition` is considered an experimental API and may change in the future.
+┌ Warning: `ImmersedBoundaryCondition` is experimental.
 └ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
