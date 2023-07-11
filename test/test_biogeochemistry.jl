@@ -90,7 +90,7 @@ end
 ##### Test a `bgc` model in a `model` with `arch`
 #####
 
-function test_biogeochemistry!(grid, MinimalBiogeochemistryType, ModelType)
+function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
     Iᴾᴬᴿ = CenterField(grid)
 
     u = ZeroField()
@@ -134,7 +134,7 @@ end
 
         if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
             @info "Testing $bgc in $model on $grid..."
-            test_biogeochemistry!(grid, bgc, model)
+            test_biogeochemistry(grid, bgc, model)
         end
     end
 end
