@@ -28,8 +28,9 @@ using Oceananigans.Models: ShallowWaterModel
 
 # ## Two-dimensional domain 
 #
-# The shallow water model is a two-dimensional model and thus the number of vertical
-# points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
+# The shallow water model is two-dimensional and uses grids that are `Flat`
+# in the vertical direction. We use length scales non-dimensionalized by the width
+# of the Bickley jet.
 
 grid = RectilinearGrid(size = (48, 128),
                        x = (0, 2π),
@@ -115,8 +116,8 @@ set!(model, uh = uhⁱ)
 # ## Running a `Simulation`
 #
 # We pick the time-step so that we make sure we resolve the surface gravity waves, which 
-# propagate with speed of the order ``\sqrt{g L_z}``. That is, with `Δt = 1e-2` we ensure 
-# that `` \sqrt{g L_z} Δt / Δx,  \sqrt{g L_z} Δt / Δy < 0.7``.
+# propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure 
+# that `` \sqrt{g H} Δt / Δx,  \sqrt{g H} Δt / Δy < 0.7``.
 
 simulation = Simulation(model, Δt = 1e-2, stop_time = 100)
 
@@ -198,8 +199,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
