@@ -134,7 +134,7 @@ end
                 LatitudeLongitudeGrid(arch; topology = (Flat, Bounded, Bounded), size = (5, 5), φ = (0, 40), z = (-2, 0)),
                 OrthogonalSphericalShellGrid(size=(3, 3, 3), z=(-2, 0)))
 
-        if !((model == NonhydrostaticModel)&&((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
+        if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
             @info "Testing $bgc in $model on $grid..."
             test_biogeochemistry!(grid, bgc, model)
         end
