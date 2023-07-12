@@ -21,7 +21,7 @@ function get_halo_data(field, side, k_index=1)
     end
 end
 
-function get_halo_data_endpoint(field, side, endpoint, k_index=1)
+function get_halo_data_endpoint(field, side, k_index=1; endpoint)
     Nx, Ny, _ = size(field)
     Hx, Hy, _ = halo_size(field.grid)
     
@@ -52,7 +52,7 @@ function get_halo_data_endpoint(field, side, endpoint, k_index=1)
     end
 end
 
-function get_halo_data_subset(field, side, index_to_skip, k_index=1)
+function get_halo_data_subset(field, side, k_index=1; index_to_skip)
     Nx, Ny, _ = size(field)
     Hx, Hy, _ = halo_size(field.grid)
     
@@ -285,7 +285,8 @@ end
                                            :north,
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 1), 
-                                             :north, :first)     ==          -create_u_test_data(grid, 5)[north_indices_first...]                
+                                             :north, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 5)[north_indices_first...]                
                 
                 # Panel 2
                 switch_device!(grid, 2)
@@ -300,7 +301,8 @@ end
                                            :south, 
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 2), 
-                                             :south, :first)     ==          -create_v_test_data(grid, 1)[east_indices_first...]                
+                                             :south, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 1)[east_indices_first...]                
                 
                 # Panel 3
                 switch_device!(grid, 3)
@@ -315,7 +317,8 @@ end
                                            :north,
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 5)[west_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 3), 
-                                             :north, :first)     ==          -create_u_test_data(grid, 1)[north_indices_first...]
+                                             :north, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 1)[north_indices_first...]
                 
                 # Panel 4
                 switch_device!(grid, 4)
@@ -330,7 +333,8 @@ end
                                            :south,
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 4), 
-                                             :south, :first)     ==          -create_v_test_data(grid, 3)[east_indices_first...]
+                                             :south, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 3)[east_indices_first...]
                 
                 # Panel 5
                 switch_device!(grid, 5)
@@ -345,7 +349,8 @@ end
                                            :north,
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 1)[west_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 5), 
-                                             :north, :first)     ==          -create_u_test_data(grid, 3)[north_indices_first...]
+                                             :north, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 3)[north_indices_first...]
                 
                 # Panel 6
                 switch_device!(grid, 6)
@@ -360,7 +365,8 @@ end
                                            :south,
                                            index_to_skip=:first) == - reverse(create_v_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
                 @test get_halo_data_endpoint(getregion(u, 6), 
-                                             :south, :first)     ==          -create_v_test_data(grid, 5)[east_indices_first...]
+                                             :south, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 5)[east_indices_first...]
                 
             end
 
@@ -380,7 +386,8 @@ end
                                            :west,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 1), 
-                                             :west, :first)      ==          -create_u_test_data(grid, 6)[north_indices_first...]
+                                             :west, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 6)[north_indices_first...]
                 
                 # Panel 2
                 switch_device!(grid, 2)
@@ -395,7 +402,8 @@ end
                                            :east,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 2), 
-                                             :east, :first)      ==          -create_v_test_data(grid, 6)[east_indices_first...]
+                                             :east, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 6)[east_indices_first...]
                 
                 # Panel 3
                 switch_device!(grid, 3)
@@ -410,7 +418,8 @@ end
                                            :west,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 3), 
-                                             :west, :first)      ==          -create_u_test_data(grid, 2)[north_indices_first...]
+                                             :west, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 2)[north_indices_first...]
                 
                 # Panel 4
                 switch_device!(grid, 4)
@@ -425,7 +434,8 @@ end
                                            :east,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 4), 
-                                             :east, :first)      ==          -create_v_test_data(grid, 2)[east_indices_first...]
+                                             :east, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 2)[east_indices_first...]
                 
                 # Panel 5
                 switch_device!(grid, 5)
@@ -440,7 +450,8 @@ end
                                            :west,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 5), 
-                                             :west, :first)      ==          -create_u_test_data(grid, 4)[borth_indices_first...] 
+                                             :west, 
+                                             endpoint=:first)    ==          -create_u_test_data(grid, 4)[north_indices_first...] 
                 
                 # Panel 6
                 switch_device!(grid, 6)
@@ -455,7 +466,8 @@ end
                                            :east,
                                            index_to_skip=:first) == - reverse(create_u_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
                 @test get_halo_data_endpoint(getregion(v, 6), 
-                                             :east, :first)      ==          -create_v_test_data(grid, 4)[east_indices_first...]
+                                             :east, 
+                                             endpoint=:first)    ==          -create_v_test_data(grid, 4)[east_indices_first...]
                 
             end
         end
