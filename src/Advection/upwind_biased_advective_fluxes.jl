@@ -24,6 +24,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
         @eval begin
             @inline $alt_interp(i, j, k, grid, u, args...) = $alt_interp(i, j, k, grid, sign_val(u), args...)
+            @inline $alt_interp(i, j, k, grid, ::Val{0},  args...) =  $alt_left_interp(i, j, k, grid, args...)
             @inline $alt_interp(i, j, k, grid, ::Val{1},  args...) =  $alt_left_interp(i, j, k, grid, args...)
             @inline $alt_interp(i, j, k, grid, ::Val{-1}, args...) = $alt_right_interp(i, j, k, grid, args...)
         end
