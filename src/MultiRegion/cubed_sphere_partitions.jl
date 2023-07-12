@@ -265,9 +265,9 @@ function Base.summary(p::CubedSpherePartition)
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
 
-replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid) = nothing
+replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid; signed=true) = nothing
 
-function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid)
+function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid; signed=true)
     u, v, _ = velocities
 
     ubuff = u.boundary_buffers
@@ -281,31 +281,74 @@ function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSpherica
     Hx, Hy, _ = halo_size(u.grid)
     Nx, Ny, _ = size(grid)
 
-     replace_west_u_halos!(u, vbuff, Nx, Hx, conn_west)
-     replace_east_u_halos!(u, vbuff, Nx, Hx, conn_east)
-    replace_south_u_halos!(u, vbuff, Ny, Hy, conn_south)
-    replace_north_u_halos!(u, vbuff, Ny, Hy, conn_north)
+     replace_west_u_halos!(u, vbuff, Nx, Hx, conn_west; signed)
+     replace_east_u_halos!(u, vbuff, Nx, Hx, conn_east; signed)
+    replace_south_u_halos!(u, vbuff, Ny, Hy, conn_south; signed)
+    replace_north_u_halos!(u, vbuff, Ny, Hy, conn_north; signed)
 
-     replace_west_v_halos!(v, ubuff, Nx, Hx, conn_west)
-     replace_east_v_halos!(v, ubuff, Nx, Hx, conn_east)
-    replace_south_v_halos!(v, ubuff, Ny, Hy, conn_south)
-    replace_north_v_halos!(v, ubuff, Ny, Hy, conn_north)
+     replace_west_v_halos!(v, ubuff, Nx, Hx, conn_west; signed)
+     replace_east_v_halos!(v, ubuff, Nx, Hx, conn_east; signed)
+    replace_south_v_halos!(v, ubuff, Ny, Hy, conn_south; signed)
+    replace_north_v_halos!(v, ubuff, Ny, Hy, conn_north; signed)
 
     return nothing
 end
 
 for vel in (:u, :v), dir in (:east, :west, :north, :south)
-    @eval $(Symbol(:replace_, dir, :_, vel, :_halos!))(u, buff, N, H, conn) = nothing
+    @eval $(Symbol(:replace_, dir, :_, vel, :_halos!))(u, buff, N, H, conn; signed=true) = nothing
 end
 
- replace_west_u_halos!(u, vbuff, N, H, ::North) = view(u, -H+1:0,  :, :) .= + vbuff.west.recv
- replace_west_v_halos!(v, ubuff, N, H, ::North) = view(v, -H+1:0,  :, :) .= - ubuff.west.recv
- replace_east_u_halos!(u, vbuff, N, H, ::South) = view(u, N+1:N+H, :, :) .= + vbuff.east.recv
- replace_east_v_halos!(v, ubuff, N, H, ::South) = view(v, N+1:N+H, :, :) .= - ubuff.east.recv
-replace_south_u_halos!(u, vbuff, N, H, ::East)  = view(u, :, -H+1:0, :)  .= - vbuff.south.recv
-replace_south_v_halos!(v, ubuff, N, H, ::East)  = view(v, :, -H+1:0, :)  .= + ubuff.south.recv
-replace_north_u_halos!(u, vbuff, N, H, ::West)  = view(u, :, N+1:N+H, :) .= - vbuff.north.recv
-replace_north_v_halos!(v, ubuff, N, H, ::West)  = view(v, :, N+1:N+H, :) .= + ubuff.north.recv
+function replace_west_u_halos!(u, vbuff, N, H, ::North; signed)
+    view(u, -H+1:0,  :, :) .= + vbuff.west.recv
+    return nothing
+end
+
+function replace_west_v_halos!(v, ubuff, N, H, ::North; signed)
+    view(v, -H+1:0,  :, :) .= ubuff.west.recv
+    if signed
+        view(v, -H+1:0,  :, :) .*= -1
+    end
+    return nothing
+end
+
+function replace_east_u_halos!(u, vbuff, N, H, ::South; signed)
+    view(u, N+1:N+H, :, :) .= + vbuff.east.recv
+    return nothing
+end
+
+function replace_east_v_halos!(v, ubuff, N, H, ::South; signed)
+    view(v, N+1:N+H, :, :) .= ubuff.east.recv
+    if signed
+        view(v, N+1:N+H, :, :) .*= -1
+    end
+    return nothing
+end
+
+function replace_south_u_halos!(u, vbuff, N, H, ::East; signed)
+     view(u, :, -H+1:0, :)  .= vbuff.south.recv
+     if signed
+        view(u, :, -H+1:0, :)  .*= -1
+     end
+     return nothing
+end
+
+function replace_south_v_halos!(v, ubuff, N, H, ::East; signed)
+     view(v, :, -H+1:0, :)  .= + ubuff.south.recv
+     return nothing
+end
+
+function replace_north_u_halos!(u, vbuff, N, H, ::West; signed)
+     view(u, :, N+1:N+H, :) .= vbuff.north.recv
+     if signed
+        view(u, :, N+1:N+H, :) .*= -1
+     end
+     return nothing
+end
+
+function replace_north_v_halos!(v, ubuff, N, H, ::West; signed)
+     view(v, :, N+1:N+H, :) .= + ubuff.north.recv
+     return nothing
+end
 
 Base.show(io::IO, p::CubedSpherePartition) =
     print(io, summary(p), "\n",
