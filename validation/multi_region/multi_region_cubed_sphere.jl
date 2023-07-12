@@ -6,7 +6,7 @@ using Oceananigans.MultiRegion: getregion
 using Oceananigans.Utils: Iterate, get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using GeoMakie, GLMakie
+using GLMakie
 Makie.inline!(false)
 GLMakie.activate!()
 
@@ -25,6 +25,7 @@ function recreate_with_bounded_panels(grid::ConformalCubedSphereGrid)
     return ConformalCubedSphereGrid(arch, FT;
                                     panel_size = (Nx, Ny, Nz),
                                     z, horizontal_direction_halo, z_halo,
+                                    radius,
                                     partition,
                                     horizontal_topology = Bounded)
 end
@@ -102,24 +103,27 @@ end
 
 fill_halo_regions!(c)
 
-# Plot first figure.
 
 fig = Figure()
+
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
 
 heatsphere!(ax, c; colorrange, colormap)
 
 save("multi_region_cubed_sphere_figure_1.png", fig)
 
-# Plot second figure.
+
 fig = Figure()
+
 ax = Axis(fig[1, 1])
 
 heatlatlon!(ax, c; colorrange, colormap)
 
 save("multi_region_cubed_sphere_figure_2.png", fig)
 
-# Plot third figure.
+
+using GeoMakie
+
 fig = Figure(resolution = (1200, 600))
 
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
