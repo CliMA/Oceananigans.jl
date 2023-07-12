@@ -62,6 +62,7 @@ end
 
 const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
 """
     OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
@@ -877,7 +878,7 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
         z = Base.reshape(z, 1, 1, N[3])
     end
 
-    return (x, y, z)
+    return (λ, φ, z)
 end
 
 @inline λnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
@@ -975,8 +976,3 @@ end
 @inline xspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xspacings(grid, ℓx, ℓy; with_halos)
 @inline yspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = yspacings(grid, ℓx, ℓy; with_halos)
 @inline zspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = zspacings(grid, ℓz; with_halos)
-
-# assuming we're talking native coordinated (lat/lon) again, irregular z is not currently supported (??)
-@inline isxregular(::OSSG) = false
-@inline isyregular(::OSSG) = false
-@inline iszregular(::OSSG) = true 
