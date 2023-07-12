@@ -125,7 +125,7 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
 
     westsrc = getside(buffers[westbc.condition.from_rank], westbc.condition.from_side).send
     eastsrc = getside(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send
-    
+
     devicewest = getdevice(westsrc)
     deviceeast = getdevice(eastsrc)
 
@@ -204,7 +204,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
 
     dst = buffers[bc.condition.rank].east.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
-    
+
     dev = getdevice(src)
     switch_device!(dev)
     src = flip_west_and_east_indices(src, bc.condition)
@@ -224,11 +224,11 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
-    
+
     dev = getdevice(src)
     switch_device!(dev)
     src = flip_south_and_north_indices(src, bc.condition)
-    
+
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
@@ -244,7 +244,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     dst = buffers[bc.condition.rank].north.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
-    
+
     dev = getdevice(src)
     switch_device!(dev)
     src = flip_south_and_north_indices(src, bc.condition)
