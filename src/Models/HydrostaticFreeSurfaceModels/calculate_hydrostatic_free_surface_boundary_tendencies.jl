@@ -6,9 +6,8 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-import Oceananigans.Models.NonhydrostaticModels: compute_boundary_tendencies!
+import Oceananigans.Distributed: compute_boundary_tendencies!
 
-                                
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
