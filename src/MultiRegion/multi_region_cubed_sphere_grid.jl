@@ -189,7 +189,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   z,
                                   horizontal_direction_halo = 1,
                                   z_halo = horizontal_direction_halo,
-                                  horizontal_topology = Bounded,
+                                  horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
                                   radius = R_Earth,
                                   partition = CubedSpherePartition(; R=1),
@@ -240,64 +240,84 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
 
-    CUDA.@allowscalar begin
-        λcca = Field{Center, Center, Nothing}(grid)
-        φcca = Field{Center, Center, Nothing}(grid)
+    ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
+    fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
+    cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
+    ffacoords = (:λᶠᶠᵃ, :φᶠᶠᵃ)
 
-        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-            getregion(λcca, region).data[i, j] = getregion(grid, region).λᶜᶜᵃ[i, j]
-            getregion(φcca, region).data[i, j] = getregion(grid, region).φᶜᶜᵃ[i, j]
+    for (ccacoord, fcacoord, cfacoord, ffacoord) in zip(ccacoords, fcacoords, cfacoords, ffacoords)
+        expr = quote
+            $(Symbol(ccacoord)) = Field{Center, Center, Nothing}($(grid))
+            $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
+            $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
+            $(Symbol(ffacoord)) = Field{Face,   Face,   Nothing}($(grid))
+
+            for region in 1:6
+                getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
+                getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
+                getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
+                getregion($(Symbol(ffacoord)), region).data .= getregion($(grid), region).$(Symbol(ffacoord))
+            end
+
+            if $(horizontal_topology) == FullyConnected
+                for _ in 1:2
+                    fill_halo_regions!($(Symbol(ccacoord)))
+                    fill_halo_regions!($(Symbol(fcacoord)))
+                    fill_halo_regions!($(Symbol(cfacoord)))
+                    fill_halo_regions!($(Symbol(ffacoord)))
+                end
+            end
+
+            for region in 1:6
+                getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
+                getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
+                getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
+                getregion($(grid), region).$(Symbol(ffacoord)) .= getregion($(Symbol(ffacoord)), region).data
+            end
         end
+        eval(expr)
+    end
 
-        fill_halo_regions!(λcca)
-        fill_halo_regions!(φcca)
+    ccametrics = (:Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ)
+    fcametrics = (:Δxᶠᶜᵃ, :Δyᶠᶜᵃ, :Azᶠᶜᵃ)
+    cfametrics = (:Δyᶜᶠᵃ, :Δxᶜᶠᵃ, :Azᶜᶠᵃ)
+    ffametrics = (:Δxᶠᶠᵃ, :Δyᶠᶠᵃ, :Azᶠᶠᵃ)
 
-        for region in 1:6
-            getregion(grid, region).λᶜᶜᵃ .= getregion(λcca, region).data
-            getregion(grid, region).φᶜᶜᵃ .= getregion(φcca, region).data
-        end
+    for (ccametric, fcametric, cfametric, ffametric) in zip(ccametrics, fcametrics, cfametrics, ffametrics)
+        expr = quote
+            $(Symbol(ccametric)) = Field{Center, Center, Nothing}($(grid))
+            $(Symbol(fcametric)) = Field{Face,   Center, Nothing}($(grid))
+            $(Symbol(cfametric)) = Field{Center, Face,   Nothing}($(grid))
+            $(Symbol(ffametric)) = Field{Face,   Face,   Nothing}($(grid))
 
-        λfca = Field{Face, Center, Nothing}(grid)
-        φfca = Field{Face, Center, Nothing}(grid)
+            for region in 1:6
+                getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
+                getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
+                getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
+                getregion($(Symbol(ffametric)), region).data .= getregion($(grid), region).$(Symbol(ffametric))
+            end
 
-        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-            getregion(λfca, region).data[i, j] = getregion(grid, region).λᶠᶜᵃ[i, j]
-            getregion(φfca, region).data[i, j] = getregion(grid, region).φᶠᶜᵃ[i, j]
-        end
+            if $(horizontal_topology) == FullyConnected
+                for _ in 1:2
+                    fill_halo_regions!($(Symbol(ccametric)))
+                    fill_halo_regions!($(Symbol(fcametric)))
+                    fill_halo_regions!($(Symbol(cfametric)))
+                    fill_halo_regions!($(Symbol(ffametric)))
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcametric)),
+                                                                            v = $(Symbol(cfametric)),
+                                                                            w = nothing), $(grid), signed=false)
+                end
+            end
 
-        display(getregion(λfca, 1).data)
+            for region in 1:6
+                getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
+                getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
+                getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
+                getregion($(grid), region).$(Symbol(ffametric)) .= getregion($(Symbol(ffametric)), region).data
+            end
+        end # quote
 
-        fill_halo_regions!(λfca)
-        fill_halo_regions!(φfca)
-
-        display(getregion(λfca, 1).data)
-
-        λcfa = Field{Center, Face, Nothing}(grid)
-        φcfa = Field{Center, Face, Nothing}(grid)
-
-        @apply_regionally replace_horizontal_velocity_halos!((; u = λfca, v = λcfa, w = nothing), grid)
-        @apply_regionally replace_horizontal_velocity_halos!((; u = φfca, v = φcfa, w = nothing), grid)
-
-        display(getregion(λfca, 1).data)
-
-        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-            getregion(λcfa, region).data[i, j] = getregion(grid, region).λᶜᶠᵃ[i, j]
-            getregion(φcfa, region).data[i, j] = getregion(grid, region).φᶜᶠᵃ[i, j]
-        end
-
-        fill_halo_regions!(λcfa)
-        fill_halo_regions!(φcfa)
-
-        λffa = Field{Face, Face, Nothing}(grid)
-        φffa = Field{Face, Face, Nothing}(grid)
-
-        for region in 1:length(grid), j in 1:Ny, i in 1:Nx
-            getregion(λffa, region).data[i, j] = getregion(grid, region).λᶠᶠᵃ[i, j]
-            getregion(φffa, region).data[i, j] = getregion(grid, region).φᶠᶠᵃ[i, j]
-        end
-
-        fill_halo_regions!(λffa)
-        fill_halo_regions!(φffa)
+        eval(expr)
     end
 
     return grid
