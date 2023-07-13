@@ -99,30 +99,54 @@ end
 #####
 ##### Tracer advection operators
 #####
+
+# Upwind interpolate -> choose _left_biased if u > 0 and _right_biased if u < 0
+for (d, ξ) in enumerate((:x, :y, :z))
+    code = [:ᵃ, :ᵃ, :ᵃ]
+
+    for loc in (:ᶜ, :ᶠ)
+        code[d] = loc
+        second_order_interp = Symbol(:ℑ, ξ, code...)
+        alt_interp       = Symbol(:_upwind_interpolate_, ξ, code...)
+        alt_left_interp  = Symbol(:_left_biased_interpolate_, ξ, code...)
+        alt_right_interp = Symbol(:_right_biased_interpolate_, ξ, code...)
+
+        @eval begin
+            @inline $alt_interp(i, j, k, grid,  ::LeftUpwind,  args...) =  $alt_left_interp(i, j, k, grid, args...)
+            @inline $alt_interp(i, j, k, grid, ::RightUpwind,  args...) = $alt_right_interp(i, j, k, grid, args...)
+        end
+    end
+end
     
+struct  LeftUpwind end
+struct RightUpwind end
+
+@inline upwind_direction(u) = ifelse(u > 0, LeftUpwind(), RightUpwind())
+
 @inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c) 
 
     @inbounds ũ = U[i, j, k]
-    cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
-    cᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
+    
+    side =  upwind_direction(ũ)
+    cᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, upwind_scheme, c)
 
-    return Axᶠᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
+    return Axᶠᶜᶜ(i, j, k, grid) * ũ * cᴿ
 end
 
 @inline function advective_tracer_flux_y(i, j, k, grid, scheme::UpwindScheme, V, c)
 
     @inbounds ṽ = V[i, j, k]
-    cᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
-    cᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
+    side =  upwind_direction(ũ)
+    cᴿ   = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, c)
 
-    return Ayᶜᶠᶜ(i, j, k, grid) * upwind_biased_product(ṽ, cᴸ, cᴿ)
+    return Ayᶜᶠᶜ(i, j, k, grid) * ṽ * cᴿ
 end
 
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme::UpwindScheme, W, c)
 
     @inbounds w̃ = W[i, j, k]
-    cᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
-    cᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
+    side =  upwind_direction(ũ)
+    cᴿ   = _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, c)
 
-    return Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
+    return Azᶜᶜᶠ(i, j, k, grid) * w̃ * cᴿ
 end
