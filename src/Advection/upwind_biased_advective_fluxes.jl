@@ -100,6 +100,9 @@ end
 ##### Tracer advection operators
 #####
 
+struct  LeftUpwind end
+struct RightUpwind end
+
 # Upwind interpolate -> choose _left_biased if u > 0 and _right_biased if u < 0
 for (d, ξ) in enumerate((:x, :y, :z))
     code = [:ᵃ, :ᵃ, :ᵃ]
@@ -117,9 +120,6 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
     end
 end
-    
-struct  LeftUpwind end
-struct RightUpwind end
 
 @inline upwind_direction(u) = ifelse(u > 0, LeftUpwind(), RightUpwind())
 
