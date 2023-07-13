@@ -9,7 +9,10 @@ const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
 
 @inline upwind_biased_product(ũ, ψᴸ, ψᴿ) = ((ũ + abs(ũ)) * ψᴸ + (ũ - abs(ũ)) * ψᴿ) / 2
 
-@inline sign_val(u) = Val(Int(sign(u)))
+struct LeftUpwind end
+struct RightUpwind end
+
+@inline sign_val(u) = ifelse(u > 0, LeftUpwind(), RightUpwind())
 
 # Upwind interpolate -> choose _left_biased if u > 0 and _right_biased if u < 0
 for (d, ξ) in enumerate((:x, :y, :z))
@@ -24,9 +27,8 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
         @eval begin
             @inline $alt_interp(i, j, k, grid, u, args...) = $alt_interp(i, j, k, grid, sign_val(u), args...)
-            @inline $alt_interp(i, j, k, grid, ::Val{0},  args...) =  $alt_left_interp(i, j, k, grid, args...)
-            @inline $alt_interp(i, j, k, grid, ::Val{1},  args...) =  $alt_left_interp(i, j, k, grid, args...)
-            @inline $alt_interp(i, j, k, grid, ::Val{-1}, args...) = $alt_right_interp(i, j, k, grid, args...)
+            @inline $alt_interp(i, j, k, grid, ::LeftUpwind,  args...) =  $alt_left_interp(i, j, k, grid, args...)
+            @inline $alt_interp(i, j, k, grid, ::RightUpwind, args...) = $alt_right_interp(i, j, k, grid, args...)
         end
     end
 end
