@@ -57,29 +57,29 @@ end
     v_shared = @localmem FT (N+2halo[1], 2, 2)
     c_shared = @localmem FT (N+2halo[1], 1, 1)
 
-    us = velocities.u # DisplacedSharedArray(u_shared, - i + halo[1], - j + 1, - k + 1)
-    vs = velocities.v # DisplacedSharedArray(v_shared, - i + halo[1], - j + 1, - k + 1)
-    # cs = DisplacedSharedArray(c_shared, - i + halo[1], - j + 1, - k + 1)
+    us = DisplacedSharedArray(u_shared, - i + halo[1], - j + 1, - k + 1)
+    vs = DisplacedSharedArray(v_shared, - i + halo[1], - j + 1, - k + 1)
+    cs = DisplacedSharedArray(c_shared, - i + halo[1], - j + 1, - k + 1)
 
-    # @inbounds us[is+halo[1], 1, 1] = velocities.u[i, j, k]
-    # @inbounds vs[is+halo[1], 1, 1] = velocities.v[i, j, k]
-    # @inbounds us[is+halo[1], 1, 2] = velocities.u[i, j, k+1]
-    # @inbounds vs[is+halo[1], 1, 2] = velocities.v[i, j, k+1]
-    # @inbounds us[is+halo[1], 2, 1] = velocities.u[i, j+1, k]
-    # @inbounds vs[is+halo[1], 2, 1] = velocities.v[i, j+1, k]
-    # @inbounds us[is+halo[1], 2, 2] = velocities.u[i, j+1, k+1]
-    # @inbounds vs[is+halo[1], 2, 2] = velocities.v[i, j+1, k+1]
+    @inbounds us[is+halo[1], 1, 1] = velocities.u[i, j, k]
+    @inbounds vs[is+halo[1], 1, 1] = velocities.v[i, j, k]
+    @inbounds us[is+halo[1], 1, 2] = velocities.u[i, j, k+1]
+    @inbounds vs[is+halo[1], 1, 2] = velocities.v[i, j, k+1]
+    @inbounds us[is+halo[1], 2, 1] = velocities.u[i, j+1, k]
+    @inbounds vs[is+halo[1], 2, 1] = velocities.v[i, j+1, k]
+    @inbounds us[is+halo[1], 2, 2] = velocities.u[i, j+1, k+1]
+    @inbounds vs[is+halo[1], 2, 2] = velocities.v[i, j+1, k+1]
 
-    # if is <= halo[1]
-    #     @inbounds us[is, 1, 1] = velocities.u[i - halo[1], j, k]
-    #     @inbounds vs[is, 1, 1] = velocities.v[i - halo[1], j, k]
-    # end
-    # if is >= N - halo[1] + 1
-    #     @inbounds us[is+2halo[1], 1, 1] = velocities.u[i + halo[1], j, k]
-    #     @inbounds vs[is+2halo[1], 1, 1] = velocities.v[i + halo[1], j, k]
-    # end
+    if is <= halo[1]
+        @inbounds us[is, 1, 1] = velocities.u[i - halo[1], j, k]
+        @inbounds vs[is, 1, 1] = velocities.v[i - halo[1], j, k]
+    end
+    if is >= N - halo[1] + 1
+        @inbounds us[is+2halo[1], 1, 1] = velocities.u[i + halo[1], j, k]
+        @inbounds vs[is+2halo[1], 1, 1] = velocities.v[i + halo[1], j, k]
+    end
 
-    # @synchronize
+    @synchronize
     
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_x(i, j, k, grid, advection.momentum, (u = us, v = vs))
     @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_x(i, j, k, grid, advection.momentum, (u = us, v = vs))
@@ -102,29 +102,29 @@ end
     v_shared = @localmem FT (2, N+2halo[2], 2)
     c_shared = @localmem FT (1, N+2halo[2], 1)
 
-    us = velocities.u # DisplacedSharedArray(u_shared, - i + 1, - j + halo[2], - k + 1)
-    vs = velocities.v # DisplacedSharedArray(v_shared, - i + 1, - j + halo[2], - k + 1)
-    # cs = DisplacedSharedArray(c_shared, - i + 1, - j + halo[2], - k + 1)
+    us = DisplacedSharedArray(u_shared, - i + 1, - j + halo[2], - k + 1)
+    vs = DisplacedSharedArray(v_shared, - i + 1, - j + halo[2], - k + 1)
+    cs = DisplacedSharedArray(c_shared, - i + 1, - j + halo[2], - k + 1)
 
-    # @inbounds us[1, js+halo[1], 1] = velocities.u[i, j, k]
-    # @inbounds vs[1, js+halo[1], 1] = velocities.v[i, j, k]
-    # @inbounds us[2, js+halo[1], 1] = velocities.u[i+1, j, k]
-    # @inbounds vs[2, js+halo[1], 1] = velocities.v[i+1, j, k]
-    # @inbounds us[1, js+halo[1], 2] = velocities.u[i, j, k+1]
-    # @inbounds vs[1, js+halo[1], 2] = velocities.v[i, j, k+1]
-    # @inbounds us[2, js+halo[1], 2] = velocities.u[i+1, j, k+1]
-    # @inbounds vs[2, js+halo[1], 2] = velocities.v[i+1, j, k+1]
+    @inbounds us[1, js+halo[1], 1] = velocities.u[i, j, k]
+    @inbounds vs[1, js+halo[1], 1] = velocities.v[i, j, k]
+    @inbounds us[2, js+halo[1], 1] = velocities.u[i+1, j, k]
+    @inbounds vs[2, js+halo[1], 1] = velocities.v[i+1, j, k]
+    @inbounds us[1, js+halo[1], 2] = velocities.u[i, j, k+1]
+    @inbounds vs[1, js+halo[1], 2] = velocities.v[i, j, k+1]
+    @inbounds us[2, js+halo[1], 2] = velocities.u[i+1, j, k+1]
+    @inbounds vs[2, js+halo[1], 2] = velocities.v[i+1, j, k+1]
 
-    # if is <= halo[1]
-    #     @inbounds us[1, js, 1] = velocities.u[i, j - halo[2], k]
-    #     @inbounds vs[1, js, 1] = velocities.v[i, j - halo[2], k]
-    # end
-    # if is >= N - halo[1] + 1
-    #     @inbounds us[1, js+2halo[2], 1] = velocities.u[i, j + halo[2], k]
-    #     @inbounds vs[1, js+2halo[2], 1] = velocities.v[i, j + halo[2], k]
-    # end
+    if is <= halo[1]
+        @inbounds us[1, js, 1] = velocities.u[i, j - halo[2], k]
+        @inbounds vs[1, js, 1] = velocities.v[i, j - halo[2], k]
+    end
+    if is >= N - halo[1] + 1
+        @inbounds us[1, js+2halo[2], 1] = velocities.u[i, j + halo[2], k]
+        @inbounds vs[1, js+2halo[2], 1] = velocities.v[i, j + halo[2], k]
+    end
 
-    # @synchronize
+    @synchronize
 
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_y(i, j, k, grid, advection.momentum, (u = us, v = vs))
     @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_y(i, j, k, grid, advection.momentum, (u = us, v = vs))
@@ -146,35 +146,35 @@ end
     w_shared = @localmem FT (2, 2, 2)
     c_shared = @localmem FT (1, 1, N+2halo[3])
 
-    ws = velocities.w #DisplacedSharedArray(w_shared, - i + 1, - j + 1, - k + 1)
-    cs = velocities.u #DisplacedSharedArray(c_shared, - i + 1, - j + 1, - k + halo[3])
+    ws = DisplacedSharedArray(w_shared, - i + 1, - j + 1, - k + 1)
+    cs = DisplacedSharedArray(c_shared, - i + 1, - j + 1, - k + halo[3])
 
-    # @inbounds ws[1, 1, ks+halo[3]] = velocities.w[i, j, k]
-    # @inbounds ws[2, 1, ks+halo[3]] = velocities.w[i, j, k]
-    # @inbounds cs[1, 1, ks+halo[3]] = velocities.u[i, j, k]
+    @inbounds ws[1, 1, ks+halo[3]] = velocities.w[i, j, k]
+    @inbounds ws[2, 1, ks+halo[3]] = velocities.w[i, j, k]
+    @inbounds cs[1, 1, ks+halo[3]] = velocities.u[i, j, k]
 
-    # if ks <= halo[3]
-    #     @inbounds cs[1, 1, ks] = velocities.u[i, j, k - halo[3]]
-    # end
-    # if ks >= N - halo[3] + 1
-    #     @inbounds cs[1, 1, ks+2halo[3]] = velocities.u[i, j, k + halo[3]]
-    # end
+    if ks <= halo[3]
+        @inbounds cs[1, 1, ks] = velocities.u[i, j, k - halo[3]]
+    end
+    if ks >= N - halo[3] + 1
+        @inbounds cs[1, 1, ks+2halo[3]] = velocities.u[i, j, k + halo[3]]
+    end
     
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_z(i, j, k, grid, advection.momentum, (u = cs, v = cs, w = ws))
     
     cs = velocities.v 
 
-    # @inbounds ws[1, 2, ks+halo[3]] = velocities.w[i, j, k]
-    # @inbounds cs[1, 1, ks+halo[3]] = velocities.v[i, j, k]
+    @inbounds ws[1, 2, ks+halo[3]] = velocities.w[i, j, k]
+    @inbounds cs[1, 1, ks+halo[3]] = velocities.v[i, j, k]
     
-    # if ks <= halo[3]
-    #     @inbounds cs[1, 1, ks] = velocities.v[i, j, k - halo[3]]
-    # end
-    # if ks >= N - halo[3] + 1
-    #     @inbounds cs[1, 1, ks+2halo[3]] = velocities.v[i, j, k + halo[3]]
-    # end
+    if ks <= halo[3]
+        @inbounds cs[1, 1, ks] = velocities.v[i, j, k - halo[3]]
+    end
+    if ks >= N - halo[3] + 1
+        @inbounds cs[1, 1, ks+2halo[3]] = velocities.v[i, j, k + halo[3]]
+    end
 
-    # @synchronize
+    @synchronize
 
     @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_z(i, j, k, grid, advection.momentum, (u = cs, v = cs, w = ws))
 
@@ -191,13 +191,13 @@ end
 @inline function advect_tracer_x!(i, j, k, grid, Gⁿ , advection, velocities, cs, tracer, N, is, halo)
 
     cs = tracer
-    # cs[is + halo, 1, 1] = tracer[i, j, k]
-    # if is <= halo
-    #     @inbounds cs[is, 1, 1] = tracer[i - halo, j, k]
-    # end
-    # if is >= N - halo + 1
-    #     @inbounds cs[is + 2halo, 1, 1] = tracer[i + halo, j, k]
-    # end
+    cs[is + halo, 1, 1] = tracer[i, j, k]
+    if is <= halo
+        @inbounds cs[is, 1, 1] = tracer[i - halo, j, k]
+    end
+    if is >= N - halo + 1
+        @inbounds cs[is + 2halo, 1, 1] = tracer[i + halo, j, k]
+    end
 
     @inbounds Gⁿ[i, j, k] -= div_Uc_y(i, j, k, grid, advection, velocities, cs)
 
@@ -207,13 +207,13 @@ end
 @inline function advect_tracer_y!(i, j, k, grid, Gⁿ , advection, velocities, cs, tracer, N, js, halo)
 
     cs = tracer
-    # cs[1, js + halo, 1] = tracer[i, j, k]
-    # if js <= halo
-    #     @inbounds cs[1, js, 1] = tracer[i, j - halo, k]
-    # end
-    # if js >= N - halo + 1
-    #     @inbounds cs[1, js + 2halo, 1] = tracer[i, j + halo, k]
-    # end
+    cs[1, js + halo, 1] = tracer[i, j, k]
+    if js <= halo
+        @inbounds cs[1, js, 1] = tracer[i, j - halo, k]
+    end
+    if js >= N - halo + 1
+        @inbounds cs[1, js + 2halo, 1] = tracer[i, j + halo, k]
+    end
     
     @inbounds Gⁿ[i, j, k] -= div_Uc_y(i, j, k, grid, advection, velocities, cs)
 
@@ -223,13 +223,13 @@ end
 @inline function advect_tracer_z!(i, j, k, grid, Gⁿ , advection, velocities, cs, tracer, N, ks, halo)
     
     cs = tracer
-    # cs[1, 1, ks + halo] = tracer[i, j, k]
-    # if ks <= halo
-    #     @inbounds cs[1, 1, ks] = tracer[i, j, k - halo]
-    # end
-    # if ks >= N - halo + 1
-    #     @inbounds cs[1, 1, ks + 2halo] = tracer[i, j, k + halo]
-    # end
+    cs[1, 1, ks + halo] = tracer[i, j, k]
+    if ks <= halo
+        @inbounds cs[1, 1, ks] = tracer[i, j, k - halo]
+    end
+    if ks >= N - halo + 1
+        @inbounds cs[1, 1, ks + 2halo] = tracer[i, j, k + halo]
+    end
     
     @inbounds Gⁿ[i, j, k] -= div_Uc_z(i, j, k, grid, advection, velocities, cs)
 
