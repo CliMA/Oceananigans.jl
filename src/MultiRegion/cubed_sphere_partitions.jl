@@ -18,7 +18,7 @@ Return a cubed sphere partition with `R` partitions in each horizontal dimension
 panel of the sphere.
 """
 function CubedSpherePartition(; R = 1)
-    # at the moment only CubedSpherePartitions with Rx = Ry are supported
+    # CubedSpherePartitions must have Rx = Ry
     Rx = Ry = R
 
     if R isa Number
@@ -27,7 +27,7 @@ function CubedSpherePartition(; R = 1)
         div = sum(R .* R)
     end
 
-    div < 6 && throw(ArgumentError("Cubed sphere partition requires at least 6 regions per panel!"))
+    @assert mod(div, 6) == 0 "Total number of regions (div = $div) must be a multiple of 6 for a cubed sphere partition."
 
     return CubedSpherePartition(div, Rx, Ry)
 end
@@ -39,8 +39,9 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 Base.length(p::CubedSpherePartition) = p.div
 
 """
-utilities to get the index of the panel the index within the panel and the global index
+utilities to get the index of the panel, the index within the panel, and the global index
 """
+
 @inline div_per_panel(panel_idx, partition::RegularCubedSpherePartition)  = partition.Rx            * partition.Ry
 @inline div_per_panel(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx            * partition.Ry[panel_idx]
 @inline div_per_panel(panel_idx, partition::YRegularCubedSpherePartition) = partition.Rx[panel_idx] * partition.Ry
@@ -63,10 +64,10 @@ utilities to get the index of the panel the index within the panel and the globa
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
-    bottom_left  = pᵢ == 1              && pⱼ == 1              ? true : false
-    bottom_right = pᵢ == p.div_per_side && pⱼ == 1              ? true : false
-    top_left     = pᵢ == 1              && pⱼ == p.div_per_side ? true : false
-    top_right    = pᵢ == p.div_per_side && pⱼ == p.div_per_side ? true : false
+    bottom_left  = pᵢ == 1    && pⱼ == 1    ? true : false
+    bottom_right = pᵢ == p.Rx && pⱼ == 1    ? true : false
+    top_left     = pᵢ == 1    && pⱼ == p.Ry ? true : false
+    top_right    = pᵢ == p.Rx && pⱼ == p.Ry ? true : false
 
     return (; bottom_left, bottom_right, top_left, top_right)
 end
@@ -75,10 +76,10 @@ end
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
-    west  = pᵢ == 1              ? true : false
-    east  = pᵢ == p.div_per_side ? true : false
-    south = pⱼ == 1              ? true : false
-    north = pⱼ == p.div_per_side ? true : false
+    west  = pᵢ == 1    ? true : false 
+    east  = pᵢ == p.Rx ? true : false
+    south = pⱼ == 1    ? true : false
+    north = pⱼ == p.Ry ? true : false
 
     return (; west, east, south, north)
 end
@@ -299,7 +300,7 @@ for vel in (:u, :v), dir in (:east, :west, :north, :south)
 end
 
 function replace_west_u_halos!(u, vbuff, N, H, ::North; signed)
-    view(u, -H+1:0,  :, :) .= + vbuff.west.recv
+    view(u, -H+1:0,  :, :) .= vbuff.west.recv
     return nothing
 end
 
@@ -312,7 +313,7 @@ function replace_west_v_halos!(v, ubuff, N, H, ::North; signed)
 end
 
 function replace_east_u_halos!(u, vbuff, N, H, ::South; signed)
-    view(u, N+1:N+H, :, :) .= + vbuff.east.recv
+    view(u, N+1:N+H, :, :) .= vbuff.east.recv
     return nothing
 end
 
