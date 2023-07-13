@@ -26,7 +26,7 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2) * RotY(π/2) :
                              z_halo = horizontal_halo,
                              z_topology = Bounded,
                              radius = R_Earth,
-                             partition = CubedSpherePartition(; R=1),
+                             partition = CubedSpherePartition(R=1),
                              devices = nothing)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
@@ -192,7 +192,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
                                   radius = R_Earth,
-                                  partition = CubedSpherePartition(; R=1),
+                                  partition = CubedSpherePartition(),
                                   devices = nothing)
 
     Nx, Ny, _ = panel_size
