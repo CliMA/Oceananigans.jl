@@ -217,9 +217,10 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴿ =  _upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, v̂, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    
-    return - v̂ * ζᴿ
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+
+    return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
@@ -227,9 +228,10 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴿ = _upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, û, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return + û * ζᴿ
+    return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
 
 #####
