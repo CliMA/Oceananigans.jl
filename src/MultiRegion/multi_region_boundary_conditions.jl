@@ -295,11 +295,11 @@ end
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
-                                       getregion(cf.parameters, i),
-                                       cf.field_dependencies,
-                                       cf.field_dependencies_indices,
-                                       cf.field_dependencies_interp)
+            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+                                                getregion(cf.parameters, i),
+                                                cf.field_dependencies,
+                                                cf.field_dependencies_indices,
+                                                cf.field_dependencies_interp)
 
 @inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 

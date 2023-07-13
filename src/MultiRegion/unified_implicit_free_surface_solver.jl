@@ -38,7 +38,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
     arch = architecture(mrg) 
-    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
+    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
     storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
@@ -71,7 +71,7 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::Conformal
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver, g, Δt, ∫ᶻQ, η)
     grid = ∫ᶻQ.u.grid
-    M    = length(grid.partition)
+    M = length(grid.partition)
     @apply_regionally compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), grid.partition)
     return nothing
 end
