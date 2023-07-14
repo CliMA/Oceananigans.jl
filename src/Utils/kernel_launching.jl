@@ -107,6 +107,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     if worksize == 0
         return nothing
     end
+    
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), workgroup, worksize, offset) 
 
