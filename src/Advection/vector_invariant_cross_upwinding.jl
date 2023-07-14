@@ -1,4 +1,4 @@
-const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
+const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:CrossAndSelfUpwinding}
 
 #####
 ##### Cross upwinding results in the largest kinetic energy content, 
