@@ -44,7 +44,7 @@ end
 ##### Self Upwinding of Kinetic Energy Gradient 
 #####
 
-const VectorInvariantSelfKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 
 @inline half_ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2 / 2
 
@@ -57,7 +57,7 @@ const VectorInvariantSelfKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, 
 @inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)
 @inline v_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
-@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
+@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
 
     @inbounds û = u[i, j, k]
 
@@ -74,7 +74,7 @@ const VectorInvariantSelfKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, 
     return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
 end
 
-@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVerticalUpwinding, u, v)
+@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
 
     @inbounds v̂ = v[i, j, k]
 
