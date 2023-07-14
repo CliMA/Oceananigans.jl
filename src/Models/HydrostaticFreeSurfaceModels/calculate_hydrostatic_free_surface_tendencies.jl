@@ -27,7 +27,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
@@ -86,14 +86,14 @@ top_tracer_boundary_conditions(grid, tracers) =
     NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+function calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = false)
 
     arch = model.architecture
     grid = model.grid
 
     @info kernel_parameters
 
-    calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
+    calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; only_active_cells)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
     only_active_cells = use_only_active_interior_cells(grid)
@@ -166,7 +166,7 @@ function calculate_free_surface_tendency!(grid, model, kernel_parameters)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters)
+function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; only_active_cells = false)
 
     grid = model.grid
     arch = architecture(grid)
@@ -190,9 +190,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_pa
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-    
-    only_active_cells = use_only_active_interior_cells(grid)
-    
+        
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, u_kernel_args;

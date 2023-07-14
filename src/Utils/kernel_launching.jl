@@ -76,7 +76,7 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-@inline active_cells_work_layout(size, only_active_cells, grid) = heuristic_workgroup(size...), size
+@inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
 @inline use_only_active_interior_cells(grid) = nothing
 
 """
@@ -100,7 +100,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     offset = offsets(workspec)
 
     if !isnothing(only_active_cells)
-        workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
     end
 

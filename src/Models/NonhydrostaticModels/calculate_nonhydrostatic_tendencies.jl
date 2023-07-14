@@ -27,7 +27,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # interior of the domain
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
-    calculate_interior_tendency_contributions!(model, kernel_parameters)
+    calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
                       
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
@@ -49,7 +49,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model, kernel_parameters)
+function calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = false)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -87,8 +87,6 @@ function calculate_interior_tendency_contributions!(model, kernel_parameters)
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
     w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
-    
-    only_active_cells = use_only_active_interior_cells(grid)
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters, calculate_Gu!, 
