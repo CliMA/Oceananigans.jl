@@ -16,7 +16,7 @@ struct VectorInvariant{N, FT, Z, ZS, V, K, D, M} <: AbstractAdvectionScheme{N, F
 
     VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
                               ke_gradient_scheme::K, upwinding::D) where {N, FT, Z, ZS, V, K, D, M} =
-        new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
+        new{N, FT, Z, ZS, V, K, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
 end
 
 """
