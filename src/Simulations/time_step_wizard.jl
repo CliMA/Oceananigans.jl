@@ -71,6 +71,7 @@ function TimeStepWizard(FT=Float64;
        cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
     end
 
+    cfl > 0.8 && @warn("a CFL number > 0.8 can lead to numerical instabilities and is not recommended")
     C = typeof(cell_advection_timescale)
     D = typeof(cell_diffusion_timescale)
 
