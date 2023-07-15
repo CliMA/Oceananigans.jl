@@ -31,7 +31,7 @@ end
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-    bib = CitationBibliography(bib_filepath)
+    bib = CitationBibliography(bib_filepath, style=:authoryear)
 
     #####
     ##### Generate examples
