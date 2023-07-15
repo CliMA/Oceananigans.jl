@@ -97,9 +97,13 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                                       reduced_dimensions,
                                       location)
 
+    if !only_active_cells
+        only_active_cells = nothing
+    end
+    
     offset = offsets(workspec)
 
-    if !isnothing(only_active_cells)
+    if !isnothing(only_active_cells) 
         workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
     end

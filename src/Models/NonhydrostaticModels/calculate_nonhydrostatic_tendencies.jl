@@ -49,7 +49,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = false)
+function calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture

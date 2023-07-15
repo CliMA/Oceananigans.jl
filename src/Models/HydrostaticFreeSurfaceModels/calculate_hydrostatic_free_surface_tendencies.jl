@@ -86,7 +86,7 @@ top_tracer_boundary_conditions(grid, tracers) =
     NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = false)
+function calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
 
     arch = model.architecture
     grid = model.grid
@@ -164,7 +164,7 @@ function calculate_free_surface_tendency!(grid, model, kernel_parameters)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; only_active_cells = false)
+function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; only_active_cells = nothing)
 
     grid = model.grid
     arch = architecture(grid)
