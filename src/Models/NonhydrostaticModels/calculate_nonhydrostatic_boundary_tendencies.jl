@@ -89,18 +89,14 @@ using Oceananigans.Operators: XFlatGrid, YFlatGrid
 # Recompute only on communicating sides 
 function boundary_parameters(S, O, grid, arch) 
     Rx, Ry, _ = arch.ranks
+    Tx, Ty, _ = topology(grid)
 
-    include_x = !isa(grid, XFlatGrid) && (Rx != 1)
-    include_y = !isa(grid, YFlatGrid) && (Ry != 1)
+    include_xᴸ = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_yᴸ = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_xᴿ = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_yᴿ = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    if include_x && include_y
-        return Tuple(KernelParameters(S[i], O[i]) for i in 1:4)
-    elseif include_x && !(include_y)
-        return Tuple(KernelParameters(S[i], O[i]) for i in 1:2:3)
-    elseif !(include_x) && include_y
-        return Tuple(KernelParameters(S[i], O[i]) for i in 2:2:4)
-    else
-        return ()
-    end
+    include_side = (include_xᴸ, include_yᴸ, include_xᴿ, include_yᴿ)
+    return Tuple(KernelParameters(S[i], O[i]) for i in findall(include_side))
 end
 
