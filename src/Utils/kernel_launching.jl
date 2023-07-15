@@ -100,7 +100,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     if !only_active_cells
         only_active_cells = nothing
     end
-    
+
     offset = offsets(workspec)
 
     if !isnothing(only_active_cells) 
@@ -115,7 +115,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), workgroup, worksize, offset) 
 
-    @info "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
+    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
 
     loop!(kernel_args...)
 
