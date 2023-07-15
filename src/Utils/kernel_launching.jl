@@ -111,7 +111,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), workgroup, worksize, offset) 
 
-    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset"
+    @info "Launching kernel $kernel! with worksize $worksize and offsets $offset"
 
     loop!(kernel_args...)
 

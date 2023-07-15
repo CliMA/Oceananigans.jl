@@ -91,8 +91,6 @@ function calculate_hydrostatic_free_surface_tendency_contributions!(model, kerne
     arch = model.architecture
     grid = model.grid
 
-    @info kernel_parameters
-
     calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; only_active_cells)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
