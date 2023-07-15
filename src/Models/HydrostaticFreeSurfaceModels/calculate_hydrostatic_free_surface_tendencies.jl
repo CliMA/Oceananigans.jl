@@ -95,7 +95,6 @@ function calculate_hydrostatic_free_surface_tendency_contributions!(model, kerne
     calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; only_active_cells)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-    only_active_cells = use_only_active_interior_cells(grid)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
