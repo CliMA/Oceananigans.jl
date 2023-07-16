@@ -10,8 +10,8 @@ EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT
 struct VectorInvariant{N, FT, Z, ZS, V, K, D, M} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme   :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil  :: ZS # stencil used for assessing vorticity smoothness
-    vertical_scheme    :: V  # stencil used for assessing divergence smoothness
-    ke_gradient_scheme :: K  # stencil used for assessing divergence smoothness
+    vertical_scheme    :: V  # recontruction scheme for vertical advection
+    ke_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
     upwinding          :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
 
     VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
