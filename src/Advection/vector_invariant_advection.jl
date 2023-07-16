@@ -112,7 +112,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 # halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where {N, FT, Z, ZS, V, D, M} =
+Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, K, D, M}) where {N, FT, Z, ZS, V, K, D, M} =
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),

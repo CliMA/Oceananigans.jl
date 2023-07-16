@@ -44,7 +44,7 @@ end
 ##### Self Upwinding of Kinetic Energy Gradient 
 #####
 
-const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 
 @inline half_ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2 / 2
 
