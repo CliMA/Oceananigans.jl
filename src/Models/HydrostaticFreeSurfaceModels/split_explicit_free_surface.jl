@@ -251,7 +251,7 @@ end
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotopic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
-    Δt_barotopic     :: B
+    Δt_barotropic    :: B
     averaging_kernel :: F
 end
 
@@ -273,9 +273,9 @@ function FixedTimeStepSize(FT::DataType = Float64;
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
-    Δt_barotopic = FT(cfl * Δs / wave_speed)
+    Δt_barotropic = FT(cfl * Δs / wave_speed)
 
-    return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
+    return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
