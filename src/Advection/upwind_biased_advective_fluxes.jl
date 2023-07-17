@@ -127,7 +127,7 @@ end
 
     @inbounds ũ = U[i, j, k]
     side =  upwind_direction(ũ)
-    cᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, upwind_scheme, c)
+    cᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, c)
 
     return Axᶠᶜᶜ(i, j, k, grid) * ũ * cᴿ
 end
