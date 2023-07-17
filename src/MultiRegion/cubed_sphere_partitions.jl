@@ -1,14 +1,35 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
 using DocStringExtensions
+
 import Oceananigans.Fields: replace_horizontal_velocity_halos!
 
-struct CubedSpherePartition{M, P} <: AbstractPartition
-    div :: Int
-     Rx :: M
-     Ry :: P
+struct CubedSpherePartition{M, P, C} <: AbstractPartition
+             div :: Int
+              Rx :: M
+              Ry :: P
+    connectivity :: C
 
-    CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
+    function CubedSpherePartition(div, Rx::M, Ry::P) where {M, P}
+        partition_without_connectivity = new{M, P, Nothing}(div, Rx, Ry, nothing)
+
+        connectivity = []
+
+        for region in 1:div
+             west =  find_west_connectivity(region, partition_without_connectivity)
+             east =  find_east_connectivity(region, partition_without_connectivity)
+            north = find_north_connectivity(region, partition_without_connectivity)
+            south = find_south_connectivity(region, partition_without_connectivity)
+
+            push!(connectivity, (; west, east, north, south))
+        end
+
+        connectivity = Tuple(connectivity)
+
+        connectivity = MultiRegionObject(connectivity)
+
+        return new{M, P, typeof(connectivity)}(div, Rx, Ry, connectivity)
+    end
 end
 
 """
@@ -37,6 +58,120 @@ const XRegularCubedSpherePartition = CubedSpherePartition{<:Number}
 const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 
 Base.length(p::CubedSpherePartition) = p.div
+
+"""
+                                                         [5][6]
+connectivity for a cubed sphere with configuration    [3][4]    or subdisions of this config.
+                                                   [1][2]
+"""
+
+function find_west_connectivity(region, partition::CubedSpherePartition)
+    pᵢ = intra_panel_index_x(region, partition)
+    pⱼ = intra_panel_index_y(region, partition)
+
+    pidx = panel_index(region, partition)
+
+    if pᵢ == 1
+        if mod(pidx, 2) == 0
+            from_side  = East()
+            from_panel = pidx - 1
+            from_pᵢ    = Rx(from_panel, partition)
+            from_pⱼ    = pⱼ
+        else
+            from_side  = North()
+            from_panel = mod(pidx + 3, 6) + 1
+            from_pᵢ    = Rx(from_panel, partition) - pⱼ + 1
+            from_pⱼ    = Ry(from_panel, partition)
+        end
+        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, partition)
+    else
+        from_side = East()
+        from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, partition)
+    end
+
+    return CubedSphereConnectivity(region, from_rank, West(), from_side)
+end
+
+function find_east_connectivity(region, partition::CubedSpherePartition)
+    pᵢ = intra_panel_index_x(region, partition)
+    pⱼ = intra_panel_index_y(region, partition)
+
+    pidx = panel_index(region, partition)
+
+    if pᵢ == partition.Rx
+        if mod(pidx, 2) != 0
+            from_side  = West()
+            from_panel = pidx + 1
+            from_pᵢ    = 1
+            from_pⱼ    = pⱼ
+        else
+            from_side  = South()
+            from_panel = mod(pidx + 1, 6) + 1
+            from_pᵢ    = Rx(from_panel, partition) - pⱼ + 1
+            from_pⱼ    = 1
+        end
+        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, partition)
+    else
+        from_side = West()
+        from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, partition)
+    end
+
+    return CubedSphereConnectivity(region, from_rank, East(), from_side)
+end
+
+function find_south_connectivity(region, partition::CubedSpherePartition)
+    pᵢ = intra_panel_index_x(region, partition)
+    pⱼ = intra_panel_index_y(region, partition)
+
+    pidx = panel_index(region, partition)
+
+    if pⱼ == 1
+        if mod(pidx, 2) != 0
+            from_side  = North()
+            from_panel = mod(pidx + 4, 6) + 1
+            from_pᵢ    = pᵢ
+            from_pⱼ    = Ry(from_panel, partition)
+        else
+            from_side  = East()
+            from_panel = mod(pidx + 3, 6) + 1
+            from_pᵢ    = Rx(from_panel, partition)
+            from_pⱼ    = Ry(from_panel, partition) - pᵢ + 1
+        end
+        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, partition)
+    else
+        from_side = North()
+        from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, partition)
+    end
+
+    return CubedSphereConnectivity(region, from_rank, South(), from_side)
+end
+
+function find_north_connectivity(region, partition::CubedSpherePartition)
+    pᵢ = intra_panel_index_x(region, partition)
+    pⱼ = intra_panel_index_y(region, partition)
+
+    pidx = panel_index(region, partition)
+
+    if pⱼ == partition.Ry
+        if mod(pidx, 2) == 0
+            from_side  = South()
+            from_panel = mod(pidx, 6) + 1
+            from_pᵢ    = pᵢ
+            from_pⱼ    = 1
+        else
+            from_side  = West()
+            from_panel = mod(pidx + 1, 6) + 1
+            from_pᵢ    = 1
+            from_pⱼ    = Rx(from_panel, partition) - pᵢ + 1
+        end
+        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, partition)
+    else
+        from_side = South()
+        from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, partition)
+    end
+
+    return CubedSphereConnectivity(region, from_rank, North(), from_side)
+end
 
 """
 utilities to get the index of the panel, the index within the panel, and the global index
@@ -139,114 +274,10 @@ struct CubedSphereConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide
     CubedSphereConnectivity(rank, from_rank, side, from_side) = new{typeof(side), typeof(from_side)}(rank, from_rank, side, from_side)
 end
 
-function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
-    pᵢ = intra_panel_index_x(region, p)
-    pⱼ = intra_panel_index_y(region, p)
-
-    pidx = panel_index(region, p)
-
-    if pᵢ == 1
-        if mod(pidx, 2) == 0
-            from_side  = East()
-            from_panel = pidx - 1
-            from_pᵢ    = Rx(from_panel, p)
-            from_pⱼ    = pⱼ
-        else
-            from_side  = North()
-            from_panel = mod(pidx + 3, 6) + 1
-            from_pᵢ    = Rx(from_panel, p) - pⱼ + 1
-            from_pⱼ    = Ry(from_panel, p)
-        end
-        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, p)
-    else
-        from_side = East()
-        from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, p)
-    end
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, West(), from_side))
-end
-
-function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
- 
-    pᵢ = intra_panel_index_x(region, p)
-    pⱼ = intra_panel_index_y(region, p)
-
-    pidx = panel_index(region, p)
-
-    if pᵢ == p.Rx
-        if mod(pidx, 2) != 0
-            from_side  = West()
-            from_panel = pidx + 1
-            from_pᵢ    = 1
-            from_pⱼ    = pⱼ
-        else
-            from_side  = South()
-            from_panel = mod(pidx + 1, 6) + 1
-            from_pᵢ    = Rx(from_panel, p) - pⱼ + 1
-            from_pⱼ    = 1
-        end
-        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, p)
-    else
-        from_side = West()
-        from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, p)
-    end
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, East(), from_side))
-end
-
-function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
-    pᵢ = intra_panel_index_x(region, p)
-    pⱼ = intra_panel_index_y(region, p)
-
-    pidx = panel_index(region, p)
-
-    if pⱼ == 1
-        if mod(pidx, 2) != 0
-            from_side  = North()
-            from_panel = mod(pidx + 4, 6) + 1
-            from_pᵢ    = pᵢ
-            from_pⱼ    = Ry(from_panel, p)
-        else
-            from_side  = East()
-            from_panel = mod(pidx + 3, 6) + 1
-            from_pᵢ    = Rx(from_panel, p)
-            from_pⱼ    = Ry(from_panel, p) - pᵢ + 1
-        end
-        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, p)
-    else
-        from_side = North()
-        from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, p)
-    end
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, South(), from_side))
-end
-
-function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
-    pᵢ = intra_panel_index_x(region, p)
-    pⱼ = intra_panel_index_y(region, p)
-
-    pidx = panel_index(region, p)
-
-    if pⱼ == p.Ry
-        if mod(pidx, 2) == 0
-            from_side  = South()
-            from_panel = mod(pidx, 6) + 1
-            from_pᵢ    = pᵢ
-            from_pⱼ    = 1
-        else    
-            from_side  = West()
-            from_panel = mod(pidx + 1, 6) + 1
-            from_pᵢ    = 1
-            from_pⱼ    = Rx(from_panel, p) - pᵢ + 1
-        end
-        from_rank = rank_from_panel_idx(from_pᵢ, from_pⱼ, from_panel, p)
-    else
-        from_side = South()
-        from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, p)
-    end
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, North(), from_side))
-end
+inject_west_boundary(region, p::CubedSpherePartition, global_bc) = MultiRegionCommunicationBoundaryCondition(p.connectivity[region].west)
+inject_east_boundary(region, p::CubedSpherePartition, global_bc) = MultiRegionCommunicationBoundaryCondition(p.connectivity[region].east)
+inject_south_boundary(region, p::CubedSpherePartition, global_bc) = MultiRegionCommunicationBoundaryCondition(p.connectivity[region].south)
+inject_north_boundary(region, p::CubedSpherePartition, global_bc) = MultiRegionCommunicationBoundaryCondition(p.connectivity[region].north)
 
 "Trivial connectivities are East ↔ West, North ↔ South. Anything else is referred to as non-trivial."
 const NonTrivialConnectivity = Union{CubedSphereConnectivity{East, South}, CubedSphereConnectivity{East, North},
