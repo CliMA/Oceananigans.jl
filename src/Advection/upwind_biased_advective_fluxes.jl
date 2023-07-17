@@ -115,6 +115,11 @@ for (d, ξ) in enumerate((:x, :y, :z))
         alt_right_interp = Symbol(:_right_biased_interpolate_, ξ, code...)
 
         @eval begin
+            @inline function $alt_interp(i, j, k, grid, u, args...)
+                side =  upwind_direction(u)
+                return $alt_interp(i, j, k, grid, side, args...)
+            end
+
             @inline $alt_interp(i, j, k, grid,  ::LeftUpwind,  args...) =  $alt_left_interp(i, j, k, grid, args...)
             @inline $alt_interp(i, j, k, grid, ::RightUpwind,  args...) = $alt_right_interp(i, j, k, grid, args...)
         end
@@ -135,7 +140,7 @@ end
 @inline function advective_tracer_flux_y(i, j, k, grid, scheme::UpwindScheme, V, c)
 
     @inbounds ṽ = V[i, j, k]
-    side =  upwind_direction(ũ)
+    side =  upwind_direction(ṽ)
     cᴿ   = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, c)
 
     return Ayᶜᶠᶜ(i, j, k, grid) * ṽ * cᴿ
@@ -144,7 +149,7 @@ end
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme::UpwindScheme, W, c)
 
     @inbounds w̃ = W[i, j, k]
-    side =  upwind_direction(ũ)
+    side =  upwind_direction(w̃)
     cᴿ   = _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, c)
 
     return Azᶜᶜᶠ(i, j, k, grid) * w̃ * cᴿ
