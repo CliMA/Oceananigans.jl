@@ -294,7 +294,7 @@ end
 end
 
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = 200, 
+                               substeps = nothing, 
                                cfl      = nothing,
                                grid     = nothing,
                                fixed_Δt = nothing,
