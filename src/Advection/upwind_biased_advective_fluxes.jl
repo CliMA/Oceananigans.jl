@@ -126,7 +126,6 @@ end
 @inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c) 
 
     @inbounds ũ = U[i, j, k]
-    
     side =  upwind_direction(ũ)
     cᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, upwind_scheme, c)
 
