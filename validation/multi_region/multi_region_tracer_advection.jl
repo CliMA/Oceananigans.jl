@@ -25,7 +25,7 @@ function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
     x₀ = λnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Face(), Center())
     y₀ = φnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Center(), Face())
     θ₀ = 1
-    R₀ = 10
+    R₀ = 37.5
     
     θᵢ(x, y, z) = θ₀*exp(-((x - x₀)^2 + (y - y₀)^2)/(R₀^2))
     set!(model, θ = θᵢ)
