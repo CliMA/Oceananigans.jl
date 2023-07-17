@@ -106,7 +106,7 @@ function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
                                                  Iᴾᴬᴿ, 
                                                  drift_velocities)
 
-    model = ModelType(; grid, biogeochemistry)
+    model = ModelType(; grid, biogeochemistry, momentum_advection = VectorInvariant())
     set!(model, P = 1)
 
     @test :P in keys(model.tracers)
