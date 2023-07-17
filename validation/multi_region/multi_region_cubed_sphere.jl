@@ -85,8 +85,6 @@ function multi_region_cubed_sphere_plots()
     
     c = CenterField(grid)
     
-    print(grid.φ)
-    
     set!(c, (x, y, z) -> y)
     colorrange = (-90, 90)
     colormap = :balance
