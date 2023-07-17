@@ -6,7 +6,6 @@ using Statistics
 using Oceananigans.BoundaryConditions
 using Oceananigans.Distributed    
 using Random
-using GLMakie
 
 # Run with 
 #
@@ -65,43 +64,13 @@ function run_simulation(nx, ny, arch, topo)
     MPI.Barrier(MPI.COMM_WORLD)
 end
 
-# Produce a video for variable `var`
-function visualize_simulation(var)
-    iter = Observable(1)
-
-    v = Vector(undef, 4)
-    V = Vector(undef, 4)
-    x = Vector(undef, 4)
-    y = Vector(undef, 4)
-
-    for r in 1:4
-        v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(r-1).jld2", var)
-        nx, ny, _ = size(v[r])
-        V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
-
-        x[r] = xnodes(v[r])
-        y[r] = ynodes(v[r])
-    end
-
-    fig = Figure()
-    ax = Axis(fig[1, 1])
-    for r in 1:4
-        heatmap!(ax, x[r], y[r], V[r], colorrange = (-1.0, 1.0))
-    end
-
-    GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
-        @info "step $i"; 
-        iter[] = i; 
-    end
-end
-
 MPI.Init()
 
 topo = (Periodic, Periodic, Bounded)
 
 Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-Rx = 2
-Ry = 2
+Rx = 4
+Ry = 1
 
 @assert Nranks == 4
 
@@ -118,12 +87,49 @@ ny = [56, 128-56][arch.local_index[2]]
 run_simulation(nx, ny, arch, topo)
 
 # Visualize the plane
-if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    visualize_simulation("u")
-    visualize_simulation("v")
-    visualize_simulation("ζ")
-    visualize_simulation("c")
+# Produce a video for variable `var`
+try 
+    using GLMakie
+
+    function visualize_simulation(var)
+        iter = Observable(1)
+
+        v = Vector(undef, 4)
+        V = Vector(undef, 4)
+        x = Vector(undef, 4)
+        y = Vector(undef, 4)
+
+        for r in 1:4
+            v[r] = FieldTimeSeries("mpi_hydrostatic_turbulence_rank$(r-1).jld2", var)
+            nx, ny, _ = size(v[r])
+            V[r] = @lift(interior(v[r][$iter], 1:nx, 1:ny, 1))
+
+            x[r] = xnodes(v[r])
+            y[r] = ynodes(v[r])
+        end
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        for r in 1:4
+            heatmap!(ax, x[r], y[r], V[r], colorrange = (-1.0, 1.0))
+        end
+
+        GLMakie.record(fig, "hydrostatic_test_" * var * ".mp4", 1:length(v[1].times), framerate = 11) do i
+            @info "step $i"; 
+            iter[] = i; 
+        end
+    end
+
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        visualize_simulation("u")
+        visualize_simulation("v")
+        visualize_simulation("ζ")
+        visualize_simulation("c")
+    end
+catch err
+    @info err
 end
+
 
 MPI.Barrier(MPI.COMM_WORLD)
 MPI.Finalize()
