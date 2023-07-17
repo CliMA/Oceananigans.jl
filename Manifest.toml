@@ -5,13 +5,8 @@ manifest_format = "2.0"
 project_hash = "9044a5920a57a78e707ac7490810d9c46b9bc546"
 
 [[deps.AbstractFFTs]]
-<<<<<<< HEAD
 deps = ["ChainRulesCore", "LinearAlgebra"]
 git-tree-sha1 = "cad4c758c0038eea30394b1b671526921ca85b21"
-=======
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "8bc0aaec0ca548eb6cf5f0d7d16351650c1ee956"
->>>>>>> origin/ss/fix_split_explicit
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "1.4.0"
 
@@ -116,7 +111,6 @@ git-tree-sha1 = "5248d9c45712e51e27ba9b30eebec65658c6ce29"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 version = "0.6.0+0"
 
-<<<<<<< HEAD
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
 git-tree-sha1 = "e30f2f4e20f7f186dc36529910beaedc60cfa644"
@@ -129,8 +123,6 @@ git-tree-sha1 = "2fba81a302a7be671aefe194f0525ef231104e7f"
 uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 version = "0.1.8"
 
-=======
->>>>>>> origin/ss/fix_split_explicit
 [[deps.CommonDataModel]]
 deps = ["CFTime", "DataStructures", "Dates", "Preferences", "Printf"]
 git-tree-sha1 = "2678b3fc170d582655a14d22867b031b6e43c2d4"
@@ -243,15 +235,9 @@ version = "0.1.5"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Scratch", "TimerOutputs", "UUIDs"]
-<<<<<<< HEAD
 git-tree-sha1 = "72b2e3c2ba583d1a7aa35129e56cf92e07c083e3"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
 version = "0.21.4"
-=======
-git-tree-sha1 = "d60b5fe7333b5fa41a0378ead6614f1ab51cf6d0"
-uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.21.3"
->>>>>>> origin/ss/fix_split_explicit
 
 [[deps.Glob]]
 git-tree-sha1 = "97285bbd5230dd766e9ef6749b80fc617126d496"
@@ -285,15 +271,12 @@ version = "2023.1.0+0"
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
-<<<<<<< HEAD
 [[deps.InverseFunctions]]
 deps = ["Test"]
 git-tree-sha1 = "eabe3125edba5c9c10b60a160b1779a000dc8b29"
 uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
 version = "0.1.11"
 
-=======
->>>>>>> origin/ss/fix_split_explicit
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
@@ -338,15 +321,9 @@ version = "0.9.7"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-<<<<<<< HEAD
 git-tree-sha1 = "8695a49bfe05a2dc0feeefd06b4ca6361a018729"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
 version = "6.1.0"
-=======
-git-tree-sha1 = "7d5788011dd273788146d40eb5b1fbdc199d0296"
-uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "6.0.1"
->>>>>>> origin/ss/fix_split_explicit
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
