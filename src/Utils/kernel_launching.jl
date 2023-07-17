@@ -76,14 +76,14 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-@inline active_cells_work_layout(size, only_active_cells, grid) = heuristic_workgroup(size...), size
+@inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
 @inline use_only_active_interior_cells(grid) = nothing
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
 
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`. kernels run on the defaul stream
+over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
 """
 function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
@@ -99,18 +99,19 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     offset = offsets(workspec)
 
-    if !isnothing(only_active_cells)
-        workgroup, worksize = active_cells_work_layout(worksize, only_active_cells, grid) 
+    if !isnothing(only_active_cells) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
     end
 
     if worksize == 0
         return nothing
     end
+    
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), workgroup, worksize, offset) 
 
-    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset"
+    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
 
     loop!(kernel_args...)
 

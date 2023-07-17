@@ -67,7 +67,6 @@ end
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
-            calculate_only_active_cells_tendencies = false
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -96,22 +95,22 @@ Keyword arguments
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, 0, 1),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                          coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple()
+                                      clock = Clock{eltype(grid)}(0, 0, 1),
+                         momentum_advection = CenteredSecondOrder(),
+                           tracer_advection = CenteredSecondOrder(),
+                                   buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                   coriolis = nothing,
+                               free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
+                        forcing::NamedTuple = NamedTuple(),
+                                    closure = nothing,
+            boundary_conditions::NamedTuple = NamedTuple(),
+                                    tracers = (:T, :S),
+              particles::ParticlesOrNothing = nothing,
+      biogeochemistry::AbstractBGCOrNothing = nothing,
+                                 velocities = nothing,
+                                   pressure = nothing,
+                         diffusivity_fields = nothing,
+                           auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small

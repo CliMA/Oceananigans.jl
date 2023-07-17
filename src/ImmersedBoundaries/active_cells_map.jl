@@ -16,8 +16,8 @@ struct SurfaceMap end
 @inline use_only_active_surface_cells(grid::AbstractGrid)   = nothing
 @inline use_only_active_surface_cells(grid::ActiveCellsIBG) = SurfaceMap()
 
-@inline active_cells_work_layout(size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.active_cells_interior), 256), length(grid.active_cells_interior)
-@inline active_cells_work_layout(size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.active_cells_surface),  256), length(grid.active_cells_surface)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.active_cells_interior), 256), length(grid.active_cells_interior)
+@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.active_cells_surface),  256), length(grid.active_cells_surface)
 
 @inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_interior[idx])
 @inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_surface[idx])

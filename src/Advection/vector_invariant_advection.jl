@@ -7,21 +7,23 @@ struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
-struct VectorInvariant{N, FT, Z, ZS, V, D, M} <: AbstractAdvectionScheme{N, FT}
-    vorticity_scheme  :: Z  # reconstruction scheme for vorticity flux
-    vorticity_stencil :: ZS # stencil used for assessing vorticity smoothness
-    vertical_scheme   :: V  # stencil used for assessing divergence smoothness
-    upwinding         :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
+struct VectorInvariant{N, FT, Z, ZS, V, K, D, M} <: AbstractAdvectionScheme{N, FT}
+    vorticity_scheme   :: Z  # reconstruction scheme for vorticity flux
+    vorticity_stencil  :: ZS # stencil used for assessing vorticity smoothness
+    vertical_scheme    :: V  # recontruction scheme for vertical advection
+    ke_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
+    upwinding          :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
 
     VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                              upwinding::D) where {N, FT, Z, ZS, V, D, M} =
-        new{N, FT, Z, ZS, V, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
+                              ke_gradient_scheme::K, upwinding::D) where {N, FT, Z, ZS, V, K, D, M} =
+        new{N, FT, Z, ZS, V, K, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
 end
 
 """
     VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                       vorticity_stencil  = VelocityStencil(),
-                      vertical_scheme    = EnergyConservingScheme()) where {N, FT}
+                      vertical_scheme    = EnergyConservingScheme(),
+                      ke_gradient_scheme = vertical_scheme) where {N, FT}
                
 Construct a vector invariant momentum advection scheme of order `N * 2 - 1`.
 
@@ -34,7 +36,8 @@ Keyword arguments
 - `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil()`)
-- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence and kinetic energy gradient. Defaults to `EnergyConservingScheme()`.)
+- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence. Defaults to `EnergyConservingScheme()`.
+- `ke_gradient_scheme`: Scheme used for kinetic energy gradient. Defaults to `vertical_advection`.
 - `upwinding`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `CrossAndSelfUpwinding()`, `OnlySelfUpwinding()`, and `VelocityUpwinding()` (defaults to `OnlySelfUpwinding()`).
 - `multi_dimensional_stencil` : if `true`, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
@@ -77,18 +80,20 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
+                           ke_gradient_scheme   = vertical_scheme,
                            upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
                            multi_dimensional_stencil = false) where {N, FT}
         
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, upwinding)
+    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
 end
 
-const VectorInvariantEnergyConserving         = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
-const VectorInvariantEnstrophyConserving      = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
-const VectorInvariantVerticalEnergyConserving = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnstrophyConserving        = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
+const VectorInvariantVerticalEnergyConserving   = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantKEGradientEnergyConserving = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:EnergyConservingScheme}
 
 const VectorInvariantUpwindVorticity  = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const MultiDimensionalVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 
 Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
@@ -107,10 +112,11 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 # halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where {N, FT, Z, ZS, V, D, M} =
+Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, K, D, M}) where {N, FT, Z, ZS, V, K, D, M} =
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
+                                  Adapt.adapt(to, scheme.ke_gradient_scheme),
                                   Adapt.adapt(to, scheme.upwinding))
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
@@ -152,8 +158,8 @@ end
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
 
 #####
 ##### Conservative vertical advection 

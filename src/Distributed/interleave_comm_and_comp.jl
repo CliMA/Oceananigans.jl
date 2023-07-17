@@ -31,14 +31,14 @@ interior_tendency_kernel_parameters(grid, ::BlockingDistributedArch) = :xyz
 function interior_tendency_kernel_parameters(grid, arch)
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
-
+    Tx, Ty, _ = topology(grid)
     Nx, Ny, Nz = size(grid)
     
-    Sx = Rx == 1 ? Nx : Nx - 2Hx
-    Sy = Ry == 1 ? Ny : Ny - 2Hy
+    Sx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
+    Sy = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
-    Ox = Rx == 1 ? 0 : Hx
-    Oy = Ry == 1 ? 0 : Hy
+    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
+    Oy = Ry == 1 || Tx == RightConnected ? 0 : Hy
      
     return KernelParameters((Sx, Sy, Nz), (Ox, Oy, 0))
 end

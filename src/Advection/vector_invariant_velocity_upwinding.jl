@@ -1,4 +1,4 @@
-const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:VelocityUpwinding}
+const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:VelocityUpwinding}
 
 #####
 ##### Velocity upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
@@ -56,11 +56,13 @@ end
 ##### Velocity Upwinding of Kinetic Energy gradient
 #####
 
+const VectorInvariantVelocityKEGradientUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:VelocityUpwinding}
+
 @inline function upwinded_u²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
 
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², u)
+    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², u)
+    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², u)
 
     return ifelse(û > 0, Uᴸ, Uᴿ)
 end
@@ -68,8 +70,8 @@ end
 @inline function upwinded_v²ᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, half_ϕ², v)
+    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², v)
+    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², v)
 
     return ifelse(v̂ > 0, Vᴸ, Vᴿ)
 end
@@ -80,7 +82,7 @@ end
 @inline reconstructed_v²ᶜᶜᶜ(i, j, k, grid, scheme, v) = 
      _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.upwinding.cross_scheme, half_ϕ², v)
 
-@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
+@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantVelocityKEGradientUpwinding, u, v)
 
     δKu = δxᶠᵃᵃ(i, j, k, grid,      upwinded_u²ᶜᶜᶜ, scheme, u)
     δKv = δxᶠᵃᵃ(i, j, k, grid, reconstructed_v²ᶜᶜᶜ, scheme, v)
@@ -88,7 +90,7 @@ end
     return (δKu + δKv) / Δxᶠᶜᶜ(i, j, k, grid)
 end
 
-@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVelocityVerticalUpwinding, u, v)
+@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantVelocityKEGradientUpwinding, u, v)
 
     δKu = δyᵃᶠᵃ(i, j, k, grid,      upwinded_u²ᶜᶜᶜ, scheme, u)
     δKv = δyᵃᶠᵃ(i, j, k, grid, reconstructed_v²ᶜᶜᶜ, scheme, v)
