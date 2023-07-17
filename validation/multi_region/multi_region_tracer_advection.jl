@@ -4,10 +4,10 @@ using Oceananigans.Utils: Iterate,
                           get_lat_lon_nodes_and_vertices,
                           get_cartesian_nodes_and_vertices
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using .CubedSpherePlot: heatsphere!
 using GeoMakie, GLMakie
 GLMakie.activate!()
 
+include("multi_region_cubed_sphere.jl")
 
 function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
 
@@ -49,8 +49,8 @@ function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
     run!(simulation)
     
     return nothing
+    
 end 
-
 
 function test_multi_region_tracer_advection()
 
@@ -82,13 +82,12 @@ function test_multi_region_tracer_advection()
 
     frames = 1:length(tracer_fields)
     
-    CairoMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 1) do i
+    GLMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 1) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
         n[] = i
     end
     
 end
-
 
 test_multi_region_tracer_advection()
