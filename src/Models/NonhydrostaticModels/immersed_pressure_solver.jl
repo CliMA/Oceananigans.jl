@@ -124,12 +124,12 @@ struct MITgcmPreconditioner end
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = @inbounds Axᶠᶜᶜ(i, j, k, grid) / Δxᶠᶜᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = @inbounds Ayᶠᶜᶜ(i, j, k, grid) / Δyᶠᶜᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = @inbounds Azᶠᶜᶜ(i, j, k, grid) / Δzᶠᶜᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ax⁺(i, j, k, grid) = @inbounds Axᶠᶜᶜ(i+1, j, k, grid) / Δxᶠᶜᶜ(i+1, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁺(i, j, k, grid) = @inbounds Ayᶠᶜᶜ(i, j+1, k, grid) / Δyᶠᶜᶜ(i, j+1, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Az⁺(i, j, k, grid) = @inbounds Azᶠᶜᶜ(i, j, k+1, grid) / Δzᶠᶜᶜ(i, j, k+1, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i, j, k, grid) / Δxᶠᶜᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j, k, grid) / Δyᶜᶠᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k, grid) / Δzᶜᶜᶠ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) / Δxᶠᶜᶜ(i+1, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) / Δyᶜᶠᶜ(i, j+1, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) / Δzᶜᶜᶠ(i, j, k+1, grid) / Vᶜᶜᶜ(i, j, k, grid)
 
 @inline Ac(i, j, k, grid) = - (Ax⁻(i, j, k, grid) +
                                Ax⁺(i, j, k, grid) +
