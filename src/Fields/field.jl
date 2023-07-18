@@ -545,9 +545,6 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-
-check_version_larger_than_7() = VERSION.minor > 7
-
 initialize_reduced_field!(::SumReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
 initialize_reduced_field!(::ProdReduction,    f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
 initialize_reduced_field!(::AllReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
