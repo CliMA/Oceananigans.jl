@@ -25,7 +25,7 @@ julia> Pkg.add("Oceananigans")
 ```
 
 !!! compat "Julia 1.9 is required"
-    While most scripts will run on Julia 1.6, 1.7, or 1.8, Oceananigans is continuously tested _only_ on Julia 1.9.
+   Oceananigans requires Julia 1.9 or later.
 
 If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
