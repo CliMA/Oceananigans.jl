@@ -263,34 +263,34 @@ end
 #####
 
 @inline getregion(fc::FieldBoundaryConditions, i) = 
-        FieldBoundaryConditions(_getregion(fc.west, i),
-                                _getregion(fc.east, i),
-                                _getregion(fc.south, i),
-                                _getregion(fc.north, i),
-                                _getregion(fc.bottom, i),
-                                _getregion(fc.top, i),
-                                fc.immersed)
+            FieldBoundaryConditions(_getregion(fc.west, i),
+                                    _getregion(fc.east, i),
+                                    _getregion(fc.south, i),
+                                    _getregion(fc.north, i),
+                                    _getregion(fc.bottom, i),
+                                    _getregion(fc.top, i),
+                                    fc.immersed)
 
 @inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
 @inline getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-    ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
-                                           _getregion(cf.parameters, i),
-                                           cf.field_dependencies,
-                                           cf.field_dependencies_indices,
-                                           cf.field_dependencies_interp)
+            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+                                                _getregion(cf.parameters, i),
+                                                cf.field_dependencies,
+                                                cf.field_dependencies_indices,
+                                                cf.field_dependencies_interp)
 
 @inline getregion(df::DiscreteBoundaryFunction, i) =
-    DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
+            DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
 
 @inline _getregion(fc::FieldBoundaryConditions, i) =
-    FieldBoundaryConditions(getregion(fc.west, i),
-                            getregion(fc.east, i),
-                            getregion(fc.south, i),
-                            getregion(fc.north, i),
-                            getregion(fc.bottom, i),
-                            getregion(fc.top, i),
-                            fc.immersed)
+            FieldBoundaryConditions(getregion(fc.west, i),
+                                    getregion(fc.east, i),
+                                    getregion(fc.south, i),
+                                    getregion(fc.north, i),
+                                    getregion(fc.bottom, i),
+                                    getregion(fc.top, i),
+                                    fc.immersed)
 
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
@@ -308,3 +308,8 @@ validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       
 validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing
 validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing
 validate_boundary_condition_topology(::MultiRegionObject, topo::Flat,     side) = nothing
+
+inject_west_boundary(connectivity, global_bc)  = connectivity.west == nothing  ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.west)
+inject_east_boundary(connectivity, global_bc)  = connectivity.east == nothing  ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.east)
+inject_south_boundary(connectivity, global_bc) = connectivity.south == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.south)
+inject_north_boundary(connectivity, global_bc) = connectivity.north == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.north)

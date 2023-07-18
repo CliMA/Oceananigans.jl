@@ -721,3 +721,5 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
+
+grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper

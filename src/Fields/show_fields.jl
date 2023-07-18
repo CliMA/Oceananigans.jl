@@ -3,25 +3,26 @@ using Oceananigans.Grids: size_summary
 using Oceananigans.Utils: prettysummary
 using Oceananigans.BoundaryConditions: bc_str
 
+import Oceananigans.Grids: grid_name
+
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
-get_grid_name(field) = typeof(field.grid).name.wrapper
+grid_name(field::Field) = grid_name(field.grid)
 
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
     prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
 
-    grid_name = get_grid_name(field)
     reduced_dims = reduced_dimensions(field)
 
     suffix = reduced_dims === () ?
-        string(" on ", grid_name, " on ", summary(architecture(field))) :
+        string(" on ", grid_name(field), " on ", summary(architecture(field))) :
         string(" reduced over dims = ", reduced_dims,
-               " on ", grid_name, " on ", summary(architecture(field)))
+               " on ", grid_name(field), " on ", summary(architecture(field)))
 
     return string(prefix, suffix)
 end

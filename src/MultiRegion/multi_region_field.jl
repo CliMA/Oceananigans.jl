@@ -132,7 +132,7 @@ FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
     construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
-    construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), indices; kwargs...)
+    construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               mrg::MultiRegionGrid,
@@ -151,7 +151,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                            immersed = reg_bcs.immersed)
 end
 
-function inject_regional_bcs(grid, region, partition, loc, indices;   
+function inject_regional_bcs(grid, connectivity, loc, indices;   
                               west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                               east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                              south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
@@ -160,10 +160,10 @@ function inject_regional_bcs(grid, region, partition, loc, indices;
                                top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
-    west  = inject_west_boundary(region, partition, west)
-    east  = inject_east_boundary(region, partition, east)
-    south = inject_south_boundary(region, partition, south)
-    north = inject_north_boundary(region, partition, north)
+    west  = inject_west_boundary(connectivity, west)
+    east  = inject_east_boundary(connectivity, east)
+    south = inject_south_boundary(connectivity, south)
+    north = inject_north_boundary(connectivity, north)
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end

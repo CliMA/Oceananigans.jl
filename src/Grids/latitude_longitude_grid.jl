@@ -540,7 +540,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     if grid isa XRegLatLonGrid
         offsets     = grid.φᵃᶜᵃ.offsets[1]
         metric_size = length(grid.φᵃᶜᵃ)
-    else    
+    else
         offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
         metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
     end
@@ -554,7 +554,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     if grid isa YRegLatLonGrid
         Δyᶠᶜ = FT(0.0)
         Δyᶜᶠ = FT(0.0)
-    else    
+    else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
         Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])

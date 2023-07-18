@@ -23,7 +23,7 @@ Base.summary(p::YPartition)      = "YPartition with [$(["$(p.div[i]) " for i in 
 
 function partition_size(p::EqualYPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert mod(Ny, p.div) == 0 
+    @assert mod(Ny, p.div) == 0
     return Tuple((Nx, Ny ÷ p.div, Nz) for i in 1:length(p))
 end
 
@@ -42,7 +42,7 @@ function partition_extent(p::YPartition, grid)
     return Tuple((x, y = y[i], z = z) for i in 1:length(p))
 end
 
-function partition_topology(p::YPartition, grid) 
+function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
     
     return Tuple((TX, (TY == Periodic ? 
@@ -90,7 +90,7 @@ function reconstruct_extent(mrg, p::YPartition)
     z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
     if cpu_face_constructor_y(mrg.region_grids.regional_objects[1]) isa Tuple
-        y = (cpu_face_constructor_y(mrg.region_grids.regional_objects[1])[1], 
+        y = (cpu_face_constructor_y(mrg.region_grids.regional_objects[1])[1],
              cpu_face_constructor_y(mrg.region_grids.regional_objects[length(p)])[end])
     else
         y = [cpu_face_constructor_y(mrg.region_grids.regional_objects[1])...]
@@ -135,15 +135,15 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
 end
 
 #####
-##### Boundary specific Utils
+##### Boundary-specific Utils
 #####
 
-const YPartitionConnectivity = Union{Connectivity{North, South}, Connectivity{South, North}}
+const YPartitionConnectivity = Union{RegionalConnectivity{North, South}, RegionalConnectivity{South, North}}
 
-inject_west_boundary(region, p::YPartition, bc) = bc 
-inject_east_boundary(region, p::YPartition, bc) = bc
+inject_west_boundary(region, p::YPartition, connectivity, bc) = bc 
+inject_east_boundary(region, p::YPartition, connectivity, bc) = bc
 
-function inject_south_boundary(region, p::YPartition, global_bc) 
+function inject_south_boundary(region, p::YPartition, connectivity, global_bc)
     if region == 1
         typeof(global_bc) <: Union{MCBC, PBC} ?  
             bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), South(), North())) :
@@ -154,7 +154,7 @@ function inject_south_boundary(region, p::YPartition, global_bc)
     return bc
 end
 
-function inject_north_boundary(region, p::YPartition, global_bc) 
+function inject_north_boundary(region, p::YPartition, connectivity, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{MCBC, PBC} ?  
             bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, North(), South())) : 

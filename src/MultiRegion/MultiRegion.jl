@@ -37,6 +37,8 @@ abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, 
 
 abstract type AbstractPartition end
 
+abstract type AbstractConnectivity end
+
 abstract type AbstractRegionSide end
 
 struct West <: AbstractRegionSide end
@@ -44,30 +46,12 @@ struct East <: AbstractRegionSide end
 struct North <: AbstractRegionSide end
 struct South <: AbstractRegionSide end
 
-abstract type AbstractConnectivity end
-
-"""
-    struct Connectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
-
-The connectivity among various regions in a multi-region partition.
-
-$(TYPEDFIELDS)
-"""
-struct Connectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
-    "the current region rank"
-         rank :: Int
-    "the region from which boundary condition comes from"
-    from_rank :: Int
-    "the current region side"
-         side :: S
-    "the side of the region from which boundary condition comes from"
-    from_side :: FS
-end
-
 include("multi_region_utils.jl")
+include("multi_region_connectivity.jl")
 include("x_partitions.jl")
 include("y_partitions.jl")
 include("cubed_sphere_partitions.jl")
+include("cubed_sphere_connectivity.jl")
 include("multi_region_grid.jl")
 include("multi_region_cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")

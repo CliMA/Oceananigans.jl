@@ -1,22 +1,9 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: R_Earth, halo_size, size_summary, total_length, topology
 
-using Rotations
+import Oceananigans.Grids: grid_name
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
-
-"""
-    rotation_from_panel_index(idx)
-
-Return the rotation of each panel for the connectivity described in [`ConformalCubedSphereGrid`](@ref).
-"""
-rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2) * RotY(π/2) :
-                                 idx == 2 ? RotY(π) * RotX(-π/2) :
-                                 idx == 3 ? RotZ(π) :
-                                 idx == 4 ? RotX(π) * RotY(-π/2) :
-                                 idx == 5 ? RotY(π/2) * RotX(π/2) :
-                                 idx == 6 ? RotZ(π/2) * RotX(π) :
-                                 error("invalid panel index")
 
 """
     ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
@@ -137,7 +124,7 @@ of each panel.
 Example
 =======
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
 julia> using Oceananigans
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
@@ -150,38 +137,38 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 We can find out all connectivities of the regions of our grid. For example, to determine the
 connectivites on the South boundary of each region we can call
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
-julia> using Oceananigans.MultiRegion: CubedSphereConnectivity, inject_south_boundary, East, West, South, North
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
+julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, inject_south_boundary, East, West, South, North
 
 julia> for region in 1:length(grid.partition); println("panel ", region, ": ", inject_south_boundary(region, grid.partition, 1).condition); end
-panel 1: CubedSphereConnectivity{South, North}(1, 6, South(), North())
-panel 2: CubedSphereConnectivity{South, East}(2, 6, South(), East())
-panel 3: CubedSphereConnectivity{South, North}(3, 2, South(), North())
-panel 4: CubedSphereConnectivity{South, East}(4, 2, South(), East())
-panel 5: CubedSphereConnectivity{South, North}(5, 4, South(), North())
-panel 6: CubedSphereConnectivity{South, East}(6, 4, South(), East())
+panel 1: CubedSphereRegionalConnectivity{South, North}(1, 6, South(), North())
+panel 2: CubedSphereRegionalConnectivity{South, East}(2, 6, South(), East())
+panel 3: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+panel 4: CubedSphereRegionalConnectivity{South, East}(4, 2, South(), East())
+panel 5: CubedSphereRegionalConnectivity{South, North}(5, 4, South(), North())
+panel 6: CubedSphereRegionalConnectivity{South, East}(6, 4, South(), East())
 ```
 
 Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereConnectivity)
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
 julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North
 
-julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
+julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity
 
 julia> region=3;
 
 julia> inject_west_boundary(region, grid.partition, 1).condition
-CubedSphereConnectivity{West, North}(3, 1, West(), North())
+CubedSphereRegionalConnectivity{West, North}(3, 1, West(), North())
 
 julia> inject_south_boundary(region, grid.partition, 1).condition
-CubedSphereConnectivity{South, North}(3, 2, South(), North())
+CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
 
 julia> inject_east_boundary(region, grid.partition, 1).condition
-CubedSphereConnectivity{East, West}(3, 4, East(), West())
+CubedSphereRegionalConnectivity{East, West}(3, 4, East(), West())
 
 julia> inject_north_boundary(region, grid.partition, 1).condition
-CubedSphereConnectivity{North, West}(3, 5, North(), West())
+CubedSphereRegionalConnectivity{North, West}(3, 5, North(), West())
 ```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
@@ -210,9 +197,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     region_rotation = []
 
     for r in 1:length(partition)
-        # for a whole cube's face (ξ, η) ∈ [-1, 1]x[-1, 1]
-        Lξᵢⱼ = 2 / Rx(r, partition)
-        Lηᵢⱼ = 2 / Ry(r, partition)
+        Lξ_total, Lη_total = 2, 2 # a cube's face has (ξ, η) ∈ [-1, 1] x [-1, 1]
+        Lξᵢⱼ = Lξ_total / Rx(r, partition)
+        Lηᵢⱼ = Lη_total / Ry(r, partition)
 
         pᵢ = intra_panel_index_x(r, partition)
         pⱼ = intra_panel_index_y(r, partition)
@@ -238,7 +225,10 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, region_grids, devices)
+    connectivity = CubedSphereConnectivity(devices, partition)
+
+    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, connectivity, region_grids, devices)
+
 
     ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
     fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
@@ -343,7 +333,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                   devices = nothing)
 
     # only 6-panel partition, i.e. R=1, are allowed when loading a ConformalCubedSphereGrid from file
-    partition = CubedSpherePartition(; R=1)
+    partition = CubedSpherePartition(R = 1)
 
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
@@ -359,7 +349,9 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                         halo = panel_halo,
                                         radius)
 
-    return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
+    connectivity = CubedSphereConnectivity(devices, partition)
+
+    return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
 end
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
@@ -380,8 +372,4 @@ function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT,
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-Base.show(io::IO, mrg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    print(io, "ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
-              "├── grids: $(summary(mrg.region_grids[1])) \n",
-              "├── partitioning: $(summary(mrg.partition)) \n",
-              "└── devices: $(devices(mrg))")
+grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"

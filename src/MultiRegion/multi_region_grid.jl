@@ -1,18 +1,19 @@
-using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
+using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
 import Oceananigans.Distributed: reconstruct_global_grid
 
-struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
+struct MultiRegionGrid{FT, TX, TY, TZ, P, C, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     partition :: P
+    connectivity :: C
     region_grids :: G
     devices :: D
 
-    MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
-                                    region_grids::G, devices::D) where {FT, TX, TY, TZ, P, G, D, A} =
-        new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
+    MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P, connectivity::C,
+                                    region_grids::G, devices::D) where {FT, TX, TY, TZ, P, C, G, D, A} =
+        new{FT, TX, TY, TZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
 @inline isregional(mrg::MultiRegionGrid)        = true
@@ -26,7 +27,7 @@ end
 
 @inline Base.getindex(mrg::MultiRegionGrid, i) = getregion(mrg, i)
 
-@inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
+@inline Base.length(mrg::MultiRegionGrid) = Base.length(mrg.region_grids)
 
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{IBG}}}} where {FT, TX, TY, TZ, P, IBG<:ImmersedBoundaryGrid}
 
@@ -98,17 +99,17 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)
     local_extent = MultiRegionObject(partition_extent(partition, global_grid), devices)
     local_topo   = MultiRegionObject(partition_topology(partition, global_grid), devices)
-    
+
     global_topo  = topology(global_grid)
 
-    FT   = eltype(global_grid)
+    FT = eltype(global_grid)
 
     args = (Reference(global_grid),
-            Reference(arch), 
-            local_topo, 
+            Reference(arch),
+            local_topo,
             local_size,
-            local_extent, 
-            Reference(partition), 
+            local_extent,
+            Reference(partition),
             Iterate(1:length(partition)))
 
     region_grids = construct_regionally(construct_grid, args...)
@@ -116,7 +117,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
     maybe_enable_peer_access!(devices)
 
-    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, region_grids, devices)
+    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, nothing, region_grids, devices)
 end
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, args...)
@@ -228,9 +229,10 @@ Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
+    print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
+              "├── connectivity: $(summary(mrg.connectivity)) \n",
               "└── devices: $(devices(mrg))")
 
 function Base.:(==)(mrg₁::MultiRegionGrid, mrg₂::MultiRegionGrid)
@@ -255,6 +257,7 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(mrg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(mrg, :region_grids), 1), property)
 @inline get_multi_property(mrg::MRG, ::Val{:architecture})           = getfield(mrg, :architecture)
 @inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
+@inline get_multi_property(mrg::MRG, ::Val{:connectivity})           = getfield(mrg, :connectivity)
 @inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
 @inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)
 
