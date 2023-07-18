@@ -53,7 +53,7 @@ const HRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Numbe
 const XYRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 const XZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Any,    <:Number}
 const YZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
-const  RegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+const   RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
 
 regular_dimensions(::XRegRectilinearGrid)  = tuple(1)
 regular_dimensions(::YRegRectilinearGrid)  = tuple(2)
@@ -494,11 +494,3 @@ end
 @inline zspacings(grid::RectilinearGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RectilinearGrid) = true
-
-@inline isxregular(::RectilinearGrid) = false
-@inline isyregular(::RectilinearGrid) = false
-@inline iszregular(::RectilinearGrid) = false
-
-@inline isxregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}) = true
-@inline isyregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
-@inline iszregular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}) = true
