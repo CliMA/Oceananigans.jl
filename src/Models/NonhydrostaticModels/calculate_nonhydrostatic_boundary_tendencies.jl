@@ -1,6 +1,7 @@
 import Oceananigans.Distributed: compute_boundary_tendencies!
 using Oceananigans.Utils: worktuple, offsets
 using Oceananigans.TurbulenceClosures: required_halo_size
+using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::NonhydrostaticModel)
@@ -83,8 +84,6 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
-
-using Oceananigans.Operators: XFlatGrid, YFlatGrid
 
 # Recompute only on communicating sides 
 function boundary_parameters(S, O, grid, arch) 

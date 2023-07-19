@@ -22,8 +22,10 @@ end
                  dir = ".",
                  prefix = "checkpoint",
                  overwrite_existing = false,
+                 verbose = false,
                  cleanup = false,
-                 additional_kwargs...)
+                 properties = [:architecture, :grid, :clock, :coriolis,
+                               :buoyancy, :closure, :timestepper, :particles])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -264,4 +266,3 @@ function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, m
     timestepper.previous_Δt = file["timestepper/previous_Δt"]
     return nothing
 end
-            

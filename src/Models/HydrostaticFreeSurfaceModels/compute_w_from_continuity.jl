@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: device
 using Oceananigans.Grids: halo_size, topology
+using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
-using Oceananigans.Operators: XFlatGrid, YFlatGrid
 
 """
     compute_w_from_continuity!(model)
