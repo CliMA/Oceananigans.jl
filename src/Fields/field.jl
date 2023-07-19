@@ -104,7 +104,7 @@ Keyword arguments
 
 - `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
-  - `boundary_conditions`: If nothing is provided, then field is created using the default
+- `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).
 - `indices`: Used to prescribe where a reduced field lives on. For example, at which `k` index
   does a two-dimensional ``x``-``y`` field lives on. Default: `(:, :, :)`.
