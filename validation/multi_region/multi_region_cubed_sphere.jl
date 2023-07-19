@@ -74,8 +74,8 @@ function heatlatlon!(ax::Axis, field, k=1; kwargs...)
     
 end
 
-heatlatlon!(ax, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatlatlon!, ax, field, k; kwargs...)
-heatsphere!(ax, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatsphere!, ax, field, k; kwargs...)
+heatlatlon!(ax::Axis, field::CubedSphereField, k=1; kwargs...)  = apply_regionally!(heatlatlon!, ax, field, k; kwargs...)
+heatsphere!(ax::Axis3, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatsphere!, ax, field, k; kwargs...)
 
 function multi_region_cubed_sphere_plots()
 
