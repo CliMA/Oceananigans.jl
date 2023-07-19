@@ -131,43 +131,44 @@ julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius
 ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
 ├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── partitioning: CubedSpherePartition with (1 region in each panel)
+├── connectivity: CubedSphereConnectivity
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 
 We can find out all connectivities of the regions of our grid. For example, to determine the
 connectivites on the South boundary of each region we can call
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
-julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, inject_south_boundary, East, West, South, North
+```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: East, West, South, North, CubedSphereRegionalConnectivity)
+julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, South, North
 
-julia> for region in 1:length(grid.partition); println("panel ", region, ": ", inject_south_boundary(region, grid.partition, 1).condition); end
-panel 1: CubedSphereRegionalConnectivity{South, North}(1, 6, South(), North())
-panel 2: CubedSphereRegionalConnectivity{South, East}(2, 6, South(), East())
+julia> for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.connectivity.connections, 3).south); end
+panel 1: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+panel 2: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
 panel 3: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 4: CubedSphereRegionalConnectivity{South, East}(4, 2, South(), East())
-panel 5: CubedSphereRegionalConnectivity{South, North}(5, 4, South(), North())
-panel 6: CubedSphereRegionalConnectivity{South, East}(6, 4, South(), East())
+panel 4: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+panel 5: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+panel 6: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
 ```
 
 Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
 
 ```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
-julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North
+julia> using Oceananigans.MultiRegion: East, West, South, North
 
 julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity
 
 julia> region=3;
 
-julia> inject_west_boundary(region, grid.partition, 1).condition
+julia> getregion(grid.connectivity.connections, 3).west
 CubedSphereRegionalConnectivity{West, North}(3, 1, West(), North())
 
-julia> inject_south_boundary(region, grid.partition, 1).condition
+julia> getregion(grid.connectivity.connections, 3).south
 CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
 
-julia> inject_east_boundary(region, grid.partition, 1).condition
+julia> getregion(grid.connectivity.connections, 3).east
 CubedSphereRegionalConnectivity{East, West}(3, 4, East(), West())
 
-julia> inject_north_boundary(region, grid.partition, 1).condition
+julia> getregion(grid.connectivity.connections, 3).north
 CubedSphereRegionalConnectivity{North, West}(3, 5, North(), West())
 ```
 """
