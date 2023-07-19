@@ -878,7 +878,7 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
         z = Base.reshape(z, 1, 1, N[3])
     end
 
-    return (x, y, z)
+    return (λ, φ, z)
 end
 
 @inline λnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
