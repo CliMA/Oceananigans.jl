@@ -47,7 +47,7 @@ end
 
     ũ    = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
     side =  upwind_direction(ũ)
-    uᴿ   = _upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, side, scheme, u)
+    uᴿ   = _upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, side, scheme, u)
 
     return ũ * uᴿ
 end
@@ -56,7 +56,7 @@ end
 
     ṽ    = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     side =  upwind_direction(ṽ)
-    uᴿ   = _upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, u)
+    uᴿ   = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, u)
 
     return ṽ * uᴿ
 end
@@ -65,7 +65,7 @@ end
 
     w̃    = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
     side =  upwind_direction(w̃)
-    uᴿ   = _upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, u)
+    uᴿ   = _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, u)
 
     return w̃ * uᴿ
 end
@@ -74,7 +74,7 @@ end
 
     ũ    = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
     side =  upwind_direction(ũ)
-    vᴿ   = _upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, v)
+    vᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, v)
  
     return ũ * vᴿ
 end
@@ -83,7 +83,7 @@ end
 
     ṽ    = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     side =  upwind_direction(ṽ)
-    vᴿ   = _upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, side, scheme, v)
+    vᴿ   = _upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, side, scheme, v)
 
     return ṽ * vᴿ
 end
@@ -92,7 +92,7 @@ end
 
     w̃    = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
     side =  upwind_direction(w̃)
-    vᴿ   = _upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, v)
+    vᴿ   = _upwind_interpolate_zᵃᵃᶠ(i, j, k, grid, side, scheme, v)
 
     return w̃ * vᴿ
 end
@@ -101,7 +101,7 @@ end
 
     ũ    = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
     side =  upwind_direction(ũ)
-    wᴿ   = _upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, w)
+    wᴿ   = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, w)
 
     return ũ * wᴿ
 end
@@ -110,7 +110,7 @@ end
 
     ṽ    = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     side =  upwind_direction(ṽ)
-    wᴿ   = _upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, w)
+    wᴿ   = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, w)
 
     return ṽ * wᴿ
 end
@@ -119,7 +119,7 @@ end
 
     w̃    =  _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
     side =  upwind_direction(w̃)
-    wᴿ   = _upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, side, scheme, w)
+    wᴿ   = _upwind_interpolate_zᵃᵃᶜ(i, j, k, grid, side, scheme, w)
 
     return w̃ * wᴿ
 end

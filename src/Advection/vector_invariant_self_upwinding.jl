@@ -21,7 +21,7 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 
     @inbounds û = u[i, j, k]
     side =  upwind_direction(û)
-    δuᴿ  = _upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
+    δuᴿ  = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
     δvˢ  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
     
     return û * (δuᴿ + δvˢ)
@@ -34,7 +34,7 @@ end
 
     @inbounds v̂ = v[i, j, k]
     side =  upwind_direction(v̂)
-    δvᴿ  = _upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
+    δvᴿ  = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, scheme.vertical_scheme, δy_V, δV_stencil, u, v) 
     δuˢ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
 
     return v̂ * (δuˢ + δvᴿ)
@@ -66,7 +66,7 @@ const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:An
     cross_scheme = scheme.upwinding.cross_scheme
 
     δKvˢ =     _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
-    δKuᴿ = _upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, scheme.ke_gradient_scheme, δx_u², δu²_stencil, u, v)
+    δKuᴿ = _upwind_interpolate_xᶠᵃᵃ(i, j, k, grid, side, scheme, scheme.ke_gradient_scheme, δx_u², δu²_stencil, u, v)
 
     return (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
 end
@@ -80,7 +80,7 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     δKuˢ =     _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
-    δKvᴿ = _upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, scheme.ke_gradient_scheme, δy_v², δv²_stencil, u, v) 
+    δKvᴿ = _upwind_interpolate_yᵃᶠᵃ(i, j, k, grid, side, scheme, scheme.ke_gradient_scheme, δy_v², δv²_stencil, u, v) 
 
     return (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
 end

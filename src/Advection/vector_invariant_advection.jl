@@ -224,7 +224,7 @@ end
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
     side =  upwind_direction(v̂)
-    ζᴿ   = _upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, side, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ   = _upwind_interpolate_yᵃᶜᵃ(i, j, k, grid, side, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return - v̂ * ζᴿ
 end
@@ -235,7 +235,7 @@ end
 
     @inbounds û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     side =  upwind_direction(û)
-    ζᴿ   = _upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, side, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ   = _upwind_interpolate_xᶜᵃᵃ(i, j, k, grid, side, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + û * ζᴿ
 end
