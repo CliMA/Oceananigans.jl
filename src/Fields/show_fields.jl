@@ -58,7 +58,12 @@ end
 Base.summary(status::FieldStatus) = "time=$(status.time)"
 
 Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
-Base.show(io::IO, z::ZeroField) = print(io, summary(z))
+Base.summary(::OneField{N}) where N  = "OneField{$N}"
+
+Base.show(io::IO, z::Union{ZeroField, OneField}) = print(io, summary(z))
+
+@inline Base.summary(f::CF) = string("ConstantField(", prettysummary(f.constant), ")")
+Base.show(io::IO, f::CF) = print(io, summary(f))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
