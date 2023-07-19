@@ -12,29 +12,42 @@ GLMakie.activate!()
 
 include("multi_region_cubed_sphere.jl")
 
-u_by_region(region,grid) = region == 1 || region == 2 ? OneField() : ZeroField()
-v_by_region(region,grid) = region == 4 || region == 5 ? OneField() : ZeroField()
-
 function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
 
     grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=1, horizontal_direction_halo = 1, 
                                     partition = CubedSpherePartition(; R = 1))
-
-    @apply_regionally u0 = u_by_region(Iterate(1:6), grid)
-    @apply_regionally v0 = v_by_region(Iterate(1:6), grid)
     
-    velocities = PrescribedVelocityFields(; u = u0, v = v0)
+    facing_panel_index = 5 
+    # The tracer is initially placed on the equator at the center of panel 5, which which is oriented towards the 
+    # viewer in a heatsphere plot. This optimal positioning allows the viewer to effectively track the tracer's initial 
+    # movement as it starts advecting along the equator.
+    
+    prescribed_velocity_type = :solid_body_rotation 
+    # Choose prescribed_velocity_type to be :zonal or :solid_body_rotation.
+    
+    if prescribed_velocity_type == :zonal
+        u_by_region(region,grid) = region == 1 || region == 2 ? OneField() : ZeroField()
+        v_by_region(region,grid) = region == 4 || region == 5 ? OneField() : ZeroField()
+        @apply_regionally u0 = u_by_region(Iterate(1:6), grid)
+        @apply_regionally v0 = v_by_region(Iterate(1:6), grid)
+        velocities = PrescribedVelocityFields(; u = u0, v = u0)
+    elseif prescribed_velocity_type == :solid_body_rotation
+        u_solid_body_rotation(λ,φ,z) = cosd(φ)
+        u0 = XFaceField(grid) 
+        set!(u0, u_solid_body_rotation)
+        velocities = PrescribedVelocityFields(; v = u0) 
+        # Note that v = u0 (and not u = u0) above. This is because the local meridional velocity in panel 5, on which 
+        # the tracer is initialized, is oriented along the global zonal direction.
+    end
 
     model = HydrostaticFreeSurfaceModel(; grid, velocities, tracers = :θ, buoyancy = nothing)
     
-    facing_panel_index = 5
     θ₀ = 1
     x₀ = λnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Face(), Center())
     y₀ = φnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Center(), Face())
     R₀ = 10.0
-    θᵢ(x, y, z) = 0.0
     
-    initial_condition = :uniform_patch # Choose initial_condition to be :uniform_patch or :Gaussian.
+    initial_condition = :Gaussian # Choose initial_condition to be :uniform_patch or :Gaussian.
     
     if initial_condition == :uniform_patch
         θᵢ(x, y, z) = abs(x - x₀) < R₀ && abs(y - y₀) < R₀ ? θ₀ : 0.0
@@ -45,19 +58,10 @@ function multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
     set!(model, θ = θᵢ)
     fill_halo_regions!(model.tracers.θ)
     
-    Δt = 0.01
+    Δt = 0.005
     T = Nt * Δt
     
     simulation = Simulation(model, Δt=Δt, stop_time=T)
-    
-    # Figure out OutputWriters for a CubedSphere (`reconstruct_global_grid` is not defined for a CubedSphere neither 
-    # does it make sense to define it for a CubedSphere). Then we can use the following lines of code:
-    # 
-    # simulation.output_writers[:fields] = JLD2OutputWriter(model, model.tracers, schedule = TimeInterval(0.02),
-    #                                                       filename = "tracer_advection_over_bump")
-    #                                                                             
-    # simulation.output_writers[:fields] = Checkpointer(model, schedule = TimeInterval(1.0), 
-    #                                                   prefix = "multi_region_tracer_advection")
 
     function save_tracer(sim)
         push!(tracer_fields, deepcopy(sim.model.tracers.θ))
@@ -83,15 +87,27 @@ multi_region_tracer_advection!(Nx, Ny, Nt, tracer_fields)
 fig = Figure(resolution = (850, 750))
 title = "Tracer Concentration"
 
-ax = Axis3(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
-           titlefont = :bold)
+plot_type = :heatsphere # Choose plot_type to be :heatsphere or :heatlatlon.
 
-heatsphere!(ax, tracer_fields[1]; colorrange = (0, 1))
+if plot_type == :heatsphere
+    ax = Axis3(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
+               titlefont = :bold, aspect = (1,1,1))
+    heatsphere!(ax, tracer_fields[1]; colorrange = (-1, 1))
+end
+if plot_type == :heatlatlon
+    ax = Axis(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
+              titlefont = :bold)
+    heatlatlon!(ax, tracer_fields[1]; colorrange = (-1, 1))
+end
 
 frames = 1:length(tracer_fields)
 
 GLMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
-    heatsphere!(ax, tracer_fields[i]; colorrange = (0, 1))
+    if plot_type == :heatsphere
+        heatsphere!(ax, tracer_fields[i]; colorrange = (-1, 1), colormap = :balance)
+    elseif plot_type == :heatlatlon
+        heatlatlon!(ax, tracer_fields[i]; colorrange = (-1, 1), colormap = :balance)
+    end
 end
