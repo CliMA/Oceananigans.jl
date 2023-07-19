@@ -142,12 +142,30 @@ connectivites on the South boundary of each region we can call
 julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, South, North
 
 julia> for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.connectivity.connections, 3).south); end
-panel 1: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 2: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 3: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 4: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 5: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
-panel 6: CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+panel 1: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
+panel 2: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
+panel 3: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
+panel 4: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
+panel 5: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
+panel 6: CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
 ```
 
 Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
@@ -160,16 +178,28 @@ julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity
 julia> region=3;
 
 julia> getregion(grid.connectivity.connections, 3).west
-CubedSphereRegionalConnectivity{West, North}(3, 1, West(), North())
+CubedSphereRegionalConnectivity
+├── from: North side, region 1 
+├── to:   West side, region 3 
+└── counter-clockwise rotation ↺
 
 julia> getregion(grid.connectivity.connections, 3).south
-CubedSphereRegionalConnectivity{South, North}(3, 2, South(), North())
+CubedSphereRegionalConnectivity
+├── from: North side, region 2 
+├── to:   South side, region 3 
+└── no rotation
 
 julia> getregion(grid.connectivity.connections, 3).east
-CubedSphereRegionalConnectivity{East, West}(3, 4, East(), West())
+CubedSphereRegionalConnectivity
+├── from: West side, region 4 
+├── to:   East side, region 3 
+└── no rotation
 
 julia> getregion(grid.connectivity.connections, 3).north
-CubedSphereRegionalConnectivity{North, West}(3, 5, North(), West())
+CubedSphereRegionalConnectivity
+├── from: West side, region 5 
+├── to:   North side, region 3 
+└── counter-clockwise rotation ↺
 ```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
@@ -192,6 +222,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
 
+    connectivity = CubedSphereConnectivity(devices, partition)
+
     region_size = []
     region_η = []
     region_ξ = []
@@ -208,7 +240,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         push!(region_size, (panel_size[1] ÷ Rx(r, partition), panel_size[2] ÷ Ry(r, partition), panel_size[3]))
         push!(region_ξ, (-1 + Lξᵢⱼ * (pᵢ - 1), -1 + Lξᵢⱼ * pᵢ))
         push!(region_η, (-1 + Lηᵢⱼ * (pⱼ - 1), -1 + Lηᵢⱼ * pⱼ))
-        push!(region_rotation, rotation_from_panel_index(panel_index(r, partition)))
+        push!(region_rotation, connectivity.rotations[panel_index(r, partition)])
     end
 
     region_size = MultiRegionObject(tuple(region_size...), devices)
@@ -225,8 +257,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         ξ = region_ξ,
                                         η = region_η,
                                         rotation = region_rotation)
-
-    connectivity = CubedSphereConnectivity(devices, partition)
 
     grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, connectivity, region_grids, devices)
 
