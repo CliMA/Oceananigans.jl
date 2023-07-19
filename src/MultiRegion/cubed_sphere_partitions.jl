@@ -89,12 +89,6 @@ end
 ##### Boundary-specific Utils
 #####
 
-function Base.summary(p::CubedSpherePartition)
-    region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
-
-    return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
-end
-
 replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid; signed=true) = nothing
 
 function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid; signed=true)
@@ -178,6 +172,12 @@ end
 function replace_north_v_halos!(v, ubuff, N, H, ::West; signed)
      view(v, :, N+1:N+H, :) .= + ubuff.north.recv
      return nothing
+end
+
+function Base.summary(p::CubedSpherePartition)
+    region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
+
+    return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
 
 Base.show(io::IO, p::CubedSpherePartition) =
