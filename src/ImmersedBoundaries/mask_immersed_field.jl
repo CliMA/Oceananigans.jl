@@ -1,7 +1,8 @@
 using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.Architectures: architecture
-using Oceananigans.Fields: location, ZReducedField, Field, instantiate
+using Oceananigans.Fields: location, ZReducedField, Field
+import Oceananigans.Fields: instantiate
 
 mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
