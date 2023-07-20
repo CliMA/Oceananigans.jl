@@ -354,7 +354,6 @@ end
                 @test get_halo_data(getregion(u, 6), :south; 
                                     operation=:endpoint,
                                     index=:first)            ==          -create_v_test_data(grid, 5)[east_indices_first...]
-                
             end
 
             # Confirm that the meridional velocity halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.

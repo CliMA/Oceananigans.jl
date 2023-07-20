@@ -258,9 +258,14 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch, partition, connectivity, region_grids, devices)
-
-
+    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch,
+                                                                                           partition,
+                                                                                           connectivity,
+                                                                                           region_grids,
+                                                                                           devices)
+    #=
+    # the following filles the coordinate and metric halos using halo-filling algorithms
+    # but at the moment those algorithms are wrong for fca, or cfa fields.
     ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
     fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
     cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
@@ -340,6 +345,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
         eval(expr)
     end
+    =#
 
     return grid
 end
@@ -384,6 +390,68 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
 end
+
+# # Shift host index into adjacent region coordinate system
+# @inline shift_index(i, j, Nx, Ny, ::East)  = i - Nx, j
+# @inline shift_index(i, j, Nx, Ny, ::West)  = i + Nx, j
+# @inline shift_index(i, j, Nx, Ny, ::North) =      i, j - Ny
+# @inline shift_index(i, j, Nx, Ny, ::South) =      i, j + Ny
+
+# # Rotate host region index into adjacent region coordinate system
+# @inline rotate_index(i, j, Nx, Ny, ::Nothing) = i, j
+# @inline rotate_index(i, j, Nx, Ny, ::↻) = Ny + 1 - j, i # Rotate host index _counterclockwise_
+# @inline rotate_index(i, j, Nx, Ny, ::↺) = j, Nx + 1 - i # Rotate host index _clockwise_
+
+# is_interior(i, j, k, grid) = i in 1:grid.Nx && j in 1:grid.Ny && k in 1:grid.Nz ? true : false
+
+# """
+# Return a scalar cell-centered value in an adjacent region
+# corresponding to host region indices `i, j, k` and host `grid`.
+# The adjacent region joins the host region at `host_boundary`
+# and is rotated by `adjacent_rotation` with respect to the host region.
+# """
+# @inline function adjacent_scalar_indices(i, j, k, grid, host_boundary, adjacent_rotation)
+#     i′,  j′  =  shift_index(i,  j,  grid.Nx, grid.Ny, host_boundary)
+#     i′′, j′′ = rotate_index(i′, j′, grid.Nx, grid.Ny, adjacent_rotation)
+#     return (i′′, j′′, k), (Center, Center, Center)
+# end
+
+# # Vector adjacencies: easy case with no rotation.
+# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::Nothing)
+#     @show "(+u, +v)"
+#     indices_u, _ = adjacent_scalar_indices(i, j, k, grid, host_boundary, nothing)
+#     indices_v, _ = adjacent_scalar_indices(i, j, k, grid, host_boundary, nothing)
+#     return (indices_u, (Face, Center, Center), 1), (indices_v, (Center, Face, Center), 1)
+# end
+
+# # host          adjacent
+# # -------       ---u---
+# # |     |       |  ↓  |
+# # u→    |   ↻   v→    |  
+# # |  ↑  |       |     |
+# # ---v---       -------
+# #                ↓↓ increasing i_adjacent
+# #
+# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::↻)
+#     @show "(+v, -u)"
+#     indices_u, _ = adjacent_scalar_indices(i, j,     k, grid, host_boundary, ↻())
+#     indices_v, _ = adjacent_scalar_indices(i, j - 1, k, grid, host_boundary, ↻())
+#     return (indices_u, (Center, Face, Center), 1), (indices_v, (Face, Center, Center), -1)
+# end
+
+# # host          adjacent
+# # -------       -------
+# # |     |       |     |
+# # u→    |   ↺   |    ←v   →→ decreasing j_adjacent
+# # |  ↑  |       |  ↑  |
+# # ---v---       ---u---
+# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::↻)
+#     @show "(-v, +u)"
+#     indices_u, _ = adjacent_scalar_indices(i - 1, j, k, grid, host_boundary, ↺())
+#     indices_v, _ = adjacent_scalar_indices(i,     j, k, grid, host_boundary, ↺())
+#     return (indices_u, (Center, Face, Center), -1), (indices_v, (Face, Center, Center), +1)
+# end
+
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
     region_rotation = []

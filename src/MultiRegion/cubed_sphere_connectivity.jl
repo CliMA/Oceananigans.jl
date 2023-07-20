@@ -52,6 +52,8 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
             side :: S
     "the side of the region from which boundary condition comes from"
        from_side :: FS
+    "rotation of the region from which boundary condition comes from compare to host region"
+        rotation :: R
 
     @doc """
         CubedSphereRegionalConnectivity(rank, from_rank, side, from_side)
@@ -83,7 +85,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```
     """
     CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing) =
-        new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side)
+        new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side, rotation)
 end
 
 function Base.summary(c::CubedSphereRegionalConnectivity)
