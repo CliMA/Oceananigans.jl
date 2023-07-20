@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
