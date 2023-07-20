@@ -138,7 +138,7 @@ function find_west_connectivity(region, partition::CubedSpherePartition)
     end
 
     if from_side == North()
-        rotation = ↺()
+        rotation = ↻()
     elseif from_side == East()
         rotation = nothing
     end
