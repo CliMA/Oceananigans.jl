@@ -89,11 +89,6 @@ function multi_region_cubed_sphere_plots()
     colorrange = (-90, 90)
     colormap = :balance
     
-    colorrange = (1, Ny)
-    for region in 1:6, j in 1:Ny, i in 1:Nx
-        getregion(c, region).data[i, j, 1] = j
-    end
-    
     fill_halo_regions!(c)
     
     fig = Figure()
