@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary, AbstractField
-using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
@@ -118,10 +118,21 @@ end
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
-set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!, mrf, f)
+set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
+ 
+# Disambiguation (same as computed_field.jl:64)
+function compute!(comp::MultiRegionComputedField, time=nothing)
+    # First compute `dependencies`:
+    compute_at!(comp.operand, time)
 
-compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
-compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
+    # Now perform the primary computation
+    @apply_regionally compute_computed_field!(comp)
+
+    fill_halo_regions!(comp)
+
+    return comp
+end
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 

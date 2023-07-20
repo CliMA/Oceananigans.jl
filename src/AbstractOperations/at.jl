@@ -74,7 +74,7 @@ end
 # Fallback for `KernelFunctionOperation`s with no argument 
 compute_index_intersection(::Colon, to_loc; kw...) = Colon()
 
-compute_index_intersection(to_idx, to_loc, op; dim) = 
+compute_index_intersection(to_idx, to_loc, op; dim) =
     _compute_index_intersection(to_idx, indices(op)[dim],
                                 to_loc, location(op, dim))
 
