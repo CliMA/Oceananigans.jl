@@ -145,7 +145,7 @@ function ShallowWaterModel(;
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
+    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
@@ -158,21 +158,22 @@ function ShallowWaterModel(;
 
         # Advection schemes
         tracer_advection_tuple = with_tracers(tracernames(tracers),
-                                            tracer_advection,
-                                            (name, tracer_advection) -> default_tracer_advection,
-                                            with_velocities=false)
+                                              tracer_advection,
+                                              (name, tracer_advection) -> default_tracer_advection,
+                                              with_velocities=false)
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
     
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
+        bathymetry .= eltype(grid).(bathymetry)
         set!(bathymetry_field, bathymetry)
-        fill_halo_regions!(bathymetry_field)
     else
-        fill!(bathymetry_field, 0.0)
+        fill!(bathymetry_field, zero(grid))
     end
-
+    fill_halo_regions!(bathymetry_field)
+    
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
@@ -213,7 +214,7 @@ end
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"*
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 

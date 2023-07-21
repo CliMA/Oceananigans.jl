@@ -7,20 +7,22 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
-@inline y_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
 
 @inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
 @inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)
 
-@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hB)
-@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hB)
+@inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hB)
+@inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hB)
 
 @inline bathymetry_contribution_x(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
 @inline bathymetry_contribution_y(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid) 
 
 """
-Compute the tendency for the x-directional transport, uh
+Compute the tendency for `solution[1]`, that is, either the ``x``-component of the
+transport ``u h`` if `fomulation::ConservativeFormulation` or the ``x``-component of the
+momentum ``u`` if `fomulation::VectorInvariantFormulation`.
 """
 @inline function uh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
@@ -49,7 +51,9 @@ Compute the tendency for the x-directional transport, uh
 end
 
 """
-Compute the tendency for the y-directional transport, vh.
+Compute the tendency for `solution[2]`, that is, either the ``y``-component of the
+transport ``v h`` if `fomulation::ConservativeFormulation` or the ``y``-component of the
+momentum ``v`` if `fomulation::VectorInvariantFormulation`.
 """
 @inline function vh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
@@ -78,7 +82,7 @@ Compute the tendency for the y-directional transport, vh.
 end
 
 """
-Compute the tendency for the height, h.
+Compute the tendency for the fluid's height ``solution[3]=h``.
 """
 @inline function h_solution_tendency(i, j, k, grid,
                                      gravitational_acceleration,
@@ -96,6 +100,9 @@ Compute the tendency for the height, h.
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
+"""
+Compute the tracer tendencies.
+"""
 @inline function tracer_tendency(i, j, k, grid,
                                  val_tracer_index::Val{tracer_index},
                                  advection,
