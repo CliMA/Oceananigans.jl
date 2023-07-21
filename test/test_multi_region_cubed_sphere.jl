@@ -210,7 +210,7 @@ end
 
             Nx, Ny, Nz = 9, 9, 1
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 1)
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 4)
 
             u = XFaceField(grid)
             v = YFaceField(grid)
@@ -270,7 +270,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(u, 1), :north; 
                                     operation=:endpoint, 
-                                    index=:first)            ==          -create_u_test_data(grid, 5)[north_indices_first...]                
+                                    index=:first)            ==          - reverse(create_u_test_data(grid, 5)[north_indices_first...])
                 
                 # Panel 2
                 switch_device!(grid, 2)
@@ -304,7 +304,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(u, 3), :north;
                                     operation=:endpoint,
-                                    index=:first)            ==          -create_u_test_data(grid, 1)[north_indices_first...]
+                                    index=:first)            ==          -reverse(create_u_test_data(grid, 1)[north_indices_first...])
                 
                 # Panel 4
                 switch_device!(grid, 4)
@@ -338,7 +338,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(u, 5), :north; 
                                     operation=:endpoint,
-                                    index=:first)            ==          -create_u_test_data(grid, 3)[north_indices_first...]
+                                    index=:first)            ==  - reverse(create_u_test_data(grid, 3)[north_indices_first...])
                 
                 # Panel 6
                 switch_device!(grid, 6)
@@ -384,7 +384,7 @@ end
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 2), :west)  ==           create_v_test_data(grid, 1)[east_indices...]
                 @test get_halo_data(getregion(v, 2), :south) ==   reverse(create_u_test_data(grid, 6)[east_indices...], dims=2)'
-                @test get_halo_data(getregion(v, 2), :north) ==           create_v_test_data(grid, 3)[south_indices...]                
+                @test get_halo_data(getregion(v, 2), :north) ==           create_v_test_data(grid, 3)[south_indices...]
                 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(v, 2), :east;
@@ -393,7 +393,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(v, 2), :east; 
                                     operation=:endpoint,
-                                    index=:first)            ==          -create_v_test_data(grid, 6)[east_indices_first...]
+                                    index=:first)            == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
                 
                 # Panel 3
                 switch_device!(grid, 3)
@@ -427,7 +427,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(v, 4), :east; 
                                     operation=:endpoint,
-                                    index=:first)            ==          -create_v_test_data(grid, 2)[east_indices_first...]
+                                    index=:first)            == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
                 
                 # Panel 5
                 switch_device!(grid, 5)
@@ -461,7 +461,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(v, 6), :east; 
                                     operation=:endpoint,
-                                    index=:first)            ==          -create_v_test_data(grid, 4)[east_indices_first...]
+                                    index=:first)            == - reverse(create_v_test_data(grid, 4)[east_indices_first...])
                 
             end
         end
