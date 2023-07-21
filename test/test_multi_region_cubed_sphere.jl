@@ -210,7 +210,7 @@ end
 
             Nx, Ny, Nz = 9, 9, 1
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 4)
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
 
             u = XFaceField(grid)
             v = YFaceField(grid)
@@ -221,8 +221,8 @@ end
             set!(u, u_data)
             set!(v, v_data)
 
-            # we need 3 halo filling passes for velocities at the moment
-            for _ in 1:3
+            # we need 2 halo filling passes for velocities at the moment
+            for _ in 1:2
                 fill_halo_regions!(u)
                 fill_halo_regions!(v)
                 @apply_regionally replace_horizontal_velocity_halos!((; u, v, w = nothing), grid)

@@ -12,8 +12,8 @@ GLMakie.activate!()
 
 include("multi_region_cubed_sphere.jl")
 
-Nx = 50
-Ny = 50
+Nx = 20
+Ny = 20
 Nt = 2250
 CubedSphereRadius = 1
 
@@ -35,66 +35,76 @@ if prescribed_velocity_type == :zonal
     
 elseif prescribed_velocity_type == :solid_body_rotation
     
-    #=
-    First implementation of solid body rotation:
     
-    solid_body_rotation_velocity(λ,φ,z) = cosd(φ)
+    # First implementation of solid body rotation:
     
-    u_solid_body_rotation = XFaceField(grid) 
-    set!(u_solid_body_rotation, solid_body_rotation_velocity)
-    
-    v_solid_body_rotation = YFaceField(grid) 
-    set!(v_solid_body_rotation, solid_body_rotation_velocity)
-    
-    u_by_region(region,grid) = region == 1 || region == 2 ? u_solid_body_rotation : ZeroField()
-    v_by_region(region,grid) = region == 4 || region == 5 ? v_solid_body_rotation : ZeroField()
-    =#
-    
+    # Ψ(λ, φ, z) = R * u_advection * cosd(λ) * cosd(φ)
+    # U(λ, φ, z) = - 1/R          * ∂Ψ/∂φ =   u_advection * cosd(λ) * sind(φ)
+    # V(λ, φ, z) = + 1/(R cos(φ)) * ∂Ψ/∂λ = - u_advection * sind(λ)
+
     time_period = 10
-    u_advection = (2π * CubedSphereRadius)/time_period
-    α = 90
+    u_advection = (2π * CubedSphereRadius) / time_period
+
+    U(λ, φ, z) =   u_advection * cosd(λ) * sind(φ)
+    V(λ, φ, z) = - u_advection * sind(λ)
     
-    Ψ(λ, φ, z) = - CubedSphereRadius * u_advection * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+    u₀ = XFaceField(grid) 
+    set!(u₀, U)
     
-    Ψ₀ = CubedSphereRadius * u_advection
+    v₀ = YFaceField(grid) 
+    set!(v₀, V)
     
-    Ψᶠᶠᶜ = Field{Face, Face, Center}(grid)
-    uᶠᶜᶜ = Field{Face, Center, Center}(grid)
-    vᶜᶠᶜ = Field{Center, Face, Center}(grid)
-    
-    for region in 1:6
-    
-        for i in 1:Nx+1, j in 1:Ny+1
-            λᶠᶠᵃ = λnode(i, j, getregion(grid, region), Face(), Face())
-            φᶠᶠᵃ = φnode(i, j, getregion(grid, region), Face(), Face())
-            getregion(Ψᶠᶠᶜ, region).data[i, j, 1] = Ψ(λᶠᶠᵃ, φᶠᶠᵃ, 0)
-        end
-        
+    for _ in 1:2
+        fill_halo_regions!(u₀)
+        fill_halo_regions!(v₀)
+        @apply_regionally replace_horizontal_velocity_halos!((; u = u₀, v = v₀, w = nothing), grid)
     end
 
-    for region in 1:6
     
-        for i in 1:Nx+1, j in 1:Ny
-            getregion(uᶠᶜᶜ, region).data[i, j, 1] = (
-            (getregion(Ψᶠᶠᶜ, region).data[i, j, 1] 
-             - getregion(Ψᶠᶠᶜ, region).data[i, j+1, 1]) / getregion(grid, region).Δyᶠᶜᵃ[i, j])
-        end
-        
-        for i in 1:Nx, j in 1:Ny+1
-            getregion(vᶜᶠᶜ, region).data[i, j, 1] = (
-            (getregion(Ψᶠᶠᶜ, region).data[i+1, j, 1] 
-             - getregion(Ψᶠᶠᶜ, region).data[i, j, 1]) / getregion(grid, region).Δxᶜᶠᵃ[i, j])
-        end
-        
-    end
+    # α = 90
     
-    u_by_region(region,grid) = getregion(uᶠᶜᶜ, region)
-    v_by_region(region,grid) = getregion(vᶜᶠᶜ, region)
+    # Ψ(λ, φ, z) = - CubedSphereRadius * u_advection * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+    
+    # Ψ₀ = CubedSphereRadius * u_advection
+    
+    # Ψᶠᶠᶜ = Field{Face, Face, Center}(grid)
+    # uᶠᶜᶜ = Field{Face, Center, Center}(grid)
+    # vᶜᶠᶜ = Field{Center, Face, Center}(grid)
+    
+    # for region in 1:6
+    
+    #     for i in 1:Nx+1, j in 1:Ny+1
+    #         λᶠᶠᵃ = λnode(i, j, getregion(grid, region), Face(), Face())
+    #         φᶠᶠᵃ = φnode(i, j, getregion(grid, region), Face(), Face())
+    #         getregion(Ψᶠᶠᶜ, region).data[i, j, 1] = Ψ(λᶠᶠᵃ, φᶠᶠᵃ, 0)
+    #     end
+        
+    # end
 
+    # for region in 1:6
+    
+    #     for i in 1:Nx+1, j in 1:Ny
+    #         getregion(uᶠᶜᶜ, region).data[i, j, 1] = (
+    #         (getregion(Ψᶠᶠᶜ, region).data[i, j, 1] 
+    #          - getregion(Ψᶠᶠᶜ, region).data[i, j+1, 1]) / getregion(grid, region).Δyᶠᶜᵃ[i, j])
+    #     end
+        
+    #     for i in 1:Nx, j in 1:Ny+1
+    #         getregion(vᶜᶠᶜ, region).data[i, j, 1] = (
+    #         (getregion(Ψᶠᶠᶜ, region).data[i+1, j, 1] 
+    #          - getregion(Ψᶠᶠᶜ, region).data[i, j, 1]) / getregion(grid, region).Δxᶜᶠᵃ[i, j])
+    #     end
+        
+    # end
+    
+    # u_by_region(region,grid) = getregion(uᶠᶜᶜ, region)
+    # v_by_region(region,grid) = getregion(vᶜᶠᶜ, region)
 end
 
-@apply_regionally u₀ = u_by_region(Iterate(1:6), grid)
-@apply_regionally v₀ = v_by_region(Iterate(1:6), grid)
+# @apply_regionally u₀ = u_by_region(Iterate(1:6), grid)
+# @apply_regionally v₀ = v_by_region(Iterate(1:6), grid)
+
+Ψ₀ = CubedSphereRadius * u_advection
 
 velocities = PrescribedVelocityFields(; u = u₀, v = v₀)
 
@@ -110,15 +120,15 @@ if plot_type == :heatsphere
     titlesize = 27.5, titlegap = 15, titlefont = :bold, aspect = (1,1,1))
     ax_v = Axis3(fig_v[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = "Prescribed Meridional Velocity", 
     titlesize = 27.5, titlegap = 15, titlefont = :bold, aspect = (1,1,1))
-    heat_u = heatsphere!(ax_u, uᶠᶜᶜ; colorrange = (-Ψ₀, Ψ₀))
-    heat_v = heatsphere!(ax_v, vᶜᶠᶜ; colorrange = (-Ψ₀, Ψ₀))
+    heat_u = heatsphere!(ax_u, u₀; colorrange = (-Ψ₀, Ψ₀))
+    heat_v = heatsphere!(ax_v, v₀; colorrange = (-Ψ₀, Ψ₀))
 elseif plot_type == :heatlatlon
     ax_u = Axis(fig_u[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = "Prescribed Zonal Velocity", 
                 titlesize = 27.5, titlegap = 15, titlefont = :bold)
     ax_v = Axis(fig_v[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = "Prescribed Meridional Velocity", 
                 titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    heat_u = heatlatlon!(ax_u, uᶠᶜᶜ; colorrange = (-Ψ₀, Ψ₀))
-    heat_v = heatlatlon!(ax_v, vᶜᶠᶜ; colorrange = (-Ψ₀, Ψ₀))
+    heat_u = heatlatlon!(ax_u, u₀; colorrange = (-Ψ₀, Ψ₀))
+    heat_v = heatlatlon!(ax_v, v₀; colorrange = (-Ψ₀, Ψ₀))
 end
 
 save("prescribed_zonal_velocity.png", fig_u)
@@ -139,7 +149,10 @@ elseif initial_condition == :Gaussian
     θ₀*exp(-((x - x₀)^2 + (y - y₀)^2)/(R₀^2))
 end
 
-set!(model, θ = θᵢ)
+θᵢ_field = CenterField(grid)
+getregion(θᵢ_field, 1).data[Nx-5:Nx, Int.(round(Ny/4)):Int.(round(3Ny/4)), 1] .= 1
+
+set!(model, θ = θᵢ_field)
 fill_halo_regions!(model.tracers.θ)
 
 Δt = 0.005

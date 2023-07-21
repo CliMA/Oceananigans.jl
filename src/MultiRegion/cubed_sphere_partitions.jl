@@ -152,11 +152,11 @@ end
 
 function replace_south_u_halos!(u, vbuff, N, H, ::East; signed)
     Nu = size(u, 1)
-     view(u, 2:Nu, 1:H, :)  .= view(vbuff.south.recv, 1:Nu-1, :, :)
-     if signed
-        view(u, :, 1:H, :)  .*= -1
-     end
-     return nothing
+    view(u, 2:Nu, 1:H, :) .= view(vbuff.south.recv, 1:Nu-1, :, :)
+    if signed
+       view(u, :, 1:H, :) .*= -1
+    end
+    return nothing
 end
 
 function replace_south_v_halos!(v, ubuff, N, H, ::East; signed)

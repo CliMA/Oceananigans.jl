@@ -20,8 +20,6 @@ Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 @inline devices(f::MultiRegionAbstractOperation)    = devices(f.grid)
 sync_all_devices!(f::MultiRegionAbstractOperation)  = sync_all_devices!(devices(f.grid))
 
-compute!(mrf::GriddedMultiRegionField)   = apply_regionally!(compute!, mrf)
-
 @inline switch_device!(f::MultiRegionAbstractOperation, d) = switch_device!(f.grid, d)
 @inline getdevice(f::MultiRegionAbstractOperation, d)      = getdevice(f.grid, d)
 
