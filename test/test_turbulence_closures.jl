@@ -257,26 +257,24 @@ end
     @testset "Time-stepping with CATKE closure" begin
         @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
-            warning = false
-
             @info "    Testing time-stepping CATKE by itself..."
-            closure = CATKEVerticalDiffusivity(; warning)
+            closure = CATKEVerticalDiffusivity()
             run_time_step_with_catke_tests(arch, closure)
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (CATKEVerticalDiffusivity(; warning), HorizontalScalarDiffusivity())
+            closure = (CATKEVerticalDiffusivity(), HorizontalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[1]
 
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning))
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
-            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning), VerticalScalarDiffusivity())
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(), VerticalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
         end
