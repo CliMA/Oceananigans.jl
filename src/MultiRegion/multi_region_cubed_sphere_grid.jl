@@ -344,52 +344,52 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     end
 
     function fill_faceface_coordinate_metrics!(grid)
-        if horizontal_topology == FullyConnected
-            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1]   .= reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
 
-            for region in (1, 3, 5)
-                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
-                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
-            end
+        for region in (1, 3, 5)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+        end
 
-            for region in (2, 4, 6)
-                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
-                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
-            end
+        for region in (2, 4, 6)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
+            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
         end
     end
 
-    fill_faceface_coordinate_metrics!(grid)
+    if horizontal_topology == FullyConnected
+        fill_faceface_coordinate_metrics!(grid)
+    end
 
     return grid
 end
