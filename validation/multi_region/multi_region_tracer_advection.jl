@@ -15,7 +15,7 @@ include("multi_region_cubed_sphere.jl")
 Nx = 20
 Ny = 20
 Nt = 2250
-CubedSphereRadius = 1
+cubed_sphere_radius = 1
 
 grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=CubedSphereRadius, 
                                 horizontal_direction_halo = 1, partition = CubedSpherePartition(; R = 1))
