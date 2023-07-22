@@ -56,9 +56,6 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
     return η
 end
 
-Lh = 100kilometers
-Lz = 400meters
-
 for arch in archs
 
     free_surface   = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, maximum_iterations = 64 * 3)
@@ -68,11 +65,11 @@ for arch in archs
         for topology_type in topology_types
             grid = RectilinearGrid(arch,
                                    size = (64, 3, 1),
-                                   x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
+                                   x = (0, 100kilometers), y = (0, 100kilometers), z = (-400meters, 0),
                                    topology = topology_type)
 
-            ηs = geostrophic_adjustment_test(free_surface, grid);
-            ηs = Array(interior(ηs));
+            ηs = geostrophic_adjustment_test(free_surface, grid)
+            ηs = Array(interior(ηs))
 
             for regions in [2, 4]
                 @info "  Testing $regions partitions on $(topology_type) on the $arch"
