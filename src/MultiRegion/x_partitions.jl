@@ -1,18 +1,6 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: MCBC, PBC
 
-struct XPartition{N} <: AbstractPartition
-    div :: N
-
-    function XPartition(sizes)
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
-
-        return new{typeof(sizes)}(sizes)
-    end
-end
-
 const EqualXPartition = XPartition{<:Number}
 
 Base.length(p::XPartition)       = length(p.div)
@@ -152,31 +140,6 @@ end
 #####
 
 const XPartitionConnectivity = Union{RegionalConnectivity{East, West}, RegionalConnectivity{West, East}}
-
-@inline inject_south_boundary(region, p::XPartition, connectivity, bc) = bc
-@inline inject_north_boundary(region, p::XPartition, connectivity, bc) = bc
-
-@inline function inject_west_boundary(region, p::XPartition, connectivity, global_bc)
-    if region == 1
-        typeof(global_bc) <: Union{MCBC, PBC} ?
-            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), West(), East())) :
-            bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, West(), East()))
-    end
-    return bc
-end
-
-@inline function inject_east_boundary(region, p::XPartition, connectivity, global_bc)
-    if region == length(p)
-        typeof(global_bc) <: Union{MCBC, PBC} ?  
-            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, East(), West())) :
-            bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, East(), West()))
-    end
-    return bc
-end
 
 ####
 #### Global index flattening

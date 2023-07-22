@@ -311,7 +311,7 @@ validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         
 validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing
 validate_boundary_condition_topology(::MultiRegionObject, topo::Flat,     side) = nothing
 
-inject_west_boundary(connectivity, global_bc)  = connectivity.west == nothing  ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.west)
-inject_east_boundary(connectivity, global_bc)  = connectivity.east == nothing  ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.east)
+ inject_west_boundary(connectivity, global_bc) = connectivity.west  == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.west)
+ inject_east_boundary(connectivity, global_bc) = connectivity.east  == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.east)
 inject_south_boundary(connectivity, global_bc) = connectivity.south == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.south)
 inject_north_boundary(connectivity, global_bc) = connectivity.north == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.north)

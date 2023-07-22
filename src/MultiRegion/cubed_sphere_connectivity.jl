@@ -31,7 +31,6 @@ function CubedSphereConnectivity(devices, partition::CubedSpherePartition, rotat
     return CubedSphereConnectivity(connectivity, rotations)
 end
 
-
 @inline getregion(connectivity::CubedSphereConnectivity, r) = _getregion(connectivity.connections, r)
 @inline _getregion(connectivity::CubedSphereConnectivity, r) = getregion(connectivity.connections, r)
 
@@ -246,8 +245,8 @@ function find_north_connectivity(region, partition::CubedSpherePartition)
 end
 
 function find_regional_connectivities(region, partition::CubedSpherePartition)
-    west =  find_west_connectivity(region, partition)
-    east =  find_east_connectivity(region, partition)
+    west  = find_west_connectivity(region, partition)
+    east  = find_east_connectivity(region, partition)
     north = find_north_connectivity(region, partition)
     south = find_south_connectivity(region, partition)
 

@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans
 using Oceananigans.Units
 using Statistics
@@ -45,7 +47,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
     @apply_regionally set!(η, ηⁱ)
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-    Δt = 2 * minimum_xspacing(grid) / gravity_wave_speed
+    Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
     for _ in 1:10
         time_step!(model, Δt)

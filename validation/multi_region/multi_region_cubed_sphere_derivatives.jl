@@ -103,5 +103,5 @@ ax3 = Axis3(fig[1, 3], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
 
 heatsphere!(ax1, ∂c∂φ_analytic; colorrange, colormap)
 heatsphere!(ax2, ∂c∂φ_numerical; colorrange, colormap)
-# heatsphere!(ax3, abs.(∂c∂φ_numerical - ∂c∂φ_analytic); colorrange, colormap)
+heatsphere!(ax3, abs(∂c∂φ_numerical - ∂c∂φ_analytic); colorrange, colormap)
 fig

@@ -27,7 +27,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     if grid isa RectilinearGrid
         L = 0.1
     else
-        L = 24 
+        L = 24
     end
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
@@ -48,9 +48,9 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     # Time-scale for tracer advection across the smallest grid cell; 0.1 is maximum velocity
     advection_time_scale = Δ_min(grid) / 0.1
-    
+
     Δt = 0.1advection_time_scale
-    
+
     for _ in 1:10
         time_step!(model, Δt)
     end

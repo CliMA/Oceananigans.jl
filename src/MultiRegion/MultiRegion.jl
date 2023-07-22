@@ -46,6 +46,30 @@ struct East <: AbstractRegionSide end
 struct North <: AbstractRegionSide end
 struct South <: AbstractRegionSide end
 
+struct XPartition{N} <: AbstractPartition
+    div :: N
+
+    function XPartition(sizes)
+        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
+            sizes = length(sizes)
+        end
+
+        return new{typeof(sizes)}(sizes)
+    end
+end
+
+struct YPartition{N} <: AbstractPartition
+    div :: N
+
+    function YPartition(sizes) 
+        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
+            sizes = length(sizes)
+        end
+
+        return new{typeof(sizes)}(sizes)
+    end
+end
+
 include("multi_region_utils.jl")
 include("multi_region_connectivity.jl")
 include("x_partitions.jl")

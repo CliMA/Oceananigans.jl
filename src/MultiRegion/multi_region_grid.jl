@@ -29,7 +29,7 @@ end
 
 @inline Base.length(mrg::MultiRegionGrid) = Base.length(mrg.region_grids)
 
-const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{IBG}}}} where {FT, TX, TY, TZ, P, IBG<:ImmersedBoundaryGrid}
+const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, C, <:MultiRegionObject{<:Tuple{Vararg{IBG}}}} where {FT, TX, TY, TZ, P, C, IBG<:ImmersedBoundaryGrid}
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2),
@@ -82,18 +82,20 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
                                       devices = nothing,
                                       validate = true)
 
+    @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
+    
     if length(partition) == 1
         return global_grid
     end
 
-    @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
-
     arch = architecture(global_grid)
-    
+
     if validate
         devices = validate_devices(partition, arch, devices)
         devices = assign_devices(partition, devices)
     end
+
+    connectivity = Connectivity(devices, partition, global_grid)
 
     global_grid  = on_architecture(CPU(), global_grid)
     local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)
@@ -117,7 +119,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
     ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
     maybe_enable_peer_access!(devices)
 
-    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, nothing, region_grids, devices)
+    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, connectivity, region_grids, devices)
 end
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, args...)
@@ -148,9 +150,9 @@ partition_immersed_boundary(b, args...) =
     getnamewrapper(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
 function reconstruct_global_grid(mrg)
-    size    = reconstruct_size(mrg, mrg.partition)
-    extent  = reconstruct_extent(mrg, mrg.partition)
-    topo    = topology(mrg)
+    size   = reconstruct_size(mrg, mrg.partition)
+    extent = reconstruct_extent(mrg, mrg.partition)
+    topo   = topology(mrg)
     switch_device!(mrg.devices[1])
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
@@ -161,8 +163,9 @@ end
 Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
-                                                     mrg.partition, 
+    underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg),
+                                                     mrg.partition,
+                                                     mrg.connectivity,
                                                      construct_regionally(getproperty, mrg, :underlying_grid), 
                                                      mrg.devices)
                                                      
@@ -217,7 +220,7 @@ end
 function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(on_architecture, CPU(), mrg)
     devices   = Tuple(CPU() for i in 1:length(mrg))  
-    return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
+    return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, mrg.connectivity, new_grids, devices)
 end
 
 function on_specific_architecture(arch, dev, grid)
@@ -269,5 +272,5 @@ end
 
 function maybe_add_active_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(maybe_add_active_cells_map, mrg)
-    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
+    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, mrg.connectivity, new_grids, mrg.devices)
 end

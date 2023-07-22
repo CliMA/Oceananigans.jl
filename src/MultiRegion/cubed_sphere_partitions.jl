@@ -131,7 +131,7 @@ function replace_west_v_halos!(v, ubuff, N, H, ::North; signed)
     Nv = size(v, 2)
     view(v, 1:H, 2:Nv, :) .= view(ubuff.west.recv, :, 1:Nv-1, :)
     if signed
-        view(v, 1:H,  :, :) .*= -1
+        view(v, 1:H, :, :) .*= -1
     end
     return nothing
 end
@@ -160,7 +160,7 @@ function replace_south_u_halos!(u, vbuff, N, H, ::East; signed)
 end
 
 function replace_south_v_halos!(v, ubuff, N, H, ::East; signed)
-    view(v, :, 1:H, :)  .= + ubuff.south.recv
+    view(v, :, 1:H, :) .= + ubuff.south.recv
     return nothing
 end
 

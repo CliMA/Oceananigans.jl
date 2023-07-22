@@ -1,18 +1,6 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: MCBC, PBC
 
-struct YPartition{N} <: AbstractPartition
-    div :: N
-
-    function YPartition(sizes) 
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
-
-        return new{typeof(sizes)}(sizes)
-    end
-end
-
 const EqualYPartition = YPartition{<:Number}
 
 Base.length(p::YPartition)       = length(p.div)
@@ -29,7 +17,7 @@ end
 
 function partition_size(p::YPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert sum(p.div) != Ny
+    @assert sum(p.div) == Ny
     return Tuple((Nx, p.div[i], Nz) for i in 1:length(p))
 end
 
@@ -62,9 +50,12 @@ function divide_direction(x::AbstractArray, p::EqualYPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
+partition_global_array(a::Field, p::EqualYPartition, args...) = partition_global_array(a.data, p, args...)
+
 function partition_global_array(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
     idxs = default_indices(length(size(a)))
-    return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
+    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 function partition_global_array(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
@@ -139,31 +130,6 @@ end
 #####
 
 const YPartitionConnectivity = Union{RegionalConnectivity{North, South}, RegionalConnectivity{South, North}}
-
-inject_west_boundary(region, p::YPartition, connectivity, bc) = bc 
-inject_east_boundary(region, p::YPartition, connectivity, bc) = bc
-
-function inject_south_boundary(region, p::YPartition, connectivity, global_bc)
-    if region == 1
-        typeof(global_bc) <: Union{MCBC, PBC} ?  
-            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p), South(), North())) :
-            bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1, South(), North()))
-    end
-    return bc
-end
-
-function inject_north_boundary(region, p::YPartition, connectivity, global_bc) 
-    if region == length(p)
-        typeof(global_bc) <: Union{MCBC, PBC} ?  
-            bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1, North(), South())) : 
-            bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1, North(), South()))
-    end
-    return bc
-end
 
 ####
 #### Global index flattening

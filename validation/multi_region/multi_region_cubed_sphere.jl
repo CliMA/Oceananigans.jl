@@ -79,7 +79,7 @@ heatsphere!(ax::Axis3, field::CubedSphereField, k=1; kwargs...) = apply_regional
 
 function multi_region_cubed_sphere_plots()
 
-    Nx, Ny, Nz = 16, 16, 2
+    Nx, Ny, Nz = 88, 88, 2
     grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz), z=(-1, 0), radius=1, horizontal_direction_halo = 3, 
                                     z_topology=Bounded)
     
@@ -108,7 +108,7 @@ function multi_region_cubed_sphere_plots()
 
 end
 
-test_multi_region_cubed_sphere_plots = false
+test_multi_region_cubed_sphere_plots = true
 if test_multi_region_cubed_sphere_plots
     multi_region_cubed_sphere_plots()
 end
