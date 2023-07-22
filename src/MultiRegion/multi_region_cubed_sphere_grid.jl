@@ -3,6 +3,8 @@ using Oceananigans.Grids: R_Earth, halo_size, size_summary, total_length, topolo
 
 import Oceananigans.Grids: grid_name
 
+using Distances
+
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
 """
@@ -263,7 +265,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            connectivity,
                                                                                            region_grids,
                                                                                            devices)
-    #=
+
     # the following filles the coordinate and metric halos using halo-filling algorithms
     # but at the moment those algorithms are wrong for fca, or cfa fields.
     ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
@@ -276,21 +278,24 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(ccacoord)) = Field{Center, Center, Nothing}($(grid))
             $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
             $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
-            $(Symbol(ffacoord)) = Field{Face,   Face,   Nothing}($(grid))
+            # $(Symbol(ffacoord)) = Field{Face,   Face,   Nothing}($(grid))
 
             for region in 1:6
                 getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
                 getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
                 getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
-                getregion($(Symbol(ffacoord)), region).data .= getregion($(grid), region).$(Symbol(ffacoord))
+                # getregion($(Symbol(ffacoord)), region).data .= getregion($(grid), region).$(Symbol(ffacoord))
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:2
+                for _ in 1:3
                     fill_halo_regions!($(Symbol(ccacoord)))
                     fill_halo_regions!($(Symbol(fcacoord)))
                     fill_halo_regions!($(Symbol(cfacoord)))
-                    fill_halo_regions!($(Symbol(ffacoord)))
+                    
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcacoord)),
+                                                                            v = $(Symbol(cfacoord)),
+                                                                            w = nothing), $(grid), signed=false)
                 end
             end
 
@@ -298,7 +303,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
                 getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
                 getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
-                getregion($(grid), region).$(Symbol(ffacoord)) .= getregion($(Symbol(ffacoord)), region).data
+                # getregion($(grid), region).$(Symbol(ffacoord)) .= getregion($(Symbol(ffacoord)), region).data
             end
         end
         eval(expr)
@@ -324,11 +329,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:2
+                for _ in 1:3
                     fill_halo_regions!($(Symbol(ccametric)))
                     fill_halo_regions!($(Symbol(fcametric)))
                     fill_halo_regions!($(Symbol(cfametric)))
                     fill_halo_regions!($(Symbol(ffametric)))
+
                     @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcametric)),
                                                                             v = $(Symbol(cfametric)),
                                                                             w = nothing), $(grid), signed=false)
@@ -345,7 +351,55 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
         eval(expr)
     end
-    =#
+
+    function fill_faceface_coords_metrics!(grid)
+        if horizontal_topology == FullyConnected
+            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
+
+            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
+
+            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
+
+            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1]   .= reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
+
+            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
+
+            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
+
+            for region in (1, 3, 5)
+                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+            end
+
+            for region in (2, 4, 6)
+                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
+                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
+            end
+        end
+    end
+
+    fill_faceface_coords_metrics!(grid)
+    fill_faceface_coords_metrics!(grid)
 
     return grid
 end
@@ -390,68 +444,6 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
 end
-
-# # Shift host index into adjacent region coordinate system
-# @inline shift_index(i, j, Nx, Ny, ::East)  = i - Nx, j
-# @inline shift_index(i, j, Nx, Ny, ::West)  = i + Nx, j
-# @inline shift_index(i, j, Nx, Ny, ::North) =      i, j - Ny
-# @inline shift_index(i, j, Nx, Ny, ::South) =      i, j + Ny
-
-# # Rotate host region index into adjacent region coordinate system
-# @inline rotate_index(i, j, Nx, Ny, ::Nothing) = i, j
-# @inline rotate_index(i, j, Nx, Ny, ::↻) = Ny + 1 - j, i # Rotate host index _counterclockwise_
-# @inline rotate_index(i, j, Nx, Ny, ::↺) = j, Nx + 1 - i # Rotate host index _clockwise_
-
-# is_interior(i, j, k, grid) = i in 1:grid.Nx && j in 1:grid.Ny && k in 1:grid.Nz ? true : false
-
-# """
-# Return a scalar cell-centered value in an adjacent region
-# corresponding to host region indices `i, j, k` and host `grid`.
-# The adjacent region joins the host region at `host_boundary`
-# and is rotated by `adjacent_rotation` with respect to the host region.
-# """
-# @inline function adjacent_scalar_indices(i, j, k, grid, host_boundary, adjacent_rotation)
-#     i′,  j′  =  shift_index(i,  j,  grid.Nx, grid.Ny, host_boundary)
-#     i′′, j′′ = rotate_index(i′, j′, grid.Nx, grid.Ny, adjacent_rotation)
-#     return (i′′, j′′, k), (Center, Center, Center)
-# end
-
-# # Vector adjacencies: easy case with no rotation.
-# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::Nothing)
-#     @show "(+u, +v)"
-#     indices_u, _ = adjacent_scalar_indices(i, j, k, grid, host_boundary, nothing)
-#     indices_v, _ = adjacent_scalar_indices(i, j, k, grid, host_boundary, nothing)
-#     return (indices_u, (Face, Center, Center), 1), (indices_v, (Center, Face, Center), 1)
-# end
-
-# # host          adjacent
-# # -------       ---u---
-# # |     |       |  ↓  |
-# # u→    |   ↻   v→    |  
-# # |  ↑  |       |     |
-# # ---v---       -------
-# #                ↓↓ increasing i_adjacent
-# #
-# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::↻)
-#     @show "(+v, -u)"
-#     indices_u, _ = adjacent_scalar_indices(i, j,     k, grid, host_boundary, ↻())
-#     indices_v, _ = adjacent_scalar_indices(i, j - 1, k, grid, host_boundary, ↻())
-#     return (indices_u, (Center, Face, Center), 1), (indices_v, (Face, Center, Center), -1)
-# end
-
-# # host          adjacent
-# # -------       -------
-# # |     |       |     |
-# # u→    |   ↺   |    ←v   →→ decreasing j_adjacent
-# # |  ↑  |       |  ↑  |
-# # ---v---       ---u---
-# @inline function adjacent_vector_indices(i, j, k, grid, host_boundary, ::↻)
-#     @show "(-v, +u)"
-#     indices_u, _ = adjacent_scalar_indices(i - 1, j, k, grid, host_boundary, ↺())
-#     indices_v, _ = adjacent_scalar_indices(i,     j, k, grid, host_boundary, ↺())
-#     return (indices_u, (Center, Face, Center), -1), (indices_v, (Face, Center, Center), +1)
-# end
-
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
     region_rotation = []
