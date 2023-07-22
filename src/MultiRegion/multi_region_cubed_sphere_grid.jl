@@ -271,28 +271,25 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
     fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
     cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
-    ffacoords = (:λᶠᶠᵃ, :φᶠᶠᵃ)
 
-    for (ccacoord, fcacoord, cfacoord, ffacoord) in zip(ccacoords, fcacoords, cfacoords, ffacoords)
+    for (ccacoord, fcacoord, cfacoord) in zip(ccacoords, fcacoords, cfacoords)
         expr = quote
             $(Symbol(ccacoord)) = Field{Center, Center, Nothing}($(grid))
             $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
             $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
-            # $(Symbol(ffacoord)) = Field{Face,   Face,   Nothing}($(grid))
 
             for region in 1:6
                 getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
                 getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
                 getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
-                # getregion($(Symbol(ffacoord)), region).data .= getregion($(grid), region).$(Symbol(ffacoord))
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:3
+                for _ in 1:2
                     fill_halo_regions!($(Symbol(ccacoord)))
                     fill_halo_regions!($(Symbol(fcacoord)))
                     fill_halo_regions!($(Symbol(cfacoord)))
-                    
+
                     @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcacoord)),
                                                                             v = $(Symbol(cfacoord)),
                                                                             w = nothing), $(grid), signed=false)
@@ -303,7 +300,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
                 getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
                 getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
-                # getregion($(grid), region).$(Symbol(ffacoord)) .= getregion($(Symbol(ffacoord)), region).data
             end
         end
         eval(expr)
@@ -312,28 +308,24 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     ccametrics = (:Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ)
     fcametrics = (:Δxᶠᶜᵃ, :Δyᶠᶜᵃ, :Azᶠᶜᵃ)
     cfametrics = (:Δyᶜᶠᵃ, :Δxᶜᶠᵃ, :Azᶜᶠᵃ)
-    ffametrics = (:Δxᶠᶠᵃ, :Δyᶠᶠᵃ, :Azᶠᶠᵃ)
 
-    for (ccametric, fcametric, cfametric, ffametric) in zip(ccametrics, fcametrics, cfametrics, ffametrics)
+    for (ccametric, fcametric, cfametric) in zip(ccametrics, fcametrics, cfametrics)
         expr = quote
             $(Symbol(ccametric)) = Field{Center, Center, Nothing}($(grid))
             $(Symbol(fcametric)) = Field{Face,   Center, Nothing}($(grid))
             $(Symbol(cfametric)) = Field{Center, Face,   Nothing}($(grid))
-            $(Symbol(ffametric)) = Field{Face,   Face,   Nothing}($(grid))
 
             for region in 1:6
                 getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
                 getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
                 getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
-                getregion($(Symbol(ffametric)), region).data .= getregion($(grid), region).$(Symbol(ffametric))
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:3
+                for _ in 1:2
                     fill_halo_regions!($(Symbol(ccametric)))
                     fill_halo_regions!($(Symbol(fcametric)))
                     fill_halo_regions!($(Symbol(cfametric)))
-                    fill_halo_regions!($(Symbol(ffametric)))
 
                     @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcametric)),
                                                                             v = $(Symbol(cfametric)),
@@ -345,14 +337,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
                 getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
                 getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
-                getregion($(grid), region).$(Symbol(ffametric)) .= getregion($(Symbol(ffametric)), region).data
             end
         end # quote
 
         eval(expr)
     end
 
-    function fill_faceface_coords_metrics!(grid)
+    function fill_faceface_coordinate_metrics!(grid)
         if horizontal_topology == FullyConnected
             getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
             getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
@@ -398,8 +389,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         end
     end
 
-    fill_faceface_coords_metrics!(grid)
-    fill_faceface_coords_metrics!(grid)
+    fill_faceface_coordinate_metrics!(grid)
 
     return grid
 end
