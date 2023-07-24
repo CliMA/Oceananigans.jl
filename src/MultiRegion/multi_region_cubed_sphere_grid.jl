@@ -345,7 +345,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     " Halo filling for Face-Face coordinates , hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_coordinates!(grid)
-        length(grid.partition) != 6 && error("only work for CubedSpherePartition(R = 1) at the moment")
+        length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
         getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
@@ -394,7 +394,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     " Halo filling for Face-Face metrics, hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_metrics!(grid)
-        length(grid.partition) != 6 && error("only work for CubedSpherePartition(R = 1) at the moment")
+        length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
         getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
