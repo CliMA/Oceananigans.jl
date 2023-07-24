@@ -16,7 +16,7 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ,
                              z_halo = horizontal_halo,
                              z_topology = Bounded,
                              radius = R_Earth,
-                             partition = CubedSpherePartition(R=1),
+                             partition = CubedSpherePartition(R = 1),
                              devices = nothing)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
@@ -213,7 +213,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
                                   radius = R_Earth,
-                                  partition = CubedSpherePartition(),
+                                  partition = CubedSpherePartition(; R = 1),
                                   devices = nothing)
 
     Nx, Ny, _ = panel_size
@@ -345,6 +345,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     " Halo filling for Face-Face coordinates , hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_coordinates!(grid)
+        length(grid.partition) != 6 && error("only work for CubedSpherePartition(R = 1) at the moment")
+
         getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
@@ -392,6 +394,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     " Halo filling for Face-Face metrics, hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_metrics!(grid)
+        length(grid.partition) != 6 && error("only work for CubedSpherePartition(R = 1) at the moment")
+
         getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
