@@ -138,6 +138,32 @@ end
     end
 end
 
+panel_sizes = ((8, 8, 1), (9, 9, 2))
+
+@testset "Testing area metrics" begin
+    for FT in float_types
+        for arch in archs
+            for panel_size in panel_sizes
+                Nx, Ny, Nz = panel_size
+
+                grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1)
+
+                areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
+
+                for region in 1:6
+                    areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
+                    areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
+                    areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
+                    areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
+                end
+
+                @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
+            end
+        end
+    end
+end
+
+
 @testset "Testing metric/coordinate halo filling" begin
     for FT in float_types
         for arch in archs
@@ -174,7 +200,6 @@ end
                 @test getregion(grid, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1]
                 @test getregion(grid, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1]
             end
-
         end
     end
 end
