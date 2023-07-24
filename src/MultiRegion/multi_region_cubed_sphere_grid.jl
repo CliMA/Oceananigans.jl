@@ -322,7 +322,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:3
+                for _ in 1:2
                     fill_halo_regions!($(Symbol(ccametric)))
                     fill_halo_regions!($(Symbol(fcametric)))
                     fill_halo_regions!($(Symbol(cfametric)))
