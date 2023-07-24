@@ -71,7 +71,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
-indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.computed_dependencies...)
+indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
 compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
 "Adapt `KernelFunctionOperation` to work on the GPU via CUDAnative and CUDAdrv."
