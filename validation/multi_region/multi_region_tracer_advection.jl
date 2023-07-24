@@ -4,7 +4,7 @@ using Oceananigans.Utils: Iterate,
                           get_lat_lon_nodes_and_vertices,
                           get_cartesian_nodes_and_vertices
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: ZeroField, OneField
+using Oceananigans.Fields: ZeroField, OneField, replace_horizontal_velocity_halos!
 using Oceananigans.Grids: λnode, φnode
 
 using GeoMakie, GLMakie
@@ -15,9 +15,9 @@ include("multi_region_cubed_sphere.jl")
 Nx = 20
 Ny = 20
 Nt = 2250
-CubedSphereRadius = 1
+cubed_sphere_radius = 1
 
-grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=CubedSphereRadius, 
+grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=cubed_sphere_radius, 
                                 horizontal_direction_halo = 1, partition = CubedSpherePartition(; R = 1))
 
 facing_panel_index = 5 
@@ -35,7 +35,6 @@ if prescribed_velocity_type == :zonal
     
 elseif prescribed_velocity_type == :solid_body_rotation
     
-    
     # First implementation of solid body rotation:
     
     # Ψ(λ, φ, z) = R * u_advection * cosd(λ) * cosd(φ)
@@ -43,7 +42,7 @@ elseif prescribed_velocity_type == :solid_body_rotation
     # V(λ, φ, z) = + 1/(R cos(φ)) * ∂Ψ/∂λ = - u_advection * sind(λ)
 
     time_period = 10
-    u_advection = (2π * CubedSphereRadius) / time_period
+    u_advection = (2π * cubed_sphere_radius) / time_period
 
     U(λ, φ, z) =   u_advection * cosd(λ) * sind(φ)
     V(λ, φ, z) = - u_advection * sind(λ)
@@ -60,12 +59,11 @@ elseif prescribed_velocity_type == :solid_body_rotation
         @apply_regionally replace_horizontal_velocity_halos!((; u = u₀, v = v₀, w = nothing), grid)
     end
 
-    
     # α = 90
     
-    # Ψ(λ, φ, z) = - CubedSphereRadius * u_advection * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+    # Ψ(λ, φ, z) = - cubed_sphere_radius * u_advection * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
     
-    # Ψ₀ = CubedSphereRadius * u_advection
+    # Ψ₀ = cubed_sphere_radius * u_advection
     
     # Ψᶠᶠᶜ = Field{Face, Face, Center}(grid)
     # uᶠᶜᶜ = Field{Face, Center, Center}(grid)
@@ -99,12 +97,13 @@ elseif prescribed_velocity_type == :solid_body_rotation
     
     # u_by_region(region,grid) = getregion(uᶠᶜᶜ, region)
     # v_by_region(region,grid) = getregion(vᶜᶠᶜ, region)
+    
 end
 
 # @apply_regionally u₀ = u_by_region(Iterate(1:6), grid)
 # @apply_regionally v₀ = v_by_region(Iterate(1:6), grid)
 
-Ψ₀ = CubedSphereRadius * u_advection
+Ψ₀ = cubed_sphere_radius * u_advection
 
 velocities = PrescribedVelocityFields(; u = u₀, v = v₀)
 
@@ -150,7 +149,7 @@ elseif initial_condition == :Gaussian
 end
 
 θᵢ_field = CenterField(grid)
-getregion(θᵢ_field, 1).data[Nx-5:Nx, Int.(round(Ny/4)):Int.(round(3Ny/4)), 1] .= 1
+getregion(θᵢ_field, 1).data[Int.(round(Nx/4)):Int.(round(3Nx/4)), Int.(round(Ny/4)):Int.(round(3Ny/4)), 1] .= 1
 
 set!(model, θ = θᵢ_field)
 fill_halo_regions!(model.tracers.θ)
