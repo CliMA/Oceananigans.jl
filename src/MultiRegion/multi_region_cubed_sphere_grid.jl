@@ -3,6 +3,7 @@ using Oceananigans.Grids: R_Earth, halo_size, size_summary, total_length, topolo
 
 import Oceananigans.Grids: grid_name
 
+using CubedSphere
 using Distances
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
@@ -266,8 +267,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            region_grids,
                                                                                            devices)
 
-    # the following filles the coordinate and metric halos using halo-filling algorithms
-    # but at the moment those algorithms are wrong for fca, or cfa fields.
+    # the following fills the coordinate and metric halos using halo-filling algorithms
     ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
     fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
     cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
@@ -322,7 +322,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:2
+                for _ in 1:3
                     fill_halo_regions!($(Symbol(ccametric)))
                     fill_halo_regions!($(Symbol(fcametric)))
                     fill_halo_regions!($(Symbol(cfametric)))
@@ -343,7 +343,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    function fill_faceface_coordinate_metrics!(grid)
+    " Halo filling for Face-Face coordinates , hardcoded for the default cubed-sphere connectivity. "
+    function fill_faceface_coordinates!(grid)
         getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
         getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
@@ -385,10 +386,79 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
             getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
         end
+
+        return nothing
+    end
+
+    " Halo filling for Face-Face metrics, hardcoded for the default cubed-sphere connectivity. "
+    function fill_faceface_metrics!(grid)
+        getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 1).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Δxᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 1).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Δyᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 1).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Azᶠᶠᵃ[1, 1:Ny]
+
+        getregion(grid, 3).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Δyᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 3).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Δxᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 3).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Azᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 3).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Δxᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 3).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Δyᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 3).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Azᶠᶠᵃ[1, 1:Ny]
+
+        getregion(grid, 5).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Δyᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 5).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Δxᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 5).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Azᶠᶠᵃ[1:1, 1:Ny])'
+        getregion(grid, 5).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Δxᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 5).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Δyᶠᶠᵃ[1, 1:Ny]
+        getregion(grid, 5).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Azᶠᶠᵃ[1, 1:Ny]
+
+        getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Δxᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Δyᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 2).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Azᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 2).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 2).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 2).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Azᶠᶠᵃ[1:Nx, 1:1])
+
+        getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Δxᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Δyᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 4).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Azᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 4).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 4).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 4).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Azᶠᶠᵃ[1:Nx, 1:1])
+
+        getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Δxᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Δyᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 6).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Azᶠᶠᵃ[1:Nx, 1]
+        getregion(grid, 6).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 6).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, 1:1])
+        getregion(grid, 6).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Azᶠᶠᵃ[1:Nx, 1:1])
+
+        for region in (1, 3, 5)
+            getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
+        for region in (2, 4, 6)
+            getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
+        return nothing
     end
 
     if horizontal_topology == FullyConnected
-        fill_faceface_coordinate_metrics!(grid)
+        fill_faceface_coordinates!(grid)
+        fill_faceface_metrics!(grid)
+    end
+
+    for region in 1:6
+        getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
+        getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
+        getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
+        getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
     end
 
     return grid
