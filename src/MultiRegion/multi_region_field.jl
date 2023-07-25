@@ -11,9 +11,9 @@ import Base: fill!, axes
 import Oceananigans.Simulations: hasnan
 
 # Field and FunctionField (both fields with "grids attached")
-const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
-const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrid} where {LX, LY, LZ}
-const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
+const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrids} where {LX, LY, LZ}
+const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrids} where {LX, LY, LZ, C, P, F}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
@@ -123,17 +123,17 @@ compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid) = 
-    construct_regionally(validate_indices, indices, loc, mrg.region_grids)
+validate_indices(indices, loc, mrg::MultiRegionGrids) = 
+    construct_regionally(validate_indices, indices, loc, mrg)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) = 
+FieldBoundaryBuffers(grid::MultiRegionGrids, args...; kwargs...) = 
     construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
   construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              mrg::MultiRegionGrid,
+                                              mrg::MultiRegionGrids,
                                               field_name::Symbol,
                                               prognostic_field_name=nothing)
 

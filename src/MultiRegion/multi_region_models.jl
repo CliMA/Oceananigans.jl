@@ -11,7 +11,7 @@ import Oceananigans.Advection: WENO, cell_advection_timescale
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
-const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
+const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true) 
@@ -48,13 +48,13 @@ end
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 @inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
-validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
 @inline isregional(mrm::MultiRegionModel)   = true
 @inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
 @inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
 
-implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
+implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrids) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
@@ -71,7 +71,7 @@ WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg,
                                           getregion(t.vertical_scheme, r),
                                           getregion(t.upwinding, r))
 
-function cell_advection_timescale(grid::MultiRegionGrid, velocities)
+function cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
     return minimum(Δt.regional_objects)
 end

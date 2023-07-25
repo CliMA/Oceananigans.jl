@@ -3,7 +3,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spli
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
 
-function SplitExplicitAuxiliaryFields(grid::MultiRegionGrid)
+function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
@@ -37,7 +37,7 @@ end
 @inline augmented_kernel_offsets(grid, ::XPartition) = (halo_size(grid)[1]-1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, halo_size(grid)[2]-1)
 
-function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrid)
+function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
 
         settings  = free_surface.settings 
 

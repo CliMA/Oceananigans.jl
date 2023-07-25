@@ -15,18 +15,26 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
         new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
 end
 
-@inline isregional(mrg::MultiRegionGrid)        = true
-@inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
-@inline switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
-@inline devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
-@inline sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
+const ImmersedMultiRegionGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid} 
+
+const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
+
+@inline isregional(mrg::MultiRegionGrids)        = true
+@inline getdevice(mrg::MultiRegionGrid, i)       = getdevice(mrg.region_grids, i)
+@inline switch_device!(mrg::MultiRegionGrid, i)  = switch_device!(getdevice(mrg, i))
+@inline devices(mrg::MultiRegionGrid)            = devices(mrg.region_grids)
+@inline sync_all_devices!(mrg::MultiRegionGrid)  = sync_all_devices!(devices(mrg))
 
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
 
-@inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
+@inline getdevice(mrg::ImmersedMultiRegionGrid, i)       = getdevice(mrg.underlying_grid.region_grids, i)
+@inline switch_device!(mrg::ImmersedMultiRegionGrid, i)  = switch_device!(getdevice(mrg.underlying_grid, i))
+@inline devices(mrg::ImmersedMultiRegionGrid)            = devices(mrg.underlying_grid.region_grids)
+@inline sync_all_devices!(mrg::ImmersedMultiRegionGrid)  = sync_all_devices!(devices(mrg.underlying_grid))
 
-const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{IBG}}}} where {FT, TX, TY, TZ, P, IBG<:ImmersedBoundaryGrid}
+@inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
+@inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
@@ -107,14 +115,6 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
                                  precompute_metrics = metrics_precomputed(grid))
 end
 
-function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size, extent, partition, region)
-    boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, local_size, region, child_arch)
-    return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary)
-end
-
-partition_immersed_boundary(b, args...) = 
-    getnamewrapper(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
-
 function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
     extent  = reconstruct_extent(mrg, mrg.partition)
@@ -128,20 +128,28 @@ end
 
 Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
-function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
-                                                     mrg.partition, 
-                                                     construct_regionally(getproperty, mrg, :underlying_grid), 
-                                                     mrg.devices)
-                                                     
-    global_grid     = on_architecture(CPU(), reconstruct_global_grid(underlying_mrg))
-    cpu_mrg         = on_architecture(CPU(), mrg)
-    local_boundary  = construct_regionally(getproperty, cpu_mrg, :immersed_boundary)
-    local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
-    local_array     = construct_regionally(getinterior, local_array, mrg)
-    global_boundary = getnamewrapper(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, architecture(mrg)))
-    return on_architecture(architecture(mrg), ImmersedBoundaryGrid(global_grid, global_boundary))
+function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid) 
+    global_grid     = reconstruct_global_grid(mrg.underlying_grid)
+    global_boundary = reconstruct_global_boundary(mrg.immersed_boundary)
+
+    return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
+
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+
+reconstruct_global_boundary(g::GridFittedBottom{<:Field})   = GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
+reconstruct_global_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
+reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.bottom_height))
+
+@inline  getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
+@inline _getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))
+
+@inline  getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary(_getregion(g.bottom_height, r))
+@inline _getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary( getregion(g.bottom_height, r))
+@inline  getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom(_getregion(g.bottom_height, r), g.immersed_condition)
+@inline _getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom( getregion(g.bottom_height, r), g.immersed_condition)
+@inline  getregion(g::PartialCellBottom{<:Field}, r)  = PartialCellBottom(_getregion(g.bottom_height, r))
+@inline _getregion(g::PartialCellBottom{<:Field}, r)  = PartialCellBottom( getregion(g.bottom_height, r))
 
 getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.Ny]
 getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
@@ -167,7 +175,7 @@ multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture
 #### Utilitites for MultiRegionGrid
 ####
 
-new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
+new_data(FT::DataType, mrg::MultiRegionGrids, args...) = construct_regionally(new_data, FT, mrg, args...)
 
 # This is kind of annoying but it is necessary to have compatible MultiRegion and Distributed
 function with_halo(new_halo, mrg::MultiRegionGrid) 
@@ -209,8 +217,15 @@ function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
 end
    
 ####
+#### This works only for homogenous partitioning
+####
+
+size(mrg::MultiRegionGrids) = size(getregion(mrg, 1)) 
+halo_size(mrg::MultiRegionGrids) = halo_size(getregion(mrg, 1)) 
+
+####
 #### Get property for `MultiRegionGrid` (gets the properties of region 1)
-#### In general getpropert should never be used as a MultiRegionGrid
+#### In general getproperty should never be used as a MultiRegionGrid
 #### Should be used only in combination with an @apply_regionally
 ####
 
@@ -226,14 +241,3 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
 @inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
 @inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)
-
-@inline function get_multi_property(mrg::ImmersedMultiRegionGrid, ::Val{:underlying_grid})
-    global_grid = reconstruct_global_grid(mrg)
-    grid        = global_grid.underlying_grid
-    return MultiRegionGrid(grid, partition = mrg.partition, devices = mrg.devices, validate = false)
-end
-
-function maybe_add_active_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    new_grids = construct_regionally(maybe_add_active_cells_map, mrg)
-    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
-end

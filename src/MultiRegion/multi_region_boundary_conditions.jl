@@ -29,7 +29,7 @@ import Oceananigans.BoundaryConditions:
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
 # This can be implemented once we have a buffer for field_tuples
-@inline function tupled_fill_halo_regions!(full_fields, grid::MultiRegionGrid, args...; kwargs...) 
+@inline function tupled_fill_halo_regions!(full_fields, grid::MultiRegionGrids, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
@@ -59,7 +59,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrids, buffers, args...; kwargs...) 
 
     arch  = architecture(mrg)
     halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)

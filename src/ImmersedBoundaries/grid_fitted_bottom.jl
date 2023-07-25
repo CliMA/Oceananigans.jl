@@ -39,9 +39,9 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax = maximum(parent(ib.bottom_height))
-    hmin = minimum(parent(ib.bottom_height))
-    hmean = mean(parent(ib.bottom_height))
+    hmax  = maximum(ib.bottom_height)
+    hmin  = minimum(ib.bottom_height)
+    hmean = mean(ib.bottom_height)
 
     summary1 = "GridFittedBottom("
 
@@ -78,12 +78,6 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
-function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
-    TX, TY, TZ = topology(grid)
-    validate_ib_size(grid, ib)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
-end
-
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j, 1]
@@ -103,10 +97,11 @@ function on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
     arch_grid = on_architecture(arch, ib.bottom_height.grid)
     new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    copyto!(parent(new_bottom_height), parent(ib.bottom_height))
+    set!(new_bottom_height, ib.bottom_height)
+    fill_halo_regions!(new_bottom_height)
     return GridFittedBottom(new_bottom_height, ib.immersed_condition)
 end
 
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height.data),
-                                                                   ib.immersed_condition)
+                                                                             ib.immersed_condition)
 
