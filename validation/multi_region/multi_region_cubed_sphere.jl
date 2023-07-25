@@ -79,7 +79,7 @@ heatsphere!(ax::Axis3, field::CubedSphereField, k=1; kwargs...) = apply_regional
 
 function multi_region_cubed_sphere_plots()
 
-    Nx, Ny, Nz = 50, 50, 2
+    Nx, Ny, Nz = 5, 5, 2
     grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz), z=(-1, 0), radius=1, horizontal_direction_halo = 3, 
                                     z_topology=Bounded)
     
@@ -107,12 +107,16 @@ function multi_region_cubed_sphere_plots()
     save("multi_region_cubed_sphere_c_geo_latlon.png", fig)
     
     u = XFaceField(grid)
-    
     set!(u, (x, y, z) -> y)
-    colorrange = (-90, 90)
-    colormap = :balance
+
+    v = YFaceField(grid)
+    set!(v, (x, y, z) -> y)   
     
-    fill_halo_regions!(u)
+    for _ in 1:2
+        fill_halo_regions!(u)
+        fill_halo_regions!(v)
+        @apply_regionally replace_horizontal_velocity_halos!((; u = u, v = v, w = nothing), grid)
+    end
     
     fig = Figure()
     ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
@@ -128,14 +132,6 @@ function multi_region_cubed_sphere_plots()
     ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
     heatlatlon!(ax, u; colorrange, colormap)
     save("multi_region_cubed_sphere_u_geo_latlon.png", fig)
-    
-    v = YFaceField(grid)
-    
-    set!(v, (x, y, z) -> y)
-    colorrange = (-90, 90)
-    colormap = :balance
-    
-    fill_halo_regions!(v)
     
     fig = Figure()
     ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
