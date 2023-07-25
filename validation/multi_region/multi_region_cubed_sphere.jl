@@ -79,7 +79,7 @@ heatsphere!(ax::Axis3, field::CubedSphereField, k=1; kwargs...) = apply_regional
 
 function multi_region_cubed_sphere_plots()
 
-    Nx, Ny, Nz = 88, 88, 2
+    Nx, Ny, Nz = 50, 50, 2
     grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz), z=(-1, 0), radius=1, horizontal_direction_halo = 3, 
                                     z_topology=Bounded)
     
@@ -94,18 +94,64 @@ function multi_region_cubed_sphere_plots()
     fig = Figure()
     ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
     heatsphere!(ax, c; colorrange, colormap)
-    save("multi_region_cubed_sphere_figure_1.png", fig)
+    save("multi_region_cubed_sphere_c_heatsphere.png", fig)
     
     fig = Figure()
     ax = Axis(fig[1, 1])
     heatlatlon!(ax, c; colorrange, colormap)
-    save("multi_region_cubed_sphere_figure_2.png", fig)
+    save("multi_region_cubed_sphere_c_heatlatlon.png", fig)
 
     fig = Figure(resolution = (1200, 600))
     ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
     heatlatlon!(ax, c; colorrange, colormap)
-    save("multi_region_cubed_sphere_figure_3.png", fig)
+    save("multi_region_cubed_sphere_c_geo_latlon.png", fig)
+    
+    u = XFaceField(grid)
+    
+    set!(u, (x, y, z) -> y)
+    colorrange = (-90, 90)
+    colormap = :balance
+    
+    fill_halo_regions!(u)
+    
+    fig = Figure()
+    ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
+    heatsphere!(ax, u; colorrange, colormap)
+    save("multi_region_cubed_sphere_u_heatsphere.png", fig)
+    
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    heatlatlon!(ax, u; colorrange, colormap)
+    save("multi_region_cubed_sphere_u_heatlatlon.png", fig)
 
+    fig = Figure(resolution = (1200, 600))
+    ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+    heatlatlon!(ax, u; colorrange, colormap)
+    save("multi_region_cubed_sphere_u_geo_latlon.png", fig)
+    
+    v = YFaceField(grid)
+    
+    set!(v, (x, y, z) -> y)
+    colorrange = (-90, 90)
+    colormap = :balance
+    
+    fill_halo_regions!(v)
+    
+    fig = Figure()
+    ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
+    heatsphere!(ax, v; colorrange, colormap)
+    save("multi_region_cubed_sphere_v_heatsphere.png", fig)
+    
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    heatlatlon!(ax, v; colorrange, colormap)
+    save("multi_region_cubed_sphere_v_heatlatlon.png", fig)
+
+    fig = Figure(resolution = (1200, 600))
+    ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+    heatlatlon!(ax, v; colorrange, colormap)
+    save("multi_region_cubed_sphere_v_geo_latlon.png", fig)   
+    
 end
 
 test_multi_region_cubed_sphere_plots = true
