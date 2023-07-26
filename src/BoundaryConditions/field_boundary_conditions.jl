@@ -163,9 +163,11 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
     return NoFluxBoundaryCondition()
 end
 
-regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...) =
-    regularize_boundary_condition(default_prognostic_bc(topology(grid, dim)(), loc[dim](), default),
-                                  grid, loc, dim, args...)
+# regularize default boundary conditions
+function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
+    default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim](), default)
+    return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
+end
 
 regularize_boundary_condition(bc, args...) = bc # fallback
 
