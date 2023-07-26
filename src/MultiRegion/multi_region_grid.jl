@@ -139,13 +139,13 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 reconstruct_global_boundary(g::GridFittedBottom{<:Field})   = GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
 reconstruct_global_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
-reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.bottom_height))
+reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
 @inline  getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
 @inline _getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))
 
-@inline  getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary(_getregion(g.bottom_height, r))
-@inline _getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary( getregion(g.bottom_height, r))
+@inline  getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary(_getregion(g.mask, r))
+@inline _getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary( getregion(g.mask, r))
 @inline  getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom(_getregion(g.bottom_height, r), g.immersed_condition)
 @inline _getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom( getregion(g.bottom_height, r), g.immersed_condition)
 @inline  getregion(g::PartialCellBottom{<:Field}, r)  = PartialCellBottom(_getregion(g.bottom_height, r))
