@@ -43,14 +43,15 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                 single_region_field = FieldType(grid)
 
                 set!(single_region_field, (x, y, z) -> x)
-                @apply_regionally set!(multi_region_field, (x, y, z) -> x)
+                set!(multi_region_field,  (x, y, z) -> x)
 
                 fill_halo_regions!(single_region_field)
                 fill_halo_regions!(multi_region_field)
 
+                # Remember that fields are reconstructed on the CPU!!
                 reconstructed_field = reconstruct_global_field(multi_region_field)
 
-                @test parent(reconstructed_field) ≈ parent(single_region_field)
+                @test parent(reconstructed_field) == Array(parent(single_region_field))
             end
 
             for immersed_boundary in immersed_boundaries
