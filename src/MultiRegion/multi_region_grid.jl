@@ -1,4 +1,6 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
 import Oceananigans.Distributed: reconstruct_global_grid
@@ -115,6 +117,11 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
                                  precompute_metrics = metrics_precomputed(grid))
 end
 
+"""
+    reconstruct_global_grid(mrg::MultiRegionGrid)
+
+Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
+"""
 function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
     extent  = reconstruct_extent(mrg, mrg.partition)
@@ -123,11 +130,10 @@ function reconstruct_global_grid(mrg)
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
 
-"""
-    reconstruct_global_grid(mrg::MultiRegionGrid)
+#####
+##### `ImmersedMultiRegionGrid` functionalities
+#####
 
-Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
-"""
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid) 
     global_grid     = reconstruct_global_grid(mrg.underlying_grid)
     global_boundary = reconstruct_global_boundary(mrg.immersed_boundary)
@@ -135,25 +141,12 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid)
     return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
 
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
-
-reconstruct_global_boundary(g::GridFittedBottom{<:Field})   = GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
+reconstruct_global_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
 reconstruct_global_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
 reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
-@inline  getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
-@inline _getregion(mrg::ImmersedBoundaryGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))
-
-@inline  getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary(_getregion(g.mask, r))
-@inline _getregion(g::GridFittedBoundary{<:Field}, r) = GridFittedBoundary( getregion(g.mask, r))
-@inline  getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom(_getregion(g.bottom_height, r), g.immersed_condition)
-@inline _getregion(g::GridFittedBottom{<:Field}, r)   = GridFittedBottom( getregion(g.bottom_height, r), g.immersed_condition)
-@inline  getregion(g::PartialCellBottom{<:Field}, r)  = PartialCellBottom(_getregion(g.bottom_height, r))
-@inline _getregion(g::PartialCellBottom{<:Field}, r)  = PartialCellBottom( getregion(g.bottom_height, r))
-
-getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.Ny]
-getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
-getinterior(func::Function, grid) = func
+@inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
+@inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))
 
 """
     multi_region_object_from_array(a::AbstractArray, grid)
@@ -194,11 +187,6 @@ function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT,
     new_grids = construct_regionally(on_architecture, CPU(), mrg)
     devices   = Tuple(CPU() for i in 1:length(mrg))  
     return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
-end
-
-function on_specific_architecture(arch, dev, grid)
-    switch_device!(dev)
-    return on_architecture(arch, grid)
 end
 
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
