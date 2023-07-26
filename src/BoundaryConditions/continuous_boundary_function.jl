@@ -76,7 +76,6 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
     # Set boundary-normal location to Nothing:
     LX, LY, LZ = Tuple(i == dim ? Nothing : loc[i] for i = 1:3)
 
-    @show LX, LY, LZ
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
                                                      prognostic_field_names)
