@@ -91,7 +91,7 @@ end
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
     Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl     = Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
+    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
     return ifelse(k < 1, zero(grid), dl)
 end
 
