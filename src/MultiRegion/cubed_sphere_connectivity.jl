@@ -3,8 +3,6 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Rotations
 using DocStringExtensions
 
-import Oceananigans.Fields: replace_horizontal_velocity_halos!
-
 # Rotations of adjacent regions with respect to host region.
 # Transforming host indices into the adjacent region coordinate system
 # _inverts_ this rotation.

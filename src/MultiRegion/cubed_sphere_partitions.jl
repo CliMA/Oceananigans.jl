@@ -89,9 +89,9 @@ end
 ##### Boundary-specific Utils
 #####
 
-replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid; signed=true) = nothing
+replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::AbstractGrid; signed=true) = nothing
 
-function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid; signed=true)
+function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}; signed=true)
     u, v, _ = velocities
 
     ubuff = u.boundary_buffers
