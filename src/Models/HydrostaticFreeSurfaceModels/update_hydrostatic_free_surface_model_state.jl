@@ -28,7 +28,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
-    fill_halo_regions!(model.tracers, model.clock, fields(model))
+fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     @apply_regionally replace_horizontal_velocity_halos!(model.velocities, model.grid)
     @apply_regionally compute_w_diffusivities_pressure!(model)
