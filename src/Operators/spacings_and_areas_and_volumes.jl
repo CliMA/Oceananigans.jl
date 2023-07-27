@@ -5,7 +5,8 @@ const RGX  = XRegRectilinearGrid
 const RGY  = YRegRectilinearGrid
 const RGZ  = ZRegRectilinearGrid
 
-const OSSG = OrthogonalSphericalShellGrid
+const OSSG  = OrthogonalSphericalShellGrid
+const OSSGZ = ZRegOrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegLatLonGrid
@@ -65,8 +66,11 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = grid.Δz
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -101,15 +105,15 @@ end
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶜᵃ[j]
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶠᵃᵃ
-@inline Δxᶜᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶜᵃᵃ
-@inline Δyᵃᶠᵃ(i, j, k, grid::RGY) =  @inbounds grid.Δyᵃᶠᵃ
-@inline Δyᵃᶜᵃ(i, j, k, grid::RGY) =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
 #####
 ##### LatitudeLongitudeGrid

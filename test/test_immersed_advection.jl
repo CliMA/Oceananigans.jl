@@ -25,7 +25,7 @@ function run_tracer_interpolation_test(c, ibg, scheme)
     for i in 6:19, j in 6:19
         if typeof(scheme) <: Centered
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, c) ≈ 1.0
@@ -78,7 +78,7 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0

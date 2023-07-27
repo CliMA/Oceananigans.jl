@@ -12,6 +12,7 @@ const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation,
                                            MultiRegionMultiaryOperation,
                                            MultiRegionDerivative,
                                            MultiRegionKernelFunctionOperation}
+
 # Utils
 Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 
@@ -22,10 +23,6 @@ sync_all_devices!(f::MultiRegionAbstractOperation)  = sync_all_devices!(devices(
 @inline switch_device!(f::MultiRegionAbstractOperation, d) = switch_device!(f.grid, d)
 @inline getdevice(f::MultiRegionAbstractOperation, d)      = getdevice(f.grid, d)
 
-## Functions applied regionally
-compute_at!(f::MultiRegionAbstractOperation, time) = apply_regionally!(compute_at!, f, time)
-compute!(f::MultiRegionAbstractOperation)          = apply_regionally!(compute!, f, time)
-
 for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :KernelFunctionOperation]
     @eval begin
         @inline getregion(f::$T{LX, LY, LZ}, r) where {LX, LY, LZ} =
@@ -35,4 +32,3 @@ for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :K
                            $T{LX, LY, LZ}(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($T))...)
     end
 end
-
