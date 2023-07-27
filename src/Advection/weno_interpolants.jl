@@ -328,7 +328,7 @@ julia> calc_weno_stencil(2, :right, :x)
                                     dir == :y ?
                                     :(@inbounds ψ(i, j + $c, k, args...)) :
                                     :(@inbounds ψ(i, j, k + $c, args...))
-            else    
+            else
                 stencil_point[idx] =  dir == :x ? 
                                     :(@inbounds ψ[i + $c, j, k]) :
                                     dir == :y ?

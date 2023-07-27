@@ -11,10 +11,10 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
     condition :: C
     mask :: M
 
-     function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
-         T = eltype(operand)
-         return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
-     end
+    function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
+        T = eltype(operand)
+        return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
+    end
 end
 
 """

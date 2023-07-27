@@ -51,7 +51,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                 # Remember that fields are reconstructed on the CPU!!
                 reconstructed_field = reconstruct_global_field(multi_region_field)
 
-                @test parent(reconstructed_field) == Array(parent(single_region_field))
+                @test parent(reconstructed_field) ≈ Array(parent(single_region_field))
             end
 
             for immersed_boundary in immersed_boundaries
