@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.85.0"
+version = "0.86.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -9,6 +9,7 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
@@ -40,6 +41,7 @@ CUDA = "4"
 KernelAbstractions = "^0.9"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
+Distances = "0.10"
 DocStringExtensions = "0.8, 0.9"
 FFTW = "1"
 Glob = "1.3"
@@ -55,7 +57,7 @@ PencilFFTs = "0.13.5, 0.14, 0.15"
 Rotations = "1.0"
 SeawaterPolynomials = "0.3.2"
 StructArrays = "0.4, 0.5, 0.6"
-julia = "1.6"
+julia = "1.9"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"

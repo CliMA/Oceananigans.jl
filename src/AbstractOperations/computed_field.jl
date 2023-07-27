@@ -44,7 +44,7 @@ function Field(operand::AbstractOperation;
     loc = location(operand)
     indices = validate_indices(indices, loc, grid)
 
-    boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
+    @apply_regionally boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)
@@ -63,7 +63,7 @@ Compute `comp.operand` and store the result in `comp.data`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
-    @apply_regionally compute_at!(comp.operand, time)
+    compute_at!(comp.operand, time)
 
     # Now perform the primary computation
     @apply_regionally compute_computed_field!(comp)

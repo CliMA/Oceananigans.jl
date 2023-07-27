@@ -6,15 +6,17 @@ using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Advection: VelocityUpwinding, OnlySelfUpwinding, CrossAndSelfUpwinding
+using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 
 import Oceananigans.Advection: WENO, cell_advection_timescale
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedField
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(T, inner=true) 
+function getregionalproperties(T, inner=true)
     type = eval(T)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
@@ -32,6 +34,7 @@ Types = (:HydrostaticFreeSurfaceModel,
          :SplitExplicitState,
          :SplitExplicitFreeSurface,
          :PrescribedVelocityFields,
+         :PreconditionedConjugateGradientSolver,
          :CrossAndSelfUpwinding,
          :OnlySelfUpwinding,
          :VelocityUpwinding)
@@ -39,7 +42,7 @@ Types = (:HydrostaticFreeSurfaceModel,
 for T in Types
     @eval begin
         # This assumes a constructor of the form T(arg1, arg2, ...) exists,
-        # # which is not the case for all types.
+        # which is not the case for all types.
         @inline  getregion(t::$T, r) = $T($(getregionalproperties(T, true)...))
         @inline _getregion(t::$T, r) = $T($(getregionalproperties(T, false)...))
     end
@@ -54,8 +57,10 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 @inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
 @inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
 
+PrescribedField(X, Y, Z, f::MultiRegionObject, grid; kwargs...) = f
+
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
-      construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
+    construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
@@ -77,4 +82,3 @@ function cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
     return minimum(Δt.regional_objects)
 end
-

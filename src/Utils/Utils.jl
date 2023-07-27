@@ -39,6 +39,7 @@ include("versioninfo.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
+include("coordinate_transformations.jl")
 include("sum_of_arrays.jl")
 
 end # module

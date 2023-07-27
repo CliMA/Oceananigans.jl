@@ -25,6 +25,8 @@ FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
 const OneDBuffers = FieldBoundaryBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
 function FieldBoundaryBuffers(grid, data, boundary_conditions)
+    Hx, Hy, _ = halo_size(grid)
+    arch = architecture(grid)
 
     Hx, Hy, Hz = halo_size(grid)
 
@@ -93,7 +95,7 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
                          Adapt.adapt(to, buff.northeast))
 
 """
-    fill_send_buffers(c, buffers, arch)
+    fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing. 
 """
@@ -145,7 +147,7 @@ end
 fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
 
 """
-    recv_from_buffers(c, buffers, arch)
+    recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred. 
 """
@@ -252,4 +254,5 @@ _recv_from_southeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2H
 _recv_from_northwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-
+# Switch around halos for cubed sphere by exhanging buffer informations
+replace_horizontal_velocity_halos!(vel, grid::AbstractGrid; signed=true) = nothing
