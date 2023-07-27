@@ -9,14 +9,15 @@ using Distances
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
 """
-    ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
+    ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
                              panel_size,
                              z,
-                             horizontal_halo = 1,
-                             z_halo = horizontal_halo,
+                             horizontal_direction_halo = 1,
+                             z_halo = horizontal_direction_halo,
+                             horizontal_topology = FullyConnected,
                              z_topology = Bounded,
                              radius = R_Earth,
-                             partition = CubedSpherePartition(R = 1),
+                             partition = CubedSpherePartition(; R = 1),
                              devices = nothing)
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
@@ -127,82 +128,19 @@ of each panel.
 Example
 =======
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
-julia> using Oceananigans
+```@example cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
+using Oceananigans
 
-julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
-├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
-├── partitioning: CubedSpherePartition with (1 region in each panel)
-├── connectivity: CubedSphereConnectivity
-└── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
+grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
 ```
 
 We can find out all connectivities of the regions of our grid. For example, to determine the
 connectivites on the South boundary of each region we can call
 
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: East, West, South, North, CubedSphereRegionalConnectivity)
-julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, South, North
+```@example cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: East, West, South, North, CubedSphereRegionalConnectivity)
+using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, South, North, getregion
 
-julia> for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.connectivity.connections, 3).south); end
-panel 1: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-panel 2: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-panel 3: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-panel 4: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-panel 5: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-panel 6: CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-```
-
-Alternatively, if we want to see all connectivities for, e.g., panel 3 of a grid
-
-```jldoctest cubedspheregrid; setup = :(using Oceananigans; using Oceananigans.MultiRegion: inject_west_boundary, inject_south_boundary, inject_east_boundary, inject_north_boundary, East, West, South, North, CubedSphereRegionalConnectivity)
-julia> using Oceananigans.MultiRegion: East, West, South, North
-
-julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity
-
-julia> region=3;
-
-julia> getregion(grid.connectivity.connections, 3).west
-CubedSphereRegionalConnectivity
-├── from: North side, region 1 
-├── to:   West side, region 3 
-└── counter-clockwise rotation ↺
-
-julia> getregion(grid.connectivity.connections, 3).south
-CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
-└── no rotation
-
-julia> getregion(grid.connectivity.connections, 3).east
-CubedSphereRegionalConnectivity
-├── from: West side, region 4 
-├── to:   East side, region 3 
-└── no rotation
-
-julia> getregion(grid.connectivity.connections, 3).north
-CubedSphereRegionalConnectivity
-├── from: West side, region 5 
-├── to:   North side, region 3 
-└── counter-clockwise rotation ↺
+for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.connectivity.connections, 3).south); end
 ```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
