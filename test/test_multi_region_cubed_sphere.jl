@@ -154,10 +154,12 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
 
                     region_Nx, region_Ny, _ = size(getregion(grid, region))
 
-                    areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:region_Nx, 1:region_Ny])
-                    areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:region_Nx, 1:region_Ny])
-                    areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:region_Nx, 1:region_Ny])
-                    areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:region_Nx, 1:region_Ny])
+                    CUDA.@allowscalar begin
+                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:region_Nx, 1:region_Ny])
+                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:region_Nx, 1:region_Ny])
+                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:region_Nx, 1:region_Ny])
+                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:region_Nx, 1:region_Ny])
+                    end
                 end
 
                 @test areaᶜᶜᵃ ≈ areaᶠᶜᵃ ≈ areaᶜᶠᵃ ≈ areaᶠᶠᵃ ≈ 4π * grid.radius^2
@@ -178,30 +180,34 @@ end
             @info "  Testing conformal cubed sphere face-coordinate halos [$FT, $(typeof(arch))]..."
 
             for region in 1:6
-                @test getregion(grid, region).φᶠᶜᵃ[1:Nx+1, 1:Ny]  ≈ getregion(grid_bounded, region).φᶠᶜᵃ[1:Nx+1, 1:Ny]
-                @test getregion(grid, region).λᶠᶜᵃ[1:Nx+1, 1:Ny]  ≈ getregion(grid_bounded, region).λᶠᶜᵃ[1:Nx+1, 1:Ny]
+                CUDA.@allowscalar begin
+                    @test getregion(grid, region).φᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).φᶠᶜᵃ[1:Nx+1, 1:Ny]
+                    @test getregion(grid, region).λᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).λᶠᶜᵃ[1:Nx+1, 1:Ny]
 
-                @test getregion(grid, region).φᶜᶠᵃ[1:Nx, 1:Ny+1]  ≈ getregion(grid_bounded, region).φᶜᶠᵃ[1:Nx, 1:Ny+1]
-                @test getregion(grid, region).λᶜᶠᵃ[1:Nx, 1:Ny+1]  ≈ getregion(grid_bounded, region).λᶜᶠᵃ[1:Nx, 1:Ny+1]
+                    @test getregion(grid, region).φᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).φᶜᶠᵃ[1:Nx, 1:Ny+1]
+                    @test getregion(grid, region).λᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).λᶜᶠᵃ[1:Nx, 1:Ny+1]
 
-                @test getregion(grid, region).φᶠᶠᵃ[1:Nx+1, 1:Ny+1]  ≈ getregion(grid_bounded, region).φᶠᶠᵃ[1:Nx+1, 1:Ny+1]
-                @test getregion(grid, region).λᶠᶠᵃ[1:Nx+1, 1:Ny+1]  ≈ getregion(grid_bounded, region).λᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                    @test getregion(grid, region).φᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).φᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                    @test getregion(grid, region).λᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).λᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                end
             end
 
             @info "  Testing conformal cubed sphere face-metric halos [$FT, $(typeof(arch))]..."
 
             for region in 1:6
-                @test getregion(grid, region).Δxᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Δxᶠᶜᵃ[1:Nx+1, 1:Ny]
-                @test getregion(grid, region).Δyᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Δyᶠᶜᵃ[1:Nx+1, 1:Ny]
-                @test getregion(grid, region).Azᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Azᶠᶜᵃ[1:Nx+1, 1:Ny]
+                CUDA.@allowscalar begin
+                    @test getregion(grid, region).Δxᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Δxᶠᶜᵃ[1:Nx+1, 1:Ny]
+                    @test getregion(grid, region).Δyᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Δyᶠᶜᵃ[1:Nx+1, 1:Ny]
+                    @test getregion(grid, region).Azᶠᶜᵃ[1:Nx+1, 1:Ny] ≈ getregion(grid_bounded, region).Azᶠᶜᵃ[1:Nx+1, 1:Ny]
 
-                @test getregion(grid, region).Δxᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Δxᶜᶠᵃ[1:Nx, 1:Ny+1]
-                @test getregion(grid, region).Δyᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Δyᶜᶠᵃ[1:Nx, 1:Ny+1]
-                @test getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Azᶜᶠᵃ[1:Nx, 1:Ny+1]
+                    @test getregion(grid, region).Δxᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Δxᶜᶠᵃ[1:Nx, 1:Ny+1]
+                    @test getregion(grid, region).Δyᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Δyᶜᶠᵃ[1:Nx, 1:Ny+1]
+                    @test getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny+1] ≈ getregion(grid_bounded, region).Azᶜᶠᵃ[1:Nx, 1:Ny+1]
 
-                @test getregion(grid, region).Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1]
-                @test getregion(grid, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1]
-                @test getregion(grid, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                    @test getregion(grid, region).Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                    @test getregion(grid, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                    @test getregion(grid, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1] ≈ getregion(grid_bounded, region).Azᶠᶠᵃ[1:Nx+1, 1:Ny+1]
+                end
             end
         end
     end

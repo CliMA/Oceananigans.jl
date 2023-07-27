@@ -278,10 +278,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
             $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
 
-            for region in 1:6
-                getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
-                getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
-                getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
+                    getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
+                    getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
+                end
             end
 
             if $(horizontal_topology) == FullyConnected
@@ -295,11 +297,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                             w = nothing), $(grid), signed=false)
                 end
             end
-
-            for region in 1:6
-                getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
-                getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
-                getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
+                    getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
+                    getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
+                end
             end
         end
         eval(expr)
@@ -315,10 +318,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(fcametric)) = Field{Face,   Center, Nothing}($(grid))
             $(Symbol(cfametric)) = Field{Center, Face,   Nothing}($(grid))
 
-            for region in 1:6
-                getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
-                getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
-                getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
+                    getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
+                    getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
+                end
             end
 
             if $(horizontal_topology) == FullyConnected
@@ -333,10 +338,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 end
             end
 
-            for region in 1:6
-                getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
-                getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
-                getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
+                    getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
+                    getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
+                end
             end
         end # quote
 
@@ -347,36 +354,36 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     function fill_faceface_coordinates!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
-        CUDA.@allowscalar begin
-            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
+        CUDA.allowscalar() do
+            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
+            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
 
             for region in (1, 3, 5)
                 φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
@@ -399,47 +406,47 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
         CUDA.@allowscalar begin
-            getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 2).Azᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 1).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Δxᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 1).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Δyᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 1).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Azᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 3).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 5).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 4).Azᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Δyᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 3).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Δxᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 3).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Azᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 3).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Δxᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Δyᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 3).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Azᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 5).Δxᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Δyᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Azᶠᶠᵃ[2:Nx+1, Ny+1] .= reverse(getregion(grid, 1).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Δxᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).Δyᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).Azᶠᶠᵃ[Nx+1, 1:Ny]   .= getregion(grid, 6).Azᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Δyᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 5).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Δxᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 5).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Azᶠᶠᵃ[1:1, 1:Ny])'
+            getregion(grid, 5).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Δxᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Δyᶠᶠᵃ[1, 1:Ny]
+            getregion(grid, 5).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Azᶠᶠᵃ[1, 1:Ny]
 
-            getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 3).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 4).Azᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Δxᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Δyᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Azᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 2).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 2).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Azᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 5).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 6).Azᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Δxᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Δyᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Azᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 4).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 4).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Azᶠᶠᵃ[1:Nx, 1:1])
 
-            getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Azᶠᶠᵃ[1:Nx, Ny+1]   .= getregion(grid, 1).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).Azᶠᶠᵃ[Nx+1, 2:Ny+1] .= reverse(getregion(grid, 2).Azᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Δxᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Δyᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Azᶠᶠᵃ[1:Nx, 1]
+            getregion(grid, 6).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, 1:1])
+            getregion(grid, 6).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Azᶠᶠᵃ[1:Nx, 1:1])
 
             for region in (1, 3, 5)
                 getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
@@ -462,11 +469,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         fill_faceface_metrics!(grid)
     end
 
-    for region in 1:6
-        getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
-        getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
-        getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
-        getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
+    CUDA.@allowscalar begin
+        for region in 1:6
+            getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
+            getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
+            getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
+            getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
+        end
     end
 
     return grid
