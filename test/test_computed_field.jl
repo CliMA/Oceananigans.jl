@@ -518,19 +518,19 @@ for arch in archs
                 tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
                 tke_ccc              = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
 
-                @test try compute!(Field(u_prime             )); true; catch; false; end
-                @test try compute!(Field(u_prime_ccc         )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared     )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared_ccc )); true; catch; false; end
-                @test try compute!(Field(horizontal_twice_tke)); true; catch; false; end
-                @test try compute!(Field(horizontal_tke      )); true; catch; false; end
-                @test try compute!(Field(twice_tke           )); true; catch; false; end
+                compute!(Field(u_prime             ))
+                compute!(Field(u_prime_ccc         ))
+                compute!(Field(u_prime_squared     ))
+                compute!(Field(u_prime_squared_ccc ))
+                compute!(Field(horizontal_twice_tke))
+                compute!(Field(horizontal_tke      ))
+                compute!(Field(twice_tke           ))
 
-                @test try compute!(Field(horizontal_tke_ccc  )); true; catch; false; end
-                @test try compute!(Field(tke                 )); true; catch; false; end
+                compute!(Field(horizontal_tke_ccc  ))
+                compute!(Field(tke                 ))
 
                 computed_tke = Field(tke_ccc)
-                @test try compute!(computed_tke); true; catch; false; end
+                compute!(computed_tke)
                 @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
