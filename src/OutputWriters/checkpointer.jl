@@ -212,13 +212,13 @@ function set!(model, filepath::AbstractString)
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
-            if string(name) ∈ keys(file) # Test if variable exist in checkpoint
+            if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
                 halo = halo_size(model_field.grid)
                 loc  = location(model_field)
                 indices = map(interior_parent_indices, loc, topo, gridsize, halo)
-                parent_data = file["$name/data"][indices...]
-                set!(model_field, parent_data)
+                interior_data = file["$name/data"][indices...] #  Allow different halo size by loading only the interior
+                set!(model_field, interior_data)
                 fill_halo_regions!(model_field)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
