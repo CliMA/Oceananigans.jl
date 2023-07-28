@@ -4,18 +4,16 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: Field
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels:
-             compute_vertically_integrated_lateral_areas!,
-             compute_matrix_coefficients,
-             flux_div_xyᶜᶜᶠ  
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_lateral_areas!,
+                                                        compute_matrix_coefficients,
+                                                        flux_div_xyᶜᶜᶠ,
+                                                        PCGImplicitFreeSurfaceSolver
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels:
-             build_implicit_step_solver,
-             compute_implicit_free_surface_right_hand_side!
-
-import Oceananigans.Solvers: solve!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver,
+                                                         compute_implicit_free_surface_right_hand_side!
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.Solvers: solve!
 
 struct UnifiedImplicitFreeSurfaceSolver{S, R, T}
     unified_pcg_solver :: S
@@ -27,7 +25,7 @@ architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
 function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravitational_acceleration::Number; multiple_devices = false)
-    
+
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
 
@@ -40,7 +38,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
     arch = architecture(mrg) 
-    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
+    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx * grid.Ny))
     storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
@@ -52,9 +50,9 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
 
     reduced_dim = (false, false, true)
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
-                                HeptadiagonalIterativeSolver(coeffs; reduced_dim, 
+                                HeptadiagonalIterativeSolver(coeffs; reduced_dim,
                                                              template = right_hand_side,
-                                                             grid, 
+                                                             grid,
                                                              settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
@@ -66,18 +64,22 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, settings, gra
     UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)   
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
+build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+    throw(ArgumentError("Cannot use Matrix solvers with ConformalCubedSphereGrid!! Select :Default or :PreconditionedConjugateGradient as solver_method"))
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver, g, Δt, ∫ᶻQ, η)
     grid = ∫ᶻQ.u.grid
-    M    = length(grid.partition)
+    M = length(grid.partition)
     @apply_regionally compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), grid.partition)
     return nothing
 end
 
 compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition) = 
     launch!(architecture(grid), grid, :xy,
-                    implicit_linearized_unified_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
+            implicit_linearized_unified_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
 
 # linearized right hand side
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
@@ -100,7 +102,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     arch = architecture(solver)
     grid = η.grid
-    
+
     @apply_regionally redistribute_lhs!(η, storage, arch, grid, Iterate(1:length(grid)), grid.partition)
 
     fill_halo_regions!(η)

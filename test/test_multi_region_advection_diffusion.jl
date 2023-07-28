@@ -4,10 +4,9 @@ using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_field
 using Oceananigans.Operators: hack_cosd
 
-# Tracer patch for visualization
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
-prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
+prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -28,7 +27,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     if grid isa RectilinearGrid
         L = 0.1
     else
-        L = 24 
+        L = 24
     end
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
@@ -47,12 +46,12 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     set!(model, c=cᵢ, e=eᵢ)
 
-    # Time-scale for tracer advection across the smallest grid cell
+    # Time-scale for tracer advection across the smallest grid cell; 0.1 is maximum velocity
     advection_time_scale = Δ_min(grid) / 0.1
-    
+
     Δt = 0.1advection_time_scale
-    
-    for step in 1:10
+
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
@@ -66,6 +65,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     else
         devices = nothing
     end
+
     mrg = MultiRegionGrid(grid, partition = P(regions))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
@@ -90,7 +90,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    Δt = 0.1 * Δ_min(grid)  / sqrt(g * grid.Lz) 
+    @show Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
 
     for _ in 1:10
         time_step!(model, Δt)
@@ -107,6 +107,7 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
     else
         devices = nothing
     end
+
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
@@ -116,13 +117,14 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
                                         buoyancy=nothing)
 
     initial_condition(x, y, z) = cos(m * x)
+
     f = fields(model)[field_name]
 
     @apply_regionally set!(f, initial_condition)
     
     update_state!(model)
 
-    # Step forward with small time-step relative to diff. time-scale
+    # Step forward with small time-step relative to diffusive time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
     for _ = 1:10
         time_step!(model, Δt)
@@ -201,7 +203,7 @@ for arch in archs
             w = interior(reconstruct_global_field(w))
             c = interior(reconstruct_global_field(c))
             η = interior(reconstruct_global_field(η))
-                
+
             @test all(isapprox(u, us, atol=1e-20, rtol = 1e-15))
             @test all(isapprox(v, vs, atol=1e-20, rtol = 1e-15))
             @test all(isapprox(w, ws, atol=1e-20, rtol = 1e-15))
@@ -217,7 +219,7 @@ for arch in archs
                                 x = (0, 1),
                                 y = (0, 1),
                                 z = (0, 1))
-        
+
         diff₂ = ScalarDiffusivity(ν = 1, κ = 1)
         diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
 
