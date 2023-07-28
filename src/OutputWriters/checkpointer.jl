@@ -1,6 +1,7 @@
 using Glob
 
 using Oceananigans
+using Oceananigans.BoundaryConditions
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
@@ -204,6 +205,7 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
+        Hx, Hy, Hz = halo_size(checkpointed_grid)
 
         model.grid == checkpointed_grid ||
              @warn "The grid associated with $filepath and model.grid are not the same!"
@@ -212,9 +214,10 @@ function set!(model, filepath::AbstractString)
 
         for name in propertynames(model_fields)
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint
-                parent_data = file["$name/data"]
+                parent_data = file["$name/data"][Hx+1:end-Hx, Hy+1:end-Hy, Hz+1:end-Hz]
                 model_field = model_fields[name]
-                copyto!(model_field.data.parent, parent_data)
+                set!(model_field, parent_data)
+                fill_halo_regions!(model_field)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
