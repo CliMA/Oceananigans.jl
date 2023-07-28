@@ -213,11 +213,11 @@ function set!(model, filepath::AbstractString)
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
+            @info "loading field $name"
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint
-                parent_data = file["$name/data"][Hx+1:end-Hx, Hy+1:end-Hy, Hz+1:end-Hz]
+                parent_data = file["$name/data"]
                 model_field = model_fields[name]
-                set!(model_field, parent_data)
-                fill_halo_regions!(model_field)
+                copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
