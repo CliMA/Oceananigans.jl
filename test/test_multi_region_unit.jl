@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getnamewrapper
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary
@@ -10,9 +12,10 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
 
         region_num   = [2, 4, 5]
         partitioning = [XPartition]
+        @warn "Need to add tests for YPartition"
 
-        grids = [LatitudeLongitudeGrid(arch, size=(20, 20, 1), latitude=(-80, 80), longitude=collect(range(-180, 180, length=21)), z=(0, 1)),
-                RectilinearGrid(arch, size=(20, 20, 1), x=(0, 1), y=collect(range(0, 1, length=21)), z=(0, 1))]
+        grids = [LatitudeLongitudeGrid(arch, size = (20, 20, 1), latitude = (-80, 80), longitude = collect(range(-180, 180, length=21)), z = (0, 1)),
+                 RectilinearGrid(arch, size = (20, 20, 1), x = (0, 1), y = collect(range(0, 1, length=21)), z = (0, 1))]
 
         immersed_boundaries = [GridFittedBottom((x, y)->0.5),
                                GridFittedBottom(arch_array(arch, [0.5 for i in 1:20, j in 1:20])),
