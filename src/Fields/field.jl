@@ -104,7 +104,7 @@ Keyword arguments
 
 - `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
-  - `boundary_conditions`: If nothing is provided, then field is created using the default
+- `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).
 - `indices`: Used to prescribe where a reduced field lives on. For example, at which `k` index
   does a two-dimensional ``x``-``y`` field lives on. Default: `(:, :, :)`.
@@ -179,7 +179,7 @@ Field(z::ZeroField; kw...) = z
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
-    CenterField(grid; kw...)
+    CenterField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -187,7 +187,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
 
 """
-    XFaceField(grid; kw...)
+    XFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -195,7 +195,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
 
 """
-    YFaceField(grid; kw...)
+    YFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -203,7 +203,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
 
 """
-    ZFaceField(grid; kw...)
+    ZFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -219,7 +219,7 @@ function Base.similar(f::Field, grid=f.grid)
     loc = location(f)
     return Field(loc,
                  grid,
-                 new_data(eltype(parent(f)), grid, loc, f.indices),
+                 new_data(eltype(grid), grid, loc, f.indices),
                  FieldBoundaryConditions(grid, loc, f.indices),
                  f.indices,
                  f.operand,
@@ -545,13 +545,10 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-check_version_larger_than_7() = VERSION.minor > 7
-
-initialize_reduced_field!(::SumReduction,  f, r::ReducedField, c) = check_version_larger_than_7() ? Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))  : Base.initarray!(interior(r), Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction, f, r::ReducedField, c) = check_version_larger_than_7() ? Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c)) : Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,  f, r::ReducedField, c) = check_version_larger_than_7() ? Base.initarray!(interior(r), f, &, true, interior(c))             : Base.initarray!(interior(r), &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = check_version_larger_than_7() ? Base.initarray!(interior(r), f, |, true, interior(c))             : Base.initarray!(interior(r), |, true, interior(c))
-
+initialize_reduced_field!(::SumReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction,    f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
 

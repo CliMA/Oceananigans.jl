@@ -21,7 +21,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
     Δφᵃᶜᵃ :: FY
     φᵃᶠᵃ  :: VY
     φᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
+    Δzᵃᵃᶠ :: FZ
     Δzᵃᵃᶜ :: FZ
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
@@ -39,37 +39,34 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
     # Spherical radius
     radius :: FT
 
-    function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
-                                               Nλ, Nφ, Nz,
-                                               Hλ, Hφ, Hz,
-                                               Lλ::FT, Lφ::FT, Lz::FT,
-                                               Δλᶠᵃᵃ :: FX, Δλᶜᵃᵃ :: FX,
-                                                λᶠᵃᵃ :: VX,  λᶜᵃᵃ :: VX,
-                                               Δφᵃᶠᵃ :: FY, Δφᵃᶜᵃ :: FY,
-                                                φᵃᶠᵃ :: VY,  φᵃᶜᵃ :: VY,
-                                               Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                                zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ,
-                                               Δxᶠᶜ::M, Δxᶜᶠ::M,
-                                               Δxᶠᶠ::M, Δxᶜᶜ::M,
-                                               Δyᶠᶜ::MY, Δyᶜᶠ::MY,
-                                               Azᶠᶜ::M, Azᶜᶠ::M, Azᶠᶠ::M, Azᶜᶜ::M,
-                                               radius::FT) where {Arch, FT,
-                                                                  TX, TY, TZ,
-                                                                  FX, FY, FZ,
-                                                                  VX, VY, VZ,
-                                                                  M, MY}
-
-        return new{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
-                                                                        Nλ, Nφ, Nz,
-                                                                        Hλ, Hφ, Hz,
-                                                                        Lλ, Lφ, Lz,
-                                                                        Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                                        Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                                        Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ,
-                                                                        Δyᶠᶜ, Δyᶜᶠ,
-                                                                        Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, radius)
-    end
+    LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
+                                      Nλ, Nφ, Nz,
+                                      Hλ, Hφ, Hz,
+                                      Lλ :: FT, Lφ :: FT, Lz :: FT,
+                                      Δλᶠᵃᵃ :: FX, Δλᶜᵃᵃ :: FX,
+                                       λᶠᵃᵃ :: VX,  λᶜᵃᵃ :: VX,
+                                      Δφᵃᶠᵃ :: FY, Δφᵃᶜᵃ :: FY,
+                                       φᵃᶠᵃ :: VY,  φᵃᶜᵃ :: VY,
+                                      Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                       zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ,
+                                      Δxᶠᶜᵃ :: M,  Δxᶜᶠᵃ :: M,
+                                      Δxᶠᶠᵃ :: M,  Δxᶜᶜᵃ :: M,
+                                      Δyᶠᶜᵃ :: MY, Δyᶜᶠᵃ :: MY,
+                                      Azᶠᶜᵃ :: M,  Azᶜᶠᵃ :: M,
+                                      Azᶠᶠᵃ :: M,  Azᶜᶜᵃ :: M,
+                                      radius :: FT) where {Arch, FT, TX, TY, TZ,
+                                                           FX, FY, FZ, VX, VY, VZ,
+                                                           M, MY} =
+    new{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
+                                                             Nλ, Nφ, Nz,
+                                                             Hλ, Hφ, Hz,
+                                                             Lλ, Lφ, Lz,
+                                                             Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                             Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+                                                             Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
+                                                             Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
+                                                             Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                                             Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
 end
 
 const LatLonGrid = LatitudeLongitudeGrid
@@ -543,7 +540,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     if grid isa XRegLatLonGrid
         offsets     = grid.φᵃᶜᵃ.offsets[1]
         metric_size = length(grid.φᵃᶜᵃ)
-    else    
+    else
         offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
         metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
     end
@@ -557,7 +554,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     if grid isa YRegLatLonGrid
         Δyᶠᶜ = FT(0.0)
         Δyᶜᶠ = FT(0.0)
-    else    
+    else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
         Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
