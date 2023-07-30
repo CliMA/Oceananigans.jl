@@ -2,7 +2,8 @@ using Glob
 
 using Oceananigans
 using Oceananigans: fields, prognostic_fields
-using Oceananigans.Fields: offset_data
+using Oceananigans.Grids: interior_parent_indices
+using Oceananigans.Fields: offset_data, intantiate
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans.Fields: set!
