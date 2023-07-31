@@ -216,7 +216,7 @@ end
 end
 
 @inline function calc_weno_stencil(buffer, side, dir, func::Bool = false) 
-    ## Has to be redone!!
+    ## TODO: Has to be redone!!
     return :($(stencil_full...),)
 end
 
@@ -228,7 +228,7 @@ for dir in (:x, :y, :z), buffer in [2, 3, 4, 5, 6]
         @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftUpwind, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, LeftUpwind, dir, false))
         @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftUpwind, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, LeftUpwind, dir,  true))
 
-        # Here we have to invert the stencil!!!
+        # TODO Here we have to invert the stencil!!!
         @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightUpwind, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, RightUpwind, dir, false))
         @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightUpwind, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, RightUpwind, dir,  true))
     end
