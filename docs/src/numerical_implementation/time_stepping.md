@@ -70,7 +70,7 @@ for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth m
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
 ```
-where ``\chi`` is a parameter. [Ascher95](@cite) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
+where ``\chi`` is a parameter. [Ascher95](@citet) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
 ``\chi = -\tfrac{1}{2}`` yields the forward Euler scheme.
 
 Combining the equation \eqref{eq:intermediate-velocity-field} for ``\boldsymbol{v}^\star`` and the time integral
