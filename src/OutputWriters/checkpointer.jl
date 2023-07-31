@@ -206,8 +206,6 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-        gridsize = size(checkpointed_grid)
-        topo     = map(instantiate, topology(checkpointed_grid))
         model.grid == checkpointed_grid ||
              @warn "The grid associated with $filepath and model.grid are not the same!"
 
@@ -216,12 +214,8 @@ function set!(model, filepath::AbstractString)
         for name in propertynames(model_fields)
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
-                halo = halo_size(model_field.grid)
-                loc  = map(instantiate, location(model_field))
-                indices = map(interior_parent_indices, loc, topo, gridsize, halo)
-                interior_data = file["$name/data"][indices...] #  Allow different halo size by loading only the interior
-                set!(model_field, interior_data)
-                fill_halo_regions!(model_field)
+                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
+                copyto!(model_field.data.parent, parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
