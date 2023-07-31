@@ -4,6 +4,7 @@ using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Fields: offset_data, instantiate
+using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans.Fields: set!
