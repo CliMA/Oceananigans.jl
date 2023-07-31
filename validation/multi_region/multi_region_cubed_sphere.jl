@@ -5,6 +5,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.MultiRegion: getregion
 using Oceananigans.Utils: Iterate, get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices, apply_regionally!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: replace_horizontal_velocity_halos!
 
 using GLMakie
 Makie.inline!(false)
