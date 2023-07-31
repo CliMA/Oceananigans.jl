@@ -217,7 +217,7 @@ function set!(model, filepath::AbstractString)
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
                 halo = halo_size(model_field.grid)
-                loc  = location(model_field)
+                loc  = map(instantiate, location(model_field))
                 indices = map(interior_parent_indices, loc, topo, gridsize, halo)
                 interior_data = file["$name/data"][indices...] #  Allow different halo size by loading only the interior
                 set!(model_field, interior_data)
