@@ -1,66 +1,9 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
-# WENO reconstruction of order `M` entails reconstructions of order `N`
-# on `N` different stencils, where `N = (M + 1) / 2`.
-#
-# Each reconstruction `r` at cell `i` is denoted
-# 
-# `v̂ᵢᵣ = ∑ⱼ(cᵣⱼ v̅ᵢ₋ᵣ₊ⱼ)` 
-# 
-# where j ranges from 0 to N and the coefficients cᵣⱼ for each stencil r
-# are given by `coeff_side_p(scheme, Val(r))`.
-# 
-# The different reconstructions are combined to provide a
-# "higher-order essentially non-oscillatory" reconstruction,
-# 
-# `v⋆ᵢ = ∑ᵣ(wᵣ v̂ᵣ)`
-# 
-# where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
-#
 
-""" 
-`AbstractSmoothnessStencil`s specifies the polynomials used for diagnosing stencils' smoothness for weno weights 
-calculation in the `VectorInvariant` advection formulation. 
-
-Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
-```julia
-_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function
-```
-
-For scalar reconstructions 
-```julia
-_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField
-```
-the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
-
-Options:
-========
-
-- `DefaultStencil`: uses the same polynomials used for reconstruction
-- `VelocityStencil`: is valid _only_ for vorticity reconstruction and diagnoses the smoothness based on 
-                     `(Face, Face, Center)` polynomial interpolations of `u` and `v`
-- `FunctionStencil`: allows using a custom function as smoothness indicator. 
-The custom function should share arguments with the reconstructed function. 
-
-Example:
-========
-
-```julia
-@inline   smoothness_function(i, j, k, grid, args...) = custom_smoothness_function(i, j, k, grid, args...)
-@inline reconstruced_function(i, j, k, grid, args...) = custom_reconstruction_function(i, j, k, grid, args...)
-
-smoothness_stencil = FunctionStencil(smoothness_function)    
-```
-"""
 abstract type AbstractSmoothnessStencil end
-
-"""`DefaultStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct DefaultStencil <:AbstractSmoothnessStencil end
-
-"""`VelocityStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct VelocityStencil <:AbstractSmoothnessStencil end
-
-"""`FunctionStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct FunctionStencil{F} <:AbstractSmoothnessStencil 
     func :: F
 end
@@ -313,6 +256,11 @@ for (side, side_index) in zip((:x, :y, :z), (1, 2, 3))
     upwind_stencil = Symbol(:upwind_stencil_, side)
 
     @eval begin
+        @inline function $interpolate(i, j, k, grid, dir::Number, scheme::WENO, ψ, idx, loc, args...)
+            dir = ifelse(dir > 0, LeftUpwind(), RightUpwind())
+            return $interpolate(i, j, k, grid, dir, scheme, ψ, idx, loc, args...)
+        end
+
         @inline function $interpolate(i, j, k, grid, dir, scheme::WENO, ψ, idx, loc, args...)
             conditional_scheme = $boundary_aware_scheme(i, j, k, grid, dir, loc, scheme) # recursive choice of scheme
             stencil = $upwind_stencil(i, j, k, grid, dir, conditional_scheme, ψ, args...)
