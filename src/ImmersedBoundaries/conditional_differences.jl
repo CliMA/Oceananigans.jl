@@ -6,37 +6,55 @@ import Oceananigans.Operators:
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
-@inline conditional_δx_f(LY, LZ, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) |
-                                                                          immersed_inactive_node(i-1, j, k, ibg, c, LY, LZ),
-                                                                          zero(ibg), δx(i, j, k, ibg.underlying_grid, args...))
+# Conditional differences that are "immersed boundary aware".
+# Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
+# nodes involved in the difference is `immersed_inactive_node`.
+#
+# These functions are used to generate all conditioned difference operators via metaprogramming.
+# There are 24 difference operators in all:
+# 1 operator for each of 8 locations (ᶠᶜᶜ, ᶠᶜᶠ, ...) × 3 directions (δx, δy, δz)).
+#
+# The operators depend on the location they end up at. For example, conditional_δx_f is used
+# to construct `δxᶠᶜᶜ`, `δxᶠᶜᶠ`, `δxᶠᶠᶜ`, `δxᶠᶠᶠ`, all of which difference values `Center`ed in `x`
+# at `Face`.
 
-@inline conditional_δx_c(LY, LZ, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, f, LY, LZ) |
-                                                                          immersed_inactive_node(i+1, j, k, ibg, f, LY, LZ),
-                                                                          zero(ibg), δx(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_δx_f(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, c, ℓy, ℓz) |
+                                                                          immersed_inactive_node(i-1, j, k, ibg, c, ℓy, ℓz),
+                                                                          zero(ibg),
+                                                                          δx(i, j, k, ibg.underlying_grid, args...))
 
-@inline conditional_δy_f(LX, LZ, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, LX, c, LZ) |
-                                                                          immersed_inactive_node(i, j-1, k, ibg, LX, c, LZ),
-                                                                          zero(ibg), δy(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_δx_c(ℓy, ℓz, i, j, k, ibg::IBG, δx, args...) = ifelse(immersed_inactive_node(i,   j, k, ibg, f, ℓy, ℓz) |
+                                                                          immersed_inactive_node(i+1, j, k, ibg, f, ℓy, ℓz),
+                                                                          zero(ibg),
+                                                                          δx(i, j, k, ibg.underlying_grid, args...))
 
-@inline conditional_δy_c(LX, LZ, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, LX, f, LZ) |
-                                                                          immersed_inactive_node(i, j+1, k, ibg, LX, f, LZ),
-                                                                          zero(ibg), δy(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_δy_f(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, c, ℓz) |
+                                                                          immersed_inactive_node(i, j-1, k, ibg, ℓx, c, ℓz),
+                                                                          zero(ibg),
+                                                                          δy(i, j, k, ibg.underlying_grid, args...))
 
-@inline conditional_δz_f(LX, LY, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, LX, LY, c) |
-                                                                          immersed_inactive_node(i, j, k-1, ibg, LX, LY, c),
-                                                                          zero(ibg), δz(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_δy_c(ℓx, ℓz, i, j, k, ibg::IBG, δy, args...) = ifelse(immersed_inactive_node(i, j,   k, ibg, ℓx, f, ℓz) |
+                                                                          immersed_inactive_node(i, j+1, k, ibg, ℓx, f, ℓz),
+                                                                          zero(ibg),
+                                                                          δy(i, j, k, ibg.underlying_grid, args...))
 
-@inline conditional_δz_c(LX, LY, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, LX, LY, f) |
-                                                                          immersed_inactive_node(i, j, k+1, ibg, LX, LY, f),
-                                                                          zero(ibg), δz(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_δz_f(ℓx, ℓy, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k,   ibg, ℓx, ℓy, c) |
+                                                                          immersed_inactive_node(i, j, k-1, ibg, ℓx, ℓy, c),
+                                                                          zero(ibg),
+                                                                          δz(i, j, k, ibg.underlying_grid, args...))
+
+@inline conditional_δz_c(ℓx, ℓy, i, j, k, ibg::IBG, δz, args...) = ifelse(immersed_inactive_node(i, j, k,   ibg, ℓx, ℓy, f) |
+                                                                          immersed_inactive_node(i, j, k+1, ibg, ℓx, ℓy, f),
+                                                                          zero(ibg),
+                                                                          δz(i, j, k, ibg.underlying_grid, args...))
 
 @inline translate_loc(a) = a == :ᶠ ? :f : :c
 
 for (d, ξ) in enumerate((:x, :y, :z))
-    for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
+    for ℓx in (:ᶠ, :ᶜ), ℓy in (:ᶠ, :ᶜ), ℓz in (:ᶠ, :ᶜ)
 
-        δξ             = Symbol(:δ, ξ, LX, LY, LZ)
-        loc            = translate_loc.((LX, LY, LZ))
+        δξ             = Symbol(:δ, ξ, ℓx, ℓy, ℓz)
+        loc            = translate_loc.((ℓx, ℓy, ℓz))
         conditional_δξ = Symbol(:conditional_δ, ξ, :_, loc[d])
 
         # `other_locs` contains locations in the two "other" directions not being differenced
