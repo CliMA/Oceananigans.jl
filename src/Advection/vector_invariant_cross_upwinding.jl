@@ -23,18 +23,16 @@ const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:An
     @inbounds û = u[i, j, k]
     δ_stencil = scheme.upwinding.divergence_stencil
 
-    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
-    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
+    δᴿ = upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
-    return upwind_biased_product(û, δᴸ, δᴿ)
+    return û * δᴿ
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
     @inbounds v̂ = v[i, j, k]
     δ_stencil = scheme.upwinding.divergence_stencil
 
-    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
-    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
+    δᴿ = upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, v̂, scheme, scheme.vertical_scheme, flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
 
-    return upwind_biased_product(v̂, δᴸ, δᴿ) 
+    return v̂ * δᴿ
 end

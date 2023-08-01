@@ -206,13 +206,13 @@ end
 @inline function calc_right_weno_stencil(buffer, dir, func::Bool = false) 
     N = buffer * 2 - 1
     stencil_full = Vector(undef, buffer)
-    rng = 2:N+1
+    rng = 1:N
     for stencil in 1:buffer
         stencil_point = Vector(undef, buffer)
-        rngstencil = rng[stencil:stencil+buffer-1]
+        rngstencil = rng[stencil+buffer-1:-1:stencil]
         for (idx, n) in enumerate(rngstencil)
-            c = n - buffer - 1
-            if func 
+            c = n - buffer
+             if func 
                 stencil_point[idx] =  dir == :x ? 
                                     :(ψ(i + $c, j, k, args...)) :
                                     dir == :y ?
@@ -226,7 +226,7 @@ end
                                     :(ψ[i, j, k + $c])
             end                
         end
-        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
+        stencil_full[stencil] = :($(stencil_point...), )
     end
     return :($(stencil_full...),)
 end
@@ -289,39 +289,39 @@ end
     return t
 end
 
-for (side, side_index) in zip((:x, :y, :z), (1, 2, 3))
+for (side, side_index, cT) in zip((:x, :y, :z), (1, 2, 3), (:XT, :YT, :ZT))
     interpolate = Symbol(:upwind_biased_interpolate_, side)
-    boundary_aware_scheme = Symbol(:_topologically_conditional_scheme_, side)
+    conditional_scheme = Symbol(:_topologically_conditional_scheme_, side)
     upwind_stencil = Symbol(:upwind_stencil_, side)
 
     @eval begin
-        @inline function $interpolate(i, j, k, grid, dir, scheme::WENO, ψ, idx, loc, args...)
-            conditional_scheme = $boundary_aware_scheme(i, j, k, grid, dir, loc, scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, conditional_scheme, ψ, args...)
-            weights = weno_weights(stencil, conditional_scheme, args...)
-            return upwind_stencil_sum(conditional_scheme, stencil, weights, Val($side_index), idx, loc, dir)
+        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
+            scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
+            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
+            weights = weno_weights(stencil, scheme, args...)
+            return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
-        @inline function $interpolate(i, j, k, grid, dir, scheme::WENO, ψ, idx, loc, VI::AbstractSmoothness, args...)
-            conditional_scheme = $boundary_aware_scheme(i, j, k, grid, dir, loc, scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, conditional_scheme, ψ, args...)
-            weights = weno_weights(stencil, conditional_scheme, args...)
-            return upwind_stencil_sum(conditional_scheme, stencil, weights, Val($side_index), idx, loc, dir)
+        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, VI::AbstractSmoothness, args...) where {N, FT, XT, YT, ZT}
+            scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
+            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
+            weights = weno_weights(stencil, scheme, args...)
+            return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
-        @inline function $interpolate(i, j, k, grid, dir, scheme::WENO, ψ, idx, loc, VI::VelocityStencil, u, v, args...)
-            conditional_scheme = $boundary_aware_scheme(i, j, k, grid, dir, loc, scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, conditional_scheme, ψ, args...)
-            weights = weno_weights((i, j, k), conditional_scheme, VI, Val($side_index), dir, u, v)
-            return upwind_stencil_sum(conditional_scheme, stencil, weights, Val($side_index), idx, loc, dir)
+        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
+            scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
+            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
+            weights = weno_weights((i, j, k), scheme, VI, Val($side_index), dir, u, v)
+            return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
-        @inline function $interpolate(i, j, k, grid, dir, scheme::WENO, ψ, idx, loc, VI::FunctionStencil, args...)
-            conditional_scheme = $boundary_aware_scheme(i, j, k, grid, dir, loc, scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, dir, conditional_scheme, ψ, grid, args...)
-            smoothness = $upwind_stencil(i, j, k, grid, dir, conditional_scheme, VI.func, grid, args...)
-            weights = weno_weights(smoothness, conditional_scheme, args...)
-            return upwind_stencil_sum(conditional_scheme, stencil, weights, Val($side_index), idx, loc, dir)
+        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+            scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
+            stencil = $upwind_stencil(i, j, k, dir, scheme, ψ, grid, args...)
+            smoothness = $upwind_stencil(i, j, k, grid, dir, scheme, VI.func, grid, args...)
+            weights = weno_weights(smoothness, scheme, args...)
+            return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
     end
 end
