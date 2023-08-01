@@ -39,68 +39,43 @@ const HOADV = Union{WENO,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
-for bias in (:symmetric, :left_biased, :right_biased)
+# Simple translation for Periodic directions and low-order advection schemes (fallback)
+@inline _topologically_conditional_scheme_x(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_x(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
 
-    for (d, ξ) in enumerate((:x, :y, :z))
+# Disambiguation
+for GridType in [AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ]
+    @inline _topologically_conditional_scheme_x(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
+    @inline _topologically_conditional_scheme_y(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
+    @inline _topologically_conditional_scheme_z(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
+end
 
-        code = [:ᵃ, :ᵃ, :ᵃ]
+bias_identifyier(::LeftBiasedBuffer)      = :left_biased
+bias_identifyier(::RightBiasedBuffer)     = :right_biased
+bias_identifyier(::SymmetricBiasedBuffer) = :symmetric
 
-        for loc in (:ᶜ, :ᶠ)
-            code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(:_, interp)
+for Dir in (LeftBiasedBuffer, SymmetricBuffer, RightBiasedBuffer), Loc in (Face, Center)
+    loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
+    bias = bias_identifyier(Dir)
+    outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
-            # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+    @eval begin
+        # Conditional high-order interpolation in Bounded directions
+        @inline _topologically_conditional_scheme_x(i, j, k, grid::AUGX, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+                ifelse($outside_buffer(i, grid.Nx, scheme), scheme,
+                   _topologically_conditional_scheme_x(i, j, k, grid, dir, l, scheme.buffer_scheme))
 
-            # Disambiguation
-            for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
-                @eval @inline $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            end
+        @inline _topologically_conditional_scheme_y(i, j, k, grid::AUGY, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+                ifelse($outside_buffer(j, grid.Ny, scheme), scheme,
+                    _topologically_conditional_scheme_y(i, j, k, grid, dir, l, scheme.buffer_scheme))
 
-            outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
-
-            # Conditional high-order interpolation in Bounded directions
-            if ξ == :x
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            elseif ξ == :y
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            elseif ξ == :z
-                @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, f::Function, args...) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, f, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, f, args...))
-                end
-            end
-        end
+        @inline _topologically_conditional_scheme_z(i, j, k, grid::AUGZ, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+                ifelse($outside_buffer(j, grid.Ny, scheme), scheme,
+                    _topologically_conditional_scheme_y(i, j, k, grid, dir, l, scheme.buffer_scheme))
     end
 end
 
