@@ -12,17 +12,17 @@ struct SymmetricStencil end
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_y(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_z(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-@inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, ψ, i, Face, args...)
-@inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, ψ, j, Face, args...)
-@inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, ψ, k, Face, args...)
+@inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, ψ, i, Face, args...)
+@inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, ψ, j, Face, args...)
+@inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, ψ, k, Face, args...)
 
 @inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, ψ, i, Face, args...)
 @inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, ψ, j, Face, args...)
 @inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, ψ, k, Face, args...)
 
-@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
-@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
-@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
+@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
+@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
+@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
 
 @inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
 @inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
