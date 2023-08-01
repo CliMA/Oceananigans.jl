@@ -124,17 +124,22 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, D, M}) where 
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
-for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
+for (dir1, dir2) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :xᶜᵃᵃ, :yᵃᶜᵃ), (:x, :y, :x, :y))
         interp_func = Symbol(:upwind_biased_interpolate_, dir1)
         multidim_interp   = Symbol(:_multi_dimensional_reconstruction_, dir2)
 
     @eval begin
-        @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) = 
-                $interp_func(i, j, k, grid, interp_scheme, args...)
-        @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
-                $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
+        @inline $interp_func(i, j, k, grid, u::Number, ::VectorInvariant, interp_scheme, args...) = 
+                $interp_func(i, j, k, grid, u, interp_scheme, args...)
+        @inline $interp_func(i, j, k, grid, u::Number, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
+                $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, u, args...)
     end
 end
+
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, ::VectorInvariant, scheme, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, ::VectorInvariant, scheme, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::VectorInvariant, scheme, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::VectorInvariant, scheme, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
 
 #####
 #####  Vertical advection + Kinetic Energy gradient. 3 Formulations:

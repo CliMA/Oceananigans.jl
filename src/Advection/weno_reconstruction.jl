@@ -110,20 +110,21 @@ function WENO(FT::DataType=Float64;
         FT = eltype(grid)
     end
 
-    mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
+   mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
+   
+   N  = Int((order + 1) ÷ 2)
 
-    if order < 3
-        # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
-        return UpwindBiased(FT; order = 1)
-    else
-        N  = Int((order + 1) ÷ 2)
+   if N > 1
+      weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
+      buffer_scheme     = WENO(FT; grid, order = order - 2, zweno, bounds)
+      advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
+   else
+      weno_coefficients = Tuple(nothing for i in 1:6)
+      buffer_scheme     = nothing
+      advecting_velocity_scheme = Centered(FT; grid, order = 2)
+   end
 
-        weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme     = WENO(FT; grid, order = order - 2, zweno, bounds)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-    end
-
-    return WENO{N, FT, zweno}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
+   return WENO{N, FT, zweno}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)

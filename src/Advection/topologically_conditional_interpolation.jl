@@ -34,10 +34,10 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, 
+const HOADV = Union{Tuple(WENO{N} for N in advection_buffers[2:end])..., 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
-const LOADV = Union{UpwindBiased{1}, Centered{1}}
+const LOADV = Union{WENO{1}, UpwindBiased{1}, Centered{1}}
 
 # Simple translation for Periodic directions and low-order advection schemes (fallback)
 @inline _topologically_conditional_scheme_x(i, j, k, ::AUG, u, l, scheme::LOADV) = scheme

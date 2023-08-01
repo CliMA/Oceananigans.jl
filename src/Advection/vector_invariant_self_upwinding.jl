@@ -21,7 +21,7 @@ const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any
 
     @inbounds û = u[i, j, k]
     δvˢ =     symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid,    scheme, cross_scheme, δy_V, u, v) 
-    δuᴸ = upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
+    δuᴿ = upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, û, scheme, scheme.vertical_scheme, δx_U, δU_stencil, u, v) 
 
     return û * (δuᴿ + δvˢ)
 end

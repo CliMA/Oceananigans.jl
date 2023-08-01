@@ -1,5 +1,5 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
-
+using Oceananigans.Grids: inactive_node
 
 abstract type AbstractSmoothnessStencil end
 struct DefaultStencil <:AbstractSmoothnessStencil end
@@ -15,6 +15,8 @@ const ε = 1e-8
 
 # Optimal values taken from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
+@inline optimal_coefficient(::WENO{1}, ::Val{0}) = 1
+
 @inline optimal_coefficient(::WENO{2}, ::Val{0}) = 2/3
 @inline optimal_coefficient(::WENO{2}, ::Val{1}) = 1/3
 
@@ -41,8 +43,8 @@ const ε = 1e-8
 @inline optimal_coefficient(::WENO{6}, ::Val{5}) = 1/462
 
 # ENO reconstruction procedure per stencil 
-for buffer in [2, 3, 4, 5, 6]
-    for stencil in collect(0:1:buffer-1)
+for buffer in advection_buffers[2:end]
+    for stencil in 0:buffer-1
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
             # uniform coefficients are independent on direction and location
@@ -55,8 +57,11 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 @inline biased_p(scheme::WENO, stencil, ψ, T, dir, i, loc) = sum(coeff_p(scheme, stencil, T, dir, i, loc) .* ψ)
+@inline biased_p(scheme::WENO{1}, stencil, ψ, T, dir, i, loc) = ψ[1]
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
+@inline coeff_β(scheme::WENO{1, FT}, ::Val{0}) where FT = FT.(1)
+
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{0}) where FT = FT.((1, -2, 1))
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{1}) where FT = FT.((1, -2, 1))
 
@@ -104,7 +109,7 @@ end
     return Expr(:call, :+, elem...)
 end
 
-for buffer in [2, 3, 4, 5, 6]
+for buffer in advection_buffers
     @eval begin
         @inline smoothness_sum(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_sum(buffer))
     end
@@ -152,7 +157,7 @@ end
     return :($(elem...),)
 end
 
-for buffer in [2, 3, 4, 5, 6]
+for buffer in advection_buffers
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
@@ -168,7 +173,7 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
-@inline function weno_weights(ψ, scheme::WENO{N, FT}) where {N, FT}
+@inline function weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
     @inbounds begin
         β = beta_loop(scheme, ψ, biased_β)
                     
@@ -182,12 +187,12 @@ end
     end
 end
 
-@inline function weno_weights(ijk, scheme::WENO{N, FT}, ::VelocityStencil, side_index, dir, u, v) where {N, FT}
+@inline function weno_weights(ijk, scheme::WENO{N, FT}, ::VelocityStencil, side_index, dir, grid, u, v) where {N, FT}
     @inbounds begin
         i, j, k = ijk
     
-        uₛ = tangential_upwind_stencil_u(i, j, k, scheme, side_index, dir, u)
-        vₛ = tangential_upwind_stencil_v(i, j, k, scheme, side_index, dir, v)
+        uₛ = tangential_upwind_stencil_u(i, j, k, scheme, grid, side_index, dir, u)
+        vₛ = tangential_upwind_stencil_v(i, j, k, scheme, grid, side_index, dir, v)
         βᵤ = beta_loop(scheme, uₛ, biased_β)
         βᵥ = beta_loop(scheme, vₛ, biased_β)
 
@@ -261,24 +266,31 @@ end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for dir in (:x, :y, :z), buffer in [2, 3, 4, 5, 6]
-    stencil = Symbol(:upwind_stencil_, dir)
+for dir in (:x, :y, :z), buffer in advection_buffers
+    upwind_stencil = Symbol(:upwind_stencil_, dir)
     @eval begin
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ, args...)           = @inbounds $(calc_left_weno_stencil(buffer, dir, false))
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ::Function, args...) = @inbounds $(calc_left_weno_stencil(buffer, dir,  true))
+        @inline $upwind_stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ, args...)           = @inbounds $(calc_left_weno_stencil(buffer, dir, false))
+        @inline $upwind_stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ::Function, args...) = @inbounds $(calc_left_weno_stencil(buffer, dir,  true))
 
         # TODO Here we have to invert the stencil!!!
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ, args...)           = @inbounds $(calc_right_weno_stencil(buffer, dir, false))
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ::Function, args...) = @inbounds $(calc_right_weno_stencil(buffer, dir,  true))
+        @inline $upwind_stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ, args...)           = @inbounds $(calc_right_weno_stencil(buffer, dir, false))
+        @inline $upwind_stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ::Function, args...) = @inbounds $(calc_right_weno_stencil(buffer, dir,  true))
     end
 end
 
+const c = Center()
+const f = Face()
+
+# Defining Interpolation operators for the immersed boundaries
+@inline conditional_ℑxᶠᶠᶜ(i, j, k, grid, c) = ifelse(inactive_node(i, j, k, grid, c, f, c), c[i-1, j, k], ifelse(inactive_node(i-1, j, k, grid, c, f, c), c[i, j, k], ℑxᶠᵃᵃ(i, j, k, grid, c)))
+@inline conditional_ℑyᶠᶠᶜ(i, j, k, grid, c) = ifelse(inactive_node(i, j, k, grid, f, c, c), c[i, j-1, k], ifelse(inactive_node(i, j-1, k, grid, f, c, c), c[i, j, k], ℑyᵃᶠᵃ(i, j, k, grid, c)))
+
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_upwind_stencil_u(i, j, k, scheme, ::Val{1}, dir, u) = @inbounds upwind_stencil_x(i, j, k, scheme, dir, ℑyᵃᶠᵃ, u)
-@inline tangential_upwind_stencil_u(i, j, k, scheme, ::Val{2}, dir, u) = @inbounds upwind_stencil_y(i, j, k, scheme, dir, ℑyᵃᶠᵃ, u)
-@inline tangential_upwind_stencil_v(i, j, k, scheme, ::Val{1}, dir, v) = @inbounds upwind_stencil_x(i, j, k, scheme, dir, ℑxᶠᵃᵃ, v)
-@inline tangential_upwind_stencil_v(i, j, k, scheme, ::Val{2}, dir, v) = @inbounds upwind_stencil_y(i, j, k, scheme, dir, ℑxᶠᵃᵃ, v)
+@inline tangential_upwind_stencil_u(i, j, k, scheme, grid, ::Val{1}, dir, u) = @inbounds upwind_stencil_x(i, j, k, scheme, dir, conditional_ℑyᶠᶠᶜ, grid, u)
+@inline tangential_upwind_stencil_u(i, j, k, scheme, grid, ::Val{2}, dir, u) = @inbounds upwind_stencil_y(i, j, k, scheme, dir, conditional_ℑyᶠᶠᶜ, grid, u)
+@inline tangential_upwind_stencil_v(i, j, k, scheme, grid, ::Val{1}, dir, v) = @inbounds upwind_stencil_x(i, j, k, scheme, dir, conditional_ℑxᶠᶠᶜ, grid, v)
+@inline tangential_upwind_stencil_v(i, j, k, scheme, grid, ::Val{2}, dir, v) = @inbounds upwind_stencil_y(i, j, k, scheme, dir, conditional_ℑxᶠᶠᶜ, grid, v)
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 @inline function upwind_stencil_sum(scheme::WENO{N, FT}, ψ, w, T, side_index, idx, loc) where {N, FT}
@@ -289,6 +301,11 @@ end
     return t
 end
 
+# Fallbacks for WENO order 1 -> identical to Upwind order 1
+@inline upwind_stencil_sum(::WENO{1}, ψ, args...) = ψ[1][1]
+@inline weno_weights(ψ, ::WENO{1}, args...) = 1 
+@inline weno_weights(ψ, ::WENO{1}, ::VelocityStencil, args...) = 1 
+
 for (side, side_index, cT) in zip((:x, :y, :z), (1, 2, 3), (:XT, :YT, :ZT))
     interpolate = Symbol(:upwind_biased_interpolate_, side)
     conditional_scheme = Symbol(:_topologically_conditional_scheme_, side)
@@ -297,29 +314,29 @@ for (side, side_index, cT) in zip((:x, :y, :z), (1, 2, 3), (:XT, :YT, :ZT))
     @eval begin
         @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
             scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
+            stencil = $upwind_stencil(i, j, k, scheme, dir, ψ, grid, args...)
             weights = weno_weights(stencil, scheme, args...)
             return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
         @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
             scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
+            stencil = $upwind_stencil(i, j, k, scheme, dir, ψ, grid, args...)
             weights = weno_weights(stencil, scheme, args...)
             return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
-        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
+        @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ζ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
             scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, grid, dir, scheme, ψ, args...)
-            weights = weno_weights((i, j, k), scheme, VI, Val($side_index), dir, u, v)
+            stencil = $upwind_stencil(i, j, k, scheme, dir, ζ, grid, u, v)
+            weights = weno_weights((i, j, k), scheme, VI, Val($side_index), dir, grid, u, v)
             return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
 
         @inline function $interpolate(i, j, k, grid, dir, parent_scheme::WENO{N, FT, XT, YT, ZT}, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
             scheme  = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme) # recursive choice of scheme
-            stencil = $upwind_stencil(i, j, k, dir, scheme, ψ, grid, args...)
-            smoothness = $upwind_stencil(i, j, k, grid, dir, scheme, VI.func, grid, args...)
+            stencil = $upwind_stencil(i, j, k, scheme, dir, ψ, grid, args...)
+            smoothness = $upwind_stencil(i, j, k, scheme, dir, VI.func, grid, args...)
             weights = weno_weights(smoothness, scheme, args...)
             return upwind_stencil_sum(scheme, stencil, weights, $cT, Val($side_index), idx, loc)
         end
