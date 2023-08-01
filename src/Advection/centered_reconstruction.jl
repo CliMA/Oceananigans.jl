@@ -11,10 +11,7 @@ struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     "advection scheme used near boundaries"
     buffer_scheme :: CA
 
-    function Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA}
-
-        return new{N, FT, CA}(buffer_scheme)
-    end
+    Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA} = new{N, FT, CA}(buffer_scheme)
 end
 
 function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
@@ -36,21 +33,13 @@ end
 
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
 
-Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
+Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme), "\n",
-              " Directions:", "\n",
-              "    ├── X $(XT == Nothing ? "regular" : "stretched") \n",
-              "    ├── Y $(YT == Nothing ? "regular" : "stretched") \n",
-              "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )
-
+              "    └── ", summary(a.buffer_scheme))
 
 Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
-    Centered{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                    Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                    Adapt.adapt(to, scheme.buffer_scheme))
+    Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme))
                     
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
@@ -68,29 +57,29 @@ const ACAS = AbstractCenteredAdvectionScheme
 # uniform centered reconstruction
 for buffer in advection_buffers
     @eval begin
-        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT, <:Nothing}, ψ, idx, loc, args...) where FT 
+        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x, false))
         end
-        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT 
+        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ::Function, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x,  true))
         end
 
-        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT} 
+        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y, false))
         end
-        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} 
+        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ::Function, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_y(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y,  true))
         end
     
-        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} 
+        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_z(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z, false))
         end
-        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} 
+        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT}, ψ::Function, idx, loc, args...) where FT 
             scheme = _topologically_conditional_scheme_z(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
             return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z,  true))
         end

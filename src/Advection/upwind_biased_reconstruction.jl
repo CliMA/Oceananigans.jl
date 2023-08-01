@@ -103,30 +103,30 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 for (Dir, side) in zip((LeftBiasedStencil, RightBiasedStencil), (:left, :right))
     for buffer in advection_buffers
         @eval begin
-            @inline function upwind_biased_interpolate_x(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...) where FT 
+            @inline function upwind_biased_interpolate_x(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...) where FT 
                 scheme = _topologically_conditional_scheme_x(i, j, k, grid, dir, loc, parent_scheme)
                 @inbounds $(calc_reconstruction_stencil(buffer, side, :x, false))
             end
 
-            @inline function upwind_biased_interpolate_x(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT
+            @inline function upwind_biased_interpolate_x(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT
                 scheme = _topologically_conditional_scheme_x(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds $(calc_reconstruction_stencil(buffer, side, :x,  true))
             end
 
-            @inline function upwind_biased_interpolate_y(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT} 
+            @inline function upwind_biased_interpolate_y(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT} 
                 scheme = _topologically_conditional_scheme_y(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds $(calc_reconstruction_stencil(buffer, side, :y, false))
             end
-            @inline function upwind_biased_interpolate_y(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} 
+            @inline function upwind_biased_interpolate_y(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} 
                 scheme = _topologically_conditional_scheme_y(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds $(calc_reconstruction_stencil(buffer, side, :y,  true))
             end
         
-            @inline function upwind_biased_interpolate_z(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT, YT}
+            @inline function upwind_biased_interpolate_z(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT, YT}
                 scheme = _topologically_conditional_scheme_z(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds $(calc_reconstruction_stencil(buffer, side, :z, false))
             end
-            @inline function upwind_biased_interpolate_z(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT}
+            @inline function upwind_biased_interpolate_z(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT}
                 scheme = _topologically_conditional_scheme_z(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds $(calc_reconstruction_stencil(buffer, side, :z,  true))
             end
@@ -139,11 +139,11 @@ for (Dir, side) in zip((LeftBiasedStencil, RightBiasedStencil), (:left, :right))
     conditional_scheme = Symbol(:_topologically_conditional_scheme_, ξ)
     for buffer in advection_buffers
         @eval begin
-            @inline function $interpolate(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT
+            @inline function $interpolate(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT
                 scheme = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Dir(), Val($side_index), idx, loc))
             end
-            @inline function $interpolate(i, j, k, grid, dir::Dir, parent_scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT
+            @inline function $interpolate(i, j, k, grid, dir::$Dir, parent_scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT
                 scheme = $conditional_scheme(i, j, k, grid, dir, loc, parent_scheme)
                 return @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Dir(), Val($side_index), idx, loc))
             end

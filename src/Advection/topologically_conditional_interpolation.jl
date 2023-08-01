@@ -40,40 +40,42 @@ const HOADV = Union{WENO,
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 # Simple translation for Periodic directions and low-order advection schemes (fallback)
-@inline _topologically_conditional_scheme_x(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
-@inline _topologically_conditional_scheme_x(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
-@inline _topologically_conditional_scheme_y(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
-@inline _topologically_conditional_scheme_y(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
-@inline _topologically_conditional_scheme_z(i, j, k, grid::AUG, u, l, scheme::LOADV) = scheme
-@inline _topologically_conditional_scheme_z(i, j, k, grid::AUG, u, l, scheme::HOADV) = scheme
+@inline _topologically_conditional_scheme_x(i, j, k, ::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_x(i, j, k, ::AUG, u, l, scheme::HOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, ::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, ::AUG, u, l, scheme::HOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, ::AUG, u, l, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, ::AUG, u, l, scheme::HOADV) = scheme
 
 # Disambiguation
-for GridType in [AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ]
-    @inline _topologically_conditional_scheme_x(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
-    @inline _topologically_conditional_scheme_y(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
-    @inline _topologically_conditional_scheme_z(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
+for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
+    @eval begin
+        @inline _topologically_conditional_scheme_x(i, j, k, ::$GridType, u, l, scheme::LOADV) = scheme
+        @inline _topologically_conditional_scheme_y(i, j, k, ::$GridType, u, l, scheme::LOADV) = scheme
+        @inline _topologically_conditional_scheme_z(i, j, k, ::$GridType, u, l, scheme::LOADV) = scheme
+    end
 end
 
-bias_identifyier(::LeftBiasedStencil)      = :left_biased
-bias_identifyier(::RightBiasedStencil)     = :right_biased
-bias_identifyier(::SymmetricBiasedBuffer) = :symmetric
+bias_identifyier(::Val{:LeftBiasedStencil})  = :left_biased
+bias_identifyier(::Val{:RightBiasedStencil}) = :right_biased
+bias_identifyier(::Val{:SymmetricStencil})   = :symmetric
 
-for Dir in (LeftBiasedStencil, SymmetricStencil, RightBiasedStencil), Loc in (Face, Center)
-    loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
-    bias = bias_identifyier(Dir)
+for Dir in (:SymmetricStencil, :LeftBiasedStencil, :RightBiasedStencil), Loc in (:Face, :Center)
+    loc  = Loc == :Face ? Symbol("ᶠ") : Symbol("ᶜ")
+    bias = bias_identifyier(Val(Dir))
     outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
     @eval begin
         # Conditional high-order interpolation in Bounded directions
-        @inline _topologically_conditional_scheme_x(i, j, k, grid::AUGX, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_x(i, j, k, grid::AUGX, dir::$Dir, l::Type{$Loc}, scheme::HOADV) =
                 ifelse($outside_buffer(i, grid.Nx, scheme), scheme,
                    _topologically_conditional_scheme_x(i, j, k, grid, dir, l, scheme.buffer_scheme))
 
-        @inline _topologically_conditional_scheme_y(i, j, k, grid::AUGY, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_y(i, j, k, grid::AUGY, dir::$Dir, l::Type{$Loc}, scheme::HOADV) =
                 ifelse($outside_buffer(j, grid.Ny, scheme), scheme,
                     _topologically_conditional_scheme_y(i, j, k, grid, dir, l, scheme.buffer_scheme))
 
-        @inline _topologically_conditional_scheme_z(i, j, k, grid::AUGZ, dir::Dir, l::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_z(i, j, k, grid::AUGZ, dir::$Dir, l::Type{$Loc}, scheme::HOADV) =
                 ifelse($outside_buffer(j, grid.Ny, scheme), scheme,
                     _topologically_conditional_scheme_y(i, j, k, grid, dir, l, scheme.buffer_scheme))
     end

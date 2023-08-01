@@ -163,36 +163,37 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 end
 
 using Oceananigans.Advection: LOADV, HOADV, WENO, bias_identifyier
+using Oceananigans.Advection: LeftBiasedStencil, RightBiasedStencil, SymmetricStencil
 
 import Oceananigans.Advection: _topologically_conditional_scheme_x,
                                _topologically_conditional_scheme_y,
                                _topologically_conditional_scheme_z
 
 # Fallback for low order interpolation
-@inline _topologically_conditional_scheme_x(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
-@inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
-@inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_x(i, j, k, ::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, ::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, ::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
 
-for Dir in (LeftBiasedStencil, RightBiasedStencil, SymmetricStencil), Loc in (Face, Center)
-    loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
-    bias = bias_identifyier(Dir)
-    near_boundary_x = Symbol(:near_x_immersed_boundary_, bias, loc)
-    near_boundary_y = Symbol(:near_y_immersed_boundary_, bias, loc)
-    near_boundary_z = Symbol(:near_z_immersed_boundary_, bias, loc)
+for Dir in (:LeftBiasedStencil, :RightBiasedStencil, :SymmetricStencil), Loc in (:Face, :Center)
+    loc  = Loc == :Face ? Symbol("ᶠ") : Symbol("ᶜ")
+    bias = bias_identifyier(Val(Dir))
+    near_x_boundary = Symbol(:near_x_immersed_boundary_, bias, loc)
+    near_y_boundary = Symbol(:near_y_immersed_boundary_, bias, loc)
+    near_z_boundary = Symbol(:near_z_immersed_boundary_, bias, loc)
 
     @eval begin
         # Conditional high-order interpolation for Immersed Boundaries
-        @inline _topologically_conditional_scheme_x(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_x(i, j, k, ibg::ImmersedBoundaryGrid, dir::$Dir, loc::Type{$Loc}, scheme::HOADV) =
             ifelse($near_x_boundary(i, j, k, ibg, scheme), 
                    _topologically_conditional_scheme_x(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
                    scheme)
 
-        @inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir::$Dir, loc::Type{$Loc}, scheme::HOADV) =
             ifelse($near_y_boundary(i, j, k, ibg, scheme), 
                     _topologically_conditional_scheme_y(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
                     scheme)
 
-        @inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+        @inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir::$Dir, loc::Type{$Loc}, scheme::HOADV) =
             ifelse($near_z_boundary(i, j, k, ibg, scheme), 
                     _topologically_conditional_scheme_z(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
                     scheme)
