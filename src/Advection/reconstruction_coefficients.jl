@@ -1,16 +1,16 @@
-struct LeftBiasedBuffer end
-struct RightBiasedBuffer end
-struct SymmetricBuffer end
+struct LeftBiasedStencil end
+struct RightBiasedStencil end
+struct SymmetricStencil end
 
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_x(i, j, k, grid, scheme, ψ, i, Face, args...)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_y(i, j, k, grid, scheme, ψ, j, Face, args...)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_z(i, j, k, grid, scheme, ψ, k, Face, args...)
 
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_x(i+1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_y(i, j+1, k, grid, scheme, ψ, j, Center, args...)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_z(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
 @inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, ψ, i, Face, args...)
 @inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, ψ, j, Face, args...)
@@ -20,13 +20,29 @@ struct SymmetricBuffer end
 @inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, ψ, j, Face, args...)
 @inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, ψ, k, Face, args...)
 
-@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = inner_left_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
-@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = inner_left_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
-@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...)  = inner_left_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
+@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
+@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
+@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...)  = upwind_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
 
-@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = inner_right_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
-@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...) = inner_right_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
-@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...) = inner_right_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
+@inline upwind_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_x(i+1, j, k, grid, dir, scheme, ψ, i, Center, args...)
+@inline upwind_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_y(i, j+1, k, grid, dir, scheme, ψ, j, Center, args...)
+@inline upwind_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, dir, scheme, ψ, args...) = upwind_biased_interpolate_z(i, j, k+1, grid, dir, scheme, ψ, k, Center, args...)
+
+# correct interpolation
+@inline function upwind_biased_interpolate_x(i, j, k, grid, dir::Number, args...)
+    dir = ifelse(dir > 0, LeftUpwind(), RightUpwind())
+    return upwind_biased_interpolate_x(i, j, k, grid, dir, args...)
+end 
+
+@inline function upwind_biased_interpolate_y(i, j, k, grid, dir::Number, args...)
+    dir = ifelse(dir > 0, LeftUpwind(), RightUpwind())
+    return upwind_biased_interpolate_y(i, j, k, grid, dir, args...)
+end 
+
+@inline function upwind_biased_interpolate_z(i, j, k, grid, dir::Number, args...)
+    dir = ifelse(dir > 0, LeftUpwind(), RightUpwind())
+    return upwind_biased_interpolate_z(i, j, k, grid, dir, args...)
+end 
 
 struct FirstDerivative end
 struct SecondDerivative end

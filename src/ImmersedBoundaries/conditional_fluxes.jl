@@ -173,7 +173,7 @@ import Oceananigans.Advection: _topologically_conditional_scheme_x,
 @inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
 @inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
 
-for Dir in (LeftBiasedBuffer, RightBiasedBuffer, SymmetricBuffer), Loc in (Face, Center)
+for Dir in (LeftBiasedStencil, RightBiasedStencil, SymmetricStencil), Loc in (Face, Center)
     loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
     bias = bias_identifyier(Dir)
     near_boundary_x = Symbol(:near_x_immersed_boundary_, bias, loc)

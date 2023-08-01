@@ -54,11 +54,11 @@ for GridType in [AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ]
     @inline _topologically_conditional_scheme_z(i, j, k, grid::GridType, u, l, scheme::LOADV) = scheme
 end
 
-bias_identifyier(::LeftBiasedBuffer)      = :left_biased
-bias_identifyier(::RightBiasedBuffer)     = :right_biased
+bias_identifyier(::LeftBiasedStencil)      = :left_biased
+bias_identifyier(::RightBiasedStencil)     = :right_biased
 bias_identifyier(::SymmetricBiasedBuffer) = :symmetric
 
-for Dir in (LeftBiasedBuffer, SymmetricBuffer, RightBiasedBuffer), Loc in (Face, Center)
+for Dir in (LeftBiasedStencil, SymmetricStencil, RightBiasedStencil), Loc in (Face, Center)
     loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
     bias = bias_identifyier(Dir)
     outside_buffer = Symbol(:outside_, bias, :_buffer, loc)

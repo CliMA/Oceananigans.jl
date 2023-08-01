@@ -264,12 +264,12 @@ end
 for dir in (:x, :y, :z), buffer in [2, 3, 4, 5, 6]
     stencil = Symbol(:upwind_stencil_, dir)
     @eval begin
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftUpwind, ψ, args...)           = @inbounds $(calc_left_weno_stencil(buffer, dir, false))
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftUpwind, ψ::Function, args...) = @inbounds $(calc_left_weno_stencil(buffer, dir,  true))
+        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ, args...)           = @inbounds $(calc_left_weno_stencil(buffer, dir, false))
+        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBiasedStencil, ψ::Function, args...) = @inbounds $(calc_left_weno_stencil(buffer, dir,  true))
 
         # TODO Here we have to invert the stencil!!!
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightUpwind, ψ, args...)           = @inbounds $(calc_right_weno_stencil(buffer, dir, false))
-        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightUpwind, ψ::Function, args...) = @inbounds $(calc_right_weno_stencil(buffer, dir,  true))
+        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ, args...)           = @inbounds $(calc_right_weno_stencil(buffer, dir, false))
+        @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBiasedStencil, ψ::Function, args...) = @inbounds $(calc_right_weno_stencil(buffer, dir,  true))
     end
 end
 

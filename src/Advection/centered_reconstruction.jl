@@ -3,36 +3,17 @@
 #####
 
 """
-    struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
+    struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
-    "coefficient for Centered reconstruction on stretched ``x``-faces" 
-    coeff_xᶠᵃᵃ :: XT
-    "coefficient for Centered reconstruction on stretched ``x``-centers"
-    coeff_xᶜᵃᵃ :: XT
-    "coefficient for Centered reconstruction on stretched ``y``-faces"
-    coeff_yᵃᶠᵃ :: YT
-    "coefficient for Centered reconstruction on stretched ``y``-centers"
-    coeff_yᵃᶜᵃ :: YT
-    "coefficient for Centered reconstruction on stretched ``z``-faces"
-    coeff_zᵃᵃᶠ :: ZT
-    "coefficient for Centered reconstruction on stretched ``z``-centers"
-    coeff_zᵃᵃᶜ :: ZT
-
+struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     "advection scheme used near boundaries"
     buffer_scheme :: CA
 
-    function Centered{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                             coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                             coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                             buffer_scheme::CA) where {N, FT, XT, YT, ZT, CA}
+    function Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA}
 
-        return new{N, FT, XT, YT, ZT, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                          coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                          coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                          buffer_scheme)
+        return new{N, FT, CA}(buffer_scheme)
     end
 end
 
@@ -46,16 +27,11 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
 
     N  = Int(order ÷ 2)
     if N > 1 
-        coefficients  = Tuple(nothing for i in 1:6)
-        # Stretched coefficient seem to be more unstable that constant spacing ones for centered reconstruction.
-        # Some tests are needed to verify why this is the case (and if it is expected). We keep constant coefficients for the moment
-        # coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
         buffer_scheme = Centered(FT; grid, order = order - 2)
     else
-        coefficients    = Tuple(nothing for i in 1:6)
         buffer_scheme = nothing
     end
-    return Centered{N, FT}(coefficients..., buffer_scheme)
+    return Centered{N, FT}(buffer_scheme)
 end
 
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
@@ -85,52 +61,38 @@ CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; ord
 const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
-@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
-@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
-@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
-
-@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
-@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
-@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
-
-@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, u, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
-@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, v, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
-@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, w, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
-
-@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, u, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
-@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, v, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
-@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, w, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
+@inline upwind_biased_interpolate_x(i, j, k, grid, dir, scheme::ACAS, args...) = symmetric_interpolate_x(i, j, k, grid, scheme, args...)
+@inline upwind_biased_interpolate_y(i, j, k, grid, dir, scheme::ACAS, args...) = symmetric_interpolate_y(i, j, k, grid, scheme, args...)
+@inline upwind_biased_interpolate_z(i, j, k, grid, dir, scheme::ACAS, args...) = symmetric_interpolate_z(i, j, k, grid, scheme, args...)
 
 # uniform centered reconstruction
 for buffer in advection_buffers
     @eval begin
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x, false))
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x,  true))
-    
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y, false))
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y,  true))
-    
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z, false))
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z,  true))
-    end
-end
+        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT, <:Nothing}, ψ, idx, loc, args...) where FT 
+            scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x, false))
+        end
+        @inline function symmetric_interpolate_x(i, j, k, grid, parent_scheme::Centered{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT 
+            scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x,  true))
+        end
 
-# stretched centered reconstruction
-for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
-    stencil = Symbol(:inner_symmetric_interpolate_, dir)
-
-    for buffer in advection_buffers
-        @eval begin
-            @inline $stencil(i, j, k, grid, scheme::Centered{$buffer, FT}, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, :symmetric, ξ, false)) .* retrieve_coeff(scheme, Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::Centered{$buffer, FT}, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, :symmetric, ξ,  true)) .* retrieve_coeff(scheme, Val($val), idx, loc))
+        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...) where {FT, XT} 
+            scheme = _topologically_conditional_scheme_x(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y, false))
+        end
+        @inline function symmetric_interpolate_y(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} 
+            scheme = _topologically_conditional_scheme_y(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y,  true))
+        end
+    
+        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} 
+            scheme = _topologically_conditional_scheme_z(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z, false))
+        end
+        @inline function symmetric_interpolate_z(i, j, k, grid, parent_scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} 
+            scheme = _topologically_conditional_scheme_z(i, j, k, grid, SymmetricStencil(), loc, parent_scheme)
+            return @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z,  true))
         end
     end
 end
-
-# Retrieve precomputed coefficients 
-@inline retrieve_coeff(scheme::Centered, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[i] 
-@inline retrieve_coeff(scheme::Centered, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[i] 
-@inline retrieve_coeff(scheme::Centered, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[i] 
-@inline retrieve_coeff(scheme::Centered, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[i] 
-@inline retrieve_coeff(scheme::Centered, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[i] 
-@inline retrieve_coeff(scheme::Centered, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[i] 
