@@ -56,7 +56,7 @@ for buffer in advection_buffers[2:end]
     end
 end
 
-@inline biased_p(scheme::WENO, stencil, ψ, T, dir, i, loc) = sum(coeff_p(scheme, stencil, T, dir, i, loc) .* ψ)
+@inline biased_p(scheme::WENO, stencil, ψ, T, dir, i, loc)    = sum(coeff_p(scheme, stencil, T, dir, i, loc) .* ψ)
 @inline biased_p(scheme::WENO{1}, stencil, ψ, T, dir, i, loc) = ψ[1]
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
@@ -326,7 +326,7 @@ for (side, side_index, cT) in zip((:x, :y, :z), (1, 2, 3), (:XT, :YT, :ZT))
             return upwind_stencil_sum(scheme, stencil, weights, T, Val(side_idx), idx, loc)
         end
 
-        @inline function $weno_reconstruction(i, j, k, scheme, dir, ζ, grid, T, side_idx, idx, loc, ::VelocityStencil, u, v)
+        @inline function $weno_reconstruction(i, j, k, scheme, dir, ζ, grid, T, side_idx, idx, loc, VI::VelocityStencil, u, v)
             stencil = $upwind_stencil(i, j, k, scheme, dir, ζ, grid, u, v)
             weights = weno_weights((i, j, k), scheme, VI, Val(side_idx), dir, grid, u, v)
             return upwind_stencil_sum(scheme, stencil, weights, T, Val(side_idx), idx, loc)
