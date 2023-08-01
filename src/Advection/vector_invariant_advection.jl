@@ -280,11 +280,11 @@ const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 # To adapt passing smoothness stencils to upwind biased schemes (not weno) 
 for buffer in 1:6
     @eval begin
-        @inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
-        @inline upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme::UX{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
-        @inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
-        @inline upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme::UY{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
-        @inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
-        @inline upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme::UZ{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_x(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_x(i, j, k, grid, dir, scheme::UX{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_x(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_y(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_y(i, j, k, grid, dir, scheme::UY{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_y(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_z(i, j, k, grid, dir, scheme::U{$buffer},  f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, f, idx, loc, args...)
+        @inline upwind_biased_interpolate_z(i, j, k, grid, dir, scheme::UZ{$buffer}, f::Function, idx, loc, ::AbstractSmoothnessStencil, args...) = upwind_biased_interpolate_z(i, j, k, grid, dir, scheme, f, idx, loc, args...)
     end
 end
