@@ -103,6 +103,16 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, v, args...) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
 
+for side in (:x, :y, :z)
+    interpolate = Symbol(:upwind_biased_interpolate_, side)
+    @eval begin
+        @inline function $interpolate(i, j, k, grid, dir::Number, scheme::WENO, ψ, idx, loc, args...)
+            dir = ifelse(dir > 0, LeftUpwind(), RightUpwind())
+            return $interpolate(i, j, k, grid, dir, scheme, ψ, idx, loc, args...)
+        end 
+    end
+end
+
 # uniform upwind biased reconstruction
 for side in (:left, :right)
     stencil_x = Symbol(:inner_, side, :_biased_interpolate_xᶠᵃᵃ)

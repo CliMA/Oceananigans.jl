@@ -162,71 +162,39 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     end
 end
 
-# Horizontal inactive stencil calculation for vector invariant WENO schemes that use velocity as a smoothness indicator
-for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right))
-    near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
-    near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
-    
-    for buffer in advection_buffers
-        @eval begin
-            @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
+using Oceananigans.Advection: LOADV, HOADV, WENO, bias_identifyier
 
-            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
-        end
-    end
-end
+import Oceananigans.Advection: _topologically_conditional_scheme_x,
+                               _topologically_conditional_scheme_y,
+                               _topologically_conditional_scheme_z
 
-using Oceananigans.Advection: LOADV, HOADV, WENO
-using Oceananigans.Advection: AbstractSmoothnessStencil, VelocityStencil, DefaultStencil
+# Fallback for low order interpolation
+@inline _topologically_conditional_scheme_x(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
+@inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir, loc, scheme::LOADV) = scheme
 
-for bias in (:symmetric, :left_biased, :right_biased)
-    for (d, ξ) in enumerate((:x, :y, :z))
+for Dir in (LeftBiasedBuffer, RightBiasedBuffer, SymmetricBuffer), Loc in (Face, Center)
+    loc  = Loc == Face ? Symbol("ᶠ") : Symbol("ᶜ")
+    bias = bias_identifyier(Dir)
+    near_boundary_x = Symbol(:near_x_immersed_boundary_, bias, loc)
+    near_boundary_y = Symbol(:near_y_immersed_boundary_, bias, loc)
+    near_boundary_z = Symbol(:near_z_immersed_boundary_, bias, loc)
 
-        code = [:ᵃ, :ᵃ, :ᵃ]
+    @eval begin
+        # Conditional high-order interpolation for Immersed Boundaries
+        @inline _topologically_conditional_scheme_x(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+            ifelse($near_x_boundary(i, j, k, ibg, scheme), 
+                   _topologically_conditional_scheme_x(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
+                   scheme)
 
-        for loc in (:ᶜ, :ᶠ)
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(:_, interp)
+        @inline _topologically_conditional_scheme_y(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+            ifelse($near_y_boundary(i, j, k, ibg, scheme), 
+                    _topologically_conditional_scheme_y(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
+                    scheme)
 
-            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
-
-            @eval begin
-                import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
-
-                # Fallback for low order interpolation
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
-
-                # Conditional high-order interpolation in Bounded directions
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
-            end
-        end
-    end
-end
-
-for bias in (:left_biased, :right_biased)
-    for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
-        interp     = Symbol(bias, :_interpolate_, dir)
-        alt_interp = Symbol(:_, interp)
-
-        near_horizontal_boundary = Symbol(:near_, d, :_horizontal_boundary_, bias)
-
-        @eval begin
-            # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
-                ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                       $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
-                       $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
-        end
+        @inline _topologically_conditional_scheme_z(i, j, k, ibg::ImmersedBoundaryGrid, dir::Dir, loc::Type{Loc}, scheme::HOADV) =
+            ifelse($near_z_boundary(i, j, k, ibg, scheme), 
+                    _topologically_conditional_scheme_z(i, j, k, ibg, dir, loc, scheme.buffer_scheme),
+                    scheme)
     end
 end

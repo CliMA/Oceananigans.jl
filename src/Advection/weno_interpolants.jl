@@ -308,10 +308,7 @@ julia> calc_weno_stencil(2, :right, :x)
 
 """
 @inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
-    N = buffer * 2
-    if shift != :none
-        N -=1
-    end
+    N = buffer * 2 - 1
     stencil_full = Vector(undef, buffer)
     rng = 1:N
     if shift == :right
@@ -324,16 +321,16 @@ julia> calc_weno_stencil(2, :right, :x)
             c = n - buffer - 1
             if func 
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ(i + $c, j, k, args...)) :
+                                    :(ψ(i + $c, j, k, args...)) :
                                     dir == :y ?
-                                    :(@inbounds ψ(i, j + $c, k, args...)) :
-                                    :(@inbounds ψ(i, j, k + $c, args...))
+                                    :(ψ(i, j + $c, k, args...)) :
+                                    :(ψ(i, j, k + $c, args...))
             else
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ[i + $c, j, k]) :
+                                    :(ψ[i + $c, j, k]) :
                                     dir == :y ?
-                                    :(@inbounds ψ[i, j + $c, k]) :
-                                    :(@inbounds ψ[i, j, k + $c])
+                                    :(ψ[i, j + $c, k]) :
+                                    :(ψ[i, j, k + $c])
             end                
         end
         stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
