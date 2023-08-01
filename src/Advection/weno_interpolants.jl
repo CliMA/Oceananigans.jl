@@ -314,9 +314,9 @@ for (side, side_index, cT) in zip((:x, :y, :z), (1, 2, 3), (:XT, :YT, :ZT))
             return $weno_reconstruction(i, j, k, scheme, dir, ψ, grid, $cT, $side_index, idx, loc, args...)
         end
 
-        @inline function $weno_reconstruction(i, j, k, scheme, dir, ψ, grid, T, side_idx, idx, loc, VI, args...)
-            stencil = $upwind_stencil(i, j, k, scheme, dir, ψ, grid, VI, args...)
-            weights = weno_weights(stencil, scheme, VI, args...)
+        @inline function $weno_reconstruction(i, j, k, scheme, dir, ψ, grid, T, side_idx, idx, loc, args...)
+            stencil = $upwind_stencil(i, j, k, scheme, dir, ψ, grid, args...)
+            weights = weno_weights(stencil, scheme, args...)
             return upwind_stencil_sum(scheme, stencil, weights, T, Val(side_idx), idx, loc)
         end
 
