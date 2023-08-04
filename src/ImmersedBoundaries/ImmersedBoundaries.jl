@@ -115,6 +115,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, mi)
     end
 
+    # Constructor with no active map
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
         FT = eltype(grid)
         arch = architecture(grid)
