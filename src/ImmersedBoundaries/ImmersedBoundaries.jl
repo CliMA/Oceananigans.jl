@@ -114,6 +114,13 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
         Arch = typeof(arch)
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, mi)
     end
+
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
+        FT = eltype(grid)
+        arch = architecture(grid)
+        Arch = typeof(arch)
+        return new{FT, TX, TY, TZ, G, I, Nothing, Arch}(arch, grid, ib, nothing)
+    end
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -134,9 +141,8 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_interior))
 
-function with_halo(halo, ibg::ImmersedBoundaryGrid) 
-    return ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
-end
+with_halo(halo, ibg::ImmersedBoundaryGrid) =
+    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
 # (which requires checking `Center` nodes at N + H and N + H + 1)

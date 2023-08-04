@@ -22,7 +22,7 @@ struct SurfaceMap end
 @inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_interior[idx])
 @inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_surface[idx])
 
-function ImmersedBoundaryGrid(grid, ib, active_cells_map::Bool) 
+function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
     ibg = ImmersedBoundaryGrid(grid, ib)
     TX, TY, TZ = topology(ibg)
