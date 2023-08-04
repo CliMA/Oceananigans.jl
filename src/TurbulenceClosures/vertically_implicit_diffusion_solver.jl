@@ -1,6 +1,7 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δz
+using Oceananigans.Operators: Δz
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
+using Oceananigans.Grids: ZDirection
 
 import Oceananigans.Solvers: get_coefficient
 
@@ -19,7 +20,7 @@ import Oceananigans.Solvers: get_coefficient
 
 # Fallbacks: extend these function for `closure` to support.
 # TODO: docstring
-@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, ℓx, ℓy, ℓz, clock, Δt, κz) =
     zero(grid)
 
 @inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
@@ -68,10 +69,12 @@ end
     return ifelse(k′ < 1, zero(grid), dl)
 end
 
-# Vertical velocity kernel functions (at cell interfaces in z)
-#
-# Note: these coefficients are specific to vertically-bounded grids (and so is
-# the BatchedTridiagonalSolver).
+#####
+##### Vertical velocity kernel functions (at cell interfaces in z)
+#####
+##### Note: these coefficients are specific to vertically-bounded grids (and so is
+##### the BatchedTridiagonalSolver).
+
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
@@ -93,19 +96,22 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) -
-        Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                      maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                      maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
+    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
+                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
+                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-@inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
-@inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
-@inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+@inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
+@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
+@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
 
 #####
 ##### Solver constructor
 #####
+
+struct VerticallyImplicitDiffusionLowerDiagonal end
+struct VerticallyImplicitDiffusionDiagonal end
+struct VerticallyImplicitDiffusionUpperDiagonal end
 
 """
     implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
@@ -132,18 +138,17 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = Val(:maybe_tupled_ivd_lower_diagonal),
-                                        diagonal       = Val(:ivd_diagonal),
-                                        upper_diagonal = Val(:maybe_tupled_ivd_upper_diagonal))
+                                        lower_diagonal = VerticallyImplicitDiffusionLowerDiagonal(),
+                                        diagonal       = VerticallyImplicitDiffusionDiagonal(),
+                                        upper_diagonal = VerticallyImplicitDiffusionUpperDiagonal())
 
     return z_solver
 end
 
-# Extend the `get_coefficient` function to retrieve the correct `ivd_diagonal`, `ivd_lower_diagonal` and `ivd_upper_diagonal` functions
-# REMEMBER: `get_coefficient(f::Function, args...)` leads to massive performance decrease on the CPU (https://github.com/CliMA/Oceananigans.jl/issues/2996) 
-@inline get_coefficient(::Val{:maybe_tupled_ivd_lower_diagonal}, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:maybe_tupled_ivd_upper_diagonal}, i, j, k, grid, p, tridiag_dir, args...) = maybe_tupled_ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(::Val{:ivd_diagonal},                    i, j, k, grid, p, tridiag_dir, args...) = ivd_diagonal(i, j, k, grid, args...)
+# Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions

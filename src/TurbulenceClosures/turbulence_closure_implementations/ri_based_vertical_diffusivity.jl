@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
+using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: use_only_active_interior_cells
 
@@ -122,9 +123,11 @@ RiBasedVerticalDiffusivity(FT::DataType; kw...) =
 const RBVD = RiBasedVerticalDiffusivity
 const RBVDArray = AbstractArray{<:RBVD}
 const FlavorOfRBVD = Union{RBVD, RBVDArray}
+const c = Center()
+const f = Face()
 
-@inline viscosity_location(::FlavorOfRBVD)   = (Center(), Center(), Face())
-@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
+@inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
+@inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
@@ -185,27 +188,36 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
 @inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
 
+@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
+
+@inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    return ∂z_u² + ∂z_v²
+end
+
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, velocities.u)^2
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, velocities.v)^2
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S² = ∂z_u² + ∂z_v²
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     Ri = N² / S²
 
     # Clip N² and avoid NaN
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
+const c = Center()
+const f = Face()
+
 @kernel function compute_ri_number!(diffusivities, grid, closure::FlavorOfRBVD,
                                     velocities, tracers, buoyancy, tracer_bcs, clock)
-
     i, j, k = @index(Global, NTuple)
     @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
 end
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
-
     i, j, k = @index(Global, NTuple)
     _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
@@ -230,19 +242,19 @@ end
     # Convection and entrainment
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
-    convecting = N² < 0
-    entraining = (!convecting) & (N²_above < 0)
+
+    # Conditions
+    convecting = N² < 0 # applies regardless of Qᵇ
+    entraining = (N²_above < 0) & (!convecting) & (Qᵇ > 0)
 
     # Convective adjustment diffusivity
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉⁿ = ifelse(Qᵇ > 0, Cᵉⁿ * Qᵇ / N², zero(grid))
-    κᵉⁿ = ifelse(entraining, Cᵉⁿ, zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
-
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κᶜ★ = κ₀ * τ
     κᵘ★ = ν₀ * τ
@@ -255,6 +267,13 @@ end
     κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
     κᵘ⁺ = κᵘ★
 
+    # Set to zero on periphery and NaN within inactive region
+    on_periphery = peripheral_node(i, j, k, grid, c, c, f)
+    within_inactive = inactive_node(i, j, k, grid, c, c, f)
+    κᶜ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ⁺))
+    κᵘ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵘ⁺))
+
+    # Update by averaging in time
     @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
     @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
     return nothing
