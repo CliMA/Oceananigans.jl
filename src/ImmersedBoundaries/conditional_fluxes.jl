@@ -215,21 +215,3 @@ for bias in (:symmetric, :left_biased, :right_biased)
         end
     end
 end
-
-for bias in (:left_biased, :right_biased)
-    for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
-        interp     = Symbol(bias, :_interpolate_, dir)
-        alt_interp = Symbol(:_, interp)
-
-        near_horizontal_boundary = Symbol(:near_, d, :_horizontal_boundary_, bias)
-
-        @eval begin
-            # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::VelocityStencil, args...) =
-                ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                       $alt_interp(i, j, k, ibg, scheme, ζ, DefaultStencil(), args...),
-                       $interp(i, j, k, ibg, scheme, ζ, VelocityStencil(), args...))
-        end
-    end
-end
-
