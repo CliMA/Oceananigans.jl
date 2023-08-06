@@ -1,6 +1,7 @@
 using StructArrays: StructArray, replace_storage
-using Oceananigans.Grids: on_architecture
+using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.Distributed
+using Oceananigans.Distributed: DistributedGrid
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
