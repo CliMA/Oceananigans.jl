@@ -1,5 +1,6 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture
+using Oceananigans.Distributed
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
@@ -40,6 +41,13 @@ saveproperty!(file, address, p::Function)             = nothing
 saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
 saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
 
+function saveproperty!(file, address, grid::DistributedGrid) 
+    arch = architecture(grid)
+    cpu_arch = DistributedArch(CPU(); topology = topology(grid),
+                                      ranks = arch.ranks)
+    _saveproperty!(file, address, on_architecture(cpu_arch, grid))
+end
+
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
@@ -74,6 +82,13 @@ serializeproperty!(file, address, p::CantSerializeThis) = nothing
 # Convert to CPU please!
 # TODO: use on_architecture for more stuff?
 serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
+
+function serializeproperty!(file, address, grid::DistributedGrid) 
+    arch = architecture(grid)
+    cpu_arch = DistributedArch(CPU(); topology = topology(grid),
+                                      ranks = arch.ranks)
+    file[address] = on_architecture(cpu_arch, grid)
+end
 
 function serializeproperty!(file, address, p::FieldBoundaryConditions)
     # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
