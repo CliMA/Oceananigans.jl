@@ -67,11 +67,17 @@ arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
-arch_array(arch, a::AbstractRange) = a
-arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch, ::Nothing)   = nothing
-arch_array(arch, a::Number)   = a
-arch_array(arch, a::Function) = a
+arch_array(::CPU, a::AbstractRange) = a
+arch_array(::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(::CPU, ::Nothing)   = nothing
+arch_array(::CPU, a::Number)   = a
+arch_array(::CPU, a::Function) = a
+
+arch_array(::GPU, a::AbstractRange) = a
+arch_array(::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(::GPU, ::Nothing)   = nothing
+arch_array(::GPU, a::Number)   = a
+arch_array(::GPU, a::Function) = a
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
