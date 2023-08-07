@@ -8,7 +8,7 @@ using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, MITgcmPre
 ##### Model setup
 #####
 
-function run_simulation(solver, preconditioner; Nr, Ra, Pr=1)
+function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     Lx = 1
     Lz = 1
 
@@ -20,7 +20,6 @@ function run_simulation(solver, preconditioner; Nr, Ra, Pr=1)
 
     S = Ra * ν * κ / Lz ^ 4
 
-    Nz = 128
     Nx = Nz
     
     grid = RectilinearGrid(GPU(), Float64,
@@ -183,9 +182,10 @@ end
 
 Nr = 10
 Ra = 1e9
+Nz = 128
 
-run_simulation("ImmersedPoissonSolver", "FFT", Nr=Nr, Ra=Ra)
-run_simulation("FFT", nothing, Nr=Nr, Ra=Ra)
+run_simulation("ImmersedPoissonSolver", "FFT", Nr=Nr, Ra=Ra, Nz=Nz)
+run_simulation("FFT", nothing, Nr=Nr, Ra=Ra, Nz=Nz)
 #####
 ##### Visualize
 #####
