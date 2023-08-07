@@ -225,7 +225,7 @@ end
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds max.($(metaprogrammed_beta_loop(buffer)), 0)
+        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
         @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
@@ -277,7 +277,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 β  = beta_sum(scheme, βᵤ, βᵥ)
 
                 if i == 40 && j == 40 && k == 45
-                    @cuprint("Velocity smoothness $(extrema(β))")
+                    @cuprint("Velocity smoothness $(extrema(β)) \n")
                 end
 
                 if scheme isa ZWENO
