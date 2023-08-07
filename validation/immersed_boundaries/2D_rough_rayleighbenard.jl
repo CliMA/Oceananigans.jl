@@ -2,7 +2,7 @@ using Oceananigans
 using CairoMakie
 using Printf
 using JLD2
-using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, MITgcmPreconditioner
+using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, DiagonallyDominantThreeDimensionalPreconditioner
 
 #####
 ##### Model setup

@@ -109,9 +109,9 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     return pressure
 end
 
-struct MITgcmPreconditioner end
+struct DiagonallyDominantThreeDimensionalPreconditioner end
 
-@inline function precondition!(P_r, ::MITgcmPreconditioner, r, args...)
+@inline function precondition!(P_r, ::DiagonallyDominantThreeDimensionalPreconditioner, r, args...)
     grid = r.grid
     arch = architecture(P_r)
 
