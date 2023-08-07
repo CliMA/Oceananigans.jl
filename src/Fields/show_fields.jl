@@ -3,23 +3,26 @@ using Oceananigans.Grids: size_summary
 using Oceananigans.Utils: prettysummary
 using Oceananigans.BoundaryConditions: bc_str
 
+import Oceananigans.Grids: grid_name
+
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
+grid_name(field::Field) = grid_name(field.grid)
+
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
     prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
 
-    grid_name = typeof(field.grid).name.wrapper
     reduced_dims = reduced_dimensions(field)
 
     suffix = reduced_dims === () ?
-        string(" on ", grid_name, " on ", summary(architecture(field))) :
+        string(" on ", grid_name(field), " on ", summary(architecture(field))) :
         string(" reduced over dims = ", reduced_dims,
-               " on ", grid_name, " on ", summary(architecture(field)))
+               " on ", grid_name(field), " on ", summary(architecture(field)))
 
     return string(prefix, suffix)
 end
@@ -55,7 +58,12 @@ end
 Base.summary(status::FieldStatus) = "time=$(status.time)"
 
 Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
-Base.show(io::IO, z::ZeroField) = print(io, summary(z))
+Base.summary(::OneField{N}) where N  = "OneField{$N}"
+
+Base.show(io::IO, z::Union{ZeroField, OneField}) = print(io, summary(z))
+
+@inline Base.summary(f::CF) = string("ConstantField(", prettysummary(f.constant), ")")
+Base.show(io::IO, f::CF) = print(io, summary(f))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
@@ -100,4 +108,3 @@ function Base.show(io::IO, ft::NamedFieldTuple)
         print(io, "    └── grid: ", summary(field.grid))
     end
 end
-

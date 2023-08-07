@@ -1,33 +1,23 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: MCBC, PBC
 
-struct YPartition{N} <: AbstractPartition
-    div :: N
-    function YPartition(sizes) 
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
-        return new{typeof(sizes)}(sizes)
-    end
-end
-
 const EqualYPartition = YPartition{<:Number}
 
-length(p::EqualYPartition) = p.div
-length(p::YPartition)      = length(p.div)
+Base.length(p::YPartition)       = length(p.div)
+Base.length(p::EqualYPartition)  = p.div
 
-Base.summary(p::EqualYPartition) = "Equal partitioning in Y ($(p.div) regions)"
-Base.summary(p::YPartition)      = "partitioning in Y [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
+Base.summary(p::EqualYPartition) = "Equal partitioning in Y with ($(p.div) regions)"
+Base.summary(p::YPartition)      = "YPartition with [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
 function partition_size(p::EqualYPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert mod(Ny, p.div) == 0 
+    @assert mod(Ny, p.div) == 0
     return Tuple((Nx, Ny ÷ p.div, Nz) for i in 1:length(p))
 end
 
 function partition_size(p::YPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert sum(p.div) != Ny
+    @assert sum(p.div) == Ny
     return Tuple((Nx, p.div[i], Nz) for i in 1:length(p))
 end
 
@@ -40,7 +30,7 @@ function partition_extent(p::YPartition, grid)
     return Tuple((x, y = y[i], z = z) for i in 1:length(p))
 end
 
-function partition_topology(p::YPartition, grid) 
+function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
     
     return Tuple((TX, (TY == Periodic ? 
@@ -53,16 +43,19 @@ function partition_topology(p::YPartition, grid)
 end
 
 divide_direction(x::Tuple, p::EqualYPartition) = 
-    Tuple((x[1]+(i-1)*(x[2] - x[1])/length(p), x[1]+i*(x[2] - x[1])/length(p)) for i in 1:length(p))
+    Tuple((x[1] + (i-1)*(x[2] - x[1])/length(p), x[1] + i*(x[2] - x[1])/length(p)) for i in 1:length(p))
 
 function divide_direction(x::AbstractArray, p::EqualYPartition) 
     nelem = (length(x)-1)÷length(p)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
+partition_global_array(a::Field, p::EqualYPartition, args...) = partition_global_array(a.data, p, args...)
+
 function partition_global_array(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
     idxs = default_indices(length(size(a)))
-    return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
+    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 function partition_global_array(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
@@ -88,7 +81,7 @@ function reconstruct_extent(mrg, p::YPartition)
     z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
     if cpu_face_constructor_y(mrg.region_grids.regional_objects[1]) isa Tuple
-        y = (cpu_face_constructor_y(mrg.region_grids.regional_objects[1])[1], 
+        y = (cpu_face_constructor_y(mrg.region_grids.regional_objects[1])[1],
              cpu_face_constructor_y(mrg.region_grids.regional_objects[length(p)])[end])
     else
         y = [cpu_face_constructor_y(mrg.region_grids.regional_objects[1])...]
@@ -97,7 +90,7 @@ function reconstruct_extent(mrg, p::YPartition)
             y = [y..., cpu_face_constructor_y(grid)[2:end]...]
         end
     end
-    return (; x = x, y = y, z = z)
+    return (; x, y, z)
 end
 
 function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
@@ -105,7 +98,9 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) 
     global_Ny  = local_size[2] * length(p)
     idxs = default_indices(length(local_size))
     arr_out = zeros(eltype(first(ma.regional_objects)), local_size[1], global_Ny, local_size[3:end]...)
+
     n = local_size[2]
+
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
@@ -116,43 +111,25 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) 
 end
 
 function compact_data!(global_field, global_grid, data::MultiRegionObject, p::EqualYPartition)
-    Nx, Ny, Nz = size(global_grid)
+    Ny = size(global_grid)[2]
     n = Ny / length(p)
+
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
         interior(global_field)[:, init:fin, :] .= data[r][:, 1:fin-init+1, :]
     end
+
+    fill_halo_regions!(global_field)
+
+    return nothing
 end
 
 #####
-##### Boundary specific Utils
+##### Boundary-specific Utils
 #####
 
-inject_west_boundary(region, p::YPartition, bc) = bc 
-inject_east_boundary(region, p::YPartition, bc) = bc
-
-function inject_south_boundary(region, p::YPartition, global_bc) 
-    if region == 1
-        typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
-                bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region - 1))
-    end
-    return bc
-end
-
-function inject_north_boundary(region, p::YPartition, global_bc) 
-    if region == length(p)
-        typeof(global_bc) <: Union{MCBC, PBC} ?  
-                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
-                bc = global_bc
-    else
-        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region + 1))
-    end
-    return bc
-end
+const YPartitionConnectivity = Union{RegionalConnectivity{North, South}, RegionalConnectivity{South, North}}
 
 ####
 #### Global index flattening

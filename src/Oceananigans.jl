@@ -4,10 +4,6 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.8"
-    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
-end
-
 export
     # Architectures
     CPU, GPU, 
@@ -114,8 +110,9 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
-    ConformalCubedSphereGrid,
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
@@ -225,7 +222,6 @@ include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
-include("CubedSpheres/CubedSpheres.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -254,7 +250,6 @@ using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
-using .CubedSpheres
 
 function __init__()
     threads = Threads.nthreads()
