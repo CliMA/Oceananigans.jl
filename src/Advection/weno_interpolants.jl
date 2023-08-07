@@ -66,7 +66,7 @@ end
 Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
 const ƞ = Int32(2) # WENO exponent
-const ε = 1e-8
+const ε = 1e-6
 
 # Optimal values taken from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
@@ -252,7 +252,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
         @inline function $biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
             @inbounds begin
                 β = beta_loop(scheme, ψ, $biased_β)
-                    
+                
                 if scheme isa ZWENO
                     τ = global_smoothness_indicator(Val(N), β)
                     α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
