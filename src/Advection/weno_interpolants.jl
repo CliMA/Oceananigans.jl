@@ -275,7 +275,10 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
                 β  = beta_sum(scheme, βᵤ, βᵥ)
-                @cuprint("Velocity smoothness $(extrema(β))")
+
+                if i == 40 && j == 40 && k == 45
+                    @cuprint("Velocity smoothness $(extrema(β))")
+                end
 
                 if scheme isa ZWENO
                     τ = global_smoothness_indicator(Val(N), β)
