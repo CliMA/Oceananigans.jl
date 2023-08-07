@@ -73,7 +73,7 @@ Keyword Arguments
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
-                             SplitExplicitSettings(; gravitational_acceleration, kwargs...))
+                             SplitExplicitSettings(FT; gravitational_acceleration, kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -251,7 +251,7 @@ end
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotopic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
-    Δt_barotopic     :: B
+    Δt_barotropic    :: B
     averaging_kernel :: F
 end
 
@@ -273,9 +273,9 @@ function FixedTimeStepSize(FT::DataType = Float64;
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
-    Δt_barotopic = FT(cfl * Δs / wave_speed)
+    Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
-    return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
+    return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
@@ -294,7 +294,7 @@ end
 end
 
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = 200, 
+                               substeps = nothing, 
                                cfl      = nothing,
                                grid     = nothing,
                                fixed_Δt = nothing,
