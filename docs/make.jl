@@ -31,7 +31,7 @@ end
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-    bib = CitationBibliography(bib_filepath)
+    bib = CitationBibliography(bib_filepath, style=:authoryear)
 
     #####
     ##### Generate examples
@@ -47,11 +47,11 @@ end
         "baroclinic_adjustment.jl",
         "kelvin_helmholtz_instability.jl",
         "langmuir_turbulence.jl",
-        "horizontal_convection.jl",
-        "tilted_bottom_boundary_layer.jl",
         "ocean_wind_mixing_and_convection.jl",
-        "convecting_plankton.jl",
+        "horizontal_convection.jl",
         "internal_tide",
+        "convecting_plankton.jl",
+        "tilted_bottom_boundary_layer.jl",
         "two_dimensional_turbulence.jl",
         "internal_wave.jl",
         "one_dimensional_diffusion.jl",
@@ -172,7 +172,8 @@ pages = [
 format = Documenter.HTML(collapselevel = 1,
                          prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-                         mathengine = MathJax3())
+                         mathengine = MathJax3(),
+                         assets = String["assets/citations.css"])
 
 makedocs(bib, sitename = "Oceananigans.jl",
               authors = "Climate Modeling Alliance and contributors",

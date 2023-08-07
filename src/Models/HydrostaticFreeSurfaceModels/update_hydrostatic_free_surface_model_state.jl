@@ -6,6 +6,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
+using Oceananigans.Fields: replace_horizontal_velocity_halos!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -28,8 +29,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
+    @apply_regionally replace_horizontal_velocity_halos!(model.velocities, model.grid)
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
