@@ -238,6 +238,8 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
+using CUDA: @cuprint
+
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     biased_weno_weights = Symbol(side, :_biased_weno_weights)
