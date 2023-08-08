@@ -186,7 +186,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds 0.5*(β₁[$stencil] + β₂[$stencil]))
+        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
     end
 
     return :($(elem...),)
