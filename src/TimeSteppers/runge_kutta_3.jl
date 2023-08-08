@@ -27,7 +27,7 @@ end
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
 
-The scheme described by Le and Moin (1991) (see [LeMoin1991](@cite)). In a nutshel, the 3rd-order
+The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
 step is applied after at each substep.
 

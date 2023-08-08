@@ -4,8 +4,8 @@ using Oceananigans.Operators
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
 Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), then modified by [Verstappen18](@cite),
-and finally described and validated for by [Vreugdenhil18](@cite).
+proposed originally by [Rozema15](@citet) and [Abkar16](@citet), then modified by [Verstappen18](@citet),
+and finally described and validated for by [Vreugdenhil18](@citet).
 """
 struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     Cν :: PN
@@ -58,9 +58,9 @@ Keyword arguments
         number or function is applied to all tracers. If a `NamedTuple`, it must possess
         a field specifying the Poncaré constant for every tracer.
 
-* `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
+* `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@citet)).
         *Note*: that we _do not_ subtract the horizontally-average component before computing this
-        buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
+        buoyancy modification term. This implementation differs from [Abkar16](@citet)'s proposal
         and the impact of this approximation has not been tested or validated.
 
 By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
