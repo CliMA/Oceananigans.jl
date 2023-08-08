@@ -186,7 +186,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil]))
+        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/ƞ)
     end
 
     return :($(elem...),)
@@ -275,10 +275,6 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
                 β  = beta_sum(scheme, βᵤ, βᵥ)
-
-                if i == 40 && j == 40 && k == 45
-                    @cuprint("Velocity smoothness $(extrema(β)) \n")
-                end
 
                 if scheme isa ZWENO
                     τ = global_smoothness_indicator(Val(N), β)
