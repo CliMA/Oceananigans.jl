@@ -21,17 +21,7 @@ function fetch_output(lagrangian_particles::LagrangianParticles, model)
 end
 
 convert_output(output, writer) = output
-
-function convert_output(output::AbstractArray, writer)
-    if architecture(output) isa GPU
-        output_array = writer.array_type(undef, size(output)...)
-        copyto!(output_array, output)
-    else
-        output_array = convert(writer.array_type, output)
-    end
-
-    return output_array
-end
+convert_output(output::AbstractArray, writer) = Array{writer.type}(output)
 
 # Need to broadcast manually because of https://github.com/JuliaLang/julia/issues/30836
 convert_output(outputs::NamedTuple, writer) =

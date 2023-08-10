@@ -29,8 +29,8 @@ Other important keyword arguments are
   By default a `FieldSlicer` is used to remove halo regions from fields so that only the physical
   portion of model data is saved to disk.
 
-* `array_type` for specifying the type of the array that holds outputted field data. The default is
-  `Array{Float64}`, or arrays of single-precision floating point numbers.
+* `type` for specifying the type of the array that holds outputted field data. The default is
+  `Float32`, or `Float64` for arrays of double-precision floating-point numbers.
 
 Once an `OutputWriter` is created, it can be used to write output by adding it the
 ordered dictionary `simulation.output_writers`. prior to calling `run!(simulation)`.

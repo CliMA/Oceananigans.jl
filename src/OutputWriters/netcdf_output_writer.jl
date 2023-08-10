@@ -10,13 +10,13 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
-mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{D, O, T, FT} <: AbstractOutputWriter
     filepath :: String
     dataset :: D
     outputs :: O
     schedule :: T
     overwrite_existing :: Bool
-    array_type :: A
+    type :: FT
     previous :: Float64
     verbose :: Bool
 end
@@ -157,7 +157,7 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
-                                   array_type = Array{Float64},
+                                         type = Float32,
                                       indices = nothing,
                                    with_halos = false,
                             global_attributes = Dict(),
@@ -197,8 +197,8 @@ Keyword arguments
                 information about the boundary conditions is often crucial. In that case
                 you might need to set `with_halos = true`.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+- `type`: The float type to which output arrays are converted to prior to saving.
+                Default: `Float32`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -329,7 +329,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 """
 function NetCDFOutputWriter(model, outputs; filename, schedule,
                                           dir = ".",
-                                   array_type = Array{Float64},
+                                         type = Float32,
                                       indices = (:, :, :),
                                    with_halos = false,
                             global_attributes = Dict(),
@@ -396,7 +396,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         for (dim_name, dim_array) in dims
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
+            defVar(dataset, dim_name, Array{type}(dim_array), (dim_name,),
                    deflatelevel=deflatelevel, attrib=default_dimension_attributes[dim_name])
         end
 
@@ -419,7 +419,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, deflatelevel, attributes, dimensions)
+            define_output_variable!(dataset, output, name, type, deflatelevel, attributes, dimensions)
         end
 
         sync(dataset)
@@ -427,7 +427,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, type, 0.0, verbose)
 end
 
 get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
@@ -444,10 +444,10 @@ get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
 #####
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
+function define_output_variable!(dataset, output, name, type, deflatelevel, output_attributes, dimensions)
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
-    defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
+    defVar(dataset, name, type, (dimensions[name]..., "time"),
            deflatelevel=deflatelevel, attrib=output_attributes)
 
     return nothing
@@ -455,8 +455,8 @@ end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, deflatelevel, output_attributes, dimensions) =
-    defVar(dataset, name, eltype(array_type),
+define_output_variable!(dataset, output::AbstractField, name, type, deflatelevel, output_attributes, dimensions) =
+    defVar(dataset, name, type,
            (netcdf_spatial_dimensions(output)..., "time"),
            deflatelevel=deflatelevel, attrib=output_attributes)
 
@@ -563,7 +563,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
               "├── filepath: ", ow.filepath, "\n",
               "├── dimensions: $dims", "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "└── array type: ", show_array_type(ow.array_type))
+              "└── array type: Array{$(ow.type)}")
 end
 
 #####
@@ -571,10 +571,10 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, deflatelevel, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, type, deflatelevel, output_attributes, dimensions)
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     for particle_field in particle_fields
-        defVar(dataset, particle_field, eltype(array_type),
+        defVar(dataset, particle_field, type,
                ("particle_id", "time"), deflatelevel=deflatelevel)
     end
 end

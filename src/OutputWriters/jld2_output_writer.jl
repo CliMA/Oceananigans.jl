@@ -9,11 +9,11 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{O, T, FT, IF, IN, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
-    array_type :: D
+    type :: FT
     init :: IF
     including :: IN
     part :: Int
@@ -31,7 +31,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                               dir = ".",
                           indices = (:, :, :),
                        with_halos = false,
-                       array_type = Array{Float64},
+                             type = Float32,
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -75,8 +75,8 @@ Keyword arguments
                        information about the boundary conditions is often crucial. In that case
                        you might need to set `with_halos = true`.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+- `type`: The float type to which output arrays are converted to prior to saving.
+                Default: `Float32`.
 
 ## File management
 
@@ -162,7 +162,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
                             with_halos = false,
-                            array_type = Array{Float64},
+                                  type = Float32,
                           max_filesize = Inf,
                     overwrite_existing = false,
                                   init = noinit,
@@ -184,7 +184,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
-    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
+    return JLD2OutputWriter(filepath, outputs, schedule, type, init,
                             including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
 end
 
@@ -332,7 +332,7 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: $(ow.filepath)", "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "├── array type: ", show_array_type(ow.array_type), "\n",
+              "├── array type: Array{$(ow.type)}\n"
               "├── including: ", ow.including, "\n",
               "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end
