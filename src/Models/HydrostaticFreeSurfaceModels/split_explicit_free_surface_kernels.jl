@@ -99,8 +99,15 @@ end
 # Time stepping extrapolation U★, and η★
 
 # AB3 step
-@inline U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k]   + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
-@inline η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k]   + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
+@inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)
+    FT = eltype(grid)
+    return FT(α) * ϕᵐ[i, j, k]   + FT(θ) * ϕᵐ⁻¹[i, j, k] + FT(β) * ϕᵐ⁻²[i, j, k]
+end
+
+@inline function η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+    FT = eltype(grid)
+    return FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * ηᵐ[i, j, k]   + FT(γ) * ηᵐ⁻¹[i, j, k] + FT(ϵ) * ηᵐ⁻²[i, j, k]
+end
 
 # Forward Backward Step
 @inline U★(i, j, k, grid, ::ForwardBackwardScheme, ϕ, args...) = ϕ[i, j, k] 
@@ -261,9 +268,9 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
         u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
 end
 
-@kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ)
+@kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ::FT) where FT
     i, j, k = @index(Global, NTuple)
-    @inbounds G⁻[i, j, k] = (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ)
+    @inbounds G⁻[i, j, k] = (FT(1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (FT(0.5) + χ)
 end
 
 """
