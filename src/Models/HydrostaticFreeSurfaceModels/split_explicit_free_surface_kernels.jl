@@ -100,12 +100,12 @@ end
 
 # AB3 step
 @inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)
-    FT = eltype(ϕᵐ)
+    FT = eltype(grid)
     return FT(α) * ϕᵐ[i, j, k]   + FT(θ) * ϕᵐ⁻¹[i, j, k] + FT(β) * ϕᵐ⁻²[i, j, k]
 end
 
 @inline function η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
-    FT = eltype(ηᵐ)
+    FT = eltype(grid)
     return FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * ηᵐ[i, j, k]   + FT(γ) * ηᵐ⁻¹[i, j, k] + FT(ϵ) * ηᵐ⁻²[i, j, k]
 end
 
