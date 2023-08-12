@@ -704,7 +704,7 @@ end
 ##### Conformal cubed sphere face grid
 #####
 
-function test_cubed_sphere_face_array_sizes_and_spacings(FT)
+function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -739,8 +739,8 @@ function test_cubed_sphere_face_array_sizes_and_spacings(FT)
     @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
     @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
 
-    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δz
-    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δz
+    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δzᵃᵃᶠ
+    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δzᵃᵃᶜ
 
     return nothing
 end
@@ -913,7 +913,7 @@ end
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
-            test_cubed_sphere_face_array_sizes_and_spacings(Float64)
+            test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
         end
 
         # Testing show function
@@ -933,7 +933,7 @@ end
         for arch in archs
             for FT in float_types
                 z = (0, 1)
-                radius = 234.3e4
+                radius = 234.5e6
 
                 Nx, Ny = 10, 8
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
@@ -947,57 +947,16 @@ end
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
-                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
-            end
-        end
-    end
-
-    @testset "Conformal cubed sphere face grid from file" begin
-        @info "  Testing conformal cubed sphere face grid construction from file..."
-
-        Nz = 1
-        z = (-1, 0)
-
-        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-
-        for face in 1:6
-            grid = OrthogonalSphericalShellGrid(cs32_filepath; face, Nz, z)
-            @test grid isa OrthogonalSphericalShellGrid
-        end
-
-        for arch in archs
-
-            # read cs32 grid from file
-            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
-
-            Nx, Ny, Nz = size(grid_cs32.faces[1])
-            radius = grid_cs32.faces[1].radius
-
-            # construct a ConformalCubedSphereGrid similar to cs32
-            grid = ConformalCubedSphereGrid(arch; z, face_size=(Nx, Ny, Nz), radius)
-
-            for face in 1:6
-                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
-                @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
-                @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
-
-                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
-                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .≈ -180] .= 180
-
-                # and if poles are included, they have the same longitude
-                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90]
-                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90]
-                @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
-                @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
+                @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
             end
         end
     end

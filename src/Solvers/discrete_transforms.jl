@@ -41,7 +41,7 @@ twiddle_factors(arch, grid, dim) = nothing
 """
     twiddle_factors(arch::GPU, grid, dims)
 
-Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@cite)
+Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@citet)
 for the forward and backward twiddle factors respectively.
 """
 function twiddle_factors(arch::GPU, grid, dims)

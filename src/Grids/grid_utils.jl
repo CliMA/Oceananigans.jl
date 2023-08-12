@@ -553,7 +553,8 @@ Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, 
 The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
 are the triangle's inner angles.
 
-It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
+It has been known since the time of Euler and Lagrange that
+``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
 ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
 
 References
@@ -584,7 +585,7 @@ If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical tria
 that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
 triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
 On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
-that ``P`` above  the same as the volume defined by the vectors `a`, `b`, and `c`, that is
+that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and `c`, that is
 ``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
 
 References
@@ -606,42 +607,119 @@ end
 Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
 `a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
 non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
-overlapping, we compute the area of the quadrilateral as half the sum of the areas of all four potential
-triangles.
+overlapping, we compute the area of the quadrilateral as the half the sum of the areas of all four potential
+triangles formed by `a₁`, `a₂`, `a₃`, and `a₄`.
 """
 spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
     1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
            spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
 
 """
-    hav(x)
+    add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
-Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
+Add halos of size `halo_sz :: NTuple{3}{Int}` to `data` that corresponds to
+size `sz :: NTuple{3}{Int}`, location `loc :: NTuple{3}`, and topology
+`topo :: NTuple{3}`.
+
+Setting the keyword `warning = false` will spare you from warnings regarding
+the size of `data` being too big or too small for the `loc`, `topo`, and `sz`
+provided.
+
+Example
+=======
+
+```julia
+julia> using Oceananigans
+
+julia> using Oceananigans.Grids: add_halos, total_length
+
+julia> Nx, Ny, Nz = (3, 3, 1);
+
+julia> loc = (Face, Center, Nothing);
+
+julia> topo = (Bounded, Periodic, Bounded);
+
+julia> data = rand(total_length(loc[1](), topo[1](), Nx, 0), total_length(loc[2](), topo[2](), Ny, 0))
+4×3 Matrix{Float64}:
+ 0.771924  0.998196   0.48775
+ 0.499878  0.470224   0.669928
+ 0.254603  0.73885    0.0821657
+ 0.997512  0.0440224  0.726334
+
+julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
+6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+ 0.0  0.0  0.771924  0.998196   0.48775    0.0  0.0
+ 0.0  0.0  0.499878  0.470224   0.669928   0.0  0.0
+ 0.0  0.0  0.254603  0.73885    0.0821657  0.0  0.0
+ 0.0  0.0  0.997512  0.0440224  0.726334   0.0  0.0
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+
+ julia> data = rand(8, 2)
+8×2 Matrix{Float64}:
+ 0.910064  0.491983
+ 0.597547  0.775168
+ 0.711421  0.519057
+ 0.697258  0.450122
+ 0.300358  0.510102
+ 0.865862  0.579322
+ 0.196049  0.217199
+ 0.799729  0.822402
+
+julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
+┌ Warning: data has larger size than expected in first dimension; some data is lost
+└ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:650
+┌ Warning: data has smaller size than expected in second dimension; rest of entries are filled with zeros.
+└ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:655
+6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+ 0.0  0.0  0.0       0.0       0.0  0.0  0.0
+ 0.0  0.0  0.910064  0.491983  0.0  0.0  0.0
+ 0.0  0.0  0.597547  0.775168  0.0  0.0  0.0
+ 0.0  0.0  0.711421  0.519057  0.0  0.0  0.0
+ 0.0  0.0  0.697258  0.450122  0.0  0.0  0.0
+ 0.0  0.0  0.0       0.0       0.0  0.0  0.0
+```
 """
-hav(x) = sin(x/2)^2
+function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
-"""
-    central_angle((φ₁, λ₁), (φ₂, λ₂))
+    Nx, Ny, Nz = size(data)
 
-Compute the central angle (in radians) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
+    arch = architecture(data)
 
-References
-==========
-- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
-"""
-function central_angle((φ₁, λ₁), (φ₂, λ₂))
-    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
+    # bring to CPU
+    map(a -> arch_array(CPU(), a), data)
 
-    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
+    nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
+                 total_length(loc[2](), topo[2](), sz[2], 0),
+                 total_length(loc[3](), topo[3](), sz[3], 0)
+
+    if warnings
+        Nx > nx && @warn("data has larger size than expected in first dimension; some data is lost")
+        Ny > ny && @warn("data has larger size than expected in second dimension; some data is lost")
+        Nz > nz && @warn("data has larger size than expected in third dimension; some data is lost")
+
+        Nx < nx && @warn("data has smaller size than expected in first dimension; rest of entries are filled with zeros.")
+        Ny < ny && @warn("data has smaller size than expected in second dimension; rest of entries are filled with zeros.")
+        Nz < nz && @warn("data has smaller size than expected in third dimension; rest of entries are filled with zeros.")
+    end
+
+    offset_array = dropdims(new_data(eltype(data), CPU(), loc, topo, sz, halo_sz), dims=3)
+
+    nx = minimum((nx, Nx))
+    ny = minimum((ny, Ny))
+    nz = minimum((nz, Nz))
+
+    offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
+
+    # return to data's original architecture 
+    map(a -> arch_array(arch, a), offset_array)
+
+    return offset_array
 end
 
-"""
-    central_angle_degrees((φ₁, λ₁), (φ₂, λ₂))
+function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; warnings=true)
+    Nx, Ny = size(data)
+    return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
+end
 
-Compute the central angle (in degrees) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
-
-See also [`central_angle`](@ref).
-"""
-central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))
+grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
