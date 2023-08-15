@@ -41,7 +41,6 @@ and callback schedules. Alignment with `sim.stop_time` takes precedence.
 function aligned_time_step(sim::Simulation, Δt)
     clock = sim.model.clock
 
-    FT = eltype(Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
@@ -53,7 +52,7 @@ function aligned_time_step(sim::Simulation, Δt)
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
     aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
 
-    return convert(FT, aligned_Δt)
+    return aligned_Δt
 end
 
 """
