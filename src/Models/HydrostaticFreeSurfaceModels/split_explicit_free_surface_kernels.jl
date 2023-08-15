@@ -306,7 +306,7 @@ const FNS = FixedSubstepNumber
 const FTS = FixedTimeStepSize
 
 @inline calculate_substeps(substepping::FNS, Δt) = length(substepping.averaging_weights)
-@inline calculate_substeps(substepping::FTS, Δt) = ceil(Int, 2 * Δt / substepping.Δt_barotropic)
+@inline calculate_substeps(substepping::FTS, Δt) = max(5, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), 
