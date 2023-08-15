@@ -190,15 +190,17 @@ where `m` denotes the substage.
 @kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
+    FT = eltype(U)
     @inbounds begin
-        U[i, j, k] += Δt * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+        U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
     end
 end
 
 @kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 
+    FT = eltype(U)
     @inbounds begin
-        U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
+        U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
 end
