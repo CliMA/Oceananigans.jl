@@ -7,16 +7,17 @@ struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
-struct VectorInvariant{N, FT, Z, ZS, V, K, D, M} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, Z, ZS, V, K, U, M} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme   :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil  :: ZS # stencil used for assessing vorticity smoothness
     vertical_scheme    :: V  # recontruction scheme for vertical advection
     ke_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
-    upwinding          :: D  # treatment of upwinding for divergence flux and kinetic energy gradient
+    divergence_scheme  :: D  # reconstruction scheme for divergence flux
+    upwinding          :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
 
     VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                              ke_gradient_scheme::K, upwinding::D) where {N, FT, Z, ZS, V, K, D, M} =
-        new{N, FT, Z, ZS, V, K, D, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
+                              ke_gradient_scheme::K, upwinding::U) where {N, FT, Z, ZS, V, K, U, M} =
+        new{N, FT, Z, ZS, V, K, U, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
 end
 
 """
@@ -81,10 +82,16 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
                            ke_gradient_scheme   = vertical_scheme,
+                           divergence_scheme    = vorticity_scheme,
                            upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
                            multi_dimensional_stencil = false) where {N, FT}
         
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
+    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
+                                                             vorticity_stencil, 
+                                                             vertical_scheme, 
+                                                             ke_gradient_scheme, 
+                                                             divergence_scheme, 
+                                                             upwinding)
 end
 
 const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
@@ -117,6 +124,7 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, K, D, M}) whe
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
                                   Adapt.adapt(to, scheme.ke_gradient_scheme),
+                                  Adapt.adapt(to, scheme.divergence_scheme),
                                   Adapt.adapt(to, scheme.upwinding))
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (

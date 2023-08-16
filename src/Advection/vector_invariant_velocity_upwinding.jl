@@ -1,4 +1,4 @@
-const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:VelocityUpwinding}
+const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:VelocityUpwinding}
 
 #####
 ##### Velocity upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
@@ -13,8 +13,8 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 @inline function upwinded_Ax_uᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
 
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ax_qᶠᶜᶜ, u)
+    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, Ax_qᶠᶜᶜ, u)
+    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, Ax_qᶠᶜᶜ, u)
 
     return ifelse(û > 0, Uᴸ, Uᴿ)
 end
@@ -22,8 +22,8 @@ end
 @inline function upwinded_Ay_vᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vertical_scheme, Ay_qᶜᶠᶜ, v)
+    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, Ay_qᶜᶠᶜ, v)
+    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, Ay_qᶜᶠᶜ, v)
 
     return ifelse(v̂ > 0, Vᴸ, Vᴿ)
 end
