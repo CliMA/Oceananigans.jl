@@ -132,7 +132,6 @@ where `c = C[tracer_index]`.
 
         total_velocities = with_advective_forcing(forcing, total_velocities)
 
-
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
