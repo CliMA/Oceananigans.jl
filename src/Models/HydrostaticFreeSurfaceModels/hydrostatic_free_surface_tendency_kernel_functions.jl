@@ -130,8 +130,7 @@ where `c = C[tracer_index]`.
                         v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
                         w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
 
-        total_velocities = with_advective_forcing(forcing, total_velocities)
-
+    total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
