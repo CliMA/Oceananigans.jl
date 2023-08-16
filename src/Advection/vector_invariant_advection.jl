@@ -7,7 +7,7 @@ struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
-struct VectorInvariant{N, FT, Z, ZS, V, K, U, M} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, Z, ZS, V, K, D, U, M} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme   :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil  :: ZS # stencil used for assessing vorticity smoothness
     vertical_scheme    :: V  # recontruction scheme for vertical advection
@@ -16,8 +16,8 @@ struct VectorInvariant{N, FT, Z, ZS, V, K, U, M} <: AbstractAdvectionScheme{N, F
     upwinding          :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
 
     VectorInvariant{N, FT, M}(vorticity_scheme::Z, vorticity_stencil::ZS, vertical_scheme::V, 
-                              ke_gradient_scheme::K, upwinding::U) where {N, FT, Z, ZS, V, K, U, M} =
-        new{N, FT, Z, ZS, V, K, U, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, upwinding)
+                              ke_gradient_scheme::K, divergence_scheme::D, upwinding::U) where {N, FT, Z, ZS, V, K, D, U, M} =
+        new{N, FT, Z, ZS, V, K, D, U, M}(vorticity_scheme, vorticity_stencil, vertical_scheme, ke_gradient_scheme, divergence_scheme, upwinding)
 end
 
 """
@@ -37,8 +37,9 @@ Keyword arguments
 - `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
                        which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
                        being transported (defaults to `VelocityStencil()`)
-- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum and upwinding of divergence. Defaults to `EnergyConservingScheme()`.
-- `ke_gradient_scheme`: Scheme used for kinetic energy gradient. Defaults to `vertical_advection`.
+- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum. Defaults to `EnergyConservingScheme()`.
+- `ke_gradient_scheme`: Scheme used for kinetic energy gradient. Defaults to `vertical_scheme`.
+- `divergence_scheme`: Scheme used for divergence flux (only upwinding options are allowed). Defaults to `vorticity_scheme`.
 - `upwinding`: Treatment of upwinding in case of Upwinding reconstruction of divergence and kinetic energy gradient. Choices are between
                          `CrossAndSelfUpwinding()`, `OnlySelfUpwinding()`, and `VelocityUpwinding()` (defaults to `OnlySelfUpwinding()`).
 - `multi_dimensional_stencil` : if `true`, use a horizontal two dimensional stencil for the reconstruction of vorticity, divergence and kinetic energy gradient.
@@ -119,7 +120,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 # halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, K, D, M}) where {N, FT, Z, ZS, V, K, D, M} =
+Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, Z, ZS, V, K, D, U, M}) where {N, FT, Z, ZS, V, K, D, U, M} =
         VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme), 
                                   Adapt.adapt(to, scheme.vorticity_stencil), 
                                   Adapt.adapt(to, scheme.vertical_scheme),
