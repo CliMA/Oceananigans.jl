@@ -1,7 +1,7 @@
 using Oceananigans
 
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: halo_size, φnodes, λnodes
 using Oceananigans.MultiRegion: getregion
 using Oceananigans.Utils: Iterate, get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices, apply_regionally!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -235,15 +235,17 @@ function multi_region_cubed_sphere_plots()
         
     end
     
-    set!(u, U)
-    set!(v, V)
-    
     if !(initial_velocity_profile == "latitude" || initial_velocity_profile == "longitude")
+    
+        set!(u, U)
+        set!(v, V)
+        
         for _ in 1:2
             fill_halo_regions!(u)
             fill_halo_regions!(v)
             @apply_regionally replace_horizontal_velocity_halos!((; u = u, v = v, w = nothing), grid)
         end
+        
     end
     
     fig = Figure()
@@ -283,7 +285,7 @@ function multi_region_cubed_sphere_plots()
     
 end
 
-test_multi_region_cubed_sphere_plots = true
+test_multi_region_cubed_sphere_plots = false
 if test_multi_region_cubed_sphere_plots
     multi_region_cubed_sphere_plots()
 end
