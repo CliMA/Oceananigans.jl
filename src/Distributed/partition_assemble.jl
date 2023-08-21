@@ -110,10 +110,11 @@ end
 Partition a global array in local arrays of size `(nx, ny)` if 2D or `(nx, ny, nz)` is 3D.
 Usefull for boundary arrays, forcings and initial conditions.
 """
-partition_global_array(arch, c_global::Function, n) = c_global 
+partition_global_array(arch, c_global::AbstractArray, n) = c_global
+partition_global_array(arch, c_global::Function, n)      = c_global 
 
 # Here we assume that we cannot partition in z (we should remove support for that)
-function partition_global_array(arch, c_global::AbstractArray, n) 
+function partition_global_array(arch::DistributedArch, c_global::AbstractArray, n) 
     c_global = arch_array(CPU(), c_global)
 
     ri, rj, rk = arch.local_index
@@ -144,10 +145,11 @@ end
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
 Usefull for boundary arrays, forcings and initial conditions.
 """
-construct_global_array(arch, c_local::Function, N) = c_local
+construct_global_array(arch, c_local::AbstractArray, n) = c_local
+construct_global_array(arch, c_local::Function, N)      = c_local
 
 # TODO: This does not work for 3D parallelizations!!!
-function construct_global_array(arch, c_local::AbstractArray, n) 
+function construct_global_array(arch::DistributedArch, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
 
     ri, rj, rk = arch.local_index
