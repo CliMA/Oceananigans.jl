@@ -296,7 +296,7 @@ const UX{N} = UpwindBiased{N, <:Any, <:Nothing}
 const UY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
 const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 
-const C{N}  = Centered{N}
+const C{N}  = Centered{N, <:Any}
 const CX{N} = Centered{N, <:Any, <:Nothing}
 const CY{N} = Centered{N, <:Any, <:Any, <:Nothing}
 const CZ{N} = Centered{N, <:Any, <:Any, <:Any, <:Nothing}
