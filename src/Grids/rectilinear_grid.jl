@@ -100,7 +100,7 @@ Keyword arguments
               The default is `topology = (Periodic, Periodic, Bounded)`.
 
 - `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions, e.g.,
-            `(Lx, Ly, Lz)`. All directions are contructed with regular grid spacing and the domain
+            `(Lx, Ly, Lz)`. All directions are constructed with regular grid spacing and the domain
             (in the case that no direction is `Flat`) is ``0 ≤ x ≤ L_x``, ``0 ≤ y ≤ L_y``, and
             ``-L_z ≤ z ≤ 0``, which is most appropriate for oceanic applications in which ``z = 0``
             usually is the ocean's surface.
@@ -110,7 +110,7 @@ Keyword arguments
                      directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
                      that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
                      For example, to prescribe the cell faces in `z` we need to provide a function that takes
-                     `k` as argument and retuns the location of the faces for indices `k = 1` through `k = Nz + 1`,
+                     `k` as argument and returns the location of the faces for indices `k = 1` through `k = Nz + 1`,
                      where `Nz` is the `size` of the stretched `z` dimension.
 
 **Note**: _Either_ `extent`, or _all_ of `x`, `y`, and `z` must be specified.
