@@ -296,7 +296,7 @@ const UX{N} = UpwindBiased{N, <:Any, <:Nothing}
 const UY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
 const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 
-# To adapt passing smoothness stencils to upwind biased schemes (not weno) 
+# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not weno) 
 for buffer in 1:6
     @eval begin
         @inline inner_symmetric_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_symmetric_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, f, idx, loc, args...)
