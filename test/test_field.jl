@@ -346,28 +346,28 @@ end
             big_halo = (3, 3, 3)
             small_halo = (1, 1, 1)
             domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
-            size = (1, 1, 1)
+            sz = (1, 1, 1)
 
-            grid = RectilinearGrid(arch, FT; halo=big_halo, size, domain...)
+            grid = RectilinearGrid(arch, FT; halo=big_halo, size=sz, domain...)
             a = CenterField(grid)
             b = CenterField(grid)
             parent(a) .= 1
             set!(b, a)
             @test parent(b) == parent(a)
 
-            grid_with_smaller_halo = RectilinearGrid(arch, FT; halo=small_halo, size, domain...)
+            grid_with_smaller_halo = RectilinearGrid(arch, FT; halo=small_halo, size=sz, domain...)
             c = CenterField(grid_with_smaller_halo)
             set!(c, a)
             @test interior(c) == interior(a)
 
             # Cross-architecture setting should have similar behavior
             if arch isa GPU
-                cpu_grid = RectilinearGrid(CPU(), FT; halo=big_halo, size, domain...)
+                cpu_grid = RectilinearGrid(CPU(), FT; halo=big_halo, size=sz, domain...)
                 d = CenterField(cpu_grid)
                 set!(d, a)
                 @test parent(d) == Array(parent(a))
 
-                cpu_grid_with_smaller_halo = RectilinearGrid(CPU(), FT; halo=small_halo, size, domain...)
+                cpu_grid_with_smaller_halo = RectilinearGrid(CPU(), FT; halo=small_halo, size=sz, domain...)
                 e = CenterField(cpu_grid_with_smaller_halo)
                 set!(e, a)
                 @test Array(interior(e)) == Array(interior((a)))
