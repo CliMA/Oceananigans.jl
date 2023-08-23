@@ -82,51 +82,69 @@ function panel_wise_visualization(profile, field, field_name, k; # Here k repres
                                   hide_decorations = false, extrema_reduction_factor = 0.75)
 
     # Create figure.
-    fig = Figure(resolution = (1350, 900))
+    fig = Figure(resolution = (1650, 1200))
     colorrange = (minimum(field) * extrema_reduction_factor, maximum(field) * extrema_reduction_factor)
-    colormap = :solar
+    colormap = :YlOrRd_9
     
-    # Plot panel 1.
-    ax = Axis(fig[3, 1])
-    heatmap!(ax, getregion(field, 1).data.parent[:, :, k]; colorrange, colormap)
+    # Plot Panel 1.
+    ax_1 = Axis(fig[3,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 1", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_1)
     end
+    hm_1 = heatmap!(ax_1, getregion(field, 1).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[3,2], hm_1)
     
-    # Plot panel 2.
-    ax = Axis(fig[3, 2])
-    heatmap!(ax, getregion(field, 2).data.parent[:, :, k]; colorrange, colormap)
+    # Plot Panel 2.
+    ax_2 = Axis(fig[3,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 2", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_2)
     end
+    hm_2 = heatmap!(ax_2, getregion(field, 2).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[3,4], hm_2)
     
-    # Plot panel 3.
-    ax = Axis(fig[2, 2])
-    heatmap!(ax, getregion(field, 3).data.parent[:, :, k]; colorrange, colormap)
+    # Plot Panel 3.
+    ax_3 = Axis(fig[2,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_3)
     end
+    hm_3 = heatmap!(ax_3, getregion(field, 3).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[2,4], hm_3)    
     
-    # Plot panel 4.
-    ax = Axis(fig[2, 3])
-    heatmap!(ax, getregion(field, 4).data.parent[:, :, k]; colorrange, colormap)
+    # Plot Panel 4.
+    ax_4 = Axis(fig[2,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 4", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_4)
     end
-    
-    # Plot panel 5.
-    ax = Axis(fig[1, 3])
-    heatmap!(ax, getregion(field, 5).data.parent[:, :, k]; colorrange, colormap)
+    hm_4 = heatmap!(ax_4, getregion(field, 4).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[2,6], hm_4)       
+
+    # Plot Panel 5.
+    ax_5 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 5", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_5)
     end
-    
-    # Plot panel 6.
-    ax = Axis(fig[1, 4])
-    heatmap!(ax, getregion(field, 6).data.parent[:, :, k]; colorrange, colormap)
+    hm_5 = heatmap!(ax_5, getregion(field, 5).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[1,6], hm_5)        
+
+    # Plot Panel 6.
+    ax_6 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 6", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     if hide_decorations
-        hidedecorations!(ax)
+        hidedecorations!(ax_6)
     end
+    hm_6 = heatmap!(ax_6, getregion(field, 6).data.parent[:, :, k]; colorrange, colormap)
+    Colorbar(fig[1,8], hm_6)    
     
     # Save figure.
     figure_name = profile * "_panel_wise_visualization_" * field_name * "_k_" * string(k) * ".png"
