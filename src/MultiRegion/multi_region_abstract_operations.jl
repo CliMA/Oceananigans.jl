@@ -33,12 +33,12 @@ for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative]
     end
 end
 
-@inline getregion(k::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
-                KernelFunctionOperation{LX, LY, LZ}(k.kernel_function,
-                                                   _getregion(k.grid, r), 
-                                                   _getregion(k.arguments, r)...)
+@inline getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+                KernelFunctionOperation{LX, LY, LZ}(_getregion(κ.kernel_function, r),
+                                                    _getregion(κ.grid, r), 
+                                                    _getregion(κ.arguments, r)...)
 
-@inline _getregion(k::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
-                KernelFunctionOperation{LX, LY, LZ}(k.kernel_function,
-                                                    getregion(k.grid, r), 
-                                                    getregion(k.arguments, r)...)
+@inline _getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+                KernelFunctionOperation{LX, LY, LZ}(getregion(κ.kernel_function, r),
+                                                    getregion(κ.grid, r), 
+                                                    getregion(κ.arguments, r)...)
