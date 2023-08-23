@@ -23,7 +23,7 @@ sync_all_devices!(f::MultiRegionAbstractOperation)  = sync_all_devices!(devices(
 @inline switch_device!(f::MultiRegionAbstractOperation, d) = switch_device!(f.grid, d)
 @inline getdevice(f::MultiRegionAbstractOperation, d)      = getdevice(f.grid, d)
 
-for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :KernelFunctionOperation]
+for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative]
     @eval begin
         @inline getregion(f::$T{LX, LY, LZ}, r) where {LX, LY, LZ} =
                           $T{LX, LY, LZ}(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($T))...)
@@ -32,3 +32,13 @@ for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :K
                            $T{LX, LY, LZ}(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($T))...)
     end
 end
+
+@inline getregion(k::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+                KernelFunctionOperation{LX, LY, LZ}(k.kernel_function,
+                                                   _getregion(k.grid, r), 
+                                                   _getregion(k.arguments, r)...)
+
+@inline _getregion(k::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+                KernelFunctionOperation{LX, LY, LZ}(k.kernel_function,
+                                                    getregion(k.grid, r), 
+                                                    getregion(k.arguments, r)...)
