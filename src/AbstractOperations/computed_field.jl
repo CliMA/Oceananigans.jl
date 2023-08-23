@@ -4,15 +4,16 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FieldStatus, reduced_dimensions, validate_indices, offset_compute_index
+using Oceananigans.Fields: FunctionField, FieldStatus, reduced_dimensions, validate_indices, offset_compute_index
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
 
-const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
+const OperationOrFunctionField = Union{AbstractOperation, FunctionField}
+const ComputedField = Field{<:Any, <:Any, <:Any, <:OperationOrFunctionField}
 
 """
-    Field(operand::AbstractOperation;
+    Field(operand::OperationOrFunctionField;
           data = nothing,
           indices = indices(operand),
           boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
@@ -29,12 +30,12 @@ Keyword arguments
 `boundary_conditions` (`FieldBoundaryConditions`): Boundary conditions for `f`. 
 
 `recompute_safely` (`Bool`): whether or not to _always_ "recompute" `f` if `f` is
-                             nested within another computation via an `AbstractOperation`.
+                             nested within another computation via an `AbstractOperation` or `FunctionField`.
                              If `data` is not provided then `recompute_safely=false` and
                              recomputation is _avoided_. If `data` is provided, then
                              `recompute_safely = true` by default.
 """
-function Field(operand::AbstractOperation;
+function Field(operand::OperationOrFunctionField;
                data = nothing,
                indices = indices(operand),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
