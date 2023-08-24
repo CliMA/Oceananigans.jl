@@ -701,7 +701,8 @@ end
 #####
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
-    grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+
+    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -913,7 +914,7 @@ end
         end
 
         # Testing show function
-        grid = OrthogonalSphericalShellGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
             show(grid); println()
@@ -932,7 +933,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
@@ -942,16 +943,16 @@ end
                 #
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
             end
         end
