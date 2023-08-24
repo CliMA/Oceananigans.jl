@@ -619,10 +619,10 @@ end
 
 function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       panel, Nz, z,
-                                               topology = (Bounded, Bounded, Bounded),
-                                                 radius = R_Earth,
-                                                   halo = (1, 1, 1),
-                                               rotation = nothing)
+                                      topology = (Bounded, Bounded, Bounded),
+                                        radius = R_Earth,
+                                          halo = (1, 1, 1),
+                                      rotation = nothing)
 
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
@@ -631,7 +631,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
     ξ, η = (-1, 1), (-1, 1)
-    ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=ξ, y=η, z, topology, halo)
+    ξη_grid = RectilinearGrid(architecture, FT; size = (1, 1, Nz), x = ξ, y = η, z, topology, halo)
 
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
