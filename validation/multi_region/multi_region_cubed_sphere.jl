@@ -79,9 +79,15 @@ heatlatlon!(ax::Axis, field::CubedSphereField, k=1; kwargs...)  = apply_regional
 heatsphere!(ax::Axis3, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatsphere!, ax, field, k; kwargs...)
 
 function panel_wise_visualization(field_type, field, field_name, function_type, k; # Here k represents the vertical index of the field.
-                                  hide_decorations = false, extrema_reduction_factor = 1.0)
+                                  hide_decorations = true, extrema_reduction_factor = 1.0)
     
-    if field_name == "c"
+    if field_type == "zonal_velocity"
+        title_part = "u at fca"
+    elseif field_type == "meridional_velocity"
+        title_part = "v at cfa"
+    elseif field_type == "divergence"
+        title_part = "u_x + v_y at cca"
+    elseif field_name == "c"
         title_part = "cca"
     elseif field_name == "u"
         title_part = "fca"
@@ -98,9 +104,6 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_1 = Axis(fig[3,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 1: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_1)
-    end
     hm_1 = heatmap!(ax_1, getregion(field, 1).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[3,2], hm_1)
     
@@ -108,9 +111,6 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_2 = Axis(fig[3,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 2: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_2)
-    end
     hm_2 = heatmap!(ax_2, getregion(field, 2).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[3,4], hm_2)
     
@@ -118,9 +118,6 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_3 = Axis(fig[2,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 3: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_3)
-    end
     hm_3 = heatmap!(ax_3, getregion(field, 3).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[2,4], hm_3)    
     
@@ -128,9 +125,6 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_4 = Axis(fig[2,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 4: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_4)
-    end
     hm_4 = heatmap!(ax_4, getregion(field, 4).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[2,6], hm_4)       
 
@@ -138,9 +132,6 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_5 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 5: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_5)
-    end
     hm_5 = heatmap!(ax_5, getregion(field, 5).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[1,6], hm_5)        
 
@@ -148,11 +139,17 @@ function panel_wise_visualization(field_type, field, field_name, function_type, 
     ax_6 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
                 ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
                 aspect = 1.0, title = "Panel 6: " * title_part, titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    if hide_decorations
-        hidedecorations!(ax_6)
-    end
     hm_6 = heatmap!(ax_6, getregion(field, 6).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[1,8], hm_6)    
+    
+    if hide_decorations
+        hidedecorations!(ax_1)
+        hidedecorations!(ax_2)
+        hidedecorations!(ax_3)
+        hidedecorations!(ax_4)
+        hidedecorations!(ax_5)
+        hidedecorations!(ax_6)
+    end
     
     # Save figure.
     figure_name = field_type * "_panel_wise_visualization_" * field_name * "_" * function_type * ".png"
