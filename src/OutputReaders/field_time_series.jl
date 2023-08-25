@@ -145,66 +145,10 @@ function FieldTimeSeries(path, name, backend;
     return time_series
 end
 
-function new_data(FT, grid, loc, indices, Nt, path, name, ::InMemory)
-    space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
-    return offset_data(underlying_data, grid, loc, indices)
-end
-
-new_data(FT, grid, loc, indices, Nt, path, name, ::OnDisk) = OnDiskData(path, name)
-
-function new_data(FT, grid, loc, indices, Nt, path, name, backend::Chunked) 
-    space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., backend.chunk_size)
-    data = offset_data(underlying_data, grid, loc, indices)
-    return ChunkedData(path, name, data, 1:backend.chunk_size)
-end
-
-Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
-Base.parent(fts::ChunkedFieldTimeSeries) = parent(fts.data.data_in_memory)
-Base.parent(fts::OnDiskFieldTimeSeries) = nothing
-
-# FieldTimeSeries with allocated memory
-const MFTS = Union{InMemoryFieldTimeSeries, ChunkedFieldTimeSeries}
-
-@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data[i, j, k, n]
-@propagate_inbounds Base.getindex(f::ChunkedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data.data_in_memory[i, j, k, n]
-
-@propagate_inbounds Base.setindex!(f::ChunkedFieldTimeSeries, v, idx...) = setindex!(f.data.data_in_memory, v, idx...)
-
-function Base.getindex(fts::MFTS, n::Int)
-    n = displaced_index(n, fts)
-    underlying_data = view(parent(fts), :, :, :, n) 
-    data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
-    boundary_conditions = fts.boundary_conditions
-    indices = fts.indices
-    return Field(location(fts), fts.grid; data, boundary_conditions, indices)
-end
-
-displaced_index(n,   ::InMemoryFieldTimeSeries) = n
-displaced_index(n, fts::ChunkedFieldTimeSeries) = n - fts.data.index_range[1] + 1
-
 # Making FieldTimeSeries behave like Vector
 Base.lastindex(fts::FieldTimeSeries) = size(fts, 4)
 Base.firstindex(fts::FieldTimeSeries) = 1
-
 Base.length(fts::FieldTimeSeries) = size(fts, 4)
-Base.length(fts::OnDiskFieldTimeSeries)   = length(fts.times)
-
-function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
-    # Load data
-    arch = architecture(fts)
-    file = jldopen(fts.data.path)
-    iter = keys(file["timeseries/t"])[n]
-    raw_data = arch_array(arch, file["timeseries/$(fts.data.name)/$iter"])
-    close(file)
-
-    # Wrap Field
-    loc = (LX, LY, LZ)
-    field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
-
-    return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
-end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time::Float64)
@@ -227,63 +171,6 @@ end
 #####
 ##### set!
 #####
-
-set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[index], f)
-
-# When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
-function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
-    path = time_series.data.path
-    name = time_series.data.name
-    jldopen(path, "a+") do file
-        initialize_file!(file, name, time_series)
-        set_maybe_missing_property!(file, "timeseries/t/$index", time_series.times[index])
-        set_maybe_missing_property!(file, "timeseries/$(name)/$(index)", parent(f))
-    end
-end
-
-function initialize_file!(file, name, time_series)
-    set_maybe_missing_property!(file, "serialized/grid", time_series.grid)
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/location", location(time_series))
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/indices", indices(time_series))
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(time_series))
-    return nothing
-end
-
-function set_maybe_missing_property!(file, property, data)
-    try
-        test = file[property]
-    catch 
-        file[property] = data
-    end
-end
-
-set!(time_series::OnDiskFieldTimeSeries, path::String, name::String) = nothing
-
-function set!(time_series::MFTS, path::String, name::String)
-
-    file = jldopen(path)
-    index_range = time_range(time_series)
-    file_iterations = parse.(Int, keys(file["timeseries/t"]))[index_range]
-    file_times = [file["timeseries/t/$i"] for i in file_iterations]
-    close(file)
-
-    for (n, time) in enumerate(time_series.times[index_range])
-        file_index = findfirst(t -> t ≈ time, file_times)
-        file_iter = file_iterations[file_index]
-
-        field_n = Field(location(time_series), path, name, file_iter,
-                        indices = time_series.indices,
-                        boundary_conditions = time_series.boundary_conditions,
-                        grid = time_series.grid)
-
-        set!(time_series[n], field_n)
-    end
-
-    return nothing
-end
-
-time_range(fts::InMemoryFieldTimeSeries) = 1:length(fts)
-time_range(fts::ChunkedFieldTimeSeries) = fts.data.index_range
 
 """
     Field(location, path, name, iter;
@@ -377,8 +264,7 @@ end
 
 # Include the time dimension.
 @inline Base.size(fts::FieldTimeSeries) = (size(fts.grid, location(fts), fts.indices)..., length(fts.times))
-
-Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
+@propagate_inbounds Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
 
 #####
 ##### Basic support for reductions

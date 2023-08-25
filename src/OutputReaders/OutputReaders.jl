@@ -29,6 +29,8 @@ Base.summary(odd::OnDiskData)  = "OnDiskData($(odd.path), $(odd.name))"
 Base.summary(odd::ChunkedData) = "ChunkedData($(odd.path), $(odd.name), with indices $(odd.index_range))"
 
 include("field_time_series.jl")
+include("memory_allocated_field_time_series.jl")
+include("on_disk_field_time_series.jl")
 include("field_dataset.jl")
 
 end # module
