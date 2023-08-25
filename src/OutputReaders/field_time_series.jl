@@ -184,16 +184,16 @@ end
 function Base.getindex(fts::FieldTimeSeries, time::Float64)
     Ntimes = length(fts.time)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
-
-    return compute!(Field(fts[t₂] * (time - t₁) + fts[t₁] * (t₂ - time)))
+    t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * time + t₁
+    return compute!(Field(fts[t₂] * (t - t₁) + fts[t₁] * (t₂ - t)))
 end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
     Ntimes = length(fts.time)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
-
-    return getindex(fts, i,  j, k, t₂) * (time - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - time)
+    t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * time + t₁
+    return getindex(fts, i,  j, k, t₂) * (t - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - t)
 end
 
 #####
