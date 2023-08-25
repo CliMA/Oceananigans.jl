@@ -38,9 +38,9 @@ end
 
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 
-const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, InMemory}
-const OnDiskFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, OnDisk}
-const ChunkedFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, Chunked}
+const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory}
+const OnDiskFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:OnDisk}
+const ChunkedFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:Chunked}
 
 struct UnspecifiedBoundaryConditions end
 
@@ -60,11 +60,13 @@ Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :), 
                                      backend = InMemory(),
+                                     path = nothing,
+                                     name = nothing,
                                      boundary_conditions = nothing) where {LX, LY, LZ}
 
     Nt   = length(times)
     loc  = map(instantiate, (LX, LY, LZ))
-    data = new_data(FT, grid, loc, indices, Nt, backend)
+    data = new_data(FT, grid, loc, indices, Nt, path, name, backend)
     K = typeof(backend)
     return FieldTimeSeries{LX, LY, LZ, K}(data, grid, boundary_conditions, times, indices)
 end
@@ -134,7 +136,7 @@ function FieldTimeSeries(path, name, backend;
     LX, LY, LZ = Location
     loc = map(instantiate, Location)
     Nt = length(times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
+    data = new_data(eltype(grid), grid, loc, indices, Nt, path, name, backend)
 
     K = typeof(backend)
     time_series = FieldTimeSeries{LX, LY, LZ, K}(data, grid, boundary_conditions, times, indices)
@@ -143,28 +145,32 @@ function FieldTimeSeries(path, name, backend;
     return time_series
 end
 
-function new_data(FT, grid, loc, indices, Nt, ::InMemory)
+function new_data(FT, grid, loc, indices, Nt, path, name, ::InMemory)
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
     return offset_data(underlying_data, grid, loc, indices)
 end
 
-new_data(FT, grid, loc, indices, Nt, backend::OnDisk) = OnDiskData(backend.path, backend.name)
+new_data(FT, grid, loc, indices, Nt, path, name, ::OnDisk) = OnDiskData(path, name)
 
-function new_data(FT, grid, loc, indices, Nt, backend::Chunked) 
+function new_data(FT, grid, loc, indices, Nt, path, name, backend::Chunked) 
     space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(eltype(grid), architecture(grid), space_size..., backend.chunk_size)
+    underlying_data = zeros(FT, architecture(grid), space_size..., backend.chunk_size)
     data = offset_data(underlying_data, grid, loc, indices)
-    return ChunkedData(path, name, data, (1, backend.chunk_size))
+    return ChunkedData(path, name, data, 1:backend.chunk_size)
 end
 
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
-Base.parent(fts::ChunkedFieldTimeSeries) = parent(fts.data)
+Base.parent(fts::ChunkedFieldTimeSeries) = parent(fts.data.data_in_memory)
 Base.parent(fts::OnDiskFieldTimeSeries) = nothing
 
+# FieldTimeSeries with allocated memory
 const MFTS = Union{InMemoryFieldTimeSeries, ChunkedFieldTimeSeries}
 
-@propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
+@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data[i, j, k, n]
+@propagate_inbounds Base.getindex(f::ChunkedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data.data_in_memory[i, j, k, n]
+
+@propagate_inbounds Base.setindex!(f::ChunkedFieldTimeSeries, v, idx...) = setindex!(f.data.data_in_memory, v, idx...)
 
 function Base.getindex(fts::MFTS, n::Int)
     n = displaced_index(n, fts)
@@ -181,6 +187,9 @@ displaced_index(n, fts::ChunkedFieldTimeSeries) = n - fts.data.index_range[1] + 
 # Making FieldTimeSeries behave like Vector
 Base.lastindex(fts::FieldTimeSeries) = size(fts, 4)
 Base.firstindex(fts::FieldTimeSeries) = 1
+
+Base.length(fts::FieldTimeSeries) = size(fts, 4)
+Base.length(fts::OnDiskFieldTimeSeries)   = length(fts.times)
 
 function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
     # Load data
@@ -208,11 +217,11 @@ end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
-    Ntimes = length(fts.time)
+    Ntimes = length(fts.times)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
     @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * (time - fts.times[t₁]) + t₁
-    return getindex(fts, i,  j, k, t₂) * (t - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - t)
+    return getindex(fts, i, j, k, t₂) * (t - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - t)
 end
 
 #####
@@ -250,34 +259,12 @@ end
 
 set!(time_series::OnDiskFieldTimeSeries, path::String, name::String) = nothing
 
-function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
+function set!(time_series::MFTS, path::String, name::String)
 
     file = jldopen(path)
-    file_iterations = parse.(Int, keys(file["timeseries/t"]))
+    index_range = time_range(time_series)
+    file_iterations = parse.(Int, keys(file["timeseries/t"]))[index_range]
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
-    close(file)
-
-    for (n, time) in enumerate(time_series.times)
-        file_index = findfirst(t -> t ≈ time, file_times)
-        file_iter = file_iterations[file_index]
-
-        field_n = Field(location(time_series), path, name, file_iter,
-                        indices = time_series.indices,
-                        boundary_conditions = time_series.boundary_conditions,
-                        grid = time_series.grid)
-
-        set!(time_series[n], field_n)
-    end
-
-    return nothing
-end
-
-function set!(time_series::ChunkedFieldTimeSeries, path::String, name::String)
-
-    file = jldopen(path)
-    index_range = time_series.data.index_range[1]:time_series.data.index_range[2]
-    file_iterations = parse.(Int, keys(file["timeseries/t"]))
-    file_times = [file["timeseries/t/$i"] for i in file_iterations[index_range]]
     close(file)
 
     for (n, time) in enumerate(time_series.times[index_range])
@@ -294,6 +281,9 @@ function set!(time_series::ChunkedFieldTimeSeries, path::String, name::String)
 
     return nothing
 end
+
+time_range(fts::InMemoryFieldTimeSeries) = 1:length(fts)
+time_range(fts::ChunkedFieldTimeSeries) = fts.data.index_range
 
 """
     Field(location, path, name, iter;
@@ -362,7 +352,7 @@ indices(fts::FieldTimeSeries) = fts.indices
 
 function Statistics.mean(fts::FieldTimeSeries; dims=:)
     m = mean(fts[1]; dims)
-    Nt = length(fts.times)
+    Nt = length(fts)
 
     if dims isa Colon
         for n = 2:Nt
@@ -420,8 +410,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         function Base.$(reduction!)(f::Function,rts::FTS, fts::FTS; dims=:, kw...)
             dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
-            times = rts.times
-            for n = 1:length(times)
+            for n = 1:length(rts)
                 Base.$(reduction!)(f, rts[i], fts[i]; dims, kw...)
             end
             return rts
@@ -461,8 +450,11 @@ end
 
 field_time_series_suffix(fts::InMemoryFieldTimeSeries) =
     string("└── data: ", summary(fts.data), "\n",
-           "    └── ", data_summary(fts))
+           "    └── ", data_summary(fts.data), "\n")
+
+field_time_series_suffix(fts::ChunkedFieldTimeSeries) =
+    string("└── data: ", summary(fts.data.data_in_memory), "\n",
+            "    └── ", data_summary(fts.data.data_in_memory), "\n")
 
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
     string("└── data: ", summary(fts.data))
-
