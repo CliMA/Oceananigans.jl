@@ -227,7 +227,7 @@ end
     end
 
     @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
-        @info "  Testing set!(FieldTimeSeries{OnDisk}) reductions..."
+        @info "  Testing set!(FieldTimeSeries{OnDisk})..."
 
         grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
         c = CenterField(grid)
@@ -245,9 +245,8 @@ end
         @test location(g) == (Center(), Center(), Center())
         @test indices(g) == (:, :, :)
 
-        @test g[1, 1, 1, 1]  == 10
+        @test g[1, 1, 1, 1] == 1
         @test g[1, 1, 1, 10] == 10
-
         @test g[1, 1, 1, 1.6] == 1.6
 
         t = g[3.8]
