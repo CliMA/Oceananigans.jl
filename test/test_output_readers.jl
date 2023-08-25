@@ -226,6 +226,35 @@ end
         end
     end
 
+    @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
+        @info "  Testing set!(FieldTimeSeries{OnDisk}) reductions..."
+
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+        c = CenterField(grid)
+
+        filepath = "testfile.jld2"
+        f = FieldTimeSeries{location(c)...}(grid, 1:10, backend = OnDisk(), path = filepath, name = "c")
+
+        for i in 1:10
+            set!(c, i)
+            set!(f, c, i)
+        end
+
+        g = FieldTimeSeries(filepath, c)
+
+        @test location(g) == (Center(), Center(), Center())
+        @test indices(g) == (:, :, :)
+
+        @test g[1, 1, 1, 1]  == 10
+        @test g[1, 1, 1, 10] == 10
+
+        @test g[1, 1, 1, 1.6] == 1.6
+
+        t = g[3.8]
+
+        @test t[1, 1, 1] = 3.8
+    end
+
     for Backend in [InMemory, OnDisk]
         @testset "FieldDataset{$Backend}" begin
             @info "  Testing FieldDataset{$Backend}..."
