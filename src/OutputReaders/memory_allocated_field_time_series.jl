@@ -14,9 +14,9 @@ end
 # FieldTimeSeries with allocated memory
 const MFTS = Union{InMemoryFieldTimeSeries, ChunkedFieldTimeSeries}
  
-@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data[i, j, k, n]
-@propagate_inbounds Base.getindex(f::ChunkedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = f.data.data_in_memory[i, j, k, n]
-@propagate_inbounds Base.setindex!(f::ChunkedFieldTimeSeries, v, inds...) = setindex!(f.data.data_in_memory, v, inds...)
+@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) = f.data[i, j, k, n]
+@propagate_inbounds Base.getindex(f::ChunkedFieldTimeSeries, i, j, k, n::Int) = f.data.data_in_memory[i, j, k, n - f.data.index_range[1] + 1]
+@propagate_inbounds Base.setindex!(f::ChunkedFieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data.data_in_memory, v, i, j, k, n - f.data.index_range[1] + 1)
 
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 Base.parent(fts::ChunkedFieldTimeSeries)  = parent(fts.data.data_in_memory)
