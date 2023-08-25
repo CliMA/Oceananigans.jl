@@ -9,7 +9,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
 
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
@@ -170,7 +170,7 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
     arch = architecture(fts)
     file = jldopen(fts.data.path)
     iter = keys(file["timeseries/t"])[n]
-    raw_data = arch_array(architecture(fts), file["timeseries/$(fts.data.name)/$iter"])
+    raw_data = arch_array(arch, file["timeseries/$(fts.data.name)/$iter"])
     close(file)
 
     # Wrap Field
@@ -178,6 +178,22 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
     field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
     return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
+end
+
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, time::Float64)
+    Ntimes = length(fts.time)
+    t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
+
+    return cmopute!(Field(fts[t₂] * (time - t₁) + fts[t₁] * (t₂ - time)))
+end
+
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
+    Ntimes = length(fts.time)
+    t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
+
+    return getindex(fts, i,  j, k, t₂) * (time - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - time)
 end
 
 #####
