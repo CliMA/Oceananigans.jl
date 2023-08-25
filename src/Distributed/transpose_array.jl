@@ -116,6 +116,9 @@ end
 #### Twin transposed grid
 ####
 
+TransposedField{G, }
+
+
 # Frees up the y direction
 function transpose_y_to_z!(fieldy, fieldz)
     archy = architecture(fieldy)
@@ -123,6 +126,10 @@ function transpose_y_to_z!(fieldy, fieldz)
 
     ygrid = fieldy.grid
     zgrid = fieldz.grid
+
+    
+
+    return nothing
 end
 
 function TwinGrid(grid::DistributedGrid; free_dims = :y)
@@ -178,18 +185,23 @@ function TwinGrid(grid::DistributedGrid; free_dims = :y)
                                ranks,
                                topology = (TX, TY, TZ))
 
-    return construct_grid(grid, new_arch, FT; size = (nnx, nny, nnz), extent = (xG, yG, zG), topology = (TX, TY, TZ))
+    return construct_grid(grid, new_arch, FT; 
+                          size = (nnx, nny, nnz), 
+                        extent = (xG, yG, zG),
+                      topology = (TX, TY, TZ))
 end
 
-construct_grid(::RectilinearGrid, arch, FT; size, extent, topology) = RectilinearGrid(arch, FT; size, 
-                                                                                      x = extent[1],
-                                                                                      y = extent[2], 
-                                                                                      z = extent[3],
-                                                                                      topology)
+construct_grid(::RectilinearGrid, arch, FT; size, extent, topology) = 
+        RectilinearGrid(arch, FT; size, 
+                        x = extent[1],
+                        y = extent[2], 
+                        z = extent[3],
+                        topology)
 
-construct_grid(::LatitudeLongitudeGrid, arch, FT; size, extent, topology) = LatitudeLongitudeGrid(arch, FT; size, 
-                                                                                                  longitude = extent[1],
-                                                                                                  latitude = extent[2], 
-                                                                                                  z = extent[3],
-                                                                                                  topology)
+construct_grid(::LatitudeLongitudeGrid, arch, FT; size, extent, topology) = 
+        LatitudeLongitudeGrid(arch, FT; size, 
+                        longitude = extent[1],
+                         latitude = extent[2], 
+                                z = extent[3],
+                                topology)
 
