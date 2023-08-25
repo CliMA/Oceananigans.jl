@@ -89,3 +89,62 @@ end
 
     @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
 end
+
+struct FusedComputedFields
+    fields::Vector{ComputedField}
+    grid::AbstractGrid
+    datas::Vector{AbstractArray}
+    operands::Vector{AbstractOperation}
+    indices::Tuple
+
+    function FusedComputedFields(fields::Vector{ComputedField})
+        grid = fields[1].grid
+        indices = fields[1].indices
+        arch = architecture(fields[1])
+        sz = size(fields[1])
+        for field in fields[2:end]
+            @assert field.grid === grid
+            @assert field.indices == indices
+            @assert architecture(field) === arch
+            @assert size(field) == sz
+        end
+        datas = [field.data for field in fields]
+        operands = [field.operand for field in fields]
+        new(fields, grid, datas, operands, indices)
+    end
+end
+
+function compute!(fused::FusedComputedFields, time=nothing)
+    # First compute `dependencies`:
+    for operand in fused.operands
+        compute_at!(operand, time)
+    end
+
+    # Now perform the primary computation
+    @apply_regionally compute_fused_computed_fields!(fused)
+
+    for comp in fused.fields
+        fill_halo_regions!(comp)
+    end
+
+    return fused
+end
+
+function compute_fused_computed_fields!(fused)
+    arch = architecture(fused.fields[1])
+    launch!(arch, fused.grid, size(fused.fields[1]), _fused_compute!, 
+            fused.data, fused.operands, fused.indices)
+    return fused
+end
+
+@kernel function _fused_compute!(datas, operands, index_ranges)
+    i, j, k = @index(Global, NTuple)
+
+    for (data, operand) in zip(datas, operands)
+        i′ = offset_compute_index(index_ranges[1], i)
+        j′ = offset_compute_index(index_ranges[2], j)
+        k′ = offset_compute_index(index_ranges[3], k)
+
+        @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
+    end
+end
