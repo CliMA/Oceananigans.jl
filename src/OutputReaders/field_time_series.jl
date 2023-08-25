@@ -185,7 +185,7 @@ function Base.getindex(fts::FieldTimeSeries, time::Float64)
     Ntimes = length(fts.time)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
 
-    return cmopute!(Field(fts[t₂] * (time - t₁) + fts[t₁] * (t₂ - time)))
+    return compute!(Field(fts[t₂] * (time - t₁) + fts[t₁] * (t₂ - time)))
 end
 
 # Linear time interpolation
