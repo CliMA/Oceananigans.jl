@@ -11,6 +11,9 @@ using Oceananigans.Fields
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
 
+using Oceananigans.Fields: boundary_conditions 
+
+using Oceananigans.OutputWriters: serializeproperty!, iteration_exists
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
 
@@ -131,7 +134,7 @@ function FieldTimeSeries(path, name, backend;
     LX, LY, LZ = Location
     loc = map(instantiate, Location)
     Nt = length(times)
-    data = new_data(FT, grid, loc, indices, Nt, backend)
+    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
     K = typeof(backend)
     time_series = FieldTimeSeries{LX, LY, LZ, K}(data, grid, boundary_conditions, times, indices)
@@ -196,10 +199,10 @@ end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time::Float64)
-    Ntimes = length(fts.time)
+    Ntimes = length(fts.times)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
-    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * time + t₁
+    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * (time - fts.times[t₁]) + t₁
     return compute!(Field(fts[t₂] * (t - t₁) + fts[t₁] * (t₂ - t)))
 end
 
@@ -208,7 +211,7 @@ function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float
     Ntimes = length(fts.time)
     t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
-    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * time + t₁
+    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * (time - fts.times[t₁]) + t₁
     return getindex(fts, i,  j, k, t₂) * (t - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - t)
 end
 
@@ -222,34 +225,26 @@ set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[ind
 function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
     path = time_series.data.path
     name = time_series.data.name
-    jldopen(path, "w") do file
-        initialize_file!(file, name, time_series, index)
-        if !iteration_exists(path, index)
-            file["timeseries/t/$index"] = time_series.times[index]
-            file["timeseries/$(name)/$(index)"] = parent(f)
-        end
+    jldopen(path, "a+") do file
+        initialize_file!(file, name, time_series)
+        set_maybe_missing_property!(file, "timeseries/t/$index", time_series.times[index])
+        set_maybe_missing_property!(file, "timeseries/$(name)/$(index)", parent(f))
     end
 end
 
-function serialized_property_exists(file, name, property)
-    property_exists = try
-        s = file["timeseries/" * name "/serialized/" * property]
-        true
-    catch
-        false
-    end
-    return property_exists
+function initialize_file!(file, name, time_series)
+    set_maybe_missing_property!(file, "serialized/grid", time_series.grid)
+    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/location", location(time_series))
+    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/indices", indices(time_series))
+    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(time_series))
+    return nothing
 end
-    
-function initialize_file!(file, name, time_series, index)
-    if !serialized_property_exists(file, name, "location")
-        file["timeseries/" * name * "/serialized/location"] = location(time_series)
-    end
-    if !serialized_property_exists(file, name, "indices")
-        file["timeseries/" * name * "/serialized/location"] = indices(time_series)
-    end
-    if !serialized_property_exists(file, name, "boundary_conditions")
-        serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(time_series))
+
+function set_maybe_missing_property!(file, property, data)
+    try
+        test = file[property]
+    catch 
+        file[property] = data
     end
 end
 
@@ -440,8 +435,9 @@ end
 ##### Show methods
 #####
 
-backend_str(::InMemory) = "InMemory"
-backend_str(::OnDisk) = "OnDisk"
+backend_str(::Type{InMemory}) = "InMemory"
+backend_str(::Type{OnDisk})   = "OnDisk"
+backend_str(::Type{Chunked})  = "Chunked"
 
 #####
 ##### show
@@ -450,7 +446,7 @@ backend_str(::OnDisk) = "OnDisk"
 function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     arch = architecture(fts)
     A = typeof(arch)
-    return string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at ", show_location(fts), " on ", A)
+    return string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K))} located at ", show_location(fts), " on ", A)
 end
 
 function Base.show(io::IO, fts::FieldTimeSeries)
