@@ -61,7 +61,7 @@ end
 time_range(fts::InMemoryFieldTimeSeries) = 1:length(fts)
 time_range(fts::ChunkedFieldTimeSeries) = fts.data.index_range
 
-function set!(time_series::ChunkedFieldTimeSeries, index_range)
+function set!(time_series::ChunkedFieldTimeSeries, index_range::UnitRange)
     time_series.data.index_range .= index_range
     set!(time_series, time_series.data.path, time_series.data.name)
 
