@@ -132,7 +132,7 @@ Examples
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = OrthogonalSphericalShellGrid(size=(36, 34, 25), z=(-1000, 0))
+julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
