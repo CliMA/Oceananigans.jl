@@ -153,19 +153,19 @@ Base.length(fts::FieldTimeSeries) = size(fts, 4)
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time::Float64)
     Ntimes = length(fts.times)
-    t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
-    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * (time - fts.times[t₁]) + t₁
-    return compute!(Field(fts[t₂] * (t - t₁) + fts[t₁] * (t₂ - t)))
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    return compute!(Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n)))
 end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
     Ntimes = length(fts.times)
-    t₁, t₂ = index_binary_search(fts.times, time, Ntimes)
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
-    @inbounds t = (t₂ - t₁) / (fts.times[t₂] - fts.times[t₁]) * (time - fts.times[t₁]) + t₁
-    return getindex(fts, i, j, k, t₂) * (t - t₁) + getindex(fts, i,  j, k, t₁) * (t₂ - t)
+    @inbounds t = (n₂ - n₁) / (fts.times[n₂] - fts.times[t₁]) * (time - fts.times[n₁]) + n₁
+    return getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i,  j, k, n₁) * (n₂ - n)
 end
 
 #####
