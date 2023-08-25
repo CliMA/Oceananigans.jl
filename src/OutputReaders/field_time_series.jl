@@ -340,6 +340,7 @@ field_time_series_suffix(fts::InMemoryFieldTimeSeries) =
 
 field_time_series_suffix(fts::ChunkedFieldTimeSeries) =
     string("└── data: ", summary(fts.data.data_in_memory), "\n",
+            "    └── time indices: ", fts.data.index_range, "\n",
             "    └── ", data_summary(fts.data.data_in_memory), "\n")
 
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
