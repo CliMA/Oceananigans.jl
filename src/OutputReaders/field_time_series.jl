@@ -164,7 +164,7 @@ function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float
     Ntimes = length(fts.times)
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     # fractional index
-    @inbounds t = (n₂ - n₁) / (fts.times[n₂] - fts.times[t₁]) * (time - fts.times[n₁]) + n₁
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
     return getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
 end
 
