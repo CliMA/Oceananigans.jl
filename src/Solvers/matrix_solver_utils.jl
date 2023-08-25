@@ -154,12 +154,39 @@ function compute_matrix_for_linear_operation(::CPU, template_field, linear_opera
     return A
 end
 
-function compute_matrix_for_linear_operation(::GPU, template_field, linear_operation!, args...;
+@kernel function compute_matrix_for_linear_operation_kernel!(Aeᵢⱼₖ, eᵢⱼₖ, linear_operation!, indices, values, args...)
+    i, j, k = @index(Global, NTuple)
+    Nx, Ny, Nz = size(eᵢⱼₖ)
+    N = Nx * Ny * Nz
+
+    if i <= Nx && j <= Ny && k <= Nz
+        parent(eᵢⱼₖ)  .= 0
+        parent(Aeᵢⱼₖ) .= 0
+
+        @inbounds eᵢⱼₖ[i, j, k] = 1
+
+        fill_halo_regions!(eᵢⱼₖ)
+
+        linear_operation!(Aeᵢⱼₖ, eᵢⱼₖ, args...)
+
+        n = Ny*Nx*(k-1) + Nx*(j-1) + i  # n-th column of A
+
+        for (m, v) in enumerate(Aeᵢⱼₖ)  # m-th row of A
+            if v != 0
+                append!(indices, (m-1)*N + (n-1))  # zero-based
+                append!(values, v)  # A[m, n] = v
+            end
+        end
+    end
+end
+
+function compute_matrix_for_linear_operation(arch::GPU, template_field, linear_operation!, args...;
                                              boundary_conditions_input=nothing,
                                              boundary_conditions_output=nothing)
 
     loc = location(template_field)
     Nx, Ny, Nz = size(template_field)
+    N = Nx * Ny * Nz
     grid = template_field.grid
 
     if boundary_conditions_input === nothing
@@ -174,34 +201,15 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
      eᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_input)
     Aeᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_output)
 
-    colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
-    rowval = CuArray{Int}(undef, 0)
-    nzval  = CuArray{eltype(grid)}(undef, 0)
+    indices = CuArray{Int}(undef, 0)
+    values  = CuArray{eltype(grid)}(undef, 0)
 
-    CUDA.@allowscalar colptr[1] = 1
+    kernel! = compute_matrix_for_linear_operation_kernel!(device(arch), min(256, N), N)
+    kernel!(Aeᵢⱼₖ, eᵢⱼₖ, linear_operation!, indices, values, args...)
 
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        parent(eᵢⱼₖ)  .= 0
-        parent(Aeᵢⱼₖ) .= 0
+    rows = div.(indices, N) .+ 1
+    cols = mod.(indices, N) .+ 1
 
-        CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
-
-        fill_halo_regions!(eᵢⱼₖ)
-
-        linear_operation!(Aeᵢⱼₖ, eᵢⱼₖ, args...)
-
-        count = 0
-        for n in 1:Nz, m in 1:Ny, l in 1:Nx
-            Aeᵢⱼₖₗₘₙ = CUDA.@allowscalar Aeᵢⱼₖ[l, m, n]
-            if Aeᵢⱼₖₗₘₙ != 0
-                append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
-                append!(nzval, Aeᵢⱼₖₗₘₙ)
-                count += 1
-            end
-        end
-
-        CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
-    end
-
-    return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))
+    # Is it necessary to use the CSC format?
+    return CuSparseMatrixCSC(CuSparseMatrixCOO(rows, cols, values, (N, N)))
 end
