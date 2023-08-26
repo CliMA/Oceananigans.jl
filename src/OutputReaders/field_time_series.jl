@@ -180,6 +180,24 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
     return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
 end
 
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, time::Float64)
+    Ntimes = length(fts.times)
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
+    # fractional index
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    return compute!(Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n)))
+end
+
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
+    Ntimes = length(fts.times)
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
+    # fractional index
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    return getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
+end
+
 #####
 ##### set!
 #####
