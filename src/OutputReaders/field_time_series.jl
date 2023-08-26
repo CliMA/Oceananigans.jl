@@ -9,7 +9,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
 
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
