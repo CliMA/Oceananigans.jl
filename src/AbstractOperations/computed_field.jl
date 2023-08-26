@@ -90,51 +90,87 @@ end
     @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
 end
 
-struct FusedComputedFields
-    fields::Vector{ComputedField}
-    grid::AbstractGrid
-    datas::Vector{AbstractArray}
-    operands::Vector{AbstractOperation}
-    indices::Tuple
+# struct FusedComputedFields{G, I}
+#     fields :: Vector{ComputedField}
+#     grid :: G
+#     indices :: I
 
-    function FusedComputedFields(fields::Vector{ComputedField})
-        grid = fields[1].grid
-        indices = fields[1].indices
-        arch = architecture(fields[1])
-        sz = size(fields[1])
-        for field in fields[2:end]
-            @assert field.grid === grid
-            @assert field.indices == indices
-            @assert architecture(field) === arch
-            @assert size(field) == sz
+#     function FusedComputedFields(fields::Vector{ComputedField})
+#         grid = first(fields).grid
+#         indices = first(fields).indices
+#         arch = architecture(first(fields))
+#         sz = size(first(fields))
+
+#         for field in fields
+#             if !(field isa FullField) || (field isa ReducedField)
+#                 throw(ArgumentError("All fields in FusedComputedFields must be FullField!"))
+#             end
+#             if field.grid !== grid
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same grid!"))
+#             end
+#             if field.indices != indices
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same indices!"))
+#             end
+#             if architecture(field) !== arch
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same architecture!"))
+#             end
+#             if size(field) != sz
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same size!"))
+#             end
+#         end
+
+#         new(fields, grid, indices)
+#     end
+# end
+
+function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
+    type = typeof(first(comps))
+    grid = first(comps).grid
+    indices = first(comps).indices
+    arch = architecture(first(comps))
+    sz = size(first(comps))
+
+    if !(type <: FullField) || (type <: ReducedField)
+        throw(ArgumentError("All fields to compute must be FullField!"))
+    end
+
+    for comp in comps[2:end]
+        if typeof(comp) !== type
+            throw(ArgumentError("All fields to compute must be of the same type!"))
         end
-        datas = [field.data for field in fields]
-        operands = [field.operand for field in fields]
-        new(fields, grid, datas, operands, indices)
+        if comp.grid !== grid
+            throw(ArgumentError("All fields to compute must have the same grid!"))
+        end
+        if comp.indices != indices
+            throw(ArgumentError("All fields to compute must have the same indices!"))
+        end
+        if architecture(comp) !== arch
+            throw(ArgumentError("All fields to compute must have the same architecture!"))
+        end
+        if size(comp) != sz
+            throw(ArgumentError("All fields to compute must have the same size!"))
+        end
     end
-end
 
-function compute!(fused::FusedComputedFields, time=nothing)
-    # First compute `dependencies`:
-    for operand in fused.operands
-        compute_at!(operand, time)
+    for comp in comps
+        compute_at!(comp.operand, time)
     end
 
-    # Now perform the primary computation
-    @apply_regionally compute_fused_computed_fields!(fused)
+    @apply_regionally compute_computed_fields!(comps)
 
-    for comp in fused.fields
+    for comp in comps
         fill_halo_regions!(comp)
     end
-
-    return fused
 end
 
-function compute_fused_computed_fields!(fused)
-    arch = architecture(fused.fields[1])
-    launch!(arch, fused.grid, size(fused.fields[1]), _fused_compute!, 
-            fused.data, fused.operands, fused.indices)
-    return fused
+function compute_computed_fields!(comps)
+    arch = architecture(first(comps))
+    grid = first(comps).grid
+    indices = first(comps).indices
+    datas = Tuple(field.data for field in comps)
+    operands = Tuple(field.operand for field in comps)
+    launch!(arch, grid, size(first(comps)), _fused_compute!, datas, operands, indices)
+    return comps
 end
 
 @kernel function _fused_compute!(datas, operands, index_ranges)
