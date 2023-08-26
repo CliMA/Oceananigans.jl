@@ -240,7 +240,7 @@ end
             set!(f, c, i)
         end
 
-        g = FieldTimeSeries(filepath, c)
+        g = FieldTimeSeries(filepath, "c")
 
         @test location(g) == (Center(), Center(), Center())
         @test indices(g) == (:, :, :)
