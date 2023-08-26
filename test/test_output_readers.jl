@@ -242,8 +242,9 @@ end
 
         g = FieldTimeSeries(filepath, "c")
 
-        @test location(g) == (Center(), Center(), Center())
+        @test location(g) == (Center, Center, Center)
         @test indices(g) == (:, :, :)
+        @test g.grid == grid
 
         @test g[1, 1, 1, 1] == 1
         @test g[1, 1, 1, 10] == 10
