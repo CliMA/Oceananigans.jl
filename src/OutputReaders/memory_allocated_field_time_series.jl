@@ -52,7 +52,7 @@ set!(time_series::MFTS, f, index::Int) = set!(time_series[index], f)
 function set!(time_series::MFTS, path::String, name::String)
 
     file = jldopen(path)
-    index_range = time_range(time_series)
+    index_range = index_range(time_series)
     file_iterations = parse.(Int, keys(file["timeseries/t"]))[index_range]
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
@@ -72,8 +72,8 @@ function set!(time_series::MFTS, path::String, name::String)
     return nothing
 end
 
-time_range(fts::InMemoryFieldTimeSeries) = 1:length(fts)
-time_range(fts::ChunkedFieldTimeSeries) = fts.data.index_range
+index_range(fts::InMemoryFieldTimeSeries) = 1:length(fts)
+index_range(fts::ChunkedFieldTimeSeries) = fts.data.index_range
 
 function set!(time_series::ChunkedFieldTimeSeries, index_range::UnitRange)
     time_series.data.index_range .= index_range

@@ -55,7 +55,8 @@ instantiate(T::Type) = T()
                                 indices = (:, :, :),
                                 boundary_conditions = nothing)
 
-Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
+Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with `backend` associated to
+file `path` and variable `name` (in case of `OnDisk` or `Chunked`).
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :), 
@@ -84,10 +85,11 @@ load from JLD2 output located at `path`.
 Keyword arguments
 =================
 
-- `backend`: `InMemory()` to load data into a 4D array or `OnDisk()` to lazily load data from disk
-             when indexing into `FieldTimeSeries`.
+- `backend`: `InMemory()` to load data into a 4D array, `OnDisk()` to lazily load data from disk
+             when indexing into `FieldTimeSeries`, or `Chunked(chunk_size)`, to load `chunk_size`
+             time steps and update the memory when indexing into `FieldTimeSeries`.
 
-- `grid`: A grid to associated with data, in the case that the native grid was not serialized
+- `grid`: A grid to associate with the data, in the case that the native grid was not serialized
           properly.
 
 - `iterations`: Iterations to load. Defaults to all iterations found in the file.
