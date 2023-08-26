@@ -124,20 +124,14 @@ end
 # end
 
 function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
-    type = typeof(first(comps))
     grid = first(comps).grid
     indices = first(comps).indices
     arch = architecture(first(comps))
     sz = size(first(comps))
 
-    if !(type <: FullField) || (type <: ReducedField)
-        throw(ArgumentError("All fields to compute must be FullField!"))
-    end
+    # ordinary_field_ids = []
 
-    for comp in comps[2:end]
-        if typeof(comp) !== type
-            throw(ArgumentError("All fields to compute must be of the same type!"))
-        end
+    for (i, comp) in enumerate(comps)
         if comp.grid !== grid
             throw(ArgumentError("All fields to compute must have the same grid!"))
         end
@@ -150,27 +144,22 @@ function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
         if size(comp) != sz
             throw(ArgumentError("All fields to compute must have the same size!"))
         end
+        if (comp isa FullField) && !(comp isa ReducedField)
+            # push!(ordinary_field_ids, i)
+            throw(ArgumentError("All fields to compute must be FullField!"))
+        end
     end
 
     for comp in comps
         compute_at!(comp.operand, time)
     end
 
-    @apply_regionally compute_computed_fields!(comps)
+    datas = Tuple(comp.data for comp in comps)
+    operands = Tuple(comp.operand for comp in comps)
 
-    for comp in comps
-        fill_halo_regions!(comp)
-    end
-end
+    @apply_regionally launch!(arch, grid, size(first(comps)), _fused_compute!, datas, operands, indices)
 
-function compute_computed_fields!(comps)
-    arch = architecture(first(comps))
-    grid = first(comps).grid
-    indices = first(comps).indices
-    datas = Tuple(field.data for field in comps)
-    operands = Tuple(field.operand for field in comps)
-    launch!(arch, grid, size(first(comps)), _fused_compute!, datas, operands, indices)
-    return comps
+    tupled_fill_halo_regions!(comps, grid)
 end
 
 @kernel function _fused_compute!(datas, operands, index_ranges)
