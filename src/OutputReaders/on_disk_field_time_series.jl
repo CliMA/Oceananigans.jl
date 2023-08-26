@@ -29,20 +29,21 @@ function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
     name = time_series.data.name
     jldopen(path, "a+") do file
         initialize_file!(file, name, time_series)
-        set_maybe_missing_property!(file, "timeseries/t/$index", time_series.times[index])
-        set_maybe_missing_property!(file, "timeseries/$(name)/$(index)", parent(f))
+        maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])
+        maybe_write_property!(file, "timeseries/$(name)/$(index)", parent(f))
     end
 end
 
 function initialize_file!(file, name, time_series)
-    set_maybe_missing_property!(file, "serialized/grid", time_series.grid)
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/location", location(time_series))
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/indices", indices(time_series))
-    set_maybe_missing_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(time_series))
+    maybe_write_property!(file, "serialized/grid", time_series.grid)
+    maybe_write_property!(file, "timeseries/$(name)/serialized/location", location(time_series))
+    maybe_write_property!(file, "timeseries/$(name)/serialized/indices", indices(time_series))
+    maybe_write_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(time_series))
     return nothing
 end
 
-function set_maybe_missing_property!(file, property, data)
+# Write property only if it does not already exist
+function maybe_write_property!(file, property, data)
     try
         test = file[property]
     catch 
