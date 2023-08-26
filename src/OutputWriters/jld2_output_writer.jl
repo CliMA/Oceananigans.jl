@@ -232,15 +232,6 @@ function iteration_exists(filepath, iter=0)
     return zero_exists
 end
 
-function iteration_exists(file::JLD2.JLDFile, iter=0)
-    try
-        t₀ = file["timeseries/t/$iter"]
-        return true
-    catch 
-        return false
-    end
-end
-
 function write_output!(writer::JLD2OutputWriter, model)
 
     verbose = writer.verbose
