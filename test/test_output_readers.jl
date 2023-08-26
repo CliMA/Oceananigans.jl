@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: indices
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -252,7 +254,7 @@ end
 
         t = g[3.8]
 
-        @test t[1, 1, 1] = 3.8
+        @test t[1, 1, 1] == 3.8
     end
 
     for Backend in [InMemory, OnDisk]

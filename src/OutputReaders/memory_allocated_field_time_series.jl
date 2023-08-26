@@ -24,9 +24,7 @@ Base.parent(fts::ChunkedFieldTimeSeries)  = parent(fts.data.data_in_memory)
 function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     underlying_data = view(parent(fts), :, :, :, n) 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
-    boundary_conditions = fts.boundary_conditions
-    indices = fts.indices
-    return Field(location(fts), fts.grid; data, boundary_conditions, indices)
+    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
 
 # If `n` is not in memory, getindex automatically sets the data in memory to have the `n`
@@ -46,9 +44,7 @@ function Base.getindex(fts::ChunkedFieldTimeSeries, n::Int)
     end
     underlying_data = view(parent(fts), :, :, :,  n - fts.data.index_range[1] + 1) 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
-    boundary_conditions = fts.boundary_conditions
-    indices = fts.indices
-    return Field(location(fts), fts.grid; data, boundary_conditions, indices)
+    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
 
 set!(time_series::MFTS, f, index::Int) = set!(time_series[index], f)
