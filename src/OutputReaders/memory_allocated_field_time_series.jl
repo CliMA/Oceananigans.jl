@@ -21,11 +21,7 @@ const MFTS = Union{InMemoryFieldTimeSeries, ChunkedFieldTimeSeries}
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 Base.parent(fts::ChunkedFieldTimeSeries)  = parent(fts.data.data_in_memory)
 
-displaced_index(n,   ::InMemoryFieldTimeSeries) = n
-displaced_index(n, fts::ChunkedFieldTimeSeries) = n - fts.data.index_range[1] + 1
-
-function Base.getindex(fts::MFTS, n::Int)
-    n = displaced_index(n, fts)
+function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     underlying_data = view(parent(fts), :, :, :, n) 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
     boundary_conditions = fts.boundary_conditions
@@ -33,7 +29,29 @@ function Base.getindex(fts::MFTS, n::Int)
     return Field(location(fts), fts.grid; data, boundary_conditions, indices)
 end
 
-set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[index], f)
+# If `n` is not in memory, getindex automatically sets the data in memory to have the `n`
+# as the second index (to allow interpolation with the previous time step)
+# If n is `1` or within the end the timeseries different rules apply
+function Base.getindex(fts::ChunkedFieldTimeSeries, n::Int)
+    if !(n ∈ fts.data.index_range)
+        Nt = length(fts.times)
+        Ni = length(fts.data.index_range)
+        if n == 1
+            set!(fts, 1:Ni)
+        elseif n > Nt - Ni
+            set!(fts, Nt-Ni+1:Nt)
+        else
+            set!(fts, n-1:n+Ni-2)
+        end
+    end
+    underlying_data = view(parent(fts), :, :, :,  n - fts.data.index_range[1] + 1) 
+    data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    boundary_conditions = fts.boundary_conditions
+    indices = fts.indices
+    return Field(location(fts), fts.grid; data, boundary_conditions, indices)
+end
+
+set!(time_series::MFTS, f, index::Int) = set!(time_series[index], f)
 
 function set!(time_series::MFTS, path::String, name::String)
 
