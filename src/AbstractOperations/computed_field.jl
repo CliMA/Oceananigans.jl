@@ -157,7 +157,7 @@ function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
     datas = Tuple(comp.data for comp in comps)
     operands = Tuple(comp.operand for comp in comps)
 
-    @apply_regionally launch!(arch, grid, size(first(comps)), _fused_compute!, datas, operands, indices)
+    @apply_regionally launch!(arch, grid, sz, _fused_compute!, datas, operands, indices)
 
     tupled_fill_halo_regions!(comps, grid)
 end
