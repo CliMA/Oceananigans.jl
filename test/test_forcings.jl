@@ -147,7 +147,7 @@ adapt_structure(to, forcing::StructForcing) = StructForcing(adapt(to, forcing.ar
 function struct_method_forcing(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
-    random_forcing = StructForcing(randn(size(grid)))
+    random_forcing = StructForcing(arch_array(arch, randn(size(grid))))
 
     Fu = Forcing(random_forcing, discrete_form=true)
     
