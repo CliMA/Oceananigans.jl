@@ -3,6 +3,10 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 
+using Adapt
+
+import Adapt: adapt_structure
+
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
     @inline Fu(x, y, z, t) = exp(π * z)
@@ -132,6 +136,27 @@ function advective_and_multiple_forcing(arch)
     return true
 end
 
+struct StructForcing{A}
+    array :: A
+end
+
+@inline (forcing::StructForcing)(i, j, k, grid, clock, model_fields) = @inbounds forcing.array[i, j, k]
+
+adapt_structure(to, forcing::StructForcing) = StructForcing(adapt(to, forcing.array))
+
+function struct_method_forcing(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+
+    random_forcing = StructForcing(randn(size(grid)))
+
+    Fu = Forcing(random_forcing, discrete_form=true)
+    
+    model = NonhydrostaticModel(grid=grid, forcing=(u=Fu,))
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
 
 @testset "Forcings" begin
     @info "Testing forcings..."
@@ -172,6 +197,11 @@ end
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
                 @test advective_and_multiple_forcing(arch)
+            end
+
+            @testset "Struct method forcing [$A]" begin
+                @info "      Testing struct method forcing [$A]..."
+                @test struct_method_forcing(arch)
             end
         end
     end
