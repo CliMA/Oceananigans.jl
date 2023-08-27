@@ -43,12 +43,12 @@ can place constraints on `typeof(parameters)`.
 """
 DiscreteForcing(func; parameters=nothing) = DiscreteForcing(func, parameters)
 
-@inline function (forcing::DiscreteForcing{P, F})(i, j, k, grid, clock, model_fields) where {P, F<:Function}
+@inline function (forcing::DiscreteForcing{P})(i, j, k, grid, clock, model_fields) where {P}
     parameters = forcing.parameters
     return forcing.func(i, j, k, grid, clock, model_fields, parameters)
 end
 
-@inline (forcing::DiscreteForcing{<:Nothing, F})(i, j, k, grid, clock, model_fields) where F<:Function =
+@inline (forcing::DiscreteForcing{<:Nothing})(i, j, k, grid, clock, model_fields) =
     forcing.func(i, j, k, grid, clock, model_fields)
 
 """Show the innards of a `DiscreteForcing` in the REPL."""
