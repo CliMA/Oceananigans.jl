@@ -137,7 +137,6 @@ function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
         architecture(comp) !== arch || throw(ArgumentError("All fields to compute must have the same architecture!"))
         size(comp) != sz || throw(ArgumentError("All fields to compute must have the same size!"))
         (comp isa FullField) && !(comp isa ReducedField) || throw(ArgumentError("All fields to compute must be FullField!"))
-        end
     end
 
     for comp in comps
