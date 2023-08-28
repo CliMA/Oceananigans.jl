@@ -3,7 +3,6 @@ using JLD2
 using OffsetArrays
 using Adapt
 using Distances
-using Statistics
 
 using Adapt: adapt_structure
 
@@ -590,37 +589,39 @@ function fill_metric_halos!(grid)
     for metric in metric_arrays
 
         @inbounds begin
-            nx, ny = Base.size(metric)
+            Mx, My = size(metric)
 
-            for j in ny-Hy:-1:Hy+1
+            m = parent(metric)
+
+            for j in My-Hy:-1:Hy+1
                 for i in Hx:-1:1
-                    parent(metric)[i, j] = parent(metric)[i+1, j]
+                    m[i, j] = m[i+1, j]
                 end
-                for i in nx-Hx:nx
-                    parent(metric)[i, j] = parent(metric)[i-1, j]
+                for i in Mx-Hx:Mx
+                    m[i, j] = m[i-1, j]
                 end
             end
-            for i in nx-Hx:-1:Hx+1
+            for i in Mx-Hx:-1:Hx+1
                 for j in Hy:-1:1
-                    parent(metric)[i, j] = parent(metric)[i, j+1]
+                    m[i, j] = m[i, j+1]
                 end
-                for j in ny-Hy:ny
-                    parent(metric)[i, j] = parent(metric)[i, j-1]
+                for j in My-Hy:My
+                    m[i, j] = m[i, j-1]
                 end
             end
 
             # fill halo corners
             for j in Hy:-1:1, i in Hx:-1:1
-                parent(metric)[i, j] = mean((parent(metric)[i+1, j], parent(metric)[i, j+1]))
+                m[i, j] = (m[i+1, j] + m[i, j+1]) / 2
             end
-            for j in ny-Hy+1:ny, i in Hx:-1:1
-                parent(metric)[i, j] = mean((parent(metric)[i+1, j], parent(metric)[i, j-1]))
+            for j in My-Hy+1:My, i in Hx:-1:1
+                m[i, j] = (m[i+1, j] + m[i, j-1]) / 2
             end
-            for j in Hy:-1:1, i in nx-Hx+1:nx
-                parent(metric)[i, j] = mean((parent(metric)[i-1, j], parent(metric)[i, j+1]))
+            for j in Hy:-1:1, i in Mx-Hx+1:Mx
+                m[i, j] = (m[i-1, j] + m[i, j+1]) / 2
             end
-            for j in ny-Hy+1:ny, i in nx-Hx+1:nx
-                parent(metric)[i, j] = mean((parent(metric)[i-1, j], parent(metric)[i, j-1]))
+            for j in My-Hy+1:My, i in Mx-Hx+1:Mx
+                m[i, j] = (m[i-1, j] + m[i, j-1]) / 2
             end
         end
     end
