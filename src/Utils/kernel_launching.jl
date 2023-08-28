@@ -114,6 +114,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
 
+    @show loop! typeof(loop!)
     @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
 
     loop!(kernel_args...)
@@ -161,7 +162,8 @@ import KernelAbstractions: get, expand
 
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
-@inline offsets(::OffsetStaticSize{S}) where {S} = Tuple(s.start - 1 for s in S)
+
+@inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
 
 @inline worksize(i::Tuple) = worksize.(i)
 @inline worksize(i::Int) = i
@@ -178,7 +180,6 @@ const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} 
         (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
     end
     CartesianIndex(nI)
-    @show nI
 end
 
 using KernelAbstractions.NDIteration
@@ -219,6 +220,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
     iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, offsets)
+
     return iterspace, dynamic
 end
 
