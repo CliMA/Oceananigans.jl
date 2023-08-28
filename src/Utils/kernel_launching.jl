@@ -167,8 +167,10 @@ import KernelAbstractions: get, expand
 @inline worksize(i::Int) = i
 @inline worksize(i::UnitRange) = length(i)
 
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} where N
+
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
-@inline function expand(ndrange::NDRange{N, StaticSize, StaticSize, O}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, O<:Tuple}
+@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         stride = size(workitems(ndrange), I)
@@ -176,6 +178,7 @@ import KernelAbstractions: get, expand
         (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
     end
     CartesianIndex(nI)
+    @show nI
 end
 
 using KernelAbstractions.NDIteration
@@ -186,7 +189,6 @@ using KernelAbstractions: CompilerMetadata
 import KernelAbstractions: __ndrange
 
 @inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
-
 
 # Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
 const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
