@@ -1,6 +1,6 @@
 module Units
 
-export second, minute, hour, day, meter, kilometer,
+export Time, second, minute, hour, day, meter, kilometer,
        seconds, minutes, hours, days, meters, kilometers,
        KiB, MiB, GiB, TiB
 
@@ -119,5 +119,16 @@ const GiB = 1024MiB
 A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 2TiB`.
 """
 const TiB = 1024GiB
+
+"""
+    struct Time{T}
+        time_in_seconds::T 
+    end
+
+A ``selector'' type to perform indexing in time
+"""
+struct Time{T}
+    time_in_seconds :: T
+end
 
 end # module

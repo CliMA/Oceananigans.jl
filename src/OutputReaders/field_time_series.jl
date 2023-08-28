@@ -8,6 +8,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
+using Oceananigans.Units: Time
+
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
 
@@ -181,8 +183,9 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
 end
 
 # Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, time::Float64)
+function Base.getindex(fts::FieldTimeSeries, time::Time)
     Ntimes = length(fts.times)
+    time = time.time_in_seconds
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     if n₁ == n₂ # no interpolation
         return fts[n₁]
@@ -194,8 +197,9 @@ function Base.getindex(fts::FieldTimeSeries, time::Float64)
 end
 
 # Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
+function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Time)
     Ntimes = length(fts.times)
+    time = time.time_in_seconds
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     if n₁ == n₂ # no interpolation
         return getindex(fts, i, j, k, n₁)
