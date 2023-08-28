@@ -597,7 +597,7 @@ function fill_metric_halos!(grid)
                 for i in Hx:-1:1
                     m[i, j] = m[i+1, j]
                 end
-                for i in Mx-Hx:Mx
+                for i in Mx-Hx+1:Mx
                     m[i, j] = m[i-1, j]
                 end
             end
@@ -606,7 +606,7 @@ function fill_metric_halos!(grid)
                 for j in Hy:-1:1
                     m[i, j] = m[i, j+1]
                 end
-                for j in My-Hy:My
+                for j in My-Hy+1:My
                     m[i, j] = m[i, j-1]
                 end
             end
