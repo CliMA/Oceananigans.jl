@@ -180,7 +180,7 @@ end
     end
 end
 
-function compute_matrix_for_linear_operation(arch::GPU, template_field, linear_operation!, args...;
+function compute_matrix_for_linear_operation(::GPU, template_field, linear_operation!, args...;
                                              boundary_conditions_input=nothing,
                                              boundary_conditions_output=nothing)
 
@@ -204,7 +204,7 @@ function compute_matrix_for_linear_operation(arch::GPU, template_field, linear_o
     indices = CuArray{Int}(undef, 0)
     values  = CuArray{eltype(grid)}(undef, 0)
 
-    kernel! = compute_matrix_for_linear_operation_kernel!(device(arch), min(256, N), N)
+    kernel! = compute_matrix_for_linear_operation_kernel!(device(GPU()), min(256, N), N)
     kernel!(Aeᵢⱼₖ, eᵢⱼₖ, linear_operation!, indices, values, args...)
 
     rows = div.(indices, N) .+ 1
