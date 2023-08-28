@@ -3,6 +3,7 @@ using JLD2
 using OffsetArrays
 using Adapt
 using Distances
+using Statistics
 
 using Adapt: adapt_structure
 
@@ -568,10 +569,63 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ..., η...,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ..., η...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius)
+
+    fill_metric_halos!(grid)
+
+    return grid
+end
+
+function fill_metric_halos!(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
+                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
+
+    for metric in metric_arrays
+
+        @inbounds begin
+            nx, ny = Base.size(metric)
+
+            for j in ny-Hy:-1:Hy+1
+                for i in Hx:-1:1
+                    parent(metric)[i, j] = parent(metric)[i+1, j]
+                end
+                for i in nx-Hx:nx
+                    parent(metric)[i, j] = parent(metric)[i-1, j]
+                end
+            end
+            for i in nx-Hx:-1:Hx+1
+                for j in Hy:-1:1
+                    parent(metric)[i, j] = parent(metric)[i, j+1]
+                end
+                for j in ny-Hy:ny
+                    parent(metric)[i, j] = parent(metric)[i, j-1]
+                end
+            end
+
+            # fill halo corners
+            for j in Hy:-1:1, i in Hx:-1:1
+                parent(metric)[i, j] = mean((parent(metric)[i+1, j], parent(metric)[i, j+1]))
+            end
+            for j in ny-Hy+1:ny, i in Hx:-1:1
+                parent(metric)[i, j] = mean((parent(metric)[i+1, j], parent(metric)[i, j-1]))
+            end
+            for j in Hy:-1:1, i in nx-Hx+1:nx
+                parent(metric)[i, j] = mean((parent(metric)[i-1, j], parent(metric)[i, j+1]))
+            end
+            for j in ny-Hy+1:ny, i in nx-Hx+1:nx
+                parent(metric)[i, j] = mean((parent(metric)[i-1, j], parent(metric)[i, j-1]))
+            end
+        end
+    end
+
+    return nothing
 end
 
 function lat_lon_to_cartesian(lat, lon, radius)
