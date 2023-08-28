@@ -611,6 +611,7 @@ function fill_metric_halos!(grid)
             end
 
             # fill halo corners
+            # we choose the average of the neighboring metric in the halo regions
             for j in Hy:-1:1, i in Hx:-1:1
                 m[i, j] = (m[i+1, j] + m[i, j+1]) / 2
             end
