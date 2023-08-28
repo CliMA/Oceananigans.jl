@@ -390,8 +390,8 @@ function Base.show(io::IO, closure::FlavorOfCATKE)
     print(io, summary(closure))
     print(io, '\n')
     print(io, "├── maximum_tracer_diffusivity: ", prettysummary(closure.maximum_tracer_diffusivity), '\n',
-    print(io, "├── maximum_tke_diffusivity: ", prettysummary(closure.maximum_tke_diffusivity), '\n',
-    print(io, "├── maximum_viscosity: ", prettysummary(closure.maximum_viscosity), '\n',
+              "├── maximum_tke_diffusivity: ", prettysummary(closure.maximum_tke_diffusivity), '\n',
+              "├── maximum_viscosity: ", prettysummary(closure.maximum_viscosity), '\n',
               "├── minimum_turbulent_kinetic_energy: ", prettysummary(closure.minimum_turbulent_kinetic_energy), '\n',
               "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(closure.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
               "├── minimum_convective_buoyancy_flux: ", prettysummary(closure.minimum_convective_buoyancy_flux), '\n',
