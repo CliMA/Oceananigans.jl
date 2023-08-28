@@ -591,7 +591,7 @@ function fill_metric_halos!(grid)
 
         @inbounds begin
             Mx, My = size(metric)
-
+m = parent(metric)
             for j in ny-Hy:-1:Hy+1
                 for i in Hx:-1:1
                     parent(metric)[i, j] = parent(metric)[i+1, j]
