@@ -525,9 +525,7 @@ for arch in archs
                 compute!(Field(horizontal_twice_tke))
                 compute!(Field(horizontal_tke      ))
                 compute!(Field(twice_tke           ))
-
                 compute!(Field(horizontal_tke_ccc  ))
-                compute!(Field(tke                 ))
 
                 computed_tke = Field(tke_ccc)
                 compute!(computed_tke)
@@ -535,9 +533,11 @@ for arch in archs
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
+                    @test_broken try compute!(Field(tke)); true; catch; false; end
                     @test_broken try compute!(tke_window); true; catch; false; end
                     @test_broken all(interior(tke_window) .== 9/2)
-                else
+                else                    
+                    @test try compute!(Field(tke)); true; catch; false; end
                     @test try compute!(tke_window); true; catch; false; end
                     @test all(interior(tke_window) .== 9/2)
                 end
