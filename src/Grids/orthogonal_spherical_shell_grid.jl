@@ -589,9 +589,9 @@ function fill_metric_halos!(grid)
     for metric in metric_arrays
 
         @inbounds begin
-            Mx, My = size(metric)
-
             m = parent(metric)
+
+            Mx, My = size(m)
 
             for j in My-Hy:-1:Hy+1
                 for i in Hx:-1:1
@@ -601,6 +601,7 @@ function fill_metric_halos!(grid)
                     m[i, j] = m[i-1, j]
                 end
             end
+
             for i in Mx-Hx:-1:Hx+1
                 for j in Hy:-1:1
                     m[i, j] = m[i, j+1]
