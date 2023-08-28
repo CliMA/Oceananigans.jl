@@ -132,21 +132,12 @@ function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
     # ordinary_field_ids = []
 
     for (i, comp) in enumerate(comps)
-        if comp.grid !== grid
-            throw(ArgumentError("All fields to compute must have the same grid!"))
-        end
-        if comp.indices != indices
-            throw(ArgumentError("All fields to compute must have the same indices!"))
-        end
-        if architecture(comp) !== arch
-            throw(ArgumentError("All fields to compute must have the same architecture!"))
-        end
-        if size(comp) != sz
-            throw(ArgumentError("All fields to compute must have the same size!"))
-        end
-        if (comp isa FullField) && !(comp isa ReducedField)
-            # push!(ordinary_field_ids, i)
-            throw(ArgumentError("All fields to compute must be FullField!"))
+        comp.grid !== grid || throw(ArgumentError("All fields to compute must have the same grid!"))
+        comp.indices != indices || throw(ArgumentError("All fields to compute must have the same indices!"))
+        architecture(comp) !== arch || throw(ArgumentError("All fields to compute must have the same architecture!"))
+        size(comp) != sz || throw(ArgumentError("All fields to compute must have the same size!"))
+        (comp isa FullField) && !(comp isa ReducedField) || throw(ArgumentError("All fields to compute must be FullField!"))
+           
         end
     end
 
