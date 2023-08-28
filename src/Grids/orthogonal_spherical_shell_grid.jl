@@ -590,7 +590,7 @@ function fill_metric_halos!(grid)
     for metric in metric_arrays
 
         @inbounds begin
-            nx, ny = Base.size(metric)
+            Mx, My = size(metric)
 
             for j in ny-Hy:-1:Hy+1
                 for i in Hx:-1:1
