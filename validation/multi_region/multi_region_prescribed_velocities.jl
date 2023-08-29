@@ -49,10 +49,32 @@ U(λ, φ, z) =   u_advection * cosd(λ) * sind(φ)
 V(λ, φ, z) = - u_advection * sind(λ)
     
 u = XFaceField(grid) 
-set!(u, U)
-
 v = YFaceField(grid) 
-set!(v, V)
+
+set_velocities_panelwise = true
+
+if set_velocities_panelwise
+
+    set!(getregion(u, 1), U)
+    set!(getregion(u, 2), U)
+    set!(getregion(u, 3), U)
+    set!(getregion(u, 4), V)
+    set!(getregion(u, 5), V)
+    set!(getregion(u, 6), V)
+
+    set!(getregion(v, 1), V)
+    set!(getregion(v, 2), V)
+    set!(getregion(v, 3), V)
+    set!(getregion(v, 4), U)
+    set!(getregion(v, 5), U)
+    set!(getregion(v, 6), U)
+    
+else
+
+    set!(u, U)
+    set!(v, V)
+    
+end
 
 for _ in 1:2
     fill_halo_regions!(u)
