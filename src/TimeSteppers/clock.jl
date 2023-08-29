@@ -36,8 +36,7 @@ next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
 
-Time(clock::Clock{<:Number}) = Time(clock.time)
-Time(clock::Clock{<:AbstractTime}) = Time(clock.time)
+Time(clock::Clock) = Time(clock.time)
 
 # Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t
