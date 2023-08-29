@@ -128,7 +128,7 @@ const TiB = 1024GiB
 A ``selector'' type to perform indexing in time
 """
 struct Time{T}
-    time_in_seconds :: T
+    time :: T
 end
 
 end # module
