@@ -183,9 +183,9 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
 end
 
 # Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, time::Time)
+function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     Ntimes = length(fts.times)
-    time = time.time_in_seconds
+    time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     if n₁ == n₂ # no interpolation
         return fts[n₁]
@@ -197,9 +197,9 @@ function Base.getindex(fts::FieldTimeSeries, time::Time)
 end
 
 # Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Time)
+function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
     Ntimes = length(fts.times)
-    time = time.time_in_seconds
+    time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
     if n₁ == n₂ # no interpolation
         return getindex(fts, i, j, k, n₁)
