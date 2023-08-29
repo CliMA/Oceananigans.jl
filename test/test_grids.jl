@@ -621,16 +621,28 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
+function test_lat_lon_areas(FT)
+    Nλ = 36
+    Nφ = 32
+    Hλ = Hφ = 2
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1), halo=(Hλ, Hφ, 1))
+
+    @test sum(grid.Azᶜᶜᵃ[1:grid.Ny]) * grid.Nx ≈ 4π * grid.radius^2
+
+    return nothing
+end
+
 function test_lat_lon_xyzλφ_node_nodes(FT, arch)
 
-    @info "    Testing with ($FT) on ($arch)..."
+    @info "    Testing with $FT on $(typeof(arch))..."
 
     (Nλ, Nφ, Nz) = grid_size = (12, 4, 2)
     (Hλ, Hφ, Hz) = halo      = (1, 1, 1)
 
     lat = (-60,   60)
     lon = (-180, 180)
-    zᵣ  = (-10,   0)
+    zᵣ  = (-10,    0)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
@@ -868,6 +880,7 @@ end
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
             test_basic_lat_lon_general_grid(FT)
+            test_lat_lon_areas(FT)
         end
 
         @info "  Testing precomputed metrics on latitude-longitude grid..."
