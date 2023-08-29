@@ -7,6 +7,7 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, boundary_buffer
+using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
 using Oceananigans.Utils: SumOfArrays
 using KernelAbstractions: @private
@@ -128,6 +129,8 @@ where `c = C[tracer_index]`.
     total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
                         v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
                         w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
+
+    total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
