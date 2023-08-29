@@ -420,8 +420,8 @@ function tangential_velocities_around_cubed_sphere_panels(u, v, k; # Here k repr
     
     # Plot Panel 3.
     ax_3 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-    ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-    aspect = 1.0, title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+                ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
+                aspect = 1.0, title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     hm_3 = heatmap!(ax_3, getregion(u, 3).data.parent[:, :, k]; colorrange, colormap)
     Colorbar(fig[1,6], hm_3)        
 
@@ -458,38 +458,38 @@ colorrange = (colorrange_min, colorrange_max)
 colormap = :balance
 
 # Plot Panel 1.
-ax_1 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 1", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_1 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 1", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_1 = heatmap!(ax_1, getregion(v, 1).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,2], hm_1)
 
 # Plot Panel 2.
-ax_2 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 2", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_2 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 2", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_2 = heatmap!(ax_2, getregion(v, 2).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,4], hm_2)   
 
 # Plot Panel 4.
-ax_4 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 4", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_4 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 4", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_4 = heatmap!(ax_4, -rotr90(getregion(u, 4).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,6], hm_4)       
 
 # Plot Panel 5.
-ax_5 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 5", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_5 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 5", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_5 = heatmap!(ax_5, -rotr90(getregion(u, 5).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,8], hm_5)        
 
 if hide_decorations
-hidedecorations!(ax_1)
-hidedecorations!(ax_2)
-hidedecorations!(ax_4)
-hidedecorations!(ax_5)
+    hidedecorations!(ax_1)
+    hidedecorations!(ax_2)
+    hidedecorations!(ax_4)
+    hidedecorations!(ax_5)
 end
 
 # Save figure.
@@ -506,38 +506,38 @@ colorrange = (colorrange_min, colorrange_max)
 colormap = :balance
 
 # Plot Panel 2.
-ax_2 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 2", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_2 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 2", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_2 = heatmap!(ax_2, -rotr90(getregion(u, 2).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,2], hm_2)   
 
 # Plot Panel 3.
-ax_3 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_3 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_3 = heatmap!(ax_3, -rotr90(getregion(u, 3).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,4], hm_3)  
 
 # Plot Panel 5.
-ax_5 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 5", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_5 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 5", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_5 = heatmap!(ax_5, getregion(v, 5).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,6], hm_5)        
 
 # Plot Panel 6.
-ax_6 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 6", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_6 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 6", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_6 = heatmap!(ax_6, getregion(v, 6).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,8], hm_6)  
 
 if hide_decorations
-hidedecorations!(ax_2)
-hidedecorations!(ax_3)
-hidedecorations!(ax_5)
-hidedecorations!(ax_6)
+    hidedecorations!(ax_2)
+    hidedecorations!(ax_3)
+    hidedecorations!(ax_5)
+    hidedecorations!(ax_6)
 end
 
 # Save figure.
@@ -554,38 +554,38 @@ colorrange = (colorrange_min, colorrange_max)
 colormap = :balance
 
 # Plot Panel 6.
-ax_6 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 6", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_6 = Axis(fig[1,1]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 6", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_6 = heatmap!(ax_6, -rotr90(getregion(u, 6).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,2], hm_6)   
 
 # Plot Panel 1.
-ax_1 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 1", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_1 = Axis(fig[1,3]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 1", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_1 = heatmap!(ax_1, -rotr90(getregion(u, 1).data.parent[:, :, k]); colorrange, colormap)
 Colorbar(fig[1,4], hm_1)  
 
 # Plot Panel 3.
-ax_3 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_3 = Axis(fig[1,5]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 3", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_3 = heatmap!(ax_3, getregion(v, 3).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,6], hm_3)        
 
 # Plot Panel 4.
-ax_4 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, 
-ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, 
-aspect = 1.0, title = "Panel 4", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+ax_4 = Axis(fig[1,7]; xlabel = "Local x direction", ylabel = "Local y direction", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = "Panel 4", titlesize = 27.5, titlegap = 15, titlefont = :bold)
 hm_4 = heatmap!(ax_4, getregion(v, 4).data.parent[:, :, k]; colorrange, colormap)
 Colorbar(fig[1,8], hm_4)  
 
 if hide_decorations
-hidedecorations!(ax_6)
-hidedecorations!(ax_1)
-hidedecorations!(ax_3)
-hidedecorations!(ax_4)
+    hidedecorations!(ax_6)
+    hidedecorations!(ax_1)
+    hidedecorations!(ax_3)
+    hidedecorations!(ax_4)
 end
 
 # Save figure.
