@@ -91,6 +91,8 @@ end
 
 replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::AbstractGrid; signed=true) = nothing
 
+replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}; signed=true) = nothing
+
 function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}; signed=true)
     u, v, _ = velocities
 
