@@ -635,7 +635,7 @@ end
 
 function test_lat_lon_xyzλφ_node_nodes(FT, arch)
 
-    @info "    Testing with ($FT) on ($(typeof(arch)))..."
+    @info "    Testing with $FT on $(typeof(arch))..."
 
     (Nλ, Nφ, Nz) = grid_size = (12, 4, 2)
     (Hλ, Hφ, Hz) = halo      = (1, 1, 1)
