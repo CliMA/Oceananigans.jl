@@ -238,22 +238,22 @@ function with_precomputed_metrics(grid)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+    Nλ, Nφ, Nz = N = size
+    
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
 
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    @assert -90 <= φ₁ <= φ₂ <= 90
+
+    (φ₁ == -90 || φ₂ == 90) &&
+        @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
+    
     if !isnothing(topology)
         TX, TY, TZ = topology
         Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
         Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
-        Nλ, Nφ, Nz = N = size
-        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-        @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-        φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-        @assert -90 <= φ₁ <= φ₂ <= 90
-
-        (φ₁ == -90 || φ₂ == 90) &&
-            @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
-
         Lλ = λ₂ - λ₁
 
         TX = Lλ == 360 ? Periodic : Bounded
