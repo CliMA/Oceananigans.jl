@@ -3,6 +3,7 @@ using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
 
 import Base: show
+import Oceananigans.Units: Time
 
 """
     mutable struct Clock{T<:Number}
