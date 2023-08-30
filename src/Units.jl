@@ -134,6 +134,7 @@ interpolated = field_time_series[Time(0.1)]
 
 # Interpolate `field_time_series` at `i, j, k` and `t=0.1`
 interpolated_ijk = field_time_series[i, j, k, Time(0.1)]
+```
 """
 struct Time{T}
     time :: T
