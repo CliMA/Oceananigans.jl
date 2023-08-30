@@ -1,52 +1,41 @@
 using Oceananigans
+
 using Oceananigans.Grids: φnode, λnode
 using Oceananigans.MultiRegion: getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_velocity_halos!
-using GeoMakie, GLMakie
+
+using GLMakie
 GLMakie.activate!()
 
 include("multi_region_cubed_sphere.jl")
 
-Nx, Ny, Nz, Nt = 50, 50, 1, 150
+Nx, Ny, Nz = 64, 64, 1
 
-cubed_sphere_radius = 1
-grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz = 1), z = (-1, 0), radius=cubed_sphere_radius, 
-                                horizontal_direction_halo = 1, partition = CubedSpherePartition(; R = 1))
+radius = 1
+grid = ConformalCubedSphereGrid(; panel_size=(Nx, Ny, Nz),
+                                  z = (-1, 0),
+                                  radius, 
+                                  horizontal_direction_halo = 4,
+                                  partition = CubedSpherePartition(; R = 1))
 
-time_period = 25
-u_advection = (2π * cubed_sphere_radius) / time_period
-                                
-U(λ, φ, z) = u_advection * cosd(λ) * sind(φ)
-V(λ, φ, z) = - u_advection * sind(λ)
-    
-u = XFaceField(grid) 
-v = YFaceField(grid) 
+u = XFaceField(grid)
+v = YFaceField(grid)
 
-set_velocities_panelwise = true
+R = getregion(grid, 1).radius  # radius of the sphere (m)
 
-if set_velocities_panelwise
+α  = 0
+u₀ = 1
 
-    set!(getregion(u, 1), U)
-    set!(getregion(u, 2), U)
-    set!(getregion(u, 3), U)
-    set!(getregion(u, 4), V)
-    set!(getregion(u, 5), V)
-    set!(getregion(u, 6), V)
+ψ(λ, φ, z) = - R * u₀ * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-    set!(getregion(v, 1), V)
-    set!(getregion(v, 2), V)
-    set!(getregion(v, 3), V)
-    set!(getregion(v, 4), U)
-    set!(getregion(v, 5), U)
-    set!(getregion(v, 6), U)
-    
-else
+Ψ = Field{Face, Face, Center}(grid)
+set!(Ψ, ψ)
 
-    set!(u, U)
-    set!(v, V)
-    
-end
+fill_halo_regions!(Ψ)
+
+u = compute!(Field(-∂y(Ψ)))
+v = compute!(Field(+∂x(Ψ)))
 
 for _ in 1:2
     fill_halo_regions!(u)
@@ -54,28 +43,106 @@ for _ in 1:2
     @apply_regionally replace_horizontal_velocity_halos!((; u = u, v = v, w = nothing), grid)
 end
 
-velocities = PrescribedVelocityFields(; u = u, v = v)
+fig = Figure(resolution = (2000, 1200), fontsize=30)
 
-model = HydrostaticFreeSurfaceModel(; grid, velocities, tracers = :θ, buoyancy = nothing)
+for region in 1:6
+    ax = Axis(fig[1, region], title="Ψ panel $region")
+    heatmap!(ax, interior(getregion(Ψ, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[2, region], title="u panel $region")
+    heatmap!(ax, interior(getregion(u, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[3, region], title="v panel $region")
+    heatmap!(ax, interior(getregion(v, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+end
 
-facing_panel_index = 1
+save("streamfunction_u_v.png", fig)
+
+fig
+
+#=
+# alternative way to compute velocities from streamfunction -- just to confirm sanity is in the room
+
+U = Field{Face, Center, Center}(grid)
+V = Field{Center, Face, Center}(grid)
+
+for region in 1:6
+    region_grid = getregion(grid, region)
+    for k in 1:region_grid.Nz, j in 1:region_grid.Ny, i in 1:region_grid.Nx
+        getregion(U, region)[i, j, k] = (getregion(Ψ, region)[i, j, k] - getregion(Ψ, region)[i, j+1, k]) / getregion(grid, region).Δyᶠᶜᵃ[i, j]
+        getregion(V, region)[i, j, k] = (getregion(Ψ, region)[i+1, j, k] - getregion(Ψ, region)[i, j, k]) / getregion(grid, region).Δxᶜᶠᵃ[i, j]
+    end
+end
+
+fig = Figure(resolution = (2000, 1200))
+
+for region in 1:6
+    ax = Axis(fig[1, region], title="Ψ panel $region")
+    heatmap!(ax, interior(getregion(Ψ, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[2, region], title="U panel $region")
+    heatmap!(ax, interior(getregion(U, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[3, region], title="V panel $region")
+    heatmap!(ax, interior(getregion(V, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+end
+
+save("streamfunction_finite-differencing_u_v.png", fig)
+
+fig
+
+=#
+
+velocities = PrescribedVelocityFields(; u , v)
+
+model = HydrostaticFreeSurfaceModel(; grid,
+                                      velocities,
+                                      momentum_advection = VectorInvariant(vorticity_scheme = WENO()),
+                                      tracer_advection = WENO(),
+                                      tracers = :θ,
+                                      buoyancy = nothing)
+
+# initial condition for tracer
+panel = 1
+
+λ₀ = λnode(3Nx÷4+1, 3Ny÷4+1, getregion(grid, panel), Face(), Center())
+φ₀ = φnode(3Nx÷4+1, 3Ny÷4+1, getregion(grid, panel), Center(), Face())
+δR = 2
+
+@show λ₀, φ₀
+
 θ₀ = 1
-λ₀ = λnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Face(), Center())
-φ₀ = φnode(Nx÷2+1, Ny÷2+1, getregion(grid, facing_panel_index), Center(), Face())
-R₀ = 10
-
-initial_condition = :Gaussian # Choose initial_condition to be :uniform_patch or :Gaussian.
-
-θᵢ(λ, φ, z) = θ₀*exp(-((λ - λ₀)^2 + (φ - φ₀)^2)/(R₀^2))
+θᵢ(λ, φ, z) = θ₀ * exp(-((λ - λ₀)^2 + (φ - φ₀)^2) / 2δR^2)
 
 set!(model, θ = θᵢ)
 
-fill_halo_regions!(model.tracers.θ)
+θ = model.tracers.θ
 
-Δt = 0.025
-T = Nt * Δt
+fill_halo_regions!(θ)
 
-simulation = Simulation(model, Δt=Δt, stop_time=T)
+#=
+# plot initial conditions
+fig = Figure(resolution = (2000, 400))
+
+for region in 1:6
+    ax = Axis(fig[1, region], title="panel $region")
+    heatmap!(ax, interior(getregion(θ, region), :, :, grid.Nz), colorrange=(0, θ₀))
+end
+
+fig
+=#
+
+Δt = 0.005
+stop_iteration = 2500
+
+simulation = Simulation(model; Δt, stop_iteration)
+
+
+# Print a progress message
+using Printf
+
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n",
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                prettytime(sim.run_wall_time))
+
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1))
+
 
 tracer_fields = Field[]
 
@@ -87,31 +154,28 @@ simulation.callbacks[:save_tracer] = Callback(save_tracer, TimeInterval(Δt))
 
 run!(simulation)
 
+
 @info "Making an animation from the saved data..."
 
-plot_type = :heatlatlon # Choose plot_type to be :heatsphere or :heatlatlon.
+n = Observable(1)
 
-fig = Figure(resolution = (850, 750))
-title = "Tracer Concentration"
-
-if plot_type == :heatsphere
-    ax = Axis3(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
-               titlefont = :bold, aspect = (1,1,1))
-    heatsphere!(ax, tracer_fields[1]; colorrange = (-1, 1))
-elseif plot_type == :heatlatlon
-    ax = Axis(fig[1,1]; xticklabelsize = 17.5, yticklabelsize = 17.5, title = title, titlesize = 27.5, titlegap = 15, 
-              titlefont = :bold)
-    heatlatlon!(ax, tracer_fields[1]; colorrange = (-1, 1))
+Θₙ = []
+for region in 1:6
+    push!(Θₙ, @lift interior(getregion(tracer_fields[$n], region), :, :, grid.Nz))
 end
+
+fig = Figure(resolution = (2000, 400))
+
+for region in 1:6
+    ax = Axis(fig[1, region], title="panel $region")
+    heatmap!(ax, Θₙ[region], colorrange=(0, θ₀))
+end
+
+fig
 
 frames = 1:length(tracer_fields)
 
-GLMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 1) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
-    if plot_type == :heatsphere
-        heatsphere!(ax, tracer_fields[i]; colorrange = (-1, 1), colormap = :balance)
-    elseif plot_type == :heatlatlon
-        heatlatlon!(ax, tracer_fields[i]; colorrange = (-1, 1), colormap = :balance)
-    end
+GLMakie.record(fig, "multi_region_tracer_advection.mp4", frames, framerate = 18) do i
+    @info string("Plotting frame ", i, " of ", frames[end])
+    n[] = i
 end
