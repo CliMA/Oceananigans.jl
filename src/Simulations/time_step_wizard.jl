@@ -33,7 +33,9 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
 Callback for adapting simulation to maintain the advective Courant-Freidrichs-Lewy (CFL)
 number to `cfl`, the `diffusive_cfl`, while also maintaining `max_Δt`, `min_Δt`, and
 satisfying `max_change` and `min_change` criteria so that the simulation's timestep
-`simulation.Δt` is not adapted "too quickly".
+`simulation.Δt` is not adapted "too quickly". In other words, `max_change` is the maximum
+and `min_change` is the minimum relative change of the time step and are therefore non-dimensional
+(`min_change * old_Δt <= new_Δt <= max_change * old_Δt`).
 
 For more information on the CFL number, see its [wikipedia entry]
 (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
