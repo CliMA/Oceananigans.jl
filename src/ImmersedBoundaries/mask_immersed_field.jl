@@ -2,9 +2,7 @@ using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: location, ZReducedField, Field
-
-instantiate(T::Type) = T()
-instantiate(t) = t
+import Oceananigans.Fields: instantiate
 
 mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
@@ -15,9 +13,9 @@ mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
 
 masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
-function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, Loc, value)
     arch = architecture(field)
-    loc = instantiate.(loc)
+    loc  = instantiate(Loc)
     launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
@@ -38,9 +36,9 @@ mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = periphe
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `mask` is `true`.
 """
-function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, Loc, value; k, mask)
     arch = architecture(field)
-    loc = instantiate.(loc)
+    loc  = instantiate(Loc)
     return launch!(arch, grid, :xy,
                    _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
 end

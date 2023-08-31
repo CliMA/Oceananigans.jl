@@ -3,7 +3,8 @@ using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
-using Oceananigans.Fields: fill_halo_regions!
+using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
+using Oceananigans.Fields: fill_halo_regions!, instantiate
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
 using Printf
@@ -95,6 +96,41 @@ function validate_ib_size(grid, ib)
     return nothing
 end
 
+"""
+    function resize_immersed_boundary!(ib, grid)
+
+If the immersed condition is an `OffsetArray`, resize it to match 
+the total size of `grid`
+"""
+resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
+
+function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+
+    bottom_height_size = total_size(grid, (Center, Center, Center))[1:2]
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the grid
+    if any(size(ib.bottom_height) .!= bottom_height_size)
+        @warn "Resizing the bottom field to match the grids' halos"
+
+        bottom_field_location = (Center, Center, Nothing)
+        bottom_field = Field(bottom_field_location, grid)
+
+        x_indices = interior_x_indices(grid, instantiate(bottom_field_location))
+        y_indices = interior_y_indices(grid, instantiate(bottom_field_location))
+
+        cpu_bottom = arch_array(CPU(), ib.bottom_height)[x_indices, y_indices] 
+        
+        set!(bottom_field, cpu_bottom)
+        fill_halo_regions!(bottom_field)
+        offset_bottom_array = dropdims(bottom_field.data, dims=3)
+
+        return getnamewrapper(ib)(offset_bottom_array)
+    end
+    
+    return ib
+end
+
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j]
@@ -154,6 +190,9 @@ end
 struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end
+
+# We do not use `GridFittedBoundary{<:OffsetArray}`
+resize_immersed_boundary(ib::AbstractGridFittedBoundary, grid) = ib
 
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 

@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent,
+using Oceananigans.Grids: total_extent, with_halo,
                           xspacings, yspacings, zspacings, 
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings, λspacing, φspacing
@@ -754,6 +754,17 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     return nothing
 end
 
+#####
+##### Test with_halo
+#####
+
+function test_with_halo(grid, new_halo)
+    new_grid   = with_halo(new_halo, grid)
+    Hx, Hy, Hz = halo_size(new_grid)
+    
+    @test all((Hx, Hy, Hz) .== new_halo)
+end
+
 
 #####
 ##### Test the tests
@@ -968,6 +979,20 @@ end
                 grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
             end
+        end
+    end
+
+    @testset "Test with_halo function" begin
+        @info "  Testing with_halo on all grids..."
+
+        grids = []
+        push!(grids, RectilinearGrid(size = (5, 5, 5), halo = (1, 1 ,1), extent = (1, 1, 1)))
+        push!(grids, LatitudeLongitudeGrid(size = (5, 5, 5), halo = (1, 1 ,1), latitude = (-10, 10), longitude = (-10, 10), z = (0, 1)))
+        push!(grids, ImmersedBoundaryGrid(grids[1], GridFittedBottom((x, y) -> 0.5)))
+        push!(grids, ImmersedBoundaryGrid(grids[2], GridFittedBottom((x, y) -> 0.5)))
+
+        for grid in grids
+            test_with_halo(grid, (4, 4, 4))
         end
     end
 end
