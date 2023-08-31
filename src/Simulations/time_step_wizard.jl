@@ -30,12 +30,15 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                    cell_advection_timescale = cell_advection_timescale,
                    cell_diffusion_timescale = infinite_diffusion_timescale)
 
-Callback for adapting simulation to maintain the advective Courant-Freidrichs-Lewy (CFL)
-number to `cfl`, the `diffusive_cfl`, while also maintaining `max_Δt`, `min_Δt`, and
-satisfying `max_change` and `min_change` criteria so that the simulation's timestep
-`simulation.Δt` is not adapted "too quickly". In other words, `max_change` is the maximum
-and `min_change` is the minimum relative change of the time step and are, therefore, non-dimensional
-(`min_change * old_Δt ≤ new_Δt ≤ max_change * old_Δt`).
+Callback function that adjusts the simulation time step to meet specified target values 
+for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`), 
+subject to the limits
+
+```julia
+    max(min_Δt, min_change * previous_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * previous_Δt)
+```
+
+where `new_Δt` is the new time step calculated by `TimeStepWizard`.
 
 For more information on the CFL number, see its [wikipedia entry]
 (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
