@@ -108,7 +108,8 @@ simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
 #
 # The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy 
 # (CFL) number close to `0.75` while ensuring the time-step does not increase beyond the 
-# maximum allowable value for numerical stability (`new_Δt ≤ max_change * old_Δt`).
+# maximum allowable value for numerical stability while avoiding the time-step to change more than
+# the predefined maximum change (`new_Δt ≤ max_change * old_Δt`).
 
 wizard = TimeStepWizard(cfl=0.75, max_change=1.2, max_Δt=1e-1)
 
