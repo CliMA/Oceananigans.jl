@@ -70,7 +70,13 @@ function TimeStepWizard(FT=Float64;
                         min_Δt = 0.0,
                         cell_advection_timescale = cell_advection_timescale,
                         cell_diffusion_timescale = infinite_diffusion_timescale)
-
+    
+    # check if user gave max_change or min_change values that are invalid
+    if min_change >= 1.0 || max_change <= 1.0
+        throw(ArgumentError("Invalid value: min_change should be < 1 and max_change should be > 1. " *
+                            "You provided min_change = $min_change and max_change = $max_change."))
+    end
+  
     # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
     if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
        cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
