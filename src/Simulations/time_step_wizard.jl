@@ -46,7 +46,7 @@ For more information on the CFL number, see its [wikipedia entry]
 Example
 =======
 
-To use `TimeStepWizard`, adapt in a [`Callback`](@ref) and add it to a `Simulation`:
+To use `TimeStepWizard`, insert it into a [`Callback`](@ref) and add it to a `Simulation`:
 
 ```julia
 julia> simulation = Simulation(model, Δt=0.9, stop_iteration=100)
