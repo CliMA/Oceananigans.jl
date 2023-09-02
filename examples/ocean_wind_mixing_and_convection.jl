@@ -242,7 +242,7 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
 xw, yw, zw = nodes(time_series.w)
 xT, yT, zT = nodes(time_series.T)
 
-# We start the animation at ``t = 10minutes`` since things are pretty boring till then:
+# We start the animation at ``t = 10`` minutes since things are pretty boring till then:
 
 times = time_series.w.times
 intro = searchsortedfirst(times, 10minutes)
