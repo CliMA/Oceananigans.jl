@@ -1,5 +1,6 @@
 import PencilFFTs
 using PencilArrays: Permutation
+using CUDA: @allowscalar
 
 import FFTW 
 
@@ -181,7 +182,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # in the Poisson equation, to zero.
     if MPI.Comm_rank(multi_arch.communicator) == 0
         # This is an assumption: we *hope* PencilArrays allocates in this way
-        CUDA.@allowscalar parent(x̂)[1, 1, 1] = 0
+        @allowscalar parent(x̂)[1, 1, 1] = 0
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).
