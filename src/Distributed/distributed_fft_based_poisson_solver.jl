@@ -1,12 +1,15 @@
 import PencilFFTs
 using PencilArrays: Permutation
 using CUDA: @allowscalar
+using Oceananigans.Architectures: arch_array, array_type
 
 import FFTW 
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
+const DistributedRegularRectilinearGrid{FT, TX, TY, TZ, VX, VY, VZ} =
+    RectilinearGrid{FT, TX, TY, TZ, <:Number, <:Number, <:Number, VX, VY, VZ, <:DistributedArch} where {FT, TX, TY, TZ, VX, VY, VZ}
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
     plan :: P
@@ -156,7 +159,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     storage = PencilFFTs.allocate_input(plan)
     
     # Permute the λ appropriately
-    permuted_eigenvalues = Tuple(arach_array(arch, unpermuted_eigenvalues[d]) for d in Tuple(input_permutation))
+    permuted_eigenvalues = Tuple(arch_array(arch, unpermuted_eigenvalues[d]) for d in Tuple(input_permutation))
     eigenvalues = PencilFFTs.localgrid(last(storage), permuted_eigenvalues)
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage, input_permutation)

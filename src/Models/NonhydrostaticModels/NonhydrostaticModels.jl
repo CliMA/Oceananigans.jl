@@ -11,7 +11,8 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
-using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Distributed: DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Distributed: DistributedRegularRectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 
@@ -19,7 +20,7 @@ import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
+function PressureSolver(arch, local_grid::DistributedRegularRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
