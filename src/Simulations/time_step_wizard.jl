@@ -38,7 +38,7 @@ subject to the limits
     max(min_Δt, min_change * previous_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * previous_Δt)
 ```
 
-where `new_Δt` is the new time step calculated by `TimeStepWizard`.
+where `new_Δt` is the new time step calculated by the `TimeStepWizard`.
 
 For more information on the CFL number, see its [wikipedia entry]
 (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
