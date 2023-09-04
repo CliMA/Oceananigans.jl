@@ -116,23 +116,68 @@ end
 #### Twin transposed grid
 ####
 
-TransposedField{G, }
+struct TransposeOperation{FX, FY, FZ, YZ, XY, XZ}
+    xfield :: FX # X-direction is free
+    yfield :: FY # Y-direction is free
+    zfield :: FZ # Z-direction is free
+    buffer_y_z :: YZ
+    buffer_x_y :: XY
+    buffer_x_z :: XZ
+end
 
+function TransposedOperation(zfield)
+    zgrid = field.grid
+    ygrid = TwinGrid(zgrid; free_dim = :y)
+    xgrid = TwinGrid(zgrid; free_dim = :x)
+
+    loc = location(zfield)
+    yfield = Field(loc, ygrid)
+    zfield = Field(loc, xgrid)
+    
+    Nx = size(xgrid)
+    Ny = size(ygrid)
+    Nz = size(zgrid)
+
+    buffer_x_y = arch_array(arch, zeros(Ny[1], Nx[2], Nx[3]))
+    buffer_y_z = arch_array(arch, zeros(Nz[1], Nz[2], Ny[3]))
+    buffer_x_z = arch_array(arch, zeros(Nz[1], Nx[2], Nx[3]))
+
+    return TransposeOperation(xfield, yfield, zfield, buffer_x_y, buffer_y_z, buffer_x_z)
+end
 
 # Frees up the y direction
-function transpose_y_to_z!(fieldy, fieldz)
-    archy = architecture(fieldy)
-    archz = architecture(fieldz)
-
-    ygrid = fieldy.grid
-    zgrid = fieldz.grid
-
-    
+function transpose_z_to_y!(transpose_fields)
+    archz = architecture(transpose_fields.fieldz)
+    archy = architecture(transpose_fields.fieldy)
 
     return nothing
 end
 
-function TwinGrid(grid::DistributedGrid; free_dims = :y)
+# Frees up the x direction
+function transpose_y_to_x!(transpose_fields)
+    archy = architecture(transpose_fields.fieldy)
+    archx = architecture(transpose_fields.fieldx)
+
+    return nothing
+end
+
+# Frees up the y direction
+function transpose_x_to_y!(transpose_fields)
+    archy = architecture(transpose_fields.fieldy)
+    archx = architecture(transpose_fields.fieldx)
+
+    return nothing
+end
+
+# Frees up the z direction
+function transpose_y_to_z!(transpose_fields)
+    archz = architecture(transpose_fields.fieldz)
+    archy = architecture(transpose_fields.fieldy)
+
+    return nothing
+end
+
+function TwinGrid(grid::DistributedGrid; free_dim = :y)
 
     arch = grid.architecture
     ri, rj, rk = arch.local_index
@@ -161,7 +206,7 @@ function TwinGrid(grid::DistributedGrid; free_dims = :y)
 
     FT = eltype(grid)
 
-    if free_dims == :y
+    if free_dim == :y
         ranks = R[1], 1, R[2]
 
         nnx, nny, nnz = nx, Ny, nz ÷ ranks[3]
@@ -169,8 +214,8 @@ function TwinGrid(grid::DistributedGrid; free_dims = :y)
         if (nnz * ranks[3] < Nz) && (rj == ranks[3])
             nnz = Nz - nnz * (ranks[3] - 1)
         end
-    elseif free_dims == :x
-        ranks = 1, R[1], R[3]
+    elseif free_dim == :x
+        ranks = 1, R[1], R[2]
 
         nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz
 
@@ -179,6 +224,7 @@ function TwinGrid(grid::DistributedGrid; free_dims = :y)
         end
     elseif free_dims = :z
         @warn "That is the standard grid!!!"
+        return grid
     end
 
     new_arch = DistributedArch(child_arch; 
