@@ -11,21 +11,21 @@ function plan_distributed_transforms(global_grid, storage::ParallelFields, plann
     grids = (storage.zfield.grid, storage.yfield.grid, storage.xfield.grid)
 
     Ny = reshaped_size(grids[2])
-    AT = array_type(arch)
+    AT = identity
 
-    rs_storage = reshape(AT(interior(storage.yfield)), Ny)
+    rs_storage = reshape(parent(storage.yfield), Ny)
 
-    forward_plan_x  = plan_forward_transform(AT(interior(storage.xfield)),  topo[1](), [1], planner_flag)
-    forward_plan_z  = plan_forward_transform(AT(interior(storage.zfield)),  topo[3](), [3], planner_flag)
-    backward_plan_x = plan_backward_transform(AT(interior(storage.xfield)), topo[1](), [1], planner_flag)
-    backward_plan_z = plan_backward_transform(AT(interior(storage.zfield)), topo[3](), [3], planner_flag)
+    forward_plan_x  = plan_forward_transform(parent(storage.xfield),  topo[1](), [1], planner_flag)
+    forward_plan_z  = plan_forward_transform(parent(storage.zfield),  topo[3](), [3], planner_flag)
+    backward_plan_x = plan_backward_transform(parent(storage.xfield), topo[1](), [1], planner_flag)
+    backward_plan_z = plan_backward_transform(parent(storage.zfield), topo[3](), [3], planner_flag)
 
     if arch isa GPU
         forward_plan_y  = plan_forward_transform(rs_storage,  topo[2](), [1], planner_flag) 
         backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag) 
     else
-        forward_plan_y  = plan_forward_transform(AT(interior(storage.yfield)),  topo[2](), [2], planner_flag) 
-        backward_plan_y = plan_backward_transform(AT(interior(storage.yfield)), topo[2](), [2], planner_flag) 
+        forward_plan_y  = plan_forward_transform(parent(storage.yfield),  topo[2](), [2], planner_flag) 
+        backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag) 
     end
 
     forward_operations = (

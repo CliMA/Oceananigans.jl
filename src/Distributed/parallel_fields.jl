@@ -14,11 +14,15 @@ end
 const SlabYFields = ParallelFields{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
 const SlabXFields = ParallelFields{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
-function ParallelFields(field_in, FT = eltype(field_in))
+function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
     zgrid  = field_in.grid # We support only a 2D partition in X and Y
 
     ygrid = TwinGrid(zgrid; free_dim = :y)
     xgrid = TwinGrid(zgrid; free_dim = :x)
+
+    Nx = size(xgrid)
+    Ny = size(ygrid)
+    Nz = size(zgrid)
 
     zarch = architecture(zgrid)
     yarch = architecture(ygrid)
@@ -26,13 +30,15 @@ function ParallelFields(field_in, FT = eltype(field_in))
     loc = location(field_in)
 
     Rx, Ry, _ = zarch.ranks
-    zfield = Field(loc, zgrid, FT)
-    yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
-    xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
-    
-    Nx = size(xgrid)
-    Ny = size(ygrid)
-    Nz = size(zgrid)
+    if with_halos 
+        zfield = Field(loc, zgrid, FT)
+        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
+        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
+    else
+        zfield = Field(loc, zgrid, FT; indices = (1:Nz[1], 1:Nz[2], 1:Nz[3]))
+        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT; indices = (1:Ny[1], 1:Ny[2], 1:Ny[3]))
+        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:Nx[1], 1:Nx[2], 1:Nx[3]))
+    end
 
     yzbuffer = Ry == 1 ? nothing : (send = arch_array(zarch, zeros(FT, prod(Ny))), 
                                     recv = arch_array(zarch, zeros(FT, prod(Nz))))

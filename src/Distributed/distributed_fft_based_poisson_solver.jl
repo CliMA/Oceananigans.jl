@@ -31,8 +31,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
     λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
-    λy = partition_global_array(arch, poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), (1, size(storage.xfield.grid, 2), 1))
-    λz = partition_global_array(arch, poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), (1, 1, size(storage.xfield.grid, 3)))
+    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
+    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
 
     λx = arch_array(arch, dropdims(λx, dims=(2, 3)))
     λy = arch_array(arch, dropdims(λy, dims=(1, 3)))
@@ -44,16 +44,14 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
 
     child_arch = child_architecture(arch)
 
-    buffer_x = child_arch isa GPU && TX == Bounded ? similar(storage.xfield) : nothing
-    buffer_y = child_arch isa GPU && TX == Bounded ? similar(storage.yfield) : nothing
-    buffer_z = child_arch isa GPU && TX == Bounded ? similar(storage.zfield) : nothing
+    buffer_x = child_arch isa GPU && TX == Bounded ? parent(similar(storage.xfield)) : nothing
+    buffer_y = child_arch isa GPU && TY == Bounded ? parent(similar(storage.yfield)) : nothing
+    buffer_z = child_arch isa GPU && TZ == Bounded ? parent(similar(storage.zfield)) : nothing
 
     buffer = (x = buffer_x, y = buffer_y, z = buffer_z)
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
-
-interior(::Nothing) = nothing
 
 # solve! requires that `b` in `A x = b` (the right hand side)
 # was computed and stored in first(solver.storage) prior to calling `solve!(x, solver)`.
@@ -63,16 +61,16 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     multi_arch = architecture(solver.local_grid)
 
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan.forward[1](interior(solver.storage.zfield), interior(solver.buffer.x))
+    solver.plan.forward[1](parent(solver.storage.zfield), solver.buffer.x)
     solver.plan.forward[2](solver.storage)
-    solver.plan.forward[3](interior(solver.storage.yfield), interior(solver.buffer.y))
+    solver.plan.forward[3](parent(solver.storage.yfield), solver.buffer.y) 
     solver.plan.forward[4](solver.storage)
-    solver.plan.forward[5](interior(solver.storage.xfield), interior(solver.buffer.z))
+    solver.plan.forward[5](parent(solver.storage.xfield), solver.buffer.z)
 
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
-    x̂ = b̂ = interior(solver.storage.xfield)
+    x̂ = b̂ = parent(solver.storage.xfield)
 
     launch!(arch, solver.storage.xfield.grid, :xyz,  _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
@@ -83,11 +81,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan.backward[1](interior(solver.storage.xfield), interior(solver.buffer.x))
+    solver.plan.backward[1](parent(solver.storage.xfield), solver.buffer.x)
     solver.plan.backward[2](solver.storage)
-    solver.plan.backward[3](interior(solver.storage.yfield), interior(solver.buffer.y))
+    solver.plan.backward[3](parent(solver.storage.yfield), solver.buffer.y)
     solver.plan.backward[4](solver.storage)
-    solver.plan.backward[5](interior(solver.storage.zfield), interior(solver.buffer.z))
+    solver.plan.backward[5](parent(solver.storage.zfield), solver.buffer.z)
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
