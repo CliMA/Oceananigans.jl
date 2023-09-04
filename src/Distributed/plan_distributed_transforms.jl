@@ -13,7 +13,7 @@ function plan_distributed_transforms(global_grid, storage::ParallelFields, plann
     Ny = reshaped_size(grids[2])
     AT = array_type(arch)
 
-    rs_storage = reshape(AT(interior(storage.yfield), Ny))
+    rs_storage = reshape(AT(interior(storage.yfield)), Ny)
 
     forward_plan_x  = plan_forward_transform(AT(interior(storage.xfield)),  topo[1](), [1], planner_flag)
     forward_plan_z  = plan_forward_transform(AT(interior(storage.zfield)),  topo[3](), [3], planner_flag)
