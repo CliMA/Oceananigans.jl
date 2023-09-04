@@ -19,5 +19,6 @@ include("distributed_fields.jl")
 include("halo_communication.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("interleave_comm_and_comp.jl")
+include("transpose_array.jl")
 
 end # module

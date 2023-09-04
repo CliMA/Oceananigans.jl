@@ -1,218 +1,155 @@
-""" Utility to transpose fields and arrays from a X to a Y partitioned grid """
-function transpose_x_to_y!(arry, arrx, ygrid::YPartitionedGrid, xgrid::XPartitionedGrid)
-
-    px     = xgrid.partition
-    region = Iterate(1:length(ygrid))
-
-    _transpose_x_to_y!(arry, Reference(arrx), ygrid,  xgrid, px, region, xgrid.devices)
-
-    return nothing
-end
-
-""" Utility to transpose fields and arrays from a Y to a X partitioned grid """
-function transpose_y_to_x!(arrx, arry, xgrid::XPartitionedGrid, ygrid::YPartitionedGrid)
-
-    py     = ygrid.partition
-    region = Iterate(1:length(xgrid))
-
-    _transpose_y_to_x!(arrx, Reference(arry), xgrid,  ygrid, py, region, ygrid.devices)
-
-    return nothing
-end
-
-function transpose_x_to_y!(fieldy::DistributedField, fieldx::DistributedField) 
-
-    ygrid  = fieldy.grid
-    xgrid  = fieldx.grid
-    px     = xgrid.partition
-    
-    region = Iterate(1:length(ygrid))
-
-    _transpose_x_to_y!(fieldy, Reference(fieldx), ygrid,  xgrid, px, region)
-
-    return nothing
-end
-
-function transpose_y_to_x!(fieldx::MultiRegionField, fieldy::MultiRegionField) 
-
-    xgrid  = fieldx.grid
-    ygrid  = fieldy.grid
-    py     = ygrid.partition
-
-    region = Iterate(1:length(ygrid))
-
-    _transpose_y_to_x!(fieldx, Reference(fieldy), xgrid,  ygrid, py, region)
-
-    return nothing
-end
-
-const XPartitionedField = Field{LX, LY, LZ, O, <:XPartitionedGrid} where {LX, LY, LZ, O}
-const YPartitionedField = Field{LX, LY, LZ, O, <:YPartitionedGrid} where {LX, LY, LZ, O}
-
-transpose_y_to_x!(fx::XPartitionedField, fy::YPartitionedField) = transpose_y_to_x!(fx, fy)
-transpose_x_to_y!(fx::XPartitionedField, fy::YPartitionedField) = transpose_x_to_y!(fy, fx)
-
-# - - - - - - - - - - - - - - #
-# Transpose map goes this way
-#
-#   
-#
-#
-
-function _transpose_x_to_y!(fieldy, full_fieldx, ygrid, xgrid, partition, rank, devices = nothing)
-    
-    region = isnothing(devices) ? Iterate(1:length(partition)) : MultiRegionObject(Tuple(1:length(partition)), devices)
-    
-    @apply_regionally _local_transpose_x_to_y!(fieldy, full_fieldx, ygrid, xgrid, region, rank)
-end
-
-function _local_transpose_x_to_y!(fieldy, fieldx, ygrid, xgrid, r, rank)
-    xNx, _, xNz = size(xgrid)
-    _, yNy, yNz = size(ygrid)
-
-    xNz != yNz && throw(ArgumentError("Fields have to have same vertical dimensions!"))
-
-    send_size = [1:xNx, (rank-1)*yNy+1:(rank*yNy), 1:xNz]
-    recv_size = [(r-1)*xNx+1:(r*xNx), 1:xNx, 1:xNz]
-
-    send_buff = viewof(fieldx, send_size...)
-    
-    switch_device!(getdevice(fieldy))
-
-    recv_buff = viewof(fieldy, recv_size...)
-
-    copyto!(recv_buff, send_buff)
-end
-
-function _transpose_y_to_x!(fieldx, full_fieldy, xgrid, ygrid, partition, rank, devices = nothing)
-    
-    region = isnothing(devices) ? Iterate(1:length(partition)) : MultiRegionObject(Tuple(1:length(partition)), devices)
-    
-    @apply_regionally _local_transpose_y_to_x!(fieldx, full_fieldy, xgrid, ygrid, region, rank)
-end
-
-function _local_transpose_y_to_x!(fieldx, fieldy, xgrid, ygrid, r, rank)
-    xNx, _, xNz = size(xgrid)
-    _, yNy, yNz = size(ygrid)
-
-    xNz != yNz && throw(ArgumentError("Fields have to have same vertical dimensions!"))
-
-    send_size = [(rank-1)*xNx+1:(rank*xNx), 1:yNy, 1:xNz]
-    recv_size = [1:xNx, (r-1)*yNy+1:(r*yNy), 1:xNz]
-
-    send_buff = viewof(fieldy, send_size...)
-    
-    switch_device!(getdevice(fieldx))
-
-    recv_buff = viewof(fieldx, recv_size...)
-
-    copyto!(recv_buff, send_buff)
-end
-
-@inline viewof(a::AbstractArray, idxs...) = view(a, idxs...)
-@inline viewof(a::AbstractField, idxs...) = interior(a, idxs...)
+using Oceananigans.Grids: architecture
+using Oceananigans.Architectures: arch_array
+using KernelAbstractions: @index, @kernel
 
 ####
 #### Twin transposed grid
 ####
-
-struct ParallelFields{FX, FY, FZ, ZY, YZ, YX, XY}
-    xfield :: FX # X-direction is free, if `nothing` slab decomposition with `Rx == 1`
-    yfield :: FY # Y-direction is free, if `nothing` slab decomposition with `Ry == 1`
-    zfield :: FZ # Z-direction is free
-    zybuffer :: ZY
-    yzbuffer :: YZ
-    yxbuffer :: YX
-    xybuffer :: XY
+struct ParallelFields{FX, FY, FZ, YZ, XY, C, Comms}
+    xfield :: FX # X-direction is free
+    yfield :: FY # Y-direction is free
+    zfield :: FZ # Z-direction is free (original field)
+    yzbuff :: YZ # if `nothing` slab decomposition with `Ry == 1`
+    xybuff :: XY # if `nothing` slab decomposition with `Rx == 1`
+    counts :: C
+    comms :: Comms
 end
 
-const SlabXFields = ParallelFields{<:Any,     <:Nothing}
-const SlabYFields = ParallelFields{<:Nothing, <:Any}
+const SlabYFields = ParallelFields{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
+const SlabXFields = ParallelFields{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
 function ParallelFields(field_in)
-    Rx, Ry, _ = architecture(field_in).ranks
+    zgrid  = field_in.grid
+    zfield = field_in # Assuming we start from a z-free configuration
 
-    zgrid = field_in.grid
     ygrid = TwinGrid(zgrid; free_dim = :y)
     xgrid = TwinGrid(zgrid; free_dim = :x)
 
+    zarch = architecture(zgrid)
+    yarch = architecture(ygrid)
+
     loc = location(field_in)
-    zfield = Field(Complex{FT}, loc, zgrid)
-    yfield = Rx == 1 ? nothing : Field(Complex{FT}, loc, ygrid)
-    xfield = Ry == 1 ? nothing : Field(Complex{FT}, loc, xgrid)
+    Rx, Ry, _ = zarch.ranks
+    yfield = Ry == 1 ? zfield : Field(loc, ygrid)
+    xfield = Rx == 1 ? yfield : Field(loc, xgrid)
     
     Nx = size(xgrid)
     Ny = size(ygrid)
     Nz = size(zgrid)
 
-    zybuffer = (send = arch_array(arch, zeros(Complex{FT}, Nz...)), 
-                recv = arch_array(arch, zeros(Complex{FT}, Ny...)))
-    xybuffer = (send = arch_array(arch, zeros(Complex{FT}, Nx...)), 
-                recv = arch_array(arch, zeros(Complex{FT}, Ny...)))
-    yzbuffer = (send = arch_array(arch, zeros(Complex{FT}, Ny...)), 
-                recv = arch_array(arch, zeros(Complex{FT}, Nz...)))
-    yxbuffer = (send = arch_array(arch, zeros(Complex{FT}, Ny...)), 
-                recv = arch_array(arch, zeros(Complex{FT}, Nx...)))
+    yzbuffer = Ry == 1 ? nothing : (send = arch_array(zarch, zeros(prod(Ny))), 
+                                    recv = arch_array(zarch, zeros(prod(Nz))))
+    xybuffer = Rx == 1 ? nothing : (send = arch_array(zarch, zeros(prod(Nx))), 
+                                    recv = arch_array(zarch, zeros(prod(Ny))))
     
-    return ParallelFields(xfield, yfield, zfield, zybuffer, yzbuffer, yxbuffer, xybuffer)
+    yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
+    xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
+            
+    yzcounts = zeros(Int, zarch.ranks[2] * zarch.ranks[3])
+    xycounts = zeros(Int, yarch.ranks[1] * yarch.ranks[2])
+
+    yzrank = MPI.Comm_rank(yzcomm)
+    xyrank = MPI.Comm_rank(xycomm)
+
+    yzcounts[yzrank + 1] = Ny[1] * Nz[2] * Ny[3]
+    xycounts[xyrank + 1] = Ny[1] * Nx[2] * Nx[3]
+    
+    MPI.Allreduce!(yzcounts, +, yzcomm)
+    MPI.Allreduce!(xycounts, +, xycomm)
+
+    return ParallelFields(xfield, yfield, zfield, 
+                          yzbuffer, xybuffer,
+                          (; yz = yzcounts, xy = xycounts),
+                          (; yz = yzcomm,   xy = xycomm))
 end
 
 # Fallbacks for slab decompositions
-transpose_z_to_y!(::SlabXFields) = nothing
-transpose_y_to_z!(::SlabXFields) = nothing
-transpose_x_to_y!(::SlabYFields) = nothing
-transpose_y_to_x!(::SlabYFields) = nothing
+transpose_z_to_y!(::SlabYFields) = nothing
+transpose_y_to_z!(::SlabYFields) = nothing
+transpose_x_to_y!(::SlabXFields) = nothing
+transpose_y_to_x!(::SlabXFields) = nothing
 
-# Frees up the y direction `transpose_fields.yfield`
-function transpose_z_to_y!(pf::ParallelFields)
-    fill_transpose_buffer!(pf.yzbuffer, pf.fieldz)
-
-    # Actually transpose!
-    MPI.Alltoallv!(pf.zybuffer.send, pf.zybuffer.recv, size(zybuffer.send), size(pf.zybuffer.recv), MPI.COMM_WORLD)
-
-    recv_transpose_buffer!(pf.fieldy, pf.yzbuffer)
-
-    fill_halo_regions!(pf.fieldy; only_local_halos = true)
-    return nothing
+@kernel function _pack_buffer_z!(yzbuff, zfield, N)
+    i, j, k = @index(Global, NTuple)
+    @inbounds yzbuff.send[i + N[1] * ((j-1) + N[2] * (k-1))] = zfield[i, j, k]
 end
 
-# Frees up the x direction `transpose_fields.xfield`
-function transpose_y_to_x!(pf::ParallelFields)
-    fill_transpose_buffer!(pf.xybuffer, pf.fieldy)
-
-    # Actually transpose!
-    _transpose_y_to_z!(pf.xybuffer)
-
-    recv_transpose_buffer!(pf.fieldx, pf.xybuffer)
-
-    fill_halo_regions!(pf.fieldx; only_local_halos = true)
-    return nothing
+@kernel function _pack_buffer_x!(xybuff, xfield, N)
+    i, j, k = @index(Global, NTuple)
+    @inbounds xybuff.send[k + N[3] * ((j-1) + N[2] * (i-1))] = xfield[i, j, k]
 end
 
-# Frees up the y direction `transpose_fields.yfield`
-function transpose_x_to_y!(pf::ParallelFields)
-    fill_transpose_buffer!(pf.buffer_x_y.send, pf.fieldx)
-
-    # Actually transpose!
-    _transpose_y_to_z!(pf.xybuffer)
-
-    recv_transpose_buffer!(pf.fieldy, pf.xybuffer)
-
-    fill_halo_regions!(transpose_fields.fieldy; only_local_halos = true)
-    return nothing
+@kernel function _pack_buffer_y!(xybuff, yfield, N)
+    i, j, k = @index(Global, NTuple)
+    @inbounds xybuff.send[i + N[1] * ((k-1) + N[3] * (j-1))] = yfield[i, j, k]
 end
 
-# Frees up the z direction `transpose_fields.zfield`
-function transpose_y_to_z!(pf::ParallelFields)
-    fill_transpose_buffer!(pf.yzbuffer, pf.fieldy)
+@kernel function _unpack_buffer_x!(yxbuff, xfield, N, n)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        add = ifelse(i > n[1], n[1]*N[2]*N[3], 0)
+        i′  = ifelse(i > n[1], i - n[1], i)
+        @inbounds xfield[i, j, k] = yxbuff.recv[i′ + n[1] * ((k-1) + N[3] * (j-1)) + add]
+    end
+end
 
-    # Actually transpose!
-    _transpose_y_to_z!(pf.yzbuffer)
+@kernel function _unpack_buffer_z!(yzbuff, zfield, N, n)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        add = ifelse(k > n[3], n[3]*N[1]*N[2], 0)
+        k′  = ifelse(k > n[3], k - n[3], k)
+        @inbounds zfield[i, j, k] = yzbuff.recv[i + N[1] * ((k′-1) + n[3] * (j-1)) + add]
+    end
+end
 
-    recv_transpose_buffer!(pf.fieldz, pf.yzbuffer)
+@kernel function _unpack_buffer_yz!(yzbuff, yfield, N, n)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        add = ifelse(j > n[2], n[2]*N[1]*N[3], 0)
+        j′  = ifelse(j > n[2], j - n[2], j)
+        @inbounds yfield[i, j, k] = yzbuff.recv[i + N[1] * ((j′-1) + n[2] * (k-1)) + add]
+    end
+end
 
-    fill_halo_regions!(transpose_fields.fieldy; only_local_halos = true)
-    return nothing
+@kernel function _unpack_buffer_yx!(yzbuff, yfield, N, n)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        add = ifelse(j > n[2], n[2]*N[1]*N[3], 0)
+        j′  = ifelse(j > n[2], j - n[2], j)
+        @inbounds yfield[i, j, k] = yzbuff.recv[k + N[3] * ((j′-1) + n[2] * (i-1)) + add]
+    end
+end
+
+pack_buffer_x!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_x!, buff, f, size(f))
+pack_buffer_y!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_y!, buff, f, size(f))
+pack_buffer_z!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_z!, buff, f, size(f))
+
+unpack_buffer_x!(f, fo, buff)  = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_x!,  buff, f, size(f), size(fo))
+unpack_buffer_z!(f, fo, buff)  = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_z!,  buff, f, size(f), size(fo))
+unpack_buffer_yx!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_yx!, buff, f, size(f), size(fo))
+unpack_buffer_yz!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_yz!, buff, f, size(f), size(fo))
+
+for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, :xy])
+    transpose!      = Symbol(:transpose_, from, :_to_, to, :(!))
+    pack_buffer!    = Symbol(:pack_buffer_, from, :(!))
+    unpack_buffer!  = to == :y ? Symbol(:unpack_buffer_, to, from, :(!)) : Symbol(:unpack_buffer_, to, :(!))
+    
+    buffer = Symbol(buff, :buff)
+    fromfield = Symbol(from, :field)
+    tofield = Symbol(to, :field)
+
+    @eval begin
+        function $transpose!(pf::ParallelFields)
+            $pack_buffer!(pf.$buffer, pf.$fromfield)
+            # Actually transpose!
+            MPI.Alltoallv!(pf.$buffer.send, pf.$buffer.recv, pf.counts.$buff, pf.counts.$buff, pf.comms.$buff)
+
+            $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer)
+            
+            fill_halo_regions!(pf.$tofield; only_local_halos = true)
+            return nothing
+        end
+    end
 end
 
 function TwinGrid(grid::DistributedGrid; free_dim = :y)
@@ -227,18 +164,18 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, R[1], ri, rj, rk, arch.communicator)
+    TY = reconstruct_global_topology(TY, R[2], rj, ri, rk, arch.communicator)
+    TZ = reconstruct_global_topology(TZ, R[3], rk, ri, rj, arch.communicator)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    xG = Rx == 1 ? x : assemble(x, nx, Rx, ri, rj, rk, arch.communicator)
-    yG = Ry == 1 ? y : assemble(y, ny, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, ri, rj, arch.communicator)
+    xG = R[1] == 1 ? x : assemble(x, nx, R[1], ri, rj, rk, arch.communicator)
+    yG = R[2] == 1 ? y : assemble(y, ny, R[2], rj, ri, rk, arch.communicator)
+    zG = R[3] == 1 ? z : assemble(z, nz, R[3], rk, ri, rj, arch.communicator)
 
     child_arch = child_architecture(arch)
 
@@ -255,12 +192,12 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
     elseif free_dim == :x
         ranks = 1, R[1], R[2]
 
-        nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz
+        nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz ÷ ranks[3]
 
         if (nny * ranks[2] < Ny) && (ri == ranks[2])
             nny = Ny - nny * (ranks[2] - 1)
         end
-    elseif free_dims = :z
+    elseif free_dims == :z
         @warn "That is the standard grid!!!"
         return grid
     end
