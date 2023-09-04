@@ -116,64 +116,102 @@ end
 #### Twin transposed grid
 ####
 
-struct TransposeOperation{FX, FY, FZ, YZ, XY, XZ}
-    xfield :: FX # X-direction is free
-    yfield :: FY # Y-direction is free
+struct ParallelFields{FX, FY, FZ, ZY, YZ, YX, XY}
+    xfield :: FX # X-direction is free, if `nothing` slab decomposition with `Rx == 1`
+    yfield :: FY # Y-direction is free, if `nothing` slab decomposition with `Ry == 1`
     zfield :: FZ # Z-direction is free
-    buffer_y_z :: YZ
-    buffer_x_y :: XY
-    buffer_x_z :: XZ
+    zybuffer :: ZY
+    yzbuffer :: YZ
+    yxbuffer :: YX
+    xybuffer :: XY
 end
 
-function TransposedOperation(zfield)
-    zgrid = field.grid
+const SlabXFields = ParallelFields{<:Any,     <:Nothing}
+const SlabYFields = ParallelFields{<:Nothing, <:Any}
+
+function ParallelFields(field_in)
+    Rx, Ry, _ = architecture(field_in).ranks
+
+    zgrid = field_in.grid
     ygrid = TwinGrid(zgrid; free_dim = :y)
     xgrid = TwinGrid(zgrid; free_dim = :x)
 
-    loc = location(zfield)
-    yfield = Field(loc, ygrid)
-    zfield = Field(loc, xgrid)
+    loc = location(field_in)
+    zfield = Field(Complex{FT}, loc, zgrid)
+    yfield = Rx == 1 ? nothing : Field(Complex{FT}, loc, ygrid)
+    xfield = Ry == 1 ? nothing : Field(Complex{FT}, loc, xgrid)
     
     Nx = size(xgrid)
     Ny = size(ygrid)
     Nz = size(zgrid)
 
-    buffer_x_y = arch_array(arch, zeros(Ny[1], Nx[2], Nx[3]))
-    buffer_y_z = arch_array(arch, zeros(Nz[1], Nz[2], Ny[3]))
-    buffer_x_z = arch_array(arch, zeros(Nz[1], Nx[2], Nx[3]))
-
-    return TransposeOperation(xfield, yfield, zfield, buffer_x_y, buffer_y_z, buffer_x_z)
+    zybuffer = (send = arch_array(arch, zeros(Complex{FT}, Nz...)), 
+                recv = arch_array(arch, zeros(Complex{FT}, Ny...)))
+    xybuffer = (send = arch_array(arch, zeros(Complex{FT}, Nx...)), 
+                recv = arch_array(arch, zeros(Complex{FT}, Ny...)))
+    yzbuffer = (send = arch_array(arch, zeros(Complex{FT}, Ny...)), 
+                recv = arch_array(arch, zeros(Complex{FT}, Nz...)))
+    yxbuffer = (send = arch_array(arch, zeros(Complex{FT}, Ny...)), 
+                recv = arch_array(arch, zeros(Complex{FT}, Nx...)))
+    
+    return ParallelFields(xfield, yfield, zfield, zybuffer, yzbuffer, yxbuffer, xybuffer)
 end
 
-# Frees up the y direction
-function transpose_z_to_y!(transpose_fields)
-    archz = architecture(transpose_fields.fieldz)
-    archy = architecture(transpose_fields.fieldy)
+# Fallbacks for slab decompositions
+transpose_z_to_y!(::SlabXFields) = nothing
+transpose_y_to_z!(::SlabXFields) = nothing
+transpose_x_to_y!(::SlabYFields) = nothing
+transpose_y_to_x!(::SlabYFields) = nothing
 
+# Frees up the y direction `transpose_fields.yfield`
+function transpose_z_to_y!(pf::ParallelFields)
+    fill_transpose_buffer!(pf.yzbuffer, pf.fieldz)
+
+    # Actually transpose!
+    MPI.Alltoallv!(pf.zybuffer.send, pf.zybuffer.recv, size(zybuffer.send), size(pf.zybuffer.recv), MPI.COMM_WORLD)
+
+    recv_transpose_buffer!(pf.fieldy, pf.yzbuffer)
+
+    fill_halo_regions!(pf.fieldy; only_local_halos = true)
     return nothing
 end
 
-# Frees up the x direction
-function transpose_y_to_x!(transpose_fields)
-    archy = architecture(transpose_fields.fieldy)
-    archx = architecture(transpose_fields.fieldx)
+# Frees up the x direction `transpose_fields.xfield`
+function transpose_y_to_x!(pf::ParallelFields)
+    fill_transpose_buffer!(pf.xybuffer, pf.fieldy)
 
+    # Actually transpose!
+    _transpose_y_to_z!(pf.xybuffer)
+
+    recv_transpose_buffer!(pf.fieldx, pf.xybuffer)
+
+    fill_halo_regions!(pf.fieldx; only_local_halos = true)
     return nothing
 end
 
-# Frees up the y direction
-function transpose_x_to_y!(transpose_fields)
-    archy = architecture(transpose_fields.fieldy)
-    archx = architecture(transpose_fields.fieldx)
+# Frees up the y direction `transpose_fields.yfield`
+function transpose_x_to_y!(pf::ParallelFields)
+    fill_transpose_buffer!(pf.buffer_x_y.send, pf.fieldx)
 
+    # Actually transpose!
+    _transpose_y_to_z!(pf.xybuffer)
+
+    recv_transpose_buffer!(pf.fieldy, pf.xybuffer)
+
+    fill_halo_regions!(transpose_fields.fieldy; only_local_halos = true)
     return nothing
 end
 
-# Frees up the z direction
-function transpose_y_to_z!(transpose_fields)
-    archz = architecture(transpose_fields.fieldz)
-    archy = architecture(transpose_fields.fieldy)
+# Frees up the z direction `transpose_fields.zfield`
+function transpose_y_to_z!(pf::ParallelFields)
+    fill_transpose_buffer!(pf.yzbuffer, pf.fieldy)
 
+    # Actually transpose!
+    _transpose_y_to_z!(pf.yzbuffer)
+
+    recv_transpose_buffer!(pf.fieldz, pf.yzbuffer)
+
+    fill_halo_regions!(transpose_fields.fieldy; only_local_halos = true)
     return nothing
 end
 
