@@ -13,32 +13,32 @@
 
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, regular_dimensions, stretched_dimensions
 
-function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
+function plan_forward_transform(A::Union{Array, SubArray{<:Any, <:Any, <:Array}}, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
     return FFTW.plan_fft!(A, dims, flags=planner_flag)
 end
 
-function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
+function plan_forward_transform(A::Union{Array, SubArray{<:Any, <:Any, <:Array}}, ::Bounded, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
     return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag)
 end
 
-function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
+function plan_backward_transform(A::Union{Array, SubArray{<:Any, <:Any, <:Array}}, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
     return FFTW.plan_ifft!(A, dims, flags=planner_flag)
 end
 
-function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
+function plan_backward_transform(A::Union{Array, SubArray{<:Any, <:Any, <:Array}}, ::Bounded, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 end
 
-function plan_forward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+function plan_forward_transform(A::Union{CuArray, SubArray{<:Any, <:Any, <:CuArray}}, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
 
-function plan_backward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+function plan_backward_transform(A::Union{CuArray, SubArray{<:Any, <:Any, <:CuArray}}, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_ifft!(A, dims)
 end
@@ -144,7 +144,6 @@ function plan_transforms(grid::RegRectilinearGrid, storage, planner_flag)
 
     return transforms
 end
-
 
 """ Used by FourierTridiagonalPoissonSolver. """
 function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid}, storage, planner_flag)

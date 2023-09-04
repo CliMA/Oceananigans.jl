@@ -17,12 +17,7 @@ const ZYXPermutation = Permutation{(3, 2, 1), 3}
     @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-@kernel function calculate_permuted_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★, ::ZXYPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds rhs[k, i, j] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
-end
-
-@kernel function calculate_permuted_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★, ::ZYXPermutation)
+@kernel function calculate_permuted_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[k, j, i] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
@@ -47,12 +42,12 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
-    rhs = parent(first(solver.storage))
+    rhs = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
 
-    launch!(arch, grid, :xyz, calculate_permuted_pressure_source_term_fft_based_solver!,
-            rhs, grid, Δt, U★, solver.input_permutation,)
+    launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
+            rhs, grid, Δt, U★)
 
     # Solve pressure Poisson equation for pressure, given rhs
     solve!(pressure, solver)
