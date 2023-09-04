@@ -21,6 +21,6 @@ include("interleave_comm_and_comp.jl")
 include("parallel_fields.jl")
 include("transpose_array.jl")
 include("plan_distributed_transforms.jl")
-include("distributed_fft_based_poisson2.jl")
+include("distributed_fft_based_poisson_solver.jl")
 
 end # module
