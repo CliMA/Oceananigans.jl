@@ -60,16 +60,16 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     multi_arch = architecture(solver.local_grid)
 
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan.forward[1](interior(solver.storage.zfield), interior(buffer.x))
+    solver.plan.forward[1](interior(solver.storage.zfield), interior(solver.buffer.x))
     solver.plan.forward[2](solver.storage)
-    solver.plan.forward[3](interior(solver.storage.yfield), interior(buffer.y))
+    solver.plan.forward[3](interior(solver.storage.yfield), interior(solver.buffer.y))
     solver.plan.forward[4](solver.storage)
-    solver.plan.forward[5](interior(solver.storage.xfield), interior(buffer.z))
+    solver.plan.forward[5](interior(solver.storage.xfield), interior(solver.buffer.z))
 
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
-    x̂ = b̂ = solver.storage.xfield
+    x̂ = b̂ = interior(solver.storage.xfield)
     @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
@@ -80,11 +80,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan.backward[1](interior(solver.storage.xfield), interior(buffer.x))
+    solver.plan.backward[1](interior(solver.storage.xfield), interior(solver.buffer.x))
     solver.plan.backward[2](solver.storage)
-    solver.plan.backward[3](interior(solver.storage.yfield), interior(buffer.y))
+    solver.plan.backward[3](interior(solver.storage.yfield), interior(solver.buffer.y))
     solver.plan.backward[4](solver.storage)
-    solver.plan.backward[5](interior(solver.storage.zfield), interior(buffer.z))
+    solver.plan.backward[5](interior(solver.storage.zfield), interior(solver.buffer.z))
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
