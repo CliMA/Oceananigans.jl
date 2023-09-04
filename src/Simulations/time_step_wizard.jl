@@ -74,7 +74,7 @@ function TimeStepWizard(FT=Float64;
     # check if user gave max_change or min_change values that are invalid
     min_change ≥ 1 && throw(ArgumentError("min_change must be < 1. You provided min_change = $min_change."))
   
-    max_change ≥ 1 && throw(ArgumentError("max_change must be > 1. You provided max_change = $max_change."))
+    max_change ≤ 1 && throw(ArgumentError("max_change must be > 1. You provided max_change = $max_change."))
   
     # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
     if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
