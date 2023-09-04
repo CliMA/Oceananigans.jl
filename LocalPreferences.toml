@@ -1,0 +1,12 @@
+[CUDA_Runtime_jll]
+version = "local"
+
+[MPIPreferences]
+__clear__ = ["preloads_env_switch"]
+_format = "1.0"
+abi = "OpenMPI"
+binary = "system"
+cclibs = []
+libmpi = "/storage4/simone/TestsScaling/openmpi/lib/libmpi"
+mpiexec = "/storage4/simone/TestsScaling/openmpi/bin/mpiexec"
+preloads = []

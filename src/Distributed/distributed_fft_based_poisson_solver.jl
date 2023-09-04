@@ -1,5 +1,6 @@
 import PencilFFTs
 using PencilArrays: Permutation
+using PencilArrays.Transpositions
 using CUDA: @allowscalar
 using Oceananigans.Architectures: arch_array, array_type
 
@@ -153,7 +154,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     AT = array_type(arch.child_architecture)
 
     transforms = Tuple(infer_transform(global_grid, d) for d in Tuple(input_permutation))
-    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator, AT)
+    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator, AT; transpose_method = Transpositions.Alltoallv())
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
