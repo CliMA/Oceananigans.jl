@@ -10,10 +10,6 @@ function plan_distributed_transforms(global_grid::RegRectilinearGrid, storage::P
     grids = (storage.zfield.grid, storage.yfield.grid, storage.xfield.grid)
 
     Ny = reshaped_size(grids[2])
-    # Convert Flat to Bounded for inferring batchability and transform ordering
-    # Note that transforms are omitted in Flat directions.
-    unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in (TY, TZ))
-
     rs_storage = reshape(interior(storage.yfield), Ny)
 
     forward_plan_x  = plan_forward_transform(interior(storage.xfield),  topo[1](), [1], planner_flag)
