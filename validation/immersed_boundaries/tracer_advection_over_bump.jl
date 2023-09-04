@@ -1,15 +1,18 @@
 using Oceananigans
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, CutCellBottom
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
 using Printf
+using CUDA
+using CairoMakie
 
 arch = CPU()
+
 tracer_advection = CenteredSecondOrder()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(16, 8), halo=(3, 3), 
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -20,8 +23,16 @@ L = 0.25 # bump width
 @inline h(y) = h₀ * exp(- y^2 / L^2)
 @inline seamount(x, y) = - 1 + h(y)
 
-#grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(seamount, 0.1))
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
+immersed_boundary_type = "cut_cell_bottom"
+minimum_fractional_Δz = 0.1
+# Choose immersed_boundary_type to be one of "grid_fitted_bottom", "partial_cell_bottom", and "cut_cell_bottom".
+if immersed_boundary_type == "grid_fitted_bottom"
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
+elseif immersed_boundary_type == "partial_cell_bottom"
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(seamount, minimum_fractional_Δz))
+elseif immersed_boundary_type == "cut_cell_bottom"
+    grid = ImmersedBoundaryGrid(underlying_grid, CutCellBottom(seamount, minimum_fractional_Δz))
+end
 
 # Terrain following coordinate
 ζ(y, z) = z / (h(y) - 1)
@@ -30,7 +41,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
 Ψᵢ(x, y, z) = (1 - ζ(y, z))^2
 Ψ = Field{Center, Face, Face}(grid)
 set!(Ψ, Ψᵢ)
-fill_halo_regions!(Ψ, arch)
+fill_halo_regions!(Ψ)
 mask_immersed_field!(Ψ)
 
 # Set velocity field from streamfunction
@@ -39,8 +50,7 @@ w = ZFaceField(grid)
 v .= + ∂z(Ψ)
 w .= - ∂y(Ψ)
 
-fill_halo_regions!(v, arch)
-fill_halo_regions!(w, arch)
+fill_halo_regions!((v, w))
 mask_immersed_field!(v)
 mask_immersed_field!(w)
 
@@ -49,62 +59,117 @@ D = compute!(Field(∂y(v) + ∂z(w)))
 
 ## Set up Model
 velocities = PrescribedVelocityFields(; v, w)
-model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection,
-                                    tracers = :θ,
-                                    buoyancy = nothing)
+model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection, tracers = :θ, buoyancy = nothing)
 
 θᵢ(x, y, z) = 1 + z
 set!(model, θ = θᵢ)
 
-# Simulation                             
-stop_time = 1.0
-Δy = grid.Δyᵃᶜᵃ
-@show Δt = 1e-2 * Δy
-simulation = Simulation(model; Δt, stop_time)
+run_simulation = true
 
-# Diagnostics
-θ = model.tracers.θ
-θ² = compute!(Field(Average(θ^2, dims=(1, 2, 3))))
-θ²ᵢ = θ²[1, 1, 1]
+if run_simulation
 
-# Residual of variance equation (×2)
-θ²D = compute!(Field(Average(θ^2 * D, dims=(1, 2, 3))))
+    # Simulation                             
+    stop_time = 1.0
+    Δy = grid.Δyᵃᶜᵃ
+    @show Δt = 1e-2 * Δy
+    simulation = Simulation(model; Δt, stop_time)
 
-# Weird term in Appendix B of
-# https://journals.ametsoc.org/view/journals/mwre/125/9/1520-0493_1997_125_2293_rotbsc_2.0.co_2.xml
-@inline square(i, j, k, grid, θ) = @inbounds θ[i, j, k]^2
-@inline Sʸ(i, j, k, grid, θ) = 2 * ℑyᵃᶠᵃ(i, j, k, grid, θ)^2 - ℑyᵃᶠᵃ(i, j, k, grid, square, θ)
-@inline Sᶻ(i, j, k, grid, θ) = 2 * ℑzᵃᵃᶠ(i, j, k, grid, θ)^2 - ℑzᵃᵃᶠ(i, j, k, grid, square, θ)
-Sʸθ = KernelFunctionOperation{Center, Face, Center}(Sʸ, grid, parameters=θ)
-Sᶻθ = KernelFunctionOperation{Center, Center, Face}(Sᶻ, grid, parameters=θ)
-R_op = ∂y(v * Sʸθ) + ∂z(w * Sᶻθ)
-Rθ² = compute!(Field(Average(R_op, dims=(1, 2, 3))))
+    # Diagnostics
+    θ   = model.tracers.θ
+    θ²  = compute!(Field(Average(θ^2)))
+    θ²ᵢ = θ²[1, 1, 1]
 
-function progress(s)
-    compute!(θ²)
-    θ²ₙ = θ²[1, 1, 1]
-    Δθ² = (θ²ᵢ - θ²ₙ) / θ²ᵢ
+    # Residual of variance equation (×2)
+    θ²D = compute!(Field(Average(θ^2 * D)))
 
-    compute!(θ²D)
-    compute!(Rθ²)
+    # Now, we compute the first set of terms within parenthesis on the right-hand side of the second equation in 
+    # Section 2b of https://journals.ametsoc.org/view/journals/mwre/125/9/1520-0493_1997_125_2293_rotbsc_2.0.co_2.xml.
+    # The equation is derived in Appendix B, using results e.g. (A8) and (A9) from Appendix A.
+    @inline square(i, j, k, grid, θ) = @inbounds θ[i, j, k]^2
+    @inline Sʸ(i, j, k, grid, θ) = 2 * ℑyᵃᶠᵃ(i, j, k, grid, θ)^2 - ℑyᵃᶠᵃ(i, j, k, grid, square, θ)
+    @inline Sᶻ(i, j, k, grid, θ) = 2 * ℑzᵃᵃᶠ(i, j, k, grid, θ)^2 - ℑzᵃᵃᶠ(i, j, k, grid, square, θ)
+    Sʸθ = KernelFunctionOperation{Center, Face, Center}(Sʸ, grid, θ)
+    Sᶻθ = KernelFunctionOperation{Center, Center, Face}(Sᶻ, grid, θ)
+    R_op = ∂y(v * Sʸθ) + ∂z(w * Sᶻθ)
+    Rθ² = compute!(Field(Average(R_op)))
 
-    msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|θ|: %.2e, Δ⟨θ²⟩: %.2e",
-                   100 * time(s) / s.stop_time, iteration(s),
-                   time(s), maximum(abs, s.model.tracers.θ), Δθ²)
+    function progress(s)
+        compute!(θ²)
+        θ²ₙ = θ²[1, 1, 1]
+        Δθ² = (θ²ᵢ - θ²ₙ) / θ²ᵢ
 
-    msg *= @sprintf(", ⟨θ²D⟩: %.2e, ⟨Rθ²⟩: %.2e", θ²D[1, 1, 1], Rθ²[1, 1, 1])
+        compute!(θ²D)
+        compute!(Rθ²)
 
-    @info msg
+        msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|θ|: %.2e, Δ⟨θ²⟩: %.2e",100 * time(s) / s.stop_time,
+                       iteration(s), time(s), maximum(abs, s.model.tracers.θ), Δθ²)
 
-    return nothing
+        msg *= @sprintf(", ⟨θ²D⟩: %.2e, ⟨Rθ²⟩: %.2e", θ²D[1, 1, 1], Rθ²[1, 1, 1])
+
+        @info msg
+
+        return nothing
+    end
+
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, (θ = model.tracers.θ,),
+                                                          schedule = TimeInterval(0.02),
+                                                          filename = "tracer_advection_over_bump",
+                                                          overwrite_existing = true,
+                                                          with_halos = true)  
+
+    run!(simulation)
+
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+# # A neat movie
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, model.tracers,
-                                                      schedule = TimeInterval(0.02),
-                                                      prefix = "tracer_advection_over_bump",
-                                                      force = true)
+# We open the JLD2 file, and extract the `grid` and the iterations we ended up saving at.
 
-run!(simulation)
+filename = "tracer_advection_over_bump"
 
+θ_timeseries = FieldTimeSeries(filename * ".jld2", "θ"; architecture = CPU())
+
+times = θ_timeseries.times
+
+xGrid, yGrid, zGrid = nodes(θ_timeseries)
+
+# Finally, we're ready to animate.
+
+@info "Making an animation from the saved data..."
+
+n = Observable(1)
+
+θlims = 0, 1
+
+θGrid = @lift begin
+    interior(θ_timeseries[$n], 1, :, :)
+end
+
+plot_type = "heat_map" # Choose plot_type to be either "filled_contour_plot" or "heat_map".
+fig = Figure(resolution = (850, 750))
+title_θ = @lift "Tracer Concentration after " *string(round(times[$n], digits = 1))*" seconds"
+ax_θ = Axis(fig[1,1]; xlabel = "Meridional Distance (m)", ylabel = "Depth (m)", xlabelsize = 22.5, ylabelsize = 22.5, 
+            xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, 
+            title = title_θ, titlesize = 27.5, titlegap = 15, titlefont = :bold)
+if plot_type == "filled_contour_plot"
+    hm_θ = contourf!(ax_θ, yGrid, zGrid, θGrid; levels = range(θlims..., length=size(zGrid)[1]), 
+                     colormap = :balance)  
+elseif plot_type == "heat_map"
+    hm_θ = heatmap!(ax_θ, yGrid, zGrid, θGrid; colorrange = θlims, colormap = :balance)
+end
+ySeaMount = -1:0.01:1
+depthSeaMount = seamount.(0,ySeaMount)
+lines!(ax_θ, ySeaMount, depthSeaMount, linewidth = 2.5, color = :black)
+Colorbar(fig[1,2], hm_θ; label = "Tracer Concentration", labelsize = 22.5, labelpadding = 10.0, ticksize = 17.5)
+
+frames = 1:length(times)
+
+CairoMakie.record(fig, filename * "_" * immersed_boundary_type * "_" * plot_type * ".mp4", frames, framerate = 8) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
+end
+
+nothing # hide
