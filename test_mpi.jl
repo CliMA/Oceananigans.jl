@@ -15,7 +15,7 @@ N     = (128, 128, 128)
 ranks = (2, 2, 1)
 topo  = (Periodic, Periodic, Periodic)
 arch  = DistributedArch(CPU(); ranks, topology = topo)
-grid  = RectilinearGrid(arch, size = N ./ ranks, extent = (2π, 2π, 2π), topology = topo, halo = (7, 7, 7))
+grid  = RectilinearGrid(arch, size = Int.(N ./ ranks), extent = (2π, 2π, 2π), topology = topo, halo = (7, 7, 7))
 model = NonhydrostaticModel(; grid, advection = WENO(order = 7), tracers = :b, timestepper = :RungeKutta3)
 
 set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
