@@ -70,7 +70,8 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
     x̂ = b̂ = interior(solver.storage.xfield)
-    @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
+
+    launch!(arch, solver.storage.xfield.grid, :xyz,  _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
@@ -91,6 +92,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
             _copy_real_component!, x, parent(solver.storage.zfield))
 
     return x
+end
+
+@kernel function _solve_poisson!(x̂, b̂, λx, λy, λz)
+    i, j, k = @index(Global, NTuple)
+    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k])
 end
 
 @kernel function _copy_real_component!(ϕ, ϕc)
