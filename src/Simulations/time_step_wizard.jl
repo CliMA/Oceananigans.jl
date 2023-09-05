@@ -35,7 +35,7 @@ for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `di
 subject to the limits
 
 ```julia
-    max(min_Δt, min_change * previous_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * previous_Δt)
+max(min_Δt, min_change * previous_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * previous_Δt)
 ```
 
 where `new_Δt` is the new time step calculated by the `TimeStepWizard`.
