@@ -94,6 +94,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
     @eval begin
         function $transpose!(pf::ParallelFields)
             $pack_buffer!(pf.$buffer, pf.$fromfield)
+            sync_device!(architecture(pf.$fromfield))
             # Actually transpose!
             MPI.Alltoallv!(pf.$buffer.send, pf.$buffer.recv, pf.counts.$buff, pf.counts.$buff, pf.comms.$buff)
             $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer)
