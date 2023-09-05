@@ -71,6 +71,22 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     solver.plan.forward[2](storage)
     solver.plan.forward[3](parent(storage.yfield), buffer.y) 
     solver.plan.forward[4](storage)
+
+    solve_x_direction!(solver, storage)
+
+    solver.plan.backward[2](storage)
+    solver.plan.backward[3](parent(storage.yfield), buffer.y)
+    solver.plan.backward[4](storage)
+    solver.plan.backward[5](parent(storage.zfield), buffer.z)
+
+    # Copy the real component of xc to x.
+    launch!(arch, solver.local_grid, :xyz,
+            _copy_real_component!, x, parent(storage.zfield))
+
+    return x
+end
+
+function solve_x_direction!(solver, storage)
     solver.plan.forward[5](parent(storage.xfield), buffer.x)
     
     # Solve the discrete Poisson equation in wavenumber space
@@ -88,16 +104,8 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     # Apply backward transforms to x̂ = last(solver.storage).
     solver.plan.backward[1](parent(storage.xfield), buffer.x)
-    solver.plan.backward[2](storage)
-    solver.plan.backward[3](parent(storage.yfield), buffer.y)
-    solver.plan.backward[4](storage)
-    solver.plan.backward[5](parent(storage.zfield), buffer.z)
 
-    # Copy the real component of xc to x.
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
+    return nothing
 end
 
 @kernel function _solve_poisson!(x̂, b̂, λx, λy, λz)
