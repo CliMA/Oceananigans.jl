@@ -51,9 +51,9 @@ function RectilinearGrid(arch::DistributedArch,
     TY = insert_connected_topology(TY, Ry, rj)
     TZ = insert_connected_topology(TZ, Rz, rk)
     
-    xl = partition(x, nx, Rx, ri)
-    yl = partition(y, ny, Ry, rj)
-    zl = partition(z, nz, Rz, rk)
+    xl = partition(x, nx, arch, 1)
+    yl = partition(y, ny, arch, 2)
+    zl = partition(z, nz, arch, 3)
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, child_architecture(arch))
@@ -97,9 +97,9 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
-    λl = partition(longitude, nλ, Rx, ri)
-    φl = partition(latitude,  nφ, Ry, rj)
-    zl = partition(z,         nz, Rz, rk)
+    λl = partition(longitude, nλ, arch, 1)
+    φl = partition(latitude,  nφ, arch, 2)
+    zl = partition(z,         nz, arch, 3)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
