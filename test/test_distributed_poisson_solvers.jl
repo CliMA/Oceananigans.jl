@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using MPI
+# using MPI
 
 # # Distributed model tests
 #
@@ -21,22 +21,11 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-MPI.Init()
+# MPI.Init()
 
 # to initialize MPI.
 
 using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
-
-@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds permuted_ϕ[k, j, i] = ϕ[i, j, k]
-end
-
-@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZXYPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds permuted_ϕ[k, i, j] = ϕ[i, j, k]
-end
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -66,7 +55,7 @@ end
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
     arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
+    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
@@ -75,16 +64,15 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
     ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
     R   = random_divergent_source_term(local_grid)
-    
+
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+    solver.storage.zfield .= R
 
     # Solve it
-    ϕc = first(solver.storage)
-
-    launch!(arch, local_grid, :xyz, set_distributed_solver_input!, ϕc, R, solver.input_permutation)
-
     solve!(ϕ, solver)
+
+    fill_halo_regions!(ϕ)
 
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
@@ -94,11 +82,11 @@ end
 
 @testset "Distributed FFT-based Poisson solver" begin
     @info "  Testing 3D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (2, 2, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 11, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44,  4, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 11, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((22,  8, 8), (2, 2, 1))
+    @test divergence_free_poisson_solution_triply_periodic(( 8, 22, 8), (2, 2, 1))
 
     @info "  Testing 2D distributed FFT-based Poisson solver..."
     @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
