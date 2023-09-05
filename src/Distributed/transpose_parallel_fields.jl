@@ -35,7 +35,6 @@ end
         i′  = mod(i - 1, nm[1]) + 1
         m   = (i - 1) ÷ nm[1]
         idx = i′ + nm[1] * (k-1 + nm[3] * (j-1)) + m * prod(nm)
-        @show i, i′, m, idx
         xfield[i, j, k] = xybuff.recv[idx]
     end
 end

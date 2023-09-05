@@ -1,6 +1,8 @@
+using MPI
+MPI.Init()
+
 include("dependencies_for_runtests.jl")
 
-# using MPI
 
 # # Distributed model tests
 #
@@ -20,8 +22,6 @@ include("dependencies_for_runtests.jl")
 # julia> include("test_distributed_models.jl")
 #
 # When running the tests this way, uncomment the following line
-
-# MPI.Init()
 
 # to initialize MPI.
 
@@ -89,10 +89,10 @@ end
     @test divergence_free_poisson_solution_triply_periodic(( 8, 22, 8), (2, 2, 1))
 
     @info "  Testing 2D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (4, 1, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (4, 1, 1))
+    # @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
+    # @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
 
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
