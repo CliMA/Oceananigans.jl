@@ -76,9 +76,9 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
-    x̂ = b̂ = parent(solver.storage.xfield)
+    x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, solver.storage.xfield.grid, :xyz,  _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
+    launch!(arch, storage.xfield.grid, :xyz,  _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
