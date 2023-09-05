@@ -4,6 +4,11 @@ using Oceananigans.Solvers: Forward, Backward
 
 @inline reshaped_size(grid) = size(grid, 2), size(grid, 1), size(grid, 3)
 
+struct FFTPlan{F, B}
+    forward :: F
+    backward :: B
+end
+
 function plan_distributed_transforms(global_grid, storage::ParallelFields, planner_flag)
     topo = topology(global_grid)
     arch = architecture(global_grid)
@@ -29,20 +34,16 @@ function plan_distributed_transforms(global_grid, storage::ParallelFields, plann
     end
 
     forward_operations = (
-        DiscreteTransform(forward_plan_z, Forward(), grids[1], [3]),
-        transpose_z_to_y!,
-        DiscreteTransform(forward_plan_y, Forward(), grids[2], [2]),
-        transpose_y_to_x!,
-        DiscreteTransform(forward_plan_x, Forward(), grids[3], [1]),
+        z! = DiscreteTransform(forward_plan_z, Forward(), grids[1], [3]),
+        y! = DiscreteTransform(forward_plan_y, Forward(), grids[2], [2]),
+        x! = DiscreteTransform(forward_plan_x, Forward(), grids[3], [1]),
     )
 
     backward_operations = (
-        DiscreteTransform(backward_plan_x, Backward(), grids[3], [1]),
-        transpose_x_to_y!,
-        DiscreteTransform(backward_plan_y, Backward(), grids[2], [2]),
-        transpose_y_to_z!,
-        DiscreteTransform(backward_plan_z, Backward(), grids[1], [3]),
+        x! = DiscreteTransform(backward_plan_x, Backward(), grids[3], [1]),
+        y! = DiscreteTransform(backward_plan_y, Backward(), grids[2], [2]),
+        z! = DiscreteTransform(backward_plan_z, Backward(), grids[1], [3]),
     )
 
-    return (; forward = forward_operations, backward = backward_operations)
+    return FFTPlan(forward_operations, backward_operations)
 end

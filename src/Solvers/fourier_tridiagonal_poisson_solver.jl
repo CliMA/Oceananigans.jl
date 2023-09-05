@@ -49,7 +49,6 @@ end
     D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end 
 
-
 stretched_direction(::YZRegRectilinearGrid) = XDirection()
 stretched_direction(::XZRegRectilinearGrid) = YDirection()
 stretched_direction(::XYRegRectilinearGrid) = ZDirection()

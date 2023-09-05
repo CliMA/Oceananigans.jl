@@ -1,6 +1,7 @@
 import FFTW 
 
 using CUDA: @allowscalar
+using Oceananigans.Grids: YZRegRectilinearGrid
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
@@ -61,51 +62,43 @@ end
 # was computed and stored in first(solver.storage) prior to calling `solve!(x, solver)`.
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
-    arch = architecture(solver.global_grid)
-    multi_arch = architecture(solver.local_grid)
     storage = solver.storage
     buffer  = solver.buffer
 
+    arch    = architecture(storage.xfield.grid)
+
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan.forward[1](parent(storage.zfield), buffer.z)
-    solver.plan.forward[2](storage)
-    solver.plan.forward[3](parent(storage.yfield), buffer.y) 
-    solver.plan.forward[4](storage)
-
-    solve_x_direction!(solver, storage)
-
-    solver.plan.backward[2](storage)
-    solver.plan.backward[3](parent(storage.yfield), buffer.y)
-    solver.plan.backward[4](storage)
-    solver.plan.backward[5](parent(storage.zfield), buffer.z)
-
-    # Copy the real component of xc to x.
-    launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
-
-    return x
-end
-
-function solve_x_direction!(solver, storage)
-    solver.plan.forward[5](parent(storage.xfield), buffer.x)
+    solver.plan.forward.z!(parent(storage.zfield), buffer.z)
+    transpose_z_to_y!(storage)
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    transpose_y_to_x!(storage)
+    solver.plan.forward.x!(parent(storage.xfield), buffer.x)
     
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz,  _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
+    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
-    if multi_arch.local_rank == 0
+    if arch.local_rank == 0
         @allowscalar x̂[1, 1, 1] = 0
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan.backward[1](parent(storage.xfield), buffer.x)
+    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
+    transpose_x_to_y!(storage)
+    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
+    transpose_y_to_z!(storage)
+    solver.plan.backward.z!(parent(storage.zfield), buffer.z)
 
-    return nothing
+    # Copy the real component of xc to x.
+    launch!(arch, solver.local_grid, :xyz,
+            _copy_real_component!, x, parent(storage.zfield))
+
+    return x
 end
 
 @kernel function _solve_poisson!(x̂, b̂, λx, λy, λz)
@@ -118,21 +111,21 @@ end
     @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
 end
 
-validate_global_grid(global_grid) = throw(ArgumentError("Grids other than the RectilinearGrid are not supported in NonhydrostaticModels"))
-
-using Oceananigans.Grids: YZRegRectilinearGrid
+validate_global_grid(global_grid) = 
+        throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
 
 function validate_global_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw(ArgumentError("Distributed grids do not support the specified topology. For performance reasons,
-                             TZ Periodic requires also TY and TX to be Periodic, while TY Periodic requires also 
-                             TX to be Periodic. Please rotate the domain to obtain the required topology"))
+        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ).
+                             For performance reasons, TZ Periodic requires also TY and TX to be Periodic,
+                             while TY Periodic requires also TX to be Periodic. 
+                             Please rotate the domain to obtain the required topology"))
     end
     
     if !(global_grid isa YZRegRectilinearGrid) 
-        throw(ArgumentError("For performance reasons only the X direction is allowed to be stretched with 
+        throw(ArgumentError("For performance reasons only stretching on the X direction is allowed with 
                              distributed grids. Please rotate the domain to have the stretching in X"))
     end
 
