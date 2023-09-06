@@ -83,7 +83,7 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
                            vorticity_stencil    = VelocityStencil(),
                            vertical_scheme      = EnergyConservingScheme(),
                            ke_gradient_scheme   = vertical_scheme,
-                           divergence_scheme    = vorticity_scheme,
+                           divergence_scheme    = vertical_scheme,
                            upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
                            multi_dimensional_stencil = false) where {N, FT}
         
