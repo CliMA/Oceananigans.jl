@@ -17,7 +17,7 @@ concatenate_local_sizes(n, arch::DistributedArch) =
 function concatenate_local_sizes(n, arch::DistributedArch, idx)
     R = arch.ranks[idx]
     r = arch.local_index[idx]
-    n = n[idx]
+    n = n isa Number ? n : n[idx]
     l = zeros(Int, R)
 
     r1, r2 = arch.local_index[[1, 2, 3] .!= idx]
@@ -31,27 +31,19 @@ function concatenate_local_sizes(n, arch::DistributedArch, idx)
     return l
 end
 
-function concatenate_local_sizes(n, R, r) 
-    l = zeros(Int, R)
-    l[r] = n
-    MPI.Allreduce!(l, +, MPI.COMM_WORLD)
-
-    return l
-end
-
 # Partitioning (localization of global objects) and assembly (global assembly of local objects)
 # Used for grid constructors (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)
 # which means that we need to repeat the value at the right boundary
-
-function partition(c::AbstractVector, n, R, r)
-    nl = concatenate_local_sizes(n, R, r)
-    return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]
+function partition(c::AbstractVector, n, arch, idx)
+    nl = concatenate_local_sizes(n, arch, idx)
+    r  = arch.local_index[idx]
+    return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
 end
 
-function partition(c::Tuple, n, R, r)
-    nl = concatenate_local_sizes(n, R, r)
+function partition(c::Tuple, n, arch, idx)
+    nl = concatenate_local_sizes(n, arch, idx)
     N  = sum(nl)
-
+    R  = arch.ranks[idx]
     Δl = (c[2] - c[1]) / N  
 
     l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
@@ -60,7 +52,7 @@ function partition(c::Tuple, n, R, r)
         push!(l, (lp, lp + Δl * nl[i]))
     end
 
-    return l[r]
+    return l[arch.local_index[idx]]
 end
 
 """
