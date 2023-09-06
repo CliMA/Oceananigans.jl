@@ -16,7 +16,8 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
      transpose_dims :: Σ
 end
 
-architecture(transform::DiscreteTransform) = architecture(transform.grid)
+# Includes support for distributed architectures
+architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors

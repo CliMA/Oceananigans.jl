@@ -48,9 +48,11 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
 
     plan   = plan_distributed_transforms(global_grid, storage, planner_flag)
     
+    # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
     buffer_x = child_architecture(arch) isa GPU && TX == Bounded ? arch_array(arch, zeros(FT, size(storage.xfield)...)) : nothing
     buffer_z = child_architecture(arch) isa GPU && TZ == Bounded ? arch_array(arch, zeros(FT, size(storage.zfield)...)) : nothing
-    buffer_y = child_architecture(arch) isa GPU ? arch_array(arch, zeros(FT, size(storage.yfield)...)) : nothing # We cannot really batch anything, so always reshape in y
+    # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
+    buffer_y = child_architecture(arch) isa GPU ? arch_array(arch, zeros(FT, size(storage.yfield)...)) : nothing 
 
     buffer = (; x = buffer_x, y = buffer_y, z = buffer_z)
 
