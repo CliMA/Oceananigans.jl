@@ -45,8 +45,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
 
     eigenvalues = (λx, λy, λz)
 
-    plan = plan_distributed_transforms(global_grid, storage, planner_flag)
-    buffer = parent(similar(storage.yfield)) # We cannot really batch anything, so always reshape
+    plan   = plan_distributed_transforms(global_grid, storage, planner_flag)
+    buffer = arch_array(arch, zeros(Complex{eltype(local_grid)}, size(storage.yfield))) # We cannot really batch anything, so always reshape
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
