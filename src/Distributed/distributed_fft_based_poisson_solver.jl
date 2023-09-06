@@ -49,11 +49,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
 
     child_arch = child_architecture(arch)
 
-    buffer_x = child_arch isa GPU && TX == Bounded ? parent(similar(storage.xfield)) : nothing
-    buffer_y = child_arch isa GPU && TY == Bounded ? parent(similar(storage.yfield)) : nothing
-    buffer_z = child_arch isa GPU && TZ == Bounded ? parent(similar(storage.zfield)) : nothing
-
-    buffer = (x = buffer_x, y = buffer_y, z = buffer_z)
+    buffer = child_arch isa GPU && Bounded in (TX, TY, TZ) ? parent(similar(storage.yfield)) : nothing
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
@@ -68,11 +64,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     arch    = architecture(storage.xfield.grid)
 
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan.forward.z!(parent(storage.zfield), buffer.z)
+    solver.plan.forward.z!(parent(storage.zfield), nothing)
     transpose_z_to_y!(storage)
-    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    solver.plan.forward.y!(parent(storage.yfield), buffer) 
     transpose_y_to_x!(storage)
-    solver.plan.forward.x!(parent(storage.xfield), buffer.x)
+    solver.plan.forward.x!(parent(storage.xfield), nothing)
     
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
@@ -88,11 +84,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
+    solver.plan.backward.x!(parent(storage.xfield), nothing)
     transpose_x_to_y!(storage)
-    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
+    solver.plan.backward.y!(parent(storage.yfield), buffer)
     transpose_y_to_z!(storage)
-    solver.plan.backward.z!(parent(storage.zfield), buffer.z)
+    solver.plan.backward.z!(parent(storage.zfield), nothing)
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
