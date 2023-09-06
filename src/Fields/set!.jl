@@ -42,7 +42,7 @@ end
 
 function set!(u::Field, v::Field)
     # Note: we only copy interior points.
-    # To copy halos use `parent(u) .= parent(v)`.
+    # To copy halos use `copyto!(parent(u), parent(v))`.
     
     if architecture(u) === architecture(v)
         interior(u) .= interior(v)

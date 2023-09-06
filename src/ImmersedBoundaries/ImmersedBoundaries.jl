@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Architectures
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -114,6 +114,14 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
         Arch = typeof(arch)
         return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, mi)
     end
+
+    # Constructor with no active map
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
+        FT = eltype(grid)
+        arch = architecture(grid)
+        Arch = typeof(arch)
+        return new{FT, TX, TY, TZ, G, I, Nothing, Arch}(arch, grid, ib, nothing)
+    end
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -134,9 +142,8 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_interior))
 
-function with_halo(halo, ibg::ImmersedBoundaryGrid) 
-    return ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
-end
+with_halo(halo, ibg::ImmersedBoundaryGrid) =
+    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
 # (which requires checking `Center` nodes at N + H and N + H + 1)
@@ -156,8 +163,8 @@ end
 
 function show(io::IO, ibg::ImmersedBoundaryGrid)
     print(io, summary(ibg), ":", "\n",
-              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
-              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
+             "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
+             "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
 
     return show(io, ibg.underlying_grid, false)
 end
@@ -294,8 +301,10 @@ end
 
 include("active_cells_map.jl")
 include("immersed_grid_metrics.jl")
-include("grid_fitted_immersed_boundaries.jl")
-include("partial_cell_immersed_boundaries.jl")
+include("abstract_grid_fitted_boundary.jl")
+include("grid_fitted_boundary.jl")
+include("grid_fitted_bottom.jl")
+include("partial_cell_bottom.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
@@ -303,3 +312,4 @@ include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
 end # module
+

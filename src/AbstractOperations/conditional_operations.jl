@@ -90,8 +90,20 @@ function ConditionalOperation(c::ConditionalOperation;
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
+struct TrueCondition end
+
+@inline function Base.getindex(c::ConditionalOperation, i, j, k)
+    return ifelse(evaluate_condition(c.condition, i, j, k, c.grid, c),
+                  c.func(getindex(c.operand, i, j, k)),
+                  c.mask)
+end
+
+@inline evaluate_condition(condition, i, j, k, grid, args...)                = condition(i, j, k, grid, args...)
+@inline evaluate_condition(::TrueCondition, i, j, k, grid, args...)          = true
+@inline evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
+
 @inline condition_operand(func::Function, op::AbstractField, condition, mask) = ConditionalOperation(op; func, condition, mask)
-@inline condition_operand(func::Function, op::AbstractField, ::Nothing, mask) = ConditionalOperation(op; func, condition = truefunc, mask)
+@inline condition_operand(func::Function, op::AbstractField, ::Nothing, mask) = ConditionalOperation(op; func, condition=TrueCondition(), mask)
 
 @inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask)
     condition = arch_array(architecture(operand.grid), condition)
@@ -101,7 +113,13 @@ end
 @inline condition_operand(func::typeof(identity), c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
 @inline condition_operand(func::Function,         c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
 
-@inline truefunc(args...) = true
+@inline materialize_condition!(c::ConditionalOperation) = set!(c.operand, c)
+
+function materialize_condition(c::ConditionalOperation)
+    f = similar(c.operand)
+    set!(f, c)
+    return f
+end
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
                               ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, c.grid, c.condition, mask)
@@ -116,27 +134,9 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-@inline function Base.getindex(c::ConditionalOperation, i, j, k)
-    return ifelse(get_condition(c.condition, i, j, k, c.grid, c),
-                  c.func(getindex(c.operand, i, j, k)),
-                  c.mask)
-end
-
-@inline concretize_condition!(c::ConditionalOperation) = set!(c.operand, c)
-
-function concretize_condition(c::ConditionalOperation)
-    f = similar(c.operand)
-    set!(f, c)
-    return f
-end
-
-@inline get_condition(condition, i, j, k, grid, args...)                = condition(i, j, k, grid, args...)
-@inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
-
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-
 indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
