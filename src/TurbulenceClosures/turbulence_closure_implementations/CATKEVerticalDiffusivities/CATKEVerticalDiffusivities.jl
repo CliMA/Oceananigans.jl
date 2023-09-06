@@ -58,25 +58,17 @@ end
 
 CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                              turbulent_kinetic_energy_equation::TKE,
-<<<<<<< HEAD
-                             maximum_diffusivity::FT,
-=======
                              maximum_tracer_diffusivity::FT,
                              maximum_tke_diffusivity::FT,
                              maximum_viscosity::FT,
->>>>>>> origin/main
                              minimum_turbulent_kinetic_energy::FT,
                              minimum_convective_buoyancy_flux::FT,
                              negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT} =
     CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
                                               turbulent_kinetic_energy_equation,
-<<<<<<< HEAD
-                                              maximum_diffusivity,
-=======
                                               maximum_tracer_diffusivity,
                                               maximum_tke_diffusivity,
                                               maximum_viscosity,
->>>>>>> origin/main
                                               minimum_turbulent_kinetic_energy,
                                               minimum_convective_buoyancy_flux,
                                               negative_turbulent_kinetic_energy_damping_time_scale)
@@ -96,13 +88,9 @@ include("turbulent_kinetic_energy_equation.jl")
                              FT = Float64;]
                              mixing_length = MixingLength(),
                              turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
-<<<<<<< HEAD
-                             maximum_diffusivity = Inf,
-=======
                              maximum_tracer_diffusivity = Inf,
                              maximum_tke_diffusivity = Inf,
                              maximum_viscosity = Inf,
->>>>>>> origin/main
                              minimum_turbulent_kinetic_energy = 1e-6,
                              minimum_convective_buoyancy_flux = 1e-8,
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
@@ -153,13 +141,9 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   FT = Float64;
                                   mixing_length = MixingLength(),
                                   turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
-<<<<<<< HEAD
-                                  maximum_diffusivity = Inf,
-=======
                                   maximum_tracer_diffusivity = Inf,
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
->>>>>>> origin/main
                                   minimum_turbulent_kinetic_energy = 1e-6,
                                   minimum_convective_buoyancy_flux = 1e-8,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
