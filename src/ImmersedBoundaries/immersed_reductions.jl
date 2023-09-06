@@ -1,12 +1,14 @@
 using Oceananigans.Fields: AbstractField, offset_compute_index, indices
 
-import Oceananigans.AbstractOperations: ConditionalOperation, get_condition, truefunc
+import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 #####
 ##### Reduction operations involving immersed boundary grids exclude the immersed periphery,
 ##### which includes both external nodes and nodes on the immersed interface.
 #####
+
+@inline truefunc(args...) = true
 
 struct NotImmersed{F} <: Function
     func :: F
@@ -22,9 +24,10 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 @inline conditional_length(c::IF)       = conditional_length(condition_operand(identity, c, nothing, 0))
 @inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, nothing, 0), dims)
 
-@inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
-    LX, LY, LZ = location(co)
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(i, j, k, ibg, LX(), LY(), LZ()))
+@inline function evaluate_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
+    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    immersed = immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) | inactive_node(i, j, k, ibg, ℓx, ℓy, ℓz)
+    return !immersed & evaluate_condition(condition.func, i, j, k, ibg, args...)
 end 
 
 #####
@@ -57,20 +60,20 @@ const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 @inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
 
 @inline function immersed_column(field::IRF)
-    reduced_dims  = reduced_dimensions(field)
-    full_location = fill_location.(location(field)) 
-    one_field    = ConditionalOperation{full_location...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
-
-    return sum(one_field, dims = reduced_dims)
+    grid         = field.grid
+    reduced_dims = reduced_dimensions(field)
+    LX, LY, LZ   = map(center_to_nothing, location(field))
+    one_field    = ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, grid, NotImmersed(truefunc), zero(grid))
+    return sum(one_field, dims=reduced_dims)
 end
 
-@inline fill_location(::Type{Face})    = Face
-@inline fill_location(::Type{Center})  = Center
-@inline fill_location(::Type{Nothing}) = Center
+@inline center_to_nothing(::Type{Face})    = Face
+@inline center_to_nothing(::Type{Center})  = Center
+@inline center_to_nothing(::Type{Nothing}) = Center
 
-@inline function get_condition(condition::NotImmersedColumn, i, j, k, ibg, co::ConditionalOperation, args...)
+@inline function evaluate_condition(condition::NotImmersedColumn, i, j, k, ibg, co::ConditionalOperation, args...)
     LX, LY, LZ = location(co)
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(is_immersed_column(i, j, k, condition.immersed_column))
+    return evaluate_condition(condition.func, i, j, k, ibg, args...) & !(is_immersed_column(i, j, k, condition.immersed_column))
 end 
 
-is_immersed_column(i, j, k, column) = column[i, j, k] == 0
+@inline is_immersed_column(i, j, k, column) = @inbounds column[i, j, k] == 0
