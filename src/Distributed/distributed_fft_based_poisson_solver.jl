@@ -46,10 +46,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     eigenvalues = (λx, λy, λz)
 
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
-
-    child_arch = child_architecture(arch)
-
-    buffer = child_arch isa GPU && Bounded in (TX, TY, TZ) ? parent(similar(storage.yfield)) : nothing
+    buffer = parent(similar(storage.yfield)) # We cannot really batch anything, so always reshape
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
