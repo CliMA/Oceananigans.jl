@@ -17,7 +17,7 @@ concatenate_local_sizes(n, arch::DistributedArch) =
 function concatenate_local_sizes(n, arch::DistributedArch, idx)
     R = arch.ranks[idx]
     r = arch.local_index[idx]
-    n = n[idx]
+    n = n isa Number ? n : n[idx]
     l = zeros(Int, R)
 
     r1, r2 = arch.local_index[[1, 2, 3] .!= idx]
@@ -37,7 +37,7 @@ end
 function partition(c::AbstractVector, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     r  = arch.local_index[idx]
-    return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]
+    return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
 end
 
 function partition(c::Tuple, n, arch, idx)
