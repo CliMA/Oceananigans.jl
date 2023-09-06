@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, child_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -80,7 +80,7 @@ end
 NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
 
 function DiscreteTransform(plan, direction, grid, dims)
-    arch = architecture(grid)
+    arch = child_architecture(architecture(grid)) # In case we are doing it on a DistributedGrid
 
     isnothing(plan) && return NoTransform()
 

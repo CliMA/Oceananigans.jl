@@ -16,7 +16,6 @@ function plan_distributed_transforms(global_grid, storage::ParallelFields, plann
     grids = (storage.zfield.grid, storage.yfield.grid, storage.xfield.grid)
 
     Ny = reshaped_size(grids[2])
-    AT = identity
 
     rs_storage = reshape(parent(storage.yfield), Ny)
 
