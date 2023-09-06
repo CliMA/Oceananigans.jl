@@ -204,7 +204,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
     indices = CuArray{Int}(undef, 0)
     values  = CuArray{eltype(grid)}(undef, 0)
 
-    kernel! = compute_matrix_for_linear_operation_kernel!(device(GPU()), min(256, N), N)
+    kernel! = compute_matrix_for_linear_operation_kernel!(device(GPU()), min(256, N), (Nx, Ny, Nz))
     kernel!(Aeᵢⱼₖ, eᵢⱼₖ, linear_operation!, indices, values, args...)
 
     rows = div.(indices, N) .+ 1
