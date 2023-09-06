@@ -41,14 +41,29 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
 end
 
 function set!(u::Field, v::Field)
-    # Note: we only copy interior points.
-    # To copy halos use `copyto!(parent(u), parent(v))`.
+    # We implement some niceities in here that attempt to copy halo data,
+    # and revert to copying just interior points if that fails.
     
     if architecture(u) === architecture(v)
-        interior(u) .= interior(v)
+        # Note: we could try to copy first halo point even when halo
+        # regions are a different size. That's a bit more complicated than
+        # the below so we leave it for the future.
+        
+        try # to copy halo regions along with interior data
+            parent(u) .= parent(v)
+        catch # this could fail if the halo regions are different sizes?
+            # copy just the interior data
+            interior(u) .= interior(v)
+        end
     else
         v_data = arch_array(architecture(u), v.data)
-        interior(u) .= interior(v_data, location(v), v.grid, v.indices)
+        
+        # As above, we permit ourselves a little ambition and try to copy halo data:
+        try
+            parent(u) .= parent(v_data)
+        catch
+            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
+        end
     end
 
     return u

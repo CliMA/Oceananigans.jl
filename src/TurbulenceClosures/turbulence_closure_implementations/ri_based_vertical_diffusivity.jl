@@ -254,7 +254,7 @@ end
     κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κᶜ★ = κ₀ * τ
     κᵘ★ = ν₀ * τ
