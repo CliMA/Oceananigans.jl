@@ -13,9 +13,9 @@ import Oceananigans.Simulations: hasnan
 import Base: fill!, axes
 
 # Field and FunctionField (both fields with "grids attached")
-const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
-const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrid} where {LX, LY, LZ}
-const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
+const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrids} where {LX, LY, LZ}
+const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrids} where {LX, LY, LZ, C, P, F}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
@@ -118,7 +118,8 @@ end
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
-set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!, mrf, f)
+set!(u::MultiRegionField, v::MultiRegionField)  = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
  
 # Disambiguation (same as computed_field.jl:64)
@@ -146,7 +147,7 @@ FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              mrg::MultiRegionGrid,
+                                              mrg::MultiRegionGrids,
                                               field_name::Symbol,
                                               prognostic_field_name=nothing)
 
