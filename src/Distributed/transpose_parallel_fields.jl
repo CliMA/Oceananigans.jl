@@ -2,11 +2,20 @@ using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @index, @kernel
 
+# Transpose directions are assumed to work only in the following configuration
+# z -> y -> x -> y -> z
+# where z stands for z-complete data, y for y-complete data, and x for x-complete data
+# The initial field is always assumed to be in the z-complete configuration
+
 # Fallbacks for slab decompositions
 transpose_z_to_y!(::SlabYFields) = nothing
 transpose_y_to_z!(::SlabYFields) = nothing
 transpose_x_to_y!(::SlabXFields) = nothing
 transpose_y_to_x!(::SlabXFields) = nothing
+
+# Since z -> y -> x -> y -> z we only nedd to define the `pack` and `unpack` kernels
+# for the x and z configurations once, y requires two definitions depending on which
+# configuration it's interacting with
 
 @kernel function _pack_buffer_z!(yzbuff, zfield, N)
     i, j, k = @index(Global, NTuple)
@@ -18,12 +27,12 @@ end
     @inbounds xybuff.send[j + N[2] * (k-1 + N[3] * (i-1))] = xfield[i, j, k]
 end
 
-@kernel function _pack_buffer_yx!(xybuff, yfield, N)
+@kernel function _pack_buffer_yx!(xybuff, yfield, N) # y -> x
     i, j, k = @index(Global, NTuple)
     @inbounds xybuff.send[i + N[1] * (k-1 + N[3] * (j-1))] = yfield[i, j, k]
 end
 
-@kernel function _pack_buffer_yz!(xybuff, yfield, N)
+@kernel function _pack_buffer_yz!(xybuff, yfield, N) # y -> z
     i, j, k = @index(Global, NTuple)
     @inbounds xybuff.send[k + N[3] * (i-1 + N[1] * (j-1))] = yfield[i, j, k]
 end
@@ -50,7 +59,7 @@ end
     end
 end
 
-@kernel function _unpack_buffer_yz!(yzbuff, yfield, N, n)
+@kernel function _unpack_buffer_yz!(yzbuff, yfield, N, n) # z -> y
     i, j, k = @index(Global, NTuple)
     nm = N[1], n[2], N[3]
     @inbounds begin
@@ -61,7 +70,7 @@ end
     end
 end
 
-@kernel function _unpack_buffer_yx!(yzbuff, yfield, N, n)
+@kernel function _unpack_buffer_yx!(yzbuff, yfield, N, n) # x -> y
     i, j, k = @index(Global, NTuple)
     nm = N[1], n[2], N[3]
     @inbounds begin
@@ -93,11 +102,10 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
 
     @eval begin
         function $transpose!(pf::ParallelFields)
-            $pack_buffer!(pf.$buffer, pf.$fromfield)
-            sync_device!(architecture(pf.$fromfield))
-            # Actually transpose!
-            MPI.Alltoallv!(pf.$buffer.send, pf.$buffer.recv, pf.counts.$buff, pf.counts.$buff, pf.comms.$buff)
-            $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer)
+            $pack_buffer!(pf.$buffer, pf.$fromfield) # pack the one-dimensional buffer for Alltoallv! call
+            sync_device!(architecture(pf.$fromfield)) # Device needs to be synched with host before MPI call
+            MPI.Alltoallv!(pf.$buffer.send, pf.$buffer.recv, pf.counts.$buff, pf.counts.$buff, pf.comms.$buff) # Actually transpose!
+            $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer) # unpack the one-dimensional buffer into the 3D field
             return nothing
         end
     end
