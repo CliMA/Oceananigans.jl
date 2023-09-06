@@ -22,8 +22,9 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
     validate_global_grid(global_grid)
+    FT = Complex{eltype(local_grid)}
 
-    storage = ParallelFields(CenterField(local_grid), Complex{eltype(local_grid)})
+    storage = ParallelFields(CenterField(local_grid), FT)
     # We don't support distributing anything in z.
     architecture(local_grid).ranks[3] == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
@@ -46,13 +47,17 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     eigenvalues = (λx, λy, λz)
 
     plan   = plan_distributed_transforms(global_grid, storage, planner_flag)
-    buffer = arch_array(arch, zeros(Complex{eltype(local_grid)}, size(storage.yfield))) # We cannot really batch anything, so always reshape
+    
+    buffer_x = child_architecture(arch) isa GPU && TX == Bounded ? arch_array(arch, zeros(FT, size(storage.xfield)...)) : nothing
+    buffer_z = child_architecture(arch) isa GPU && TZ == Bounded ? arch_array(arch, zeros(FT, size(storage.zfield)...)) : nothing
+    buffer_y = child_architecture(arch) isa GPU ? arch_array(arch, zeros(FT, size(storage.yfield)...)) : nothing # We cannot really batch anything, so always reshape in y
+
+    buffer = (; x = buffer_x, y = buffer_y, z = buffer_z)
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
 
 # solve! requires that `b` in `A x = b` (the right hand side)
-# was computed and stored in first(solver.storage) prior to calling `solve!(x, solver)`.
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     storage = solver.storage
@@ -61,11 +66,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     arch    = architecture(storage.xfield.grid)
 
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan.forward.z!(parent(storage.zfield), nothing)
-    transpose_z_to_y!(storage)
-    solver.plan.forward.y!(parent(storage.yfield), buffer) 
-    transpose_y_to_x!(storage)
-    solver.plan.forward.x!(parent(storage.xfield), nothing)
+    solver.plan.forward.z!(parent(storage.zfield), buffer.z)
+    transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield ()
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
+    solver.plan.forward.x!(parent(storage.xfield), buffer.x)
     
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
@@ -80,12 +85,12 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
         @allowscalar x̂[1, 1, 1] = 0
     end
 
-    # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan.backward.x!(parent(storage.xfield), nothing)
-    transpose_x_to_y!(storage)
-    solver.plan.backward.y!(parent(storage.yfield), buffer)
-    transpose_y_to_z!(storage)
-    solver.plan.backward.z!(parent(storage.zfield), nothing)
+    # Apply backward transforms to x̂ = parent(storage.xfield).
+    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
+    transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
+    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
+    transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
+    solver.plan.backward.z!(parent(storage.zfield), buffer.z) # last backwards transform is in z
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
