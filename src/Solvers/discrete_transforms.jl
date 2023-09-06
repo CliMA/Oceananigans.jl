@@ -144,7 +144,7 @@ end
 
 function apply_transform!(A, B, plan, transpose_dims)
     old_size = size(A)
-    transposed_size = [old_size[d] for d in transpose_dims]
+    transposed_size = Tuple(old_size[d] for d in transpose_dims)
 
     if old_size == transposed_size
         permutedims!(B, A, transpose_dims)
