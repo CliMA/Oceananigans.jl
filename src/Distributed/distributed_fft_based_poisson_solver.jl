@@ -63,7 +63,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Apply forward transforms to b = first(solver.storage).
     solver.plan.forward.z!(parent(storage.zfield), nothing)
     transpose_z_to_y!(storage)
-    solver.plan.forward.y!(parent(storage.yfield), nothing) 
+    solver.plan.forward.y!(parent(storage.yfield), buffer) 
     transpose_y_to_x!(storage)
     solver.plan.forward.x!(parent(storage.xfield), nothing)
     
@@ -83,7 +83,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Apply backward transforms to x̂ = last(solver.storage).
     solver.plan.backward.x!(parent(storage.xfield), nothing)
     transpose_x_to_y!(storage)
-    solver.plan.backward.y!(parent(storage.yfield), nothing)
+    solver.plan.backward.y!(parent(storage.yfield), buffer)
     transpose_y_to_z!(storage)
     solver.plan.backward.z!(parent(storage.zfield), nothing)
 
