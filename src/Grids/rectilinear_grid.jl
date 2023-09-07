@@ -19,7 +19,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
+    Δzᵃᵃᶠ :: FZ
     Δzᵃᵃᶜ :: FZ
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
@@ -84,7 +84,7 @@ Positional arguments
 - `architecture`: Specifies whether arrays of coordinates and spacings are stored
                   on the CPU or GPU. Default: `CPU()`.
 
-- `FT` : Floating point data type. Default: `Float64`.
+- `FT`: Floating point data type. Default: `Float64`.
 
 Keyword arguments
 =================
