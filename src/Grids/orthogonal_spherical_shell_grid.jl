@@ -7,7 +7,7 @@ using Distances
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Grids: prettysummary, coordinate_summary
+using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -590,9 +590,82 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     return grid
 end
 
+function fill_metric_halos_x!(metric, ::BoundedTopology, Hx, Hy)
+    m = parent(metric)
+    Mx, My = size(m)
+
+    @inbounds begin
+        for j in My-Hy:-1:Hy+1
+            for i in Hx:-1:1
+                m[i, j] = m[i+1, j]
+            end
+            for i in Mx-Hx+1:Mx
+                m[i, j] = m[i-1, j]
+            end
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halos_y!(metric, ::BoundedTopology, Hx, Hy)
+    m = parent(metric)
+    Mx, My = size(m)
+
+    @inbounds begin
+        for i in Mx-Hx:-1:Hx+1
+            for j in Hy:-1:1
+                m[i, j] = m[i, j+1]
+            end
+            for j in My-Hy+1:My
+                m[i, j] = m[i, j-1]
+            end
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halos_x!(metric, ::AbstractTopology, Hx, Hy)
+    m = parent(metric)
+    Mx, My = size(m)
+
+    @inbounds begin
+        for j in My-Hy:-1:Hy+1
+            for i in Hx:-1:1
+                m[i, j] = m[Mx-2Hx+i, j]
+            end
+            for i in Mx-Hx+1:Mx
+                m[i, j] = m[i-Mx+2Hx, j]
+            end
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halos_y!(metric, ::AbstractTopology, Hx, Hy)
+    m = parent(metric)
+    Mx, My = size(m)
+
+    @inbounds begin
+        for i in Mx-Hx:-1:Hx+1
+            for j in Hy:-1:1
+                m[i, j] = m[i, My-2Hy+j]
+            end
+            for j in My-Hy+1:My
+                m[i, j] = m[i, j-My+2Hy]
+            end
+        end
+    end
+
+    return nothing
+end
+
 function fill_metric_halos!(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
+    TX, TY, TZ = topology(grid)
 
     metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
                      grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
@@ -600,28 +673,13 @@ function fill_metric_halos!(grid)
 
     for metric in metric_arrays
 
+        fill_metric_halos_x!(metric, TX(), Hx, Hy)
+        fill_metric_halos_y!(metric, TY(), Hx, Hy)
+
         @inbounds begin
             m = parent(metric)
 
             Mx, My = size(m)
-
-            for j in My-Hy:-1:Hy+1
-                for i in Hx:-1:1
-                    m[i, j] = m[i+1, j]
-                end
-                for i in Mx-Hx+1:Mx
-                    m[i, j] = m[i-1, j]
-                end
-            end
-
-            for i in Mx-Hx:-1:Hx+1
-                for j in Hy:-1:1
-                    m[i, j] = m[i, j+1]
-                end
-                for j in My-Hy+1:My
-                    m[i, j] = m[i, j-1]
-                end
-            end
 
             # fill halo corners
             # we choose the average of the neighboring metric in the halo regions
