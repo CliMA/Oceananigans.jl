@@ -116,7 +116,7 @@ Keyword arguments
 
 - `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
 
-- `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical 
+- `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
               `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
               topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
@@ -238,22 +238,22 @@ function with_precomputed_metrics(grid)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+    Nλ, Nφ, Nz = N = size
+    
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
 
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    @assert -90 <= φ₁ <= φ₂ <= 90
+
+    (φ₁ == -90 || φ₂ == 90) &&
+        @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
+    
     if !isnothing(topology)
         TX, TY, TZ = topology
         Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
         Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
-        Nλ, Nφ, Nz = N = size
-        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-        @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-        φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-        @assert -90 <= φ₁ <= φ₂ <= 90
-
-        (φ₁ == -90 || φ₂ == 90) &&
-            @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
-
         Lλ = λ₂ - λ₁
 
         TX = Lλ == 360 ? Periodic : Bounded
@@ -411,9 +411,9 @@ end
 @inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-@inline Δxᶜᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
+@inline Δxᶜᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
 @inline Δxᶠᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-@inline Δxᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
+@inline Δxᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
 @inline Δyᶜᶠᵃ(i, j, k, grid::YRegLatLonGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
 @inline Δyᶠᶜᵃ(i, j, k, grid::YRegLatLonGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
 @inline Azᶠᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
@@ -435,8 +435,8 @@ end
 @inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
-@inline metric_worksize(grid::XRegLatLonGrid)  =  length(grid.φᵃᶜᵃ) - 1 
-@inline metric_workgroup(grid::XRegLatLonGrid) =  16
+@inline metric_worksize(grid::XRegLatLonGrid)  = length(grid.φᵃᶜᵃ) - 1 
+@inline metric_workgroup(grid::XRegLatLonGrid) = 16
 
 function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     
@@ -447,7 +447,6 @@ function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, 
 
     curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
 
-
     return nothing
 end
 
@@ -455,7 +454,7 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.Δλᶜᵃᵃ.offsets[1] 
+    i′ = i + grid.Δλᶜᵃᵃ.offsets[1]
     j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
 
     @inbounds begin
@@ -507,7 +506,7 @@ function  precompute_Δy_metrics(grid::YRegLatLonGrid, Δyᶠᶜ, Δyᶜᶠ)
 end
 
 @kernel function precompute_Δy_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
-    j  = @index(Global, Linear)
+    j = @index(Global, Linear)
 
     # Manually offset y-index
     j′ = j + grid.Δφᵃᶜᵃ.offsets[1] + 1
@@ -570,7 +569,6 @@ end
 
 return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
-
 #####
 ##### Grid nodes
 #####
@@ -616,7 +614,6 @@ end
 @inline znodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 @inline xnodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LatLonGrid, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
-
 
 @inline node(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz),
                                                        φnode(i, j, k, grid, ℓx, ℓy, ℓz),
@@ -689,7 +686,6 @@ end
 @inline yspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓx, ℓy; kwargs...)
 @inline zspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
-
 #####
 ##### Grid spacings in λ, φ (in degrees)
 #####
@@ -719,3 +715,4 @@ end
 
 @inline λspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LatLonGrid, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
+

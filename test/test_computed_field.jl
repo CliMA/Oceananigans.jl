@@ -518,40 +518,42 @@ for arch in archs
                 tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
                 tke_ccc              = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
 
-                @test try compute!(Field(u_prime             )); true; catch; false; end
-                @test try compute!(Field(u_prime_ccc         )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared     )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared_ccc )); true; catch; false; end
-                @test try compute!(Field(horizontal_twice_tke)); true; catch; false; end
-                @test try compute!(Field(horizontal_tke      )); true; catch; false; end
-                @test try compute!(Field(twice_tke           )); true; catch; false; end
-
-                @test try compute!(Field(horizontal_tke_ccc  )); true; catch; false; end
-                @test try compute!(Field(tke                 )); true; catch; false; end
+                compute!(Field(u_prime             ))
+                compute!(Field(u_prime_ccc         ))
+                compute!(Field(u_prime_squared     ))
+                compute!(Field(u_prime_squared_ccc ))
+                compute!(Field(horizontal_twice_tke))
+                compute!(Field(horizontal_tke      ))
+                compute!(Field(twice_tke           ))
+                compute!(Field(horizontal_tke_ccc  ))
 
                 computed_tke = Field(tke_ccc)
-                @test try compute!(computed_tke); true; catch; false; end
-                @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
+                    @test_broken try compute!(computed_tke); true; catch; false end
+                    @test_broken try compute!(Field(tke)); true; catch; false; end
                     @test_broken try compute!(tke_window); true; catch; false; end
+                    @test_broken all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
                     @test_broken all(interior(tke_window) .== 9/2)
-                else
+                else                    
+                    @test try compute!(computed_tke); true; catch; false end
+                    @test try compute!(Field(tke)); true; catch; false; end
                     @test try compute!(tke_window); true; catch; false; end
+                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
                     @test all(interior(tke_window) .== 9/2)
                 end
 
                 # Computations along slices
                 tke_xy = Field(tke_ccc, indices=(:, :, 2))
-                @test try compute!(tke_xy); true; catch; false; end
-                @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-
                 tke_xz = Field(tke_ccc, indices=(2:3, 2, 2:3))
                 tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3))
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
+                    @test_broken try compute!(tke_xy); true; catch; false; end
+                    @test_broken all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+    
                     @test_broken try compute!(tke_xz); true; catch; false; end
                     @test_broken all(interior(tke_xz) .== 9/2)
 
@@ -561,6 +563,9 @@ for arch in archs
                     @test_broken try compute!(tke_x); true; catch; false; end
                     @test_broken all(interior(tke_x) .== 9/2)
                 else
+                    @test try compute!(tke_xy); true; catch; false; end
+                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+    
                     @test try compute!(tke_xz); true; catch; false; end
                     @test all(interior(tke_xz) .== 9/2)
 

@@ -621,16 +621,28 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
+function test_lat_lon_areas(FT)
+    Nλ = 36
+    Nφ = 32
+    Hλ = Hφ = 2
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1), halo=(Hλ, Hφ, 1))
+
+    @test sum(grid.Azᶜᶜᵃ[1:grid.Ny]) * grid.Nx ≈ 4π * grid.radius^2
+
+    return nothing
+end
+
 function test_lat_lon_xyzλφ_node_nodes(FT, arch)
 
-    @info "    Testing with ($FT) on ($arch)..."
+    @info "    Testing with $FT on $(typeof(arch))..."
 
     (Nλ, Nφ, Nz) = grid_size = (12, 4, 2)
     (Hλ, Hφ, Hz) = halo      = (1, 1, 1)
 
     lat = (-60,   60)
     lon = (-180, 180)
-    zᵣ  = (-10,   0)
+    zᵣ  = (-10,    0)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
@@ -701,7 +713,8 @@ end
 #####
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
-    grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+
+    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -868,6 +881,7 @@ end
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
             test_basic_lat_lon_general_grid(FT)
+            test_lat_lon_areas(FT)
         end
 
         @info "  Testing precomputed metrics on latitude-longitude grid..."
@@ -913,7 +927,7 @@ end
         end
 
         # Testing show function
-        grid = OrthogonalSphericalShellGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
             show(grid); println()
@@ -932,7 +946,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
@@ -942,16 +956,16 @@ end
                 #
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
             end
         end
