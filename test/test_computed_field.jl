@@ -389,6 +389,14 @@ for arch in archs
                     f isa Field && f.operand === op
                 end
 
+                @test begin
+                    @inline auxiliary_fields_kernel_function(i, j, k, grid, auxiliary_fields) = 1.0
+                    op = KernelFunctionOperation{Center, Center, Center}(auxiliary_fields_kernel_function, grid, model.auxiliary_fields)
+                    f = Field(op)
+                    compute!(f)
+                    f isa Field && f.operand === op
+                end
+
                 ϵ(x, y, z) = 2rand() - 1
                 set!(model, u=ϵ, v=ϵ)
                 u, v, w = model.velocities
