@@ -91,8 +91,8 @@ OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz,
                                  rotation = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been 
-mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, take values
-in the range ``[-1, 1]``.
+conformally mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default,
+both take values in the range ``[-1, 1]``.
 
 The mapping from the face of the cube to the sphere is done via the [CubedSphere.jl](https://github.com/CliMA/CubedSphere.jl)
 package.
@@ -115,30 +115,43 @@ Keyword arguments
     2. one-dimensional array specifying the cell interface locations, or
     3. a single-argument function that takes an index and returns cell interface location.
 
-- `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
+- `radius`: The radius of the sphere the grid lives on. By default this is equal to the radius of Earth.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior. The default is 1 halo cells in every direction.
 
-- `rotation`: Rotation of the spherical shell grid about some axis that passes through the center
-              of the sphere. If `nothing` is provided (default), then the spherical shell includes
-              the North Pole of the sphere in its center.
+- `rotation :: Rotation`: Rotation of the conformal cubed sphere panel about some axis that passes
+                          through the center of the sphere. If `nothing` is provided (default), then
+                          the panel includes the North Pole of the sphere in its center. For example,
+                          to construct a grid that includes tha South Pole we can pass either
+                          `rotation = RotX(π)` or `rotation = RotY(π)`.
 
 Examples
 ========
 
-* A default grid with `Float64` type:
+* The default conformal cubed sphere panel grid with `Float64` type:
 
 ```jldoctest
-julia> using Oceananigans
-
-julia> using Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.Grids
 
 julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+```
+
+* The conformal cubed sphere panel that includes the South Pole with `Float32` type:
+
+```jldoctest
+julia> using Oceananigans, Oceananigans.Grids, Rotations
+
+julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
+36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
+├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
+├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
+├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664956, max(Δφ)=2.7412
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
 """
