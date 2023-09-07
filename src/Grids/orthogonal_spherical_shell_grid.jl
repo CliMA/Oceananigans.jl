@@ -362,7 +362,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
         Az = spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-    For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid some of the 
+    For quadrilaterals near the boundary of the conformal cubed sphere panel, some of the
     vertices lie outside the grid! For example, the area Azᶠᶜᵃ[1, j] corresponds to a
     quadrilateral with vertices:
 
@@ -553,8 +553,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     # This was done to ensure that we had information for the faces at the boundary of
     # the shell.
     #
-    # Here we take care the coordinate and metric arrays given the `topology`
-    # prescribed.
+    # Now we take care the coordinate and metric arrays given the `topology` prescribed.
 
     warnings = false
 
@@ -591,7 +590,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    conformal_mapping = (; ξ, η)
+    conformal_mapping = (; ξ, η, rotation)
 
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                     coordinate_arrays...,
