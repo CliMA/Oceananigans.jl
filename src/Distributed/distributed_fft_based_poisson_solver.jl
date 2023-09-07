@@ -154,7 +154,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     AT = array_type(arch.child_architecture)
 
     transforms = Tuple(infer_transform(global_grid, d) for d in Tuple(input_permutation))
-    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator, AT; transpose_method = Transpositions.Alltoallv())
+    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator, AT)
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
