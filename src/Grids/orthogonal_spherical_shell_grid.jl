@@ -229,19 +229,20 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     # Horizontal distances
 
     #=
-    Distances Δx and Δy are computed via the haversine formula, e.g., Δx = Δσ * radius, where
-    Δσ is the central angle that corresponds to the end points of distance Δx.
+    Distances Δx and Δy are computed via the haversine formula provided by Distances.jl
+    package. For example, Δx = Δσ * radius, where Δσ is the central angle that corresponds
+    to the end points of distance Δx.
 
-    For cells near the boundary of the OrthogonalSphericalShellGrid one of the points
+    For cells near the boundary of the conformal cubed sphere panel, one of the points
     defining, e.g., Δx might lie outside the grid! For example, the central angle
-    Δσxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
+    Δxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
 
-        Δσxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
+        Δxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
 
     Notice that, e.g., point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
-    In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
+    In those cases, we employ symmetry arguments and compute, e.g, Δxᶠᶜᵃ[1, j] via
 
-        Δσxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
+        Δxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
     =#
 
 
@@ -254,14 +255,14 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         #Δxᶜᶜᵃ
 
         for i in 1:Nξ, j in 1:Nη
-            Δxᶜᶜᵃ[i, j] =  haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
+            Δxᶜᶜᵃ[i, j] = haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
         end
 
 
         # Δxᶠᶜᵃ
 
         for j in 1:Nη, i in 2:Nξ
-            Δxᶠᶜᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
+            Δxᶠᶜᵃ[i, j] = haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
         end
 
         for j in 1:Nη
@@ -275,17 +276,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         end
 
 
-        # Δσxᶜᶠᵃ
+        # Δxᶜᶠᵃ
 
         for j in 1:Nη+1, i in 1:Nξ
-            Δxᶜᶠᵃ[i, j] =  haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+            Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσxᶠᶠᵃ
+        # Δxᶠᶠᵃ
 
         for j in 1:Nη+1, i in 2:Nξ
-            Δxᶠᶠᵃ[i, j] =   haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
+            Δxᶠᶠᵃ[i, j] = haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
         end
 
         for j in 1:Nη+1
@@ -305,17 +306,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     Δyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
     @inbounds begin
-        # Δσyᶜᶜᵃ
+        # Δyᶜᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ
-            Δyᶜᶜᵃ[i, j] =  haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
+            Δyᶜᶜᵃ[i, j] = haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσyᶜᶠᵃ
+        # Δyᶜᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ
-            Δyᶜᶠᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+            Δyᶜᶠᵃ[i, j] = haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
         end
 
         for i in 1:Nξ
@@ -329,17 +330,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         end
 
 
-        # Δσyᶠᶜᵃ
+        # Δyᶠᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ+1
-            Δyᶠᶜᵃ[i, j] =  haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+            Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσyᶠᶠᵃ
+        # Δyᶠᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ+1
-            Δyᶠᶠᵃ[i, j] =  haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+            Δyᶠᶠᵃ[i, j] = haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
         end
 
         for i in 1:Nξ+1
