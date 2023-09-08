@@ -55,7 +55,6 @@ calculate_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
 calculate_free_surface_tendency!(::SingleColumnGrid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
 calculate_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
 
-
 # Fast state update and halo filling
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)

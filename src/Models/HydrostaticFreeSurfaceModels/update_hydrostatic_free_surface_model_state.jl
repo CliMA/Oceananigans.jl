@@ -35,7 +35,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally compute_w_diffusivities_pressure!(model)
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
     
     update_biogeochemical_state!(model.biogeochemistry, model)
 
