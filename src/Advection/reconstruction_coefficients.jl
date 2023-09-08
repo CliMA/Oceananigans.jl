@@ -216,7 +216,7 @@ end
             @eval $(Symbol(:smooth_, metric)) = nothing
         end
     else
-        metrics = return_metrics(grid)
+        metrics = return_coordinates(grid)
         dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
 
         arch       = architecture(grid)
