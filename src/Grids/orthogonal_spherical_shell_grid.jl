@@ -797,8 +797,8 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     H = halo
 
     loc_cc = (Center, Center)
-    loc_cf = (Center, Face)
     loc_fc = (Face,   Center)
+    loc_cf = (Center, Face)
     loc_ff = (Face,   Face)
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
