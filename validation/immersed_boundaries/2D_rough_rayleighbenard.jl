@@ -11,16 +11,14 @@ using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, Diagonall
 function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     Lx = 1
     Lz = 1
+    Nx = Nz
 
     h = Lx / Nr / 2
     x₀s = h:2h:Lx-h
 
     ν = 1
     κ = ν / Pr
-
     S = Ra * ν * κ / Lz ^ 4
-
-    Nx = Nz
     
     grid = RectilinearGrid(GPU(), Float64,
                            size = (Nx, Nz), 
@@ -41,16 +39,16 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
 
     @inline function local_roughness_top(x, x₀, h)
         if x > x₀ - h && x <= x₀
-            return -x + Lx - h + x₀
+            return -x - h + x₀
         elseif x > x₀ && x <= x₀ + h
-            return x + Lx - h - x₀
+            return x - h - x₀
         else
-            return Lx
+            return 0
         end
     end
 
     @inline roughness_bottom(x, y, z) = z <= sum([local_roughness_bottom(x, x₀, h) for x₀ in x₀s])
-    @inline roughness_top(x, y, z) = z >= sum([local_roughness_top(x, x₀, h) for x₀ in x₀s])
+    @inline roughness_top(x, y, z) = z >= sum([local_roughness_top(x, x₀, h) for x₀ in x₀s]) + Lz
     @inline mask(x, y, z) = roughness_bottom(x, y, z) | roughness_top(x, y, z)
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(mask))
@@ -74,12 +72,13 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     b_bcs = FieldBoundaryConditions(top=ValueBoundaryCondition(-S/2), bottom=ValueBoundaryCondition(S/2),
                                     immersed=ValueBoundaryCondition(rayleigh_benard_buoyancy))
 
-    Δt = 5e-8
+    Δt = 1e-10
     max_Δt = 1e-5
     
     if solver == "FFT"
         model = NonhydrostaticModel(; grid,
-                                    advection = CenteredSecondOrder(),
+                                    # advection = CenteredSecondOrder(),
+                                    advection = WENO(),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),
@@ -87,8 +86,9 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
                                     boundary_conditions=(; u=u_bcs, v=v_bcs, w=w_bcs, b=b_bcs))
     else
         model = NonhydrostaticModel(; grid,
-                                    pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=1e-8),
-                                    advection = CenteredSecondOrder(),
+                                    pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=1e-12),
+                                    # advection = CenteredSecondOrder(),
+                                    advection = WENO(),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),
@@ -109,7 +109,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     ##### Simulation
     #####
     
-    simulation = Simulation(model, Δt=Δt, stop_iteration=20000)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=1500000)
 
     # wizard = TimeStepWizard(max_change=1.05, max_Δt=max_Δt, cfl=0.6)
     # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
@@ -150,7 +150,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
         return nothing
     end
                        
-    simulation.callbacks[:p] = Callback(print_progress, IterationInterval(1))
+    simulation.callbacks[:p] = Callback(print_progress, IterationInterval(1000))
     
     solver_type = model.pressure_solver isa ImmersedPoissonSolver ? "ImmersedPoissonSolver" : "FFTBasedPoissonSolver"
     prefix = "2D_rough_rayleighbenard_" * solver_type
@@ -166,23 +166,25 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     end
     
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs;
-                                                        filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_fields",
+                                                        filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields",
                                                         # schedule = TimeInterval(5e-4),
-                                                        schedule = IterationInterval(2000),
-                                                        overwrite_existing = true)
+                                                        schedule = IterationInterval(10000),
+                                                        overwrite_existing = true,
+                                                        init = init_save_some_metadata!)
     
     simulation.output_writers[:timeseries] = JLD2OutputWriter(model, (; WB);
-                                                              filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_time_series",
+                                                              filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series",
                                                             #   schedule = TimeInterval(5e-4),
-                                                        schedule = IterationInterval(2000),
-                                                              overwrite_existing = true)
+                                                        schedule = IterationInterval(10000),
+                                                              overwrite_existing = true,
+                                                          init = init_save_some_metadata!)
     
     run!(simulation)
 end
 
-Nr = 10
-Ra = 1e9
-Nz = 128
+Nr = 8
+Ra = 1e11
+Nz = 512
 
 run_simulation("ImmersedPoissonSolver", "FFT", Nr=Nr, Ra=Ra, Nz=Nz)
 run_simulation("FFT", nothing, Nr=Nr, Ra=Ra, Nz=Nz)
@@ -190,8 +192,8 @@ run_simulation("FFT", nothing, Nr=Nr, Ra=Ra, Nz=Nz)
 ##### Visualize
 #####
 ##
-filename_FFT = "2D_rough_rayleighbenard_FFTBasedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_fields.jld2"
-filename_FFT_timeseries = "2D_rough_rayleighbenard_FFTBasedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_time_series.jld2"
+filename_FFT = "2D_rough_rayleighbenard_FFTBasedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields.jld2"
+filename_FFT_timeseries = "2D_rough_rayleighbenard_FFTBasedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series.jld2"
 
 metadata = jldopen(filename_FFT, "r") do file
     metadata = Dict()
@@ -211,8 +213,8 @@ wt_FFT = FieldTimeSeries(filename_FFT, "w")
 Nu_FFT = FieldTimeSeries(filename_FFT_timeseries, "WB") ./ (κ * S)
 times = bt_FFT.times
 
-filename_PCG = "2D_rough_rayleighbenard_ImmersedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_fields.jld2"
-filename_PCG_timeseries = "2D_rough_rayleighbenard_ImmersedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_time_series.jld2"
+filename_PCG = "2D_rough_rayleighbenard_ImmersedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields.jld2"
+filename_PCG_timeseries = "2D_rough_rayleighbenard_ImmersedPoissonSolver_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series.jld2"
 
 bt_PCG = FieldTimeSeries(filename_PCG, "b")
 ut_PCG = FieldTimeSeries(filename_PCG, "u")
@@ -255,20 +257,21 @@ Nt = length(bt_FFT.times)
 
 xC = bt_FFT.grid.xᶜᵃᵃ[1:Nx]
 zC = bt_FFT.grid.zᵃᵃᶜ[1:Nz]
-xNu, yNu, zNu = nodes(WB_data)
+xNu, yNu, zNu = nodes(FieldTimeSeries(filename_FFT_timeseries, "WB"))
 
 blim = maximum([maximum(abs, bt_FFT), maximum(abs, bt_PCG)])
 ulim = maximum([maximum(abs, ut_FFT), maximum(abs, ut_PCG)])
 wlim = maximum([maximum(abs, wt_FFT), maximum(abs, wt_PCG)])
-δlim = 1e-8
+# δlim = sqrt(eps(eltype(Nu_FFT[1])))
+δlim = 1e-7
 Nulim = maximum([maximum(abs, Nu_FFT), maximum(abs, Nu_PCG)])
 
-heatmap!(axb_FFT, xC, zC, bn_FFT, colormap=:balance, colorrange=(0, blim))
+heatmap!(axb_FFT, xC, zC, bn_FFT, colormap=:balance, colorrange=(-blim, blim))
 heatmap!(axu_FFT, xC, zC, un_FFT, colormap=:balance, colorrange=(-ulim, ulim))
 heatmap!(axw_FFT, xC, zC, wn_FFT, colormap=:balance, colorrange=(-wlim, wlim))
 heatmap!(axd_FFT, xC, zC, δn_FFT, colormap=:balance, colorrange=(-δlim, δlim))
 
-heatmap!(axb_PCG, xC, zC, bn_PCG, colormap=:balance, colorrange=(0, blim))
+heatmap!(axb_PCG, xC, zC, bn_PCG, colormap=:balance, colorrange=(-blim, blim))
 heatmap!(axu_PCG, xC, zC, un_PCG, colormap=:balance, colorrange=(-ulim, ulim))
 heatmap!(axw_PCG, xC, zC, wn_PCG, colormap=:balance, colorrange=(-wlim, wlim))
 heatmap!(axd_PCG, xC, zC, δn_PCG, colormap=:balance, colorrange=(-δlim, δlim))
@@ -281,7 +284,7 @@ Label(fig[0, :], titlestr, font=:bold, tellwidth=false, tellheight=false)
 
 # display(fig)
 
-record(fig, "FFT_PCG_2D_rough_rayleighbenard_Ra_$(Ra)_Nr_$(Nr).mp4", 1:Nt, framerate=10) do nn
+record(fig, "FFT_PCG_2D_rough_rayleighbenard_Ra_$(Ra)_Nr_$(Nr)_WENO.mp4", 1:Nt, framerate=10) do nn
     # @info string("Plotting frame ", nn, " of ", Nt)
     n[] = nn
 end
