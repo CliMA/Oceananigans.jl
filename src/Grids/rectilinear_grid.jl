@@ -139,11 +139,14 @@ Grid properties
 
 - `(Lx, Ly, Lz) :: FT`: Physical extent of the grid in the ``(x, y, z)``-direction.
 
-- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δzᵃᵃᶜ)`: Grid spacing in the ``(x, y, z)``-direction between cell centers.
-                           Defined at cell centers in ``x``, ``y``, and ``z``.
+- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δzᵃᵃᶜ)`: Grid spacing in the ``(x, y, z)``-direction for cells centered at
+                           cell centers. Equivalently, this is the distance between the two faces
+                           adjacent each cell center. Defined at cell centers in ``x``, ``y``,
+                           and ``z``.
 
-- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ)`: Grid spacing in the ``(x, y, z)``-direction between cell faces.
-                           Defined at cell faces in ``x``, ``y``, and ``z``.
+- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ)`: Grid spacing in the ``(x, y, z)``-direction for cells centered at
+                           cell faces. Equivalently, this is the distance between the two centers
+                           adjacent to each face. Defined at cell centers in ``x``, ``y``, and ``z``.
 
 - `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: ``(x, y, z)`` coordinates of cell centers.
 
