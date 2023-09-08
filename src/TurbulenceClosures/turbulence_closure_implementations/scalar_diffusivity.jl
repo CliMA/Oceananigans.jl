@@ -106,7 +106,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           boundary_buffer = 1)
+                           required_halo_size = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
@@ -115,7 +115,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), boundary_buffer}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_points}(ν, κ)
 end
 
 # Explicit default

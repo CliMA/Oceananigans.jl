@@ -19,8 +19,6 @@ end
           HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
 
-required_halo_size(::ScalarBiharmonicDiffusivity) = 2
-
 """
     ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
                                 ν = 0,
@@ -74,11 +72,11 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
-                                     boundary_buffer = 1)
+                                     required_halo_size = 1)
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    return ScalarBiharmonicDiffusivity{typeof(formulation), boundary_buffer}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}

@@ -49,7 +49,7 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
-import Oceananigans.Advection: boundary_buffer, required_halo_size
+import Oceananigans.Advection: required_halo_size
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -62,7 +62,7 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 Abstract supertype for turbulence closures.
 """
-abstract type AbstractTurbulenceClosure{TimeDiscretization, BoundaryBuffer} end
+abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 
 # Fallbacks
 validate_closure(closure) = closure
@@ -75,7 +75,6 @@ calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs.
 # point at each side to calculate viscous fluxes at the edge of the domain. 
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
 # or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
-@inline boundary_buffer(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
 @inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}

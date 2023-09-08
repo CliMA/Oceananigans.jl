@@ -89,7 +89,6 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
-boundary_buffer(closure_tuple::Tuple)    = maximum(map(boundary_buffer, closure_tuple))
 required_halo_size(closure_tuple::Tuple) = maximum(map(required_halo_size, closure_tuple))
 
 #####
