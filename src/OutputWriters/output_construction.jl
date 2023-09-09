@@ -1,14 +1,21 @@
-using Oceananigans.Fields: validate_indices, Reduction
+using Oceananigans.Fields: validate_indices, Reduction, indices
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
-restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
-restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
-restrict_to_interior(index::UnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(::Colon, ::Colon, loc, topo, N) = interior_indices(loc, topo, N)
+restrict_to_interior(::Colon, ::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(target_index::UnitRange, available_index, ::Nothing, topo, N) = UnitRange(1, 1)
 
-function restrict_to_interior(index::UnitRange, loc, topo, N)
-    from = max(first(index), 1)
-    to = min(last(index), last(interior_indices(loc, topo, N)))
+function restrict_to_interior(::Colon, available_index, loc, topo, N)
+    interior_ind = interior_indices(loc, topo, N)
+    from = max(first(interior_ind), first(available_index))
+    to = min(last(interior_ind), last(available_index))
+    return UnitRange(from, to)
+end
+
+function restrict_to_interior(target_index::UnitRange, available_index, loc, topo, N)
+    from = max(1, first(target_index), first(available_index))
+    to = min(last(target_index), last(interior_indices(loc, topo, N)))
     return UnitRange(from, to)
 end
 
@@ -29,16 +36,16 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
-function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
-    indices = validate_indices(indices, location(output), grid)
+function output_indices(output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
+    user_indices = validate_indices(user_indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
         loc = map(instantiate, location(output))
         topo = map(instantiate, topology(grid))
-        indices = map(restrict_to_interior, indices, loc, topo, size(grid))
+        ind = map(restrict_to_interior, user_indices, indices(output), loc, topo, size(grid))
     end
 
-    return indices
+    return ind
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
@@ -54,4 +61,3 @@ function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, i
     output = construct_output(averaged_output.operand, grid, indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
 end
-

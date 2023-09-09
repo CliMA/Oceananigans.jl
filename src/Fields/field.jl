@@ -176,7 +176,15 @@ function Field(loc::Tuple,
 end
     
 Field(z::ZeroField; kw...) = z
-Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
+
+function Field(f::Field; indices=f.indices)
+    if indices == (:, :, :)
+        return f
+    end
+
+    return view(f, indices...) # hmm...
+end
+
 
 """
     CenterField(grid, T=eltype(grid); kw...)
