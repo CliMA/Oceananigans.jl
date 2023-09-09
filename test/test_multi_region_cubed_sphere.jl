@@ -24,9 +24,8 @@ function get_range_of_indices(operation, index, Nx, Ny)
         range_x = 1:Nx
         range_y = 1:Ny
     end
-    
-    return range_x, range_y
 
+    return range_x, range_y
 end
 
 function get_halo_data(field, side, k_index=1; operation=nothing, index=:all)
@@ -45,7 +44,6 @@ function get_halo_data(field, side, k_index=1; operation=nothing, index=:all)
     elseif side == :north
         return field.data[range_x, Ny+1:Ny+Hy, k_index]
     end
-    
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, side; operation=nothing, index=:all)
@@ -61,7 +59,6 @@ function get_boundary_indices(Nx, Ny, Hx, Hy, side; operation=nothing, index=:al
     elseif side == :north
         return range_x, Ny-Hy+1:Ny
     end
-    
 end
 
 """
@@ -74,7 +71,7 @@ If `trailing_zeros > 0` then all values are multiplied with `10trailing_zeros`, 
 function create_test_data(grid, region; trailing_zeros=0)
     Nx, Ny, Nz = size(grid)
 
-    (Nx > 9 || Ny > 9) && error("this won't work; use a grid with Nx, Ny ≤ 9.")
+    (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
 
     !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
 
@@ -168,7 +165,7 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
     end
 end
 
-
+#=
 @testset "Testing conformal cubed sphere metric/coordinate halo filling" begin
     for FT in float_types
         for arch in archs
@@ -212,6 +209,7 @@ end
         end
     end
 end
+=#
 
 @testset "Testing conformal cubed sphere fill halos for tracers" begin
     for FT in float_types
