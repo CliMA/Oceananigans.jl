@@ -60,7 +60,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 @eval @inline $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             end
 
-            outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
+            outside_buffer = Symbol(:outside_, bias, :_halo, loc)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
