@@ -54,10 +54,10 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p
     diffusivity = model.diffusivity_fields
 
     for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        calculate_diffusivities!(diffusivity, closure, model; κ_kernel_parameters = κpar)
+        calculate_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model.pressures.pHY′, architecture(grid), 
                                      grid, model.buoyancy, model.tracers; 
-                                     p_kernel_parameters = ppar)
+                                     parameters = ppar)
     end
     return nothing
 end
