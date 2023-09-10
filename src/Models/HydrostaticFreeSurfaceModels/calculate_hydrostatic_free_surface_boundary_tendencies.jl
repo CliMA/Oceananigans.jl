@@ -13,27 +13,18 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
+    w_parameters = boundary_w_kernel_parameters(grid, arch)
+    p_parameters = boundary_p_kernel_parameters(grid, arch)
+    κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
+
     # We need new values for `w`, `p` and `κ`
-    recompute_auxiliaries!(model, grid, arch)
+    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
     calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
 
     return nothing
-end
-
-function recompute_auxiliaries!(model::HydrostaticFreeSurfaceModel, grid, arch)
-    
-    w_kernel_parameters = boundary_w_kernel_parameters(grid, arch)
-    p_kernel_parameters = boundary_p_kernel_parameters(grid, arch)
-    κ_kernel_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
-
-    for (wpar, ppar, κpar) in zip(w_kernel_parameters, p_kernel_parameters, κ_kernel_parameters)
-        compute_w_from_continuity!(model.velocities, arch, grid; parameters = wpar)
-        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = ppar)
-        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κpar)
-    end
 end
 
 # w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
