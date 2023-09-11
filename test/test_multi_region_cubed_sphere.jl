@@ -28,37 +28,68 @@ function get_range_of_indices(operation, index, Nx, Ny)
     return range_x, range_y
 end
 
-function get_halo_data(field, side, k_index=1; operation=nothing, index=:all)
-
+function get_halo_data(field, ::West, k_index=1; operation=nothing, index=:all)
     Nx, Ny, _ = size(field)
     Hx, Hy, _ = halo_size(field.grid)
-    
-    range_x, range_y = get_range_of_indices(operation, index, Nx, Ny)
-    
-    if side == :west
-        return field.data[-Hx+1:0, range_y, k_index]
-    elseif side == :east
-        return field.data[Nx+1:Nx+Hx, range_y, k_index]
-    elseif side == :south
-        return field.data[range_x, -Hy+1:0, k_index]
-    elseif side == :north
-        return field.data[range_x, Ny+1:Ny+Hy, k_index]
-    end
+
+    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
+
+    return field.data[-Hx+1:0, range_y, k_index]
 end
 
-function get_boundary_indices(Nx, Ny, Hx, Hy, side; operation=nothing, index=:all)
+function get_halo_data(field, ::East, k_index=1; operation=nothing, index=:all)
+    Nx, Ny, _ = size(field)
+    Hx, Hy, _ = halo_size(field.grid)
+
+    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
+
+    return field.data[Nx+1:Nx+Hx, range_y, k_index]
+end
+
+function get_halo_data(field, ::North, k_index=1; operation=nothing, index=:all)
+    Nx, Ny, _ = size(field)
+    Hx, Hy, _ = halo_size(field.grid)
+
+    range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
     
+    return field.data[range_x, Ny+1:Ny+Hy, k_index]
+end
+
+function get_halo_data(field, ::South, k_index=1; operation=nothing, index=:all)
+    Nx, Ny, _ = size(field)
+    Hx, Hy, _ = halo_size(field.grid)
+
+    _, _ = get_range_of_indices(operation, index, Nx, Ny)
+
+    return field.data[range_x, -Hy+1:0, k_index]
+end
+
+function get_boundary_indices(Nx, Ny, Hx, Hy, ::West; operation=nothing, index=:all)
+
+    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
+
+    return 1:Hx, range_y
+end
+
+function get_boundary_indices(Nx, Ny, Hx, Hy, ::South; operation=nothing, index=:all)
+
+    range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
+
+    return range_x, 1:Hy
+end
+
+function get_boundary_indices(Nx, Ny, Hx, Hy, ::East; operation=nothing, index=:all)
+
+    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
+
+    return Nx-Hx+1:Nx, range_y
+end
+
+function get_boundary_indices(Nx, Ny, Hx, Hy, ::North; operation=nothing, index=:all)
+
     range_x, range_y = get_range_of_indices(operation, index, Nx, Ny)
-    
-    if side == :west
-        return 1:Hx, range_y
-    elseif side == :south
-        return range_x, 1:Hy
-    elseif side == :east
-        return Nx-Hx+1:Nx, range_y
-    elseif side == :north
-        return range_x, Ny-Hy+1:Ny
-    end
+
+    return range_x, Ny-Hy+1:Ny
 end
 
 """
