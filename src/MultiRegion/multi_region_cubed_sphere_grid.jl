@@ -210,41 +210,100 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            region_grids,
                                                                                            devices)
 
-    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
-    LXs₁    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
-    LYs₁    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
+    # the following fills the coordinate and metric halos using halo-filling algorithms
+    ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
+    fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
+    cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
+    ffacoords = (:λᶠᶠᵃ, :φᶠᶠᵃ)
 
-    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
-    LXs₂    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
-    LYs₂    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
-
-    for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
+    for (ccacoord, fcacoord, cfacoord, ffacoord) in zip(ccacoords, fcacoords, cfacoords, ffacoords)
         expr = quote
-            $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
-            $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
+            $(Symbol(ccacoord)) = Field{Center, Center, Nothing}($(grid))
+            $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
+            $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
+            $(Symbol(ffacoord)) = Field{Face  , Face,   Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:6
-                    getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
-                    getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
+                    getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
+                    getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
+                    getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
+                    getregion($(Symbol(ffacoord)), region).data .= getregion($(grid), region).$(Symbol(ffacoord))
                 end
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:2
-                    fill_halo_regions!($(Symbol(field₁)))
-                    fill_halo_regions!($(Symbol(field₂)))
+                for _ in 1:3
+                    fill_halo_regions!($(Symbol(ccacoord)))
+                    fill_halo_regions!($(Symbol(fcacoord)))
+                    fill_halo_regions!($(Symbol(cfacoord)))
+                    fill_halo_regions!($(Symbol(ffacoord)))
 
-                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(field₁)),
-                                                                            v = $(Symbol(field₂)),
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcacoord)),
+                                                                            v = $(Symbol(cfacoord)),
+                                                                            w = nothing), $(grid), signed=false)
+
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(ffacoord)),
+                                                                            v = $(Symbol(ffacoord)),
+                                                                            w = nothing), $(grid), signed=false)
+                end
+            end
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
+                    getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
+                    getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
+                    getregion($(grid), region).$(Symbol(ffacoord)) .= getregion($(Symbol(ffacoord)), region).data
+                end
+            end
+        end
+        eval(expr)
+    end
+
+    ccametrics = (:Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ)
+    fcametrics = (:Δxᶠᶜᵃ, :Δyᶠᶜᵃ, :Azᶠᶜᵃ)
+    cfametrics = (:Δyᶜᶠᵃ, :Δxᶜᶠᵃ, :Azᶜᶠᵃ)
+    ffametrics = (:Δyᶠᶠᵃ, :Δxᶠᶠᵃ, :Azᶠᶠᵃ)
+
+    for (ccametric, fcametric, cfametric, ffametric) in zip(ccametrics, fcametrics, cfametrics, ffametrics)
+        expr = quote
+            $(Symbol(ccametric)) = Field{Center, Center, Nothing}($(grid))
+            $(Symbol(fcametric)) = Field{Face,   Center, Nothing}($(grid))
+            $(Symbol(cfametric)) = Field{Center, Face,   Nothing}($(grid))
+            $(Symbol(ffametric)) = Field{Center, Face,   Nothing}($(grid))
+
+            CUDA.@allowscalar begin
+                for region in 1:6
+                    getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
+                    getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
+                    getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
+                    getregion($(Symbol(ffametric)), region).data .= getregion($(grid), region).$(Symbol(ffametric))
+                end
+            end
+
+            if $(horizontal_topology) == FullyConnected
+                for _ in 1:3
+                    fill_halo_regions!($(Symbol(ccametric)))
+                    fill_halo_regions!($(Symbol(fcametric)))
+                    fill_halo_regions!($(Symbol(cfametric)))
+                    fill_halo_regions!($(Symbol(ffametric)))
+
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcametric)),
+                                                                            v = $(Symbol(cfametric)),
+                                                                            w = nothing), $(grid), signed=false)
+
+                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(ffametric)),
+                                                                            v = $(Symbol(ffametric)),
                                                                             w = nothing), $(grid), signed=false)
                 end
             end
 
             CUDA.@allowscalar begin
                 for region in 1:6
-                    getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
-                    getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
+                    getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
+                    getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
+                    getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
+                    getregion($(grid), region).$(Symbol(ffametric)) .= getregion($(Symbol(ffametric)), region).data
                 end
             end
         end # quote
