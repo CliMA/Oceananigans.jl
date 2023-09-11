@@ -33,24 +33,34 @@ u₀ = 1
 Ψ = Field{Face, Face, Center}(grid)
 set!(Ψ, ψ)
 
-fill_halo_regions_manually = true
+#=
+# Fill halo nodes manually.
 
-if fill_halo_regions_manually
-
-    for region in 1:6
-        for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy
-            if (i >= 1-Hx & i <= 0) | (i >= Nx+1 & i <= Nx+Hx) | (j >= 1-Hy & j <= 0) | (j >= Ny+1 & j <= Ny+Hy)
-                λAtNode = λnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
-                φAtNode = φnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
-                getregion(Ψ, region).data[i, j, 1] = ψ(λAtNode, φAtNode, -0.5)
-            end
+for region in 1:6
+    for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy
+        if (i >= 1-Hx & i <= 0) | (i >= Nx+1 & i <= Nx+Hx) | (j >= 1-Hy & j <= 0) | (j >= Ny+1 & j <= Ny+Hy)
+            λAtNode = λnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
+            φAtNode = φnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
+            getregion(Ψ, region).data[i, j, 1] = ψ(λAtNode, φAtNode, -0.5)
         end
     end
-    
-else
+end
+=#
 
-    fill_halo_regions!(Ψ)
-    
+#=
+Fill halo nodes using the fill_halo_regions! function.
+
+fill_halo_regions!(Ψ)
+=#
+
+# Fill interior and halo nodes manually.
+
+for region in 1:6
+    for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy
+        λAtNode = λnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
+        φAtNode = φnodes(getregion(grid, region), Face(), Face(), Center(); with_halos=true)[i, j, 1]
+        getregion(Ψ, region).data[i, j, 1] = ψ(λAtNode, φAtNode, -0.5)
+    end
 end
 
 u = compute!(Field(-∂y(Ψ)))
@@ -64,33 +74,36 @@ end
 
 fig = Figure(resolution = (2200, 1200), fontsize=25)
 
-plot_streamfunction_and_velocities_with_halos = true
-if plot_streamfunction_and_velocities_with_halos
-    for region in 1:6
-        ax = Axis(fig[1, region], title="Ψ panel $region")
-        heatmap!(ax, parent(getregion(Ψ, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-        ax = Axis(fig[2, region], title="u panel $region")
-        heatmap!(ax, parent(getregion(u, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-        ax = Axis(fig[3, region], title="v panel $region")
-        heatmap!(ax, parent(getregion(v, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-    end
-else
-    for region in 1:6
-        ax = Axis(fig[1, region], title="Ψ panel $region")
-        heatmap!(ax, interior(getregion(Ψ, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-        ax = Axis(fig[2, region], title="u panel $region")
-        heatmap!(ax, interior(getregion(u, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-        ax = Axis(fig[3, region], title="v panel $region")
-        heatmap!(ax, interior(getregion(v, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
-    end
+# Plot streamfunction and velocities with halos.
+
+for region in 1:6
+    ax = Axis(fig[1, region], title="Ψ panel $region")
+    heatmap!(ax, parent(getregion(Ψ, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[2, region], title="u panel $region")
+    heatmap!(ax, parent(getregion(u, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[3, region], title="v panel $region")
+    heatmap!(ax, parent(getregion(v, region)[:, :, 1]), colorrange = (-R * u₀, R * u₀), colormap = :balance)
 end
+
+#=
+Plot streamfunction and velocities without halos.
+
+for region in 1:6
+    ax = Axis(fig[1, region], title="Ψ panel $region")
+    heatmap!(ax, interior(getregion(Ψ, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[2, region], title="u panel $region")
+    heatmap!(ax, interior(getregion(u, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+    ax = Axis(fig[3, region], title="v panel $region")
+    heatmap!(ax, interior(getregion(v, region), :, :, 1), colorrange = (-R * u₀, R * u₀), colormap = :balance)
+end
+=#
 
 save("streamfunction_u_v.png", fig)
 
 fig
 
 #=
-# alternative way to compute velocities from streamfunction -- just to confirm sanity is in the room
+# An alternative way to compute velocities from streamfunction -- just to confirm sanity is in the room
 
 U = Field{Face, Center, Center}(grid)
 V = Field{Center, Face, Center}(grid)
