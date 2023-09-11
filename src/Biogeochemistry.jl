@@ -31,6 +31,10 @@ update_biogeochemical_state!(bgc, model) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
+    regularize_biogeochemistry(bgc, model) = AbstractBGCOrNothing
+
+Check that bgc is correctly setup for the particular model configuration.
+"""
     AbstractBiogeochemistry
 
 Abstract type for biogeochemical models. To define a biogeochemcial relaionship
