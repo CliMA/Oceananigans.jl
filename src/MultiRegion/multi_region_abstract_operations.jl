@@ -24,7 +24,7 @@ sync_all_devices!(f::MultiRegionAbstractOperation)  = sync_all_devices!(devices(
 @inline switch_device!(f::MultiRegionAbstractOperation, d) = switch_device!(f.grid, d)
 @inline getdevice(f::MultiRegionAbstractOperation, d)      = getdevice(f.grid, d)
 
-for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :ConditionalOperation]
+for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative]
     @eval begin
         @inline getregion(f::$T{LX, LY, LZ}, r) where {LX, LY, LZ} =
                           $T{LX, LY, LZ}(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($T))...)
