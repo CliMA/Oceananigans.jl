@@ -406,7 +406,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        new_properties...)
 end
 
-return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 #####
 ##### Grid nodes
