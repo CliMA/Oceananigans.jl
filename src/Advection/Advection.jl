@@ -32,7 +32,7 @@ using OffsetArrays
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo, return_metrics
+using Oceananigans.Grids: with_halo, coordinates
 using Oceananigans.Architectures: arch_array, architecture, CPU
 
 using Oceananigans.Operators
