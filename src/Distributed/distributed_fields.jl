@@ -14,19 +14,18 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indice
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
 
-child_architecture(f::DistributedField) = child_architecture(architecture(f.grid))
-
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 
 function set!(u::DistributedField, f::Function)
-    if child_architecture(u) isa GPU
-        cpu_grid = on_architecture(CPU(), u.grid)
+    arch = architecture(u)
+    if child_architecture(arch) isa GPU
+        cpu_grid = on_architecture(cpu_architecture(arch), u.grid)
         u_cpu = Field(location(u), cpu_grid; indices = indices(u))
         f_field = field(location(u), f, cpu_grid)
         set!(u_cpu, f_field)
         set!(u, u_cpu)
-    elseif child_architecture(u) isa CPU
+    elseif child_architecture(arch) isa CPU
         f_field = field(location(u), f, u.grid)
         set!(u, f_field)
     end

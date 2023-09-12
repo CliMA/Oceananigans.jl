@@ -117,6 +117,11 @@ zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), 
 array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
 sync_device!(arch::DistributedArch)       = sync_device!(arch.child_architecture)
 
+cpu_architecture(arch::DistributedArch{<:CPU}) = arch
+cpu_architecture(arch::DistributedArch{<:GPU}) = 
+    DistributedArch(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
+                           arch.connectivity, arch.communicator, arch.mpi_requests, arch.tag)
+
 #####
 ##### Converting between index and MPI rank taking k as the fast index
 #####
