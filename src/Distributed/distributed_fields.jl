@@ -1,7 +1,7 @@
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using Oceananigans.Fields: validate_field_data, validate_boundary_conditions, validate_indices
+using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     arch = architecture(grid)
