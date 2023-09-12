@@ -2,11 +2,11 @@ using Oceananigans.Fields: validate_indices, Reduction, indices
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
-restrict_to_interior(::Colon, ::Colon, loc, topo, N) = interior_indices(loc, topo, N)
-restrict_to_interior(::Colon, ::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
-restrict_to_interior(target_index::UnitRange, available_index, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(target_index::Colon,     available_index::Colon, loc,       topo, N) = interior_indices(loc, topo, N)
+restrict_to_interior(target_index::Colon,     available_index::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(target_index::UnitRange, available_index,        ::Nothing, topo, N) = UnitRange(1, 1)
 
-function restrict_to_interior(::Colon, available_index, loc, topo, N)
+function restrict_to_interior(target_index::Colon, available_index, loc, topo, N)
     interior_ind = interior_indices(loc, topo, N)
     from = max(first(interior_ind), first(available_index))
     to = min(last(interior_ind), last(available_index))
