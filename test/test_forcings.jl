@@ -124,14 +124,23 @@ function advective_and_multiple_forcing(arch)
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
     velocity_field_slip = AdvectiveForcing(w=slip_velocity)
-    simple_forcing(x, y, z, t) = 1
+    simple_forcing(x, y, z, t) = 0
 
     model = NonhydrostaticModel(; grid, tracers=(:a, :b), forcing=(a=constant_slip, b=(simple_forcing, velocity_field_slip)))
+
+    a₀ = rand(size(grid)...)
+    b₀ = rand(size(grid)...)
+    set!(model, a=a₀, b=b₀)
+
+    # Time-step without an error?
     time_step!(model, 1, euler=true)
 
-    return true
-end
+    # Does `b` change?
+    a₁ = Array(interior(model.tracers.a))
+    b₁ = Array(interior(model.tracers.b))
 
+    return a₁ ≠ a₀ && b₁ ≠ b₀
+end
 
 @testset "Forcings" begin
     @info "Testing forcings..."
