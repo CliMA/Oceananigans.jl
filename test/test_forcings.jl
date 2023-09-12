@@ -119,10 +119,10 @@ function advective_and_multiple_forcing(arch)
     grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
 
     constant_slip = AdvectiveForcing(w=1)
-
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
+    set!(slip_velocity, 1)
     velocity_field_slip = AdvectiveForcing(w=slip_velocity)
     simple_forcing(x, y, z, t) = 0
 
