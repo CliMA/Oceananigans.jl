@@ -31,9 +31,12 @@ update_biogeochemical_state!(bgc, model) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
-    regularize_biogeochemistry(bgc, model) = AbstractBGCOrNothing
+    materialize_biogeochemistry(bgc, tracers)
 
 Check that bgc is correctly setup for the particular model configuration.
+"""
+@inlin materialize_biogeochemistry(bgc, tracers) = nothing
+
 """
     AbstractBiogeochemistry
 
