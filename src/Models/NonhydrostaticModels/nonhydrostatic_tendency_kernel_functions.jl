@@ -9,14 +9,6 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
 
-"return the ``x``-gradient of hydrostatic pressure"
-hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(grid)
-
-"return the ``y``-gradient of hydrostatic pressure"
-hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure) = ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
-
 """
     $(SIGNATURES)
 
@@ -57,7 +49,6 @@ pressure anomaly.
                                      auxiliary_fields,
                                      diffusivities,
                                      forcings,
-                                     hydrostatic_pressure,
                                      clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -71,7 +62,6 @@ pressure anomaly.
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
@@ -120,7 +110,6 @@ pressure anomaly.
                                      auxiliary_fields,
                                      diffusivities,
                                      forcings,
-                                     hydrostatic_pressure,
                                      clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -134,7 +123,6 @@ pressure anomaly.
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
@@ -198,6 +186,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
+             + z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
              + forcings.w(i, j, k, grid, clock, model_fields))
 end
 

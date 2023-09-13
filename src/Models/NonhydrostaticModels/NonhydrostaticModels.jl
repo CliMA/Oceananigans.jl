@@ -40,7 +40,6 @@ PressureSolver(arch, grid) = error("None of the implemented pressure solvers for
 #####
 
 include("nonhydrostatic_model.jl")
-include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
 include("set_nonhydrostatic_model.jl")
 
@@ -70,7 +69,6 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("solve_for_pressure.jl")
-include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")

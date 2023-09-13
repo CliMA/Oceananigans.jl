@@ -12,9 +12,9 @@ function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
-    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
+    solve_for_pressure!(model.pressure, model.pressure_solver, Δt, model.velocities)
 
-    fill_halo_regions!(model.pressures.pNHS)
+    fill_halo_regions!(model.pressure)
 
     return nothing
 end
@@ -28,12 +28,12 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 
     `u^{n+1} = u^n - δₓp_{NH} / Δx * Δt`
 """
-@kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
+@kernel function _pressure_correct_velocities!(U, grid, Δt, pressure)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pressure) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pressure) * Δt
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pressure) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
@@ -44,7 +44,7 @@ function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
             model.velocities,
             model.grid,
             Δt,
-            model.pressures.pNHS)
+            model.pressure)
     
     return nothing
 end

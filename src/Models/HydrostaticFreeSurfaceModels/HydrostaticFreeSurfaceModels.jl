@@ -106,6 +106,7 @@ step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagra
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("calculate_hydrostatic_free_surface_tendencies.jl")
+include("update_hydrostatic_pressure.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("store_hydrostatic_free_surface_tendencies.jl")

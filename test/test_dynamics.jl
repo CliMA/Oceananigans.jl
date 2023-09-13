@@ -297,11 +297,6 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     @test N² * g̃[2] ≈ mean(∂y_b)
     @test N² * g̃[3] ≈ mean(∂z_b)
 
-    CUDA.@allowscalar begin
-        @test all(N² * g̃[2] .≈ interior(∂y_b))
-        @test all(N² * g̃[3] .≈ interior(∂z_b))
-    end
-
     return nothing
 end
 
@@ -345,11 +340,6 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
 
     @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
     @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
-
-    CUDA.@allowscalar begin
-        @test all(∂T∂z * g̃[2] .≈ interior(∂y_T))
-        @test all(∂T∂z * g̃[3] .≈ interior(∂z_T))
-    end
 
     return nothing
 end

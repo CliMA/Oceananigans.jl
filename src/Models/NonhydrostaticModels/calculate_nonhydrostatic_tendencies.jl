@@ -60,7 +60,6 @@ function calculate_interior_tendency_contributions!(model)
     velocities           = model.velocities
     tracers              = model.tracers
     auxiliary_fields     = model.auxiliary_fields
-    hydrostatic_pressure = model.pressures.pHY′
     diffusivities        = model.diffusivity_fields
     forcings             = model.forcing
     clock                = model.clock
@@ -80,8 +79,8 @@ function calculate_interior_tendency_contributions!(model)
                                 auxiliary_fields,
                                 diffusivities)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, clock)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, clock)
     w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
     
     only_active_cells = use_only_active_cells(grid)

@@ -63,7 +63,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
-    pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    pressure_output = model -> parent(model.pressure)
     outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
@@ -109,7 +109,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
-    pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    pressure_output = model -> parent(model.pressure)
     outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
