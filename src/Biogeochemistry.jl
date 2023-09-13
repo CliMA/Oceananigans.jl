@@ -35,7 +35,7 @@ update_biogeochemical_state!(bgc, model) = nothing
 
 Check that bgc is correctly setup for the particular model configuration.
 """
-@inline materialize_biogeochemistry(bgc, tracers) = nothing
+@inline materialize_biogeochemistry(bgc, tracers) = bgc
 
 """
     AbstractBiogeochemistry
