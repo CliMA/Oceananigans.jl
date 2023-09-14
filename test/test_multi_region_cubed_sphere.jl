@@ -4,7 +4,7 @@ include("data_dependencies.jl")
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_velocity_halos!
+using Oceananigans.Fields: replace_horizontal_vector_halos!
 
 function get_range_of_indices(operation, index, Nx, Ny)
 
