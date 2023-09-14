@@ -2,7 +2,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 
 using DocStringExtensions
 
-import Oceananigans.Fields: replace_horizontal_velocity_halos!
+import Oceananigans.Fields: replace_horizontal_vector_halos!
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
@@ -90,10 +90,10 @@ end
 const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}
 
 # TODO: move prescribed velocity field stuff to Model/HydrostaticFreeSurfaceModels/prescribed_velocity_fields.jl
-replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::AbstractGrid; kw...) = nothing
-replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::SpherePanelGrid; kw...) = nothing
+replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::AbstractGrid; kw...) = nothing
+replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::SpherePanelGrid; kw...) = nothing
 
-function replace_horizontal_velocity_halos!(velocities, grid::SpherePanelGrid; signed=true)
+function replace_horizontal_vector_halos!(velocities, grid::SpherePanelGrid; signed=true)
     u, v, _ = velocities
 
     ubuff = u.boundary_buffers

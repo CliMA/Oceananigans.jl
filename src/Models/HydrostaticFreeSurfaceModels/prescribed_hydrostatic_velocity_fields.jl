@@ -23,7 +23,10 @@ end
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
 """
-    PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing)
+    PrescribedVelocityFields(; u = ZeroField(),
+                               v = ZeroField(),
+                               w = ZeroField(),
+                               parameters = nothing)
 
 Builds `PrescribedVelocityFields` with prescribed functions `u`, `v`, and `w`.
 
@@ -64,7 +67,7 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     fill_halo_regions!(v)
     fill_halo_regions!(w)
     prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_velocity_halos!(prescribed_velocities, grid)
+    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
