@@ -236,8 +236,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                     fill_halo_regions!($(Symbol(field₂)))
 
                     @apply_regionally replace_horizontal_vector_halos!((; u = $(Symbol(field₁)),
-                                                                            v = $(Symbol(field₂)),
-                                                                            w = nothing), $(grid), signed=false)
+                                                                          v = $(Symbol(field₂)),
+                                                                          w = nothing), $(grid), signed=false)
                 end
             end
 
