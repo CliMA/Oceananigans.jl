@@ -30,6 +30,10 @@ const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
 
+# Convenience
+@inline Base.getindex(mrg::MultiRegionGrids, r)  = getregion(mrg, r)
+@inline Base.first(mrg::MultiRegionGrids)  = mrg[1]
+
 @inline getdevice(mrg::ImmersedMultiRegionGrid, i)       = getdevice(mrg.underlying_grid.region_grids, i)
 @inline switch_device!(mrg::ImmersedMultiRegionGrid, i)  = switch_device!(getdevice(mrg.underlying_grid, i))
 @inline devices(mrg::ImmersedMultiRegionGrid)            = devices(mrg.underlying_grid.region_grids)
