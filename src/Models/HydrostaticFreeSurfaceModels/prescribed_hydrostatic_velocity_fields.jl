@@ -64,7 +64,7 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     fill_halo_regions!(v)
     fill_halo_regions!(w)
     prescribed_velocities = (; u, v, w)
-    @apply_regionally replace_horizontal_velocity_halos!(prescribed_velocities, grid)
+    @apply_regionally replace_horizontal_vector_halos!(prescribed_velocities, grid)
 
     return PrescribedVelocityFields(u, v, w, parameters)
 end
