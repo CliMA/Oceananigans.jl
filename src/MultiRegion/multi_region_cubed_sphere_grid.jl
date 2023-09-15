@@ -442,4 +442,6 @@ function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT,
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
+radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
+
 grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
