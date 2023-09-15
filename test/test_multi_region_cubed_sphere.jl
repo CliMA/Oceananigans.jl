@@ -304,7 +304,7 @@ end
             for _ in 1:2
                 fill_halo_regions!(u)
                 fill_halo_regions!(v)
-                @apply_regionally replace_horizontal_velocity_halos!((; u, v, w = nothing), grid)
+                @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
             end
 
             Hx, Hy, Hz = halo_size(u.grid)
