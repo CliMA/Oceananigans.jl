@@ -108,7 +108,7 @@ panel = 6
 
 θᵢ(λ, φ, z) = θ₀ * exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2δR^2) +
               θ₀ * exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) + 
+              θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) +
               θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
 
 Δφ = 20
@@ -147,45 +147,23 @@ for region in 1:6
     push!(Θₙ, @lift parent(getregion(tracer_fields[$n], region)[:, :, grid.Nz]))
 end
 
-using GeoMakie
-using Oceananigans.Utils: get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices, apply_regionally!
+# nee to have Imaginocean.jl installed
+# using Pkg
+# Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 
-# TODO: import from Imaginocean.jl
-function heatlatlon!(ax::Axis, field, k=1; kwargs...)
-
-    LX, LY, LZ = location(field)
-
-    grid = field.grid
-    _, (λvertices, φvertices) = get_lat_lon_nodes_and_vertices(grid, LX(), LY(), LZ())
-
-    quad_points = vcat([Point2.(λvertices[:, i, j], φvertices[:, i, j]) for i in axes(λvertices, 2), j in axes(λvertices, 3)]...)
-    quad_faces = vcat([begin; j = (i-1) * 4 + 1; [j j+1  j+2; j+2 j+3 j]; end for i in 1:length(quad_points)÷4]...)
-
-    colors_per_point = vcat(fill.(vec(interior(field, :, :, k)), 4)...)
-
-    mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = false, kwargs...)
-
-    xlims!(ax, (-180, 180))
-    ylims!(ax, (-90, 90))
-
-    return ax
-end
-
-heatlatlon!(ax::Axis, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatlatlon!, ax, field, k; kwargs...)
-heatlatlon!(ax::Axis, field::Observable{<:CubedSphereField}, k=1; kwargs...) = apply_regionally!(heatlatlon!, ax, field.val, k; kwargs...)
+using Imaginocean, GeoMakie
 
 Θₙ = @lift tracer_fields[$n]
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
-#ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-ax = Axis(fig[1, 1])
+ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, Θₙ, colorrange=(0, 0.5θ₀))
 
 fig
 
 frames = 1:length(tracer_fields)
 
-GLMakie.record(fig, "multi_region_tracer_advection_latlon.mp4", frames, framerate = 12) do i
+GLMakie.record(fig, "cubedsphere_tracer_advection.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
     Θₙ[] = tracer_fields[i]
     heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
