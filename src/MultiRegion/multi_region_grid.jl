@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
+import Oceananigans.Grids: minimum_spacing, destantiate
 import Oceananigans.Distributed: reconstruct_global_grid
 
 struct MultiRegionGrid{FT, TX, TY, TZ, P, C, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
@@ -33,6 +34,18 @@ const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 # Convenience
 @inline Base.getindex(mrg::MultiRegionGrids, r)  = getregion(mrg, r)
 @inline Base.first(mrg::MultiRegionGrids)  = mrg[1]
+@inline Base.lastindex(mrg::MultiRegionGrids)  = length(mrg)
+
+function minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+
+    min_Δ = Inf
+    for region in 1:lastindex(grid)
+        min_Δ = min(min_Δ, minimum_spacing(dir, grid[region], ℓx, ℓy, ℓz))
+    end
+
+    return min_Δ
+end
 
 @inline getdevice(mrg::ImmersedMultiRegionGrid, i)       = getdevice(mrg.underlying_grid.region_grids, i)
 @inline switch_device!(mrg::ImmersedMultiRegionGrid, i)  = switch_device!(getdevice(mrg.underlying_grid, i))
