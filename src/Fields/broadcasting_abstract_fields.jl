@@ -54,23 +54,45 @@ end
 end
 
 # Interface for getting AbstractOperation right
-broadcasted_to_abstract_operation(loc, grid, a) = a
+@inline broadcasted_to_abstract_operation(loc, grid, a) = a
 
 # Broadcasting with interpolation breaks Base's default rules,
 # so we bypass the infrastructure for checking axes compatibility,
 # and head straight to copyto! from materialize!.
-@inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
-                                    dest::Field,
-                                    bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
+@inline function Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
+                                             dest::Field,
+                                             bc::Broadcasted{<:FieldBroadcastStyle})
+
+    return copyto!(dest, convert(Broadcasted{Nothing}, bc))
+end
 
 @inline function Base.copyto!(dest::Field, bc::Broadcasted{Nothing})
 
     grid = dest.grid
     arch = architecture(dest)
-
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
-
     launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
 
     return dest
 end
+
+#=
+# TODO: cubed sphere br
+@inline function Base.copyto!(dest::CubedSphereField, bc::Broadcasted{Nothing})
+
+    for region = 1:6
+        # getregion...
+
+        grid = dest.grid
+        arch = architecture(dest)
+        region_bc = bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
+
+        bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
+
+        launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
+
+        return dest
+    end
+end
+=#
+
