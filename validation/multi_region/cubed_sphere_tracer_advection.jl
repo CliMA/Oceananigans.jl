@@ -1,13 +1,9 @@
-using Oceananigans
+using Oceananigans, Printf
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-
-using Printf
-using GLMakie
-GLMakie.activate!()
 
 Nx = 30
 Ny = 30
@@ -29,14 +25,11 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 ψ = Field{Face, Face, Center}(grid)
-u = XFaceField(grid)
-v = YFaceField(grid)
 
 # Here we avoid set! (which also isn't implemented btw) because we would like
 # to manually determine the streamfunction within halo regions. This allows us
 # to avoid having to fill_halo_regions correctly for a Face, Face, Center field.
 for region in 1:6
-
     region_grid = getregion(grid, region)
 
     i₀ = 1
@@ -52,6 +45,9 @@ for region in 1:6
         getregion(ψ, region)[i, j, k] = ψᵣ(λ, φ, 0)
     end
 end
+
+u = XFaceField(grid)
+v = YFaceField(grid)
 
 # What we want eventually:
 # u .= - ∂y(ψ)
@@ -73,7 +69,10 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = :θ,
                                     buoyancy = nothing)
 
-# Initial condition for tracer:
+# Initial condition for tracer
+
+#=
+
 # 4 Gaussians with width δR (degrees) and magnitude θ₀
 δR = 2
 θ₀ = 1
@@ -110,6 +109,7 @@ panel = 6
               θ₀ * exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2δR^2) +
               θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) +
               θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
+=#
 
 Δφ = 20
 θᵢ(λ, φ, z) = cosd(4λ) * exp(-φ^2 / 2Δφ^2)
@@ -151,7 +151,7 @@ end
 # using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 using Imaginocean
 
-using GLMakie
+using GLMakie, GeoMakie
 
 Θₙ = @lift tracer_fields[$n]
 
@@ -163,7 +163,7 @@ fig
 
 frames = 1:length(tracer_fields)
 
-GLMakie.record(fig, "cubedsphere_tracer_advection.mp4", frames, framerate = 12) do i
+GLMakie.record(fig, "cubed_sphere_tracer_advection.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
     Θₙ[] = tracer_fields[i]
     heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
