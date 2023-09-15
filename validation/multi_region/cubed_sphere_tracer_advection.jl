@@ -3,8 +3,7 @@ using Oceananigans
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_velocity_halos!
-using Oceananigans.Operators: Δyᶜᶠᶜ, Δxᶠᶜᶜ, ∂yᶠᶜᶜ, ∂xᶜᶠᶜ
+using Oceananigans.Fields: replace_horizontal_vector_halos!
 
 using Printf
 using GLMakie
@@ -13,19 +12,20 @@ GLMakie.activate!()
 Nx = 30
 Ny = 30
 Nz = 1
-radius = R = 1
-U = 1
+
+R = 1 # sphere's radius
+U = 1 # velocity scale
 
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   z = (-1, 0),
-                                  radius, 
+                                  radius = R,
                                   horizontal_direction_halo = 6,
                                   partition = CubedSpherePartition(; R = 1))
 
 
 # Solid body rotation
-φʳ = π/2      # Latitude pierced by the axis of rotation
-α  = π/2 - φʳ # Angle between axis of rotation and north pole
+φʳ = 0        # Latitude pierced by the axis of rotation
+α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 ψ = Field{Face, Face, Center}(grid)
@@ -79,8 +79,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
 θ₀ = 1
 
 # Gaussian 1
-i₁ = 1 #3Nx÷4 + 1
-j₁ = 1 #Ny÷4 + 1
+i₁ = 1
+j₁ = 1
 panel = 1
 λ₁ = λnode(i₁, j₁, grid[panel], Center(), Center())
 φ₁ = φnode(i₁, j₁, grid[panel], Center(), Center())
@@ -111,14 +111,17 @@ panel = 6
               θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) + 
               θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
 
+Δφ = 20
+θᵢ(λ, φ, z) = cosd(4λ) * exp(-φ^2 / 2Δφ^2)
+
 set!(model, θ = θᵢ)
 
-# TODO: estimate time-step by calculating minimum grid spacing
-Δx = minimum_xspacing(first(grid)) # all panels are the same
-Δy = minimum_yspacing(first(grid)) # all panels are the same
-Δh = min(Δx, Δy)
-Δt = 0.2 * Δh / U # CFL for tracer advection
-stop_time = 2π
+# estimate time-step from the minimum grid spacing
+Δx = minimum_xspacing(grid)
+Δy = minimum_yspacing(grid)
+Δt = 0.2 * min(Δx, Δy) / U # CFL for tracer advection
+
+stop_time = 2π * U / R
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -144,6 +147,9 @@ for region in 1:6
     push!(Θₙ, @lift parent(getregion(tracer_fields[$n], region)[:, :, grid.Nz]))
 end
 
+using GeoMakie
+using Oceananigans.Utils: get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices, apply_regionally!
+
 # TODO: import from Imaginocean.jl
 function heatlatlon!(ax::Axis, field, k=1; kwargs...)
 
@@ -168,11 +174,6 @@ end
 heatlatlon!(ax::Axis, field::CubedSphereField, k=1; kwargs...) = apply_regionally!(heatlatlon!, ax, field, k; kwargs...)
 heatlatlon!(ax::Axis, field::Observable{<:CubedSphereField}, k=1; kwargs...) = apply_regionally!(heatlatlon!, ax, field.val, k; kwargs...)
 
-using GeoMakie
-using Oceananigans.Utils: get_lat_lon_nodes_and_vertices, get_cartesian_nodes_and_vertices, apply_regionally!
-
-n = Observable(1)
-
 Θₙ = @lift tracer_fields[$n]
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
@@ -187,6 +188,5 @@ frames = 1:length(tracer_fields)
 GLMakie.record(fig, "multi_region_tracer_advection_latlon.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
     Θₙ[] = tracer_fields[i]
-    heatlatlon!(ax, Θₙ, colorrange=(0, 0.5θ₀))
+    heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
 end
-
