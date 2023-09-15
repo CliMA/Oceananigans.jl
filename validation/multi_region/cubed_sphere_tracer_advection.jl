@@ -147,11 +147,11 @@ for region in 1:6
     push!(Θₙ, @lift parent(getregion(tracer_fields[$n], region)[:, :, grid.Nz]))
 end
 
-# nee to have Imaginocean.jl installed
-# using Pkg
-# Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+# install Imaginocean.jl from GitHub
+# using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+using Imaginocean
 
-using Imaginocean, GeoMakie
+using GLMakie
 
 Θₙ = @lift tracer_fields[$n]
 
