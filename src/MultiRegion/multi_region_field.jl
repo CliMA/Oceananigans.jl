@@ -181,7 +181,7 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
 end
 
 function Base.show(io::IO, field::MultiRegionField)
-    bcs = field.boundary_conditions
+    bcs = getregion(field, 1).boundary_conditions
 
     prefix =
         string("$(summary(field))\n",
