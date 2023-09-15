@@ -74,4 +74,3 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     return dest
 end
-
