@@ -39,10 +39,7 @@ const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 function minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
 
-    min_Δ = Inf
-    for region in 1:lastindex(grid)
-        min_Δ = min(min_Δ, minimum_spacing(dir, grid[region], ℓx, ℓy, ℓz))
-    end
+    min_Δ = minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r=1:lastindex(grid))
 
     return min_Δ
 end
