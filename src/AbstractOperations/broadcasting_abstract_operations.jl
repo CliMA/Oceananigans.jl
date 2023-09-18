@@ -14,4 +14,3 @@ const BroadcastedIdentity = Broadcasted{<:Any, <:Any, typeof(identity), <:Any}
     abstract_op = bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
     return interpolate_operation(loc, abstract_op) # For "stubborn" BinaryOperations
 end
-
