@@ -4,6 +4,8 @@ using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
+using Base: @propagate_inbounds
+
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
@@ -118,8 +120,8 @@ end
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
-set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!, mrf, f)
-set!(u::MultiRegionField, v::MultiRegionField)  = apply_regionally!(set!, u, v)
+set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
  
 # Disambiguation (same as computed_field.jl:64)
@@ -199,3 +201,7 @@ end
 
 xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
 ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = ynodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
+
+# Convenience
+@propagate_inbounds Base.getindex(mrf::MultiRegionField, r::Int) = getregion(mrf, r)
+@propagate_inbounds Base.lastindex(mrf::MultiRegionField) = lastindex(mrf.grid)
