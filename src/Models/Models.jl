@@ -25,15 +25,15 @@ import Oceananigans.TimeSteppers: reset!
 function reset!(model::AbstractModel)
 
     for field in fields(model)
-        fill!(field, zero(model.grid))
+        fill!(field, 0)
     end
 
     for field in model.timestepper.G⁻
-        fill!(field, zero(model.grid))
+        fill!(field, 0)
     end
 
     for field in model.timestepper.Gⁿ
-        fill!(field, zero(model.grid))
+        fill!(field, 0)
     end
     
     return nothing
