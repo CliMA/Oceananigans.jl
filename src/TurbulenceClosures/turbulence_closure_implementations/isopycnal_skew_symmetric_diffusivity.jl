@@ -1,15 +1,15 @@
-struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L} <: AbstractTurbulenceClosure{TD, 1}
+struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L, N} <: AbstractTurbulenceClosure{TD, N}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M
              slope_limiter :: L
     
-    function IsopycnalSkewSymmetricDiffusivity{TD}(κ_skew :: K,
-                                                   κ_symmetric :: S,
-                                                   isopycnal_tensor :: I,
-                                                   slope_limiter :: L) where {TD, K, S, I, L}
+    function IsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew :: K,
+                                                      κ_symmetric :: S,
+                                                      isopycnal_tensor :: I,
+                                                      slope_limiter :: L) where {TD, K, S, I, L, N}
 
-        return new{TD, K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
+        return new{TD, K, S, I, L, N}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
     end
 end
 
@@ -36,12 +36,13 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                           slope_limiter = FluxTapering(1e-2)) where TD
+                                           slope_limiter = FluxTapering(1e-2),
+                                           required_halo_size = 1) where TD
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return IsopycnalSkewSymmetricDiffusivity{TD}(convert_diffusivity(FT, κ_skew),
+    return IsopycnalSkewSymmetricDiffusivity{TD, required_halo_size}(convert_diffusivity(FT, κ_skew),
                                                  convert_diffusivity(FT, κ_symmetric),
                                                  isopycnal_tensor,
                                                  slope_limiter)
