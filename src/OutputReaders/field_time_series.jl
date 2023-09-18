@@ -8,8 +8,10 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
+using Oceananigans.Units: Time
+
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
 
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
@@ -223,6 +225,34 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
     field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
     return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
+end
+
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, time_index::Time)
+    Ntimes = length(fts.times)
+    time = time_index.time
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
+    if n₁ == n₂ # no interpolation
+        return fts[n₁]
+    end
+    
+    # fractional index
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    return compute!(Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n)))
+end
+
+# Linear time interpolation
+function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
+    Ntimes = length(fts.times)
+    time = time_index.time
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
+
+    # fractional index
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    fts_interpolated = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
+
+    # Don't interpolate if n = 0.
+    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), fts_interpolated)
 end
 
 #####
