@@ -49,7 +49,6 @@ end
 function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
                                                           κ_parameters = tuple(:xyz)) 
 
-    grid = model.grid
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
