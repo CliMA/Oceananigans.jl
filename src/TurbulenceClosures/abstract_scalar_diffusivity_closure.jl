@@ -55,9 +55,11 @@ Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
 function diffusivity end 
 
+const c = Center()
+
 # Fallback locations
-@inline viscosity_location(::AbstractScalarDiffusivity) = (Center(), Center(), Center())
-@inline diffusivity_location(::AbstractScalarDiffusivity) = (Center(), Center(), Center())
+@inline viscosity_location(::AbstractScalarDiffusivity) = (c, c, c)
+@inline diffusivity_location(::AbstractScalarDiffusivity) = (c, c, c)
 
 # For tuples (note that kernel functions are "untupled", so these are for the user API)
 viscosity(closure::Tuple, K) = Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure))

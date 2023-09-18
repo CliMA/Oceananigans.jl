@@ -1,18 +1,18 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity
+
+using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location
+
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
+                                       viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
+                                       viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
 
 for closure in closures
     @eval begin
         using Oceananigans.TurbulenceClosures: $closure
     end
-end
-
-function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
-    closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
-    return closure.ν == ν && closure.κ.T == κ
 end
 
 function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7))
@@ -21,15 +21,15 @@ function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7
 end
 
 function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3), κ=FT(0.7))
-          arch = CPU()
-       closure = ScalarDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
-          grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+    arch       = CPU()
+    closure    = ScalarDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
+    grid       = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(grid)
-       tracers = TracerFields((:T, :S), grid)
-         clock = Clock(time=0.0)
+    tracers    = TracerFields((:T, :S), grid)
+    clock      = Clock(time=0.0)
 
     u, v, w = velocities
-       T, S = tracers
+    T, S = tracers
 
     for k in 1:4
         interior(u)[:, 1, k] .= [0, -1/2, 0]
@@ -118,6 +118,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
         time_step!(model, 1, euler=true)
     end
+
     return true
 end
 
@@ -212,12 +213,25 @@ end
             @test ν_dx_u[1, 1, 1] == 0.0
             @test κ_dx_c[1, 1, 1] == 0.0
         end
+
+        c = Center()
+        f = Face()
+        ri_based = RiBasedVerticalDiffusivity()
+        @test viscosity_location(ri_based) == (c, c, f)
+        @test diffusivity_location(ri_based) == (c, c, f)
+
+        catke = CATKEVerticalDiffusivity()
+        @test viscosity_location(catke) == (c, c, f)
+        @test diffusivity_location(catke) == (c, c, f)
     end
 
     @testset "ScalarDiffusivity" begin
         @info "  Testing ScalarDiffusivity..."
         for T in float_types
-            @test constant_isotropic_diffusivity_basic(T)
+            ν, κ = 0.3, 0.7
+            closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
+            @test closure.ν == T(ν)
+            @test closure.κ.T == T(κ)
             run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
     end
@@ -243,26 +257,24 @@ end
     @testset "Time-stepping with CATKE closure" begin
         @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
-            warning = false
-
             @info "    Testing time-stepping CATKE by itself..."
-            closure = CATKEVerticalDiffusivity(; warning)
+            closure = CATKEVerticalDiffusivity()
             run_time_step_with_catke_tests(arch, closure)
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (CATKEVerticalDiffusivity(; warning), HorizontalScalarDiffusivity())
+            closure = (CATKEVerticalDiffusivity(), HorizontalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[1]
 
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning))
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
-            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning), VerticalScalarDiffusivity())
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(), VerticalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
         end
