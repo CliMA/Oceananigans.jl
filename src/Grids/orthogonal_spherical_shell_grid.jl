@@ -608,17 +608,18 @@ end
 
 Fill the `x`-halo regions of the `metric` with halo size `Hx`, `Hy` and `topo`logy.
 """
-function fill_metric_halo_regions_x!(metric, ::BoundedTopology, Hx, Hy)
-    m = parent(metric)
-    Mx, My = size(m)
+function fill_metric_halo_regions_x!(metric, ℓx, ℓy, TX::BoundedTopology, TY, Nx, Ny, Hx, Hy)
+    Nxₜₒₜₐₗ, Nyₜₒₜₐₗ = total_length(ℓx, TX, Nx, 0), total_length(ℓy, TY, Ny, 0)
 
     @inbounds begin
-        for j in My-Hy:-1:Hy+1
-            for i in Hx:-1:1
-                m[i, j] = m[i+1, j]
+        for j in 1:Nyₜₒₜₐₗ
+            #fill left halos
+            for i in 0:-1:-Hx+1
+                metric[i, j] = metric[i+1, j]
             end
-            for i in Mx-Hx+1:Mx
-                m[i, j] = m[i-1, j]
+            #fill right halos
+            for i in Nxₜₒₜₐₗ+1:Nxₜₒₜₐₗ+Hx
+                metric[i, j] = metric[i-1, j]
             end
         end
     end
@@ -626,17 +627,18 @@ function fill_metric_halo_regions_x!(metric, ::BoundedTopology, Hx, Hy)
     return nothing
 end
 
-function fill_metric_halo_regions_x!(metric, ::AbstractTopology, Hx, Hy)
-    m = parent(metric)
-    Mx, My = size(m)
+function fill_metric_halo_regions_x!(metric, ℓx, ℓy, TX::AbstractTopology, TY, Nx, Ny, Hx, Hy)
+    Nxₜₒₜₐₗ, Nyₜₒₜₐₗ = total_length(ℓx, TX, Nx, 0), total_length(ℓy, TY, Ny, 0)
 
     @inbounds begin
-        for j in My-Hy:-1:Hy+1
-            for i in Hx:-1:1
-                m[i, j] = m[Mx-2Hx+i, j]
+        for j in 1:Nyₜₒₜₐₗ
+            #fill left halos
+            for i in 0:-1:-Hx+1
+                metric[i, j] = metric[Nxₜₒₜₐₗ+i, j]
             end
-            for i in Mx-Hx+1:Mx
-                m[i, j] = m[i-Mx+2Hx, j]
+            #fill right halos
+            for i in Nxₜₒₜₐₗ+1:Nxₜₒₜₐₗ+Hx
+                metric[i, j] = metric[i-Nxₜₒₜₐₗ, j]
             end
         end
     end
@@ -649,17 +651,18 @@ end
 
 Fill the `y`-halo regions of the `metric` with halo size `Hx`, `Hy` and `topo`logy.
 """
-function fill_metric_halo_regions_y!(metric, ::BoundedTopology, Hx, Hy)
-    m = parent(metric)
-    Mx, My = size(m)
+function fill_metric_halo_regions_y!(metric, ℓx, ℓy, TX, TY::BoundedTopology, Nx, Ny, Hx, Hy)
+    Nxₜₒₜₐₗ, Nyₜₒₜₐₗ = total_length(ℓx, TX, Nx, 0), total_length(ℓy, TY, Ny, 0)
 
     @inbounds begin
-        for i in Mx-Hx:-1:Hx+1
-            for j in Hy:-1:1
-                m[i, j] = m[i, j+1]
+        for i in 1:Nxₜₒₜₐₗ
+            #fill left halos
+            for j in 0:-1:-Hy+1
+                metric[i, j] = metric[i, j+1]
             end
-            for j in My-Hy+1:My
-                m[i, j] = m[i, j-1]
+            #fill right halos
+            for j in Nyₜₒₜₐₗ+1:Nyₜₒₜₐₗ+Hy
+                metric[i, j] = metric[i, j-1]
             end
         end
     end
@@ -667,17 +670,18 @@ function fill_metric_halo_regions_y!(metric, ::BoundedTopology, Hx, Hy)
     return nothing
 end
 
-function fill_metric_halo_regions_y!(metric, ::AbstractTopology, Hx, Hy)
-    m = parent(metric)
-    Mx, My = size(m)
+function fill_metric_halo_regions_y!(metric, ℓx, ℓy, TX, TY::AbstractTopology, Nx, Ny, Hx, Hy)
+    Nxₜₒₜₐₗ, Nyₜₒₜₐₗ = total_length(ℓx, TX, Nx, 0), total_length(ℓy, TY, Ny, 0)
 
     @inbounds begin
-        for i in Mx-Hx:-1:Hx+1
-            for j in Hy:-1:1
-                m[i, j] = m[i, My-2Hy+j]
+        for i in 1:Nxₜₒₜₐₗ
+            #fill left halos
+            for j in 0:-1:-Hy+1
+                metric[i, j] = metric[i, Nyₜₒₜₐₗ+j]
             end
-            for j in My-Hy+1:My
-                m[i, j] = m[i, j-My+2Hy]
+            #fill right halos
+            for j in Nyₜₒₜₐₗ+1:Nyₜₒₜₐₗ+Hy
+                metric[i, j] = metric[i, j-Nyₜₒₜₐₗ]
             end
         end
     end
@@ -693,22 +697,21 @@ We choose to fill with the average of the neighboring metric in the halo regions
 Thus this requires that the metric in the `x`- and `y`-halo regions have
 already been filled.
 """
-function fill_metric_halo_corner_regions!(metric, Hx, Hy)
-    m = parent(metric)
-    Mx, My = size(m)
+function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, TX, TY, Nx, Ny, Hx, Hy)
+    Nxₜₒₜₐₗ, Nyₜₒₜₐₗ = total_length(ℓx, TX, Nx, 0), total_length(ℓy, TY, Ny, 0)
 
     @inbounds begin
-        for j in Hy:-1:1, i in Hx:-1:1
-            m[i, j] = (m[i+1, j] + m[i, j+1]) / 2
+        for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
+            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
         end
-        for j in My-Hy+1:My, i in Hx:-1:1
-            m[i, j] = (m[i+1, j] + m[i, j-1]) / 2
+        for j in Nyₜₒₜₐₗ+1:Nyₜₒₜₐₗ+Hy, i in 0:-1:-Hx+1
+            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
         end
-        for j in Hy:-1:1, i in Mx-Hx+1:Mx
-            m[i, j] = (m[i-1, j] + m[i, j+1]) / 2
+        for j in 0:-1:-Hy+1, i in Nxₜₒₜₐₗ+1:Nxₜₒₜₐₗ+Hx
+            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
         end
-        for j in My-Hy+1:My, i in Mx-Hx+1:Mx
-            m[i, j] = (m[i-1, j] + m[i, j-1]) / 2
+        for j in Nyₜₒₜₐₗ+1:Nyₜₒₜₐₗ+Hy, i in Nxₜₒₜₐₗ+1:Nxₜₒₜₐₗ+Hx
+            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
         end
     end
 
@@ -716,18 +719,21 @@ function fill_metric_halo_corner_regions!(metric, Hx, Hy)
 end
 
 function fill_metric_halo_regions!(grid)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-    TX, TY, TZ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    TX, TY, _ = topology(grid)
 
     metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
                      grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
-    for metric in metric_arrays
-        fill_metric_halo_regions_x!(metric, TX(), Hx, Hy)
-        fill_metric_halo_regions_y!(metric, TY(), Hx, Hy)
-        fill_metric_halo_corner_regions!(metric, Hx, Hy)
+    LXs = (Center, Face, Center, Face, Center, Center, Face, Face, Center, Face, Center, Face)
+    LYs = (Center, Center, Face, Face, Center, Face, Center, Face, Center, Center, Face, Face)
+
+    for (metric, LX, LY) in zip(metric_arrays, LXs, LYs)
+        fill_metric_halo_regions_x!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
+        fill_metric_halo_regions_y!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
+        fill_metric_halo_corner_regions!(metric, LX(), LY(), TX(), TY(),Nx, Ny, Hx, Hy)
     end
 
     return nothing
