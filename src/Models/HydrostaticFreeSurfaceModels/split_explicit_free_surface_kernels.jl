@@ -49,10 +49,10 @@ const μ = 1.0 - δ - γ - ϵ
 
 # Enforce NoFlux conditions for `η★`
 
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, 0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, 0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, 0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, 0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
 
 # Enforce Impenetrability conditions for `U★` and `V★`
 
@@ -239,9 +239,9 @@ function initialize_free_surface_state!(free_surface_state, η)
     parent(state.ηᵐ⁻¹) .= parent(η)
     parent(state.ηᵐ⁻²) .= parent(η)
 
-    fill!(state.η̅, 0.0)
-    fill!(state.U̅, 0.0)
-    fill!(state.V̅, 0.0)
+    fill!(state.η̅, 0)
+    fill!(state.U̅, 0)
+    fill!(state.V̅, 0)
 end
 
 @kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
@@ -265,7 +265,9 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+
+    return nothing
 end
 
 @kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ::FT) where FT

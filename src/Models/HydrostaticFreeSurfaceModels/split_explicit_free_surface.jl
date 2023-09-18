@@ -348,7 +348,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 function reset!(sefs::SplitExplicitFreeSurface)
     for name in propertynames(sefs.state)
         var = getproperty(sefs.state, name)
-        fill!(var, 0.0)
+        fill!(var, 0)
     end
 
     fill!(sefs.auxiliary.Gᵁ, 0)
