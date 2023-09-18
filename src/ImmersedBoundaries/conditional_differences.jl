@@ -89,11 +89,3 @@ end
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, conditional_V_cfc,  ibg, V★, args...)
 @inline ∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂xᶠᶜᶠ_c(i, j, k, ibg, c★, args...)
 @inline ∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂yᶜᶠᶠ_c(i, j, k, ibg, c★, args...)        
-
-# Disambiguation
-for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
-    @eval begin
-        @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, conditional_U_fcc, ibg, U★, args...)
-        @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, conditional_V_cfc, ibg, V★, args...)
-    end
-end
