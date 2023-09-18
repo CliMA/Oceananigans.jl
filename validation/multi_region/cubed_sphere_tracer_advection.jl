@@ -30,7 +30,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 # to manually determine the streamfunction within halo regions. This allows us
 # to avoid having to fill_halo_regions correctly for a Face, Face, Center field.
 for region in 1:6
-    region_grid = getregion(grid, region)
+    region_grid = grid[region]
 
     i₀ = 1
     i⁺ = Nx + 1
@@ -42,7 +42,7 @@ for region in 1:6
     for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
         λ = λnode(i, j, k, region_grid, Face(), Face(), Center())
         φ = φnode(i, j, k, region_grid, Face(), Face(), Center())
-        getregion(ψ, region)[i, j, k] = ψᵣ(λ, φ, 0)
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
 end
 
@@ -54,9 +54,9 @@ v = YFaceField(grid)
 # v .= + ∂x(ψ)
 
 for region in 1:6
-    region_ψ = getregion(ψ, region)
-    region_u = getregion(u, region)
-    region_v = getregion(v, region)
+    region_ψ = ψ[region]
+    region_u = u[region]
+    region_v = v[region]
 
     region_u .= - ∂y(region_ψ)
     region_v .= + ∂x(region_ψ)
@@ -111,8 +111,9 @@ panel = 6
               θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
 =#
 
+θ₀ = 1
 Δφ = 20
-θᵢ(λ, φ, z) = cosd(4λ) * exp(-φ^2 / 2Δφ^2)
+θᵢ(λ, φ, z) = θ₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
 
 set!(model, θ = θᵢ)
 
@@ -140,24 +141,19 @@ run!(simulation)
 
 @info "Making an animation from the saved data..."
 
-n = Observable(1)
-
-Θₙ = []
-for region in 1:6
-    push!(Θₙ, @lift parent(getregion(tracer_fields[$n], region)[:, :, grid.Nz]))
-end
-
 # install Imaginocean.jl from GitHub
 # using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 using Imaginocean
 
 using GLMakie, GeoMakie
 
+n = Observable(1)
+
 Θₙ = @lift tracer_fields[$n]
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-heatlatlon!(ax, Θₙ, colorrange=(0, 0.5θ₀))
+heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
 
 fig
 
