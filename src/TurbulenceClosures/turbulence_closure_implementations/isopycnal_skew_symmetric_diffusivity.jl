@@ -51,10 +51,10 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::ISSD{TD}) where TD
+function with_tracers(tracers, closure::ISSD{TD, N}) where {TD, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
-    return IsopycnalSkewSymmetricDiffusivity{TD}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
+    return IsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 # For ensembles of closures
