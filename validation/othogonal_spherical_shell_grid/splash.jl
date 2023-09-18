@@ -1,10 +1,11 @@
 using Oceananigans
+using.Oceananigans.Grids: conformal_cubed_sphere_panel
 using Oceananigans.Units
 using Rotations
 
 Nx, Ny, Nz = 64, 64, 4
 
-grid = OrthogonalSphericalShellGrid(size = (Nx, Ny, Nz),
+grid = conformal_cubed_sphere_panel(size = (Nx, Ny, Nz),
                                     z = (-1000, 0),
                                     topology=(Bounded, Bounded, Bounded),
                                     rotation = RotY(π/2))
