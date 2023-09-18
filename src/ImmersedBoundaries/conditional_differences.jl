@@ -6,6 +6,11 @@ import Oceananigans.Operators:
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
+import Oceananigans.Operators: 
+    δxᶠᵃᵃ_c, δyᵃᶠᵃ_c, 
+    δxᶜᵃᵃ_U, δyᵃᶜᵃ_V,
+    ∂xᶠᶜᶠ_c, ∂yᶜᶠᶠ_c
+
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
 # nodes involved in the difference is `immersed_inactive_node`.
@@ -69,5 +74,26 @@ for (d, ξ) in enumerate((:x, :y, :z))
             @inline $δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, args...)
             @inline $δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, f::Function, args...)
        end
+    end
+end
+
+# Topology-Aware Immersed Boundary Operators (Velocities are `0` on `peripheral_node`s and tracers should ensure no-flux on `inactive_node`s)
+
+@inline conditional_U_fcc(i, j, k, grid, ibg::IBG, U★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), U★(i, j, k, grid, args...))
+@inline conditional_V_cfc(i, j, k, grid, ibg::IBG, V★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), V★(i, j, k, grid, args...))
+
+@inline conditional_∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᶠᶜᶠ_c(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᶜᶠᶠ_c(i, j, k, ibg.underlying_grid, args...))
+
+@inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, conditional_U_fcc,  ibg, U★, args...)
+@inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, conditional_V_cfc,  ibg, V★, args...)
+@inline ∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂xᶠᶜᶠ_c(i, j, k, ibg, c★, args...)
+@inline ∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂yᶜᶠᶠ_c(i, j, k, ibg, c★, args...)        
+
+# Disambiguation
+for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
+    @eval begin
+        @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, conditional_U_fcc, ibg, U★, args...)
+        @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, conditional_V_cfc, ibg, V★, args...)
     end
 end

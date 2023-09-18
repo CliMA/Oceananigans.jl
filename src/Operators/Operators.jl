@@ -60,6 +60,9 @@ export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 
+export δxᶠᵃᵃ_c, δyᵃᶠᵃ_c, δxᶜᵃᵃ_U, δyᵃᶜᵃ_V, ∂xᶠᶜᶠ_η
+export ∂xᶠᶜᶠ_c, ∂yᶜᶠᶠ_c
+
 using Oceananigans.Grids
 
 import Oceananigans.Grids: xspacing, yspacing, zspacing
@@ -87,6 +90,7 @@ include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
 include("divergence_operators.jl")
+include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
