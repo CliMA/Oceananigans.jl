@@ -119,7 +119,7 @@ end
     @inbounds νₑ[i, j, k] = ς * (C * Δᶠ)^2 * sqrt(2Σ²)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = :xyz)
+function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy

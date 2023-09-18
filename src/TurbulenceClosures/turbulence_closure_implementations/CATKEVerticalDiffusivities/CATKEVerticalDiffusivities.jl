@@ -34,7 +34,7 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_flux,
     dissipation,
     add_closure_specific_boundary_conditions,
-    calculate_diffusivities!,
+    compute_diffusivities!,
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
@@ -237,7 +237,7 @@ const f = Face()
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid

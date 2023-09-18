@@ -2,7 +2,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.TurbulenceClosures: calculate_diffusivities!
+using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
@@ -53,7 +53,7 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p
     diffusivity = model.diffusivity_fields
 
     for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        calculate_diffusivities!(diffusivity, closure, model; parameters = κpar)
+        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model; parameters = ppar)
     end
     return nothing

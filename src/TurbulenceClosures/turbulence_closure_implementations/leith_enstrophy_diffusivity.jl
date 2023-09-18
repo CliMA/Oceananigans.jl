@@ -92,7 +92,7 @@ end
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
+function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities

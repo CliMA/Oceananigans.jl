@@ -22,7 +22,7 @@ export
     VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
-    calculate_diffusivities!,
+    compute_diffusivities!,
 
     viscosity, diffusivity,
 
@@ -68,7 +68,7 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
  
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional

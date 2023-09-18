@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.TurbulenceClosures: calculate_diffusivities!
+using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_velocity_halos!
@@ -71,7 +71,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
         compute_w_from_continuity!(model; parameters = wpar)
-        calculate_diffusivities!(diffusivity, closure, model; parameters = κpar)
+        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
                                     grid, model.buoyancy, model.tracers; 
                                     parameters = ppar)
