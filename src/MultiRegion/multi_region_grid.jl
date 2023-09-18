@@ -22,27 +22,27 @@ const ImmersedMultiRegionGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any,
 
 const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 
-@inline isregional(mrg::MultiRegionGrids)        = true
-@inline getdevice(mrg::MultiRegionGrid, i)       = getdevice(mrg.region_grids, i)
-@inline switch_device!(mrg::MultiRegionGrid, i)  = switch_device!(getdevice(mrg, i))
-@inline devices(mrg::MultiRegionGrid)            = devices(mrg.region_grids)
-@inline sync_all_devices!(mrg::MultiRegionGrid)  = sync_all_devices!(devices(mrg))
+@inline isregional(mrg::MultiRegionGrids)       = true
+@inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
+@inline switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+@inline devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
+@inline sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
 
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
 
 # Convenience
-@inline Base.getindex(mrg::MultiRegionGrids, r)  = getregion(mrg, r)
-@inline Base.first(mrg::MultiRegionGrids)  = mrg[1]
-@inline Base.lastindex(mrg::MultiRegionGrids)  = length(mrg)
+@inline Base.getindex(mrg::MultiRegionGrids, r::Int) = getregion(mrg, r)
+@inline Base.first(mrg::MultiRegionGrids) = mrg[1]
+@inline Base.lastindex(mrg::MultiRegionGrids) = length(mrg)
 
 minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
-    minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r=1:lastindex(grid))
+    minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r in 1:lastindex(grid))
 
-@inline getdevice(mrg::ImmersedMultiRegionGrid, i)       = getdevice(mrg.underlying_grid.region_grids, i)
-@inline switch_device!(mrg::ImmersedMultiRegionGrid, i)  = switch_device!(getdevice(mrg.underlying_grid, i))
-@inline devices(mrg::ImmersedMultiRegionGrid)            = devices(mrg.underlying_grid.region_grids)
-@inline sync_all_devices!(mrg::ImmersedMultiRegionGrid)  = sync_all_devices!(devices(mrg.underlying_grid))
+@inline getdevice(mrg::ImmersedMultiRegionGrid, i)      = getdevice(mrg.underlying_grid.region_grids, i)
+@inline switch_device!(mrg::ImmersedMultiRegionGrid, i) = switch_device!(getdevice(mrg.underlying_grid, i))
+@inline devices(mrg::ImmersedMultiRegionGrid)           = devices(mrg.underlying_grid.region_grids)
+@inline sync_all_devices!(mrg::ImmersedMultiRegionGrid) = sync_all_devices!(devices(mrg.underlying_grid))
 
 @inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
