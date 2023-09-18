@@ -1,7 +1,7 @@
 using Oceananigans, Printf
 
 using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion
+using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
@@ -29,9 +29,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 # Here we avoid set! (which also isn't implemented btw) because we would like
 # to manually determine the streamfunction within halo regions. This allows us
 # to avoid having to fill_halo_regions correctly for a Face, Face, Center field.
-for region in 1:6
-    region_grid = grid[region]
-
+for region in 1:number_of_regions(grid)
     i₀ = 1
     i⁺ = Nx + 1
     j₀ = 1
@@ -40,8 +38,8 @@ for region in 1:6
     k⁺ = Nz + 1
 
     for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
-        λ = λnode(i, j, k, region_grid, Face(), Face(), Center())
-        φ = φnode(i, j, k, region_grid, Face(), Face(), Center())
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
 end
@@ -53,13 +51,9 @@ v = YFaceField(grid)
 # u .= - ∂y(ψ)
 # v .= + ∂x(ψ)
 
-for region in 1:6
-    region_ψ = ψ[region]
-    region_u = u[region]
-    region_v = v[region]
-
-    region_u .= - ∂y(region_ψ)
-    region_v .= + ∂x(region_ψ)
+for region in 1:number_of_regions(grid)
+    u[region] .= - ∂y(ψ[region])
+    v[region] .= + ∂x(ψ[region])
 end
 
 model = HydrostaticFreeSurfaceModel(; grid,

@@ -35,9 +35,10 @@ const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 @inline Base.getindex(mrg::MultiRegionGrids, r::Int) = getregion(mrg, r)
 @inline Base.first(mrg::MultiRegionGrids) = mrg[1]
 @inline Base.lastindex(mrg::MultiRegionGrids) = length(mrg)
+number_of_regions(mrg::MultiRegionGrids) = lastindex(mrg)
 
 minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
-    minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r in 1:lastindex(grid))
+    minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
 
 @inline getdevice(mrg::ImmersedMultiRegionGrid, i)      = getdevice(mrg.underlying_grid.region_grids, i)
 @inline switch_device!(mrg::ImmersedMultiRegionGrid, i) = switch_device!(getdevice(mrg.underlying_grid, i))
