@@ -1,14 +1,5 @@
 using Oceananigans.Grids: AbstractUnderlyingGrid
 
-# Operators specific to the advancement of the Free surface and the Barotropic velocity. In particular, the base operators follow
-# these rules:
-#
-#   `δxᶠᵃᵃ_c` : Hardcodes Noflux or Periodic boundary conditions for a (Center, Center, Center) function c  in x direction 
-#   `δyᵃᶠᵃ_c` : Hardcodes Noflux or Periodic boundary conditions for a (Center, Center, Center) function c  in y direction
-#
-#   `δxᶜᵃᵃ_U` : Hardcodes NoPenetration or Periodic boundary conditions for a (Face, Center, Center) function U in x direction 
-#   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for a (Center, Face, Center) V in y direction
-
 const AGXB = AbstractUnderlyingGrid{<:Any, Bounded}
 const AGXP = AbstractUnderlyingGrid{<:Any, Periodic}
 const AGXR = AbstractUnderlyingGrid{<:Any, RightConnected}
@@ -18,6 +9,14 @@ const AGYB = AbstractUnderlyingGrid{<:Any, <:Any, Bounded}
 const AGYP = AbstractUnderlyingGrid{<:Any, <:Any, Periodic}
 const AGYR = AbstractUnderlyingGrid{<:Any, <:Any, RightConnected}
 const AGYL = AbstractUnderlyingGrid{<:Any, <:Any, LeftConnected}
+
+# Topology-aware Operators with the following convention:
+#
+#   `δxᶠᵃᵃ_c` : Hardcodes `Noflux` or `Periodic` boundary conditions for a (Center, Center, Center) function `c` in x direction 
+#   `δyᵃᶠᵃ_c` : Hardcodes `Noflux` or `Periodic` boundary conditions for a (Center, Center, Center) function `c` in y direction
+#
+#   `δxᶜᵃᵃ_U` : Hardcodes `NoPenetration` or `Periodic` boundary conditions for a (Face, Center, Center) function `U` in x direction 
+#   `δyᵃᶜᵃ_V` : Hardcodes `NoPenetration` or `Periodic` boundary conditions for a (Center, Face, Center) function `V` in y direction
 
 # Fallback 
 
