@@ -27,8 +27,8 @@ const μ = 1.0 - δ - γ - ϵ
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
                                
 # Special ``partial'' divergence for free surface evolution
-@inline div_xᶜᶜᶠ_U(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
-@inline div_yᶜᶜᶠ_V(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
+@inline div_xᶜᶜᶠ_U(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...) 
+@inline div_yᶜᶜᶠ_V(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...) 
 
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 
