@@ -43,10 +43,8 @@ opposite_side = Dict(
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
 #   digit 1-2: an identifier for the field that is reset each timestep
-#   digit 3: an identifier for the field's location 
-#   digit 4: the side
-#   digits 5-6: the "from" rank
-#   digits 7-8: the "to" rank
+#   digit 3: an identifier for the field's Z-location
+#   digit 4: the side we send to/recieve from
 
 ID_DIGITS   = 2
 
