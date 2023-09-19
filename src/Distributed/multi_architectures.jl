@@ -105,7 +105,7 @@ function MultiProcess(child_architecture = CPU();
 end
 
 const MultiCPUProcess = MultiProcess{CPU}
-const MultiGPUProcess = MultiProcess{CPU}
+const MultiGPUProcess = MultiProcess{GPU}
 
 const BlockingMultiProcess = MultiProcess{<:Any, <:Nothing}
 
