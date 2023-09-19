@@ -93,7 +93,7 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
-## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArray, offset::Int) is 1)
+## GPU to GPU copy of contiguous data
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
     n = length(src)
     context!(context(src)) do
