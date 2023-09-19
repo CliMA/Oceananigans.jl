@@ -43,6 +43,7 @@ function field(loc, a::AbstractArray, grid)
 end
 
 field(loc, a::Function, grid) = FunctionField(loc, a, grid)
+field(loc, a::Number, grid) = ConstantField(a)
 
 function field(loc, f::Field, grid)
     loc === location(f) && grid === f.grid && return f
