@@ -13,14 +13,13 @@ grid = conformal_cubed_sphere_panel(size = (Nx, Ny, Nz),
 closure = ScalarDiffusivity(ν=1e-3, κ=1e-3)
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
-                                    closure,
-                                    buoyancy = nothing,
-                                    tracers=())
+                                      momentum_advection = VectorInvariant(),
+                                      closure,
+                                      buoyancy = nothing,
+                                      tracers=())
 
-η₀ = 1
 Δ = 10
-ηᵢ(λ, φ, z) = η₀ * exp(-(λ^2 + φ^2) / 2Δ^2)
+ηᵢ(λ, φ, z) = 1 * exp(-(λ^2 + φ^2) / 2Δ^2)
 ϵᵢ(λ, φ, z) = 1e-6 * randn()
 
 set!(model, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
@@ -36,7 +35,7 @@ save_fields_interval = 5minutes
 
 s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
-simulation.output_writers[:splash] = JLD2OutputWriter(model, (; u, v, s),
+simulation.output_writers[:splash] = JLD2OutputWriter(model, (u=u, v=v, s=s),
                                                      schedule = TimeInterval(save_fields_interval),
                                                      filename = "ossg_splash",
                                                      overwrite_existing = true)
