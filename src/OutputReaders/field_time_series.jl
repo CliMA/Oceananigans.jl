@@ -24,17 +24,19 @@ using Dates: AbstractTime
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
+                backend :: K
     boundary_conditions :: B
                 indices :: I
                   times :: χ
 
     function FieldTimeSeries{LX, LY, LZ, K}(data::D,
                                             grid::G,
-                                            bcs::B,
-                                            times::χ,
-                                            indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
+                                         backend::K,
+                                             bcs::B,
+                                           times::χ,
+                                         indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data)
-        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, indices, times)
+        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, backend, bcs, indices, times)
     end
 end
 
@@ -62,16 +64,17 @@ file `path` and variable `name` (in case of `OnDisk` or `Chunked`).
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :), 
-                                     backend = InMemory(),
-                                     path = nothing,
+                                     backend::K = InMemory(),
+                                     path = nothing, 
                                      name = nothing,
                                      boundary_conditions = nothing) where {LX, LY, LZ}
 
     Nt   = length(times)
     loc  = map(instantiate, (LX, LY, LZ))
     data = new_data(FT, grid, loc, indices, Nt, path, name, backend)
-    K = typeof(backend)
-    return FieldTimeSeries{LX, LY, LZ, K}(data, grid, boundary_conditions, times, indices)
+    backend = regularize_backend(backend, path, name, data)
+
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, times, indices)
 end
 
 """
@@ -186,9 +189,9 @@ function FieldTimeSeries(path, name, backend;
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, path, name, backend)
+    backend = regularize_backend(backend, path, name, data)
 
-    K = typeof(backend)
-    time_series = FieldTimeSeries{LX, LY, LZ, K}(data, grid, boundary_conditions, times, indices)
+    time_series = FieldTimeSeries{LX, LY, LZ, K}(data, grid, backend, boundary_conditions, times, indices)
     set!(time_series, path, name)
 
     return time_series
@@ -198,24 +201,6 @@ end
 Base.lastindex(fts::FieldTimeSeries) = size(fts, 4)
 Base.firstindex(fts::FieldTimeSeries) = 1
 Base.length(fts::FieldTimeSeries) = size(fts, 4)
-
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, time::Float64)
-    Ntimes = length(fts.times)
-    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
-    # fractional index
-    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    return compute!(Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n)))
-end
-
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time::Float64)
-    Ntimes = length(fts.times)
-    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
-    # fractional index
-    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    return getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
-end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
