@@ -154,6 +154,11 @@ struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
+"""
+    RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
+
+generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
+"""
 RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
     RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
 
