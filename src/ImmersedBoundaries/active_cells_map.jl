@@ -53,7 +53,7 @@ function compute_active_cells_interior(ibg)
 end
 
 function compute_active_cells_surface(ibg)
-    one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0.0)
+    one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0)
     column    = sum(one_field, dims = 3)
     is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
     active_cells_field = Field{Center, Center, Nothing}(ibg, Bool)
