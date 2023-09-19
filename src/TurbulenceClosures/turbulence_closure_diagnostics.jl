@@ -22,7 +22,7 @@ cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
 
 maximum_numeric_diffusivity(κ::Number) = κ
-maximum_numeric_diffusivity(κ::NamedTuple) = maximum(κ)
+maximum_numeric_diffusivity(κ::NamedTuple) = maximum(maximum.(values(κ)))
 maximum_numeric_diffusivity(κ::NamedTuple{()}) = 0 # tracers=nothing means empty diffusivity tuples
 maximum_numeric_diffusivity(::Nothing) = 0
 
