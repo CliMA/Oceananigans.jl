@@ -13,7 +13,7 @@ using Oceananigans.Distributed
 
 ranks = (2, 2, 1)
 topo = (Periodic, Periodic, Flat)
-arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
+arch = MultiProcess(CPU(), ranks=ranks, topology=topo)
 grid = RectilinearGrid(arch, topology=topo, size=(128 ÷ ranks[1], 128 ÷ ranks[2]), extent=(4π, 4π), halo=(3, 3))
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 

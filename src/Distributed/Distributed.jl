@@ -1,7 +1,7 @@
 module Distributed
 
 export
-    DistributedArch, child_architecture, reconstruct_global_grid, 
+    MultiProcess, child_architecture, reconstruct_global_grid, 
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 

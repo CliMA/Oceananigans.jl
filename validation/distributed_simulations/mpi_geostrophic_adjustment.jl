@@ -23,7 +23,7 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Bounded, Periodic, Bounded)
-arch = DistributedArch(CPU(); topology = topo, 
+arch = MultiProcess(CPU(); topology = topo, 
                  ranks=(Nranks, 1, 1),
                  use_buffers = true)
 

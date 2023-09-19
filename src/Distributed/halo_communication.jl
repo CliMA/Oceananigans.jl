@@ -123,7 +123,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon after tendency calculation
-    if async && !(arch isa BlockingDistributedArch)
+    if async && !(arch isa BlockingMultiProcess)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -238,7 +238,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
     fill_opposite_side_send_buffers! = Symbol("fill_$(opposite_side)_send_buffers!")
 
     @eval begin
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::MultiProcess, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             only_local_halos && return nothing
@@ -255,7 +255,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
 
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::MultiProcess, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
@@ -271,7 +271,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             return [send_req, recv_req]
         end
 
-        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::MultiProcess, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
