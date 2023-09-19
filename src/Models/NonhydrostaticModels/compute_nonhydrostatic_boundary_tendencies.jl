@@ -16,7 +16,7 @@ function compute_boundary_tendencies!(model::NonhydrostaticModel)
 
     # parameters for communicating North / South / East / West side
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
-    calculate_interior_tendency_contributions!(model, kernel_parameters)
+    compute_interior_tendency_contributions!(model, kernel_parameters)
 
     return nothing
 end

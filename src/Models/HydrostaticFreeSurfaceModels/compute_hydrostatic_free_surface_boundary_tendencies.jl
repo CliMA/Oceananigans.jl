@@ -22,7 +22,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # parameters for communicating North / South / East / West side
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
-    calculate_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
 
     return nothing
 end
