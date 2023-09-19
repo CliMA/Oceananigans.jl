@@ -201,22 +201,22 @@ function RankConnectivity(local_index, ranks, topology)
     j_north = increment_index(j, Ry, TY)
     j_south = decrement_index(j, Ry, TY)
 
-    r_east  = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
-    r_west  = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
-    r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
-    r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
+     east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
+     west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
+    north_rank = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
+    south_rank = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
 
-    r_northeast = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
-    r_northwest = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
-    r_southeast = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
-    r_southwest = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
+    northeast_rank = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
+    northwest_rank = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
+    southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
+    southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(west=r_west, east=r_east, 
-                            south=r_south, north=r_north,
-                            southwest=r_southwest,
-                            southeast=r_southeast,
-                            northwest=r_northwest,
-                            northeast=r_northeast)
+    return RankConnectivity(west=west_rank, east=east_rank, 
+                            south=south_rank, north=north_rank,
+                            southwest=southwest_rank,
+                            southeast=southeast_rank,
+                            northwest=northwest_rank,
+                            northeast=northeast_rank)
 end
 
 #####
