@@ -204,6 +204,11 @@ include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 
+# TODO: move here
+#include("ImmersedBoundaries/ImmersedBoundaries.jl")
+#include("Distributed/Distributed.jl")
+#include("MultiRegion/MultiRegion.jl")
+
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
@@ -212,8 +217,10 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
+# TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Distributed/Distributed.jl")
+
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
