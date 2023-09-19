@@ -115,13 +115,12 @@ end
 # Call the integration
 @inline function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
     arch = architecture(model.grid)
-    event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
-                    bgc,
-                    model.tracers.P, 
-                    bgc.PAR,
-                    model.grid, 
-                    model.clock.time)
-    wait(event)
+    launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
+            bgc,
+            model.tracers.P, 
+            bgc.PAR,
+            model.grid, 
+            model.clock.time)
 end
 
 #####
