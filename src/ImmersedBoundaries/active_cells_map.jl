@@ -16,11 +16,11 @@ struct SurfaceMap end
 @inline use_only_active_surface_cells(grid::AbstractGrid)   = nothing
 @inline use_only_active_surface_cells(grid::ActiveCellsIBG) = SurfaceMap()
 
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.active_cells_interior), 256), length(grid.active_cells_interior)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.active_cells_surface),  256), length(grid.active_cells_surface)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
+@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
 
-@inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_interior[idx])
-@inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_surface[idx])
+@inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.interior_active_cells[idx])
+@inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.surface_active_cells[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
@@ -45,14 +45,14 @@ end
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)
 @inline active_column(i, j, k, grid, column) = column[i, j, k] != 0
 
-function compute_active_cells_interior(ibg)
+function compute_interior_active_cells(ibg)
     is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(active_cell, ibg)
     active_cells_field = Field{Center, Center, Center}(ibg, Bool)
     set!(active_cells_field, is_immersed_operation)
     return active_cells_field
 end
 
-function compute_active_cells_surface(ibg)
+function compute_surface_active_cells(ibg)
     one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0)
     column    = sum(one_field, dims = 3)
     is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
@@ -66,7 +66,7 @@ const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 function active_cells_map_interior(ibg)
-    active_cells_field = compute_active_cells_interior(ibg)
+    active_cells_field = compute_interior_active_cells(ibg)
     
     N = maximum(size(ibg))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
@@ -106,7 +106,7 @@ end
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
 function active_cells_map_surface(ibg)
-    active_cells_field = compute_active_cells_surface(ibg)
+    active_cells_field = compute_surface_active_cells(ibg)
     interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
   
     full_indices = findall(interior_cells)
