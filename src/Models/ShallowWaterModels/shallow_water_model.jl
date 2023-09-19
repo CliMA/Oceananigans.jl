@@ -170,7 +170,7 @@ function ShallowWaterModel(;
         set!(bathymetry_field, bathymetry)
         fill_halo_regions!(bathymetry_field)
     else
-        fill!(bathymetry_field, 0.0)
+        fill!(bathymetry_field, 0)
     end
 
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
