@@ -745,7 +745,7 @@ function fill_metric_halo_regions!(grid)
     for (metric, LX, LY) in zip(metric_arrays, LXs, LYs)
         fill_metric_halo_regions_x!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
         fill_metric_halo_regions_y!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
-        fill_metric_halo_corner_regions!(metric, LX(), LY(), TX(), TY(),Nx, Ny, Hx, Hy)
+        fill_metric_halo_corner_regions!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
     end
 
     return nothing
