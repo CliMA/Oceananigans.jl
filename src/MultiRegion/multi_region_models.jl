@@ -12,7 +12,6 @@ using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 import Oceananigans.Advection: WENO, cell_advection_timescale
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedField
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 
@@ -60,8 +59,6 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 @inline isregional(mrm::MultiRegionModel)   = true
 @inline devices(mrm::MultiRegionModel)      = devices(mrm.grid)
 @inline getdevice(mrm::MultiRegionModel, d) = getdevice(mrm.grid, d)
-
-PrescribedField(X, Y, Z, f::MultiRegionObject, grid; kwargs...) = f
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
