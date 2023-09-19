@@ -10,7 +10,7 @@
 
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
 using Printf
@@ -23,7 +23,7 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Bounded, Periodic, Bounded)
-arch = DistributedArch(CPU(); topology = topo, 
+arch = Distributed(CPU(); topology = topo, 
                  ranks=(Nranks, 1, 1),
                  use_buffers = true)
 

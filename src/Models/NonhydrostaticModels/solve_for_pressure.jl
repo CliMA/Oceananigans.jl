@@ -1,6 +1,6 @@
 using Oceananigans.Operators
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
-using Oceananigans.Distributed: DistributedFFTBasedPoissonSolver
+using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 #####

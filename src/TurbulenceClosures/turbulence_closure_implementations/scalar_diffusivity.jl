@@ -106,7 +106,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           boundary_buffer = 1)
+                           required_halo_size = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
@@ -115,7 +115,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), boundary_buffer}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
 
 # Explicit default
@@ -172,10 +172,10 @@ end
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
 # Note: we could compute ν and κ (if they are Field):
-# function calculate_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
+# function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
 #     compute!(viscosity(closure, diffusivities))
 #     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
 #     return nothing

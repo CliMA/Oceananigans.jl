@@ -13,7 +13,7 @@ using Oceananigans.TurbulenceClosures:
 
 import Oceananigans.TurbulenceClosures:
                         DiffusivityFields,
-                        calculate_diffusivities!,
+                        compute_diffusivities!,
                         viscosity,
                         with_tracers,
                         νᶜᶜᶜ
@@ -38,10 +38,10 @@ With the `VectorInvariantFormulation()` (that evolves ``u`` and ``v``) we comput
 ``h^{-1} 𝛁(ν h 𝛁 t)``, while with the `ConservativeFormulation()` (that evolves
 ``u h`` and ``v h``) we compute ``𝛁 (ν h 𝛁 t)``.
 """
-function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false, boundary_buffer = 1)
+function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form=false, required_halo_size = 1)
     ν = convert_diffusivity(FT, ν; discrete_form)
     ξ = convert_diffusivity(FT, ξ; discrete_form)
-    return ShallowWaterScalarDiffusivity{boundary_buffer}(ν, ξ)
+    return ShallowWaterScalarDiffusivity{required_halo_size}(ν, ξ)
 end
 
 # We have no tracers in the shallow water diffusivity
@@ -59,7 +59,7 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
+function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
 
     arch  = model.architecture
     grid  = model.grid

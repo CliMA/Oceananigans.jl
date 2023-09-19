@@ -3,8 +3,8 @@ using Oceananigans.Grids: halo_size
 
 function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch)
 
-    # We iterate over the fields because we have to clear _ALL_ architectures
-    # and split explicit variables live on a different grid
+    # Iterate over the fields to clear _ALL_ architectures
+    # (split-explicit variables live on a different grid)
     for field in prognostic_fields(model)
         complete_halo_communication!(field)
     end
@@ -16,7 +16,7 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
 end
 
 # Fallback
-complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributedArch) = nothing
+complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributed) = nothing
 complete_communication_and_compute_boundary!(model, grid, arch) = nothing
 
 compute_boundary_tendencies!(model) = nothing
@@ -26,7 +26,7 @@ interior_tendency_kernel_parameters(grid) = :xyz
 interior_tendency_kernel_parameters(grid::DistributedGrid) = 
             interior_tendency_kernel_parameters(grid, architecture(grid))
 
-interior_tendency_kernel_parameters(grid, ::BlockingDistributedArch) = :xyz
+interior_tendency_kernel_parameters(grid, ::BlockingDistributed) = :xyz
 
 function interior_tendency_kernel_parameters(grid, arch)
     Rx, Ry, _ = arch.ranks

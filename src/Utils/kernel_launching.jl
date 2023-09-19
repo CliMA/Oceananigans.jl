@@ -17,6 +17,8 @@ offsets(::KernelParameters{S, O}) where {S, O} = O
 worktuple(workspec) = workspec
 offsets(workspec)  = nothing
 
+contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
+
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
 function heuristic_workgroup(Wx, Wy, Wz=nothing)
@@ -108,8 +110,9 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
         return nothing
     end
     
+    # We can only launch offset kernels with Static sizes!!!!
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
-                                kernel!(Architectures.device(arch), workgroup, worksize, offset) 
+                                kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
 
     @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
 
@@ -121,3 +124,102 @@ end
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
+
+#####
+##### Extension to KA for offset indices: to remove when implemented in KA
+##### Allows to call a kernel with kernel(dev, workgroup, worksize, offsets) 
+##### where offsets is a tuple containing the offset to pass to @index
+#####
+
+# TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
+
+using KernelAbstractions: Kernel
+using KernelAbstractions.NDIteration: _Size, StaticSize
+using KernelAbstractions.NDIteration: NDRange
+
+struct OffsetStaticSize{S} <: _Size
+    function OffsetStaticSize{S}() where S
+        new{S::Tuple{Vararg}}()
+    end
+end
+
+import Base
+import Base: @pure
+import KernelAbstractions: get, expand
+
+@pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}() 
+@pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}() 
+@pure OffsetStaticSize(s::Type{<:Tuple}) = OffsetStaticSize{tuple(s.parameters...)}()
+@pure OffsetStaticSize(s::Tuple{Vararg{UnitRange{Int}}}) = OffsetStaticSize{s}()
+
+# Some @pure convenience functions for `OffsetStaticSize` (following `StaticSize` in KA)
+@pure get(::Type{OffsetStaticSize{S}}) where {S} = S
+@pure get(::OffsetStaticSize{S}) where {S} = S
+@pure Base.getindex(::OffsetStaticSize{S}, i::Int) where {S} = i <= length(S) ? S[i] : 1
+@pure Base.ndims(::OffsetStaticSize{S}) where {S}  = length(S)
+@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(worksize.(S))
+
+@inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
+@inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
+
+@inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
+
+@inline worksize(i::Tuple) = worksize.(i)
+@inline worksize(i::Int) = i
+@inline worksize(i::UnitRange) = length(i)
+
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} where N
+
+# NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
+@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+    nI = ntuple(Val(N)) do I
+        Base.@_inline_meta
+        stride = size(workitems(ndrange), I)
+        gidx = groupidx.I[I]
+        (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
+    end
+    CartesianIndex(nI)
+end
+
+using KernelAbstractions.NDIteration
+using KernelAbstractions: ndrange, workgroupsize
+import KernelAbstractions: partition
+
+using KernelAbstractions: CompilerMetadata
+import KernelAbstractions: __ndrange
+
+@inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
+
+# Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
+const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
+
+# Extending the partition function to include offsets in NDRange: note that in this case the 
+# offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
+function partition(kernel::OffsetKernel, inrange, ingroupsize)
+    static_ndrange = ndrange(kernel)
+    static_workgroupsize = workgroupsize(kernel)
+
+    if inrange !== nothing && inrange != get(static_ndrange)
+        error("Static NDRange ($static_ndrange) and launch NDRange ($inrange) differ")
+    end
+    range, offsets = getrange(static_ndrange)
+
+    if static_workgroupsize <: StaticSize
+        if ingroupsize !== nothing && ingroupsize != get(static_workgroupsize)
+            error("Static WorkgroupSize ($static_workgroupsize) and launch WorkgroupSize $(ingroupsize) differ")
+        end
+        groupsize = get(static_workgroupsize)
+    end
+
+    @assert groupsize !== nothing
+    @assert range !== nothing
+    blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
+
+    static_blocks = StaticSize{blocks}
+    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
+    
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, offsets)
+
+    return iterspace, dynamic
+end
+

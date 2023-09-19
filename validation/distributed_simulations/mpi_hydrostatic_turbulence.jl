@@ -4,7 +4,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Printf
 using Statistics
 using Oceananigans.BoundaryConditions
-using Oceananigans.Distributed    
+using Oceananigans.DistributedComputations    
 using Random
 
 # Run with 
@@ -75,7 +75,7 @@ Ry = 1
 @assert Nranks == 4
 
 # Enable overlapped communication!
-arch  = DistributedArch(CPU(), ranks = (Rx, Ry, 1), 
+arch  = Distributed(CPU(), ranks = (Rx, Ry, 1), 
                         topology=topo, 
                         enable_overlapped_computation = true)
 

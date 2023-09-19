@@ -6,7 +6,7 @@ import Oceananigans.Architectures: device, arch_array, array_type, child_archite
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
-struct DistributedArch{A, R, I, ρ, C, γ, M, T} <: AbstractArchitecture
+struct Distributed{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -22,7 +22,7 @@ end
 #####
 
 """
-    DistributedArch(child_architecture = CPU(); 
+    Distributed(child_architecture = CPU(); 
                     topology, 
                     ranks, 
                     devices = nothing, 
@@ -57,7 +57,7 @@ Keyword arguments
 - `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
                   if not for testing or developing. Change at your own risk!
 """
-function DistributedArch(child_architecture = CPU(); 
+function Distributed(child_architecture = CPU(); 
                          topology, 
                          ranks,
                          devices = nothing, 
@@ -101,21 +101,29 @@ function DistributedArch(child_architecture = CPU();
     M = typeof(mpi_requests)
     T = typeof(Ref(0))
 
-    return DistributedArch{A, R, I, ρ, C, γ, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
+    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
 end
 
-const BlockingDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
+const DistributedCPU = Distributed{CPU}
+const DistributedGPU = Distributed{GPU}
+
+const BlockingDistributed = Distributed{<:Any, <:Nothing}
 
 #####
 ##### All the architectures
 #####
 
-child_architecture(arch::DistributedArch) = arch.child_architecture
-device(arch::DistributedArch)             = device(child_architecture(arch))
-arch_array(arch::DistributedArch, A)      = arch_array(child_architecture(arch), A)
-zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
-sync_device!(arch::DistributedArch)       = sync_device!(arch.child_architecture)
+child_architecture(arch::Distributed) = arch.child_architecture
+device(arch::Distributed)             = device(child_architecture(arch))
+arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
+zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
+array_type(arch::Distributed)         = array_type(child_architecture(arch))
+sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
+
+cpu_architecture(arch::DistributedCPU) = arch
+cpu_architecture(arch::DistributedGPU) = 
+    Distributed(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
+                           arch.connectivity, arch.communicator, arch.mpi_requests, arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -146,6 +154,11 @@ struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
+"""
+    RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
+
+generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
+"""
 RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
     RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
 
@@ -188,29 +201,29 @@ function RankConnectivity(local_index, ranks, topology)
     j_north = increment_index(j, Ry, TY)
     j_south = decrement_index(j, Ry, TY)
 
-    r_east  = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
-    r_west  = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
-    r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
-    r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
+     east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
+     west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
+    north_rank = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
+    south_rank = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
 
-    r_northeast = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
-    r_northwest = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
-    r_southeast = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
-    r_southwest = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
+    northeast_rank = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
+    northwest_rank = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
+    southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
+    southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(west=r_west, east=r_east, 
-                            south=r_south, north=r_north,
-                            southwest=r_southwest,
-                            southeast=r_southeast,
-                            northwest=r_northwest,
-                            northeast=r_northeast)
+    return RankConnectivity(west=west_rank, east=east_rank, 
+                            south=south_rank, north=north_rank,
+                            southwest=southwest_rank,
+                            southeast=southeast_rank,
+                            northwest=northwest_rank,
+                            northeast=northeast_rank)
 end
 
 #####
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::DistributedArch)
+function Base.show(io::IO, arch::Distributed)
     c = arch.connectivity
     print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
               "└── child architecture: $(typeof(child_architecture(arch))) \n",

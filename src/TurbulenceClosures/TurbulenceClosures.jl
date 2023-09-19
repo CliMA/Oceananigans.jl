@@ -22,7 +22,7 @@ export
     VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
-    calculate_diffusivities!,
+    compute_diffusivities!,
 
     viscosity, diffusivity,
 
@@ -49,7 +49,7 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
-import Oceananigans.Advection: boundary_buffer, required_halo_size
+import Oceananigans.Advection: required_halo_size
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -62,20 +62,19 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 Abstract supertype for turbulence closures.
 """
-abstract type AbstractTurbulenceClosure{TimeDiscretization, BoundaryBuffer} end
+abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
  
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional
 # point at each side to calculate viscous fluxes at the edge of the domain. 
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
 # or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
-@inline boundary_buffer(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B
 @inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
@@ -118,23 +117,25 @@ end
 const c = Center()
 const f = Face()
 
-@inline z_top(i, j, grid)          = znode(i, j, grid.Nz+1, grid, c, c, f)
-@inline z_bottom(i, j,  grid)      = znode(i, j, 1,         grid, c, c, f)
+@inline z_top(i, j, grid)    = znode(i, j, grid.Nz+1, grid, c, c, f)
+@inline z_bottom(i, j, grid) = znode(i, j, 1,         grid, c, c, f)
 
 @inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
 @inline total_depthᶜᶜᵃ(i, j, grid) = clip(z_top(i, j, grid) - z_bottom(i, j, grid))
 
 @inline function height_above_bottomᶜᶜᶠ(i, j, k, grid)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
     h = znode(i, j, k, grid, c, c, f) - z_bottom(i, j, grid)
+
+    # Limit by thickness of cell below
+    Δz = Δzᶜᶜᶜ(i, j, k-1, grid)
     return max(Δz, h)
 end
 
 @inline function height_above_bottomᶜᶜᶜ(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     h = znode(i, j, k, grid, c, c, c) - z_bottom(i, j, grid)
-    return max(Δz, h)
+    return max(Δz/2, h)
 end
 
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))

@@ -32,7 +32,7 @@ import Oceananigans.TurbulenceClosures:
     dissipation,
     validate_closure,
     add_closure_specific_boundary_conditions,
-    calculate_diffusivities!,
+    compute_diffusivities!,
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
@@ -115,7 +115,7 @@ function Base.show(io::IO, closure::MEWS)
                  "    Cᴰ  : ", closure.Cᴰ))
 end
 
-function calculate_diffusivities!(diffusivities, closure::MEWS, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::MEWS, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock

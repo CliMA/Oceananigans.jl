@@ -94,7 +94,7 @@ FreeSurface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = 
 FreeSurface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
-calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
+compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 

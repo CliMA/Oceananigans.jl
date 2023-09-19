@@ -18,47 +18,50 @@ end
 ##### Kernel functions
 #####
 
-diffusive_fluxes = (:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z)
+outer_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
+inner_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
 
-viscous_fluxes   = (:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,
+diffusive_fluxes = [:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z]
+
+viscous_fluxes   = [:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,
                     :viscous_flux_vx, :viscous_flux_vy, :viscous_flux_vz,
-                    :viscous_flux_wx, :viscous_flux_wy, :viscous_flux_wz)
+                    :viscous_flux_wx, :viscous_flux_wy, :viscous_flux_wz]
 
-divergences     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_implicit_linear_coefficient]
-alt_divergences = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal,              :ivd_lower_diagonal,              :implicit_linear_coefficient]
+outer_ivd_functions = [:_ivd_upper_diagonal, :_ivd_lower_diagonal, :_implicit_linear_coefficient]
+inner_ivd_functions = [:ivd_upper_diagonal,  :ivd_lower_diagonal,   :implicit_linear_coefficient]
 
-funcs     = [divergences...,     diffusive_fluxes..., viscous_fluxes...]
-alt_funcs = [alt_divergences..., diffusive_fluxes..., viscous_fluxes...]
+outer_funcs = vcat(outer_tendency_functions, outer_ivd_functions, diffusive_fluxes, viscous_fluxes)
+inner_funcs = vcat(inner_tendency_functions, inner_ivd_functions, diffusive_fluxes, viscous_fluxes)
 
-for (f, alt_f) in zip(funcs, alt_funcs)
+for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
     @eval begin
-        @inline $f(i, j, k, grid, closures::Tuple{<:Any}, Ks, args...) =
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+        @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any}, Ks, args...) =
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
 
-        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...))
+        @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...))
 
-        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...))
+        @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...))
 
-        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
-                  + $alt_f(i, j, k, grid, closures[4], Ks[4], args...))
+        @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $inner_f(i, j, k, grid, closures[4], Ks[4], args...))
 
-        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
-                  + $alt_f(i, j, k, grid, closures[4], Ks[4], args...)
-                  + $alt_f(i, j, k, grid, closures[5], Ks[5], args...))
+        @inline $outer_f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $inner_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $inner_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $inner_f(i, j, k, grid, closures[4], Ks[4], args...)
+                  + $inner_f(i, j, k, grid, closures[5], Ks[5], args...))
 
-        @inline $f(i, j, k, grid, closures::Tuple, Ks, args...) = (
-                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+        @inline $outer_f(i, j, k, grid, closures::Tuple, Ks, args...) = (
+                    $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
                   + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
     end
 end
@@ -70,10 +73,10 @@ end
 
 with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
-function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
+function compute_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
     for (α, closure) in enumerate(closure_tuple)
         diffusivity_fields = diffusivity_fields_tuple[α]
-        calculate_diffusivities!(diffusivity_fields, closure, args...; kwargs...)
+        compute_diffusivities!(diffusivity_fields, closure, args...; kwargs...)
     end
     return nothing
 end
@@ -86,7 +89,6 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
-boundary_buffer(closure_tuple::Tuple)    = maximum(map(boundary_buffer, closure_tuple))
 required_halo_size(closure_tuple::Tuple) = maximum(map(required_halo_size, closure_tuple))
 
 #####

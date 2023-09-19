@@ -1,7 +1,7 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
-using Oceananigans.Distributed: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
+using Oceananigans.DistributedComputations: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_interior_tuple
@@ -28,12 +28,12 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # interior of the domain
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
-    calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
+    compute_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
                       
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+    compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
                                                model.architecture,
                                                model.velocities,
                                                model.tracers,
@@ -49,8 +49,8 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     return nothing
 end
 
-""" Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
+""" Store previous value of the source term and compute current source term. """
+function compute_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -90,15 +90,15 @@ function calculate_interior_tendency_contributions!(model, kernel_parameters; on
     w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
 
     for parameters in kernel_parameters
-        launch!(arch, grid, parameters, calculate_Gu!, 
+        launch!(arch, grid, parameters, compute_Gu!, 
                 tendencies.u, grid, only_active_cells, u_kernel_args;
                 only_active_cells)
 
-        launch!(arch, grid, parameters, calculate_Gv!, 
+        launch!(arch, grid, parameters, compute_Gv!, 
                 tendencies.v, grid, only_active_cells, v_kernel_args;
                 only_active_cells)
 
-        launch!(arch, grid, parameters, calculate_Gw!, 
+        launch!(arch, grid, parameters, compute_Gw!, 
                 tendencies.w, grid, only_active_cells, w_kernel_args;
                 only_active_cells)
     end
@@ -119,7 +119,7 @@ function calculate_interior_tendency_contributions!(model, kernel_parameters; on
                      forcing, clock)
 
         for parameters in kernel_parameters
-            launch!(arch, grid, parameters, calculate_Gc!, 
+            launch!(arch, grid, parameters, compute_Gc!, 
                     c_tendency, grid, only_active_cells, args;
                     only_active_cells)
         end
@@ -133,36 +133,36 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, grid, interior_map, args) 
+@kernel function compute_Gu!(Gu, grid, interior_map, args) 
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, ::InteriorMap, args) 
+@kernel function compute_Gu!(Gu, grid::ActiveCellsIBG, ::InteriorMap, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, grid, interior_map, args) 
+@kernel function compute_Gv!(Gv, grid, interior_map, args) 
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, ::InteriorMap, args) 
+@kernel function compute_Gv!(Gv, grid::ActiveCellsIBG, ::InteriorMap, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, grid, interior_map, args) 
+@kernel function compute_Gw!(Gw, grid, interior_map, args) 
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_Gw!(Gw, grid::ActiveCellsIBG, ::InteriorMap, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
@@ -173,12 +173,12 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, grid, interior_map, args)
+@kernel function compute_Gc!(Gc, grid, interior_map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, ::InteriorMap, args) 
+@kernel function compute_Gc!(Gc, grid::ActiveCellsIBG, ::InteriorMap, args) 
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
@@ -189,7 +189,7 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
+function compute_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
     fields = merge(velocities, tracers)
 
     foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))

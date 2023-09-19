@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
-using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 
@@ -19,7 +19,7 @@ import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
+function PressureSolver(arch::Distributed, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
@@ -74,7 +74,7 @@ include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
-include("calculate_nonhydrostatic_tendencies.jl")
-include("calculate_nonhydrostatic_boundary_tendencies.jl")
+include("compute_nonhydrostatic_tendencies.jl")
+include("compute_nonhydrostatic_boundary_tendencies.jl")
 
 end # module

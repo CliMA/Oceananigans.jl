@@ -19,9 +19,9 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
     end
 end
 
-update_hydrostatic_pressure!(model) = update_hydrostatic_pressure!(model.grid, model)
-update_hydrostatic_pressure!(::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model) = nothing
-update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+update_hydrostatic_pressure!(model; kwargs...) = update_hydrostatic_pressure!(model.grid, model; kwargs...)
+update_hydrostatic_pressure!(::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model; kwargs...) = nothing
+update_hydrostatic_pressure!(grid, model; kwargs...) = update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers; kwargs...)
 
 # Partial cell "algorithm"
 const PCB = PartialCellBottom

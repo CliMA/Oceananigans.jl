@@ -1,4 +1,4 @@
-import Oceananigans.Distributed: compute_boundary_tendencies!
+import Oceananigans.DistributedComputations: compute_boundary_tendencies!
 using Oceananigans.Utils: worktuple, offsets
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
@@ -8,12 +8,15 @@ function compute_boundary_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 
+    p_parameters = boundary_p_kernel_parameters(grid, arch)
+    κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
+
     # We need new values for `p` and `κ`
-    recompute_auxiliaries!(model, grid, arch)
+    compute_auxiliaries!(model; p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
-    calculate_interior_tendency_contributions!(model, kernel_parameters)
+    compute_interior_tendency_contributions!(model, kernel_parameters)
 
     return nothing
 end
@@ -34,17 +37,6 @@ function boundary_tendency_kernel_parameters(grid, arch)
     offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
-end
-
-function recompute_auxiliaries!(model::NonhydrostaticModel, grid, arch)
-    
-    p_kernel_parameters = boundary_p_kernel_parameters(grid, arch)
-    κ_kernel_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
-
-    for (ppar, κpar) in zip(p_kernel_parameters, κ_kernel_parameters)
-        update_hydrostatic_pressure!(model.pressures.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = ppar)
-        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; parameters = κpar)
-    end
 end
 
 # p needs computing in the range  0 : 0 and N + 1 : N + 1

@@ -1,7 +1,7 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
@@ -206,8 +206,8 @@ function validate_vertical_velocity_boundary_conditions(w)
     return nothing
 end
 
-validate_free_surface(::DistributedArch, free_surface::SplitExplicitFreeSurface) = free_surface
-validate_free_surface(arch::DistributedArch, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
+validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)

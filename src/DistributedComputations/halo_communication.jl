@@ -1,6 +1,5 @@
 using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
-using CUDA: cuStreamGetFlags, stream, priority_range, CUstream_flags_enum, CuStream, stream!
 
 using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
@@ -44,10 +43,8 @@ opposite_side = Dict(
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
 #   digit 1-2: an identifier for the field that is reset each timestep
-#   digit 3: an identifier for the field's location 
-#   digit 4: the side
-#   digits 5-6: the "from" rank
-#   digits 7-8: the "to" rank
+#   digit 3: an identifier for the field's Z-location
+#   digit 4: the side we send to/recieve from
 
 ID_DIGITS   = 2
 
@@ -126,7 +123,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon after tendency calculation
-    if async && !(arch isa BlockingDistributedArch)
+    if async && !(arch isa BlockingDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -241,7 +238,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
     fill_opposite_side_send_buffers! = Symbol("fill_$(opposite_side)_send_buffers!")
 
     @eval begin
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             only_local_halos && return nothing
@@ -258,7 +255,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
 
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::Distributed, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
@@ -274,7 +271,7 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             return [send_req, recv_req]
         end
 
-        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::DistributedArch, 
+        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
