@@ -32,7 +32,7 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 struct GPU <: AbstractArchitecture end
 
 #####
-##### These methods are extended in Distributed.jl
+##### These methods are extended in DistributedComputations.jl
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
