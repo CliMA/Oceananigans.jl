@@ -32,12 +32,15 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=default_indices(length(loc)))
+function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
-    extra_ii = Tuple(axes(underlying_data, d) for d in length(ii)+1:ndims(underlying_data))
+    extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
+        Base.@_inline_meta
+        axes(underlying_data, i+length(ii))
+    end
     return OffsetArray(underlying_data, ii..., extra_ii...)
 end
 
