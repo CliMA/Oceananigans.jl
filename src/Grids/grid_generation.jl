@@ -13,19 +13,19 @@ get_coord_face(coord::Function, i) = coord(i)
 get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
-lower_exterior_Δcoordᶠ(::AT, Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
-upper_exterior_Δcoordᶠ(::AT, Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
 
-upper_interior_F(::AT, coord, Δ)               = coord - Δ
+upper_interior_F(::AT, coord, Δ)           = coord - Δ
 upper_interior_F(::BoundedTopology, coord) = coord
 
-total_interior_length(::AT, N)                  = N
+total_interior_length(::AT, N)              = N
 total_interior_length(::BoundedTopology, N) = N + 1
 
-# generate a stretched coordinate passing the explicit coord faces as vector of functionL
+# generate a variably-spaced coordinate passing the explicit coord faces as vector or function
 function generate_coordinate(FT, topo::AT, N, H, coord, arch)
 
     # Ensure correct type for F and derived quantities
@@ -43,15 +43,15 @@ function generate_coordinate(FT, topo::AT, N, H, coord, arch)
 
     c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
 
-    F₋ = [c¹   - sum(Δᶠ₋[i:H]) for i = 1:H]          # locations of faces in lower halo
-    F₊ = reverse([cᴺ⁺¹ + sum(Δᶠ₊[i:H]) for i = 1:H]) # locations of faces in width of top halo region
+    F₋ =         [c¹   - sum(Δᶠ₋[i:H]) for i = 1:H]  # locations of faces in lower halo
+    F₊ = reverse([cᴺ⁺¹ + sum(Δᶠ₊[i:H]) for i = 1:H]) # locations of faces in top halo
 
     F = vcat(F₋, interiorF, F₊)
 
     # Build cell centers, cell center spacings, and cell interface spacings
     TC = total_length(Center(), topo, N, H)
-     C = [ (F[i + 1] + F[i]) / 2 for i = 1:TC ]
-    Δᶠ = [  C[i] - C[i - 1]      for i = 2:TC ]
+     C = [(F[i + 1] + F[i]) / 2 for i = 1:TC]
+    Δᶠ = [ C[i] - C[i - 1]      for i = 2:TC]
 
     # Trim face locations for periodic domains
     TF = total_length(Face(), topo, N, H)
@@ -77,7 +77,7 @@ function generate_coordinate(FT, topo::AT, N, H, coord, arch)
     return L, F, C, Δᶠ, Δᶜ
 end
 
-# generate a regular coordinate passing the domain extent (2-tuple) and number of points
+# generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number}, arch)
 
     @assert length(coord) == 2
@@ -103,11 +103,10 @@ function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
-        
+
     return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, arch)
-    return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
-end
+generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, arch) =
+    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
