@@ -66,9 +66,9 @@ function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
                           (; yz = yzcomm,   xy = xycomm))
 end
 
-####
-#### Twin transposed grid
-####
+#####
+##### Twin transposed grid
+#####
 
 function TwinGrid(grid::DistributedGrid; free_dim = :y)
 
