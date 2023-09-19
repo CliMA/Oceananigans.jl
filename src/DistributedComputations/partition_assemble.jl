@@ -1,20 +1,20 @@
 using Oceananigans.Architectures: arch_array
 
-all_reduce(val, arch::MultiProcess; op = +) = 
+all_reduce(val, arch::Distributed; op = +) = 
     MPI.Allreduce(val, op, arch.communicator)
 
 all_reduce(val, arch; kwargs...) = val
 
 """
-    concatenate_local_sizes(n, arch::MultiProcess) 
+    concatenate_local_sizes(n, arch::Distributed) 
 
 Return a 3-Tuple containing a vector of `size(grid, idx)` for each rank in 
 all 3 directions.
 """
-concatenate_local_sizes(n, arch::MultiProcess) = 
+concatenate_local_sizes(n, arch::Distributed) = 
     Tuple(concatenate_local_sizes(n, arch, i) for i in 1:length(n))
 
-function concatenate_local_sizes(n, arch::MultiProcess, idx)
+function concatenate_local_sizes(n, arch::Distributed, idx)
     R = arch.ranks[idx]
     r = arch.local_index[idx]
     n = n isa Number ? n : n[idx]
@@ -106,7 +106,7 @@ partition_global_array(arch, c_global::AbstractArray, n) = c_global
 partition_global_array(arch, c_global::Function, n)      = c_global 
 
 # Here we assume that we cannot partition in z (we should remove support for that)
-function partition_global_array(arch::MultiProcess, c_global::AbstractArray, n) 
+function partition_global_array(arch::Distributed, c_global::AbstractArray, n) 
     c_global = arch_array(CPU(), c_global)
 
     ri, rj, rk = arch.local_index
@@ -141,7 +141,7 @@ construct_global_array(arch, c_local::AbstractArray, n) = c_local
 construct_global_array(arch, c_local::Function, N)      = c_local
 
 # TODO: This does not work for 3D parallelizations!!!
-function construct_global_array(arch::MultiProcess, c_local::AbstractArray, n) 
+function construct_global_array(arch::Distributed, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
 
     ri, rj, rk = arch.local_index

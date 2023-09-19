@@ -75,7 +75,7 @@ Ry = 1
 @assert Nranks == 4
 
 # Enable overlapped communication!
-arch  = MultiProcess(CPU(), ranks = (Rx, Ry, 1), 
+arch  = Distributed(CPU(), ranks = (Rx, Ry, 1), 
                         topology=topo, 
                         enable_overlapped_computation = true)
 

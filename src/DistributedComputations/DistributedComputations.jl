@@ -1,7 +1,7 @@
 module DistributedComputations
 
 export
-    MultiProcess, child_architecture, reconstruct_global_grid, 
+    Distributed, child_architecture, reconstruct_global_grid, 
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 

@@ -6,7 +6,7 @@ import Oceananigans.Architectures: device, arch_array, array_type, child_archite
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
-struct MultiProcess{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
+struct Distributed{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -22,7 +22,7 @@ end
 #####
 
 """
-    MultiProcess(child_architecture = CPU(); 
+    Distributed(child_architecture = CPU(); 
                     topology, 
                     ranks, 
                     devices = nothing, 
@@ -57,7 +57,7 @@ Keyword arguments
 - `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
                   if not for testing or developing. Change at your own risk!
 """
-function MultiProcess(child_architecture = CPU(); 
+function Distributed(child_architecture = CPU(); 
                          topology, 
                          ranks,
                          devices = nothing, 
@@ -101,28 +101,28 @@ function MultiProcess(child_architecture = CPU();
     M = typeof(mpi_requests)
     T = typeof(Ref(0))
 
-    return MultiProcess{A, M, R, I, ρ, C, γ, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
+    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
 end
 
-const MultiCPUProcess = MultiProcess{CPU}
-const MultiGPUProcess = MultiProcess{GPU}
+const DistributedCPU = Distributed{CPU}
+const DistributedGPU = Distributed{GPU}
 
-const BlockingMultiProcess = MultiProcess{<:Any, <:Nothing}
+const BlockingDistributed = Distributed{<:Any, <:Nothing}
 
 #####
 ##### All the architectures
 #####
 
-child_architecture(arch::MultiProcess) = arch.child_architecture
-device(arch::MultiProcess)             = device(child_architecture(arch))
-arch_array(arch::MultiProcess, A)      = arch_array(child_architecture(arch), A)
-zeros(FT, arch::MultiProcess, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::MultiProcess)         = array_type(child_architecture(arch))
-sync_device!(arch::MultiProcess)       = sync_device!(arch.child_architecture)
+child_architecture(arch::Distributed) = arch.child_architecture
+device(arch::Distributed)             = device(child_architecture(arch))
+arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
+zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
+array_type(arch::Distributed)         = array_type(child_architecture(arch))
+sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 
-cpu_architecture(arch::MultiCPUProcess) = arch
-cpu_architecture(arch::MultiGPUProcess) = 
-    MultiProcess(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
+cpu_architecture(arch::DistributedCPU) = arch
+cpu_architecture(arch::DistributedGPU) = 
+    Distributed(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
                            arch.connectivity, arch.communicator, arch.mpi_requests, arch.mpi_tag)
 
 #####
@@ -223,7 +223,7 @@ end
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::MultiProcess)
+function Base.show(io::IO, arch::Distributed)
     c = arch.connectivity
     print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
               "└── child architecture: $(typeof(child_architecture(arch))) \n",

@@ -44,7 +44,7 @@ saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, add
 
 function saveproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = MultiProcess(CPU(); topology = topology(grid),
+    cpu_arch = Distributed(CPU(); topology = topology(grid),
                                       ranks = arch.ranks)
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
@@ -86,7 +86,7 @@ serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_archi
 
 function serializeproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = MultiProcess(CPU(); topology = topology(grid),
+    cpu_arch = Distributed(CPU(); topology = topology(grid),
                                       ranks = arch.ranks)
     file[address] = on_architecture(cpu_arch, grid)
 end

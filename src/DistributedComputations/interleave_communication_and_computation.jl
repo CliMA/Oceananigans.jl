@@ -16,7 +16,7 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
 end
 
 # Fallback
-complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingMultiProcess) = nothing
+complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributed) = nothing
 complete_communication_and_compute_boundary!(model, grid, arch) = nothing
 
 compute_boundary_tendencies!(model) = nothing
@@ -26,7 +26,7 @@ interior_tendency_kernel_parameters(grid) = :xyz
 interior_tendency_kernel_parameters(grid::DistributedGrid) = 
             interior_tendency_kernel_parameters(grid, architecture(grid))
 
-interior_tendency_kernel_parameters(grid, ::BlockingMultiProcess) = :xyz
+interior_tendency_kernel_parameters(grid, ::BlockingDistributed) = :xyz
 
 function interior_tendency_kernel_parameters(grid, arch)
     Rx, Ry, _ = arch.ranks

@@ -33,7 +33,7 @@ Return a FFT-based solver for the Poisson equation,
 ∇²φ = b
 ```
 
-for `MultiProcess`itectures.
+for `Distributed`itectures.
 
 Supported configurations
 ========================
@@ -80,7 +80,7 @@ Restrictions
 ============
 
 The algorithm for two-dimensional decompositions requires that `Nz = size(global_grid, 3)` is larger
-than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `MultiProcess`.
+than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `Distributed`.
 If `Nz` does not satisfy this condition, we can only support a one-dimensional decomposition.
 
 Algorithm for one-dimensional decompositions
