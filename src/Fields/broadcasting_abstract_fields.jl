@@ -75,24 +75,3 @@ end
 
     return dest
 end
-
-#=
-# TODO: cubed sphere br
-@inline function Base.copyto!(dest::CubedSphereField, bc::Broadcasted{Nothing})
-
-    for region = 1:6
-        # getregion...
-
-        grid = dest.grid
-        arch = architecture(dest)
-        region_bc = bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
-
-        bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
-
-        launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
-
-        return dest
-    end
-end
-=#
-
