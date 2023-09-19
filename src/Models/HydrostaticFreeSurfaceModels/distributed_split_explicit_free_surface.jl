@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Distributed: DistributedGrid, DistributedField
-using Oceananigans.Distributed: BlockingMultiProcess, complete_halo_communication!
+using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
+using Oceananigans.DistributedComputations: BlockingMultiProcess, complete_halo_communication!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields

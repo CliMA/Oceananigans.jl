@@ -6,7 +6,7 @@ using JLD2
 using BenchmarkTools
 
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
 Logging.global_logger(OceananigansLogger())
 

@@ -4,7 +4,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Printf
 using Statistics
 using Oceananigans.BoundaryConditions
-using Oceananigans.Distributed    
+using Oceananigans.DistributedComputations    
 using Random
 
 # Run with 

@@ -1,6 +1,6 @@
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
 MPI.Init()
 

@@ -1,7 +1,7 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth

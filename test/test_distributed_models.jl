@@ -26,7 +26,7 @@ MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.Distributed: MultiProcess, index2rank
+using Oceananigans.DistributedComputations: MultiProcess, index2rank
 using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids:
     halo_size,

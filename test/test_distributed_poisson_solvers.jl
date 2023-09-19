@@ -25,8 +25,8 @@ MPI.Init()
 
 # to initialize MPI.
 
-using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
+using Oceananigans.DistributedComputations: reconstruct_global_grid
+using Oceananigans.DistributedComputations: ZXYPermutation, ZYXPermutation
 
 @kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
     i, j, k = @index(Global, NTuple)

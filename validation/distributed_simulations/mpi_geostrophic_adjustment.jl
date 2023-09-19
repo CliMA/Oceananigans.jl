@@ -10,7 +10,7 @@
 
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
 using Printf

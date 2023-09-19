@@ -1,4 +1,4 @@
-module Distributed
+module DistributedComputations
 
 export
     MultiProcess, child_architecture, reconstruct_global_grid, 
@@ -10,7 +10,7 @@ using MPI
 using Oceananigans.Utils
 using Oceananigans.Grids
 
-include("multi_architectures.jl")
+include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_kernel_launching.jl")

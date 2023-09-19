@@ -89,7 +89,7 @@ function TimeStepWizard(FT=Float64;
 end
 
 using Oceananigans.Grids: topology
-using Oceananigans.Distributed: all_reduce
+using Oceananigans.DistributedComputations: all_reduce
 
 """
      new_time_step(old_Δt, wizard, model)

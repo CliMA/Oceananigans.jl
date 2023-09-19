@@ -9,7 +9,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 using Statistics
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
 ranks = (2, 2, 1)
 topo = (Periodic, Periodic, Flat)

@@ -10,8 +10,8 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-import Oceananigans.Distributed: complete_communication_and_compute_boundary!
-import Oceananigans.Distributed: interior_tendency_kernel_parameters
+import Oceananigans.DistributedComputations: complete_communication_and_compute_boundary!
+import Oceananigans.DistributedComputations: interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_interior_tuple

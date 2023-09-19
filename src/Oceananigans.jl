@@ -213,7 +213,7 @@ include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("Distributed/Distributed.jl")
+include("DistributedComputations/DistributedComputations.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -244,7 +244,7 @@ using .TurbulenceClosures
 using .Solvers
 using .Forcings
 using .ImmersedBoundaries
-using .Distributed
+using .DistributedComputations
 using .Models
 using .TimeSteppers
 using .Diagnostics

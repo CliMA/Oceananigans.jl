@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
-using Oceananigans.Distributed: MultiProcess, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.DistributedComputations: MultiProcess, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 

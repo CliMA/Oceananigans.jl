@@ -10,7 +10,7 @@
 
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Statistics
 using Printf
 using Logging
