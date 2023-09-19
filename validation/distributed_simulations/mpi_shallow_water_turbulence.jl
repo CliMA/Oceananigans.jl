@@ -9,18 +9,18 @@ mpi_ranks = MPI.Comm_size(comm)
 
 using Statistics
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
-     ranks = (2, 2, 1)
-      topo = (Periodic, Periodic, Flat)
-      arch = MultiCPU(CPU(), ranks=ranks)
-      grid = RectilinearGrid(arch, topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
+ranks = (2, 2, 1)
+topo = (Periodic, Periodic, Flat)
+arch = Distributed(CPU(), ranks=ranks, topology=topo)
+grid = RectilinearGrid(arch, topology=topo, size=(128 ÷ ranks[1], 128 ÷ ranks[2]), extent=(4π, 4π), halo=(3, 3))
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 model = ShallowWaterModel(
                           grid = grid,
                    timestepper = :RungeKutta3,
-                     advection = UpwindBiasedFifthOrder(),
+            momentum_advection = UpwindBiasedFifthOrder(),
     gravitational_acceleration = 1.0
 )
 
@@ -31,7 +31,7 @@ uh₀ .-= mean(uh₀);
 set!(model, uh=uh₀, vh=uh₀)
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time)"
-simulation = Simulation(model, Δt=0.001, stop_time=100.0, iteration_interval=1, progress=progress)
+simulation = Simulation(model, Δt=0.001, stop_time=100.0)
 
 uh, vh, h = model.solution
 outputs = (ζ=Field(∂x(vh/h) - ∂y(uh/h)),)

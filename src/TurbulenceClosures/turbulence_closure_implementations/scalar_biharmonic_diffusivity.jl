@@ -6,12 +6,11 @@ using Oceananigans.Utils: prettysummary
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
-    ν :: N
+struct ScalarBiharmonicDiffusivity{F, V, K, N} <: AbstractScalarBiharmonicDiffusivity{F, N}
+    ν :: V
     κ :: K
-
-    ScalarBiharmonicDiffusivity{F}(ν::N, κ::K) where {F, N, K} =
-        new{F, N, K}(ν, κ)
+    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} =
+        new{F, V, K, N}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
@@ -19,8 +18,6 @@ end
             VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
           HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
-
-required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
 """
     ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
@@ -74,22 +71,23 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
                                      κ = 0,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
-                                     parameters = nothing)
+                                     parameters = nothing,
+                                     required_halo_size = 2)
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F}) where {F}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarBiharmonicDiffusivity{F}(closure.ν, κ)
+    return ScalarBiharmonicDiffusivity{F, N}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
+compute_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
 function Base.summary(closure::ScalarBiharmonicDiffusivity)
     F = summary(formulation(closure))
