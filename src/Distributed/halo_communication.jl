@@ -1,6 +1,5 @@
 using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
-using CUDA: cuStreamGetFlags, stream, priority_range, CUstream_flags_enum, CuStream, stream!
 
 using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
