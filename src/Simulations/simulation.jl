@@ -7,9 +7,8 @@ import Oceananigans.TimeSteppers: reset!
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, TS, DT, ST, DI, OW, CB}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB}
               model :: ML
-        timestepper :: TS
                  Δt :: DT
      stop_iteration :: Float64
           stop_time :: ST
@@ -75,7 +74,6 @@ function Simulation(model; Δt,
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
    return Simulation(model,
-                     model.timestepper,
                      Δt,
                      Float64(stop_iteration),
                      stop_time,
