@@ -29,12 +29,12 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY
                 indices :: I
                   times :: χ
 
-    function FieldTimeSeries{LX, LY, LZ, K}(data::D,
-                                            grid::G,
-                                         backend::K,
-                                             bcs::B,
-                                           times::χ,
-                                         indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
+    function FieldTimeSeries{LX, LY, LZ}(data::D,
+                                         grid::G,
+                                      backend::K,
+                                          bcs::B,
+                                        times::χ,
+                                      indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data)
         return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, backend, bcs, indices, times)
     end
@@ -53,23 +53,15 @@ struct UnspecifiedBoundaryConditions end
 
 instantiate(T::Type) = T()
 
-"""
-    FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
-                                indices = (:, :, :),
-                                boundary_conditions = nothing)
-
-Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with `backend` associated to
-file `path` and variable `name` (in case of `OnDisk` or `Chunked`).
-"""
-function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
+function FieldTimeSeries(loc, grid, times;
                                      indices = (:, :, :), 
                                      backend::K = InMemory(),
                                      path = nothing, 
                                      name = nothing,
-                                     boundary_conditions = nothing) where {LX, LY, LZ}
+                                     boundary_conditions = nothing)
 
+    LX, LY, LZ = loc
     Nt   = length(times)
-    loc  = map(instantiate, (LX, LY, LZ))
     data = new_data(FT, grid, loc, indices, Nt, path, name, backend)
     backend = regularize_backend(backend, path, name, data)
 
@@ -102,9 +94,9 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 """
-FieldTimeSeries(path, name; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
+FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
 
-function FieldTimeSeries(path, name, backend;
+function FieldTimeSeries(path::String, name::String, backend;
                          architecture = nothing,
                          grid = nothing,
                          location = nothing,
