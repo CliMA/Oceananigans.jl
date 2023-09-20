@@ -108,9 +108,12 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
-    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
+
+    FT = eltype(global_grid)
+
+    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX(), FT)
+    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY(), FT)
+    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ(), FT)
 
     # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
     λx = dropdims(λx, dims=(2, 3))

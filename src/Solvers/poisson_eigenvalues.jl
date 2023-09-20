@@ -5,9 +5,9 @@ Return the eigenvalues satisfying the discrete form of Poisson's equation
 with periodic boundary conditions along the dimension `dim` with `N` grid
 points and domain extent `L`.
 """
-function poisson_eigenvalues(N, L, dim, ::Periodic)
+function poisson_eigenvalues(N, L, dim, ::Periodic, FT)
     inds = reshape(1:N, reshaped_size(N, dim)...)
-    return @. (2sin((inds - 1) * π / N) / (L / N))^2
+    return @. FT((2sin((inds - 1) * π / N) / (L / N))^2)
 end
 
 """
@@ -17,9 +17,9 @@ Return the eigenvalues satisfying the discrete form of Poisson's equation
 with staggered Neumann boundary conditions along the dimension `dim` with
 `N` grid points and domain extent `L`.
 """
-function poisson_eigenvalues(N, L, dim, ::Bounded)
+function poisson_eigenvalues(N, L, dim, ::Bounded, FT)
     inds = reshape(1:N, reshaped_size(N, dim)...)
-    return @. (2sin((inds - 1) * π / 2N) / (L / N))^2
+    return @. FT((2sin((inds - 1) * π / 2N) / (L / N))^2)
 end
 
 """
@@ -28,5 +28,5 @@ end
 Return N-element array of `0.0` reshaped to three-dimensions.
 This is also the first `poisson_eigenvalue` for `Bounded` and `Periodic` directions.
 """
-poisson_eigenvalues(N, L, dim, ::Flat) = reshape(zeros(N), reshaped_size(N, dim)...)
+poisson_eigenvalues(N, L, dim, ::Flat, FT) = reshape(zeros(FT, N), reshaped_size(N, dim)...)
 

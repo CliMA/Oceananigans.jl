@@ -144,9 +144,13 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
 validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
+validate_boundary_condition_architecture(::MtlArray, ::MetalBackend, bc, side) = nothing
 
-validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
+validate_boundary_condition_architecture(::CuArray, ::Union{CPU, MetalBackend}, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
+validate_boundary_condition_architecture(::Array, ::Union{GPU, MetalBackend}, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+
+validate_boundary_condition_architecture(::MtlArray, ::Union{CPU, GPU}, bc, side) =
+    throw(ArgumentError("$side $bc must use `MtlArray` rather than `Array` on Metal architectures!"))

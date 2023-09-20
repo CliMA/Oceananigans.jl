@@ -70,8 +70,10 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topology(grid, irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
     # Compute discrete Poisson eigenvalues
-    λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
-    λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
+    FT = eltype(grid)
+
+    λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1(), FT)
+    λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2(), FT)
 
     arch = architecture(grid)
     λ1 = arch_array(arch, λ1)
