@@ -50,10 +50,10 @@ const μ = 1.0 - δ - γ - ϵ
 
 # Enforce NoFlux conditions for `η★`
 
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, zero(grid), δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, zero(grid), δyᵃᶠᵃ(i, j, k, grid, η★, args...))
 
 # Enforce Impenetrability conditions for `U★` and `V★`
 
@@ -72,7 +72,7 @@ const μ = 1.0 - δ - γ - ϵ
 
 @inline ∂xᶠᶜᶠ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ_η(i, j, k, grid, T, η★, args...) / Δxᶠᶜᶠ(i, j, k, grid)
 @inline ∂yᶜᶠᶠ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ_η(i, j, k, grid, T, η★, args...) / Δyᶜᶠᶠ(i, j, k, grid)
-                                                                                                                                           
+
 @inline div_xᶜᶜᶠ_U(i, j, k, grid, TX, U★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, TX, Δy_qᶠᶜᶠ, U★, args...) 
 @inline div_yᶜᶜᶠ_V(i, j, k, grid, TY, V★, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, TY, Δx_qᶜᶠᶠ, V★, args...) 
 
@@ -87,7 +87,7 @@ const μ = 1.0 - δ - γ - ϵ
 @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcc,  ibg, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc,  ibg, V★, args...)
 @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂xᶠᶜᶠ_η(i, j, k, ibg, T, η★, args...)
-@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)        
+@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)
 
 # Disambiguation
 for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
@@ -102,23 +102,23 @@ end
 # AB3 step
 @inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)
     FT = eltype(grid)
-    return FT(α) * ϕᵐ[i, j, k]   + FT(θ) * ϕᵐ⁻¹[i, j, k] + FT(β) * ϕᵐ⁻²[i, j, k]
+    return @inbounds FT(α) * ϕᵐ[i, j, k] + FT(θ) * ϕᵐ⁻¹[i, j, k] + FT(β) * ϕᵐ⁻²[i, j, k]
 end
 
 @inline function η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
     FT = eltype(grid)
-    return FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * ηᵐ[i, j, k]   + FT(γ) * ηᵐ⁻¹[i, j, k] + FT(ϵ) * ηᵐ⁻²[i, j, k]
+    return @inbounds FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * ηᵐ[i, j, k] + FT(γ) * ηᵐ⁻¹[i, j, k] + FT(ϵ) * ηᵐ⁻²[i, j, k]
 end
 
 # Forward Backward Step
-@inline U★(i, j, k, grid, ::ForwardBackwardScheme, ϕ, args...) = ϕ[i, j, k] 
-@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = η[i, j, k] 
+@inline U★(i, j, k, grid, ::ForwardBackwardScheme, ϕ, args...) = @inbounds ϕ[i, j, k]
+@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = @inbounds η[i, j, k]
 
 @inline advance_previous_velocity!(i, j, k, ::ForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²) = nothing
 
 @inline function advance_previous_velocity!(i, j, k, ::AdamsBashforth3Scheme, U, Uᵐ⁻¹, Uᵐ⁻²)
-    @inbounds Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k] 
-    @inbounds Uᵐ⁻¹[i, j, k] =    U[i, j, k] 
+    @inbounds Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k]
+    @inbounds Uᵐ⁻¹[i, j, k] =    U[i, j, k]
 
     return nothing
 end
@@ -134,7 +134,7 @@ end
 end
 
 @kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                               η̅, U̅, V̅, averaging_weight, 
+                                                               η̅, U̅, V̅, averaging_weight,
                                                                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                timestepper)
     i, j = @index(Global, NTuple)
@@ -153,11 +153,11 @@ end
     end
 end
 
-@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                                      η̅, U̅, V̅, averaging_weight, 
+@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                                                      η̅, U̅, V̅, averaging_weight,
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                       timestepper)
-    i, j  = @index(Global, NTuple)
+    i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
     TX, TY, _ = topology(grid)
@@ -171,9 +171,9 @@ end
         V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
                           
         # time-averaging
-        η̅[i, j, k_top] +=  averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     +=  averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     +=  averaging_weight * V[i, j, 1]
+        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
+        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
+        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
     end
 end
 
@@ -185,7 +185,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, we
     ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
     η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
-    
+
     timestepper      = settings.timestepper
     averaging_weight = weights[substep_index]
     
@@ -225,7 +225,7 @@ function initialize_free_surface_state!(free_surface_state, η)
 
     parent(state.U) .= parent(state.U̅)
     parent(state.V) .= parent(state.V̅)
-    
+
     parent(state.Uᵐ⁻¹) .= parent(state.U̅)
     parent(state.Vᵐ⁻¹) .= parent(state.V̅)
 
@@ -236,9 +236,9 @@ function initialize_free_surface_state!(free_surface_state, η)
     parent(state.ηᵐ⁻¹) .= parent(η)
     parent(state.ηᵐ⁻²) .= parent(η)
 
-    fill!(state.η̅, 0.0)
-    fill!(state.U̅, 0.0)
-    fill!(state.V̅, 0.0)
+    fill!(state.η̅, 0)
+    fill!(state.U̅, 0)
+    fill!(state.V̅, 0)
 
     return nothing
 end
@@ -264,7 +264,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
 
     return nothing
 end

@@ -53,7 +53,7 @@ function random_divergent_source_term(grid)
 end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks, topo)
-    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
+    arch = Distributed(CPU(), ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))

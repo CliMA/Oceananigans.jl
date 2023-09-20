@@ -19,6 +19,77 @@ end
 architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
+"""
+    DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+
+Return a FFT-based solver for the Poisson equation,
+
+```math
+∇²φ = b
+```
+
+for `Distributed` architectures.
+
+Supported configurations
+========================
+
+We support two "modes":
+
+  1. Vertical pencil decompositions: two-dimensional decompositions in ``(x, y)``
+     for three dimensional problems that satisfy either `Nz > Rx` or `Nz > Ry`.
+
+  2. One-dimensional decompositions in either ``x`` or ``y``.
+
+Above, `Nz = size(global_grid, 3)` and `Rx, Ry, Rz = architecture(local_grid).ranks`.
+
+Other configurations that are decomposed in ``(x, y)`` but have too few `Nz`,
+or any configuration decomposed in ``z``, are _not_ supported.
+
+Algorithm for two-dimensional decompositions
+============================================
+
+For two-dimensional decompositions (useful for three-dimensional problems),
+there are three forward transforms, three backward transforms,
+and four transpositions requiring MPI communication. In the schematic below, the first
+dimension is always the local dimension. In our implementation of the PencilFFTs algorithm,
+we require _either_ `Nz >= Rx`, _or_ `Nz >= Ry`, where `Nz` is the number of vertical cells,
+`Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
+Below, we outline the algorithm for the case `Nz >= Rx`.
+If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with ``x`` and ``y`` swapped:
+
+1. `first(storage)` is initialized with layout ``(z, x, y)``.
+2. Transform along ``z``.
+3  Transpose + communicate to `storage[2]` in layout ``(x, z, y)``,
+   which is distributed into `(Rx, Ry)` processes in ``(z, y)``.
+4. Transform along ``x``.
+5. Transpose + communicate to `last(storage)` in layout ``(y, x, z)``,
+   which is distributed into `(Rx, Ry)` processes in ``(x, z)``.
+6. Transform in ``y``.
+
+At this point the three in-place forward transforms are complete, and we
+solve the Poisson equation by updating `last(storage)`.
+Then the process is reversed to obtain `first(storage)` in physical
+space and with the layout ``(z, x, y)``.
+
+Restrictions
+============
+
+The algorithm for two-dimensional decompositions requires that `Nz = size(global_grid, 3)` is larger
+than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `Distributed`.
+If `Nz` does not satisfy this condition, we can only support a one-dimensional decomposition.
+
+Algorithm for one-dimensional decompositions
+============================================
+
+This algorithm requires a one-dimensional decomposition with _either_ `Rx = 1`
+_or_ `Ry = 1`, and is important to support two-dimensional transforms.
+
+For one-dimensional decompositions, we place the decomposed direction _last_.
+If the number of ranks is `Rh = max(Rx, Ry)`, this algorithm requires that 
+_both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transforms
+is similar to the two-dimensional case. It remains somewhat of a mystery why this
+succeeds (i.e., why the last transform is correctly decomposed).
+"""
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
     validate_global_grid(global_grid)

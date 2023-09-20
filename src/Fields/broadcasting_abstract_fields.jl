@@ -52,20 +52,22 @@ end
 end
 
 # Interface for getting AbstractOperation right
-broadcasted_to_abstract_operation(loc, grid, a) = a
+@inline broadcasted_to_abstract_operation(loc, grid, a) = a
 
 # Broadcasting with interpolation breaks Base's default rules,
 # so we bypass the infrastructure for checking axes compatibility,
 # and head straight to copyto! from materialize!.
-@inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
-                                    dest::Field,
-                                    bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
+@inline function Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
+                                             dest::Field,
+                                             bc::Broadcasted{<:FieldBroadcastStyle})
+
+    return copyto!(dest, convert(Broadcasted{Nothing}, bc))
+end
 
 @inline function Base.copyto!(dest::Field, bc::Broadcasted{Nothing})
 
     grid = dest.grid
     arch = architecture(dest)
-
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
     param = KernelParameters(size(dest), map(offset_index, dest.indices))
@@ -73,4 +75,3 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     return dest
 end
-
