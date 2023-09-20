@@ -54,11 +54,11 @@ struct UnspecifiedBoundaryConditions end
 instantiate(T::Type) = T()
 
 function FieldTimeSeries(loc, grid, times;
-                                     indices = (:, :, :), 
-                                     backend::K = InMemory(),
-                                     path = nothing, 
-                                     name = nothing,
-                                     boundary_conditions = nothing)
+                         indices = (:, :, :), 
+                         backend = InMemory(),
+                         path = nothing, 
+                         name = nothing,
+                         boundary_conditions = nothing)
 
     LX, LY, LZ = loc
     Nt   = length(times)
@@ -67,6 +67,8 @@ function FieldTimeSeries(loc, grid, times;
 
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, times, indices)
 end
+
+FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
 
 """
     FieldTimeSeries(path, name;
