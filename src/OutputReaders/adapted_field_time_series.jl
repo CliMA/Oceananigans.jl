@@ -5,8 +5,7 @@ struct AdaptedFieldTimeSeries{T, D, χ} <: AbstractArray{T, 4}
                   times :: χ
 
     function AdaptedFieldTimeSeries{T}(data::D,
-                                      times::χ) where {D, χ}
-        T = eltype(data)
+                                      times::χ) where {T, D, χ}
         return new{T, D, χ}(data, backend, times)
     end
 end
@@ -15,11 +14,8 @@ Adapt.adapt_structure(to, fts::InMemoryFieldTimeSeries) =
     AdaptedFieldTimeSeries{eltype(fts.grid)}(adapt(to, fts.data),
                                              adapt(to, fts.times))
 
-
-# Making AdaptedFieldTimeSeries behave like Vector
-Base.lastindex(fts::AdaptedFieldTimeSeries) = size(fts, 4)
-Base.firstindex(fts::AdaptedFieldTimeSeries) = 1
-Base.length(fts::AdaptedFieldTimeSeries) = size(fts, 4)
+@propagate_inbounds Base.lastindex(fts::AdaptedFieldTimeSeries) = lastindex(fts.data)
+@propagate_inbounds Base.lastindex(fts::AdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
 
 Base.getindex(fts::AdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = fts.data[i, j, k, n]
 
