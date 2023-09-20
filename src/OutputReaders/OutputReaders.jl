@@ -20,9 +20,6 @@ struct OnDisk <: AbstractDataBackend
     name :: String
 end
 
-Base.summary(odd::OnDiskData)  = "OnDiskData($(odd.path), $(odd.name))"
-Base.summary(odd::ChunkedData) = "ChunkedData($(odd.path), $(odd.name), with indices $(odd.index_range))"
-
 regularize_backend(::InMemory, path, name, data) = InMemory(path, name, 1:size(data, 4))
 regularize_backend(::OnDisk,   path, name, data) = OnDisk(path, name)
 
