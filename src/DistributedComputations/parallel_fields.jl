@@ -120,9 +120,9 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
         return grid
     end
 
-    new_arch = DistributedArch(child_arch; 
-                               ranks,
-                               topology = (TX, TY, TZ))
+    new_arch = Distributed(child_arch; 
+                           ranks,
+                           topology = (TX, TY, TZ))
 
     return construct_grid(grid, new_arch, FT; 
                           size = (nnx, nny, nnz), 
