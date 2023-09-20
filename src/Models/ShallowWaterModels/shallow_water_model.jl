@@ -2,7 +2,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!

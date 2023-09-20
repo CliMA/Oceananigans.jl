@@ -118,6 +118,8 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     return ϕ
 end
 
+# We have to pass the offset explicitly to this kernel (we cannot use KA implicit
+# index offsetting) since ϕc and ϕ and indexed with different indices
 @kernel function copy_real_component!(ϕ, ϕc, index_ranges)
     i, j, k = @index(Global, NTuple)
 

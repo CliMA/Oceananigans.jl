@@ -3,8 +3,9 @@ using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+using Oceananigans.Utils: use_only_active_interior_cells
 
-struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT
     κᶜᵃ :: FT
@@ -137,10 +138,11 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     κᶜ = Field((Center, Center, Face), grid)
     κᵘ = Field((Center, Center, Face), grid)
-    return (; κᶜ, κᵘ)
+    Ri = Field((Center, Center, Face), grid)
+    return (; κᶜ, κᵘ, Ri)
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
+function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -149,7 +151,18 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
+            compute_ri_number!,
+            diffusivities,
+            grid,
+            closure,
+            velocities,
+            tracers,
+            buoyancy,
+            top_tracer_bcs,
+            clock)
+
+    launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,
             diffusivities,
             grid,
@@ -197,10 +210,21 @@ end
 const c = Center()
 const f = Face()
 
-@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
-                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
+@kernel function compute_ri_number!(diffusivities, grid, closure::FlavorOfRBVD,
+                                    velocities, tracers, buoyancy, tracer_bcs, clock)
+    i, j, k = @index(Global, NTuple)
+    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
+end
 
-    i, j, k, = @index(Global, NTuple)
+@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
+                                                velocities, tracers, buoyancy, tracer_bcs, clock)
+    i, j, k = @index(Global, NTuple)
+    _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+                                     velocities, tracers, buoyancy, tracer_bcs, clock)
+end
+
+@inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
@@ -230,19 +254,10 @@ const f = Face()
     κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
 
     # Shear mixing diffusivity and viscosity
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
-    τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κᵘ★ = ν₀ * τ
-
-    # Tracer diffusivity: average more than necessary to eliminate noise
-    #∂z_u² = ℑyᵃᶜᵃ(i, j, k, grid, ℑxyᶜᶠᵃ, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    #∂z_v² = ℑxᶜᵃᵃ(i, j, k, grid, ℑxyᶜᶠᵃ, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    #S² = ∂z_u² + ∂z_v²
-    #N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    #Ri = ifelse(N² <= 0, zero(grid), N² / S²)
-    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, buoyancy, tracers)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κᶜ★ = κ₀ * τ
+    κᵘ★ = ν₀ * τ
 
     # Previous diffusivities
     κᶜ = diffusivities.κᶜ
@@ -261,6 +276,7 @@ const f = Face()
     # Update by averaging in time
     @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
     @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
+    return nothing
 end
 
 #####

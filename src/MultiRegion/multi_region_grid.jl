@@ -3,8 +3,8 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
+import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Grids: minimum_spacing, destantiate
-import Oceananigans.Distributed: reconstruct_global_grid
 
 struct MultiRegionGrid{FT, TX, TY, TZ, P, C, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch

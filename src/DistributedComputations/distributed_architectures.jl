@@ -1,19 +1,20 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
-
 using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
-import Oceananigans.Fields: using_buffered_communication
+import Oceananigans.Utils: sync_device!
 
-struct DistributedArch{A, R, I, ρ, C, γ, B} <: AbstractArchitecture
+struct Distributed{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
                ranks :: ρ
         connectivity :: C
         communicator :: γ
+        mpi_requests :: M
+             mpi_tag :: T
 end
 
 #####
@@ -21,10 +22,9 @@ end
 #####
 
 """
-    DistributedArch(child_architecture = CPU(); 
-                    topology = (Periodic, Periodic, Periodic), 
+    Distributed(child_architecture = CPU(); 
+                    topology, 
                     ranks, 
-                    use_buffers = false,
                     devices = nothing, 
                     communicator = MPI.COMM_WORLD)
 
@@ -40,16 +40,15 @@ Positional arguments
 Keyword arguments
 =================
 
-- `topology`: the topology we want the grid to have. It is used to establish connectivity.
-              Default: `topology = (Periodic, Periodic, Periodic)`.
-
+- `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
+                        
 - `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
 
-- `use_buffers`: if `true`, buffered halo communication is implemented. If `false`, halos will be 
-                 exchanged through views. Buffered communication is not necessary in case of `CPU`
-                 execution, but it is necessary for `GPU` execution without CUDA-aware MPI
+- enable_overlapped_computation: if `true` the prognostic halo communication will be overlapped
+                                 with tendency calculations, and the barotropic halo communication
+                                 with the implicit vertical solver (defaults to `true`)
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
@@ -58,20 +57,14 @@ Keyword arguments
 - `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
                   if not for testing or developing. Change at your own risk!
 """
-function DistributedArch(child_architecture = CPU(); 
-                         topology = (Periodic, Periodic, Periodic),
+function Distributed(child_architecture = CPU(); 
+                         topology, 
                          ranks,
-                         use_buffers = false,
                          devices = nothing, 
+                         enable_overlapped_computation = true,
                          communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
-
-    (use_buffers && child_architecture isa CPU) && 
-            @warn "Using buffers on CPU architectures is not required (but useful for testing)"
-
-    (!use_buffers && child_architecture isa GPU) && 
-            @warn "On GPU architectures not using buffers will lead to a substantial slowdown https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-support"
 
     validate_tupled_argument(ranks, Int, "ranks")
 
@@ -103,24 +96,34 @@ function DistributedArch(child_architecture = CPU();
         isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
     end
 
-    B = use_buffers
+    mpi_requests = enable_overlapped_computation ? MPI.Request[] : nothing
 
-    return DistributedArch{A, R, I, ρ, C, γ, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
+    M = typeof(mpi_requests)
+    T = typeof(Ref(0))
+
+    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
 end
 
-const ViewsDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+const DistributedCPU = Distributed{CPU}
+const DistributedGPU = Distributed{GPU}
 
-using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
+const BlockingDistributed = Distributed{<:Any, <:Nothing}
 
 #####
 ##### All the architectures
 #####
 
-child_architecture(arch::DistributedArch)            = arch.child_architecture
-device(arch::DistributedArch)        = device(child_architecture(arch))
-arch_array(arch::DistributedArch, A) = arch_array(child_architecture(arch), A)
-zeros(FT, arch::DistributedArch, N...)               = zeros(FT, child_architecture(arch), N...) 
-array_type(arch::DistributedArch)                    = array_type(child_architecture(arch))
+child_architecture(arch::Distributed) = arch.child_architecture
+device(arch::Distributed)             = device(child_architecture(arch))
+arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
+zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
+array_type(arch::Distributed)         = array_type(child_architecture(arch))
+sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
+
+cpu_architecture(arch::DistributedCPU) = arch
+cpu_architecture(arch::DistributedGPU) = 
+    Distributed(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
+                           arch.connectivity, arch.communicator, arch.mpi_requests, arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -140,17 +143,24 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, T, B}
-      east :: E
-      west :: W
-     north :: N
-     south :: S
-       top :: T
-    bottom :: B
+struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+         east :: E
+         west :: W
+        north :: N
+        south :: S
+    southwest :: SW
+    southeast :: SE
+    northwest :: NW
+    northeast :: NE
 end
 
-RankConnectivity(; east, west, north, south, top, bottom) =
-    RankConnectivity(east, west, north, south, top, bottom)
+"""
+    RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
+
+generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
+"""
+RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
+    RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
@@ -181,8 +191,8 @@ function decrement_index(i, R, topo)
     end
 end
 
-function RankConnectivity(model_index, ranks, topology)
-    i, j, k = model_index
+function RankConnectivity(local_index, ranks, topology)
+    i, j, k = local_index
     Rx, Ry, Rz = ranks
     TX, TY, TZ = topology
 
@@ -190,25 +200,30 @@ function RankConnectivity(model_index, ranks, topology)
     i_west  = decrement_index(i, Rx, TX)
     j_north = increment_index(j, Ry, TY)
     j_south = decrement_index(j, Ry, TY)
-    k_top   = increment_index(k, Rz, TZ)
-    k_bot   = decrement_index(k, Rz, TZ)
 
-    r_east  = isnothing(i_east)  ? nothing : index2rank(i_east, j, k, Rx, Ry, Rz)
-    r_west  = isnothing(i_west)  ? nothing : index2rank(i_west, j, k, Rx, Ry, Rz)
-    r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
-    r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
-    r_top   = isnothing(k_top)   ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
-    r_bot   = isnothing(k_bot)   ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
+     east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
+     west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
+    north_rank = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
+    south_rank = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(east=r_east, west=r_west, north=r_north,
-                            south=r_south, top=r_top, bottom=r_bot)
+    northeast_rank = isnothing(i_east) || isnothing(j_north) ? nothing : index2rank(i_east, j_north, k, Rx, Ry, Rz)
+    northwest_rank = isnothing(i_west) || isnothing(j_north) ? nothing : index2rank(i_west, j_north, k, Rx, Ry, Rz)
+    southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
+    southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
+
+    return RankConnectivity(west=west_rank, east=east_rank, 
+                            south=south_rank, north=north_rank,
+                            southwest=southwest_rank,
+                            southeast=southeast_rank,
+                            northwest=northwest_rank,
+                            northeast=northeast_rank)
 end
 
 #####
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::DistributedArch)
+function Base.show(io::IO, arch::Distributed)
     c = arch.connectivity
     print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
               "└── child architecture: $(typeof(child_architecture(arch))) \n",
@@ -217,6 +232,9 @@ function Base.show(io::IO, arch::DistributedArch)
               isnothing(c.west) ? "" : " west=$(c.west)",
               isnothing(c.north) ? "" : " north=$(c.north)",
               isnothing(c.south) ? "" : " south=$(c.south)",
-              isnothing(c.top) ? "" : " top=$(c.top)",
-              isnothing(c.bottom) ? "" : " bottom=$(c.bottom)")
+              isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
+              isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
+              isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
+              isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
 end
+              
