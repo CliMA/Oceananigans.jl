@@ -68,7 +68,7 @@ function FieldTimeSeries(loc, grid, times;
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, times, indices)
 end
 
-FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
+FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
 
 """
     FieldTimeSeries(path, name;
@@ -84,8 +84,7 @@ Keyword arguments
 =================
 
 - `backend`: `InMemory()` to load data into a 4D array, `OnDisk()` to lazily load data from disk
-             when indexing into `FieldTimeSeries`, or `Chunked(chunk_size)`, to load `chunk_size`
-             time steps and update the memory when indexing into `FieldTimeSeries`.
+             when indexing into `FieldTimeSeries`.
 
 - `grid`: A grid to associate with the data, in the case that the native grid was not serialized
           properly.
@@ -98,7 +97,7 @@ Keyword arguments
 """
 FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
 
-function FieldTimeSeries(path::String, name::String, backend;
+function FieldTimeSeries(path::String, name::String, backend::AbstractDataBackend;
                          architecture = nothing,
                          grid = nothing,
                          location = nothing,
@@ -367,7 +366,6 @@ end
 
 backend_str(::Type{InMemory}) = "InMemory"
 backend_str(::Type{OnDisk})   = "OnDisk"
-backend_str(::Type{Chunked})  = "Chunked"
 
 #####
 ##### show
@@ -390,13 +388,8 @@ function Base.show(io::IO, fts::FieldTimeSeries)
 end
 
 field_time_series_suffix(fts::InMemoryFieldTimeSeries) =
-    string("└── data: ", summary(fts.data), "\n",
+    string("    └── time indices: ", fts.backend.index_range, "\n",
            "    └── ", data_summary(fts.data), "\n")
 
-field_time_series_suffix(fts::ChunkedFieldTimeSeries) =
-    string("└── data: ", summary(fts.data.data_in_memory), "\n",
-            "    └── time indices: ", fts.data.index_range, "\n",
-            "    └── ", data_summary(fts.data.data_in_memory), "\n")
-
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
-    string("└── data: ", summary(fts.data))
+    string("└── data: ", summary(fts.backend))
