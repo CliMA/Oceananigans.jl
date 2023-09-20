@@ -44,7 +44,6 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 
 const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory}
 const OnDiskFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:OnDisk}
-const ChunkedFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:Chunked}
 
 struct UnspecifiedBoundaryConditions end
 
