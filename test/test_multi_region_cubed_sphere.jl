@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
@@ -92,6 +92,13 @@ function get_boundary_indices(Nx, Ny, Hx, Hy, ::North; operation=nothing, index=
     return range_x, Ny-Hy+1:Ny
 end
 
+# Solid body rotation
+R = 1        # sphere's radius
+U = 1        # velocity scale
+φʳ = 0       # Latitude pierced by the axis of rotation
+α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
+ζᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+
 """
     create_test_data(grid, region)
 
@@ -99,22 +106,49 @@ Create an array with integer values of the form, e.g., 541 corresponding to regi
 If `trailing_zeros > 0` then all values are multiplied with `10trailing_zeros`, e.g., for
 `trailing_zeros = 2` we have that 54100 corresponds to region=5, i=4, j=2.
 """
-function create_test_data(grid, region; trailing_zeros=0)
+function create_test_data(grid, region; trailing_zeros=0, solid_body_rotation=false, variable_name="tracer")
+
     Nx, Ny, Nz = size(grid)
-
-    (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
-
-    !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
-
-    factor = 10^(trailing_zeros)
-
-    return factor .* [100region + 10i + j for i in 1:Nx, j in 1:Ny, k in 1:Nz]
+    
+    if solid_body_rotation
+        
+        if variable_name == "tracer"
+            Location = Center(), Center(), Center()
+        elseif variable_name == "vorticity"
+            Location = Face(), Face(), Center()
+        end 
+        
+        ζ = zeros(Nx, Ny)
+    
+        for k = 1:Nz, j = 1:Ny, i = 1:Nx
+            λ = λnode(i, j, k, grid[region], Location...)
+            φ = φnode(i, j, k, grid[region], Location...)
+            ζ[i, j, k] = ζᵣ(λ, φ, 0)
+        end
+        
+    else
+    
+        (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
+        !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
+        factor = 10^(trailing_zeros)
+        ζ = factor .* [100region + 10i + j for i in 1:Nx, j in 1:Ny, k in 1:Nz]
+    
+    end
+    
+    return ζ
+    
 end
 
-create_c_test_data(grid, region) = create_test_data(grid, region, trailing_zeros=0)
-create_u_test_data(grid, region) = create_test_data(grid, region, trailing_zeros=1)
-create_v_test_data(grid, region) = create_test_data(grid, region, trailing_zeros=2)
-create_ζ_test_data(grid, region) = create_test_data(grid, region, trailing_zeros=3)
+# Use solid body rotation to create test data for c and ζ.
+#
+# create_c_test_data(grid, region) = create_test_data(grid, region; solid_body_rotation = true, variable_name="tracer")
+# create_ζ_test_data(grid, region) = create_test_data(grid, region; solid_body_rotation = true, variable_name="vorticity")
+
+create_c_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=0)
+create_ζ_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=1)
+
+create_u_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
+create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
 
 @testset "Testing conformal cubed sphere partitions..." begin
     for n = 1:4
