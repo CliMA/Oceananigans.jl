@@ -29,6 +29,7 @@ regularize_backend(::OnDisk,   path, name, data) = OnDisk(path, name)
 include("field_time_series.jl")
 include("memory_allocated_field_time_series.jl")
 include("on_disk_field_time_series.jl")
+include("adapted_field_time_series.jl")
 include("field_dataset.jl")
 
 end # module
