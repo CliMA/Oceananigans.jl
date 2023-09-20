@@ -25,7 +25,7 @@ include("dependencies_for_runtests.jl")
 
 # to initialize MPI.
 
-using Oceananigans.Distributed: reconstruct_global_grid
+using Oceananigans.DistributedComputations: reconstruct_global_grid
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
