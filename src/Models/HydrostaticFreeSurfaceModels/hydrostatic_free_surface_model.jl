@@ -20,7 +20,7 @@ using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_s
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
-import Oceananigans.Models: total_velocities
+import Oceananigans.Models: total_velocities, default_nan_checker
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -228,3 +228,13 @@ initialize_free_surface!(free_surface, grid, velocities) = nothing
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
+
+# Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
+function default_nan_checker(model::HydrostaticFreeSurfaceModel)
+    model_fields = prognostic_fields(model)
+    first_name = first(keys(model_fields))
+    field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
+    nan_checker = NaNChecker(field_to_check_nans)
+    return nan_checker
+end
+

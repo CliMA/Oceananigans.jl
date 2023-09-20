@@ -28,6 +28,7 @@ function reset!(model::AbstractModel)
         fill!(field, 0)
     end
 
+    # TODO: abstract this better to other time-steppers
     for field in model.timestepper.G⁻
         fill!(field, 0)
     end
@@ -52,6 +53,7 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 
+include("nan_checker.jl")
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")

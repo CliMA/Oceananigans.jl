@@ -1,4 +1,5 @@
 using Oceananigans: prognostic_fields
+using Oceananigans.Models: NaNChecker
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
@@ -63,17 +64,15 @@ function Simulation(model; Δt,
    callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
    callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
 
-   # Check for NaNs in the model's first prognostic field every 100 iterations.
-   model_fields = prognostic_fields(model)
-   first_name = first(keys(model_fields))
-   field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
-   nan_checker = NaNChecker(field_to_check_nans)
-   callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   nan_checker = default_nan_checker(model)
+   if isnothing(nan_checker) # otherwise don't bother
+       callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   end
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
-   FT = eltype(model.grid)
-   Δt = Δt isa Number ? FT(Δt) : Δt
-   stop_time = stop_time isa Number ? FT(stop_time) : stop_time
+   TT = typeof(model.clock.time)
+   Δt = Δt isa Number ? TT(Δt) : Δt
+   stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
    return Simulation(model,
                      model.timestepper,

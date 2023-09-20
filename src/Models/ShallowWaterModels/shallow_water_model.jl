@@ -17,6 +17,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advectio
 using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.Models: default_nan_checker
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -234,3 +235,13 @@ shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(mo
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
+
+# Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
+function default_nan_checker(model::ShallowWaterModel)
+    model_fields = prognostic_fields(model)
+    first_name = first(keys(model_fields))
+    field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
+    nan_checker = NaNChecker(field_to_check_nans)
+    return nan_checker
+end
+

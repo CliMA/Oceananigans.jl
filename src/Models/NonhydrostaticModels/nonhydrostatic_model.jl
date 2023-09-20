@@ -20,7 +20,7 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities
+import Oceananigans.Models: total_velocities, default_nan_checker
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -240,3 +240,14 @@ end
 @inline total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
                                                         v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
                                                         w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
+
+
+# Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
+function default_nan_checker(model::NonhydrostaticModel)
+    model_fields = prognostic_fields(model)
+    first_name = first(keys(model_fields))
+    field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
+    nan_checker = NaNChecker(field_to_check_nans)
+    return nan_checker
+end
+
