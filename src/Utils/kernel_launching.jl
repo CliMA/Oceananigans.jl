@@ -11,9 +11,11 @@ struct KernelParameters{S, O} end
 """
     KernelParameters(size, offsets)
 
-Return parameters for kernel launching and execution that define
-(i) a tuple that defines the `size` of the kernel being launched and
-(ii) a tuple of `offsets` that dictates where 
+Return parameters for kernel launching and execution that define (i) a tuple that
+defines the `size` of the kernel being launched and (ii) a tuple of `offsets` that
+offset loop indices. For example, `offsets = (0, 0, 0)` with `size = (N, N, N)` means
+all indices loop from `1:N`. If `offsets = (1, 1, 1)`, then all indices loop from 
+`2:N+1`. And so on.
 
 Example
 =======
@@ -25,8 +27,10 @@ kp = KernelParameters(size, offsets)
 
 # Launch a kernel with indices that range from i=1:8, j=2:7, k=3:6,
 # where i, j, k are the first, second, and third index, respectively:
-launch!(arch, grid, kp, kernel!, kernel_args...)
+launch!(arch, grid, kp, kernel!; kernel_args...)
 ```
+
+See the documentation for `launch!`.
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
