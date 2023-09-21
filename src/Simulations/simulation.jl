@@ -1,5 +1,5 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Models: NaNChecker
+using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
@@ -64,7 +64,7 @@ function Simulation(model; Δt,
    callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
 
    nan_checker = default_nan_checker(model)
-   if isnothing(nan_checker) # otherwise don't bother
+   if !isnothing(nan_checker) # otherwise don't bother
        callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
    end
 
@@ -148,7 +148,7 @@ function reset!(sim::Simulation)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
-    reset!(sim.model.timestepper)
+    reset!(timestepper(sim.model))
     return nothing
 end
 

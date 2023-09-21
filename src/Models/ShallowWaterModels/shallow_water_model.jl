@@ -7,17 +7,15 @@ using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid, Face, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
-using Oceananigans.Models: validate_model_halo
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
-using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: default_nan_checker
+import Oceananigans.Models: default_nan_checker, timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -244,4 +242,6 @@ function default_nan_checker(model::ShallowWaterModel)
     nan_checker = NaNChecker(field_to_check_nans)
     return nan_checker
 end
+
+timestepper(model::ShallowWaterModel) = model.timestepper
 

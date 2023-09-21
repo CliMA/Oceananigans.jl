@@ -9,7 +9,9 @@ export
     LagrangianParticles
 
 using Oceananigans: AbstractModel
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.Fields: Field
 using Oceananigans: fields
 
 import Oceananigans: initialize!
@@ -21,6 +23,8 @@ initialize!(model::AbstractModel) = nothing
 total_velocities() = nothing
 
 import Oceananigans.TimeSteppers: reset!
+
+timestepper(model) = nothing
 
 function reset!(model::AbstractModel)
 
@@ -52,6 +56,34 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                             Note that an ImmersedBoundaryGrid requires an extra halo point in all \
                             non-flat directions compared to a non-immersed boundary grid."))
 end
+
+#####
+##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
+#####
+##### Note: ignores tuples, including tuples of Symbols (tracer names) and
+##### tuples of DiffusivityFields (which occur for tupled closures)
+#####
+
+extract_boundary_conditions(::Nothing) = NamedTuple()
+extract_boundary_conditions(::Tuple) = NamedTuple()
+
+function extract_boundary_conditions(field_tuple::NamedTuple)
+    names = propertynames(field_tuple)
+    bcs = Tuple(extract_boundary_conditions(field) for field in field_tuple)
+    return NamedTuple{names}(bcs)
+end
+
+extract_boundary_conditions(field::Field) = field.boundary_conditions
+
+#####
+##### Tracer advection validation (currently used by HydrostaticFreeSurfaceModel and ShallowWaterModel)
+#####
+
+""" Returns a default_tracer_advection, tracer_advection `tuple`. """
+validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 include("nan_checker.jl")
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
