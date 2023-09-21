@@ -64,16 +64,16 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
     return workgroup
 end
 
-worklayout(grid, ::KernelParameters{worksize}; kw...) where worksize =
-    worklayout(grid, worksize; kw...)
+work_layout(grid, ::KernelParameters{worksize}; kw...) where worksize =
+    work_layout(grid, worksize; kw...)
 
-function worklayout(grid, worksize::Tuple; kw...)
+function work_layout(grid, worksize::Tuple; kw...)
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
 
 """
-    worklayout(grid, dims; include_right_boundaries=false, location=nothing)
+    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -85,7 +85,7 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function worklayout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
@@ -101,7 +101,7 @@ function worklayout(grid, workdims::Symbol; include_right_boundaries=false, loca
     return workgroup, worksize
 end
 
-@inline active_cells_worklayout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
+@inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
 @inline use_only_active_interior_cells(grid) = nothing
 
 """
@@ -117,7 +117,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    workgroup, worksize = worklayout(grid, workspec;
+    workgroup, worksize = work_layout(grid, workspec;
                                      include_right_boundaries,
                                      reduced_dimensions,
                                      location)
@@ -125,7 +125,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     offset = offsets(workspec)
 
     if !isnothing(only_active_cells) 
-        workgroup, worksize = active_cells_worklayout(workgroup, worksize, only_active_cells, grid) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
     end
 
