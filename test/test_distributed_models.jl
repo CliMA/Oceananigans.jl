@@ -465,7 +465,7 @@ end
                 @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
                 topo = (Periodic, Periodic, Periodic)
                 arch = Distributed(; ranks, topology=topo)
-                grid = RectilinearGrid(arch, topology=topo, size=(8, 2, 8), extent=(1, 2, 3))
+                grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
                 time_step!(model, 1)
