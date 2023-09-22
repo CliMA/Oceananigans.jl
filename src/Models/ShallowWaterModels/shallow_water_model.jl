@@ -234,14 +234,3 @@ shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(mo
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
 
-# Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
-function default_nan_checker(model::ShallowWaterModel)
-    model_fields = prognostic_fields(model)
-    first_name = first(keys(model_fields))
-    field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
-    nan_checker = NaNChecker(field_to_check_nans)
-    return nan_checker
-end
-
-timestepper(model::ShallowWaterModel) = model.timestepper
-

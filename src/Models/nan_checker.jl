@@ -61,5 +61,3 @@ function erroring_NaNChecker!(simulation)
     return nothing
 end
 
-
-

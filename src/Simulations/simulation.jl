@@ -1,5 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+
+import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
@@ -110,14 +112,14 @@ end
 
 Return the current simulation time.
 """
-Base.time(sim::Simulation) = sim.model.clock.time
+Base.time(sim::Simulation) = time(sim.model)
 
 """
     iteration(sim::Simulation)
 
 Return the current simulation iteration.
 """
-iteration(sim::Simulation) = sim.model.clock.iteration
+iteration(sim::Simulation) = iteration(sim.model)
 
 """
     prettytime(sim::Simulation)
