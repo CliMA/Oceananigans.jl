@@ -142,6 +142,7 @@ CUDA.allowscalar() do
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 

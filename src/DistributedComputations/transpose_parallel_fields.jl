@@ -1,6 +1,7 @@
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @index, @kernel
+using MPI: VBuffer, Alltoallv!
 
 # Transpose directions are assumed to work only in the following configuration
 # z -> y -> x -> y -> z
@@ -104,7 +105,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
         function $transpose!(pf::ParallelFields)
             $pack_buffer!(pf.$buffer, pf.$fromfield) # pack the one-dimensional buffer for Alltoallv! call
             sync_device!(architecture(pf.$fromfield)) # Device needs to be synched with host before MPI call
-            MPI.Alltoallv!(pf.$buffer.send, pf.$buffer.recv, pf.counts.$buff, pf.counts.$buff, pf.comms.$buff) # Actually transpose!
+            Alltoallv!(VBuffer(pf.$buffer.send, pf.counts.$buff), VBuffer(pf.$buffer.recv, pf.counts.$buff), pf.comms.$buff) # Actually transpose!
             $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer) # unpack the one-dimensional buffer into the 3D field
             return nothing
         end

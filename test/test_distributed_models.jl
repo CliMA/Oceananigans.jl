@@ -347,7 +347,7 @@ end
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     arch = Distributed(child_arch; ranks=(4, 1, 1), topology=topo, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -371,7 +371,7 @@ end
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
     arch = Distributed(child_arch; ranks=(1, 4, 1), topology=topo, devices = (0, 0, 0, 0))
-    grid  = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 2, 3), halo=halo)
+    grid  = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
@@ -393,7 +393,7 @@ end
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     arch = Distributed(child_arch; ranks=(2, 2, 1), topology=topo, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 3), extent=(1, 2, 3), halo=halo)
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
