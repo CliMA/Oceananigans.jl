@@ -15,7 +15,7 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest; filter = r"└ @ Oceananigans.BuoyancyModels.*"
+```jldoctest
 
 using Oceananigans
 
@@ -30,10 +30,6 @@ model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 
 # output
 
-┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
-│ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
