@@ -102,7 +102,9 @@ arch_array(::MetalBackend, ::Nothing)   = nothing
 arch_array(::MetalBackend, a::Number)   = a
 arch_array(::MetalBackend, a::Function) = a
 
-arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::MetalBackend, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
