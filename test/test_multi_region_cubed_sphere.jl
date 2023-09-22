@@ -95,9 +95,9 @@ end
 """
     create_test_data(grid, region)
 
-Create an array with integer values of the form, e.g., 541 corresponding to region=5, i=4, j=2.
-If `trailing_zeros > 0` then all values are multiplied with `10trailing_zeros`, e.g., for
-`trailing_zeros = 2` we have that 54100 corresponds to region=5, i=4, j=2.
+Create an array with integer values of the form, e.g., 541 corresponding to `region=5`, `i=4`, `j=2`.
+If `trailing_zeros > 0` then all values are multiplied with `10^trailing_zeros`, e.g., with
+`trailing_zeros = 2` then `region=5`, `i=4`, `j=2` corresponds to 54100.
 """
 function create_test_data(grid, region; trailing_zeros=0, solid_body_rotation=false, variable_name="tracer")
 
