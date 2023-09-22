@@ -12,7 +12,7 @@ using Oceananigans: AbstractModel
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans.Fields: Field
-using Oceananigans: fields
+using Oceananigans: fields, prognostic_fields
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
