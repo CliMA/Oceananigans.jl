@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture
-export CPU, GPU, MultiGPU
+export CPU, GPU, MultiGPU, MetalBackend
 export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
@@ -51,7 +51,7 @@ architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
-architecture(::MetalBackend) = MetalBackend()
+architecture(::MtlArray) = MetalBackend()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 

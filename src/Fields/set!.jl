@@ -3,7 +3,7 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Architectures: device, GPU, CPU
+using Oceananigans.Architectures: device, GPU, CPU, MetalBackend
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -20,7 +20,7 @@ function set!(u::Field, v)
 end
 
 function set!(u::Field, f::Function)
-    if architecture(u) isa GPU
+    if architecture(u) isa GPU || architecture(u) isa MetalBackend
         cpu_grid = on_architecture(CPU(), u.grid)
         u_cpu = Field(location(u), cpu_grid; indices = indices(u))
         f_field = field(location(u), f, cpu_grid)
