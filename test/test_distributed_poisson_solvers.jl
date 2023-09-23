@@ -25,8 +25,8 @@ MPI.Init()
 
 # to initialize MPI.
 
-using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
+using Oceananigans.DistributedComputations: reconstruct_global_grid
+using Oceananigans.DistributedComputations: ZXYPermutation, ZYXPermutation
 
 @kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
     i, j, k = @index(Global, NTuple)
@@ -65,7 +65,7 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
+    arch = Distributed(CPU(), ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))

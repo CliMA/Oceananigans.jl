@@ -10,7 +10,7 @@
 
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
 using Printf
@@ -23,20 +23,25 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Bounded, Periodic, Bounded)
-arch = DistributedArch(CPU(); topology = topo, 
+arch = Distributed(CPU(); topology = topo, 
                  ranks=(Nranks, 1, 1),
                  use_buffers = true)
 
 Lh = 100kilometers
 Lz = 400meters
 
+Nx = [10, 13, 18, 39]
+
 grid = RectilinearGrid(arch,
-                       size = (80, 3, 1),
+                       size = (Nx[rank+1], 3, 1),
                        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
-                       topology = topo)
+                       topology = topo,
+                       )
+
+@show rank, grid
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100.0 : -500meters
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom), true)
 
 coriolis = FPlane(f = 1e-4)
 
@@ -87,7 +92,6 @@ function progress_message(sim)
     100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
     sim.model.clock.time, maximum(abs, sim.model.velocities.u))
 end
-
 
 simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
 simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))

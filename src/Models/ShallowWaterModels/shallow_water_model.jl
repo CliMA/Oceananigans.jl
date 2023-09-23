@@ -2,7 +2,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
@@ -170,7 +170,7 @@ function ShallowWaterModel(;
         set!(bathymetry_field, bathymetry)
         fill_halo_regions!(bathymetry_field)
     else
-        fill!(bathymetry_field, 0.0)
+        fill!(bathymetry_field, 0)
     end
 
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)

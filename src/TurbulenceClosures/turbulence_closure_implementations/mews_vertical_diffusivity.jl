@@ -32,7 +32,7 @@ import Oceananigans.TurbulenceClosures:
     dissipation,
     validate_closure,
     add_closure_specific_boundary_conditions,
-    calculate_diffusivities!,
+    compute_diffusivities!,
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
@@ -40,7 +40,7 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_x,
     diffusive_flux_y
 
-struct MEWSVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct MEWSVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     Cʰ  :: FT
     Cᴷʰ :: FT
     Cᴷᶻ :: FT
@@ -115,7 +115,7 @@ function Base.show(io::IO, closure::MEWS)
                  "    Cᴰ  : ", closure.Cᴰ))
 end
 
-function calculate_diffusivities!(diffusivities, closure::MEWS, model)
+function compute_diffusivities!(diffusivities, closure::MEWS, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -124,8 +124,8 @@ function calculate_diffusivities!(diffusivities, closure::MEWS, model)
     buoyancy = model.buoyancy
     velocities = model.velocities
 
-    launch!(arch, grid, :xyz,
-            compute_mews_diffusivities!,
+    launch!(arch, grid, parameters,
+            _compute_mews_diffusivities!,
             diffusivities,
             grid,
             closure,
@@ -156,7 +156,7 @@ end
     return h
 end
 
-@kernel function compute_mews_diffusivities!(diffusivities, grid, maybe_closure_ensemble,
+@kernel function _compute_mews_diffusivities!(diffusivities, grid, maybe_closure_ensemble,
                                              velocities, tracers, buoyancy, coriolis)
 
     i, j, k, = @index(Global, NTuple)
