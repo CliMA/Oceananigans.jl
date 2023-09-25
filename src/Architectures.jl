@@ -28,30 +28,49 @@ struct CPU <: AbstractArchitecture end
 """
     GPU <: AbstractArchitecture
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
+Run Oceananigans on a single GPU `device`.
 """
-struct GPU <: AbstractArchitecture end
+struct GPU{D} <: AbstractArchitecture 
+    device :: D
+end
+
+function GPU()
+    if CUDA.has_cuda()
+        return GPU(CUDA.CUDABackend(; always_inline = true))
+    elseif has_metal_device()
+        return GPU(Metal.MetalBackend())
+    else
+        error("No compatible GPU detected")
+    end
+end
 
 """
-    MetalBackend <: AbstractArchitecture
+    has_metal_device()
 
-Run Oceananigans on a single M1 GPU.
+Returns true if a metal device is present (not a current function available from Metal.jl)
 """
-struct MetalBackend <: AbstractArchitecture end
+function has_metal_device()
+    try 
+        Metal.current_device()
+        return true
+    catch
+        return false
+    end
+end
 
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDA.CUDABackend(; always_inline=true)
-device(::MetalBackend) = Metal.MetalBackend()
+device(::GPU{<:CUDABackend}) = CUDA.CUDABackend(; always_inline=true)
+device(::GPU{<:MetalBackend}) = Metal.MetalBackend()
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture(::CuArray) = GPU()
-architecture(::MtlArray) = MetalBackend()
+architecture(::CuArray) = GPU(CUDA.CUDABackend(; always_inline=true))
+architecture(::MtlArray) = GPU(Metal.MetalBackend())
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -64,54 +83,54 @@ On single-process, non-distributed systems, return `arch`.
 child_architecture(arch) = arch
 
 array_type(::CPU) = Array
-array_type(::GPU) = CuArray
-archt_type(::MetalBackend) = MtlArray
+array_type(::GPU{<:CUDABackend}) = CuArray
+archt_type(::GPU{<:MetalBackend}) = MtlArray
 
 arch_array(::CPU, a::Array)   = a
 arch_array(::CPU, a) = Array(a)
-arch_array(::GPU, a::CuArray) = a
-arch_array(::GPU, a)   = CuArray(a)
-arch_array(::MetalBackend, a::MtlArray) = a
-arch_array(::MetalBackend, a) = MtlArray(a)
+arch_array(::GPU{<:CUDABackend}, a::CuArray) = a
+arch_array(::GPU{<:CUDABackend}, a)   = CuArray(a)
+arch_array(::GPU{<:MetalBackend}, a::MtlArray) = a
+arch_array(::GPU{<:MetalBackend}, a) = MtlArray(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+arch_array(::GPU{<:CUDABackend}, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
-arch_array(::MetalBackend, a::SubArray{<:Any, <:Any, <:CuArray}) = MtlArray(a)
+arch_array(::GPU{<:MetalBackend}, a::SubArray{<:Any, <:Any, <:CuArray}) = MtlArray(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::GPU{<:CUDABackend}, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
-arch_array(::MetalBackend, a::SubArray{<:Any, <:Any, <:Array}) = MtlArray(a)
+arch_array(::GPU{<:MetalBackend}, a::SubArray{<:Any, <:Any, <:Array}) = MtlArray(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = CuArray(a)
+arch_array(::GPU{<:CUDABackend}, a::SubArray{<:Any, <:Any, <:MtlArray}) = CuArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = Array(a)
-arch_array(::MetalBackend, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
+arch_array(::GPU{<:MetalBackend}, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
 
 arch_array(::CPU, a::AbstractRange) = a
 arch_array(::CPU, ::Nothing)   = nothing
 arch_array(::CPU, a::Number)   = a
 arch_array(::CPU, a::Function) = a
 
-arch_array(::GPU, a::AbstractRange) = a
-arch_array(::GPU, ::Nothing)   = nothing
-arch_array(::GPU, a::Number)   = a
-arch_array(::GPU, a::Function) = a
+arch_array(::GPU{<:CUDABackend}, a::AbstractRange) = a
+arch_array(::GPU{<:CUDABackend}, ::Nothing)   = nothing
+arch_array(::GPU{<:CUDABackend}, a::Number)   = a
+arch_array(::GPU{<:CUDABackend}, a::Function) = a
 
 # not sure why we can't just have arch_array(<:Any, a::...) = a
-arch_array(::MetalBackend, a::AbstractRange) = a
-arch_array(::MetalBackend, ::Nothing)   = nothing
-arch_array(::MetalBackend, a::Number)   = a
-arch_array(::MetalBackend, a::Function) = a
+arch_array(::GPU{<:MetalBackend}, a::AbstractRange) = a
+arch_array(::GPU{<:MetalBackend}, ::Nothing)   = nothing
+arch_array(::GPU{<:MetalBackend}, a::Number)   = a
+arch_array(::GPU{<:MetalBackend}, a::Function) = a
 
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::MetalBackend, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU{<:CUDABackend}, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU{<:MetalBackend}, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 unified_array(::CPU, a) = a
-unified_array(::GPU, a) = a
-unified_array(::MetalBackend, a) = a
+unified_array(::GPU{<:CUDABackend}, a) = a
+unified_array(::GPU{<:MetalBackend}, a) = a
 
 # not sure what todo with MetalBackends for this
-function unified_array(::GPU, arr::AbstractArray) 
+function unified_array(::GPU{<:CUDABackend}, arr::AbstractArray) 
     buf = Mem.alloc(Mem.Unified, sizeof(arr))
     vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
     finalizer(vec) do _
