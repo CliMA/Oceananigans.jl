@@ -139,10 +139,12 @@ end
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
 
         Nx, Ny, Nz = size(grid_cs32)
+        Hx, Hy, Hz = halo_size(grid_cs32)
         radius = getregion(grid_cs32, 1).radius
 
         # construct a ConformalCubedSphereGrid similar to cs32
-        grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius)
+        grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
+                                        horizontal_direction_halo = Hx, z_halo = Hz)
 
         for panel in 1:6
 
