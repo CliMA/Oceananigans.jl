@@ -151,7 +151,7 @@ for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.con
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
                                   z,
-                                  horizontal_direction_halo = 1,
+                                  horizontal_direction_halo = 3,
                                   z_halo = horizontal_direction_halo,
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
@@ -424,11 +424,11 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
 end
 
-function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
+function with_halo(new_halo, csg::ConformalCubedSphereGrid)
     region_rotation = []
 
-    for r in 1:length(csg.partition)
-        push!(region_rotation, rotation_from_panel_index(panel_index(r, csg.partition)))
+    for region in 1:length(csg.partition)
+        push!(region_rotation, csg[region].conformal_mapping.rotation)
     end
 
     apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
