@@ -3,7 +3,9 @@
 #####
 
 using Oceananigans.Architectures
+using Oceananigans.Utils
 using Oceananigans.Grids
+
 using Oceananigans.Grids: AbstractGrid
 
 struct KernelParameters{S, O} end
@@ -30,7 +32,7 @@ kp = KernelParameters(size, offsets)
 launch!(arch, grid, kp, kernel!; kernel_args...)
 ```
 
-See the documentation for [`launch!`](@ref Oceananigans.Utils.launch!).
+See the documentation for [`launch!`](@ref).
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
