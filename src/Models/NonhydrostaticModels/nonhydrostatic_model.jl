@@ -2,7 +2,7 @@ using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Distributed: DistributedArch
+using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields

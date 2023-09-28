@@ -1,7 +1,7 @@
 using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
-
+using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
@@ -21,12 +21,6 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: initialize!
 import Oceananigans.Models: total_velocities
-
-""" Returns a default_tracer_advection, tracer_advection `tuple`. """
-validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
-validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
-validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
-validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -62,7 +56,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
+                                      free_surface = SplitExplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -73,7 +67,6 @@ end
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
-            calculate_only_active_cells_tendencies = false
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -172,6 +165,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
+    free_surface = validate_free_surface(arch, free_surface)
     free_surface = FreeSurface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
@@ -212,23 +206,22 @@ function validate_vertical_velocity_boundary_conditions(w)
     return nothing
 end
 
-momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
-
-function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " * 
-          "The momentum advection scheme has been set to VectorInvariant()"
-    return VectorInvariant()
-end
+validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
+validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
-
 validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
-
 validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = momentum_advection_squawk(momentum_advection, grid)
+""" Returns a default_tracer_advection, tracer_advection `tuple`. """
+validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing

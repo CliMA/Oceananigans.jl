@@ -115,7 +115,10 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+
+    # Units
+    Time
     
 using Printf
 using Logging
@@ -201,6 +204,11 @@ include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 
+# TODO: move here
+#include("ImmersedBoundaries/ImmersedBoundaries.jl")
+#include("Distributed/Distributed.jl")
+#include("MultiRegion/MultiRegion.jl")
+
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
@@ -209,8 +217,10 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
+# TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("Distributed/Distributed.jl")
+include("DistributedComputations/DistributedComputations.jl")
+
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -241,7 +251,7 @@ using .TurbulenceClosures
 using .Solvers
 using .Forcings
 using .ImmersedBoundaries
-using .Distributed
+using .DistributedComputations
 using .Models
 using .TimeSteppers
 using .Diagnostics

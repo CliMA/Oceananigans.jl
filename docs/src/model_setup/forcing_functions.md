@@ -300,16 +300,15 @@ r_sediment = 1e-4 # [m] "Fine sand"
 ν_molecular = 1.05e-6 # m² s⁻¹
 w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 
-sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
+sinking = AdvectiveForcing(w=w_sediment)
 
 # output
-AdvectiveForcing with the UpwindBiased scheme:
+AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-0.00352102)
 ```
 
-The first argument to `AdvectiveForcing` is the advection scheme (here `UpwindBiasedFifthOrder()`).
 The three keyword arguments specify the `u`, `v`, and `w` components of the separate
 slip velocity field. The default for each `u, v, w` is `ZeroField`.
 
@@ -328,10 +327,10 @@ slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(WENO(; grid), w=w_slip)
+sinking = AdvectiveForcing(w=w_slip)
 
 # output
-AdvectiveForcing with the WENO scheme:
+AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: 32×32×33 Field{Center, Center, Face} on RectilinearGrid on CPU
