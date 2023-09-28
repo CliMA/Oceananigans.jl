@@ -36,7 +36,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 
 "Returns the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
-@inline location(a, i) = location(a)[i]
+@inline location(a, i) = @inbounds location(a)[i]
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
@@ -89,4 +89,3 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
-

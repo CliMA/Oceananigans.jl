@@ -489,14 +489,14 @@ const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
                            YZReducedField, XZReducedField, XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)           = ()
-reduced_dimensions(field::XReducedField)   = tuple(1)
-reduced_dimensions(field::YReducedField)   = tuple(2)
-reduced_dimensions(field::ZReducedField)   = tuple(3)
-reduced_dimensions(field::YZReducedField)  = (2, 3)
-reduced_dimensions(field::XZReducedField)  = (1, 3)
-reduced_dimensions(field::XYReducedField)  = (1, 2)
-reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
+reduced_dimensions(::Field)           = ()
+reduced_dimensions(::XReducedField)   = tuple(1)
+reduced_dimensions(::YReducedField)   = tuple(2)
+reduced_dimensions(::ZReducedField)   = tuple(3)
+reduced_dimensions(::YZReducedField)  = (2, 3)
+reduced_dimensions(::XZReducedField)  = (1, 3)
+reduced_dimensions(::XYReducedField)  = (1, 2)
+reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
@@ -576,7 +576,7 @@ end
 ## Allow support for ConditionalOperation
 
 get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
-get_neutral_mask(::Union{SumReduction, MeanReduction}) =   0
+get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
@@ -594,8 +594,8 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 @inline condition_operand(op::AbstractField, condition, mask) = condition_operand(identity, op, condition, mask)
 @inline condition_operand(::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
 
-@inline conditional_length(c::AbstractField)        = length(c)
-@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+@inline conditional_length(c::AbstractField)       = length(c)
+@inline conditional_length(c::AbstractField, dims) = mapreduce(i -> size(c, i), *, unique(dims); init=1)
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)

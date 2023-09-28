@@ -77,4 +77,3 @@ Base.show(io::IO, field::FunctionField) =
           "├── grid: $(summary(field.grid))\n",
           "├── clock: $(summary(field.clock))\n",
           "└── parameters: $(field.parameters)")
-

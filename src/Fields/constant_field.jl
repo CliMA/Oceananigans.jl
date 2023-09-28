@@ -25,4 +25,3 @@ const CF = Union{ConstantField, ZeroField, OneField}
 
 fill_halo_regions!(::ZeroField, args...; kw...) = nothing
 fill_halo_regions!(::ConstantField, args...; kw...) = nothing
-
