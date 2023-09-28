@@ -118,9 +118,9 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
-                                     include_right_boundaries,
-                                     reduced_dimensions,
-                                     location)
+                                      include_right_boundaries,
+                                      reduced_dimensions,
+                                      location)
 
     offset = offsets(workspec)
 
