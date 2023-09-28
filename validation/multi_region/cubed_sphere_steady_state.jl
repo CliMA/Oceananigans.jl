@@ -73,102 +73,58 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers=()
                                     )
 
-#=
+set!(model, u = u, v = v, η = η)
 
-# Initial condition for tracer
-
-#=
-
-# 4 Gaussians with width δR (degrees) and magnitude θ₀
-δR = 2
-θ₀ = 1
-
-# Gaussian 1
-i₁ = 1
-j₁ = 1
-panel = 1
-λ₁ = λnode(i₁, j₁, grid[panel], Center(), Center())
-φ₁ = φnode(i₁, j₁, grid[panel], Center(), Center())
-
-# Gaussian 2
-i₂ = Nx÷4 + 1
-j₂ = 3Ny÷4 + 1
-panel = 4
-λ₂ = λnode(i₂, j₂, grid[panel], Center(), Center())
-φ₂ = φnode(i₂, j₂, grid[panel], Center(), Center())
-
-# Gaussian 3
-i₃ = 3Nx÷4 + 1
-j₃ = 3Ny÷4 + 1
-panel = 3
-λ₃ = λnode(i₃, j₃, grid[panel], Center(), Center())
-φ₃ = φnode(i₃, j₃, grid[panel], Center(), Center())
-
-# Gaussian 4
-i₄ = 3Nx÷4+1
-j₄ = 3Ny÷4+1
-panel = 6
-λ₄ = λnode(i₄, j₄, grid[panel], Center(), Center())
-φ₄ = φnode(i₄, j₄, grid[panel], Center(), Center())
-
-θᵢ(λ, φ, z) = θ₀ * exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
-=#
-
-θ₀ = 1
-Δφ = 20
-θᵢ(λ, φ, z) = θ₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
-
-set!(model, θ = θᵢ)
-
-# estimate time-step from the minimum grid spacing
+# Estimate time-step from the minimum grid spacing.
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
-Δt = 0.2 * min(Δx, Δy) / u₀ # CFL for tracer advection
+Δt = 0.2 * min(Δx, Δy) / u₀ # CFL for advection
 
 stop_time = 2π * u₀ / R
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
 
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n",
-                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
-                                prettytime(sim.run_wall_time))
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n", iteration(sim), prettytime(sim), 
+                                prettytime(sim.Δt), prettytime(sim.run_wall_time))
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
 
-tracer_fields = Field[]
-save_tracer(sim) = push!(tracer_fields, deepcopy(sim.model.tracers.θ))
-simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(20))
+surface_elevation_field = Field[]
+save_surface_elevation(sim) = push!(surface_elevation_field, deepcopy(sim.model.free_surface.η))
+simulation.callbacks[:save_surface_elevation] = Callback(save_surface_elevation, IterationInterval(20))
 
 run!(simulation)
 
 @info "Making an animation from the saved data..."
 
-# install Imaginocean.jl from GitHub
-# using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+#=
+install Imaginocean.jl from GitHub
+using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+=# 
+
+#=
+
 using Imaginocean
 
 using GLMakie, GeoMakie
 
 n = Observable(1)
 
-Θₙ = @lift tracer_fields[$n]
+ηₙ = @lift surface_elevation_field[$n]
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
+heatlatlon!(ax, ηₙ, colorrange=(-η₀, η₀), colormap = :balance)
 
 fig
 
-frames = 1:length(tracer_fields)
+frames = 1:length(surface_elevation_field)
 
-GLMakie.record(fig, "cubed_sphere_tracer_advection.mp4", frames, framerate = 12) do i
+GLMakie.record(fig, "cubed_sphere_steady_state.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
-    Θₙ[] = tracer_fields[i]
-    heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
+    ηₙ[] = surface_elevation_field[i]
+    heatlatlon!(ax, ηₙ, colorrange=(-η₀, η₀), colormap = :balance)
 end
 
 =#
