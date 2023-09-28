@@ -30,7 +30,7 @@ kp = KernelParameters(size, offsets)
 launch!(arch, grid, kp, kernel!; kernel_args...)
 ```
 
-See the documentation for `launch!`.
+See the documentation for [`launch!`](@ref Oceananigans.Utils.launch!).
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
