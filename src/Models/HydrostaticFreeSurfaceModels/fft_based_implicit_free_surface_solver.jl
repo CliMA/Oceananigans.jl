@@ -58,7 +58,7 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RectilinearGrid(architecture(grid);
+    horizontal_grid = RectilinearGrid(architecture(grid), eltype(grid);
                                       topology = (TX, TY, Flat),
                                       size = sz,
                                       halo = halo,
