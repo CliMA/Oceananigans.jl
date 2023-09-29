@@ -1062,8 +1062,8 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    ξ = (old_grid.ξₗ, old_grid.ξᵣ)
-    η = (old_grid.ηₗ, old_grid.ηᵣ)
+    ξ = old_grid.conformal_mapping.ξ
+    η = old_grid.conformal_mapping.η
 
     z = cpu_face_constructor_z(old_grid)
 

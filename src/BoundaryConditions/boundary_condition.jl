@@ -62,12 +62,12 @@ function BoundaryCondition(Classification::DataType, condition::Function;
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
-    return BoundaryCondition{Classification, typeof(condition)}(Classification(), condition)
+    return BoundaryCondition(Classification(), condition)
 end
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:AbstractBoundaryConditionClassification, A<:AbstractArray} =
-    BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
+Adapt.adapt_structure(to, b::BoundaryCondition{Classification}) where Classification =
+    BoundaryCondition(Classification(), Adapt.adapt(to, b.condition))
 
 #####
 ##### Some abbreviations to make life easier.
