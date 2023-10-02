@@ -37,21 +37,6 @@ for region in 1:number_of_regions(grid)
         λ = λnode(i, j, k, grid[region], Center(), Center(), Face())
         φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
         η[region][i, j, k] = ηᵢ(λ, φ, 0)
-    end  
-
-    for k in 1:Nz, j = 1:Ny+1, i = 1:Nx+1
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵢ(λ, φ, 0)
-    end
-end
-
-
-for region in 1:number_of_regions(grid)
-    for k in grid.Nz+1, j = 1:grid.Ny, i = 1:grid.Nx
-        λ = λnode(i, j, k, grid[region], Center(), Center(), Face())
-        φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
-        η[region][i, j, k] = ηᵢ(λ, φ, 0)
     end
 
     for k in 1:grid.Nz, j = 1:grid.Ny+1, i = 1:grid.Nx+1
