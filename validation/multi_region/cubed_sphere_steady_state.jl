@@ -24,7 +24,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 ψᵢ(λ, φ, z) = - u₀ * R * sind(φ)
 ηᵢ(λ, φ, z) = u₀^2/(4g) * cosd(2φ) - (2Ω * sind(φ) * u₀ * R)/g * sind(φ)
 
-η = Field{Center, Center, Face}(grid, indices = (:, :, size(grid, 3)+1))
+η = Field{Center, Center, Face}(grid, indices = (:, :, grid.Nz+1))
 ψ = Field{Face, Face, Center}(grid)
 
 #=
