@@ -40,10 +40,11 @@ function Base.show(io::IO, field::Field)
 
     bcs_str = isnothing(bcs) ? "├── boundary conditions: Nothing \n" :
         string("├── boundary conditions: ", summary(bcs), "\n",
-               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+        "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
                ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
                ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
-               ", immersed: ", bc_str(bcs.immersed), "\n")
+               ", immersed: ", bc_str(bcs.immersed), "\n",
+               "├── indices: ", replace(string(field.indices), "Colon()"=> ":"), "\n")
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), "\n",
