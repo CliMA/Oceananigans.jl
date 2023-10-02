@@ -124,7 +124,6 @@ julia> ω = Field{Face, Face, Center}(grid)
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-├── indices: (:, :, :)
 └── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -279,7 +278,6 @@ julia> c = CenterField(grid)
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-├── indices: (:, :, :)
 └── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 
