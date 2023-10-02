@@ -24,7 +24,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 ψᵢ(λ, φ, z) = - u₀ * R * sind(φ)
 ηᵢ(λ, φ, z) = u₀^2/(4g) * cosd(2φ) - (2Ω * sind(φ) * u₀ * R)/g * sind(φ)
 
-η = Field{Center, Center, Center}(grid)
+η = Field{Center, Center, Face}(grid, indices = (:, :, size(grid, 3)+1))
 ψ = Field{Face, Face, Center}(grid)
 
 #=
@@ -33,10 +33,9 @@ within halo regions. This allows us to avoid having to fill_halo_regions correct
 =#
 
 for region in 1:number_of_regions(grid)
-    
-    for k in 1:Nz, j = 1:Ny, i = 1:Nx
-        λ = λnode(i, j, k, grid[region], Center(), Center(), Center())
-        φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
+    for k in grid.Nz+1, j = 1:grid.Ny, i = 1:grid.Nx
+        λ = λnode(i, j, k, grid[region], Center(), Center(), Face())
+        φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
         η[region][i, j, k] = ηᵢ(λ, φ, 0)
     end  
 
@@ -45,7 +44,21 @@ for region in 1:number_of_regions(grid)
         φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵢ(λ, φ, 0)
     end
-    
+end
+
+
+for region in 1:number_of_regions(grid)
+    for k in grid.Nz+1, j = 1:grid.Ny, i = 1:grid.Nx
+        λ = λnode(i, j, k, grid[region], Center(), Center(), Face())
+        φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
+        η[region][i, j, k] = ηᵢ(λ, φ, 0)
+    end
+
+    for k in 1:grid.Nz, j = 1:grid.Ny+1, i = 1:grid.Nx+1
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵢ(λ, φ, 0)
+    end
 end
 
 u = XFaceField(grid)
@@ -70,7 +83,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     buoyancy = nothing,
                                     coriolis = coriolis,
                                     closure = closure,
-                                    tracers=()
+                                    tracers = ()
                                     )
 
 set!(model, u = u, v = v, η = η)
