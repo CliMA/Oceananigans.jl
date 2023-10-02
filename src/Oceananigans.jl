@@ -6,7 +6,7 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU, MetalBackend,
 
     # Logging
     OceananigansLogger,

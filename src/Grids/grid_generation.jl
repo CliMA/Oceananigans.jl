@@ -83,6 +83,7 @@ function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number
     @assert length(coord) == 2
 
     c₁, c₂ = @. BigFloat(coord)
+    
     @assert c₁ < c₂
     L = c₂ - c₁
 
@@ -101,12 +102,12 @@ function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    F = arch_array(arch, OffsetArray(FT.(F), -H))
+    C = arch_array(arch, OffsetArray(FT.(C), -H))
 
     return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
 
-# Flat domains
+# Flat domainsmodel = 
 generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, arch) =
     FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)

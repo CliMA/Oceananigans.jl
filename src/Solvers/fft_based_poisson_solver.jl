@@ -50,9 +50,11 @@ See [`solve!`](@ref) for more information about the FFT-based Poisson solver alg
 function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
-    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ())
+    FT = eltype(grid)
+
+    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX(), FT)
+    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY(), FT)
+    λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ(), FT)
 
     arch = architecture(grid)
 

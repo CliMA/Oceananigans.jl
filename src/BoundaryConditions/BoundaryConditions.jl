@@ -11,6 +11,7 @@ export
     fill_halo_regions!
 
 using CUDA
+using Metal
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device
