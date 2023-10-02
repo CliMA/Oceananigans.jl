@@ -71,6 +71,20 @@ end
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
 coriolis = HydrostaticSphericalCoriolis(rotation_rate = Ω)
 
+#=
+model = HydrostaticFreeSurfaceModel(; grid,
+                                    momentum_advection = VectorInvariant(),
+                                    buoyancy = nothing,
+                                    coriolis = coriolis,
+                                    closure = closure,
+                                    #=
+                                    free_surface = SplitExplicitFreeSurface(gravitational_acceleration=g, substeps = 50),
+                                    =#
+                                    free_surface = SplitExplicitFreeSurface(gravitational_acceleration=g, grid = grid, cfl = 0.2),
+                                    tracers = ()
+                                    )
+=#
+
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
                                     buoyancy = nothing,
