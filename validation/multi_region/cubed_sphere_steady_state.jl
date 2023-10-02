@@ -21,6 +21,14 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                 horizontal_direction_halo = 6,
                                 partition = CubedSpherePartition(; R = 1))
 
+#=
+latlongrid = LatitudeLongitudeGrid(size=(Nx, Ny, Nz),
+                                   longitude = (-90, 90),
+                                   latitude = (-45, 45),
+                                   z = (-1, 0))
+grid = MultiRegionGrid(latlongrid, partition = XPartition(2))
+=#
+
 ψᵢ(λ, φ, z) = - u₀ * R * sind(φ)
 ηᵢ(λ, φ, z) = u₀^2/(4g) * cosd(2φ) - (2Ω * sind(φ) * u₀ * R)/g * sind(φ)
 
