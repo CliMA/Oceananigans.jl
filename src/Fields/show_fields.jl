@@ -47,8 +47,9 @@ function Base.show(io::IO, field::Field)
                ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
                ", immersed: ", bc_str(bcs.immersed), "\n")
 
-    indices_str = indices_sumamry(field) == "(:, :, :)" ? nothing :
-                  string("├── indices: ", indices_sumamry(field), "\n")
+    indices_str = indices_sumamry(field) == "(:, :, :)" ?
+                      nothing :
+                      string("├── indices: ", indices_sumamry(field), "\n")
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), "\n",
