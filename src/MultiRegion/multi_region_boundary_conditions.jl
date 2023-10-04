@@ -63,14 +63,14 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     arch       = architecture(mrg)
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
-    for passes in 1:1
-        for task in 1:3
-            @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
-            buff = Reference(buffers.regional_objects)
-            apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                            c, indices, loc, arch, mrg, buff, 
-                            args...; kwargs...)
-        end
+    for task in 1:3
+        @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
+        
+        buff = Reference(buffers.regional_objects)
+
+        apply_regionally!(fill_halo_event!, task, halo_tuple,
+                          c, indices, loc, arch, mrg, buff, 
+                          args...; kwargs...)
     end
 
     return nothing
@@ -99,13 +99,13 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
             return nothing
         end
 
-        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
             return nothing
@@ -220,7 +220,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
     return nothing
 end
 
-function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)        
+function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
@@ -240,7 +240,7 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
     return nothing
 end
 
-function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)    
+function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[2]
     N = size(grid)[2]
 
