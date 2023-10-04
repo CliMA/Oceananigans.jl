@@ -6,6 +6,11 @@ using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str
 
+import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
+                                        immersed_∂ⱼ_τ₂ⱼ,
+                                        immersed_∂ⱼ_τ₃ⱼ,
+                                        immersed_∇_dot_qᶜ
+
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W                  
     east :: E
@@ -29,12 +34,12 @@ Base.summary(ibc::IBC) =
            "top=", bc_str(ibc.top))
 
 Base.show(io::IO, ibc::IBC) =
-    print(io, "ImmersedBoundaryCondition:", '\n',
-              "├── west: ", summary(ibc.west), '\n',
-              "├── east: ", summary(ibc.east), '\n',
-              "├── south: ", summary(ibc.south), '\n',
-              "├── north: ", summary(ibc.north), '\n',
-              "├── bottom: ", summary(ibc.bottom), '\n',
+    print(io, "ImmersedBoundaryCondition:", "\n",
+              "├── west: ", summary(ibc.west), "\n",
+              "├── east: ", summary(ibc.east), "\n",
+              "├── south: ", summary(ibc.south), "\n",
+              "├── north: ", summary(ibc.north), "\n",
+              "├── bottom: ", summary(ibc.bottom), "\n",
               "└── top: ", summary(ibc.top))
 
 """
@@ -51,6 +56,7 @@ function ImmersedBoundaryCondition(; west = nothing,
                                      bottom = nothing,
                                      top = nothing)
 
+    @warn "`ImmersedBoundaryCondition` is experimental."
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
@@ -197,8 +203,8 @@ end
     q̃ᴮ = bottom_ib_flux(i, j, k, ibg, bc.bottom, loc, c, closure, K, id, clock, fields)
     q̃ᵀ =    top_ib_flux(i, j, k, ibg, bc.top,    loc, c, closure, K, id, clock, fields)
 
-    iᵂ, jˢ, kᴮ = index_right.((i, j, k), loc)
-    iᴱ, jᴺ, kᵀ = index_left.((i, j, k), loc)
+    iᵂ, jˢ, kᴮ = map(index_left,  (i, j, k), loc) # Broadcast instead of map causes inference failure
+    iᴱ, jᴺ, kᵀ = map(index_right, (i, j, k), loc)
     LX, LY, LZ = loc
 
     # Impose i) immersed fluxes if we're on an immersed boundary or ii) zero otherwise.

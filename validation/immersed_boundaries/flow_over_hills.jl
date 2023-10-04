@@ -27,7 +27,7 @@ function hilly_simulation(; Nx = 64,
                             architecture = CPU(),
                             filename = "flow_over_hills")
 
-    underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (3, 3),
+    underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (4, 4),
                                       x = (0, 2π), z = (0, 1),
                                       topology = (Periodic, Flat, Bounded))
 
@@ -60,7 +60,7 @@ function hilly_simulation(; Nx = 64,
     end
 
     model = NonhydrostaticModel(; grid, closure, boundary_conditions,
-                                advection = WENO5(),
+                                advection = WENO(),
                                 timestepper = :RungeKutta3,
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())

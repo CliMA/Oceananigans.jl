@@ -100,7 +100,7 @@ ic_name(::typeof(ϕ_λ_Gaussian)) = ic_name(ϕ_Gaussian)
 ic_name(::typeof(ϕ_λ_Square))   = ic_name(ϕ_Square)
 
 ϕ_λs = (ϕ_λ_Gaussian, ϕ_λ_Square)
-schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO5())
+schemes = (CenteredSecondOrder(), CenteredFourthOrder(), WENO())
 Ns = (32, 256)
 CFLs = (0.05,)
 

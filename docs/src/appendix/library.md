@@ -37,7 +37,7 @@ Modules = [Oceananigans.BoundaryConditions]
 Private = false
 ```
 
-## BuoyancyModels
+## Buoyancy models
 
 ```@autodocs
 Modules = [Oceananigans.BuoyancyModels]
@@ -61,7 +61,7 @@ Private = false
 ## Distributed
 
 ```@autodocs
-Modules = [Oceananigans.Distributed]
+Modules = [Oceananigans.DistributedComputations]
 Private = false
 ```
 
@@ -93,13 +93,6 @@ Modules = [Oceananigans.ImmersedBoundaries]
 Private = false
 ```
 
-## Lagrangian particle tracking
-
-```@autodocs
-Modules = [Oceananigans.LagrangianParticleTracking]
-Private = false
-```
-
 ## Logger
 
 ```@autodocs
@@ -127,13 +120,19 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
-]
 ```
 
 ### Shallow-water models
 
 ```@autodocs
 Modules = [Oceananigans.Models.ShallowWaterModels]
+Private = false
+```
+
+### Lagrangian particle tracking
+
+```@autodocs
+Modules = [Oceananigans.Models.LagrangianParticleTracking]
 Private = false
 ```
 
@@ -149,7 +148,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Operators]
 Private = false
-]
 ```
 
 ## Output readers
@@ -157,7 +155,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputReaders]
 Private = false
-]
 ```
 
 ## Output writers
@@ -165,7 +162,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
 Private = false
-]
 ```
 
 ## Simulations
@@ -207,5 +203,12 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Utils]
+Private = false
+```
+
+## Units
+
+```@autodocs
+Modules = [Oceananigans.Units]
 Private = false
 ```

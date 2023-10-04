@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+using Oceananigans.Fields: Field
 
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
@@ -59,11 +60,12 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_single_field_dependent_forcing(arch, fld)
 
-    forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, u) -> -u, field_dependencies=:u),))
+    forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, fld) -> -fld, field_dependencies=fld),))
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    A = Field{Center, Center, Center}(grid)
     model = NonhydrostaticModel(grid=grid, forcing=forcing,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields=(; A))
     time_step!(model, 1, euler=true)
 
     return true
@@ -72,16 +74,16 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_multiple_field_dependent_forcing(arch)
 
-    u_forcing = Forcing((x, y, z, t, v, w, T) -> sin(v) * exp(w) * T, field_dependencies=(:v, :w, :T))
+    u_forcing = Forcing((x, y, z, t, v, w, T, A) -> sin(v) * exp(w) * T *A, field_dependencies=(:v, :w, :T, :A))
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    A = Field{Center, Center, Center}(grid)
     model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields = (; A))
     time_step!(model, 1, euler=true)
 
     return true
 end
-
 
 
 """ Take one time step with a Forcing forcing function with parameters. """
@@ -116,20 +118,39 @@ end
 function advective_and_multiple_forcing(arch)
     grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
 
-    constant_slip = AdvectiveForcing(UpwindBiasedFifthOrder(), w=1)
-
+    constant_slip = AdvectiveForcing(w=1)
+    zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
-    velocity_field_slip = AdvectiveForcing(CenteredSecondOrder(), w=slip_velocity)
-    simple_forcing(x, y, z, t) = 1
+    set!(slip_velocity, 1)
+    velocity_field_slip = AdvectiveForcing(w=slip_velocity)
+    zero_forcing(x, y, z, t) = 0
+    one_forcing(x, y, z, t) = 1
 
-    model = NonhydrostaticModel(; grid, tracers=(:a, :b), forcing=(a=constant_slip, b=(simple_forcing, velocity_field_slip)))
+    model = NonhydrostaticModel(; grid,
+                                tracers = (:a, :b, :c),
+                                forcing = (a = constant_slip,
+                                           b = (zero_forcing, velocity_field_slip),
+                                           c = (one_forcing, zero_slip)))
+
+    a₀ = rand(size(grid)...)
+    b₀ = rand(size(grid)...)
+    set!(model, a=a₀, b=b₀, c=0)
+
+    # Time-step without an error?
     time_step!(model, 1, euler=true)
 
-    return true
-end
+    a₁ = Array(interior(model.tracers.a))
+    b₁ = Array(interior(model.tracers.b))
+    c₁ = Array(interior(model.tracers.c))
 
+    a_changed = a₁ ≠ a₀
+    b_changed = b₁ ≠ b₀
+    c_correct = all(c₁ .== model.clock.time)
+
+    return a_changed & b_changed & c_correct
+end
 
 @testset "Forcings" begin
     @info "Testing forcings..."
@@ -154,7 +175,7 @@ end
             @testset "Field-dependent forcing functions [$A]" begin
                 @info "      Testing field-dependent forcing functions [$A]..."
 
-                for fld in (:u, :v, :w, :T)
+                for fld in (:u, :v, :w, :T, :A)
                     @test time_step_with_single_field_dependent_forcing(arch, fld)
                 end
 

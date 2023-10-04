@@ -29,6 +29,7 @@ for ξ in ("x", "y", "z")
 end
 
 # It's not Oceananigans for nothing
+# (So that AbstractOperations are more likely to compile)
 const number_of_identities = 6 # hopefully enough for Oceananigans (most need just one)
 
 for i = 1:number_of_identities
@@ -108,11 +109,11 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
     return indices, interps
 end
 
-# Adds a interpolate function which takes i, j, k, grid, from, and to as an argument
-for LX in (:Center, :Face), LY in (:Center, Face), LZ in (:Center, :Face)
+# Adds an interpolate function which takes i, j, k, grid, from, and, to as an argument
+for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     for IX in (:Center, :Face), IY in (:Center, :Face), IZ in (:Center, :Face)
         from = (eval(LX), eval(LY), eval(LZ))
-        to   = (eval(IX), eval(IY), eval(LZ))
+        to   = (eval(IX), eval(IY), eval(IZ))
         interp_func = Symbol(interpolation_operator(from, to))
         @eval begin
             ℑxyz(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 

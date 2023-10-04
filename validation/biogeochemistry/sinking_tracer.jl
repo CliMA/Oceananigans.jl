@@ -8,7 +8,7 @@ b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-8))
 
 @inline growth_func(x, y, z, t, p) = 1 / p.τ * exp(z / p.h)
 growth = Forcing(growth_func, parameters=(τ=1hour, h=4.0))
-sinking = AdvectiveForcing(WENO5(), w=-1)
+sinking = AdvectiveForcing(WENO(), w=-1)
 
 model = NonhydrostaticModel(; grid,
                             tracers = (:b, :P),

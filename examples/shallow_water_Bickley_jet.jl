@@ -28,19 +28,18 @@ using Oceananigans.Models: ShallowWaterModel
 
 # ## Two-dimensional domain 
 #
-# The shallow water model is a two-dimensional model and thus the number of vertical
-# points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
+# The shallow water model is two-dimensional and uses grids that are `Flat`
+# in the vertical direction. We use length scales non-dimensionalized by the width
+# of the Bickley jet.
 
-Lx, Ly, Lz = 2π, 20, 10
-Nx, Ny = 128, 128
-
-grid = RectilinearGrid(size = (Nx, Ny),
-                       x = (0, Lx), y = (-Ly/2, Ly/2),
+grid = RectilinearGrid(size = (48, 128),
+                       x = (0, 2π),
+                       y = (-10, 10),
                        topology = (Periodic, Bounded, Flat))
 
 # ## Building a `ShallowWaterModel`
 #
-# We build a `ShallowWaterModel` with the `WENO5` advection scheme,
+# We build a `ShallowWaterModel` with the `WENO` advection scheme,
 # 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis and
 # gravitational acceleration
 
@@ -49,7 +48,7 @@ coriolis = FPlane(f=1)
 
 model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
-                          momentum_advection = WENO5())
+                          momentum_advection = WENO())
 
 # Use `architecture = GPU()` to run this problem on a GPU.
 
@@ -59,12 +58,13 @@ model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
 # geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum 
 # free-surface deformation of ``Δη``,
 
-U = 1 # Maximum jet velocity
+U = 1  # Maximum jet velocity
+H = 10 # Reference depth
 f = coriolis.f
 g = gravitational_acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
-h̄(x, y, z) = Lz - Δη * tanh(y)
+h̄(x, y, z) = H - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
 
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
@@ -103,7 +103,7 @@ v = vh / h
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field{Face, Face, Nothing}(model.grid)
+ωⁱ = Field((Face, Face, Nothing), model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity
@@ -116,10 +116,10 @@ set!(model, uh = uhⁱ)
 # ## Running a `Simulation`
 #
 # We pick the time-step so that we make sure we resolve the surface gravity waves, which 
-# propagate with speed of the order ``\sqrt{g L_z}``. That is, with `Δt = 1e-2` we ensure 
-# that `` \sqrt{g L_z} Δt / Δx,  \sqrt{g L_z} Δt / Δy < 0.7``.
+# propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure 
+# that `` \sqrt{g H} Δt / Δx,  \sqrt{g H} Δt / Δy < 0.7``.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 100)
 
 # ## Prepare output files
 #
@@ -136,7 +136,7 @@ perturbation_norm(args...) = norm(v)
 fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
                                                         filename = fields_filename,
-                                                        schedule = TimeInterval(1),
+                                                        schedule = TimeInterval(2),
                                                         overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
@@ -170,11 +170,7 @@ nothing # hide
 
 fig = Figure(resolution = (1200, 660))
 
-axis_kwargs = (xlabel = "x",
-               ylabel = "y",
-               aspect = AxisAspect(1),
-               limits = ((0, Lx), (-Ly/2, Ly/2)))
-
+axis_kwargs = (xlabel = "x", ylabel = "y")
 ax_ω  = Axis(fig[2, 1]; title = "Total vorticity, ω", axis_kwargs...)
 ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwargs...)
 
@@ -193,15 +189,16 @@ hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
 title = @lift @sprintf("t = %.1f", times[$n])
-fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
+
+current_figure() # hide
+fig
 
 # Finally, we record a movie.
 
 frames = 1:length(times)
 
 record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
@@ -227,7 +224,7 @@ nothing # hide
 
 using Polynomials: fit
 
-I = 6000:7000
+I = 5000:6000
 
 degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)

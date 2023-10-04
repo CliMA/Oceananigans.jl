@@ -6,7 +6,7 @@ This code:
 using Oceananigans
 
 grid = RectilinearGrid(size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO5())
+model = NonhydrostaticModel(; grid, advection=WENO())
 
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
@@ -50,7 +50,7 @@ Fine, we'll re-run this code on the GPU then:
 using Oceananigans
 
 grid = RectilinearGrid(GPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO5())
+model = NonhydrostaticModel(; grid, advection=WENO())
 
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)

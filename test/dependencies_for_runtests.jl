@@ -29,7 +29,7 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
@@ -38,11 +38,10 @@ using Oceananigans.Architectures: device, array_type # to resolve conflict with 
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
-using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
-using KernelAbstractions: @kernel, @index, Event
+using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
@@ -61,18 +60,15 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :ConvectiveAdjustmentVerticalDiffusivity
+    :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
 #####
 ##### Run tests!
 #####
 
-CUDA.allowscalar(true)
-
 float_types = (Float32, Float64)
 
-include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 archs = test_architectures()

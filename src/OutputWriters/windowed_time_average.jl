@@ -1,10 +1,12 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.Models: AbstractModel
 using Oceananigans.Utils: AbstractSchedule, prettytime
+using Oceananigans.TimeSteppers: Clock
 
 import Oceananigans: run_diagnostic!
-import Oceananigans.Utils: TimeInterval
-import Oceananigans.Fields: location, indices
+import Oceananigans.Utils: TimeInterval, SpecifiedTimes
+import Oceananigans.Fields: location, indices, set!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -46,12 +48,12 @@ Example
 
 ```jldoctest averaged_time_interval
 using Oceananigans.OutputWriters: AveragedTimeInterval
-using Oceananigans.Utils: year, years
+using Oceananigans.Utils: days
 
-schedule = AveragedTimeInterval(4years, window=1year)
+schedule = AveragedTimeInterval(4days, window=2days)
 
 # output
-AveragedTimeInterval(window=1 year, stride=1, interval=4 years)
+AveragedTimeInterval(window=2 days, stride=1, interval=4 days)
 ```
 
 An `AveragedTimeInterval` schedule directs an output writer
@@ -64,17 +66,17 @@ using Oceananigans.Utils: minutes
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
-simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           filename= "averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4years, window=1year, stride=2))
+                                                          schedule = AveragedTimeInterval(4days, window=2days, stride=2))
 
 # output
-JLD2OutputWriter scheduled on TimeInterval(4 years):
+JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── filepath: ./averaged_velocity_data.jld2
-├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
-├── array type: Array{Float32}
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -84,28 +86,80 @@ function AveragedTimeInterval(interval; window=interval, stride=1)
     return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
 end
 
-# Determines whether or not to call run_diagnostic
-(schedule::AveragedTimeInterval)(model) =
-    schedule.collecting || model.clock.time >= schedule.previous_interval_stop_time + schedule.interval - schedule.window
+# Schedule actuation
+(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= sch.previous_interval_stop_time + sch.interval - sch.window
+initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = clock.time - rem(clock.time, sch.interval)
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <  sch.previous_interval_stop_time + sch.interval - sch.window   
+end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= sch.previous_interval_stop_time + sch.interval
 
 TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
-
-Base.copy(schedule::AveragedTimeInterval) = AveragedTimeInterval(schedule.interval, window=schedule.window, stride=schedule.stride)
+Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
 """
-    mutable struct WindowedTimeAverage{OP, R} <: AbstractDiagnostic
+    mutable struct AveragedSpecifiedTimes <: AbstractSchedule
 
-An object for computing 'windowed' time averages, or moving time-averages
-of a `operand` over a specified `window`, collected on `interval`.
+A schedule for averaging over windows that precede SpecifiedTimes.
 """
-mutable struct WindowedTimeAverage{OP, R} <: AbstractDiagnostic
+mutable struct AveragedSpecifiedTimes <: AbstractSchedule
+    specified_times :: SpecifiedTimes
+    window :: Float64
+    stride :: Int
+    collecting :: Bool
+end
+
+AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
+    AveragedSpecifiedTimes(specified_times, window, stride, false)
+
+AveragedSpecifiedTimes(times; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); kw...)
+
+# Schedule actuation
+function (schedule::AveragedSpecifiedTimes)(model)
+    time = model.clock.time
+
+    next = schedule.specified_times.previous_actuation + 1
+    next > length(schedule.specified_times.times) && return false
+
+    next_time = schedule.specified_times.times[next]
+    window = schedule.window
+
+    schedule.collecting || time >= next_time - window
+end
+
+initialize_schedule!(sch::AveragedSpecifiedTimes, clock) = nothing
+
+function outside_window(schedule::AveragedSpecifiedTimes, clock)
+    next = schedule.specified_times.previous_actuation + 1
+    next > length(schedule.specified_times.times) && return true
+    next_time = schedule.specified_times.times[next]
+    return clock.time < next_time - schedule.window
+end
+
+function end_of_window(schedule::AveragedSpecifiedTimes, clock)
+    next = schedule.specified_times.previous_actuation + 1
+    next > length(schedule.specified_times.times) && return true
+    next_time = schedule.specified_times.times[next]
+    return clock.time >= next_time
+end
+
+#####
+##### WindowedTimeAverage
+#####
+
+mutable struct WindowedTimeAverage{OP, R, S} <: AbstractDiagnostic
                       result :: R
                      operand :: OP
            window_start_time :: Float64
       window_start_iteration :: Int
     previous_collection_time :: Float64
-                    schedule :: AveragedTimeInterval
+                    schedule :: S
+               fetch_operand :: Bool
 end
+
+const IntervalWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:AveragedTimeInterval}
+const SpecifiedWindowedTimeAverage = WindowedTimeAverage{<:Any, <:Any, <:AveragedSpecifiedTimes}
+
+stride(wta::IntervalWindowedTimeAverage) = wta.schedule.stride
+stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
 
 """
     WindowedTimeAverage(operand, model=nothing; schedule)
@@ -118,60 +172,88 @@ During the collection period, averages are computed every `schedule.stride` iter
 
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 """
-function WindowedTimeAverage(operand, model=nothing; schedule)
+function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=true)
 
-    output = fetch_output(operand, model)
-    result = similar(output) # convert views to arrays, for example
-    result .= output # initialize `result` with initial output
-
-    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule)
+    if fetch_operand
+        output = fetch_output(operand, model)
+        result = similar(output)
+        result .= output
+    else
+        result = similar(operand)
+        result .= operand
+    end
+        
+    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule, fetch_operand)
 end
 
 # Time-averaging doesn't change spatial location
 location(wta::WindowedTimeAverage) = location(wta.operand)
 indices(wta::WindowedTimeAverage) = indices(wta.operand)
+set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
+Base.parent(wta::WindowedTimeAverage) = parent(wta.result)
 
-function accumulate_result!(wta, model)
+# This is called when output is requested.
+function (wta::WindowedTimeAverage)(model)
 
+    # For the paranoid
+    wta.schedule.collecting &&
+        model.clock.iteration > 0 &&
+        @warn "Returning a WindowedTimeAverage before the collection period is complete."
+
+    return wta.result
+end
+
+function accumulate_result!(wta, model::AbstractModel)
+    integrand = wta.fetch_operand ? fetch_output(wta.operand, model) : wta.operand
+    return accumulate_result!(wta, model.clock, integrand)
+end
+
+function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     # Time increment:
-    Δt = model.clock.time - wta.previous_collection_time
+    Δt = clock.time - wta.previous_collection_time
 
     # Time intervals:
-    T_current = model.clock.time - wta.window_start_time
+    T_current = clock.time - wta.window_start_time
     T_previous = wta.previous_collection_time - wta.window_start_time
 
     # Accumulate left Riemann sum
-    integrand = fetch_output(wta.operand, model)
-
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
 
     # Save time of integrand collection
-    wta.previous_collection_time = model.clock.time
+    wta.previous_collection_time = clock.time
 
     return nothing
 end
 
-function run_diagnostic!(wta::WindowedTimeAverage, model)
+function advance_time_average!(wta::WindowedTimeAverage, model)
 
     if model.clock.iteration == 0 # initialize previous interval stop time
-        wta.schedule.previous_interval_stop_time = model.clock.time
+        initialize_schedule!(wta.schedule, model.clock)
     end
 
-    # Don't start collecting if we are *only* "initializing" run_diagnostic! at the beginning
+    # Don't start collecting if we are *only* "initializing" at the beginning
     # of a Simulation.
     #
     # Note: this can be false at the zeroth iteration if interval == window (which
     # implies we are always collecting)
 
-    unscheduled = model.clock.iteration == 0 &&
-        model.clock.time < wta.schedule.previous_interval_stop_time + wta.schedule.interval - wta.schedule.window
+    unscheduled = model.clock.iteration == 0 && outside_window(wta.schedule, model.clock)
 
     if unscheduled
         # This is an "unscheduled" call to run_diagnostic! --- which occurs when run_diagnostic!
         # is called at the beginning of a run (and schedule.interval != schedule.window).
         # In this case we do nothing.
+        
+    # Next, we handle WindowedTimeAverage's two "modes": collecting, and not collecting.    
+    #
+    # The "not collecting" mode indicates that "initialization" is needed before collecting.
+    # eg the result has to be zeroed prior to starting to collect. However, because we accumulate
+    # a time-average with a left Riemann sum, we do not do any calculations during initialization.
+    #
+    # The "collecting" mode indicates that collecting is occuring; therefore we accumulate the time-average.
+    
     elseif !(wta.schedule.collecting)
-        # run_diagnostic! has been called on schedule, but we are not currently collecting data.
+        # run_diagnostic! has been called on schedule but we are not currently collecting data.
         # Initialize data collection:
 
         # Start averaging period
@@ -185,17 +267,19 @@ function run_diagnostic!(wta::WindowedTimeAverage, model)
         wta.window_start_iteration = model.clock.iteration
         wta.previous_collection_time = model.clock.time
 
-    elseif model.clock.time >= wta.schedule.previous_interval_stop_time + wta.schedule.interval
+    elseif end_of_window(wta.schedule, model.clock)
         # Output is imminent. Finalize averages and cease data collection.
+        # Note that this may induce data collecting more frequently than proscribed
+        # by `wta.schedule.stride`.
         accumulate_result!(wta, model)
 
         # Averaging period is complete.
         wta.schedule.collecting = false
 
         # Reset the "previous" interval time, subtracting a sliver that presents overshoot from accumulating.
-        wta.schedule.previous_interval_stop_time = model.clock.time - rem(model.clock.time, wta.schedule.interval)
+        initialize_schedule!(wta.schedule, model.clock)
 
-    elseif mod(model.clock.iteration - wta.window_start_iteration, wta.schedule.stride) == 0
+    elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
         # Collect data as usual
         accumulate_result!(wta, model)
     end
@@ -203,15 +287,8 @@ function run_diagnostic!(wta::WindowedTimeAverage, model)
     return nothing
 end
 
-function (wta::WindowedTimeAverage)(model)
-
-    # For the paranoid
-    wta.schedule.collecting &&
-        model.clock.iteration > 0 &&
-        @warn "Returning a WindowedTimeAverage before the collection period is complete."
-
-    return wta.result
-end
+# So it can be used as a Diagnostic
+run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 

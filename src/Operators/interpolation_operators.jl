@@ -71,6 +71,9 @@ using Oceananigans.Grids: Flat
 ##### Triple interpolation
 #####
 
+@inline ℑxyzᶜᶜᶜ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, f, args...)
+@inline ℑxyzᶠᶠᶠ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, f, args...)
+
 @inline ℑxyzᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
 @inline ℑxyzᶜᶠᶜ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
 @inline ℑxyzᶠᶜᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, f, args...)
@@ -91,9 +94,7 @@ using Oceananigans.Grids: Flat
 ##### Support for Flat Earths
 #####
 
-const XFlatGrid = AG{<:Any, Flat}
-const YFlatGrid = AG{<:Any, <:Any, Flat}
-const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]

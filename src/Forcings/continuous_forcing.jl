@@ -117,25 +117,25 @@ end
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
-    x = xnode(LX(), LY(), LZ(), i, j, k, grid)
-    y = ynode(LX(), LY(), LZ(), i, j, k, grid)
-    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+    x = xnode(i, j, k, grid, LX(), LY(), LZ())
+    y = ynode(i, j, k, grid, LX(), LY(), LZ())
+    z = znode(i, j, k, grid, LX(), LY(), LZ())
 
     return forcing.func(x, y, z, clock.time, args...)
 end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{LX, LY, LZ, P}) where {LX, LY, LZ, P} =
-    print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), '\n',
-        "├── func: $(prettysummary(forcing.func))", '\n',
-        "├── parameters: $(forcing.parameters)", '\n',
+    print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), "\n",
+        "├── func: $(prettysummary(forcing.func))", "\n",
+        "├── parameters: $(forcing.parameters)", "\n",
         "└── field dependencies: $(forcing.field_dependencies)")
 
 """Show the innards of an "non-regularized" `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{Nothing, Nothing, Nothing, P}) where P =
-    print(io, "ContinuousForcing{$P}", '\n',
-        "├── func: $(prettysummary(forcing.func))", '\n',
-        "├── parameters: $(forcing.parameters)", '\n',
+    print(io, "ContinuousForcing{$P}", "\n",
+        "├── func: $(prettysummary(forcing.func))", "\n",
+        "├── parameters: $(forcing.parameters)", "\n",
         "└── field dependencies: $(forcing.field_dependencies)")
 
 Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =

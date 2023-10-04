@@ -13,7 +13,7 @@ Permute `i` such that, for example, `i ∈ 1:N` becomes
 
 for `N=8` and `N=9` respectively.
 
-See equation (20) of [Makhoul80](@cite).
+See equation (20) of [Makhoul80](@citet).
 """
 @inline permute_index(i, N)::Int = ifelse(isodd(i),
                                           Base.unsafe_trunc(Int, i/2) + 1,
@@ -31,7 +31,7 @@ for example, `i ∈ 1:N` becomes
 
 for `N=8` and `N=9` respectively.
 
-See equation (20) of [Makhoul80](@cite).
+See equation (20) of [Makhoul80](@citet).
 """
 @inline unpermute_index(i, N) = ifelse(i <= ceil(N/2), 2i-1, 2(N-i+1))
 
@@ -83,12 +83,8 @@ unpermute_kernel! = Dict(
     3 => unpermute_z_indices!
 )
 
-function permute_indices!(dst, src, arch, grid, dim)
-    event = launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-end
-
-function unpermute_indices!(dst, src, arch, grid, dim)
-    event = launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-end
+permute_indices!(dst, src, arch, grid, dim) = 
+    launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid)
+    
+unpermute_indices!(dst, src, arch, grid, dim) = 
+    launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid)

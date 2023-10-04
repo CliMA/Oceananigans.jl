@@ -32,7 +32,7 @@ Discussions are recommended for asking questions about (for example) the user in
 
 * New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
 
-* A pull request can be merged once it is reviewed and approved by collaborators. If the pull request author has write access, they have the reponsibility of merging their pull request. Otherwise, Oceananigans.jl collabators will execute the merge with permission from the pull request author.
+* A pull request can be merged once it is reviewed and approved by collaborators. If the pull request author has write access, they have the responsibility of merging their pull request. Otherwise, Oceananigans.jl collaborators will execute the merge with permission from the pull request author.
 
 * Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
 
@@ -134,7 +134,7 @@ Your development environment is now ready!
 We follow the [ColPrac guide](https://github.com/SciML/ColPrac) for collaborative practices.
 We ask that new contributors read that guide before submitting a pull request.
 
-Changes and contributions should be made via GitHub pull requests against the ``master`` branch.
+Changes and contributions should be made via GitHub pull requests against the ``main`` branch.
 
 When you're done making changes, commit the changes you made. Chris Beams has written a 
 [guide](https://chris.beams.io/posts/git-commit/) on how to write good commit messages.
@@ -157,8 +157,6 @@ You can preview how the Documentation will look like after merging by building t
 locally. From the main directory of your local repository call
 
 ```
-julia --project -e 'using Pkg; Pkg.instantiate()'
-julia --project=docs/ -e 'using Pkg; Pkg.instantiate()'
 JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
 

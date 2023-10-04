@@ -64,10 +64,10 @@ function visualize_barotropic_gyre(filepath)
         wireframe!(ax, Sphere(Point3f(0), 0.99f0), show_axis=false)
         surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])
         rotate_cam!(ax.scene, (0, 3π/4, 0))
-        fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
+        fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], fontsize = 50) # put names in center
     end
 
-    supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+    supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
     record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
         @info "Animating iteration $i/$(iterations[end])..."

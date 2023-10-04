@@ -85,9 +85,9 @@ end
 
 """Show the innards of a `Relaxation` in the REPL."""
 Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
-    print(io, "Relaxation{$R, $M, $T}", '\n',
-        "├── rate: $(relaxation.rate)", '\n',
-        "├── mask: $(summary(relaxation.mask))", '\n',
+    print(io, "Relaxation{$R, $M, $T}", "\n",
+        "├── rate: $(relaxation.rate)", "\n",
+        "├── mask: $(summary(relaxation.mask))", "\n",
         "└── target: $(summary(relaxation.target))")
 
 Base.summary(relaxation::Relaxation) =

@@ -11,8 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField, 
                                          latitude = (15, 75),
                                          z = (-1, 0))
 
-            model = HydrostaticFreeSurfaceModel(grid = grid,
-                                                momentum_advection = VectorInvariant())
+            model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = VectorInvariant())
 
             ψᵢ(λ, φ, z) = rand()
             set!(model, u=ψᵢ, v=ψᵢ)

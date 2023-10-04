@@ -53,7 +53,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         grid = mrg,
                                         tracers = :c,
                                         closure = nothing,
@@ -166,12 +166,12 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VorticityStencil()),
-                     WENO5(),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
+                     WENO(),
                      VectorInvariant()]
 
-advection_schemes = [WENO5(vector_invariant = VelocityStencil())]
+advection_schemes = [WENO(vector_invariant = VelocityStencil())]
 
 for Nx in [128]
     for advection in advection_schemes

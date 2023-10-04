@@ -96,8 +96,8 @@ architectures = [CPU]
 grid_types = [
     :RectilinearGrid,
     :LatitudeLongitudeGrid,
-    # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
-    # :ConformalCubedSphereFaceGrid,
+    # Uncomment when OrthogonalSphericalShellGrids of any size can be built natively without loading from file:
+    # :OrthogonalSphericalShellGrid,
     # :ConformalCubedSphereGrid
 ]
 

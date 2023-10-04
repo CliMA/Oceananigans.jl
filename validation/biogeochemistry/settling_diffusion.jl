@@ -18,7 +18,7 @@ no_penetration = ImpenetrableBoundaryCondition()
 slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
                                    top=no_penetration, bottom=no_penetration)
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(WENO5(), w=w_slip)
+sinking = AdvectiveForcing(WENO(), w=w_slip)
 
 model = NonhydrostaticModel(; grid,
                             tracers = (:b, :P),

@@ -1,6 +1,6 @@
 using Oceananigans
 using Statistics
-using KernelAbstractions: @kernel, @index, Event
+using KernelAbstractions: @kernel, @index
 using CUDA
 using Test
 using Printf
@@ -70,8 +70,7 @@ end
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ)
     child_arch = child_architecture(arch)
-    event = launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ, dependencies=Event(device(child_arch)))
-    wait(device(child_arch), event)
+    launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     fill_halo_regions!(∇²ϕ)
     return nothing
 end
@@ -123,7 +122,7 @@ function run_script(replace_strings, script_name, script_filepath, module_suffix
 
         # Print the content of the file to the test log, with line numbers, for debugging
         test_file_content = read(test_script_filepath, String)
-        delineated_file_content = split(test_file_content, '\n')
+        delineated_file_content = split(test_file_content, "\n")
         for (number, line) in enumerate(delineated_file_content)
             @printf("% 3d %s\n", number, line)
         end

@@ -28,7 +28,7 @@ v_init = Array(interior(set!(Field((Center, Face, Center), grid), ϵ)))
 u_init_mrg = multi_region_object_from_array(u_init, mrg)
 v_init_mrg = multi_region_object_from_array(v_init, mrg)
 
-momentum_advection = WENO5(vector_invariant=VelocityStencil())
+momentum_advection = WENO(vector_invariant=VelocityStencil())
 
 free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
 # free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 

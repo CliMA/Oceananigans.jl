@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using TimesDates: TimeDate
 using Oceananigans.Simulations:
     stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!

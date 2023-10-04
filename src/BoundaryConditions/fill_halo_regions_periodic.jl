@@ -4,30 +4,33 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Periodic boundary conditions
 #####
 
-@inline parent_and_size(c, dim1, dim2) = (parent(c),  size(parent(c))[[dim1, dim2]])
+@inline parent_size_and_offset(c, dim1, dim2, size, offset)     = (parent(c), size, fix_halo_offsets.(offset, c.offsets[[dim1, dim2]]))
+@inline parent_size_and_offset(c, dim1, dim2, ::Symbol, offset) = (parent(c), size(parent(c))[[dim1, dim2]], (0, 0))
 
-@inline function parent_and_size(c::NTuple, dim1, dim2)
+@inline function parent_size_and_offset(c::NTuple, dim1, dim2, ::Symbol, offset)
     p = parent.(c)
     p_size = (minimum([size(t, dim1) for t in p]), minimum([size(t, dim2) for t in p]))
-    return p, p_size
+    return p, p_size, (0, 0)
 end
 
-function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, loc, arch, dep, grid, args...; kw...)
-    c_parent, yz_size = parent_and_size(c, 2, 3)
-    event = launch!(arch, grid, yz_size, fill_periodic_west_and_east_halo!, c_parent, grid.Hx, grid.Nx; dependencies=dep, kw...)
-    return event
+@inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
+
+function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
+    c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
+    launch!(arch, grid, KernelParameters(yz_size, offset), fill_periodic_west_and_east_halo!, c_parent, grid.Hx, grid.Nx; kw...)
+    return nothing
 end
 
-function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, loc, arch, dep, grid, args...; kw...)
-    c_parent, xz_size = parent_and_size(c, 1, 3)
-    event = launch!(arch, grid, xz_size, fill_periodic_south_and_north_halo!, c_parent, grid.Hy, grid.Ny; dependencies=dep, kw...)
-    return event
+function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
+    c_parent, xz_size, offset = parent_size_and_offset(c, 1, 3, size, offset)
+    launch!(arch, grid, KernelParameters(xz_size, offset), fill_periodic_south_and_north_halo!, c_parent, grid.Hy, grid.Ny;  kw...)
+    return nothing
 end
 
-function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, loc, arch, dep, grid, args...; kw...)
-    c_parent, xy_size = parent_and_size(c, 1, 2)
-    event = launch!(arch, grid, xy_size, fill_periodic_bottom_and_top_halo!, c_parent, grid.Hz, grid.Nz; dependencies=dep, kw...)
-    return event
+function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
+    c_parent, xy_size, offset = parent_size_and_offset(c, 1, 2, size, offset)
+    launch!(arch, grid, KernelParameters(xy_size, offset), fill_periodic_bottom_and_top_halo!, c_parent, grid.Hz, grid.Nz; kw...)
+    return nothing
 end
 
 #####
@@ -48,7 +51,7 @@ end
     i, k = @index(Global, NTuple)
     @unroll for j = 1:H
         @inbounds begin
-            c[i, j, k] = c[i, N+j, k]     # south
+            c[i, j, k]     = c[i, N+j, k] # south
             c[i, N+H+j, k] = c[i, H+j, k] # north
         end
     end
@@ -58,7 +61,7 @@ end
     i, j = @index(Global, NTuple)
     @unroll for k = 1:H
         @inbounds begin
-            c[i, j, k] = c[i, j, N+k]        # top
+            c[i, j, k]     = c[i, j, N+k] # top
             c[i, j, N+H+k] = c[i, j, H+k] # bottom
         end
     end

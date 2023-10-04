@@ -17,24 +17,23 @@ pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = n
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
-                                      dependencies = device_event(model.architecture))
+function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
 
-    event = launch!(model.architecture, model.grid, :xyz,
-                    _barotropic_pressure_correction,
-                    model.velocities,
-                    model.grid,
-                    Δt,
-                    model.free_surface.gravitational_acceleration,
-                    model.free_surface.η,
-                    dependencies = dependencies)
-
-    wait(device(model.architecture), event)
+    launch!(model.architecture, model.grid, :xyz,
+            _barotropic_pressure_correction,
+            model.velocities,
+            model.grid,
+            Δt,
+            model.free_surface.gravitational_acceleration,
+            model.free_surface.η)
 
     return nothing
 end
 
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
+calculate_free_surface_tendency!(grid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
+calculate_free_surface_tendency!(grid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
+
+function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt)
     u, v, _ = model.velocities
     grid = model.grid 
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
@@ -46,7 +45,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶜ(i, j, k, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶜ(i, j, k, grid, η)
+        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η)
+        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
     end
 end

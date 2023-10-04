@@ -231,14 +231,13 @@ end
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
-            model = NonhydrostaticModel(grid=grid)
+            model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)
         end
 
         # Some tests can reuse this same grid and model.
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid=grid,
-                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
@@ -256,8 +255,7 @@ end
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid=grid,
-                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."
@@ -270,4 +268,3 @@ end
         end
     end
 end
-

@@ -27,7 +27,7 @@ end
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
 
-The scheme described by Le and Moin (1991) (see [LeMoin1991](@cite)). In a nutshel, the 3rd-order
+The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
 step is applied after at each substep.
 
@@ -78,11 +78,11 @@ The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
+function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[], compute_tendencies = true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -99,10 +99,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # First stage
     #
 
-    calculate_tendencies!(model)
-
-    correct_immersed_tendencies!(model, Δt, γ¹, 0)
-
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -110,16 +106,12 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model)
-    update_particle_properties!(model, first_stage_Δt)
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
     #
-
-    calculate_tendencies!(model)
-
-    correct_immersed_tendencies!(model, Δt, γ², ζ²)
 
     rk3_substep!(model, Δt, γ², ζ²)
 
@@ -128,25 +120,21 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model)
-    update_particle_properties!(model, second_stage_Δt)
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, second_stage_Δt)
 
     #
     # Third stage
     #
-
-    calculate_tendencies!(model)
     
-    correct_immersed_tendencies!(model, Δt, γ³, ζ³)
-
     rk3_substep!(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    update_state!(model)
-    update_particle_properties!(model, third_stage_Δt)
+    update_state!(model, callbacks; compute_tendencies)
+    step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
 end
@@ -161,16 +149,13 @@ stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
-    barrier = Event(device(architecture(model)))
     substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
     model_fields = prognostic_fields(model)
-    events = []
 
     for (i, field) in enumerate(model_fields)
-        field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
-                                            model.timestepper.Gⁿ[i],
-                                            model.timestepper.G⁻[i],
-                                            dependencies=barrier)
+        substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
+                              model.timestepper.Gⁿ[i],
+                              model.timestepper.G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -181,13 +166,8 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       stage_Δt(Δt, γⁿ, ζⁿ),
-                       dependencies = field_event)
-
-        push!(events, field_event)
+                       stage_Δt(Δt, γⁿ, ζⁿ))
     end
-
-    wait(device(architecture(model)), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -201,18 +181,18 @@ Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
 
 where `m` denotes the substage.
 """
-@kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+@kernel function rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U[i, j, k] += Δt * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+        U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
     end
 end
 
-@kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+@kernel function rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
+        U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
 end

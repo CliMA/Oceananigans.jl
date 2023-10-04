@@ -1,3 +1,5 @@
+import Oceananigans: initialize!
+
 """
     AbstractSchedule
 
@@ -9,6 +11,17 @@ abstract type AbstractSchedule end
 
 # Default behavior is no alignment.
 aligned_time_step(schedule, clock, Δt) = Δt
+
+# Fallback initialization for schedule: call the schedule,
+# then return `true`, indicating that the schedule "actuates" at
+# initial call.
+function initialize!(schedule::AbstractSchedule, model)
+    schedule(model)
+
+    # `return true` indicates that the schedule
+    # "actuates" at initial call.
+    return true
+end
 
 #####
 ##### TimeInterval
@@ -133,7 +146,7 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+SpecifiedTimes(times::Vararg{T}) where T<:Number = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 SpecifiedTimes(times) = SpecifiedTimes(times...)
 
 function next_appointment_time(st::SpecifiedTimes)
@@ -155,12 +168,19 @@ function (st::SpecifiedTimes)(model)
     return false
 end
 
+initialize!(st::SpecifiedTimes, model) = st(model)
+
 align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointment_time(schedule) - clock.time)
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
-    str_elems = str_elems[1:end-2]
-    return string("[", str_elems..., "]")
+    str = string("[", str_elems...)
+
+    # Remove final separator ", "
+    str = str[1:end-2]
+
+    # Add closing bracket
+    return string(str, "]")
 end
 
 #####
@@ -195,7 +215,7 @@ function (schedule::ConsecutiveIterations)(model)
 end
 
 aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
-    aligned_time_step(schedule.parent, clock. Δt)
+    aligned_time_step(schedule.parent, clock, Δt)
 
 #####
 ##### Any and AndSchedule
@@ -207,7 +227,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    AndSchedule(schedules...)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -223,7 +243,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    OrSchedule(schedules...)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """

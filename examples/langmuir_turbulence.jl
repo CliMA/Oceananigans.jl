@@ -59,14 +59,17 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, write `architecture = GPU()` in the constructor
-# for `NonhydrostaticModel` below.
+# To run this example on the GPU, include `GPU()` in the
+# constructor for `RectilinearGrid` above.
 #
 # The Stokes drift profile is
 
 uˢ(z) = Uˢ * exp(z / vertical_scale)
 
-# which we'll need for the initial condition.
+# and its `z`-derivative is
+
+∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+
 #
 # !!! info "The Craik-Leibovich equations in Oceananigans"
 #     Oceananigans implements the Craik-Leibovich approximation for surface wave effects
@@ -79,10 +82,6 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
 #     for more information.
 #
-# The vertical derivative of the Stokes drift is
-
-∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
-
 # Finally, we note that the time-derivative of the Stokes drift must be provided
 # if the Stokes drift and surface wave field undergoes _forced_ changes in time.
 # In this example, the Stokes drift is constant
@@ -127,7 +126,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO5(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
@@ -355,13 +354,14 @@ ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
 
 Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
+current_figure() # hide
+fig
+
 # And, finally, we record a movie.
 
 frames = 1:length(times)
 
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide

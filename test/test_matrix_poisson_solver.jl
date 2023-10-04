@@ -35,27 +35,27 @@ end
     r[i, j, k] *= volume(i, j, k, grid, Center(), Center(), Center())
 end
 
+@kernel function _compute_poisson_weights(Ax, Ay, Az, grid)
+    i, j, k = @index(Global, NTuple)
+    Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
+    Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
+    Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
+end
+
 function compute_poisson_weights(grid)
     N = size(grid)
-    Ax = zeros(N...)
-    Ay = zeros(N...)
-    Az = zeros(N...)
-    C  = zeros(grid, N...)
-    D  = zeros(grid, N...)
-    for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
-        Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
-        Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
-        Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
-    end
+    Ax = arch_array(architecture(grid), zeros(N...))
+    Ay = arch_array(architecture(grid), zeros(N...))
+    Az = arch_array(architecture(grid), zeros(N...))
+    C  = arch_array(architecture(grid), zeros(grid, N...))
+    D  = arch_array(architecture(grid), zeros(grid, N...))
 
+    launch!(architecture(grid), grid, :xyz, _compute_poisson_weights, Ax, Ay, Az, grid)
+    
     return (Ax, Ay, Az, C, D)
 end
 
-function poisson_rhs!(r, grid)
-    event = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
-    wait(event)
-    return nothing
-end
+poisson_rhs!(r, grid) = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
 
 function run_poisson_equation_test(grid)
     arch = architecture(grid)
@@ -136,15 +136,16 @@ end
             @info "  Testing HeptadiagonalIterativeSolver [stretched in $stretched_direction, $(typeof(arch))]..."
             run_poisson_equation_test(grid)
         end
+
+        if arch isa CPU
+            @info "  Testing Sparse Approximate Inverse..."
+
+            A   = sprand(10, 10, 0.1)
+            A   = A + A' + 1I
+            A⁻¹ = sparse(inv(Array(A)))
+            M   = sparse_approximate_inverse(A, ε = eps(eltype(A)), nzrel = size(A, 1))
+
+            @test all(Array(M) .≈ A⁻¹)
+        end
     end
-
-    @info "  Testing Sparse Approximate Inverse..."
-
-    A   = sprand(100, 100, 0.1)
-    A   = A + A' + 1I
-    A⁻¹ = sparse(inv(Array(A)))
-    M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
-    
-    @test all(Array(M) .≈ A⁻¹)
-    
 end

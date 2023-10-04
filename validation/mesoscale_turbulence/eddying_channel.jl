@@ -175,8 +175,8 @@ catke = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     closure = (horizontal_closure, vertical_closure, catke),
@@ -426,7 +426,7 @@ rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 title = @lift(string("Buoyancy, vertical vorticity, and zonally-averaged u at t = ",
                      prettytime(zonal_file["timeseries/t/" * string($iter)])))
 
-fig[0, :] = Label(fig, title, textsize=30)
+fig[0, :] = Label(fig, title, fontsize=30)
 
 display(fig)
 

@@ -1,4 +1,4 @@
-using Oceananigans.Grids: scalar_summary
+import Oceananigans.Grids: prettysummary
 
 prettysummary(x, args...) = summary(x)
 
@@ -18,7 +18,6 @@ function prettysummary(f::Function, showmethods=true)
     end
 end
 
-prettysummary(x::AbstractFloat, args...) = scalar_summary(x)
 prettysummary(x::Int, args...) = string(x)
 
 # This is very important

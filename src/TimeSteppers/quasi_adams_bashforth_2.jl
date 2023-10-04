@@ -1,6 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.Architectures: device_event
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
@@ -48,6 +47,7 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
+    χ  = convert(FT, χ)
 
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
 end
@@ -62,12 +62,13 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
+Setting `compute_tendencies=false` will not calculate new tendencies
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false, compute_tendencies = true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
@@ -87,25 +88,24 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.timestepper.previous_Δt = Δt
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model)
-
-    @apply_regionally calculate_tendencies!(model)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
     
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
 
-    @apply_regionally correct_velocties_and_store_tendecies!(model, Δt)
+    @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
-    update_state!(model)
-    update_particle_properties!(model, Δt)
-
+    update_state!(model, callbacks; compute_tendencies)
+    step_lagrangian_particles!(model, Δt)
+    
     return nothing
 end
 
-function correct_velocties_and_store_tendecies!(model, Δt)
+function correct_velocities_and_store_tendecies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
+    return nothing
 end
 
 #####
@@ -117,19 +117,14 @@ function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     arch = model.architecture
-    barrier = device_event(arch)
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
     model_fields = prognostic_fields(model)
-    events = []
 
     for (i, field) in enumerate(model_fields)
 
-        field_event = step_field_kernel!(field, Δt, χ,
-                                         model.timestepper.Gⁿ[i],
-                                         model.timestepper.G⁻[i],
-                                         dependencies = device_event(arch))
-
-        push!(events, field_event)
+        step_field_kernel!(field, Δt, χ,
+                           model.timestepper.Gⁿ[i],
+                           model.timestepper.G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -140,11 +135,8 @@ function ab2_step!(model, Δt, χ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       Δt,
-                       dependencies = field_event)
+                       Δt)
     end
-
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -158,11 +150,11 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 @kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
-    T = eltype(u)
-    one_point_five = convert(T, 1.5)
-    oh_point_five = convert(T, 0.5)
+    FT = eltype(χ)
+    one_point_five = convert(FT, 1.5)
+    oh_point_five  = convert(FT, 0.5)
 
-    @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
+    @inbounds u[i, j, k] += convert(FT, Δt) * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
-@kernel ab2_step_field!(::FunctionField, args...) = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing

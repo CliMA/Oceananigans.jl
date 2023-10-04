@@ -1,9 +1,11 @@
 using Glob
-import Oceananigans.Fields: set!
 
+using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+
+import Oceananigans.Fields: set! 
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -20,19 +22,16 @@ end
                  dir = ".",
                  prefix = "checkpoint",
                  overwrite_existing = false,
+                 verbose = false,
                  cleanup = false,
-                 additional_kwargs...)
+                 properties = [:architecture, :grid, :clock, :coriolis,
+                               :buoyancy, :closure, :timestepper, :particles])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
-To restart or "pickup" a model from a checkpoint, specify `pickup=true` when calling `run!`, ensuring
-that the checkpoint file is the current working directory. See 
-
-```julia
-help> run!
-```
-for more details.
+To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
+that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
 such as `:velocities` will make restoring from the checkpoint impossible.
@@ -42,9 +41,10 @@ but functions or objects containing functions cannot be serialized at this time.
 
 Keyword arguments
 =================
+
 - `schedule` (required): Schedule that determines when to checkpoint.
 
-- `dir`: Directory to save output to. Default: "." (current working directory).
+- `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
 
@@ -99,13 +99,13 @@ end
 ##### Checkpointer utils
 #####
 
-""" Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
+""" Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
     checkpoint_path(iteration::Int, c::Checkpointer)
 
-Returns the path to the `c`heckpointer file associated with model `iteration`.
+Return the path to the `c`heckpointer file associated with model `iteration`.
 """
 checkpoint_path(iteration::Int, c::Checkpointer) =
     joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
@@ -204,19 +204,18 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-
         model.grid == checkpointed_grid ||
-             error("The grid associated with $filepath and model.grid are not the same!")
+             @warn "The grid associated with $filepath and model.grid are not the same!"
 
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
-            try
-                parent_data = file["$name/data"]
+            if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
+                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
                 copyto!(model_field.data.parent, parent_data)
-            catch
-                @warn "Could not retore $name from checkpoint."
+            else
+                @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
@@ -238,17 +237,21 @@ end
 
 function set_time_stepper_tendencies!(timestepper, file, model_fields)
     for name in propertynames(model_fields)
-        # Tendency "n"
-        parent_data = file["timestepper/Gⁿ/$name/data"]
+        if string(name) ∈ keys(file["timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+            # Tendency "n"
+            parent_data = file["timestepper/Gⁿ/$name/data"]
 
-        tendencyⁿ_field = timestepper.Gⁿ[name]
-        copyto!(tendencyⁿ_field.data.parent, parent_data)
+            tendencyⁿ_field = timestepper.Gⁿ[name]
+            copyto!(tendencyⁿ_field.data.parent, parent_data)
 
-        # Tendency "n-1"
-        parent_data = file["timestepper/G⁻/$name/data"]
+            # Tendency "n-1"
+            parent_data = file["timestepper/G⁻/$name/data"]
 
-        tendency⁻_field = timestepper.G⁻[name]
-        copyto!(tendency⁻_field.data.parent, parent_data)
+            tendency⁻_field = timestepper.G⁻[name]
+            copyto!(tendency⁻_field.data.parent, parent_data)
+        else
+            @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
+        end
     end
 
     return nothing
@@ -262,4 +265,3 @@ function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, m
     timestepper.previous_Δt = file["timestepper/previous_Δt"]
     return nothing
 end
-            

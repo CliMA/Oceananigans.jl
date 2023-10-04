@@ -1,9 +1,9 @@
-using Oceananigans.Architectures: architecture, device_event, arch_array
+using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     convective_κz :: CK
     convective_νz :: CN
     background_κz :: BK
@@ -82,26 +82,23 @@ const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
 with_tracers(tracers, closure::FlavorOfCAVD) = closure
-DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
+DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = ZFaceField(grid), κᵘ = ZFaceField(grid))
 @inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
-@inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
-@inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
+@inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
+@inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κᶜ
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    event = launch!(arch, grid, :xyz,
-                    ## If we can figure out how to only precompute the "stability" of a cell:
-                    # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
-                    compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, parameters,
+            ## If we can figure out how to only precompute the "stability" of a cell:
+            # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
+            compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy)
 
     return nothing
 end
@@ -109,29 +106,21 @@ end
 @inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
 @kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
-    i, j, k, = @index(Global, NTuple)
+    i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
     stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 
-    @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
-                                                closure_ij.background_κz,
-                                                closure_ij.convective_κz)
+    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(stable_cell,
+                                                 closure_ij.background_κz,
+                                                 closure_ij.convective_κz)
 
-    @inbounds diffusivities.ν[i, j, k] = ifelse(stable_cell,
-                                                closure_ij.background_νz,
-                                                closure_ij.convective_νz)
+    @inbounds diffusivities.κᵘ[i, j, k] = ifelse(stable_cell,
+                                                 closure_ij.background_νz,
+                                                 closure_ij.convective_νz)
 end
-
-#=
-## If we can figure out how to only precompute the "stability" of a cell:
-@kernel function compute_stability!(diffusivities, grid, closure, tracers, buoyancy)
-    i, j, k, = @index(Global, NTuple)
-    @inbounds diffusivities.unstable_buoyancy_gradient[i, j, k] = is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
-end
-=#
 
 #####
 ##### Show

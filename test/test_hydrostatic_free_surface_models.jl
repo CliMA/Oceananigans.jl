@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
@@ -144,7 +144,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             grid = RectilinearGrid(arch, FT, size=N, extent=L)
             model = HydrostaticFreeSurfaceModel(grid=grid)
 
-            x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
+            x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
             u₀(x, y, z) = x * y^2
             u_answer = @. x * y^2
@@ -216,7 +216,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO5())
+        for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO())
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
                 @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection=momentum_advection)
@@ -248,32 +248,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
-        end
-
-        @testset "PrescribedVelocityFields [$arch]" begin
-            @info "  Testing PrescribedVelocityFields [$arch]..."
-            
-            grid = RectilinearGrid(arch, size=1, x =(0, 1), halo=1, topology = (Periodic, Flat, Flat))
-            
-            u₀, v₀ = 0.1, 0.2
-            
-            U = Field{Face, Center, Center}(grid)
-            V = Field{Center, Face, Center}(grid)
-
-            CUDA.@allowscalar begin
-                parent(U)[2, 1, 1] = u₀
-                parent(V)[2, 1, 1] = v₀
-            end
-
-            u = PrescribedField(Face, Center, Center, U, grid)
-            v = PrescribedField(Face, Center, Center, V, grid)
-
-            CUDA.@allowscalar begin
-                @test parent(u)[1, 1, 1] == u₀
-                @test parent(u)[3, 1, 1] == u₀
-                @test parent(v)[1, 1, 1] == v₀
-                @test parent(v)[3, 1, 1] == v₀
-            end
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin

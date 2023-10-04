@@ -3,10 +3,10 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Uv,
     _advective_momentum_flux_Vu,
     _advective_momentum_flux_Vv,
-    advective_tracer_flux_x, 
-    advective_tracer_flux_y,
-    vertical_vorticity_U,
-    vertical_vorticity_V,
+    _advective_tracer_flux_x, 
+    _advective_tracer_flux_y,
+    horizontal_advection_U,
+    horizontal_advection_V,
     bernoulli_head_U,
     bernoulli_head_V
 
@@ -43,11 +43,11 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
                                 δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 @inline div_mom_u(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + horizontal_advection_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
     + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
     
 @inline div_mom_v(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + horizontal_advection_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
     + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
 
 # Support for no advection
@@ -63,7 +63,7 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 """
     div_Uh(i, j, k, grid, advection, solution, formulation)
 
-Calculates the divergence of the mass flux into a cell,
+Calculate the divergence of the mass flux into a cell,
 
 ```
 1/Az * [δxᶜᵃᵃ(Δy * uh) + δyᵃᶜᵃ(Δx * vh)]
@@ -84,16 +84,16 @@ end
 #####
 
 @inline transport_tracer_flux_x(i, j, k, grid, advection, uh, h, c) =
-    @inbounds advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / ℑxᶠᵃᵃ(i, j, k, grid, h)
+    @inbounds _advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / ℑxᶠᵃᵃ(i, j, k, grid, h)
 
 @inline transport_tracer_flux_y(i, j, k, grid, advection, vh, h, c) =
-    @inbounds advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
+    @inbounds _advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
     div_Uc(i, j, k, grid, advection, solution, c, formulation)
 
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
-a velocity field ``𝐔 = (u, v)``, ``∇·(𝐔c)``,
+a velocity field ``𝐔 = (u, v)``, ``𝛁·(𝐔c)``,
 
 ```
 1/Az * [δxᶜᵃᵃ(Δy * uh * ℑxᶠᵃᵃ(c) / h) + δyᵃᶜᵃ(Δx * vh * ℑyᵃᶠᵃ(c) / h)]
@@ -108,8 +108,8 @@ which ends up at the location `ccc`.
 end
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, ::VectorInvariantFormulation)
-    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], c) +
-                                     δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], c)) 
+    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, solution[1], c) +
+                                     δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, solution[2], c)) 
 end
 
 # Support for no advection
@@ -126,11 +126,11 @@ end
 """
     c_div_U(i, j, k, grid, solution, c, formulation)
 
-Calculates the product of the tracer concentration ``c`` with 
+Calculate the product of the tracer concentration ``c`` with 
 the horizontal divergence of the velocity field ``𝐔 = (u, v)``, ``c ∇·𝐔``,
 
 ```
-1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h]
+c * 1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h)]
 ```
 
 which ends up at the location `ccc`.

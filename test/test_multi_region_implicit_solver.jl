@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans
 using Oceananigans.Units
 using Statistics
@@ -15,6 +17,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
     else
         devices = nothing
     end
+
     mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
 
     coriolis = FPlane(f = 1e-4)
@@ -27,9 +30,9 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     U = 0.1 # geostrophic velocity
     L  = grid.Lx / 40 # gaussian width
-    x₀ = grid.Lx / 4 # gaussian center
+    x₀ = grid.Lx / 4  # gaussian center
 
-    vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    vᵍ(x, y, z) = - U * (x - x₀) / L * gaussian(x - x₀, L)
 
     g = model.free_surface.gravitational_acceleration
     η = model.free_surface.η
@@ -38,7 +41,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
-    ηⁱ(x, y) = 2 * ηᵍ(x)
+    ηⁱ(x, y, z) = 2 * ηᵍ(x)
 
     set!(model, v = vᵍ)
     @apply_regionally set!(η, ηⁱ)
@@ -46,15 +49,12 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
-    for step in 1:10
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
     return η
 end
-
-Lh = 100kilometers
-Lz = 400meters
 
 for arch in archs
 
@@ -64,18 +64,18 @@ for arch in archs
     @testset "Testing multi region implicit free surface" begin
         for topology_type in topology_types
             grid = RectilinearGrid(arch,
-                        size = (64, 3, 1),
-                        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
-                        topology = topology_type)
+                                   size = (64, 3, 1),
+                                   x = (0, 100kilometers), y = (0, 100kilometers), z = (-400meters, 0),
+                                   topology = topology_type)
 
-            ηs = geostrophic_adjustment_test(free_surface, grid);
-            ηs = Array(interior(ηs));
+            ηs = geostrophic_adjustment_test(free_surface, grid)
+            ηs = Array(interior(ηs))
 
             for regions in [2, 4]
                 @info "  Testing $regions partitions on $(topology_type) on the $arch"
                 η = geostrophic_adjustment_test(free_surface, grid, regions = regions)
                 η = Array(interior(reconstruct_global_field(η)))
-                
+
                 @test all(η .≈ ηs)
             end
         end

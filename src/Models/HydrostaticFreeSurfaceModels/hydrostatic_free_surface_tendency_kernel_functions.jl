@@ -4,22 +4,27 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
+using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
+using Oceananigans.Forcings: with_advective_forcing
+using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
+using Oceananigans.Utils: SumOfArrays
+using KernelAbstractions: @private
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation
-
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
+import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
-Return the tendency for the horizontal velocity in the x-direction, or the east-west 
-direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
+Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west 
+direction, ``u``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``u`` is called ``G_u`` and defined via
 
-    ``∂_t u = G_u - ∂_x p_n``
+```
+∂_t u = G_u - ∂_x p_n
+```
 
-where p_n is the part of the barotropic kinematic pressure that's treated
+where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
@@ -49,14 +54,16 @@ implicitly during time-stepping.
 end
 
 """
-Return the tendency for the horizontal velocity in the y-direction, or the east-west 
-direction, ``v``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
+Return the tendency for the horizontal velocity in the ``y``-direction, or the east-west 
+direction, ``v``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``v`` is called ``G_v`` and defined via
 
-    ``∂_t v = G_v - ∂_y p_n``
+```
+∂_t v = G_v - ∂_y p_n
+```
 
-where p_n is the part of the barotropic kinematic pressure that's treated
+where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
@@ -82,7 +89,7 @@ implicitly during time-stepping.
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -91,16 +98,20 @@ at grid point `i, j, k`.
 
 The tendency is called ``G_c`` and defined via
 
-    ``∂_t c = G_c``
+```
+∂_t c = G_c
+```
 
 where `c = C[tracer_index]`. 
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                           val_tracer_index::Val{tracer_index},
+                                                          val_tracer_name,
                                                           advection,
                                                           closure,
                                                           c_immersed_bc,
                                                           buoyancy,
+                                                          biogeochemistry,
                                                           velocities,
                                                           free_surface,
                                                           tracers,
@@ -113,10 +124,19 @@ where `c = C[tracer_index]`.
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+    biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+
+    total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
+                        v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
+                        w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
+
+    total_velocities = with_advective_forcing(forcing, total_velocities)
+
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -124,7 +144,9 @@ Return the tendency for an explicit free surface at horizontal grid point `i, j`
 
 The tendency is called ``G_η`` and defined via
 
-    ``∂_t η = G_η``
+```
+∂_t η = G_η
+```
 """
 @inline function free_surface_tendency(i, j, grid,
                                        velocities,
@@ -134,19 +156,21 @@ The tendency is called ``G_η`` and defined via
                                        forcings,
                                        clock)
 
-    k_surface = grid.Nz + 1
+    k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return @inbounds (   velocities.w[i, j, k_surface]
-                       + forcings.η(i, j, k_surface, grid, clock, model_fields))
+    return @inbounds (   velocities.w[i, j, k_top]
+                       + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
+                                                               val_tracer_name,
                                                                advection,
                                                                closure,
                                                                e_immersed_bc,
                                                                buoyancy,
+                                                               biogeochemistry,
                                                                velocities,
                                                                free_surface,
                                                                tracers,
@@ -162,9 +186,8 @@ end
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, e, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + shear_production(i, j, k, grid, closure, velocities, diffusivities)
+             + shear_production(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+             + forcing(i, j, k, grid, clock, model_fields))
 end
-

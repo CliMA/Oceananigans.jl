@@ -3,7 +3,7 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo, HRegRectilinearGrid
-import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!, with_tracers
+import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
@@ -76,8 +76,7 @@ const CoriolisVector = AbstractVector{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
-function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, gravitational_acceleration::Number, settings)
-
+function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, settings=nothing, gravitational_acceleration=nothing)
     grid isa HRegRectilinearGrid || 
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 

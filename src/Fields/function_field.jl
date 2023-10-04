@@ -48,6 +48,8 @@ where `func` is callable with signature `func(x, y, z)`.
 """
 FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
+indices(::FunctionField) = (:, :, :)
+
 # Various possibilities for calling FunctionField.func:
 @inline call_func(clock, parameters, func, x, y, z)     = func(x, y, z, clock.time, parameters)
 @inline call_func(::Nothing, parameters, func, x, y, z) = func(x, y, z, parameters)
@@ -59,7 +61,7 @@ FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid
 @inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
 
 @inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
-    call_func(f.clock, f.parameters, f.func, node(LX(), LY(), LZ(), i, j, k, f.grid)...)
+    call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
 
 @inline (f::FunctionField)(x...) = call_func(f.clock, f.parameters, f.func, x...)
 
@@ -70,8 +72,8 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            parameters = Adapt.adapt(to, f.parameters))
 
 Base.show(io::IO, field::FunctionField) =
-    print(io, "FunctionField located at ", show_location(field), '\n',
-          "├── func: $(prettysummary(field.func))", '\n',
+    print(io, "FunctionField located at ", show_location(field), "\n",
+          "├── func: $(prettysummary(field.func))", "\n",
           "├── grid: $(summary(field.grid))\n",
           "├── clock: $(summary(field.clock))\n",
           "└── parameters: $(field.parameters)")

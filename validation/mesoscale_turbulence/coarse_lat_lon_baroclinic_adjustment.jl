@@ -51,7 +51,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     closure = closures,
                                     tracers = (:b, :c),
                                     momentum_advection = VectorInvariant(),
-                                    tracer_advection = WENO5(),
+                                    tracer_advection = WENO(),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."

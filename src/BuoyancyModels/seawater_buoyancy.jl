@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
-using Oceananigans.Grids: scalar_summary
+using Oceananigans.Utils: prettysummary
 
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
@@ -20,20 +20,20 @@ required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EO
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
 Base.nameof(::Type{SeawaterBuoyancy}) = "SeawaterBuoyancy"
-Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", scalar_summary(b.gravitational_acceleration),
+Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", prettysummary(b.gravitational_acceleration),
                                            " and ", summary(b.equation_of_state))
 
 function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 
-    print(io, nameof(typeof(b)), "{$FT}:", '\n',
-              "├── gravitational_acceleration: ", b.gravitational_acceleration, '\n')
+    print(io, nameof(typeof(b)), "{$FT}:", "\n",
+              "├── gravitational_acceleration: ", b.gravitational_acceleration, "\n")
 
     if !isnothing(b.constant_temperature)
-        print(io, "├── constant_temperature: ", b.constant_temperature, '\n')
+        print(io, "├── constant_temperature: ", b.constant_temperature, "\n")
     end
 
     if !isnothing(b.constant_salinity)
-        print(io, "├── constant_salinity: ", b.constant_salinity, '\n')
+        print(io, "├── constant_salinity: ", b.constant_salinity, "\n")
     end
         
     print(io, "└── equation of state: ", summary(b.equation_of_state))
@@ -87,7 +87,7 @@ Base.nameof(::Type{SalinitySeawaterBuoyancy}) = "SalinitySeawaterBuoyancy"
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
     return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, T, S)
               / b.equation_of_state.reference_density)
@@ -191,10 +191,10 @@ end
     S_flux = getbc(S_flux_bc, i, j, grid, clock, fields)
 
     return b.gravitational_acceleration * (
-              thermal_expansionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
-           - haline_contractionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
+              thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
+           - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
 end
 
-@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz, grid, b, args...)
+@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz+1, grid, b, args...)
 @inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
 

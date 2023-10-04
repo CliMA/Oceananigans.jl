@@ -1,6 +1,9 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δz
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
+using Oceananigans.Grids: ZDirection
+
+import Oceananigans.Solvers: get_coefficient
 
 #####
 ##### implicit_step! interface
@@ -17,7 +20,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 # Fallbacks: extend these function for `closure` to support.
 # TODO: docstring
-@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, ℓx, ℓy, ℓz, clock, Δt, κz) =
     zero(grid)
 
 @inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
@@ -29,7 +32,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
-implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
@@ -37,66 +40,78 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-@inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
+const c = Center()
+const f = Face()
 
 # Tracers and horizontal velocities at cell centers in z
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+    closure_ij = getclosure(i, j, closure)
+    κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
+    Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₊₁ = Δz(i, j, k+1, grid, ℓx, ℓy, f)
+    du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
-    closure_ij = getclosure(i, j, closure)  
-    κᵏ⁺¹ = κz(i, j, k+1, grid, closure_ij, K, id, clock)
-
-    return ifelse(k > grid.Nz-1,
-                  zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
+    # This conditional ensures the diagonal is correct
+    return ifelse(k > grid.Nz-1, zero(grid), du)
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
-    k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
+@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
-    κᵏ = κz(i, j, k′, grid, closure_ij, K, id, clock)
+    κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
+    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
-    return ifelse(k < 1,
-                  zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
+    # This conditional ensures the diagonal is correct: the lower diagonal does not
+    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
+    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
+    return ifelse(k′ < 1, zero(grid), dl)
 end
 
-# Vertical velocity kernel functions (at cell interfaces in z)
-#
-# Note: these coefficients are specific to vertically-bounded grids (and so is
-# the BatchedTridiagonalSolver).
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ) 
+#####
+##### Vertical velocity kernel functions (at cell interfaces in z)
+#####
+##### Note: these coefficients are specific to vertically-bounded grids (and so is
+##### the BatchedTridiagonalSolver).
+
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
-
-    return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
-                  zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
+    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
+    return ifelse(k < 1, zero(grid), du)
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ)
-    k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
+    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
-    νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
-    return ifelse(k < 1,
-                  zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
+    νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
+    Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
+    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
+    return ifelse(k < 1, zero(grid), dl)
 end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) -
-        Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                      maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                      maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
+    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
+                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
+                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-@inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
-@inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
-@inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+@inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
+@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
+@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
 
 #####
 ##### Solver constructor
 #####
+
+struct VerticallyImplicitDiffusionLowerDiagonal end
+struct VerticallyImplicitDiffusionDiagonal end
+struct VerticallyImplicitDiffusionUpperDiagonal end
 
 """
     implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
@@ -123,12 +138,17 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = maybe_tupled_ivd_lower_diagonal,
-                                        diagonal = ivd_diagonal,
-                                        upper_diagonal = maybe_tupled_ivd_upper_diagonal)
+                                        lower_diagonal = VerticallyImplicitDiffusionLowerDiagonal(),
+                                        diagonal       = VerticallyImplicitDiffusionDiagonal(),
+                                        upper_diagonal = VerticallyImplicitDiffusionUpperDiagonal())
 
     return z_solver
 end
+
+# Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
@@ -142,8 +162,7 @@ is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImp
 
 """
     implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
-                   closure, diffusivity_fields, tracer_index, clock, Δt;
-                   dependencies)
+                   closure, diffusivity_fields, tracer_index, clock, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments
@@ -159,7 +178,7 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        Δt; dependencies)
+                        Δt)
     
    loc = location(field)
 
@@ -180,7 +199,7 @@ function implicit_step!(field::Field,
     if closure isa Tuple
         closure_tuple = closure
         N = length(closure_tuple)
-        vi_closure = Tuple(closure[n] for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_closure            = Tuple(closure[n]            for n = 1:N if is_vertically_implicit(closure[n]))
         vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
     else
         vi_closure = closure
@@ -189,7 +208,6 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz;
-                  dependencies)
+                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz)
 end
 

@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using NCDatasets
 using StructArrays
+using Oceananigans.Architectures: arch_array
 
 struct TestParticle{T}
     x :: T
@@ -13,41 +14,123 @@ struct TestParticle{T}
     s :: T
 end
 
-function run_simple_particle_tracking_tests(arch, timestepper)
+function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta3, velocities=nothing)
+    model = NonhydrostaticModel(; grid, timestepper, velocities, particles)
+    set!(model, u=1, v=1)
+    sim = Simulation(model, Δt=1e-2, stop_iteration=1)
+
+    jld2_filepath = "test_particles.jld2"
+    sim.output_writers[:particles_jld2] =
+        JLD2OutputWriter(model, (; particles=model.particles),
+                         filename="test_particles", schedule=IterationInterval(1))
+
+    nc_filepath = "test_particles.nc"
+    sim.output_writers[:particles_nc] =
+        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1)) 
+
+    sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
+                                                     dir = ".", prefix = "particles_checkpoint")
+
+    return sim, jld2_filepath, nc_filepath
+end
+
+function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false)
     topo = (Periodic, Periodic, Bounded)
-    domain = (x=(-1, 1), y=(-1, 1), z=(-1, 1))
-    grid = RectilinearGrid(arch, topology=topo, size=(5, 5, 5); domain...)
+
+    Nx = Ny = Nz = 5
+    if vertically_stretched
+        # Slightly stretched at the top
+        z = [-1, -0.5, 0.0, 0.4, 0.7, 1]
+    else
+        z = (-1, 1)
+    end
+
+    grid = RectilinearGrid(arch; topology=topo, size=(Nx, Ny, Nz),
+                           x=(-1, 1), y=(-1, 1), z)
 
     P = 10
+    
+    #####
+    ##### Test default particle
+    #####
+    
+    xs = arch_array(arch, 0.6*ones(P))
+    ys = arch_array(arch, 0.58*ones(P))
+    zs = arch_array(arch, 0.8*ones(P))
+
+    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+    @test particles isa LagrangianParticles
+
+    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper)
+    model = sim.model
+    run!(sim)
+
+    # Just test we run without errors
+    @test length(model.particles) == P
+    @test propertynames(model.particles.properties) == (:x, :y, :z)
+
+    rm(jld2_filepath)
+    rm(nc_filepath)
+    rm("particles_checkpoint_iteration0.jld2")
+
+    #####
+    ##### Test Boundary restitution
+    #####
+
+    initial_z    = CUDA.@allowscalar grid.zᵃᵃᶜ[grid.Nz - 1]
+    top_boundary = CUDA.@allowscalar grid.zᵃᵃᶠ[grid.Nz + 1]
+
+    x, y, z = arch_array.(Ref(arch), ([0.0], [0.0], [initial_z]))
+
+    particles = LagrangianParticles(; x, y, z)
+    u, v, w   = VelocityFields(grid)
+
+    Δt = 0.01
+    interior(w, :, :, grid.Nz)   .= (0.1 + top_boundary - initial_z) / Δt
+    interior(w, :, :, grid.Nz-1) .= (0.2 + top_boundary - initial_z) / Δt
+
+    velocities = PrescribedVelocityFields(; u, v, w)
+
+    model = HydrostaticFreeSurfaceModel(; grid, particles, velocities, buoyancy=nothing, tracers = ())
+
+    time_step!(model, Δt)
+
+    zᶠ = convert(array_type(arch), model.particles.properties.z)
+    @test all(zᶠ .≈ (top_boundary - 0.15))
+
+    #####
+    ##### Test custom particle "SpeedTrackingParticle"
+    #####
+    
     xs = arch_array(arch, zeros(P))
     ys = arch_array(arch, zeros(P))
-    zs = arch_array(arch, 0.5*ones(P))
+    zs = arch_array(arch, 0.5 * ones(P))
+    us = arch_array(arch, zeros(P))
+    vs = arch_array(arch, zeros(P))
+    ws = arch_array(arch, zeros(P))
+    ss = arch_array(arch, zeros(P))
 
-    # Test first constructor
-    lagrangian_particles = LagrangianParticles(x=xs, y=ys, z=zs)
-    @test lagrangian_particles isa LagrangianParticles
-
-    us = convert(array_type(arch), zeros(P))
-    vs = convert(array_type(arch), zeros(P))
-    ws = convert(array_type(arch), zeros(P))
-    ss = convert(array_type(arch), zeros(P))
-
+    # Test custom constructor
     particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
 
     velocities = VelocityFields(grid)
     u, v, w = velocities
     speed = Field(√(u*u + v*v + w*w))
-
     tracked_fields = merge(velocities, (; s=speed))
+
+    # applying v component of advection with background field to ensure it is included
+    background_v = VelocityFields(grid).v
+    background_v .= 1
 
     # Test second constructor
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
     @test lagrangian_particles isa LagrangianParticles
 
-    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
-                                velocities=velocities, particles=lagrangian_particles)
+    model = NonhydrostaticModel(; grid, timestepper,
+                                  velocities, particles=lagrangian_particles,
+                                  background_fields = (v = background_v, ))
 
-    set!(model, u=1, v=1)
+    set!(model, u=1)
 
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
@@ -63,6 +146,12 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir = ".", prefix = "particles_checkpoint")
 
+    rm(jld2_filepath)
+    rm(nc_filepath)
+    rm("particles_checkpoint_iteration1.jld2")
+
+    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)    
+    model = sim.model
     run!(sim)
 
     @test length(model.particles) == P
@@ -179,12 +268,18 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     @test all(w .≈ 0)
     @test all(s .≈ √2)
 
+    rm("particles_checkpoint_iteration0.jld2")
+    rm("particles_checkpoint_iteration1.jld2")
+
     return nothing
 end
 
 @testset "Lagrangian particle tracking" begin
     for arch in archs, timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @info "  Testing Lagrangian particle tacking [$(typeof(arch)), $timestepper]..."
-        run_simple_particle_tracking_tests(arch, timestepper)
+        @info "  Testing uniform grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
+        run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false)
+
+        @info "  Testing stretched grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
+        run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=true)
     end
 end

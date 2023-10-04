@@ -9,7 +9,6 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
     # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
-    arch = architecture(field_grid)
 
     Axᶠᶜᶜ = GridMetricOperation((Face, Center, Center), Ax, field_grid)
     Ayᶜᶠᶜ = GridMetricOperation((Center, Face, Center), Ay, field_grid)
@@ -21,7 +20,7 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 end
 
 """
-Compute the vertical integrated volume flux from the bottom to ``z=0`` (i.e., linear free-surface).
+Compute the vertical integrated volume flux from the bottom to ``z = 0`` (i.e., linear free-surface).
 
 ```
 U★ = ∫ᶻ Ax * u★ dz

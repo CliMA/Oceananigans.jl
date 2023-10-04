@@ -33,8 +33,8 @@ end
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -99,22 +99,21 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     grid = solver.grid
     arch = architecture(grid)
 
-    event = launch!(arch, grid, :xy,
-                    implicit_linearized_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-		            dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            implicit_linearized_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
     
-    wait(device(arch), event)
     return nothing
 end
 
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az   = Azᶜᶜᶜ(i, j, 1, grid)
-    δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    k_top = grid.Nz + 1
+    Az   = Azᶜᶜᶠ(i, j, k_top, grid)
+    δ_Q  = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
 end
 
 function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitational_acceleration)
@@ -123,29 +122,26 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     Nx, Ny = (grid.Nx, grid.Ny)
 
-    C     = zeros(Nx, Ny, 1)
+    C     = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     Ax    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     Ay    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Az    = zeros(Nx, Ny, 1)
+    Az    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    event_c = launch!(arch, grid, :xy, _compute_coefficients!,
-                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration,
-                      dependencies = device_event(arch))
+    launch!(arch, grid, :xy, _compute_coefficients!,
+            diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration)
   
-    wait(event_c)
-
     return (Ax, Ay, Az, C, diag)
 end
 
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end

@@ -53,4 +53,9 @@ docs/src/generated
 # VSCode
 .vscode
 
+# AMGX
+.logamgx
+
 statprof
+*.sqlite
+*.nsys-rep

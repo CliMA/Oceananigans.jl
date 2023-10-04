@@ -18,7 +18,6 @@
 
     ℑ = user_func.field_dependencies_interp
     idx = user_func.field_dependencies_indices
-
     return field_arguments(i, j, k, grid, model_fields, ℑ, idx)
 end
 

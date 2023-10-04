@@ -190,7 +190,7 @@ biharmonic_horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(ν=κ�
 
 model = NonhydrostaticModel(
                    grid = grid,
-              advection = WENO5(),
+              advection = WENO(),
             timestepper = :RungeKutta3,
                coriolis = coriolis,
                 tracers = :b,

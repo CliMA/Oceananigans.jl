@@ -24,7 +24,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
-    grid = RectilinearGrid(architecture, topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+    grid = RectilinearGrid(architecture, topology=topo, size=(Nx, 1, 1), halo=(6, 6, 6); domain...)
 
     model = NonhydrostaticModel( timestepper = :RungeKutta3,
                                         grid = grid,
@@ -39,7 +39,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                 w = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
                 c = (x, y, z) -> c(x, y, z, 0, U, κ, t₀))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
     @info "Running Gaussian advection diffusion test for vx, wx, and cx with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
@@ -62,7 +62,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
-    ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
+    ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(6, 6, 6); ydomain...)
 
     model = NonhydrostaticModel(timestepper = :RungeKutta3,
                                        grid = ygrid,
@@ -77,7 +77,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                 w = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
                 c = (x, y, z) -> c(y, x, z, 0, U, κ, t₀))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
     @info "Running Gaussian advection diffusion test for uy, wy, and cy with Ny = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
@@ -97,7 +97,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     zdomain = (x=(0, 1), y=(0, 1), z=(-1, 1.5))
-    zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
+    zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(6, 6, 6); zdomain...)
 
     model = NonhydrostaticModel(timestepper = :RungeKutta3,
                                        grid = zgrid,
@@ -112,7 +112,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                 v = (x, y, z) -> c(z, x, y, 0, U, κ, t₀),
                 c = (x, y, z) -> c(z, x, y, 0, U, κ, t₀))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
     @info "Running Gaussian advection diffusion test for uz, vz, and cz with Nz = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
@@ -139,10 +139,10 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                           L₁ = cy_errors.L₁,
                           L∞ = cy_errors.L∞),
 
-            cz = (simulation = cy_simulation,
+            cz = (simulation = cz_simulation,
                   analytical = c_analytical,
-                          L₁ = cy_errors.L₁,
-                          L∞ = cy_errors.L∞),
+                          L₁ = cz_errors.L₁,
+                          L∞ = cz_errors.L∞),
 
             uy = (simulation = uy_simulation,
                   analytical = c_analytical, # same solution as c.

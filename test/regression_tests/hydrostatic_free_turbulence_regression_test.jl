@@ -1,11 +1,9 @@
-using JLD2
-
 using Oceananigans.Fields: FunctionField
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
-using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
-using Oceananigans.TurbulenceClosures
+using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
+
+using JLD2
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 

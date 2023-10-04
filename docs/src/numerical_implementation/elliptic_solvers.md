@@ -27,8 +27,8 @@ Discretizing elliptic problems that can be solved via a classical separation-of-
 equation, results in a linear system of equations ``M \boldsymbol{x} = \boldsymbol{y}`` where ``M`` is a real symmetric matrix of block
 tridiagonal form. This allows for the matrix to be decomposed and solved efficiently, provided that the eigenvalues and
 eigenvectors of the blocks are known (§2) [Buzbee70](@cite). In the case of Poisson's equation on a rectangle,
-[Hockney65](@cite) has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
-multiplication steps resulting in an even more efficient method. [Schumann88](@cite) describe the implementation of such
+[Hockney65](@citet) has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
+multiplication steps resulting in an even more efficient method. [Schumann88](@citet) describe the implementation of such
 an algorithm for Poisson's equation on a staggered grid with Dirichlet, Neumann, and periodic boundary conditions.
 
 The method can be explained easily by taking the Fourier transform of both sides of \eqref{eq:poisson-pressure} to yield
@@ -43,7 +43,7 @@ The method can be explained easily by taking the Fourier transform of both sides
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
 solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
-ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
+ensure that the projection step in the fractional time-step works (see [Time-stepping section](@ref time_stepping) and [Fractional step method appendix](@ref fractional_step_method)). To do this, the wavenumbers are replaced by
 eigenvalues ``\lambda^x``, ``\lambda^y``, and ``\lambda^z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
@@ -51,7 +51,7 @@ coefficients of the solution are easily solved for
 \widehat{p}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k} \, .
 ```
 
-The eigenvalues are given by [Schumann88](@cite) and can also be tediously derived by plugging in the definition of the
+The eigenvalues are given by [Schumann88](@citet) and can also be tediously derived by plugging in the definition of the
 discrete Fourier transform into \eqref{eq:poisson-spectral}:
 ```math
 \begin{align}
@@ -81,8 +81,8 @@ system along one of the dimensions and utilizing cyclic reduction. This results 
 reduction* or ``\text{FACR}(\ell)`` algorithm (with ``\ell`` cyclic reduction steps) which requires only
 ``\mathcal{O}(N \log_2\log_2 N)`` operations provided the optimal number of cyclic reduction steps is taken, which is
 ``\ell = \log_2 \log_2 n`` where ``n`` is the number of grid points in the cyclic reduction dimension. The FACR algorithm
-was first developed by [Hockney69](@cite) and is well reviewed by [Swarztrauber77](@cite) then further benchmarked and
-extended by [Temperton79](@cite) and [Temperton80](@cite).
+was first developed by [Hockney69](@citet) and is well reviewed by [Swarztrauber77](@citet) then further benchmarked and
+extended by [Temperton79](@citet) and [Temperton80](@citet).
 
 Furthermore, the FACR algorithm removes the restriction that the grid is uniform in one of the dimensions so it can
 be utilized to implement a fast Poisson solver for vertically stretched grids if the cyclic reduction is applied in the
@@ -113,7 +113,7 @@ Discretizing the ``\partial_z^2`` derivative and equating the term inside the br
 ## Cosine transforms on the GPU
 
 Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine 
-transforms for the GPU. We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@cite) 
+transforms for the GPU. We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@citet) 
 which compute it by applying the regular Fourier transform to a permuted version of the array.
 
 In this section we will be using the DCT-II as the definition of the forward cosine transform 

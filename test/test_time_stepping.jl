@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
@@ -126,9 +127,8 @@ function incompressible_in_time(grid, Nt, timestepper)
     end
 
     arch = architecture(grid)
-    event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
+    
     min_div = CUDA.@allowscalar minimum(interior(div_U))
     max_div = CUDA.@allowscalar maximum(interior(div_U))
     max_abs_div = CUDA.@allowscalar maximum(abs, interior(div_U))
@@ -234,7 +234,7 @@ advection_schemes = (nothing,
                      UpwindBiasedThirdOrder(),
                      CenteredFourthOrder(),
                      UpwindBiasedFifthOrder(),
-                     WENO5())
+                     WENO())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
@@ -275,7 +275,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Coriolis" begin
         for arch in archs, FT in [Float64], Coriolis in Planes
-            @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Coriolis]..."
+            @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
             @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
         end
     end

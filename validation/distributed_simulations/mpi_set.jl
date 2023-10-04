@@ -1,6 +1,6 @@
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
 MPI.Init()
 
@@ -10,8 +10,8 @@ Nranks = MPI.Comm_size(MPI.COMM_WORLD)
 
 # Setup model
 topology = (Periodic, Periodic, Flat)
-arch = MultiArch(CPU(); topology, ranks=(1, Nranks, 1))
-grid = RectilinearGrid(arch; topology, size=(16, 16), extent=(2π, 2π))
+arch = Distributed(CPU(); topology, ranks=(1, Nranks, 1))
+grid = RectilinearGrid(arch; topology, size=(16 ÷ Nranks, 16), extent=(2π, 2π))
 c = CenterField(grid)
 
 f(x, y, z) = rand()

@@ -4,7 +4,8 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractRectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
@@ -25,33 +26,49 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",)
-ydim(::Type{Face}) = ("yF",)
-zdim(::Type{Face}) = ("zF",)
+xdim(::Face) = ("xF",)
+ydim(::Face) = ("yF",)
+zdim(::Face) = ("zF",)
 
-xdim(::Type{Center}) = ("xC",)
-ydim(::Type{Center}) = ("yC",)
-zdim(::Type{Center}) = ("zC",)
+xdim(::Center) = ("xC",)
+ydim(::Center) = ("yC",)
+zdim(::Center) = ("zC",)
 
-xdim(::Type{Nothing}) = ()
-ydim(::Type{Nothing}) = ()
-zdim(::Type{Nothing}) = ()
+xdim(::Nothing) = ()
+ydim(::Nothing) = ()
+zdim(::Nothing) = ()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
+
+native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz) =
+    Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+
+native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
+    Dict("xC" => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         "xF" => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         "yC" => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         "yF" => parent(φnodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict(
-                "xC" => (Center, Center, Center),
-                "xF" => (  Face, Center, Center),
-                "yC" => (Center, Center, Center),
-                "yF" => (Center,   Face, Center),
-                "zC" => (Center, Center, Center),
-                "zF" => (Center, Center,   Face),
-               )
+    locs = Dict("xC" => (Center(), Center(), Center()),
+                "xF" => (Face(),   Center(), Center()),
+                "yC" => (Center(), Center(), Center()),
+                "yF" => (Center(), Face(),   Center()),
+                "zC" => (Center(), Center(), Center()),
+                "zF" => (Center(), Center(), Face()  ))
+
+    topo = map(instantiate, topology(grid))
 
     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
@@ -60,22 +77,25 @@ function default_dimensions(output, grid, indices, with_halos)
                        for name in keys(locs))
     end
 
-    dims = Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
-                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
-                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
-                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
-                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
-                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
-
-    return dims
+    return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
-
-const default_dimension_attributes = Dict(
+const default_dimension_attributes_rectilinear = Dict(
     "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
     "xF"          => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
     "yC"          => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
     "yF"          => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("longname" => "Time", "units" => "s"),
+    "particle_id" => Dict("longname" => "Particle ID")
+)
+
+const default_dimension_attributes_curvilinear = Dict(
+    "xC"          => Dict("longname" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+    "xF"          => Dict("longname" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+    "yC"          => Dict("longname" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+    "yF"          => Dict("longname" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
     "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
     "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
     "time"        => Dict("longname" => "Time", "units" => "s"),
@@ -137,14 +157,14 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = nothing,
                                    with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
                            overwrite_existing = false,
-                                  compression = 0,
+                                 deflatelevel = 0,
                                       verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
@@ -155,19 +175,45 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
-- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+## Filenaming
+
+- `filename` (required): Descriptive filename. `".nc"` is appended to `filename` if `filename` does
+                         not end in `".nc"`.
 
 - `dir`: Directory to save output to.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float32}`.
+## Output frequency and time-averaging
+
+- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+
+## Slicing and type conversion prior to output
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: false.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
+                Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                information about the boundary conditions is often crucial. In that case
+                you might need to set `with_halos = true`.
+
+- `array_type`: The array type to which output arrays are converted to prior to saving.
+                Default: `Array{Float64}`.
+
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
+
+## File management
+
+- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will be set to append to `filepath`. If `true`,
+                        `NetCDFOutputWriter` will overwrite `filepath` if it exists or create it if not.
+                        Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
+                        for more information about its `mode` option.
+
+- `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  for more information.
+
+## Miscellaneous keywords
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
@@ -175,16 +221,9 @@ Keyword arguments
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
                        otherwise `output_attributes` *must* be user-provided).
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
-
-- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
-                        will overwrite `filepath` if it exists or create it if it does not.
-                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
-
-- `compression`: Determines the compression level of data (0-9; default: 0)
-
 Examples
 ========
+
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
@@ -207,7 +246,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -220,7 +259,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -235,7 +274,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
@@ -244,7 +283,9 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
+Nx, Ny, Nz = 16, 16, 16
+
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
 model = NonhydrostaticModel(grid=grid)
 
@@ -254,8 +295,12 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+YF = [yF[j] for i in 1:Nx, j in 1:Ny]
+
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
@@ -265,7 +310,7 @@ output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-);
+)
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
@@ -279,19 +324,19 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 """
 function NetCDFOutputWriter(model, outputs; filename, schedule,
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
                            overwrite_existing = nothing,
-                                  compression = 0,
+                                 deflatelevel = 0,
                                       verbose = false)
 
     mkpath(dir)
@@ -346,11 +391,13 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
+    default_dimension_attributes = get_default_dimension_attributes(model.grid)
+
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   compression=compression, attrib=default_dimension_attributes[dim_name])
+                   deflatelevel=deflatelevel, attrib=default_dimension_attributes[dim_name])
         end
 
         # DateTime and TimeDate are both <: AbstractTime
@@ -372,7 +419,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
+            define_output_variable!(dataset, output, name, array_type, deflatelevel, attributes, dimensions)
         end
 
         sync(dataset)
@@ -383,26 +430,35 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
 end
 
+get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
+    default_dimension_attributes_rectilinear
+
+get_default_dimension_attributes(grid::AbstractCurvilinearGrid) =
+    default_dimension_attributes_curvilinear
+
+get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
+    get_default_dimension_attributes(grid.underlying_grid)
+
 #####
 ##### Variable definition
 #####
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
     defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           compression=compression, attrib=output_attributes)
+           deflatelevel=deflatelevel, attrib=output_attributes)
 
     return nothing
 end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
+define_output_variable!(dataset, output::AbstractField, name, array_type, deflatelevel, output_attributes, dimensions) =
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           compression=compression, attrib=output_attributes)
+           deflatelevel=deflatelevel, attrib=output_attributes)
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
@@ -420,7 +476,7 @@ function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons..., time_index] = data
+    ds[name][colons..., time_index:time_index] = data
     return nothing
 end
 
@@ -503,10 +559,10 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-              "├── filepath: ", ow.filepath, '\n',
-              "├── dimensions: $dims", '\n',
-              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: ", ow.filepath, "\n",
+              "├── dimensions: $dims", "\n",
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type))
 end
 
@@ -515,11 +571,11 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, deflatelevel, output_attributes, dimensions)
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     for particle_field in particle_fields
         defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), compression=compression)
+               ("particle_id", "time"), deflatelevel=deflatelevel)
     end
 end
 
