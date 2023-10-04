@@ -59,7 +59,7 @@ for region in 1:number_of_regions(grid)
 end
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO()),
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration),
                                     tracer_advection = WENO(order=5),
                                     tracers = :θ,
