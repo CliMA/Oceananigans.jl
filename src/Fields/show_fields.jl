@@ -31,7 +31,7 @@ data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
                              "min=", prettysummary(minimum(field)), ", ",
                              "mean=", prettysummary(mean(field)))
 
-indices_sumamry(field) = replace(string(field.indices), "Colon()"=> ":")
+indices_summary(field) = replace(string(field.indices), "Colon()"=> ":")
 
 function Base.show(io::IO, field::Field)
 
@@ -47,18 +47,18 @@ function Base.show(io::IO, field::Field)
                ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
                ", immersed: ", bc_str(bcs.immersed), "\n")
 
-    indices_str = indices_sumamry(field) == "(:, :, :)" ?
-                      nothing :
-                      string("├── indices: ", indices_sumamry(field), "\n")
+    indices_str = indices_summary(field) == "(:, :, :)" ?
+                      "" :
+                      string("├── indices: ", indices_summary(field), "\n")
 
-    middle = isnothing(field.operand) ? "" :
-        string("├── operand: ", summary(field.operand), "\n",
-               "├── status: ", summary(field.status), "\n")
+    operand_str = isnothing(field.operand) ? "" :
+                      string("├── operand: ", summary(field.operand), "\n",
+                             "├── status: ", summary(field.status), "\n")
 
-    suffix = string("└── data: ", summary(field.data), "\n",
-                    "    └── ", data_summary(field))
+    data_str = string("└── data: ", summary(field.data), "\n",
+                      "    └── ", data_summary(field))
 
-    print(io, prefix, bcs_str, indices_str, middle, suffix)
+    print(io, prefix, bcs_str, indices_str, operand_str, data_str)
 end
 
 Base.summary(status::FieldStatus) = "time=$(status.time)"
