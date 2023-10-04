@@ -7,8 +7,7 @@ using Distances
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, AbstractTopology, prettysummary, coordinate_summary, BoundedTopology, length
+using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
