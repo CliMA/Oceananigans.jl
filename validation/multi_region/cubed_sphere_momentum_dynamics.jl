@@ -65,52 +65,12 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracers = :θ,
                                     buoyancy = nothing)
 
-# Initial condition for tracer
+# Initial conditions
 
 for region in 1:number_of_regions(grid)
     model.velocities.u[region] .= - ∂y(ψ[region])
     model.velocities.v[region] .= + ∂x(ψ[region])
 end
-
-#=
-
-# 4 Gaussians with width δR (degrees) and magnitude θ₀
-δR = 2
-θ₀ = 1
-
-# Gaussian 1
-i₁ = 1
-j₁ = 1
-panel = 1
-λ₁ = λnode(i₁, j₁, grid[panel], Center(), Center())
-φ₁ = φnode(i₁, j₁, grid[panel], Center(), Center())
-
-# Gaussian 2
-i₂ = Nx÷4 + 1
-j₂ = 3Ny÷4 + 1
-panel = 4
-λ₂ = λnode(i₂, j₂, grid[panel], Center(), Center())
-φ₂ = φnode(i₂, j₂, grid[panel], Center(), Center())
-
-# Gaussian 3
-i₃ = 3Nx÷4 + 1
-j₃ = 3Ny÷4 + 1
-panel = 3
-λ₃ = λnode(i₃, j₃, grid[panel], Center(), Center())
-φ₃ = φnode(i₃, j₃, grid[panel], Center(), Center())
-
-# Gaussian 4
-i₄ = 3Nx÷4+1
-j₄ = 3Ny÷4+1
-panel = 6
-λ₄ = λnode(i₄, j₄, grid[panel], Center(), Center())
-φ₄ = φnode(i₄, j₄, grid[panel], Center(), Center())
-
-θᵢ(λ, φ, z) = θ₀ * exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₃)^2 + (φ - φ₃)^2) / 2δR^2) +
-              θ₀ * exp(-((λ - λ₄)^2 + (φ - φ₄)^2) / 2δR^2)
-=#
 
 θ₀ = 1
 Δφ = 20
@@ -118,16 +78,14 @@ panel = 6
 
 set!(model, θ = θᵢ)
 
-# estimate time-step from the minimum grid spacing
+# Estimate time-step from the minimum grid spacing and the barotropic surface wave speed
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
 
 c = sqrt(Lz * gravitational_acceleration) # surface wave speed
-Δt = 0.2 * min(Δx, Δy) / c # CFL for free surface wave propagation
+Δt = 0.1 * min(Δx, Δy) / c # CFL for free surface wave propagation
 
-
-# stop_time = 2π * U / R
-stop_time = 10Δt
+stop_time = 2π * U / R
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -140,7 +98,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 tracer_fields = Field[]
 save_tracer(sim) = push!(tracer_fields, deepcopy(sim.model.tracers.θ))
-simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(20))
+simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(50))
 
 run!(simulation)
 
@@ -164,7 +122,7 @@ fig
 
 frames = 1:length(tracer_fields)
 
-GLMakie.record(fig, "cubed_sphere_tracer_advection.mp4", frames, framerate = 12) do i
+GLMakie.record(fig, "cubed_sphere_momentum_dynamics.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
     Θₙ[] = tracer_fields[i]
     heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
