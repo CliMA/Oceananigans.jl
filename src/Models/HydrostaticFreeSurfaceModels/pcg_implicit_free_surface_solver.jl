@@ -132,7 +132,8 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
-    # REMEMBER!!! This is going to create problems!!!!
+    # REMEMBER: This is going to create problems for multi-region! 
+    #           (Non-local operation cannot be done within @apply_regionally)
     fill_halo_regions!(ηⁿ⁺¹)
 
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
