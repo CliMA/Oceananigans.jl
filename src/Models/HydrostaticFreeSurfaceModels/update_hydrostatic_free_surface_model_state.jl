@@ -24,14 +24,14 @@ hydrostatic pressure) to the current model state. If `callbacks` are provided (i
 they are called in the end.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+    update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    second_halo_pass!(grid, velocities, model.clock, fields(model))
+    second_halo_pass!(grid, model.velocities, model.clock, fields(model))
 
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
@@ -42,7 +42,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies && 
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -65,19 +65,22 @@ end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
                                                                   p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                  κ_parameters = tuple(:xyz)) 
-    
+                                                                  κ_parameters = tuple(:xyz))
+
     grid = model.grid
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
         compute_w_from_continuity!(model; parameters = wpar)
+
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
-                                    grid, model.buoyancy, model.tracers; 
-                                    parameters = ppar)
+
+        update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
+                                     grid, model.buoyancy, model.tracers;
+                                     parameters = ppar)
     end
+
     return nothing
 end
 
