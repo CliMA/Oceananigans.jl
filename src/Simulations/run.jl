@@ -195,7 +195,7 @@ function initialize!(sim::Simulation)
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
-        reset!(sim.model.timestepper)
+        reset!(timestepper(sim.model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
