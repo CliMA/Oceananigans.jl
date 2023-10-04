@@ -10,7 +10,7 @@ import Oceananigans.Solvers: solve!
 """
     MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
     
-Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
+Return a framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
         
 ```math
