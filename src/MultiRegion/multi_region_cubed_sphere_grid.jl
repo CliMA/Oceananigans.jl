@@ -447,4 +447,4 @@ radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
 
-second_halo_pass!(::ConformalCubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
+second_pass_of_fill_halo_regions!(::ConformalCubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
