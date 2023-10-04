@@ -6,10 +6,11 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           total_length,
                           topology
 
-import Oceananigans.Grids: grid_name
-
 using CubedSphere
 using Distances
+
+import Oceananigans.Grids: grid_name
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: second_halo_pass!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
@@ -445,3 +446,5 @@ end
 radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
+
+second_halo_pass!(::ConformalCubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)

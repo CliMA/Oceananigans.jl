@@ -82,5 +82,4 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 end
 
 # TO DELETE!!!!! (We aim to do single pass)
-second_halo_pass!(grid::CubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
 second_halo_pass!(grid, velocities, args...) = nothing
