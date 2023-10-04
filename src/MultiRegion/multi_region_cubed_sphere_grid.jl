@@ -161,6 +161,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     Nx, Ny, _ = panel_size
     region_topology = (horizontal_topology, horizontal_topology, z_topology)
+    Hx, Hy, Hz = horizontal_direction_halo, horizontal_direction_halo, z_halo
     region_halo = (horizontal_direction_halo, horizontal_direction_halo, z_halo)
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
@@ -252,41 +253,143 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
+    function get_neighboring_panel_indices(pidx)
+    
+        if mod(pidx, 2) == 1
+            npids = [mod1(pidx+5,6), mod1(pidx+1,6), mod1(pidx+2,6), mod1(pidx+4,6)] # [south, east, north, west]
+        else
+            npids = [mod1(pidx+4,6), mod1(pidx+2,6), mod1(pidx+1,6), mod1(pidx+5,6)] # [south, east, north, west]
+        end
+        # The in-built Julia function mod1(x, y) is equivalent to mod(x-1, y) + 1 i.e. it wraps x between 1 and y.
+        
+        return npids
+    
+    end
+    
+    function get_boundary_indices(pidx)
+        
+        if mod(pidx, 2) == 1
+            b_range_x = [1:Nx, Nx+1:Nx+Hx, 2:Nx+1, -Hx+1:0] # [south, east, north, west]
+            b_range_y = [-Hy+1:0, 1:Ny, Ny+1:Ny+Hy, 2:Ny+1] # [south, east, north, west]
+        else
+            b_range_x = [2:Nx+1, Nx+1:Nx+Hx, 1:Nx, -Hx+1:0] # [south, east, north, west]
+            b_range_y = [-Hy+1:0, 2:Ny+1, Ny+1:Ny+Hy, 1:Ny] # [south, east, north, west]
+        end
+        
+        return b_range_x, b_range_y
+    
+    end
+    
+    function get_halo_indices(pidx)
+    
+        if mod(pidx, 2) == 1
+            h_range_x = [1:Nx, 1:Hx, 1:Hx, 1:Nx]             # [south, east, north, west]
+            h_range_y = [Ny-Hy+1:Ny, 1:Ny, 1:Ny, Ny-Hy+1:Ny] # [south, east, north, west]
+        else
+            h_range_x = [Nx-Hx+1:Nx, 1:Nx, 1:Nx, Nx-Hx+1:Nx] # [south, east, north, west]
+            h_range_y = [1:Ny, 1:Hy, 1:Hy, 1:Ny]             # [south, east, north, west]
+        end
+        
+        return h_range_x, h_range_y
+    
+    end
+
     " Halo filling for Face-Face coordinates, hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_coordinates!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
         CUDA.allowscalar() do
-            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
+            
+            # Compact version
+            
+            for pidx in 1:6
+            
+                b_range_x, b_range_y = get_boundary_indices(pidx)
+                npids = get_neighboring_panel_indices(pidx)
+                h_range_x, h_range_y = get_halo_indices(pidx)
+                
+                for bnd in 1:4 # [1, 2, 3, 4] = [south, east, north, west]
+                    
+                    LHS = getregion(grid, pidx).φᶠᶠᵃ[b_range_x[bnd], b_range_y[bnd]]
+                    RHS = getregion(grid, npids[bnd]).φᶠᶠᵃ[h_range_x[bnd], h_range_y[bnd]]
+                    
+                    if mod(pidx, 2) == 1 & bnd == 3
+                        RHS = reshape(reverse(RHS), (Ny, Hx))
+                    elseif mod(pidx, 2) == 1 & bnd == 4
+                        RHS = reshape(reverse(RHS), (Hy, Nx))
+                    elseif mod(pidx, 2) == 0 & bnd == 1
+                        RHS = reshape(reverse(RHS), (Ny, Hx))
+                    elseif mod(pidx, 2) == 0 & bnd == 2
+                        RHS = reshape(reverse(RHS), (Hy, Nx))
+                    end
+                    
+                    LHS = RHS
+                     
+                end
+                
+            end
+            
+            #= 
+            
+            # Expanded version
+            
+            getregion(grid, 1).φᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 1).φᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 2).φᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 1).φᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 5).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo                           # east halo
+            
+            getregion(grid, 1).λᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 1).λᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 2).λᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 1).λᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 5).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo 
+            
+            getregion(grid, 2).φᶠᶠᵃ[2:Nx+1, -Hy+1:0]    = reshape(reverse(getregion(grid, 6).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]), (Ny, Hx)) # south halo
+            getregion(grid, 2).φᶠᶠᵃ[Nx+1:Nx+Hx, 2:Ny+1] = reshape(reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:Hy]), (Hy, Nx))       # east  halo
+            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1:Ny+Hy]   = getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1:Hy]                                   # north halo
+            getregion(grid, 2).φᶠᶠᵃ[-Hx+1:0, 1:Ny]      = getregion(grid, 1).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]                             # west  halo
+            
+            getregion(grid, 2).λᶠᶠᵃ[2:Nx+1, -Hy+1:0]    = reshape(reverse(getregion(grid, 6).λᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]), (Ny, Hx)) # south halo
+            getregion(grid, 2).λᶠᶠᵃ[Nx+1:Nx+Hx, 2:Ny+1] = reshape(reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:Hy]), (Hy, Nx))       # east  halo
+            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1:Ny+Hy]   = getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1:Hy]                                   # north halo
+            getregion(grid, 2).λᶠᶠᵃ[-Hx+1:0, 1:Ny]      = getregion(grid, 1).λᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]                             # west  halo
+            
+            getregion(grid, 3).φᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 3).φᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 4).φᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 5).φᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 3).φᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 1).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo 
+            
+            getregion(grid, 3).λᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 3).λᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 4).λᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 5).λᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 3).λᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 1).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo
+            
+            getregion(grid, 4).φᶠᶠᵃ[2:Nx+1, -Hy+1:0]    = reshape(reverse(getregion(grid, 2).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]), (Ny, Hx)) # south halo
+            getregion(grid, 4).φᶠᶠᵃ[Nx+1:Nx+Hx, 2:Ny+1] = reshape(reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:Hy]), (Hy, Nx))       # east  halo
+            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1:Ny+Hy]   = getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1:Hy]                                   # north halo
+            getregion(grid, 4).φᶠᶠᵃ[-Hx+1:0, 1:Ny]      = getregion(grid, 3).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]                             # west  halo
 
-            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
-
+            getregion(grid, 4).λᶠᶠᵃ[2:Nx+1, -Hy+1:0]    = reshape(reverse(getregion(grid, 2).λᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]), (Ny, Hx)) # south halo
+            getregion(grid, 4).λᶠᶠᵃ[Nx+1:Nx+Hx, 2:Ny+1] = reshape(reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:Hy]), (Hy, Nx))       # east  halo
+            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1:Ny+Hy]   = getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1:Hy]                                   # north halo
+            getregion(grid, 4).λᶠᶠᵃ[-Hx+1:0, 1:Ny]      = getregion(grid, 3).λᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]                             # west  halo
+            
+            getregion(grid, 5).φᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 5).φᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 6).φᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 1).φᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 5).φᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo
+            
+            getregion(grid, 5).λᶠᶠᵃ[1:Nx, -Hy+1:0]      = getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]                             # south halo
+            getregion(grid, 5).λᶠᶠᵃ[Nx+1:Nx+Hx, 1:Ny]   = getregion(grid, 6).λᶠᶠᵃ[1:Hx, 1:Ny]                                   # east  halo
+            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1:Ny+Hy] = reshape(reverse(getregion(grid, 1).λᶠᶠᵃ[1:Hx, 1:Ny]), (Ny, Hx))       # north halo
+            getregion(grid, 5).λᶠᶠᵃ[-Hx+1:0, 2:Ny+1]    = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:Nx, Ny-Hy+1:Ny]), (Hy, Nx)) # west  halo
+            
+            getregion(grid, 6).φᶠᶠᵃ[2:Nx+1, -Hy+1:0]    = reshape(reverse(getregion(grid, 4).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]), (Ny, Hx)) # south halo
+            getregion(grid, 6).φᶠᶠᵃ[Nx+1:Nx+Hx, 2:Ny+1] = reshape(reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:Hy]), (Hy, Nx))       # east  halo
+            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1:Ny+Hy]   = getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1:Hy]                                   # north halo
+            getregion(grid, 6).φᶠᶠᵃ[-Hx+1:0, 1:Ny]      = getregion(grid, 5).φᶠᶠᵃ[Nx-Hx+1:Nx, 1:Ny]                             # west  halo
+            
+            =#
+            
             for region in (1, 3, 5)
                 φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
                 getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
