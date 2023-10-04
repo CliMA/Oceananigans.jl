@@ -71,7 +71,8 @@ function Simulation(model; Δt,
    end
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
-   TT = typeof(model.clock.time)
+   #    TODO: implement TT = timetype(model) and FT = eltype(model)
+   TT = eltype(model.grid)
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
