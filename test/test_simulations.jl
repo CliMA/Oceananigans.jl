@@ -204,7 +204,6 @@ end
 
 @testset "Simulations" begin
     for arch in archs
-        #=
         @info "Testing simulations [$(typeof(arch))]..."
         run_basic_simulation_tests(arch)
 
@@ -213,7 +212,6 @@ end
             run_nan_checker_test(arch, erroring=true)
             run_nan_checker_test(arch, erroring=false)
         end
-        =#
 
         @info "Testing simulations with DateTime [$(typeof(arch))]..."
         run_simulation_date_tests(arch, 0.0, 1.0, 0.3)
