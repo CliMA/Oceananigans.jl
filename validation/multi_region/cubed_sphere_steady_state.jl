@@ -31,8 +31,11 @@ grid = MultiRegionGrid(latlongrid, partition = XPartition(2))
 
 ψᵢ(λ, φ, z) = - u₀ * R * sind(φ)
 ηᵢ(λ, φ, z) = u₀^2/(4g) * cosd(2φ) - (2Ω * sind(φ) * u₀ * R)/g * sind(φ)
+η₀ = u₀^2/(4g)
+η₁ = -u₀^2/(4g) - (2Ω * u₀ * R)/g 
+η_amp = max(η₀, abs(η₁))
 
-η = Field{Center, Center, Face}(grid, indices = (:, :, grid.Nz+1))
+η = Field{Center, Center, Face}(grid, indices = (:, :, grid.Nz+1)) 
 ψ = Field{Face, Face, Center}(grid)
 
 #=
@@ -90,6 +93,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     buoyancy = nothing,
                                     coriolis = coriolis,
                                     closure = closure,
+                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
                                     tracers = ()
                                     )
 
@@ -100,7 +104,7 @@ set!(model, u = u, v = v, η = η)
 Δy = minimum_yspacing(grid)
 Δt = 0.2 * min(Δx, Δy) / u₀ # CFL for advection
 
-stop_time = 2π * u₀ / R
+stop_time = 10 * 2π * u₀ / R
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -112,7 +116,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 surface_elevation_field = Field[]
 save_surface_elevation(sim) = push!(surface_elevation_field, deepcopy(sim.model.free_surface.η))
-simulation.callbacks[:save_surface_elevation] = Callback(save_surface_elevation, IterationInterval(20))
+simulation.callbacks[:save_surface_elevation] = Callback(save_surface_elevation, IterationInterval(1))
 
 run!(simulation)
 
@@ -122,8 +126,6 @@ run!(simulation)
 install Imaginocean.jl from GitHub
 using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 =# 
-
-#=
 
 using Imaginocean
 
@@ -135,7 +137,7 @@ n = Observable(1)
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-heatlatlon!(ax, ηₙ, colorrange=(-η₀, η₀), colormap = :balance)
+heatlatlon!(ax, ηₙ, colorrange=(-η_amp, η_amp), colormap = :balance)
 
 fig
 
@@ -144,7 +146,5 @@ frames = 1:length(surface_elevation_field)
 GLMakie.record(fig, "cubed_sphere_steady_state.mp4", frames, framerate = 12) do i
     @info string("Plotting frame ", i, " of ", frames[end])
     ηₙ[] = surface_elevation_field[i]
-    heatlatlon!(ax, ηₙ, colorrange=(-η₀, η₀), colormap = :balance)
+    heatlatlon!(ax, ηₙ, colorrange=(-η_amp, η_amp), colormap = :balance)
 end
-
-=#
