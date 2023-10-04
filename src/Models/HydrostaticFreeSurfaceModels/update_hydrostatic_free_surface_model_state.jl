@@ -31,7 +31,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    second_pass_halo!(grid, velocities, model.clock, fields(model))
+    second_halo_pass!(grid, velocities, model.clock, fields(model))
 
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
@@ -82,5 +82,5 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 end
 
 # TO DELETE!!!!! (We aim to do single pass)
-second_pass_halo!(grid::CubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
-second_pass_halo!(grid, velocities, args...) = nothing
+second_halo_pass!(grid::CubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
+second_halo_pass!(grid, velocities, args...) = nothing
