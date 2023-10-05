@@ -25,24 +25,26 @@ total_velocities() = nothing
 
 import Oceananigans.TimeSteppers: reset!
 
+# This function should eventually be defined solely in OutputReaders.
+# We define it here as a place holder because Models is imported into
+# Oceananigans before OutputReaders right now.
+update_field_time_series!(::Nothing, time) = nothing
+
 # Update _all_ `FieldTimeSeries`es in an `AbstractModel`. 
 # Loop over all propery names and extract any of them which is a `FieldTimeSeries`.
 # Flatten the resulting tuple by extracting unique values and set! them to the 
 # correct time range by looping over them
-function update_time_series!(model::AbstractModel, clock::Clock)
-
+function update_model_field_time_series!(model::AbstractModel, clock::Clock)
     time = Time(clock.time)
     time_series_tuple = extract_field_timeseries(model)
     time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
-        update_time_series!(fts, time)
+        update_field_time_series!(fts, time)
     end
 
     return nothing
 end
-
-update_time_series!(::Nothing, time) = nothing
 
 # Recursion for all properties 
 function extract_field_timeseries(t) 
