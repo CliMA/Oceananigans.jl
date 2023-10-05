@@ -2,7 +2,7 @@ using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Distributed: DistributedArch
+using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -11,7 +11,7 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel
+using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
@@ -20,7 +20,7 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Models: total_velocities
+import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
@@ -202,24 +202,6 @@ end
 
 architecture(model::NonhydrostaticModel) = model.architecture
 
-#####
-##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
-#####
-##### Note: ignores tuples, including tuples of Symbols (tracer names) and
-##### tuples of DiffusivityFields (which occur for tupled closures)
-#####
-
-extract_boundary_conditions(::Nothing) = NamedTuple()
-extract_boundary_conditions(::Tuple) = NamedTuple()
-
-function extract_boundary_conditions(field_tuple::NamedTuple)
-    names = propertynames(field_tuple)
-    bcs = Tuple(extract_boundary_conditions(field) for field in field_tuple)
-    return NamedTuple{names}(bcs)
-end
-
-extract_boundary_conditions(field::Field) = field.boundary_conditions
-
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
     required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
@@ -237,6 +219,8 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 end
 
 # return the total advective velocities
-@inline total_velocities(model::NonhydrostaticModel) = (u = SumOfArrays{2}(model.velocities.u, model.background_fields.velocities.u),
-                                                        v = SumOfArrays{2}(model.velocities.v, model.background_fields.velocities.v),
-                                                        w = SumOfArrays{2}(model.velocities.w, model.background_fields.velocities.w))
+@inline total_velocities(m::NonhydrostaticModel) =
+    (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
+     v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
+     w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
+
