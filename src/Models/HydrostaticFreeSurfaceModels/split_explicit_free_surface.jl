@@ -47,8 +47,8 @@ Keyword Arguments
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
          barotropic gravity-wave speed, computed with depth `grid.Lz`. If `fixed_Δt` is provided then the number of
-         `substeps` will adapt to maintain an exact cfl. If not the effective cfl will be always lower than the 
-         specified `cfl` provided that the baroclinic time step `Δt_baroclinic < fixed_Δt`
+         `substeps` will adapt to maintain an exact cfl. If not, the effective cfl will always be lower than the 
+         specified `cfl` provided that the baroclinic time step `Δt_baroclinic < fixed_Δt`.
 
 !!! info "Needed keyword arguments"
     Either `substeps` _or_ `cfl` (with `grid`) need to be prescribed.
@@ -91,12 +91,14 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     if eltype(settings) != eltype(grid)
         @warn "Using $(eltype(settings)) settings for the SplitExplicitFreeSurface on a $(eltype(grid)) grid"
     end
-    
+
     η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
-           gravitational_acceleration, settings)
+    return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
+                                    SplitExplicitAuxiliaryFields(grid),
+                                    gravitational_acceleration, settings)
 end
 
 """
@@ -206,7 +208,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
     sum!(Hᶠᶜ, dz)
-   
+
     dz = GridMetricOperation((Center, Face, Center), Δz, grid)
     sum!(Hᶜᶠ, dz)
 
@@ -216,7 +218,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
     kernel_parameters = :xy
-    
+
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
@@ -261,15 +263,16 @@ end
     
 function FixedTimeStepSize(FT::DataType = Float64;
                            cfl = 0.7, 
-                           grid, 
+                           grid,
                            averaging_kernel = averaging_shape_function, 
                            gravitational_acceleration = g_Earth)
+
     Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
     Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
     Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-    
+
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
@@ -284,7 +287,7 @@ end
     idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
-    averaging_weights = averaging_weights[1:idx]
+    averaging_weights = @inbounds averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
 
     return Δτ, averaging_weights
@@ -298,7 +301,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
                                gravitational_acceleration = g_Earth,
                                averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
-    
+
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
         throw(ArgumentError("either specify a cfl or a number of substeps"))
     end
