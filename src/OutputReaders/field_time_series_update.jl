@@ -49,6 +49,10 @@ function update_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
     return nothing
 end
 
+# Update _all_ `FieldTimeSeries` in an `AbstractModel`. Loop 
+# over all propery names and extract any of them which is a `FieldTimeSeries`.
+# Flatten the resulting tuple by extracting unique values and set! them to the 
+# correct time range by looping over them
 function update_time_series!(model::AbstractModel, clock::Clock)
 
     time = Time(clock.time)
