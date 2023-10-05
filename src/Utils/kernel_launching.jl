@@ -3,18 +3,40 @@
 #####
 
 using Oceananigans.Architectures
+using Oceananigans.Utils
 using Oceananigans.Grids
+
 using Oceananigans.Grids: AbstractGrid
 
-"""Parameters for kernel launch, containing kernel size (`S`) and kernel offsets (`O`)"""
 struct KernelParameters{S, O} end
 
+"""
+    KernelParameters(size, offsets)
+
+Return parameters for kernel launching and execution that define (i) a tuple that
+defines the `size` of the kernel being launched and (ii) a tuple of `offsets` that
+offset loop indices. For example, `offsets = (0, 0, 0)` with `size = (N, N, N)` means
+all indices loop from `1:N`. If `offsets = (1, 1, 1)`, then all indices loop from 
+`2:N+1`. And so on.
+
+Example
+=======
+
+```julia
+size = (8, 6, 4)
+offsets = (0, 1, 2)
+kp = KernelParameters(size, offsets)
+
+# Launch a kernel with indices that range from i=1:8, j=2:7, k=3:6,
+# where i, j, k are the first, second, and third index, respectively:
+launch!(arch, grid, kp, kernel!; kernel_args...)
+```
+
+See the documentation for [`launch!`](@ref).
+"""
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
-worktuple(::KernelParameters{S}) where S = S
 offsets(::KernelParameters{S, O}) where {S, O} = O
-
-worktuple(workspec) = workspec
 offsets(workspec)  = nothing
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
@@ -44,7 +66,10 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
     return workgroup
 end
 
-function work_layout(grid, worksize::Tuple; kwargs...)
+work_layout(grid, ::KernelParameters{worksize}; kw...) where worksize =
+    work_layout(grid, worksize; kw...)
+
+function work_layout(grid, worksize::Tuple; kw...)
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
@@ -94,7 +119,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, worktuple(workspec);
+    workgroup, worksize = work_layout(grid, workspec;
                                       include_right_boundaries,
                                       reduced_dimensions,
                                       location)

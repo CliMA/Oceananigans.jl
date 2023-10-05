@@ -306,7 +306,7 @@ using the `discrete_form`. For example:
 
 ```jldoctest
 @inline filtered_drag(i, j, grid, clock, model_fields) =
-   @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+    @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
 
 u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 
