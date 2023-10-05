@@ -25,14 +25,3 @@ function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothi
     κ_names = propertynames(κ)
     return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form, loc, parameters) for κi in κ))
 end
-
-@kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, velocities, tracers) 
-    i, j, k = @index(Global, NTuple)
-    @inbounds νₑ[i, j, k] = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, velocities, tracers)
-end
-
-@kernel function calculate_nonlinear_tracer_diffusivity!(κₑ, grid, closure, tracer, tracer_index, U)
-    i, j, k = @index(Global, NTuple)
-    @inbounds κₑ[i, j, k] = calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure, tracer, tracer_index, U)
-end
-
