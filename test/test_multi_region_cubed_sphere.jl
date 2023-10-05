@@ -704,16 +704,17 @@ end
                 @test get_halo_data(getregion(ψ, 6), East();
                                     operation=:subset,
                                     index=:first)             == reverse(create_ψ_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
-                # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 6), East();
-                                    operation=:endpoint,
-                                    index=:first)             == reverse(create_ψ_test_data(grid, 4)[east_indices_first...])
+                # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
                 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 6), South();
                                     operation=:subset,
                                     index=:first)             == reverse(create_ψ_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
-                # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
+                
+                # The index appearing on the LHS above is the index to be skipped.
+                @test get_halo_data(getregion(ψ, 6), South();
+                                    operation=:endpoint,
+                                    index=:first)             == reverse(create_ψ_test_data(grid, 5)[east_indices_first...])
                 
             end # CUDA.@allowscalar
         end
