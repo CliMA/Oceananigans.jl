@@ -1,5 +1,6 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Models: update_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -14,6 +15,9 @@ function update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencie
     # Mask immersed fields
     foreach(mask_immersed_field!, model.solution)
 
+    # Update possible FieldTimeSeries used in the model
+    update_time_series!(model, model.clock)
+    
     compute_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     # Fill halos for velocities and tracers

@@ -5,6 +5,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Models: update_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
 

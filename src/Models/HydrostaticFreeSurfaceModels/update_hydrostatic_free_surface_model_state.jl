@@ -11,6 +11,8 @@ using Oceananigans.Fields: replace_horizontal_vector_halos!
 import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 
+using Oceananigans.Models: update_time_series!
+
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for

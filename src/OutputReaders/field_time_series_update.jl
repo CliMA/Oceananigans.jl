@@ -1,7 +1,7 @@
 import Oceananigans.BoundaryConditions: BoundaryCondition, getbc
 import Oceananigans.Models: update_time_series!
 
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Fields: AbstractField, flattened_unique_values
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.TimeSteppers: AbstractTimeStepper
 using Oceananigans.Models: AbstractModel
