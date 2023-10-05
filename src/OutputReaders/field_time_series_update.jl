@@ -66,7 +66,7 @@ function update_time_series!(model::AbstractModel, clock::Clock)
     return nothing
 end
 
-# All Oceananigans' types
+# Recurs for all properties of the type
 function extract_field_timeseries(t) 
     prop = propertynames(t)
     if isempty(prop)
@@ -76,13 +76,14 @@ function extract_field_timeseries(t)
     return Tuple(extract_field_timeseries(getproperty(t, p)) for p in prop)
 end
 
-
+# For types we assume do not contain `FieldTimeSeries`, halt the recursion
 NonFTS = [:Number, :AbstractArray, :AbstractTimeStepper, :AbstractGrid]
 
 for NonFTSType in NonFTS
     @eval extract_field_timeseries(::$NonFTSType) = ()
 end
 
+# Special recursion rules
 extract_field_timeseries(t::AbstractField)     = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
 extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
 extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
