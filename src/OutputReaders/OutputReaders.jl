@@ -22,7 +22,7 @@ end
 
 OnDisk() = OnDisk("", "")
 
-regularize_backend(::InMemory, path, name, data) = InMemory(path, name, 1:size(data, 4))
+regularize_backend(::InMemory, path, name, data) = InMemory(path, name, collect(1:size(data, 4)))
 regularize_backend(::OnDisk,   path, name, data) = OnDisk(path, name)
 
 include("field_time_series.jl")

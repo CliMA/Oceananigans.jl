@@ -17,7 +17,7 @@ Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 # If n is `1` or within the end the timeseries different rules apply
 function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     update_time_series!(fts, n)
-    underlying_data = view(parent(fts), :, :, :, n) 
+    underlying_data = view(parent(fts), :, :, :, n - fts.backend.index_range[1] + 1) 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end

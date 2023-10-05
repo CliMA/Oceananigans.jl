@@ -1,14 +1,15 @@
 import Oceananigans.BoundaryConditions: BoundaryCondition, getbc
-import Oceananigans.Models: update_time_series!
+import Oceananigans.Models: update_time_series!, extract_field_timeseries 
 
-using Oceananigans.TimeSteppers: Clock
+# Termination (move all here when we switch the code up)
+extract_field_timeseries(f::FieldTimeSeries)   = f
 
 const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
 const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
 
 const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock::Clock, args...) = bc.condition[i, j, Time(clock.time)]
+@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
 
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
@@ -18,7 +19,7 @@ function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
         return nothing
     end
 
-    fts.data.index_range .= index_range
+    fts.backend.index_range .= index_range
     set!(fts, fts.backend.path, fts.backend.name)
 
     return nothing

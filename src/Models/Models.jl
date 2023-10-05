@@ -8,11 +8,10 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles
 
-using Oceananigans: AbstractModel
-using Oceananigans.Grids: halo_size, inflate_halo_size
-using Oceananigans: fields
-using Oceananigans.TimeSteppers: AbstractTimeStepper
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans: AbstractModel, fields
+using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
+using Oceananigans.Utils: Time
 using Oceananigans.Fields: AbstractField, flattened_unique_values
 using Oceananigans.AbstractOperations: AbstractOperation
 
@@ -68,8 +67,6 @@ extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(
 extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
 extract_field_timeseries(t::NamedTuple)        = Tuple(extract_field_timeseries(n) for n in t)
 
-# Termination
-extract_field_timeseries(f::FieldTimeSeries)   = f
 
 function reset!(model::AbstractModel)
 
