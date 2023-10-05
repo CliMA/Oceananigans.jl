@@ -89,7 +89,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 =#
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
+                                    VectorInvariant(vorticity_scheme = WENO()),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
                                     closure = closure,
