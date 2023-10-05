@@ -26,6 +26,7 @@ function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
     return nothing
 end
 
+# Update the `FieldTimeSeries` `fts` to contain the time `time_index.time`.
 function update_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, length(fts.times))
@@ -33,6 +34,11 @@ function update_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     return nothing
 end
 
+# Update the `FieldTimeSeries` `fts` to contain the time index `n`.
+# update rules are the following: 
+# if `n` is 1, load the first `length(fts.backend.index_range)` time steps
+# if `n` is within the last `length(fts.backend.index_range)` time steps, load the last `length(fts.backend.index_range)` time steps
+# otherwise `n` will be placed at index `[:, :, :, 2]` of `fts.data`
 function update_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
     if !(n ∈ fts.backend.index_range)
         Nt = length(fts.times)
