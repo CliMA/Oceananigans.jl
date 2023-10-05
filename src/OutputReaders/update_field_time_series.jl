@@ -1,5 +1,5 @@
 import Oceananigans.BoundaryConditions: BoundaryCondition, getbc
-import Oceananigans.Models: update_time_series!
+import Oceananigans.Models: update_field_time_series!
 
 using Oceananigans.TimeSteppers: Clock
 
@@ -25,10 +25,10 @@ function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
 end
 
 # Update the `fts` to contain the time `time_index.time`.
-function update_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
+function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, length(fts.times))
-    update_time_series!(fts, n₂)
+    update_field_time_series!(fts, n₂)
     return nothing
 end
 
@@ -37,7 +37,7 @@ end
 # if `n` is 1, load the first `length(fts.backend.index_range)` time steps
 # if `n` is within the last `length(fts.backend.index_range)` time steps, load the last `length(fts.backend.index_range)` time steps
 # otherwise `n` will be placed at index `[:, :, :, 2]` of `fts.data`
-function update_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
+function update_field_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
     if !(n ∈ fts.backend.index_range)
         Nt = length(fts.times)
         Ni = length(fts.backend.index_range)
