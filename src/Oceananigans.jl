@@ -92,7 +92,6 @@ export
     # Simulations
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    erroring_NaNChecker!,
     TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
