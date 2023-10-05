@@ -22,6 +22,8 @@ total_velocities() = nothing
 
 import Oceananigans.TimeSteppers: reset!
 
+function update_time_series! end
+
 function reset!(model::AbstractModel)
 
     for field in fields(model)

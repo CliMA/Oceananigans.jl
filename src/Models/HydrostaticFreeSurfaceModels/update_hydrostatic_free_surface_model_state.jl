@@ -27,6 +27,9 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
+    
+    # Update possible FieldTimeSeries used in the model
+    @apply_regionally update_time_series!(model, model.clock)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 

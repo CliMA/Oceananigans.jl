@@ -1,26 +1,44 @@
 using Adapt
 
-struct AdaptedFieldTimeSeries{T, D, χ} <: AbstractArray{T, 4}
+struct GPUAdaptedFieldTimeSeries{T, LX, LY, LZ, D, χ} <: AbstractArray{T, 4}
                    data :: D
                   times :: χ
 
-    function AdaptedFieldTimeSeries{T}(data::D,
-                                      times::χ) where {T, D, χ}
-        return new{T, D, χ}(data, backend, times)
+    function GPUAdaptedFieldTimeSeries{T, LX, LY, LZ}(data::D,
+                                                     times::χ) where {T, LX, LY, LZ, D, χ}
+        return new{T, LX, LY, LZ, D, χ}(data, backend, times)
     end
 end
 
-Adapt.adapt_structure(to, fts::InMemoryFieldTimeSeries) = 
-    AdaptedFieldTimeSeries{eltype(fts.grid)}(adapt(to, fts.data),
-                                             adapt(to, fts.times))
+Adapt.adapt_structure(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} = 
+    GPUAdaptedFieldTimeSeries{eltype(fts.grid), LX, LY, LZ}(adapt(to, fts.data),
+                                                            adapt(to, fts.times))
 
-@propagate_inbounds Base.lastindex(fts::AdaptedFieldTimeSeries) = lastindex(fts.data)
-@propagate_inbounds Base.lastindex(fts::AdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
+@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
+@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
 
-Base.getindex(fts::AdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = fts.data[i, j, k, n]
+const XYFTS = FieldTimeSeries{<:Any, <:Any, <:Any, Nothing}
+const XZFTS = FieldTimeSeries{<:Any, <:Any, Nothing, <:Any}
+const YZFTS = FieldTimeSeries{<:Any, Nothing, <:Any, <:Any}
 
-# Linear time interpolation
-function Base.getindex(fts::AdaptedFieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
+const XYGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, Nothing}
+const XZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, Nothing, <:Any}
+const YZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, Nothing, <:Any, <:Any}
+
+Base.getindex(fts::XYGPUFTS, i::Int, j::Int, n) = fts.data[i, j, 1, n]
+Base.getindex(fts::XZGPUFTS, i::Int, k::Int, n) = fts.data[i, 1, k, n]
+Base.getindex(fts::YZGPUFTS, j::Int, k::Int, n) = fts.data[1, j, k, n]
+
+Base.getindex(fts::XYFTS, i::Int, j::Int, n) = fts.data[i, j, 1, n]
+Base.getindex(fts::XZFTS, i::Int, k::Int, n) = fts.data[i, 1, k, n]
+Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts.data[1, j, k, n]
+
+# Only `getindex` for GPUAdaptedFieldTimeSeries, no need to `setindex`
+Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int)    = fts.data[i, j, k, n]
+Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, t::Number) = fts.data[i, j, k, Time(t)]
+
+# Extend Linear time interpolation for GPUAdaptedFieldTimeSeries
+function Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
     Ntimes = length(fts.times)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)

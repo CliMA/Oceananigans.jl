@@ -1,5 +1,5 @@
 
-new_data(FT, grid, loc, indices, Nt, path, name, ::OnDisk) = nothing
+new_data(FT, grid, loc, indices, Nt, ::OnDisk) = nothing
 
 Base.parent(fts::OnDiskFieldTimeSeries) = nothing
 Base.length(fts::OnDiskFieldTimeSeries) = length(fts.times)

@@ -20,6 +20,9 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # Mask immersed tracers
     foreach(mask_immersed_field!, model.tracers)
 
+    # Update possible FieldTimeSeries used in the model
+    update_time_series!(model, model.clock)
+
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers),  model.clock, fields(model))
 

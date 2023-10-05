@@ -33,8 +33,8 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY
                                          grid::G,
                                       backend::K,
                                           bcs::B,
-                                        times::χ,
-                                      indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
+                                      indices::I, 
+                                        times::χ) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data)
         return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, backend, bcs, indices, times)
     end
@@ -62,10 +62,10 @@ function FieldTimeSeries(loc, grid, times;
 
     LX, LY, LZ = loc
     Nt   = length(times)
-    data = new_data(FT, grid, loc, indices, Nt, path, name, backend)
+    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
     backend = regularize_backend(backend, path, name, data)
 
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, times, indices)
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times)
 end
 
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
@@ -180,10 +180,11 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     LX, LY, LZ = Location
     loc = map(instantiate, Location)
     Nt = length(times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt, path, name, backend)
+    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
     backend = regularize_backend(backend, path, name, data)
 
-    time_series = FieldTimeSeries{LX, LY, LZ, K}(data, grid, backend, boundary_conditions, times, indices)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times)
+
     set!(time_series, path, name)
 
     return time_series
@@ -374,7 +375,7 @@ backend_str(::Type{OnDisk})   = "OnDisk"
 function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     arch = architecture(fts)
     A = typeof(arch)
-    return string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K))} located at ", show_location(fts), " on ", A)
+    return string("$(join(size(fts), "×")) FieldTimeSeries{$(fts.backend)} located at ", show_location(fts), " on ", A)
 end
 
 function Base.show(io::IO, fts::FieldTimeSeries)
