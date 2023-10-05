@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: FunctionField
+
 #####
 ##### JLD2OutputWriter tests
 #####
