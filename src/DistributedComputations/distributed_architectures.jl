@@ -55,25 +55,29 @@ Keyword arguments
 """
 function Distributed(child_architecture = CPU(); 
                      topology, 
-                     ranks,
+                     ranks = nothing,
                      devices = nothing, 
                      communicator = MPI.COMM_WORLD)
 
-    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
+    MPI.Initialized() || MPI.Init() #error("Must call MPI.Init() before constructing a MultiCPU.")
+
+    if isnothing(ranks) # distribute in x by default
+        Nranks = MPI.Comm_size(communicator)
+        ranks = (Nranks, 1, 1)
+    end
 
     validate_tupled_argument(ranks, Int, "ranks")
 
     Rx, Ry, Rz = ranks
-    total_ranks = Rx*Ry*Rz
-
+    total_ranks = Rx * Ry * Rz
     mpi_ranks  = MPI.Comm_size(communicator)
-    local_rank = MPI.Comm_rank(communicator)
 
     if total_ranks != mpi_ranks
         throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
     
+    local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     local_connectivity = RankConnectivity(local_index, ranks, topology)
 
