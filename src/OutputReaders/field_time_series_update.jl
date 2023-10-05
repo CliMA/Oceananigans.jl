@@ -16,7 +16,7 @@ const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 function update_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, length(fts.times))
-    update_series!(fts, n₂)
+    update_time_series!(fts, n₂)
     return nothing
 end
 
