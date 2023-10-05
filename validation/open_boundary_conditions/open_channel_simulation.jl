@@ -41,14 +41,20 @@ generate_input_data!(grid, times, boundary_file)
 ##### Define Boundary Conditions
 #####
 
-Ta_series = FieldTimeSeries(boundary_file, "T_top"; backend = InMemory(; chunk_size = 10))
-ua_series = FieldTimeSeries(boundary_file, "u_top"; backend = InMemory(; chunk_size = 10))
+T_top = FieldTimeSeries(boundary_file, "T_top"; backend = InMemory(; chunk_size = 10))
+u_top = FieldTimeSeries(boundary_file, "u_top"; backend = InMemory(; chunk_size = 10))
 
-T_top_bc = ValueBoundaryCondition(Ta_series)
-u_top_bc = ValueBoundaryCondition(ua_series)
+T_west = FieldTimeSeries(boundary_file, "T_west"; backend = InMemory(; chunk_size = 10))
+u_west = FieldTimeSeries(boundary_file, "u_west"; backend = InMemory(; chunk_size = 10))
 
-T_bcs = FieldBoundaryConditions(top = T_top_bc)
-u_bcs = FieldBoundaryConditions(top = u_top_bc)
+T_top_bc = ValueBoundaryCondition(T_top)
+u_top_bc = ValueBoundaryCondition(u_top)
+
+T_west_bc = OpenBoundaryCondition(T_west)
+u_west_bc = OpenBoundaryCondition(u_west)
+
+T_bcs = FieldBoundaryConditions(top = T_top_bc, west = T_west_bc)
+u_bcs = FieldBoundaryConditions(top = u_top_bc, west = u_west_bc)
 
 #####
 ##### Physical and Numerical Setup
@@ -82,7 +88,7 @@ model = HydrostaticFreeSurfaceModel(;
                                      free_surface, buoyancy, coriolis, closure,
                                      boundary_conditions = (T = T_bcs, u = u_bcs))
 
-Tᵢ(x, y, z) = 18 / 1000 * z + 20
+Tᵢ(x, y, z) = 2 * (1 + z / 1000)
                                     
 set!(model, T = Tᵢ)
 

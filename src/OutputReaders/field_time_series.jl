@@ -215,6 +215,7 @@ function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index:
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
+    @show k
     # fractional index
     @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
     fts_interpolated = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)

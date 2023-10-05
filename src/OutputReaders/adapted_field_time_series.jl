@@ -26,13 +26,13 @@ const XZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, Nothing, <:Any}
 const YZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, Nothing, <:Any, <:Any}
 
 # Handle `Nothing` locations to allow `getbc` to work
-Base.getindex(fts::XYGPUFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
-Base.getindex(fts::XZGPUFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
-Base.getindex(fts::YZGPUFTS, j::Int, k::Int, n) = fts[1, j, k, n]
+@propagate_inbounds Base.getindex(fts::XYGPUFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
+@propagate_inbounds Base.getindex(fts::XZGPUFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
+@propagate_inbounds Base.getindex(fts::YZGPUFTS, j::Int, k::Int, n) = fts[1, j, k, n]
 
-Base.getindex(fts::XYFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
-Base.getindex(fts::XZFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
-Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
+@propagate_inbounds Base.getindex(fts::XYFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
+@propagate_inbounds Base.getindex(fts::XZFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
+@propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
 
 # Only `getindex` for GPUAdaptedFieldTimeSeries, no need to `setindex`
 Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = fts.data[i, j, k, n]
