@@ -150,8 +150,19 @@ for arch in archs
 
         simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
-        simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                                  schedule = TimeInterval(1),
+        # Flavors of output: functions, AbstractOperations, FunctionFields
+        clock = model.clock
+        α = 0.12
+        test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t; clock, parameters=α)
+        function_field_outputs = (; αt = test_function_field)
+
+        u, v, w = model.velocities
+        operation_outputs= (u_op = 1 * u, v_op = 1 * v, w_op = 1 * w)
+
+        vanilla_outputs = merge(model.velocities, function_field_outputs, operation_outputs)
+
+        simulation.output_writers[:velocities] = JLD2OutputWriter(model, vanilla_outputs,
+                                                                  schedule = IterationInterval(1),
                                                                   dir = ".",
                                                                   filename = "vanilla_jld2_test.jld2",
                                                                   indices = (:, :, :),
@@ -166,10 +177,8 @@ for arch in archs
                                                               filename = "sliced_jld2_test.jld2",
                                                               overwrite_existing = true)
 
-        u, v, w = model.velocities
-
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
-
+        
         simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
                                                                     schedule = TimeInterval(1),
                                                                     indices = (1:2, 1:4, :),
@@ -177,6 +186,17 @@ for arch in archs
                                                                     dir = ".",
                                                                     filename = "sliced_funcs_jld2_test.jld2",
                                                                     overwrite_existing = true)
+
+
+        simulation.output_writers[:sliced_ops] = JLD2OutputWriter(model, func_outputs,
+                                                                  schedule = TimeInterval(1),
+                                                                  indices = (1:2, 1:4, :),
+                                                                  with_halos = false,
+                                                                  dir = ".",
+                                                                  filename = "sliced_funcs_jld2_test.jld2",
+                                                                  overwrite_existing = true)
+
+
 
         u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
         v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
@@ -195,6 +215,17 @@ for arch in archs
         v₁ = file["timeseries/v/0"][3, 3, 3]
         w₁ = file["timeseries/w/0"][3, 3, 3]
 
+        # Operations
+        u₁_op = file["timeseries/u_op/0"][3, 3, 3]
+        v₁_op = file["timeseries/v_op/0"][3, 3, 3]
+        w₁_op = file["timeseries/w_op/0"][3, 3, 3]
+
+        # FunctionField
+        αt₀ = file["timeseries/αt/0"][3, 3, 3]
+        αt₁ = file["timeseries/αt/1"][3, 3, 3]
+        t₀ = file["timeseries/t/0"]
+        t₁ = file["timeseries/t/1"]
+
         close(file)
 
         rm("vanilla_jld2_test.jld2")
@@ -204,6 +235,13 @@ for arch in archs
         @test FT(u₀) == u₁ 
         @test FT(v₀) == v₁ 
         @test FT(w₀) == w₁
+
+        @test FT(u₀_op) == u₁_op 
+        @test FT(v₀_op) == v₁_op 
+        @test FT(w₀_op) == w₁_op
+
+        @test FT(αt₀) == α * t₀
+        @test FT(αt₁) == α * t₁
 
         #####
         ##### Field slicing
