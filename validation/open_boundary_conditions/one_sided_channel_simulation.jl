@@ -8,7 +8,8 @@ using Printf
 include("generate_input_data.jl")
 
 #####
-##### Baroclinic double gyre simulation with one-way-coupled air-sea interaction
+##### One-sided channel with time-dependent open boundary condition on the west and 
+##### prescribed surface temperature and zonal velocity
 #####
 
 # Simulation parameters
@@ -31,7 +32,7 @@ grid = LatitudeLongitudeGrid(arch;
 #####
 
 # Create a time series of atmospheric data with timestep 1 day
-# running for 1 year.
+# running for 1 year. (This step is not necessary if the input file is already available)
 times = range(0, stop_time, step = forcing_frequency)
 boundary_file = "boundary_data.jld2"
 
@@ -114,5 +115,6 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                                                       schedule = TimeInterval(1day), 
-                                                      filename = "double_gyre",
+                                                      filename = "one_sided_channel",
                                                       overwrite_existing = true)
+

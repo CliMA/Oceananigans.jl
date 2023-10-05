@@ -1,8 +1,8 @@
 using Adapt
 
 struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, T, D, χ} <: AbstractArray{T, 4}
-                   data :: D
-                  times :: χ
+     data :: D
+    times :: χ
 
     function GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(data::D,
                                                      times::χ) where {T, LX, LY, LZ, D, χ}
@@ -17,13 +17,13 @@ Adapt.adapt_structure(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
 
-const XYFTS = FieldTimeSeries{<:Any, <:Any, <:Any, Nothing}
-const XZFTS = FieldTimeSeries{<:Any, <:Any, Nothing, <:Any}
-const YZFTS = FieldTimeSeries{<:Any, Nothing, <:Any, <:Any}
+const XYFTS = FieldTimeSeries{<:Any, <:Any, Nothing}
+const XZFTS = FieldTimeSeries{<:Any, Nothing, <:Any}
+const YZFTS = FieldTimeSeries{Nothing, <:Any, <:Any}
 
-const XYGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, Nothing}
-const XZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, Nothing, <:Any}
-const YZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, Nothing, <:Any, <:Any}
+const XYGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, Nothing}
+const XZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, Nothing, <:Any}
+const YZGPUFTS = GPUAdaptedFieldTimeSeries{Nothing, <:Any, <:Any}
 
 # Handle `Nothing` locations to allow `getbc` to work
 @propagate_inbounds Base.getindex(fts::XYGPUFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
