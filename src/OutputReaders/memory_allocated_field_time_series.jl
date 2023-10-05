@@ -45,14 +45,3 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
 
     return nothing
 end
-
-function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
-    if fts.backend.index_range == 1:length(fts.times)
-        return nothing
-    end
-
-    fts.data.index_range .= index_range
-    set!(fts, fts.backend.path, fts.backend.name)
-
-    return nothing
-end

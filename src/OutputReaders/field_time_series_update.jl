@@ -13,6 +13,19 @@ const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
 @inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock::Clock, args...) = bc.condition[i, j, Time(clock.time)]
 
+# Seting a field with a range of time indices. Change the index range of the `FieldTimeSeries`
+# and load the new data
+function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
+    if fts.backend.index_range == 1:length(fts.times)
+        return nothing
+    end
+
+    fts.data.index_range .= index_range
+    set!(fts, fts.backend.path, fts.backend.name)
+
+    return nothing
+end
+
 function update_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, length(fts.times))
