@@ -14,25 +14,20 @@ using Random
 # ```
 
 function run_simulation(nx, ny, arch, topo)
-
-    grid  = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
-
+    grid = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
     bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
-
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-
-    free_surface = SplitExplicitFreeSurface(; substeps = 10)
-
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                         momentum_advection = VectorInvariant(vorticity_scheme = WENO(order = 9)),
-                         tracer_advection = WENO(),
-                         buoyancy = nothing,
-                         coriolis = FPlane(f = 1),
-                         tracers = :c)
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                        momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
+                                        free_surface = SplitExplicitFreeSurface(substeps=10)
+                                        tracer_advection = WENO(),
+                                        buoyancy = nothing,
+                                        coriolis = FPlane(f = 1),
+                                        tracers = :c)
 
     # Scale seed with rank to avoid symmetry
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     Random.seed!(1234 * (local_rank + 1))
 
     set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
@@ -75,9 +70,9 @@ Ry = 1
 @assert Nranks == 4
 
 # Enable overlapped communication!
-arch  = Distributed(CPU(), ranks = (Rx, Ry, 1), 
-                        topology=topo, 
-                        enable_overlapped_computation = true)
+arch = Distributed(CPU(), ranks = (Rx, Ry, 1), 
+                   topology = topo, 
+                   enable_overlapped_computation = true)
 
 # Example of non-uniform partitioning
 nx = [90, 128-90][arch.local_index[1]]

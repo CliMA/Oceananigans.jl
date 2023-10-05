@@ -7,14 +7,14 @@ import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
 struct Distributed{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
-  child_architecture :: A
-          local_rank :: R
-         local_index :: I
-               ranks :: ρ
-        connectivity :: C
-        communicator :: γ
-        mpi_requests :: M
-             mpi_tag :: T
+    child_architecture :: A
+    local_rank :: R
+    local_index :: I
+    ranks :: ρ
+    connectivity :: C
+    communicator :: γ
+    mpi_requests :: M
+    mpi_tag :: T
 end
 
 #####
@@ -23,10 +23,10 @@ end
 
 """
     Distributed(child_architecture = CPU(); 
-                    topology, 
-                    ranks, 
-                    devices = nothing, 
-                    communicator = MPI.COMM_WORLD)
+                topology, 
+                ranks, 
+                devices = nothing, 
+                communicator = MPI.COMM_WORLD)
 
 Constructor for a distributed architecture that uses MPI for communications
 
@@ -46,10 +46,6 @@ Keyword arguments
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
 
-- enable_overlapped_computation: if `true` the prognostic halo communication will be overlapped
-                                 with tendency calculations, and the barotropic halo communication
-                                 with the implicit vertical solver (defaults to `true`)
-
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
              If `nothing`, the devices will be assigned automatically based on the available resources
@@ -58,11 +54,10 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                         topology, 
-                         ranks,
-                         devices = nothing, 
-                         enable_overlapped_computation = true,
-                         communicator = MPI.COMM_WORLD)
+                     topology, 
+                     ranks,
+                     devices = nothing, 
+                     communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
@@ -96,12 +91,18 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
     end
 
-    mpi_requests = enable_overlapped_computation ? MPI.Request[] : nothing
-
+    mpi_requests = MPI.Request[]
     M = typeof(mpi_requests)
     T = typeof(Ref(0))
 
-    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, Ref(0))
+    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture,
+                                               local_rank,
+                                               local_index,
+                                               ranks,
+                                               local_connectivity,
+                                               communicator,
+                                               mpi_requests,
+                                               Ref(0))
 end
 
 const DistributedCPU = Distributed{CPU}
