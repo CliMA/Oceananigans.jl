@@ -106,7 +106,7 @@ end
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
 
-    ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should be a vector with increasing values."))
+    ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
 
     # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
@@ -122,7 +122,10 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     return ξ
 end
 
-validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
+function validate_dimension_specification(T, ξ::Function, dir, N, FT)
+    ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
+    return ξ
+end
 
 validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
 validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
