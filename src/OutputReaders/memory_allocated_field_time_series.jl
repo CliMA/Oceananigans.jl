@@ -1,7 +1,7 @@
 
 function new_data(FT, grid, loc, indices, Nt, backend::InMemory) 
     space_size = total_size(grid, loc, indices)
-    Nt = ifelse(backend.index_range == Colon(), Nt, length(backend.index_range))
+    Nt = backend.index_range == Colon() ? Nt : length(backend.index_range)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
     return data
