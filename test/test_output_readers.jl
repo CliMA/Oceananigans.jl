@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
@@ -250,7 +251,7 @@ end
 
         @test g[1, 1, 1, 1] == 1
         @test g[1, 1, 1, 10] == 10
-        @test g[1, 1, 1, 1.6] == 1.6
+        @test g[1, 1, 1, Time(1.6)] == 1.6
 
         t = g[3.8]
 

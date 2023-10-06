@@ -3,11 +3,12 @@ using PencilArrays: Permutation
 
 import FFTW 
 
+using Oceananigans.Solvers: AbstractSolver
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
 
-struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
+struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I} <: AbstractSolver
     plan :: P
     global_grid :: F
     local_grid :: L
