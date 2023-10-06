@@ -17,10 +17,13 @@ using Printf
 using JLD2
 
 topo = (Bounded, Periodic, Bounded)
-arch = Distributed(CPU(); topology = topo)
+
+partition = Partition([10, 13, 18, 39])
+
+arch = Distributed(CPU(); topology = topo, partition)
 
 # Distribute problem irregularly
-Nx = [10, 13, 18, 39]
+Nx = 80
 rank = MPI.Comm_rank(arch.communicator)
 
 Lh = 100kilometers
