@@ -10,7 +10,7 @@ using Random
 # Run with 
 #
 # ```julia 
-#   mpiexec -n 4 julia --project mpi_hydrostatic_turbulence.jl
+#   mpiexec -n 4 julia --project distributed_hydrostatic_turbulence.jl
 # ```
 
 function run_simulation(nx, ny, arch, topo)
@@ -20,7 +20,7 @@ function run_simulation(nx, ny, arch, topo)
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
-                                        free_surface = SplitExplicitFreeSurface(substeps=10)
+                                        free_surface = SplitExplicitFreeSurface(substeps=10),
                                         tracer_advection = WENO(),
                                         buoyancy = nothing,
                                         coriolis = FPlane(f = 1),
@@ -61,11 +61,13 @@ function run_simulation(nx, ny, arch, topo)
 end
 
 topo = (Periodic, Periodic, Bounded)
-arch = Distributed(CPU(), topology = topo) 
 
-# Example of non-uniform partitioning
+# Use non-uniform partitioning in x, y.
+# TODO: Explain what local_index is.
 nx = [90, 128-90][arch.local_index[1]]
 ny = [56, 128-56][arch.local_index[2]]
+@show arch.local_index
+arch = Distributed(CPU(), topology = topo, ranks=(2, 2, 1)) 
 
 # Run the simulation
 run_simulation(nx, ny, arch, topo)
