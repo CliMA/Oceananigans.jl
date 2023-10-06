@@ -27,7 +27,7 @@ function run_simulation(nx, ny, arch, topo)
                                         tracers = :c)
 
     # Scale seed with rank to avoid symmetry
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    local_rank = MPI.Comm_rank(arch.communicator)
     Random.seed!(1234 * (local_rank + 1))
 
     set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
@@ -56,7 +56,8 @@ function run_simulation(nx, ny, arch, topo)
                          overwrite_existing=true)
 
     run!(simulation)
-    MPI.Barrier(MPI.COMM_WORLD)
+
+    MPI.Barrier(arch.communicator)
 end
 
 topo = (Periodic, Periodic, Bounded)
@@ -113,5 +114,5 @@ catch err
     @info err
 end
 
-MPI.Barrier(MPI.COMM_WORLD)
-MPI.Finalize()
+MPI.Barrier(arch.communicator)
+

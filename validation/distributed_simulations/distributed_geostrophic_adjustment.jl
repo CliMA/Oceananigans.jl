@@ -86,5 +86,3 @@ run!(simulation)
 
 jldsave("variables_rank$(rank).jld2", v=vt, η=ηt, u=ut)
 
-MPI.Finalize()
-

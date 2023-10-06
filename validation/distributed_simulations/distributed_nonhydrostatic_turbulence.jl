@@ -54,7 +54,7 @@ compute!(ζ)
 simulation = Simulation(model, Δt=0.01, stop_iteration=1000)
 
 function progress(sim)
-    comm = MPI.COMM_WORLD
+    comm = sim.model.grid.architecture.communicator
     rank = MPI.Comm_rank(comm)
     compute!(ζ)
     compute!(e)
@@ -69,7 +69,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-rank = MPI.Comm_rank(MPI.COMM_WORLD)
+rank = MPI.Comm_rank(arch.communicator)
 outputs = merge(model.velocities, (; e, ζ))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(0.1),
