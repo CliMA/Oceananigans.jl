@@ -17,8 +17,6 @@ using Logging
 
 Logging.global_logger(OceananigansLogger())
 
-MPI.Init()
-
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
@@ -28,7 +26,7 @@ Nranks = MPI.Comm_size(comm)
 Nx = Ny = 256
 Lx = Ly = 2π
 topology = (Periodic, Periodic, Flat)
-arch = Distributed(CPU(); topology, ranks=(1, Nranks, 1))
+arch = Distributed(CPU(); topology, ranks=(1, Nranks, 1), communicator=comm)
 grid = RectilinearGrid(arch; topology, size=(Nx ÷ Nranks, Ny), halo=(3, 3), x=(0, 2π), y=(0, 2π))
 
 @info "Built $Nranks grids:"

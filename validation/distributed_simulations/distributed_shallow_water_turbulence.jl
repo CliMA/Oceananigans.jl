@@ -1,8 +1,6 @@
 using MPI
 
-MPI.Initialized() || MPI.Init()
-
-     comm = MPI.COMM_WORLD
+comm = MPI.COMM_WORLD
 mpi_ranks = MPI.Comm_size(comm)
 
 @assert mpi_ranks == 4
@@ -17,12 +15,10 @@ arch = Distributed(CPU(), ranks=ranks, topology=topo)
 grid = RectilinearGrid(arch, topology=topo, size=(128 ÷ ranks[1], 128 ÷ ranks[2]), extent=(4π, 4π), halo=(3, 3))
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
-model = ShallowWaterModel(
-                          grid = grid,
-                   timestepper = :RungeKutta3,
-            momentum_advection = UpwindBiasedFifthOrder(),
-    gravitational_acceleration = 1.0
-)
+model = ShallowWaterModel(grid = grid,
+                          timestepper = :RungeKutta3,
+                          momentum_advection = UpwindBiasedFifthOrder(),
+                          gravitational_acceleration = 1)
 
 set!(model, h=1)
 
