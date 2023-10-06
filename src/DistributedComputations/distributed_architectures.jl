@@ -4,13 +4,83 @@ using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
-import Oceananigans.Utils: sync_device!
+import Oceananigans.Utils: sync_device!, tupleit
 
-struct Distributed{A, M, R, I, ρ, C, γ, T} <: AbstractArchitecture
+#####
+##### Partitioning
+#####
+
+# Form 3-tuple
+regularize_size(sz::Tuple{<:Int, <:Int}, Rx, Ry) = (sz[1], sz[2], 1)
+
+# Infer whether x- or y-dimension is indicated
+function regularize_size(N::Int, Rx, Ry)
+    if Rx == 1
+        return (1, N, 1)
+    elseif Ry == 1
+        return (N, 1, 1)
+    else
+        throw(ArgumentError("We can't interpret the 1D size $N for 2D partitions!"))
+    end
+end
+
+regularize_size(sz::Array{<:Int, 1}) = regularize_size(sz[1])
+regularize_size(sz::Array{<:Int, 2}) = regularize_size((sz[1], sz[2]))
+regularize_size(sz::Tuple{<:Int}) = regularize_size(sz[1])
+
+# For 3D partitions:
+# regularize_size(sz::Tuple{<:Int, <:Int, <:Int}, Rx, Ry) = sz
+
+struct Partition{S, Rx, Ry, Rz}
+    sizes :: S
+    function Partition{Rx, Ry, Rz}() where {Rx, Ry, Rz}
+        new{Nothing, Rx, Ry, Rz}(nothing)
+    end
+    function Partition(sizes::S) where S
+        Rx = size(sizes, 1)
+        Ry = size(sizes, 2)
+        Rz = size(sizes, 3)
+        return new{S, Rx, Ry, Rz}(sizes)
+    end
+
+    #=
+    @doc"""
+        Partition(sizes::AbstractArray{<:Any, 2})
+
+    Return `Partition` dividing a domain into `length(sizes)` parts,
+    with `Rx = size(sizes, 1)` in `x` and `Ry = size(sizes, 2)` in `y`.
+    The elements of `sizes` denote the size of each part.
+    """
+    function Partition(sizes::Array{<:Any, 2})
+        # Note: restricting `lengths` to 2D forbids partitioning in z.
+        Rx = size(sizes, 1)
+        Ry = size(sizes, 2)
+        # TODO: make lengths static somehow?
+        # sizes = [regularize_size(sizes[ri, rj], Rx, Ry) for ri = 1:Rx, rj = 1:Ry]
+        S = typeof(sizes)
+        return new{Rx, Ry, 1, L}(sizes)
+    end
+    =#
+end
+
+"""
+    Partition(Rx::Number, Ry::Number=1, Rz::Number=1)
+
+Return `Partition` representing the division of a domain into
+`Rx` parts in `x` and `Ry` parts in `y` and `Rz` parts in `z`,
+where `x, y, z` are the first, second, and third dimension
+respectively.
+"""
+Partition(Rx::Number, Ry::Number=1, Rz::Number=1) = Partition{Rx, Ry, Rz}()
+Partition(lengths::Array{Int, 1}) = Partition(reshape(lengths, length(lengths), 1))
+Base.size(::Partition{<:Any, Rx, Ry, Rz}) where {Rx, Ry, Rz} = (Rx, Ry, Rz)
+
+struct Distributed{A, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
-    local_rank :: R
+    partition :: Δ
+    ranks :: R
+    local_rank :: ρ
     local_index :: I
-    ranks :: ρ
     connectivity :: C
     communicator :: γ
     mpi_requests :: M
@@ -24,12 +94,11 @@ end
 """
     Distributed(child_architecture = CPU(); 
                 topology, 
-                ranks, 
+                partition,
                 devices = nothing, 
                 communicator = MPI.COMM_WORLD)
 
 Constructor for a distributed architecture that uses MPI for communications
-
 
 Positional arguments
 =================
@@ -55,23 +124,21 @@ Keyword arguments
 """
 function Distributed(child_architecture = CPU(); 
                      topology, 
-                     ranks = nothing,
+                     communicator = MPI.COMM_WORLD,
                      devices = nothing, 
-                     communicator = MPI.COMM_WORLD)
+                     partition = Partition(MPI.Comm_size(communicator)))
 
-    MPI.Initialized() || MPI.Init() #error("Must call MPI.Init() before constructing a MultiCPU.")
-
-    if isnothing(ranks) # distribute in x by default
-        Nranks = MPI.Comm_size(communicator)
-        ranks = (Nranks, 1, 1)
+    if !(MPI.Initialized())
+        @info "MPI has not been initialized, so we are calling MPI.Init()".
+        MPI.Init()
     end
 
-    validate_tupled_argument(ranks, Int, "ranks")
-
+    ranks = size(partition)
     Rx, Ry, Rz = ranks
     total_ranks = Rx * Ry * Rz
     mpi_ranks  = MPI.Comm_size(communicator)
 
+    # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if total_ranks != mpi_ranks
         throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
@@ -81,13 +148,6 @@ function Distributed(child_architecture = CPU();
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     local_connectivity = RankConnectivity(local_index, ranks, topology)
 
-    A = typeof(child_architecture)
-    R = typeof(local_rank)    
-    I = typeof(local_index)   
-    ρ = typeof(ranks)         
-    C = typeof(local_connectivity)  
-    γ = typeof(communicator)  
-
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
@@ -96,17 +156,16 @@ function Distributed(child_architecture = CPU();
     end
 
     mpi_requests = MPI.Request[]
-    M = typeof(mpi_requests)
-    T = typeof(Ref(0))
 
-    return Distributed{A, M, R, I, ρ, C, γ, T}(child_architecture,
-                                               local_rank,
-                                               local_index,
-                                               ranks,
-                                               local_connectivity,
-                                               communicator,
-                                               mpi_requests,
-                                               Ref(0))
+    return Distributed(child_architecture,
+                       partition,
+                       ranks,
+                       local_rank,
+                       local_index,
+                       local_connectivity,
+                       communicator,
+                       mpi_requests,
+                       Ref(0))
 end
 
 const DistributedCPU = Distributed{CPU}
@@ -126,9 +185,15 @@ array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::DistributedGPU) = 
-    Distributed(CPU(), arch.local_rank, arch.local_index, arch.ranks, 
-                           arch.connectivity, arch.communicator, arch.mpi_requests, arch.mpi_tag)
+cpu_architecture(arch::DistributedGPU) = Distributed(CPU(),
+                                                     arch.partition, 
+                                                     arch.ranks, 
+                                                     arch.local_rank,
+                                                     arch.local_index,
+                                                     arch.connectivity,
+                                                     arch.communicator,
+                                                     arch.mpi_requests,
+                                                     arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index

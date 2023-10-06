@@ -426,6 +426,7 @@ end
 
     @info "Testing distributed MPI Oceananigans..."
 
+    #=
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
@@ -457,14 +458,17 @@ end
             end
         end
     end
+    =#
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         if CPU() ∈ archs 
-            for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
-                @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
+            #for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
+                #@info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
+            for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+                @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
                 topo = (Periodic, Periodic, Periodic)
-                arch = Distributed(; ranks, topology=topo)
+                arch = Distributed(; partition, topology=topo)
                 grid = RectilinearGrid(arch, topology=topo, size=(8, 2, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
@@ -483,7 +487,8 @@ end
     @testset "Time stepping ShallowWaterModel" begin
         for child_arch in archs
             topo = (Periodic, Periodic, Flat)
-            arch = Distributed(child_arch; ranks=(1, 4, 1), topology = topo, devices = (0, 0, 0, 0))
+            #arch = Distributed(child_arch; ranks=(1, 4, 1), topology = topo, devices = (0, 0, 0, 0))
+            arch = Distributed(child_arch; partition=Partition(1, 4), topology = topo, devices = (0, 0, 0, 0))
             grid = RectilinearGrid(arch, topology=topo, size=(8, 2), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 

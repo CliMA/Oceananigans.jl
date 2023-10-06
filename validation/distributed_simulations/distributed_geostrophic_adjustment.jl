@@ -1,6 +1,6 @@
 # Run this script with
 #
-# $ mpiexec -n 2 julia --project mpi_nonhydrostatic_two_dimensional_turbulence.jl
+# $ mpiexec -n 4 julia --project distributed_nonhydrostatic_two_dimensional_turbulence.jl
 #
 # for example.
 #

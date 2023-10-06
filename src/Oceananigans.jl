@@ -25,6 +25,9 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
+    # Distributed
+    Distributed, Partition,
+
     # Advection schemes
     Centered, CenteredSecondOrder, CenteredFourthOrder, 
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 

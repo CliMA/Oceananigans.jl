@@ -14,12 +14,30 @@ using Oceananigans.ImmersedBoundaries
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
+
 const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
     RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
+
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
 const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, <:Distributed} where {FT, TX, TY, TZ, I, M}
+
+function local_size(p::Partition, topo, rank, global_size)
+    # TODO: check correctness
+    return p.sizes[rank]
+end
+
+const EqualPartition = Partition{Nothing}
+
+function local_size(p::EqualPartition, rank, global_size)
+    Nx, Ny, Nz = global_size
+    Rx, Ry, Rz = size(p)
+    Nxℓ = Nx ÷ Rx
+    Nyℓ = Ny ÷ Ry
+    Nzℓ = Nz ÷ Rz
+    return (Nxℓ, Nyℓ, Nzℓ)
+end
 
 """
     RectilinearGrid(arch::Distributed, FT=Float64; kw...)
@@ -36,12 +54,12 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    global_size = map(sum, concatenate_local_sizes(size, arch))
-    
     TX, TY, TZ, global_size, halo, x, y, z =
-        validate_rectilinear_grid_args(topology, global_size, halo, FT, extent, x, y, z)
+        validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    nx, ny, nz = validate_size(TX, TY, TZ, size)
+    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+
+    nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
 
     ri, rj, rk = arch.local_index
@@ -84,7 +102,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                radius = R_Earth,
                                halo = (1, 1, 1))
 
-    global_size = map(sum, concatenate_local_sizes(size, arch))
+    # global_size = map(sum, concatenate_local_sizes(size, arch))
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
