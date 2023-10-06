@@ -33,6 +33,7 @@ const EqualPartition = Partition{Nothing}
 function local_size(p::EqualPartition, rank, global_size)
     Nx, Ny, Nz = global_size
     Rx, Ry, Rz = size(p)
+    # TODO: Check that it is possible to partition Nx by Rx, etc
     Nxℓ = Nx ÷ Rx
     Nyℓ = Ny ÷ Ry
     Nzℓ = Nz ÷ Rz
