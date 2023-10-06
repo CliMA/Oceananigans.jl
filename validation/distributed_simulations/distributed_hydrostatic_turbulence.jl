@@ -59,20 +59,8 @@ function run_simulation(nx, ny, arch, topo)
     MPI.Barrier(MPI.COMM_WORLD)
 end
 
-MPI.Init()
-
 topo = (Periodic, Periodic, Bounded)
-
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-Rx = 4
-Ry = 1
-
-@assert Nranks == 4
-
-# Enable overlapped communication!
-arch = Distributed(CPU(), ranks = (Rx, Ry, 1), 
-                   topology = topo, 
-                   enable_overlapped_computation = true)
+arch = Distributed(CPU(), topology = topo) 
 
 # Example of non-uniform partitioning
 nx = [90, 128-90][arch.local_index[1]]
@@ -124,7 +112,6 @@ try
 catch err
     @info err
 end
-
 
 MPI.Barrier(MPI.COMM_WORLD)
 MPI.Finalize()
