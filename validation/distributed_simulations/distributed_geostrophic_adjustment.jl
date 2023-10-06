@@ -30,7 +30,7 @@ Lh = 100kilometers
 Lz = 400meters
 
 grid = RectilinearGrid(arch,
-                       size = (Nx[rank+1], 3, 1),
+                       size = (Nx, 3, 1),
                        x = (0, Lh),
                        y = (0, Lh),
                        z = (-Lz, 0),
