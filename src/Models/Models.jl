@@ -13,6 +13,7 @@ using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: AbstractField, flattened_unique_values
+using Oceananigans.Solvers: AbstractSolver
 using Oceananigans.AbstractOperations: AbstractOperation
 
 import Oceananigans: initialize!
@@ -57,7 +58,7 @@ function extract_field_timeseries(t)
 end
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-NonFTS = [:Number, :AbstractArray, :AbstractTimeStepper, :AbstractGrid]
+NonFTS = [:Number, :AbstractArray, :AbstractTimeStepper, :AbstractGrid, :AbstractSolver]
 
 for NonFTSType in NonFTS
     @eval extract_field_timeseries(::$NonFTSType) = nothing

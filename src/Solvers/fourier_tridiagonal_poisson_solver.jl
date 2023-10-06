@@ -2,7 +2,7 @@ using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃ�
 using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, stretched_dimensions
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T} <: AbstractSolver
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
