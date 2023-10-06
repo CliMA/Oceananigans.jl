@@ -469,7 +469,7 @@ end
                 @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
                 topo = (Periodic, Periodic, Periodic)
                 arch = Distributed(; partition, topology=topo)
-                grid = RectilinearGrid(arch, topology=topo, size=(8, 2, 8), extent=(1, 2, 3))
+                grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
                 time_step!(model, 1)
@@ -489,7 +489,7 @@ end
             topo = (Periodic, Periodic, Flat)
             #arch = Distributed(child_arch; ranks=(1, 4, 1), topology = topo, devices = (0, 0, 0, 0))
             arch = Distributed(child_arch; partition=Partition(1, 4), topology = topo, devices = (0, 0, 0, 0))
-            grid = RectilinearGrid(arch, topology=topo, size=(8, 2), extent=(1, 2), halo=(3, 3))
+            grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 
             set!(model, h=1)
