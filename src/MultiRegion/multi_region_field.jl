@@ -10,7 +10,7 @@ import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_fiel
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
-import Oceananigans.Simulations: hasnan
+import Oceananigans.Models: hasnan
 
 import Base: fill!, axes
 
