@@ -1,5 +1,4 @@
 import Oceananigans.BoundaryConditions: BoundaryCondition, getbc
-import Oceananigans.Models: update_field_time_series!, extract_field_timeseries 
 
 # Termination (move all here when we switch the code up)
 extract_field_timeseries(f::FieldTimeSeries)   = f
@@ -24,6 +23,9 @@ function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
 
     return nothing
 end
+
+# fallback
+update_field_time_series!(::Nothing, time) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
@@ -53,3 +55,26 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
 
     return nothing
 end
+
+# Utility used to extract field time series from a type through recursion
+function extract_field_timeseries(t) 
+    prop = propertynames(t)
+    if isempty(prop)
+        return nothing
+    end
+
+    return Tuple(extract_field_timeseries(getproperty(t, p)) for p in prop)
+end
+
+# For types that do not contain `FieldTimeSeries`, halt the recursion
+NonFTS = [:Number, :AbstractArray]
+
+for NonFTSType in NonFTS
+    @eval extract_field_timeseries(::$NonFTSType) = nothing
+end
+
+# Special recursion rules for `Tuple` and `Field` types
+extract_field_timeseries(t::AbstractField)     = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
+extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
+extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
+extract_field_timeseries(t::NamedTuple)        = Tuple(extract_field_timeseries(n) for n in t)
