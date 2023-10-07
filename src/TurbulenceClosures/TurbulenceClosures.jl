@@ -49,6 +49,7 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
+using Oceananigans.Fields: FunctionField
 import Oceananigans.Advection: required_halo_size
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
