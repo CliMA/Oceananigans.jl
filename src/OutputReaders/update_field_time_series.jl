@@ -1,4 +1,6 @@
 import Oceananigans.BoundaryConditions: BoundaryCondition, getbc
+using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Fields: AbstractField
 
 # Termination (move all here when we switch the code up)
 extract_field_timeseries(f::FieldTimeSeries)   = f
