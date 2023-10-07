@@ -2,7 +2,7 @@ using Oceananigans.Fields: indices, offset_compute_index
 
 import Oceananigans.Architectures: architecture
 
-struct FFTBasedPoissonSolver{G, Λ, S, B, T} <: AbstractSolver
+struct FFTBasedPoissonSolver{G, Λ, S, B, T}
             grid :: G
      eigenvalues :: Λ
          storage :: S

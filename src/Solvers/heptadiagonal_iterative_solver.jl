@@ -9,7 +9,7 @@ using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture
 
-mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F} <: AbstractSolver
+mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F} 
                        grid :: G
                problem_size :: R
         matrix_constructors :: L

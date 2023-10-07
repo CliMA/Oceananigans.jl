@@ -38,6 +38,8 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Shallo
 """
 prognostic_fields(model::ShallowWaterModel) = fields(model)
 
+possible_field_time_series(model::ShallowWaterModel) = tuple(fields(model), model.forcing, model.diffusivity_fields)
+
 include("solution_and_tracer_tendencies.jl")
 include("compute_shallow_water_tendencies.jl")
 include("update_shallow_water_state.jl")

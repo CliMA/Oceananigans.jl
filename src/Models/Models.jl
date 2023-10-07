@@ -13,7 +13,6 @@ using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: AbstractField, flattened_unique_values
-using Oceananigans.Solvers: AbstractSolver
 using Oceananigans.AbstractOperations: AbstractOperation
 
 import Oceananigans: initialize!
@@ -23,6 +22,7 @@ architecture(model::AbstractModel) = model.architecture
 initialize!(model::AbstractModel) = nothing
 
 total_velocities() = nothing
+possible_field_time_series(model) = ()
 
 import Oceananigans.TimeSteppers: reset!
 
@@ -37,7 +37,10 @@ update_field_time_series!(::Nothing, time) = nothing
 # correct time range by looping over them
 function update_model_field_time_series!(model::AbstractModel, clock::Clock)
     time = Time(clock.time)
-    time_series_tuple = extract_field_timeseries(model)
+
+    possible_field_time_series = possible_field_time_series(model)
+
+    time_series_tuple = extract_field_timeseries(possible_field_time_series)
     time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
@@ -58,7 +61,7 @@ function extract_field_timeseries(t)
 end
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-NonFTS = [:Number, :AbstractArray, :AbstractTimeStepper, :AbstractGrid, :AbstractSolver]
+NonFTS = [:Number, :AbstractArray]
 
 for NonFTSType in NonFTS
     @eval extract_field_timeseries(::$NonFTSType) = nothing
@@ -69,7 +72,6 @@ extract_field_timeseries(t::AbstractField)     = Tuple(extract_field_timeseries(
 extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
 extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
 extract_field_timeseries(t::NamedTuple)        = Tuple(extract_field_timeseries(n) for n in t)
-
 
 function reset!(model::AbstractModel)
 

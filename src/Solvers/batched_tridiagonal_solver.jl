@@ -8,7 +8,7 @@ import Oceananigans.Architectures: architecture
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, T, G, P, D} <: AbstractSolver
+struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     a :: A
     b :: B
     c :: C

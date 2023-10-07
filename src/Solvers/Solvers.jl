@@ -22,8 +22,6 @@ using Oceananigans.Fields
 
 using Oceananigans.Grids: unpack_grid
 
-abstract type AbstractSolver end
-
 """
     ω(M, k)
 
