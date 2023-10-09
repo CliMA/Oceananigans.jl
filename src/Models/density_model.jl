@@ -10,6 +10,7 @@ export SeawaterDensity, model_temperature, model_salinity, model_geopotential_he
 "Compute density - note `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
 @inline ρ(i, j, k, grid, eos, T, S, Z) = @inbounds ρ(T[i, j, k], S[i, j, k], Z[i, j, k], eos)
 
+"Kernel function to compute the in-situ `seawater_density`."
 seawater_density(grid, eos, temperature, salinity, geopotential_height) =
     KernelFunctionOperation{Center, Center, Center}(ρ, grid, eos, temperature, salinity, geopotential_height)
 
@@ -116,6 +117,7 @@ function SeawaterDensity(model::ModelsWithBuoyancy;
     loc = (Center, Center, Center)
     temperature = field(loc, temperature, grid)
     salinity = field(loc, salinity, grid)
+    # Preferable here is to leave `geopotential_height` as an `AbstractOperation` rather than creating a `Field`
     geopotential_height = geopotential_height isa KernelFunctionOperation ? Field(geopotential_height) :
                                                                             field(loc, geopotential_height, grid)
 
