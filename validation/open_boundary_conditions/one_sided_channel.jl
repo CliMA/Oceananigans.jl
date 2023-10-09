@@ -4,6 +4,7 @@ using Oceananigans.OutputReaders
 using Oceananigans.OutputReaders: OnDisk
 using Oceananigans.Units
 using Printf
+using CairoMakie
 
 include("generate_input_data.jl")
 
@@ -21,7 +22,7 @@ arch = CPU()
 
 # Defining the grid 
 grid = LatitudeLongitudeGrid(arch;
-                             size = (100, 100, 10), 
+                             size = (60, 60, 10), 
                          latitude = (15, 75), 
                         longitude = (0, 60), 
                              halo = (4, 4, 4),
@@ -42,20 +43,37 @@ generate_input_data!(grid, times, boundary_file)
 ##### Define Boundary Conditions
 #####
 
-T_top = FieldTimeSeries(boundary_file, "T_top"; backend = InMemory(; chunk_size = 10))
-u_top = FieldTimeSeries(boundary_file, "u_top"; backend = InMemory(; chunk_size = 10))
-
+# We load in memory only 10 time steps at a time
+T_top  = FieldTimeSeries(boundary_file, "T_top" ; backend = InMemory(; chunk_size = 10))
 T_west = FieldTimeSeries(boundary_file, "T_west"; backend = InMemory(; chunk_size = 10))
 u_west = FieldTimeSeries(boundary_file, "u_west"; backend = InMemory(; chunk_size = 10))
 
-T_top_bc = ValueBoundaryCondition(T_top)
-u_top_bc = ValueBoundaryCondition(u_top)
+# Let's generate a video with the Dirichlet boundary conditions we impose
+iter = Observable(1)
 
-T_west_bc = OpenBoundaryCondition(T_west)
+Tt = @lift(interior(T_top[$iter], :, :, 1))
+Tw = @lift(interior(T_west[$iter], 1, :, :))
+uw = @lift(interior(u_west[$iter], 1, :, :))
+
+fig = Figure()
+ax = Axis(fig[1, 1:2], title = "top T value BC")
+heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 20))
+ax = Axis(fig[1, 3:4], title = "west T value BC")
+heatmap!(ax, Tw, colormap = :thermal, colorrange = (0, 20))
+ax = Axis(fig[2, 2:3], title = "west U open BC")
+heatmap!(ax, uw, colormap = :viridis, colorrange = (-1, 1))
+
+CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(T_top), framerate = 10) do i
+    @info "frame $i of $(length(T_top))"
+    iter[] = i
+end
+
+T_top_bc  = ValueBoundaryCondition(T_top) 
+T_west_bc = ValueBoundaryCondition(T_west)
 u_west_bc = OpenBoundaryCondition(u_west)
 
 T_bcs = FieldBoundaryConditions(top = T_top_bc, west = T_west_bc)
-u_bcs = FieldBoundaryConditions(top = u_top_bc, west = u_west_bc)
+u_bcs = FieldBoundaryConditions(west = u_west_bc)
 
 #####
 ##### Physical and Numerical Setup
@@ -68,7 +86,7 @@ tracer_advection = WENO()
 
 buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(), constant_salinity = 35)
 
-free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, substeps = nothing)
+free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7)
 
 coriolis = HydrostaticSphericalCoriolis()
 
@@ -118,3 +136,31 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocit
                                                       filename = "one_sided_channel",
                                                       overwrite_existing = true)
 
+run!(simulation)
+
+#####
+##### Visualize the simulation!!
+#####
+
+T_series = FieldTimeSeries("one_sided_channel.jld2", "T")
+u_series = FieldTimeSeries("one_sided_channel.jld2", "u")
+v_series = FieldTimeSeries("one_sided_channel.jld2", "v")
+
+iter = Observable(1)
+
+Tt = @lift(interior(T_series[$iter], :, :, 10))
+ut = @lift(interior(T_series[$iter], :, :, 10))
+vt = @lift(interior(T_series[$iter], :, :, 10))
+
+fig = Figure()
+ax = Axis(fig[1, 1], title = "top T")
+heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 20))
+ax = Axis(fig[2, 1], title = "top u")
+heatmap!(ax, Tw, colormap = :viridis, colorrange = (-1, 1))
+ax = Axis(fig[2, 2], title = "top v")
+heatmap!(ax, uw, colormap = :viridis, colorrange = (-1, 1))
+
+CairoMakie.record(fig, "results.mp4", 1:length(T_top), framerate = 10) do i
+    @info "frame $i of $(length(T_top))"
+    iter[] = i
+end
