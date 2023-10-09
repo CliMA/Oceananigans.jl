@@ -22,12 +22,6 @@ model_temperature(bf, model)     = model.tracers.T
 model_salinity(bf, model)        = model.tracers.S
 model_geopotential_height(model) = KernelFunctionOperation{Center, Center, Center}(Zᶜᶜᶜ, model.grid)
 
-# const ConstantTemperatureSB = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}
-# const ConstantSalinitySB    = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}
-
-# model_temperature(b::ConstantTemperatureSB, model) = b.model.constant_temperature
-# model_salinity(b::ConstantSalinitySB, model)       = b.model.constant_salinity
-
 """
     SeawaterDensity(model; temperature, salinity, geopotential_height)
 
@@ -53,7 +47,7 @@ Example
 
 Compute a density `Field` using the `KernelFunctionOperation` returned from `SeawaterDensity`
 
-```jldoctest density
+```jldoctest density1
 
 julia> grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 128×128×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
@@ -99,6 +93,16 @@ julia> compute!(density_field)
 
 ```
 
+The constant values for `temperature` and `salinity` that are used in `set!` above may be
+passed into `SeawaterDensity`,
+
+```jldoctest density2
+julia> SeawaterDensity(model, temperature = 0.5, salinity = 34.7, geopotential_height = 0)
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 128×128×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── kernel_function: ρ (generic function with 2 methods)
+└── arguments: ("BoussinesqEquationOfState{Float64}", "ConstantField(0.5)", "ConstantField(34.7)", "ConstantField(0)")
+```
 """
 function SeawaterDensity(model::ModelsWithBuoyancy;
                          temperature = model_temperature(model.buoyancy.model, model),
