@@ -1,9 +1,9 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: halo_size
 
-using Oceanananigans.DistributedComputations
-using Oceanananigans.DistributedComputations: DistributedGrid
-using Oceanananigans.DistributedComputations: synchronize_communication!, BlockingDistributed
+using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed
 
 function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch)
 
@@ -19,17 +19,18 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
 end
 
 # Fallback
-complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::BlockingDistributed) = nothing
+complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::SynchronizedDistributed) = nothing
 complete_communication_and_compute_boundary!(model, grid, arch) = nothing
 
 compute_boundary_tendencies!(model) = nothing
 
-interior_tendency_kernel_parameters(grid) = :xyz
+""" Kernel parameters for computing interior tendencies. """
+interior_tendency_kernel_parameters(grid) = :xyz # fallback
 
 interior_tendency_kernel_parameters(grid::DistributedGrid) = 
             interior_tendency_kernel_parameters(grid, architecture(grid))
 
-interior_tendency_kernel_parameters(grid, ::BlockingDistributed) = :xyz
+interior_tendency_kernel_parameters(grid, ::SynchronizedDistributed) = :xyz
 
 function interior_tendency_kernel_parameters(grid, arch)
     Rx, Ry, _ = arch.ranks

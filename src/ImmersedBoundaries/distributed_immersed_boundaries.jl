@@ -1,9 +1,10 @@
 using Oceananigans.Utils: getnamewrapper
+using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, construct_global_array
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid, scatter_local_grids
 
-# For the moment we extend distributed in the `ImmersedBoundaryGrids` module
+# For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff
 # we can move this file back to `DistributedComputations` if we want `ImmersedBoundaries`
 # to take precedence

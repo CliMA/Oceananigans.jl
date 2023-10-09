@@ -8,6 +8,7 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles
 
+using Oceananigans.Utils
 using Oceananigans: AbstractModel
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.Grids: halo_size, inflate_halo_size
