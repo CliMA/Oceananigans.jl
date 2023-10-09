@@ -19,7 +19,7 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
-# 
+#
 # TODO: decide if we like this.
 #
 # We assume that model has some properties, eg:
@@ -50,7 +50,7 @@ function reset!(model::AbstractModel)
     for field in model.timestepper.Gⁿ
         fill!(field, 0)
     end
-    
+
     return nothing
 end
 
@@ -107,6 +107,7 @@ include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
+include("density_model.jl")
 
 using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 
@@ -125,7 +126,7 @@ using .LagrangianParticleTracking: LagrangianParticles
 
 const OceananigansModels = Union{NonhydrostaticModel,
                                  HydrostaticFreeSurfaceModel,
-                                 ShallowWaterModel} 
+                                 ShallowWaterModel}
 
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
 function default_nan_checker(model::OceananigansModels)
@@ -137,4 +138,3 @@ function default_nan_checker(model::OceananigansModels)
 end
 
 end # module
-
