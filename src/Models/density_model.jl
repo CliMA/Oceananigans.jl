@@ -14,12 +14,9 @@ seawater_density(grid, eos, temperature, salinity, geopotential_height) =
 const ModelsWithBuoyancy = Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel}
 
 # some nice fallbacks
-model_temperature(bf, model)         = validate_tracer(model, :T)
-model_salinity(bf, model)            = validate_tracer(model, :S)
-model_geopotential_height(bf, model) = KernelFunctionOperation{Center, Center, Center}(Zᶜᶜᶜ, model.grid)
-
-validate_tracer(model, tracer) = issubset((:S, :T), keys(model.tracers)) ? getfield(model.tracers, tracer) :
-                                                                           throw(ArgumentError("SeawaterDensity requires salinity and temperature as `tracers` in `model`."))
+model_temperature(bf, model)     = model.tracers.T
+model_salinity(bf, model)        = model.tracers.S
+model_geopotential_height(model) = KernelFunctionOperation{Center, Center, Center}(Zᶜᶜᶜ, model.grid)
 
 const ConstantTemperatureSB = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}
 const ConstantSalinitySB    = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}
