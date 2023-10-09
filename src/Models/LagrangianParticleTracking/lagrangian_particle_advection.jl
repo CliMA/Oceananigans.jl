@@ -6,8 +6,15 @@ using Oceananigans.Models: total_velocities
 #####
 
 # Functions for bouncing particles off walls to the right and left
-@inline  bounce_left(x, xᴿ, Cʳ) = xᴿ - Cʳ * (x - xᴿ)
-@inline bounce_right(x, xᴸ, Cʳ) = xᴸ + Cʳ * (xᴸ - x)
+@inline function bounce_left(x, xᴸ, xᴿ, Cʳ)
+    xᵢ = xᴿ - Cʳ * (x - xᴿ)
+    return ifelse(xᵢ > xᴸ, xᵢ, xᴸ)
+end
+
+@inline function bounce_right(x, xᴸ, xᴿ, Cʳ)
+    xᵢ = xᴸ + Cʳ * (xᴸ - x)
+    return ifelse(xᵢ < xᴿ, xᵢ, xᴿ)
+end
 
 """
     enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ)
@@ -16,8 +23,8 @@ Return a new particle position if the particle position `x`
 is outside the Bounded interval `(xᴸ, xᴿ)` by bouncing the particle off
 the interval edge with coefficient of restitution `Cʳ).
 """
-@inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴿ, Cʳ),
-                                                                ifelse(x < xᴸ, bounce_right(x, xᴸ, Cʳ), x))
+@inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴸ, xᴿ, Cʳ),
+                                                                ifelse(x < xᴸ, bounce_right(x, xᴸ, xᴿ, Cʳ), x))
 
 """
     enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ)
@@ -25,8 +32,8 @@ the interval edge with coefficient of restitution `Cʳ).
 Return a new particle position if the particle position `x`
 is outside the Periodic interval `(xᴸ, xᴿ)`.
 """
-@inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + (x - xᴿ),
-                                                                 ifelse(x < xᴸ, xᴿ - (xᴸ - x), x))
+@inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + mod(x - xᴿ, xᴿ - xᴸ),
+                                                                 ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
 
 const f = Face()
 const c = Center()
