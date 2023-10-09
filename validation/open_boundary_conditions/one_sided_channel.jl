@@ -160,7 +160,7 @@ heatmap!(ax, Tw, colormap = :viridis, colorrange = (-1, 1))
 ax = Axis(fig[2, 2], title = "top v")
 heatmap!(ax, uw, colormap = :viridis, colorrange = (-1, 1))
 
-CairoMakie.record(fig, "results.mp4", 1:length(T_top), framerate = 10) do i
+CairoMakie.record(fig, "results.mp4", 1:length(T_series), framerate = 10) do i
     @info "frame $i of $(length(T_top))"
     iter[] = i
 end

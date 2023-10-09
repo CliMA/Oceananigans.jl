@@ -32,7 +32,7 @@ function generate_input_data!(grid, times, filename)
         set!(T_top_tmp, (x, y) -> Tₜ(y, times[t]))
         set!(T_top, T_top_tmp, t)
 
-        set!(west_tmp, (y, z) -> cos((y - 15) / 60 * π - π/2) * cos(times[t] / times[end] * 2π - π/2))
+        set!(west_tmp, (y, z) -> sin((y - 15) / 60 * 2π) * cos(times[t] / times[end] * 2π - π/2))
         set!(u_west, west_tmp, t)
         
         set!(west_tmp, (y, z) -> Tₜ(y, times[t]) * (1 + z / 1000))
