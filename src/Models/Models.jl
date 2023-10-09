@@ -25,48 +25,6 @@ initialize!(model::AbstractModel) = nothing
 
 total_velocities() = nothing
 
-# Has to be specialized in concrete `AbstractModel`s subtypes to allow
-# updating `FieldTimeSeries`es in different properties of the model
-possible_field_time_series(model::AbstractModel) = nothing
-
-import Oceananigans.TimeSteppers: reset!
-
-# Update _all_ `FieldTimeSeries`es in an `AbstractModel`. 
-# Loop over all propery names and extract any of them which is a `FieldTimeSeries`.
-# Flatten the resulting tuple by extracting unique values and set! them to the 
-# correct time range by looping over them
-function update_model_field_time_series!(model::AbstractModel, clock::Clock)
-    time = Time(clock.time)
-
-    possible_fts = possible_field_time_series(model)
-
-    time_series_tuple = extract_field_timeseries(possible_fts)
-    time_series_tuple = flattened_unique_values(time_series_tuple)
-
-    for fts in time_series_tuple
-        update_field_time_series!(fts, time)
-    end
-
-    return nothing
-end
-
-function reset!(model::AbstractModel)
-
-    for field in fields(model)
-        fill!(field, 0)
-    end
-
-    for field in model.timestepper.G⁻
-        fill!(field, 0)
-    end
-
-    for field in model.timestepper.Gⁿ
-        fill!(field, 0)
-    end
-    
-    return nothing
-end
-
 function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
     user_halo = halo_size(grid)
     required_halo = inflate_halo_size(1, 1, 1, grid,
@@ -95,5 +53,54 @@ using .HydrostaticFreeSurfaceModels:
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
 using .LagrangianParticleTracking: LagrangianParticles
+
+const OceananigansModels = Union{HydrostaticFreeSurfaceModel, 
+                                 NonhydrostaticModel, 
+                                 ShallowWaterModel}
+
+"""
+    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+
+Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
+"""
+possible_field_time_series(model::OceananigansModels) = tuple(fields(model), model.forcing, model.diffusivity_fields)
+                
+# Update _all_ `FieldTimeSeries`es in an `AbstractModel`. 
+# Loop over all propery names and extract any of them which is a `FieldTimeSeries`.
+# Flatten the resulting tuple by extracting unique values and set! them to the 
+# correct time range by looping over them
+function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
+    time = Time(clock.time)
+
+    possible_fts = possible_field_time_series(model)
+
+    time_series_tuple = extract_field_timeseries(possible_fts)
+    time_series_tuple = flattened_unique_values(time_series_tuple)
+
+    for fts in time_series_tuple
+        update_field_time_series!(fts, time)
+    end
+
+    return nothing
+end
+
+import Oceananigans.TimeSteppers: reset!
+
+function reset!(model::OceananigansModels)
+
+    for field in fields(model)
+        fill!(field, 0)
+    end
+
+    for field in model.timestepper.G⁻
+        fill!(field, 0)
+    end
+
+    for field in model.timestepper.Gⁿ
+        fill!(field, 0)
+    end
+    
+    return nothing
+end
 
 end # module

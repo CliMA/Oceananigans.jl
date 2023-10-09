@@ -101,13 +101,6 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
-"""
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
-
-Return a `Tuple` containing properties of the `HydrostaticFreeSurfaceModel` that could contain `FieldTimeSeries`.
-"""
-possible_field_time_series(model::HydrostaticFreeSurfaceModel) = tuple(fields(model), model.forcing, model.diffusivity_fields)
-
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
