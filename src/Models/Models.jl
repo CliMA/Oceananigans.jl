@@ -24,7 +24,10 @@ architecture(model::AbstractModel) = model.architecture
 initialize!(model::AbstractModel) = nothing
 
 total_velocities() = nothing
-possible_field_time_series(model) = ()
+
+# Has to be specialized in concrete `AbstractModel`s subtypes to allow
+# updating `FieldTimeSeries`es in different properties of the model
+possible_field_time_series(model::AbstractModel) = nothing
 
 import Oceananigans.TimeSteppers: reset!
 
@@ -35,9 +38,9 @@ import Oceananigans.TimeSteppers: reset!
 function update_model_field_time_series!(model::AbstractModel, clock::Clock)
     time = Time(clock.time)
 
-    possible_field_time_series = possible_field_time_series(model)
+    possible_fts = possible_field_time_series(model)
 
-    time_series_tuple = extract_field_timeseries(possible_field_time_series)
+    time_series_tuple = extract_field_timeseries(possible_fts)
     time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
