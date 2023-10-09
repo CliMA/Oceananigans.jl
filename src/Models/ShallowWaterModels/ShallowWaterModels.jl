@@ -10,7 +10,6 @@ using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
-import Oceananigans.Models: possible_field_time_series
 
 #####
 ##### ShallowWaterModel definition

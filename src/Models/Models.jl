@@ -38,6 +38,9 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 
+# Fallback for any abstract model that does not contain `FieldTimeSeries`es
+update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
@@ -58,15 +61,8 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel, 
                                  ShallowWaterModel}
 
-"""
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
-
-Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
-"""
-possible_field_time_series(model::OceananigansModels) = tuple(fields(model), model.forcing, model.diffusivity_fields)
-                
-# Update _all_ `FieldTimeSeries`es in an `AbstractModel`. 
-# Loop over all propery names and extract any of them which is a `FieldTimeSeries`.
+# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
+# Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
 # Flatten the resulting tuple by extracting unique values and set! them to the 
 # correct time range by looping over them
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
@@ -84,6 +80,13 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     return nothing
 end
 
+"""
+    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+
+Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
+"""
+possible_field_time_series(model::OceananigansModels) = tuple(fields(model), model.forcing, model.diffusivity_fields)
+                
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)

@@ -18,7 +18,6 @@ using Oceananigans.Utils: SumOfArrays
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
-import Oceananigans.Models: possible_field_time_series
 
 function PressureSolver(arch::Distributed, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
