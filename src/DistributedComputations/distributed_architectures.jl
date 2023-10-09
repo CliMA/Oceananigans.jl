@@ -75,7 +75,7 @@ Partition(Rx::Number, Ry::Number=1, Rz::Number=1) = Partition{Rx, Ry, Rz}()
 Partition(lengths::Array{Int, 1}) = Partition(reshape(lengths, length(lengths), 1))
 Base.size(::Partition{<:Any, Rx, Ry, Rz}) where {Rx, Ry, Rz} = (Rx, Ry, Rz)
 
-struct Distributed{A, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -85,6 +85,25 @@ struct Distributed{A, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     communicator :: γ
     mpi_requests :: M
     mpi_tag :: T
+
+    Distributed{S}(child_architecture :: A,
+                   partition :: Δ,
+                   ranks :: R,
+                   local_rank :: ρ,
+                   local_index :: I,
+                   connectivity :: C,
+                   communicator :: γ,
+                   mpi_requests :: M,
+                   mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
+                                                     partition,
+                                                     ranks,
+                                                     local_rank,
+                                                     local_index,
+                                                     connectivity,
+                                                     communicator,
+                                                     mpi_requests,
+                                                     mpi_tag)
 end
 
 #####
@@ -111,6 +130,8 @@ Keyword arguments
 
 - `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
                         
+- `synched_communication`: if true, always use synchronized communication through ranks
+
 - `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
                       `y` and `z` direction. NOTE: support for distributed z direction is 
                       limited, so `Rz = 1` is strongly suggested.
@@ -126,6 +147,7 @@ function Distributed(child_architecture = CPU();
                      topology, 
                      communicator = MPI.COMM_WORLD,
                      devices = nothing, 
+                     synched_communication = false,
                      partition = Partition(MPI.Comm_size(communicator)))
 
     if !(MPI.Initialized())
@@ -157,21 +179,21 @@ function Distributed(child_architecture = CPU();
 
     mpi_requests = MPI.Request[]
 
-    return Distributed(child_architecture,
-                       partition,
-                       ranks,
-                       local_rank,
-                       local_index,
-                       local_connectivity,
-                       communicator,
-                       mpi_requests,
-                       Ref(0))
+    return Distributed{synched_communication}(child_architecture,
+                                              partition,
+                                              ranks,
+                                              local_rank,
+                                              local_index,
+                                              local_connectivity,
+                                              communicator,
+                                              mpi_requests,
+                                              Ref(0))
 end
 
 const DistributedCPU = Distributed{CPU}
 const DistributedGPU = Distributed{GPU}
 
-const BlockingDistributed = Distributed{<:Any, <:Nothing}
+const SynchronizedDistributed = Distributed{<:Any, true}
 
 #####
 ##### All the architectures

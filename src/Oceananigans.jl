@@ -205,7 +205,7 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-#include("DistributedComputations/DistributedComputations.jl")
+include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
 #include("ImmersedBoundaries/ImmersedBoundaries.jl")
@@ -222,7 +222,7 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("DistributedComputations/DistributedComputations.jl")
+# include("DistributedComputations/DistributedComputations.jl")
 
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

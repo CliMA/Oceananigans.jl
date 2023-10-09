@@ -99,6 +99,9 @@ validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple
 # Util for checking whether the model's prognostic state has NaN'd
 include("nan_checker.jl")
 
+# Communication - Computation overlap in distributed models
+include("interleave_communication_and_computation.jl")
+
 #####
 ##### All the code
 #####
