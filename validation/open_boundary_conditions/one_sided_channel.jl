@@ -3,6 +3,7 @@ using Oceananigans.Operators
 using Oceananigans.OutputReaders
 using Oceananigans.OutputReaders: OnDisk
 using Oceananigans.Units
+using Oceananigans.Utils: Time 
 using Printf
 using CairoMakie
 
@@ -68,9 +69,13 @@ CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(T_top), framerate = 1
     iter[] = i
 end
 
+@inline relax_west_u(j, k, grid, clock, fields, p) = p.v * (fields.u[1, j, k] - p.u_west[j, k, Time(clock.time)])
+
+v_pump = 1 / 1days
+
 T_top_bc  = ValueBoundaryCondition(T_top) 
 T_west_bc = ValueBoundaryCondition(T_west)
-u_west_bc = OpenBoundaryCondition(u_west)
+u_west_bc =  OpenBoundaryCondition(relax_west_u; discrete_form=true, parameters=(; v=v_pump, u_west))
 
 T_bcs = FieldBoundaryConditions(top = T_top_bc, west = T_west_bc)
 u_bcs = FieldBoundaryConditions(west = u_west_bc)
@@ -149,16 +154,16 @@ v_series = FieldTimeSeries("one_sided_channel.jld2", "v")
 iter = Observable(1)
 
 Tt = @lift(interior(T_series[$iter], :, :, 10))
-ut = @lift(interior(T_series[$iter], :, :, 10))
-vt = @lift(interior(T_series[$iter], :, :, 10))
+ut = @lift(interior(u_series[$iter], :, :, 10))
+vt = @lift(interior(v_series[$iter], :, :, 10))
 
 fig = Figure()
 ax = Axis(fig[1, 1], title = "top T")
 heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 20))
 ax = Axis(fig[2, 1], title = "top u")
-heatmap!(ax, Tw, colormap = :viridis, colorrange = (-1, 1))
+heatmap!(ax, ut, colormap = :viridis, colorrange = (-10, 10))
 ax = Axis(fig[2, 2], title = "top v")
-heatmap!(ax, uw, colormap = :viridis, colorrange = (-1, 1))
+heatmap!(ax, vt, colormap = :viridis, colorrange = (-10, 10))
 
 CairoMakie.record(fig, "results.mp4", 1:length(T_series), framerate = 10) do i
     @info "frame $i of $(length(T_top))"

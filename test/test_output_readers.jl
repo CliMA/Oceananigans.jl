@@ -236,7 +236,7 @@ end
         c = CenterField(grid)
 
         filepath = "testfile.jld2"
-        f = FieldTimeSeries{location(c)...}(grid, 1:10, backend = OnDisk(), path = filepath, name = "c")
+        f = FieldTimeSeries(location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
 
         for i in 1:10
             set!(c, i)
@@ -253,9 +253,20 @@ end
         @test g[1, 1, 1, 10] == 10
         @test g[1, 1, 1, Time(1.6)] == 1.6
 
-        t = g[3.8]
+        t = g[Time(3.8)]
 
         @test t[1, 1, 1] == 3.8
+    end
+
+    @testset "Test chunked abstraction" begin  
+        @info "  Testing Chunked abstraction..."      
+        filepath = "testfile.jld2"
+        f = FieldTimeSeries(filepath, "c")
+        f_chunked = FieldTimeSeries(filepath, "c"; backend = ImMemory(; chunk_size = 2))
+
+        for t in eachindex(f.times)
+            f_chunkes[t] == f[t]
+        end
     end
 
     for Backend in [InMemory, OnDisk]
