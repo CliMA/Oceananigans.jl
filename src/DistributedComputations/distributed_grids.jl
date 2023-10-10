@@ -19,21 +19,30 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-function local_size(p::Partition, topo, ranks, global_size)
-    # TODO: check correctness
-    return p.sizes[rank]
+# Local size from global size and architecture
+local_size(arch, gsize) = local_size.(gsize, ranks(arch.partition)), arch, (1, 2, 3))
+
+# Individual local size for equal partitioning
+function local_size(N, R::Int, arch, i::Int)
+    r = arch.local_index[i]
+    N𝓁 = N ÷ R
+    if r == R # If R does not divide N, we add the remainder to the last rank
+        return N - (R - 1) * N𝓁
+    else
+        return N𝓁
+    end
 end
 
-const EqualPartition = Partition{Nothing}
-
-function local_size(p::EqualPartition, rank, global_size)
-    Nx, Ny, Nz = global_size
-    Rx, Ry, Rz = size(p)
-    # TODO: Check that it is possible to partition Nx by Rx, etc
-    Nxℓ = Nx ÷ Rx
-    Nyℓ = Ny ÷ Ry
-    Nzℓ = Nz ÷ Rz
-    return (Nxℓ, Nyℓ, Nzℓ)
+# Individual local size for unequal partitioning
+function local_size(N, R::Vector, arch, i::Int)
+    r   = arch.local_index[i]
+    N𝓁  = Tuple(N * R[i] for i in 1:length(R))
+    Nℊ = concatenate_local_sizes(N𝓁, arch)
+    if r == length(R) # If R does not divide N, we add the remainder to the last rank
+        return N𝓁[r] + N - Nℊ
+    else
+        return N𝓁
+    end
 end
 
 # Global size from local size
@@ -57,7 +66,7 @@ function RectilinearGrid(arch::Distributed,
     TX, TY, TZ, global_size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+    local_sz = local_size(arch, global_size)
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -105,7 +114,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
-    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+    local_sz = local_size(arch, global_size)
 
     nλ, nφ, nz = local_sz
     ri, rj, rk = arch.local_index

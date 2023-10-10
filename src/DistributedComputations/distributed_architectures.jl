@@ -10,38 +10,10 @@ import Oceananigans.Utils: sync_device!, tupleit
 ##### Partitioning
 #####
 
-# Form 3-tuple
-regularize_size(sz::Tuple{<:Int, <:Int}, Rx, Ry) = (sz[1], sz[2], 1)
-
-# Infer whether x- or y-dimension is indicated
-function regularize_size(N::Int, Rx, Ry)
-    if Rx == 1
-        return (1, N, 1)
-    elseif Ry == 1
-        return (N, 1, 1)
-    else
-        throw(ArgumentError("We can't interpret the 1D size $N for 2D partitions!"))
-    end
-end
-
-regularize_size(sz::Array{<:Int, 1}) = regularize_size(sz[1])
-regularize_size(sz::Array{<:Int, 2}) = regularize_size((sz[1], sz[2]))
-regularize_size(sz::Tuple{<:Int})    = regularize_size(sz[1])
-
-# For 3D partitions:
-# regularize_size(sz::Tuple{<:Int, <:Int, <:Int}, Rx, Ry) = sz
-
-struct Partition{S, Rx, Ry, Rz}
-    sizes :: S
-    function Partition{Rx, Ry, Rz}() where {Rx, Ry, Rz}
-        new{Nothing, Rx, Ry, Rz}(nothing)
-    end
-    function Partition(sizes::S) where S
-        Rx = size(sizes, 1)
-        Ry = size(sizes, 2)
-        Rz = size(sizes, 3)
-        return new{S, Rx, Ry, Rz}(sizes)
-    end
+struct Partition{Sx, Sy, Sz}
+    Rx :: Sx
+    Ry :: Sy
+    Rz :: Sz
 end
 
 """
@@ -51,10 +23,18 @@ Return `Partition` representing the division of a domain into
 `Rx` parts in `x` and `Ry` parts in `y` and `Rz` parts in `z`,
 where `x, y, z` are the first, second, and third dimension
 respectively.
+
+`Rx`, `Ry` and `Rz` can be vectors containing the percentage of the domain
+ascribed to the different cores. In this case `length(Rx)` represent the number
+of divisions in the first dimension with `sum(Rx)` equal to 1.0. 
+Rank `arch.local_rank[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
 """
-Partition(Rx::Number, Ry::Number=1, Rz::Number=1) = Partition{Rx, Ry, Rz}()
-Partition(lengths::Array{Int, 1}) = Partition(reshape(lengths, length(lengths), 1))
-Base.size(::Partition{<:Any, Rx, Ry, Rz}) where {Rx, Ry, Rz} = (Rx, Ry, Rz)
+Partition(Rx)     = Partition(Rx, 1, 1)
+Partition(Rx, Ry) = Partition(Rx, Ry, 1)
+
+Partition(; Rx = 1, Ry = 1, Rz = 1) = Partition(Rx, Ry, Rz)
+
+ranks(p::Partition) = (p.Rx, p.Ry, p.Rz)
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
