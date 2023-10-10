@@ -230,7 +230,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
-                for region in 1:6
+                for region in 1:number_of_regions($(grid))
                     getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
                     getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
                 end
@@ -248,7 +248,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             CUDA.@allowscalar begin
-                for region in 1:6
+                for region in 1:number_of_regions($(grid))
                     getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
                     getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
                 end
