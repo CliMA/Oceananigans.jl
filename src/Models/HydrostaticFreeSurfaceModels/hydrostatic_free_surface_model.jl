@@ -175,7 +175,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+    model_fields = (hydrostatic_prognostic_fields(velocities, free_surface, tracers)..., keys(auxiliary_fields)...)
     forcing = model_forcing(model_fields; forcing...)
 
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
