@@ -265,7 +265,7 @@ end
         f_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(; chunk_size = 2))
 
         for t in eachindex(f.times)
-            f_chunkes[t] == f[t]
+            f_chunked[t] == f[t]
         end
     end
 
