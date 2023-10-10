@@ -17,7 +17,9 @@ steps:
       - echo "--- Instantiate project"
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true)'"
       # force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
+      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
+      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
 
       - echo "--- Instantiate status"
       - "julia --project -e 'using Pkg; Pkg.status()'"
@@ -28,6 +30,7 @@ steps:
       slurm_cpus_per_task: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
+      TEST_GROUP: "init"
 
   - wait
 
