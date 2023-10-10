@@ -83,10 +83,10 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
     # help eventually.
     #explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-    
+
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
-    
+
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
 
@@ -132,7 +132,8 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
-    # REMEMBER!!! This is going to create problems!!!!
+    # Note: because of `fill_halo_regions!` below, we cannot use `PCGImplicitFreeSurface` on a
+    # multi-region grid; `fill_halo_regions!` cannot be used within `@apply_regionally`
     fill_halo_regions!(ηⁿ⁺¹)
 
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,

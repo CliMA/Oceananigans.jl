@@ -1,6 +1,6 @@
 module Units
 
-export second, minute, hour, day, meter, kilometer,
+export Time, second, minute, hour, day, meter, kilometer,
        seconds, minutes, hours, days, meters, kilometers,
        KiB, MiB, GiB, TiB
 
@@ -119,5 +119,25 @@ const GiB = 1024MiB
 A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 2TiB`.
 """
 const TiB = 1024GiB
+
+"""
+    Time(t)
+
+Return a time "selector" at the continuous time `t` for linearly interpolating `FieldTimeSeries`.
+
+Examples
+=======
+
+```julia
+# Interpolate `field_time_series` to `t=0.1`, returning `interpolated::Field`
+interpolated = field_time_series[Time(0.1)]
+
+# Interpolate `field_time_series` at `i, j, k` and `t=0.1`
+interpolated_ijk = field_time_series[i, j, k, Time(0.1)]
+```
+"""
+struct Time{T}
+    time :: T
+end
 
 end # module

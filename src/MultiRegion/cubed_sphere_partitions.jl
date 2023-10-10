@@ -2,12 +2,12 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 
 using DocStringExtensions
 
-import Oceananigans.Fields: replace_horizontal_velocity_halos!
+import Oceananigans.Fields: replace_horizontal_vector_halos!
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
-             div :: Int
-              Rx :: M
-              Ry :: P
+    div :: Int
+    Rx :: M
+    Ry :: P
 
     CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
 end
@@ -39,10 +39,7 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 
 Base.length(p::CubedSpherePartition) = p.div
 
-"""
-utilities to get the index of the panel, the index within the panel, and the global index
-"""
-
+# Utilities to get the index of the panel, the index within the panel, and the global index
 @inline div_per_panel(panel_idx, partition::RegularCubedSpherePartition)  = partition.Rx            * partition.Ry
 @inline div_per_panel(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx            * partition.Ry[panel_idx]
 @inline div_per_panel(panel_idx, partition::YRegularCubedSpherePartition) = partition.Rx[panel_idx] * partition.Ry
@@ -89,9 +86,14 @@ end
 ##### Boundary-specific Utils
 #####
 
-replace_horizontal_velocity_halos!(::PrescribedVelocityFields, ::AbstractGrid; signed=true) = nothing
+# A cubed sphere panel grid is an OSSG grid that is fully connected in xy
+const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}
 
-function replace_horizontal_velocity_halos!(velocities, grid::OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}; signed=true)
+# TODO: move prescribed velocity field stuff to Model/HydrostaticFreeSurfaceModels/prescribed_velocity_fields.jl
+replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::AbstractGrid; kw...) = nothing
+replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::SpherePanelGrid; kw...) = nothing
+
+function replace_horizontal_vector_halos!(velocities, grid::SpherePanelGrid; signed=true)
     u, v, _ = velocities
 
     ubuff = u.boundary_buffers

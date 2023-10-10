@@ -29,7 +29,7 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
@@ -60,7 +60,7 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :ConvectiveAdjustmentVerticalDiffusivity
+    :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
 #####
