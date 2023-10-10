@@ -8,8 +8,8 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-    
-    # Core Oceananigans 
+
+    # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
@@ -24,6 +24,7 @@ CUDA.allowscalar() do
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+            include("test_density.jl")
         end
     end
 
@@ -124,7 +125,7 @@ CUDA.allowscalar() do
             include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
-    
+
     # Model enhancements: cubed sphere, distributed, etc
     if group == :multi_region || group == :all
         @testset "Multi Region tests" begin

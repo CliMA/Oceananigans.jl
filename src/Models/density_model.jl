@@ -103,6 +103,7 @@ KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 128×128×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
 ├── kernel_function: ρ (generic function with 2 methods)
 └── arguments: ("BoussinesqEquationOfState{Float64}", "ConstantField(0.5)", "ConstantField(34.7)", "ConstantField(0)")
+
 ```
 """
 function SeawaterDensity(model::ModelsWithBuoyancy;
