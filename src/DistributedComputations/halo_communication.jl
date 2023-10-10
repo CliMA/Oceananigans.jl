@@ -116,13 +116,13 @@ end
 
 @inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
    
-    # if `isnothing(requests)`, `fill_halo!` did not involve MPI 
+    # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
     if isnothing(requests)
         return nothing
     end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
-    # pool to be waited upon after tendency calculation
+    # pool to be waited upon later on when halos are required.
     if async && !(arch isa SynchronizedDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
@@ -173,6 +173,9 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
+# There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
+# - only_local_halos: if true, only the local halos, i.e. corresponding to non-communicating boundary conditions
+# - async: if true, ansynchronous MPI communication is enabled
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
