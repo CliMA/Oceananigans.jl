@@ -25,6 +25,9 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
+    # Distributed
+    Distributed, Partition,
+
     # Advection schemes
     Centered, CenteredSecondOrder, CenteredFourthOrder, 
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
@@ -203,6 +206,7 @@ include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
+include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
 #include("ImmersedBoundaries/ImmersedBoundaries.jl")
@@ -219,7 +223,7 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("DistributedComputations/DistributedComputations.jl")
+# include("DistributedComputations/DistributedComputations.jl")
 
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

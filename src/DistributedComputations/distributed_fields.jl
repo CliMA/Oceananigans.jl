@@ -1,7 +1,7 @@
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices
+using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     arch = architecture(grid)
@@ -31,4 +31,28 @@ function set!(u::DistributedField, f::Function)
     end
 
     return u
+end
+
+"""
+    synchronize_communication!(field)
+
+complete the halo passing of `field` among processors.
+"""
+function synchronize_communication!(field)
+    arch = architecture(field.grid)
+
+    # Wait for outstanding requests
+    if !isempty(arch.mpi_requests) 
+        cooperative_waitall!(arch.mpi_requests)
+
+        # Reset MPI tag
+        arch.mpi_tag[] -= arch.mpi_tag[]
+    
+        # Reset MPI requests
+        empty!(arch.mpi_requests)
+    end
+    
+    recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
+    
+    return nothing
 end
