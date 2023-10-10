@@ -9,6 +9,7 @@ env:
   JULIA_NVTX_CALLBACKS: gc
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
   JULIA_CPU_TARGET: 'broadwell;skylake'
+  JULIA_CUDA_MEMORY_POOL: none
 
 steps:
   - label: "initialize"
@@ -18,6 +19,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true)'"
       # force the initialization of the CUDA runtime as it is lazily loaded by default
       - "julia --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
+      - "julia --project -e 'using MPI; MPI.versioninfo()'"
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
 
