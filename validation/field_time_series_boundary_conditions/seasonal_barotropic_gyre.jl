@@ -138,9 +138,9 @@ run!(simulation)
 ##### Visualize the simulation!!
 #####
 
-T_series = FieldTimeSeries("one_sided_channel.jld2", "T")
-u_series = FieldTimeSeries("one_sided_channel.jld2", "u")
-v_series = FieldTimeSeries("one_sided_channel.jld2", "v")
+T_series = FieldTimeSeries("seasonal_double_gyre.jld2", "T")
+u_series = FieldTimeSeries("seasonal_double_gyre.jld2", "u")
+v_series = FieldTimeSeries("seasonal_double_gyre.jld2", "v")
 
 iter = Observable(1)
 
