@@ -146,8 +146,7 @@ function test_triply_periodic_rank_connectivity_with_411_ranks()
 end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(CPU(), partition=Partition(1, 4), topology = topo)
+    arch = Distributed(CPU(), partition=Partition(1, 4))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -186,8 +185,7 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
 end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(CPU(), partition=Partition(2, 2), topology = topo)
+    arch = Distributed(CPU(), partition=Partition(2, 2))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -230,9 +228,8 @@ end
 #####
 
 function test_triply_periodic_local_grid_with_411_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(CPU(), partition=Partition(4), topology = topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    arch = Distributed(CPU(), partition=Partition(4))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     nx, ny, nz = size(local_grid)
@@ -248,9 +245,8 @@ function test_triply_periodic_local_grid_with_411_ranks()
 end
 
 function test_triply_periodic_local_grid_with_141_ranks()
-    topo = (Periodic, Periodic, Periodic)
     arch = Distributed(CPU(), partition=Partition(1, 4), topology = topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     nx, ny, nz = size(local_grid)
@@ -266,9 +262,8 @@ function test_triply_periodic_local_grid_with_141_ranks()
 end
 
 function test_triply_periodic_local_grid_with_221_ranks()
-    topo = (Periodic, Periodic, Periodic)
     arch = Distributed(CPU(), partition=Partition(2, 2), topology = topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
     
     i, j, k = arch.local_index
     nx, ny, nz = size(local_grid)
@@ -290,9 +285,8 @@ end
 #####
 
 function test_triply_periodic_bc_injection_with_411_ranks()
-    topo = (Periodic, Periodic, Periodic)
     arch = Distributed(partition=Partition(4), topology=topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -307,9 +301,8 @@ function test_triply_periodic_bc_injection_with_411_ranks()
 end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
-    topo = (Periodic, Periodic, Periodic)
     arch = Distributed(partition=Partition(1, 4), topology=topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -324,9 +317,8 @@ function test_triply_periodic_bc_injection_with_141_ranks()
 end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(partition=Partition(2, 2), topology=topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    arch = Distributed(partition=Partition(2, 2))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -345,9 +337,8 @@ end
 #####
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(child_arch; partition=Partition(4), topology=topo, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 4, 4), extent=(1, 2, 3), halo=halo)
+    arch = Distributed(child_arch; partition=Partition(4), devices = (0, 0, 0, 0))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 4, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -369,9 +360,8 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
 end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
-    topo  = (Periodic, Periodic, Periodic)
-    arch = Distributed(child_arch; partition=Partition(1, 4), topology=topo, devices = (0, 0, 0, 0))
-    grid  = RectilinearGrid(arch, topology=topo, size=(4, 8, 4), extent=(1, 2, 3), halo=halo)
+    arch = Distributed(child_arch; partition=Partition(1, 4))
+    grid  = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(4, 8, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
@@ -391,9 +381,8 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
 end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
-    topo = (Periodic, Periodic, Periodic)
-    arch = Distributed(child_arch; partition=Partition(2, 2), topology=topo, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+    arch = Distributed(child_arch; partition=Partition(2, 2))
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -465,9 +454,8 @@ end
                 #@info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
             for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-                topo = (Periodic, Periodic, Periodic)
-                arch = Distributed(; partition, topology=topo)
-                grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+                arch = Distributed(; partition)
+                grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
                 time_step!(model, 1)
@@ -484,10 +472,9 @@ end
 
     @testset "Time stepping ShallowWaterModel" begin
         for child_arch in archs
-            topo = (Periodic, Periodic, Flat)
             #arch = Distributed(child_arch; ranks=(1, 4, 1), topology = topo, devices = (0, 0, 0, 0))
-            arch = Distributed(child_arch; partition=Partition(1, 4), topology = topo, devices = (0, 0, 0, 0))
-            grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
+            arch = Distributed(child_arch; partition=Partition(1, 4))
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 
             set!(model, h=1)
