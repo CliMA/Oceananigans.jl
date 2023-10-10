@@ -6,24 +6,17 @@ export FieldTimeSeries, FieldDataset
 abstract type AbstractDataBackend end
 
 struct InMemory{I} <: AbstractDataBackend 
-    path :: String
-    name :: String
     index_range :: I
 end
 
 InMemory(; chunk_size = Colon()) = chunk_size isa Colon ? 
-                                          InMemory("", "", chunk_size) :
-                                          InMemory("", "", 1:chunk_size)
+                                          InMemory(chunk_size) :
+                                          InMemory(1:chunk_size)
 
-struct OnDisk <: AbstractDataBackend 
-    path :: String
-    name :: String
-end
+struct OnDisk <: AbstractDataBackend end
 
-OnDisk() = OnDisk("", "")
-
-regularize_backend(::InMemory, path, name, data) = InMemory(path, name, collect(1:size(data, 4)))
-regularize_backend(::OnDisk,   path, name, data) = OnDisk(path, name)
+regularize_backend(::InMemory, data) = InMemory(collect(1:size(data, 4)))
+regularize_backend(::OnDisk,   data) = nothing
 
 include("field_time_series.jl")
 include("memory_allocated_field_time_series.jl")

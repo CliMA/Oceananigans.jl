@@ -45,40 +45,31 @@ generate_input_data!(grid, times, boundary_file)
 #####
 
 # We load in memory only 10 time steps at a time
-T_top  = FieldTimeSeries(boundary_file, "T_top" ; backend = InMemory(; chunk_size = 10))
-T_west = FieldTimeSeries(boundary_file, "T_west"; backend = InMemory(; chunk_size = 10))
-u_west = FieldTimeSeries(boundary_file, "u_west"; backend = InMemory(; chunk_size = 10))
+Qˢ = FieldTimeSeries(boundary_file, "Qˢ"; backend = InMemory(; chunk_size = 10))
+τₓ = FieldTimeSeries(boundary_file, "τₓ"; backend = InMemory(; chunk_size = 10))
 
 # Let's generate a video with the Dirichlet boundary conditions we impose
 iter = Observable(1)
 
-Tt = @lift(interior(T_top[$iter], :, :, 1))
-Tw = @lift(interior(T_west[$iter], 1, :, :))
-uw = @lift(interior(u_west[$iter], 1, :, :))
+Q = @lift(interior(Qˢ[$iter], :, :, 1))
+τ = @lift(interior(τₓ[$iter], :, :, 1))
 
 fig = Figure()
-ax = Axis(fig[1, 1:2], title = "top T value BC")
-heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 20))
-ax = Axis(fig[1, 3:4], title = "west T value BC")
-heatmap!(ax, Tw, colormap = :thermal, colorrange = (0, 20))
-ax = Axis(fig[2, 2:3], title = "west U open BC")
-heatmap!(ax, uw, colormap = :viridis, colorrange = (-1, 1))
+ax = Axis(fig[1, 1], title = "Surface heat flux")
+heatmap!(ax, Q, colormap = :thermal, colorrange = (-5e-5, 5e-5))
+ax = Axis(fig[1, 2], title = "Surface wind stress")
+heatmap!(ax, τ, colormap = :viridis, colorrange = (-1e-4, 1e-4))
 
 CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(T_top), framerate = 10) do i
     @info "frame $i of $(length(T_top))"
     iter[] = i
 end
 
-@inline relax_west_u(j, k, grid, clock, fields, p) = p.v * (fields.u[1, j, k] - p.u_west[j, k, Time(clock.time)])
+T_top_bc = FluxBoundaryCondition(Qˢ) 
+u_top_bc = FluxBoundaryCondition(τₓ)
 
-v_pump = 1 / 1days
-
-T_top_bc  = ValueBoundaryCondition(T_top) 
-T_west_bc = ValueBoundaryCondition(T_west)
-u_west_bc =  OpenBoundaryCondition(relax_west_u; discrete_form=true, parameters=(; v=v_pump, u_west))
-
-T_bcs = FieldBoundaryConditions(top = T_top_bc, west = T_west_bc)
-u_bcs = FieldBoundaryConditions(west = u_west_bc)
+T_bcs = FieldBoundaryConditions(top = T_top_bc)
+u_bcs = FieldBoundaryConditions(top = u_top_bc)
 
 #####
 ##### Physical and Numerical Setup
@@ -159,11 +150,11 @@ vt = @lift(interior(v_series[$iter], :, :, 10))
 
 fig = Figure()
 ax = Axis(fig[1, 1], title = "top T")
-heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 20))
+heatmap!(ax, Tt, colormap = :thermal, colorrange = (0, 1))
 ax = Axis(fig[2, 1], title = "top u")
-heatmap!(ax, ut, colormap = :viridis, colorrange = (-10, 10))
+heatmap!(ax, ut, colormap = :viridis, colorrange = (-0.1, 0.1))
 ax = Axis(fig[2, 2], title = "top v")
-heatmap!(ax, vt, colormap = :viridis, colorrange = (-10, 10))
+heatmap!(ax, vt, colormap = :viridis, colorrange = (-0.1, 0.1))
 
 CairoMakie.record(fig, "results.mp4", 1:length(T_series), framerate = 10) do i
     @info "frame $i of $(length(T_top))"

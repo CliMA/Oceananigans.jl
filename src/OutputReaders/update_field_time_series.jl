@@ -21,7 +21,7 @@ function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
     end
 
     fts.backend.index_range .= index_range
-    set!(fts, fts.backend.path, fts.backend.name)
+    set!(fts, fts.path, fts.name)
 
     return nothing
 end

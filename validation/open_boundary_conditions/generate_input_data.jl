@@ -3,39 +3,34 @@
 ##### Input file setup: has to be done only once!
 #####
 
-function generate_input_data!(grid, times, filename)
+# Save a file named `filename`, containing a time series of surface heat flux and surface stress
+# at times `times` on a grid `grid` 
+function generate_input_data!(grid, times, filename; ρ_ocean = 1000, cp_ocean = 4000)
 
-    T_top_tmp = Field((Center, Center, Nothing), grid)   
-    west_tmp  = Field((Nothing, Center, Center), grid)   
+    Qˢ_tmp = Field((Center, Center, Nothing), grid)   
+    τˣ_tmp = Field((Face, Center, Nothing), grid)   
     
     # Fictitious data
-    Tₜ(y, t) = 2 + 20 * cos(2π * (y - 15) / 60) * sin(π * (t - 365days) / 365days)
+    Qₜ(y, t) = 200 * cos(2π * (y - 15) / 60) * sin(π * (t - 365days) / 365days) / ρ_ocean / cp_ocean
+    τₜ(y, t) = 0.1 * cos(4π * (y - 15) / 60) * cos(π * (t - 365days) / 365days) / ρ_ocean
 
-    T_top = FieldTimeSeries((Center, Center, Nothing), grid, times; 
-                                    backend = OnDisk(),
-                                    path = filename,
-                                    name = "T_top")
+    Qˢ = FieldTimeSeries((Center, Center, Nothing), grid, times; 
+                         backend = OnDisk(),
+                         path = filename,
+                         name = "Qˢ")
 
-    T_west = FieldTimeSeries((Nothing, Center, Center), grid, times; 
-                                    backend = OnDisk(),
-                                    path = filename,
-                                    name = "T_west")
-
-    u_west = FieldTimeSeries((Nothing, Center, Center), grid, times; 
-                                    backend = OnDisk(),
-                                    path = filename,
-                                    name = "u_west")
+    τˣ = FieldTimeSeries((Face, Center, Nothing), grid, times; 
+                         backend = OnDisk(),
+                         path = filename,
+                         name = "τˣ")
 
     # write down the data on file
     for t in eachindex(times)
         @info "writing down data for time $t"
-        set!(T_top_tmp, (x, y) -> Tₜ(y, times[t]))
-        set!(T_top, T_top_tmp, t)
+        set!(Qˢ_tmp, (x, y) -> Qₜ(y, times[t]))
+        set!(τˣ_tmp, (x, y) -> τₜ(y, times[t]))
 
-        set!(west_tmp, (y, z) -> sin((y - 15) / 60 * 2π) * cos(times[t] / times[end] * 2π - π/2))
-        set!(u_west, west_tmp, t)
-        
-        set!(west_tmp, (y, z) -> Tₜ(y, times[t]) * (1 + z / 1000))
-        set!(T_west, west_tmp, t)
+        set!(Qˢ, Qˢ_tmp, t)
+        set!(τˣ, τˣ_tmp, t)
     end
 end

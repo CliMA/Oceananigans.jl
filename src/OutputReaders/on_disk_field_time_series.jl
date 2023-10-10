@@ -7,9 +7,9 @@ Base.length(fts::OnDiskFieldTimeSeries) = length(fts.times)
 function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
     # Load data
     arch = architecture(fts)
-    file = jldopen(fts.backend.path)
+    file = jldopen(fts.path)
     iter = keys(file["timeseries/t"])[n]
-    raw_data = arch_array(arch, file["timeseries/$(fts.backend.name)/$iter"])
+    raw_data = arch_array(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
     # Wrap Field
@@ -25,8 +25,8 @@ end
 
 # When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
 function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
-    path = time_series.backend.path
-    name = time_series.backend.name
+    path = time_series.path
+    name = time_series.name
     jldopen(path, "a+") do file
         initialize_file!(file, name, time_series)
         maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])

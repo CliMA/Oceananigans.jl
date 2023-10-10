@@ -20,22 +20,26 @@ import Oceananigans.Architectures: architecture
 
 using Dates: AbstractTime
 
-struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
+struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
                 backend :: K
     boundary_conditions :: B
                 indices :: I
                   times :: χ
+                   path :: P
+                   name :: N
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
                                       backend::K,
                                           bcs::B,
                                       indices::I, 
-                                        times::χ) where {LX, LY, LZ, K, D, G, B, χ, I}
+                                        times::χ,
+                                         path::P,
+                                         name::N) where {LX, LY, LZ, K, D, G, B, χ, I, P, N}
         T = eltype(data)
-        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, backend, bcs, indices, times)
+        return new{LX, LY, LZ, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs, indices, times, path, name)
     end
 end
 
@@ -62,9 +66,9 @@ function FieldTimeSeries(loc, grid, times;
     LX, LY, LZ = loc
     Nt   = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    backend = regularize_backend(backend, path, name, data)
+    backend = regularize_backend(backend, data)
 
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times)
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times, path, name)
 end
 
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
@@ -180,9 +184,9 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    backend = regularize_backend(backend, path, name, data)
+    backend = regularize_backend(backend, data)
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times, path, name)
 
     set!(time_series, path, name)
 
