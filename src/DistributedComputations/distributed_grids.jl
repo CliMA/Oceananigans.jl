@@ -99,8 +99,6 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                radius = R_Earth,
                                halo = (1, 1, 1))
 
-    # global_size = map(sum, concatenate_local_sizes(size, arch))
-
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
     
