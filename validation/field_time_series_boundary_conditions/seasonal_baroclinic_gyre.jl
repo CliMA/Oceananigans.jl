@@ -46,9 +46,9 @@ generate_input_data!(grid, times, boundary_file)
 
 # We load in memory only 10 time steps at a time
 Qˢ = FieldTimeSeries(boundary_file, "Qˢ"; backend = InMemory(; chunk_size = 10))
-τₓ = FieldTimeSeries(boundary_file, "τₓ"; backend = InMemory(; chunk_size = 10))
+τₓ = FieldTimeSeries(boundary_file, "τˣ"; backend = InMemory(; chunk_size = 10))
 
-# Let's generate a video with the Dirichlet boundary conditions we impose
+# Let's generate a video with the Boundary condition input data
 iter = Observable(1)
 
 Q = @lift(interior(Qˢ[$iter], :, :, 1))
@@ -60,8 +60,8 @@ heatmap!(ax, Q, colormap = :thermal, colorrange = (-5e-5, 5e-5))
 ax = Axis(fig[1, 2], title = "Surface wind stress")
 heatmap!(ax, τ, colormap = :viridis, colorrange = (-1e-4, 1e-4))
 
-CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(T_top), framerate = 10) do i
-    @info "frame $i of $(length(T_top))"
+CairoMakie.record(fig, "boundary_conditions.mp4", 1:length(Qˢ), framerate = 10) do i
+    @info "frame $i of $(length(Qˢ))"
     iter[] = i
 end
 
