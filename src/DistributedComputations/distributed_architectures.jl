@@ -140,7 +140,7 @@ function Distributed(child_architecture = CPU();
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
     
@@ -259,7 +259,6 @@ end
 function RankConnectivity(local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
-    TX, TY, TZ = topology
 
     i_east  = increment_index(i, Rx)
     i_west  = decrement_index(i, Rx)
