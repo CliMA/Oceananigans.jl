@@ -23,6 +23,12 @@ model_temperature(bf, model)     = model.tracers.T
 model_salinity(bf, model)        = model.tracers.S
 model_geopotential_height(model) = KernelFunctionOperation{Center, Center, Center}(Zᶜᶜᶜ, model.grid)
 
+const ConstantTemperatureSB = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} where {FT, EOS}
+const ConstantSalinitySB    = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number} where {FT, EOS}
+
+model_temperature(b::ConstantTemperatureSB, model) = b.constant_temperature
+model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
+
 """
     SeawaterDensity(model; temperature, salinity, geopotential_height)
 
