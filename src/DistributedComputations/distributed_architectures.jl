@@ -76,15 +76,15 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    communicator :: γ,
                    mpi_requests :: M,
                    mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
-                                                     partition,
-                                                     ranks,
-                                                     local_rank,
-                                                     local_index,
-                                                     connectivity,
-                                                     communicator,
-                                                     mpi_requests,
-                                                     mpi_tag)
+                       new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
+                                                         partition,
+                                                         ranks,
+                                                         local_rank,
+                                                         local_index,
+                                                         connectivity,
+                                                         communicator,
+                                                         mpi_requests,
+                                                         mpi_tag)
 end
 
 #####
