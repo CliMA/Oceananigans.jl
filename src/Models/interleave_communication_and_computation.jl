@@ -1,5 +1,5 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: halo_size, topology, architecture
 
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
