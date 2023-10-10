@@ -107,7 +107,6 @@ include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
-include("density_model.jl")
 
 using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 
@@ -136,5 +135,8 @@ function default_nan_checker(model::OceananigansModels)
     nan_checker = NaNChecker(field_to_check_nans)
     return nan_checker
 end
+
+# This is here so that `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
+include("density_model.jl")
 
 end # module

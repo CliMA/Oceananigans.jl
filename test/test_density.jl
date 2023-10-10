@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models
-using Oceananigans.Models: model_geopotential_height
-using SeawaterPolynomials: ρ, BoussinesqEquationOfState, SecondOrderSeawaterPolynomial
+using SeawaterPolynomials: ρ, BoussinesqEquationOfState
+using SeawaterPolynomials: SecondOrderSeawaterPolynomial, RoquetEquationOfState
+using SeawaterPolynomials: TEOS10EquationOfState, TEOS10SeawaterPolynomial
 using Oceananigans.BuoyancyModels: Zᶜᶜᶜ
 
 tracers = (:S, :T)
@@ -31,7 +32,21 @@ function Roquet_eos_works(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrder
     return SeawaterDensity(model) isa KernelFunctionOperation
 end
 
-function insitu_Roquet_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
+"""
+    function insitu_density_Roquet_computation_test(arch, FT, eos)
+Use the `KernelFunctionOperation` returned from `SeawaterDensity` to compute a density `Field`
+and compare the computed values to density values explicitly calculate using
+`SeawaterPolynomials.ρ`. The funciton `sum`s over the `Array{Bool}` that is returned from the
+equality comparison between the density `Field` (computed using `SeawaterDensity`) and the
+values calculated using `SeawaterPolynomials.ρ`. If the `sum` is the same size as the product of
+the dimensions of the grid then all values must be equal the returned value for the equality
+comparison is 1 if `true`.
+
+This same method is used for testing the output from `SeawaterDensity` in
+`potential_density_Roquet_computation_test`, `insitu_density_TEOS10_computation_test` and
+`potential_density_TEOS10_computation_test`.
+"""
+function insitu_density_Roquet_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
@@ -52,7 +67,7 @@ function insitu_Roquet_computation_test(arch, FT, eos::BoussinesqEquationOfState
     return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
 end
 
-function potential_Roquet_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
+function potential_density_Roquet_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
@@ -83,7 +98,7 @@ function TEOS10_eos_works(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10Seawa
     return SeawaterDensity(model) isa KernelFunctionOperation
 end
 
-function insitu_TEOS10_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
+function insitu_density_TEOS10_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
@@ -104,7 +119,7 @@ function insitu_TEOS10_computation_test(arch, FT, eos::BoussinesqEquationOfState
     return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
 end
 
-function potential_TEOS10_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
+function potential_density_TEOS10_computation_test(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
@@ -150,9 +165,9 @@ end
         for FT in float_types
             for arch in archs
                 for eos in Roquet_eos
-                    @test insitu_Roquet_computation_test(arch, FT, eos)
+                    @test insitu_density_Roquet_computation_test(arch, FT, eos)
                 end
-                @test insitu_TEOS10_computation_test(arch, FT, TEOS10_eos)
+                @test insitu_density_TEOS10_computation_test(arch, FT, TEOS10_eos)
             end
         end
     end
@@ -161,9 +176,9 @@ end
         for FT in float_types
             for arch in archs
                 for eos in Roquet_eos
-                    @test potential_Roquet_computation_test(arch, FT, eos)
+                    @test potential_density_Roquet_computation_test(arch, FT, eos)
                 end
-                @test potential_TEOS10_computation_test(arch, FT, TEOS10_eos)
+                @test potential_density_TEOS10_computation_test(arch, FT, TEOS10_eos)
             end
         end
     end
