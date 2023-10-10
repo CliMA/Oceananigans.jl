@@ -69,7 +69,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, topo)
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)

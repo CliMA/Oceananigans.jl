@@ -1,6 +1,7 @@
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
+using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
@@ -8,7 +9,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indice
     indices = validate_indices(indices, (LX, LY, LZ), grid)
     validate_field_data((LX, LY, LZ), data, grid, indices)
     validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity)
+    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
     buffers = FieldBoundaryBuffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
