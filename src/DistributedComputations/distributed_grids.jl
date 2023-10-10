@@ -54,6 +54,10 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
+    # We do not know the connectivity a-priori (it is assumed to be Periodic in all directions)
+    # Here we modify the connectivity to account for bounded domains
+    regularize_connectivity!(arch.connectivity, arch.local_index, arch.ranks, topology)
+
     TX, TY, TZ, global_size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
@@ -101,10 +105,14 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                topology = nothing,           
                                radius = R_Earth,
                                halo = (1, 1, 1))
+    
+    # We do not know the connectivity a-priori (it is assumed to be Periodic in all directions)
+    # Here we modify the connectivity to account for bounded domains
+    regularize_connectivity!(arch.connectivity, arch.local_index, arch.ranks, topology)
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
-    
+
     nλ, nφ, nz = validate_size(topology..., size)
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks

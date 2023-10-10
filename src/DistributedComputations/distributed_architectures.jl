@@ -26,7 +26,7 @@ end
 
 regularize_size(sz::Array{<:Int, 1}) = regularize_size(sz[1])
 regularize_size(sz::Array{<:Int, 2}) = regularize_size((sz[1], sz[2]))
-regularize_size(sz::Tuple{<:Int}) = regularize_size(sz[1])
+regularize_size(sz::Tuple{<:Int})    = regularize_size(sz[1])
 
 # For 3D partitions:
 # regularize_size(sz::Tuple{<:Int, <:Int, <:Int}, Rx, Ry) = sz
@@ -125,7 +125,7 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                     topology, 
+                     topology = (Periodic, Periodic, Periodic), 
                      communicator = MPI.COMM_WORLD,
                      devices = nothing, 
                      synchronized_communication = false,
@@ -216,7 +216,10 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+# RankConnectivity needs to be a tuple since it has to be regularized
+# when constructing a grid with a certain topology (topology is not known when
+# constructing the architecture)
+mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
         north :: N
@@ -237,7 +240,6 @@ RankConnectivity(; east, west, north, south, southwest, southeast, northwest, no
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
-
 function increment_index(i, R, topo)
     R == 1 && return nothing
     if i+1 > R
@@ -263,6 +265,8 @@ function decrement_index(i, R, topo)
         return i-1
     end
 end
+
+RankConnectivity(local_index, ranks, ::Nothing) = RankConnectivity(Tuple(nothing for i in 1:8)...)
 
 function RankConnectivity(local_index, ranks, topology)
     i, j, k = local_index
@@ -290,6 +294,25 @@ function RankConnectivity(local_index, ranks, topology)
                             southeast=southeast_rank,
                             northwest=northwest_rank,
                             northeast=northeast_rank)
+end
+
+# We want to change the connectivity to adapt to the grid
+function regularize_connectivity!(r::RankConnectivity, local_index, ranks, topology)
+    r_new = RankConnectivity(local_index, ranks, topology)
+
+    if r_new != r
+        @warn "Adapting architecture's connectivity to a $topology grid"
+        r.west      = r_new.west     
+        r.east      = r_new.east     
+        r.south     = r_new.south    
+        r.north     = r_new.north    
+        r.southwest = r_new.southwest
+        r.southeast = r_new.southeast
+        r.northwest = r_new.northwest
+        r.northeast = r_new.northeast
+    end
+
+    return nothing
 end
 
 #####

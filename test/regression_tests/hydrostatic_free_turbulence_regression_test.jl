@@ -3,6 +3,8 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
+using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations
+
 using JLD2
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
@@ -67,7 +69,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     x_topology_str = string(topology(grid, 1))
     output_filename = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$(free_surface_str).jld2"
 
-    if regenerate_data
+    if regenerate_data && !(grid isa DistributedGrid) # never regenerate on Distributed
         @warn "Generating new data for the Hydrostatic regression test."
         
         directory =  joinpath(dirname(@__FILE__), "data")
@@ -79,7 +81,6 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                                               overwrite_existing = true)
     end
    
-
     # Let's gooooooo!
     run!(simulation)
 
@@ -97,10 +98,10 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         file = jldopen(regression_data_path)
 
         truth_fields = (
-            u = file["timeseries/u/$stop_iteration"][:, :, :],
-            v = file["timeseries/v/$stop_iteration"][:, :, :],
-            w = file["timeseries/w/$stop_iteration"][:, :, :],
-            η = file["timeseries/η/$stop_iteration"][:, :, :]
+            u = partition_global_array(arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
+            v = partition_global_array(arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
+            w = partition_global_array(arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
+            η = partition_global_array(arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
         )
 
         close(file)

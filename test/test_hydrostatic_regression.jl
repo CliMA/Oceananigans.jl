@@ -79,7 +79,8 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                     
                 # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
                 # because "uses too much parameter space (maximum 0x1100 bytes)" error 
-                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) 
+                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) && 
+                   !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
 
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)
                     
