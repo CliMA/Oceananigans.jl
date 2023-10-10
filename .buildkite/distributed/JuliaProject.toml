@@ -1,0 +1,18 @@
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+HDF5_jll = "0234f1f7-429e-5d53-9886-15a909be8d59"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
+
+[preferences.CUDA_Runtime_jll]
+version = "local"
+
+[preferences.HDF5_jll]
+libhdf5_path = "libhdf5"
+libhdf5_hl_path = "libhdf5_hl"
+
+[preferences.MPIPreferences]
+_format = "1.0"
+abi = "OpenMPI"
+binary = "system"
+libmpi = "libmpi"
+mpiexec = "mpiexec"
