@@ -25,8 +25,26 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 ψ = Field{Face, Face, Center}(grid)
-set!(ψ, ψᵣ)
-fill_halo_regions!(ψ)
+
+# Here we avoid set! (which also isn't implemented btw) because we would like
+# to manually determine the streamfunction within halo regions.
+# This allows us to avoid having to fill_halo_regions! correctly for a (Face, Face, Center) field.
+# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that 
+# do not correspond to an interior point!
+for region in 1:number_of_regions(grid)
+    i₀ = 1
+    i⁺ = Nx + 1
+    j₀ = 1
+    j⁺ = Ny + 1
+    k₀ = 1
+    k⁺ = Nz + 1
+
+    for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
 
 u = XFaceField(grid)
 v = YFaceField(grid)
