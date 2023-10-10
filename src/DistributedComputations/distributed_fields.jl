@@ -33,6 +33,23 @@ function set!(u::DistributedField, f::Function)
     return u
 end
 
+# Automatically partition under the hood if sizes are compatible
+function set!(u::DistributedField, v::AbstractArray)
+    gsize = global_size(architecture(u), size(u))
+
+    if size(v) == size(u)
+        f = arch_array(architecture(u), f)
+        u .= f
+        return u
+    elseif size(v) == gsize
+        f = partition_global_array(architecture(u), v, size(u))
+        u .= f
+        return u
+    else
+        throw(ArgumentError("ERROR: DimensionMismatch: array could not be set to match destination field"))
+    end
+end
+
 """
     synchronize_communication!(field)
 

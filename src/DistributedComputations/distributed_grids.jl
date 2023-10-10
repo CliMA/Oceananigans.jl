@@ -36,6 +36,9 @@ function local_size(p::EqualPartition, rank, global_size)
     return (Nxℓ, Nyℓ, Nzℓ)
 end
 
+# Global size from local size
+global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
+
 """
     RectilinearGrid(arch::Distributed, FT=Float64; kw...)
 
@@ -270,12 +273,14 @@ end
 
 function scatter_local_grids(arch::Distributed, global_grid::RectilinearGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    return RectilinearGrid(arch, eltype(global_grid); size=local_size, x=x, y=y, z=z, halo=halo, topology=topo)
+    gsize = global_size(arch, local_size)
+    return RectilinearGrid(arch, eltype(global_grid); size=gsize, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=local_size, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
+    gsize = global_size(arch, local_size)
+    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=gsize, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
 end
 
 """ 
