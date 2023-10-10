@@ -6,7 +6,6 @@ import FFTW
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
-
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
     plan :: P
     global_grid :: F
@@ -207,3 +206,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds ϕ[i, j, k] = real(ϕc[k, j, i])
 end
+
