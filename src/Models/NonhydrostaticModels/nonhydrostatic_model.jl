@@ -160,7 +160,7 @@ function NonhydrostaticModel(;    grid,
     # Next, we form a list of default boundary conditions:
     
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., names(auxiliary_fields)..., names(biogeochemical_auxiliary_fields(biogeochemistry))...)
+    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)..., keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions() for name in prognostic_field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
