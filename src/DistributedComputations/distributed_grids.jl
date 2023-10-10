@@ -103,9 +103,11 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                halo = (1, 1, 1))
     
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
-    nλ, nφ, nz = validate_size(topology..., size)
+    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+
+    nλ, nφ, nz = local_sz
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
