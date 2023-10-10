@@ -115,9 +115,7 @@ If `trailing_zeros > 0` then all values are multiplied with `10^trailing_zeros`,
 `trailing_zeros = 2` we have that 54100 corresponds to region=5, i=4, j=2.
 """
 function create_test_data(grid, region; trailing_zeros=0)
-
     Nx, Ny, Nz = size(grid)
-
     (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
     !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
     factor = 10^(trailing_zeros)
