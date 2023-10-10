@@ -208,14 +208,13 @@ end
 function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    loc = loc[1]
 
     dst = buffers[bc.condition.rank].west.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_west_and_east_indices(src, loc, bc.condition)
+    src = flip_west_and_east_indices(src, loc[1], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -229,14 +228,13 @@ end
 function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    loc = loc[]
 
     dst = buffers[bc.condition.rank].east.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_west_and_east_indices(src, loc, bc.condition)
+    src = flip_west_and_east_indices(src, loc[1], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -250,14 +248,13 @@ end
 function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)        
     H = halo_size(grid)[2]
     N = size(grid)[2]
-    loc = loc[2]
 
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_south_and_north_indices(src, loc, bc.condition)
+    src = flip_south_and_north_indices(src, loc[2], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -277,7 +274,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_south_and_north_indices(src, loc, bc.condition)
+    src = flip_south_and_north_indices(src, loc[2], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
