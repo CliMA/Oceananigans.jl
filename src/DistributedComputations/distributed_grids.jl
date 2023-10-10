@@ -19,15 +19,15 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-function local_size(p::Partition, topo, ranks, global_size)
+function local_size(p::Partition, topo, ranks, gsize)
     # TODO: check correctness
     return p.sizes[rank]
 end
 
 const EqualPartition = Partition{Nothing}
 
-function local_size(p::EqualPartition, rank, global_size)
-    Nx, Ny, Nz = global_size
+function local_size(p::EqualPartition, rank, gsize)
+    Nx, Ny, Nz = gsize
     Rx, Ry, Rz = size(p)
     # TODO: Check that it is possible to partition Nx by Rx, etc
     Nxℓ = Nx ÷ Rx
@@ -54,10 +54,10 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_size, halo, x, y, z =
+    TX, TY, TZ, gsize, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+    local_sz = local_size(arch.partition, arch.local_rank, gsize)
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -105,7 +105,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
-    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+    local_sz = local_size(arch.partition, arch.local_rank, (Nλ, Nφ, Nz))
 
     nλ, nφ, nz = local_sz
     ri, rj, rk = arch.local_index
