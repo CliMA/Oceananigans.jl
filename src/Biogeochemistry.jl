@@ -126,7 +126,8 @@ tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
 add_biogeochemical_tracer(tracers::Tuple, name, grid) = tuple(tracers..., name)
-add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple((name => CenterField(grid), )))
+add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, 
+                                                                   NamedTuple{(name, )}((CenterField(grid), )))
 
 @inline function has_biogeochemical_tracers(fields, required_fields, grid)
     user_specified_tracers = [name in tracernames(fields) for name in required_fields]
