@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models
+using Oceananigans.Models: model_geopotential_height
 using SeawaterPolynomials: ρ, BoussinesqEquationOfState
 using SeawaterPolynomials: SecondOrderSeawaterPolynomial, RoquetEquationOfState
 using SeawaterPolynomials: TEOS10EquationOfState, TEOS10SeawaterPolynomial
