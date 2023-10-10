@@ -50,9 +50,8 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_nodes: 1
-      slurm_tasks_per_node: 4
-      slurm_gpus: 4
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
 
   - label: "🦾 cpu distributed solvers tests"
     key: "distributed_solvers_cpu"
