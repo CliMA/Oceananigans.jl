@@ -1,4 +1,5 @@
 using Oceananigans.Fields: FunctionField
+using Oceananigans.Grids: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
@@ -98,10 +99,10 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         file = jldopen(regression_data_path)
 
         truth_fields = (
-            u = partition_global_array(arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
-            v = partition_global_array(arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
-            w = partition_global_array(arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
-            η = partition_global_array(arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
+            u = partition_global_array(architecture(grid), file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
+            v = partition_global_array(architecture(grid), file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
+            w = partition_global_array(architecture(grid), file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
+            η = partition_global_array(architecture(grid), file["timeseries/η/$stop_iteration"][:, :, :], size(η))
         )
 
         close(file)
