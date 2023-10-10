@@ -216,7 +216,7 @@ end
 ##### Rank connectivity graph
 #####
 
-# RankConnectivity needs to be a tuple since it has to be regularized
+# RankConnectivity needs to be mutable since it has to be regularized
 # when constructing a grid with a certain topology (topology is not known when
 # constructing the architecture)
 mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
