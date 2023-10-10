@@ -8,22 +8,44 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles
 
-using Oceananigans: AbstractModel, fields
+using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: AbstractField, flattened_unique_values
+using Oceananigans.Fields: AbstractField, Field, flattened_unique_values
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.TimeSteppers: reset!
 
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_timeseries
 
+# A prototype interface for AbstractModel.
+# 
+# TODO: decide if we like this.
+#
+# We assume that model has some properties, eg:
+#   - model.clock::Clock
+#   - model.architecture.
+#   - model.timestepper with timestepper.G⁻ and timestepper.Gⁿ :spiral_eyes:
+#
+# Perhaps this is a little unclean.
+
+iteration(model::AbstractModel) = model.clock.iteration
+Base.time(model::AbstractModel) = model.clock.time
 architecture(model::AbstractModel) = model.architecture
 initialize!(model::AbstractModel) = nothing
+total_velocities(model::AbstractModel) = nothing
+timestepper(model::AbstractModel) = model.timestepper
 
-total_velocities() = nothing
+# Fallback for any abstract model that does not contain `FieldTimeSeries`es
+update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+
+#####
+##### Model-building utilities
+#####
 
 function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
     user_halo = halo_size(grid)
@@ -38,8 +60,37 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 
-# Fallback for any abstract model that does not contain `FieldTimeSeries`es
-update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+#
+# Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
+#
+# Note: ignores tuples, including tuples of Symbols (tracer names) and
+# tuples of DiffusivityFields (which occur for tupled closures)
+
+extract_boundary_conditions(::Nothing) = NamedTuple()
+extract_boundary_conditions(::Tuple) = NamedTuple()
+
+function extract_boundary_conditions(field_tuple::NamedTuple)
+    names = propertynames(field_tuple)
+    bcs = Tuple(extract_boundary_conditions(field) for field in field_tuple)
+    return NamedTuple{names}(bcs)
+end
+
+extract_boundary_conditions(field::Field) = field.boundary_conditions
+
+# Util for validation tracer advection schemes
+
+""" Returns a default_tracer_advection, tracer_advection `tuple`. """
+validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
+
+# Util for checking whether the model's prognostic state has NaN'd
+include("nan_checker.jl")
+
+#####
+##### All the code
+#####
 
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
@@ -106,4 +157,14 @@ function reset!(model::OceananigansModels)
     return nothing
 end
 
+# Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
+function default_nan_checker(model::OceananigansModels)
+    model_fields = prognostic_fields(model)
+    first_name = first(keys(model_fields))
+    field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
+    nan_checker = NaNChecker(field_to_check_nans)
+    return nan_checker
+end
+
 end # module
+
