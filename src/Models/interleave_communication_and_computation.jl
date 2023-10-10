@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
+using Oceananigans.Grids
 using Oceananigans.Grids: halo_size, topology, architecture
-
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed
