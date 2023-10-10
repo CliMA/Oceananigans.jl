@@ -16,7 +16,7 @@ InMemory(; chunk_size = Colon()) = chunk_size isa Colon ?
 struct OnDisk <: AbstractDataBackend end
 
 regularize_backend(::InMemory, data) = InMemory(collect(1:size(data, 4)))
-regularize_backend(::OnDisk,   data) = nothing
+regularize_backend(::OnDisk,   data) = OnDisk()
 
 include("field_time_series.jl")
 include("memory_allocated_field_time_series.jl")
