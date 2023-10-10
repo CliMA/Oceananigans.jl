@@ -77,9 +77,14 @@ Adapt.adapt_structure(to, af::AdvectiveForcing) =
      v = SumOfArrays{2}(forcing.v, total_velocities.v),
      w = SumOfArrays{2}(forcing.w, total_velocities.w))
 
+# Unwrap the tuple within MultipleForcings
+@inline with_advective_forcing(mf::MultipleForcings, total_velocities) =
+    with_advective_forcing(mf.forcings, total_velocities)
+
+# Recurse over forcing tuples
 @inline with_advective_forcing(forcing::Tuple, total_velocities) = 
     @inbounds with_advective_forcing(forcing[2:end], with_advective_forcing(forcing[1], total_velocities))
 
-# terminates recursion
+# Terminate recursion
 @inline with_advective_forcing(forcing::NTuple{1}, total_velocities) = 
     @inbounds with_advective_forcing(forcing[1], total_velocities)

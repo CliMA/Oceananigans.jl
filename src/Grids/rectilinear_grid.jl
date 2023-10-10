@@ -19,7 +19,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
+    Δzᵃᵃᶠ :: FZ
     Δzᵃᵃᶜ :: FZ
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
@@ -84,7 +84,7 @@ Positional arguments
 - `architecture`: Specifies whether arrays of coordinates and spacings are stored
                   on the CPU or GPU. Default: `CPU()`.
 
-- `FT` : Floating point data type. Default: `Float64`.
+- `FT`: Floating point data type. Default: `Float64`.
 
 Keyword arguments
 =================
@@ -139,15 +139,17 @@ Grid properties
 
 - `(Lx, Ly, Lz) :: FT`: Physical extent of the grid in the ``(x, y, z)``-direction.
 
-- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δzᵃᵃᶜ)`: Grid spacing in the ``(x, y, z)``-direction between cell centers.
-                           Defined at cell centers in ``x``, ``y``, and ``z``.
+- `(Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δzᵃᵃᶜ)`: Spacings in the ``(x, y, z)``-directions between the cell faces.
+                           These are the lengths in ``x``, ``y``, and ``z`` of `Center` cells and are
+                           defined at `Center` locations.
 
-- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ)`: Grid spacing in the ``(x, y, z)``-direction between cell faces.
-                           Defined at cell faces in ``x``, ``y``, and ``z``.
+- `(Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ)`: Spacings in the ``(x, y, z)``-directions between the cell centers.
+                           These are the lengths in ``x``, ``y``, and ``z`` of `Face` cells and are
+                           defined at `Face` locations.
 
-- `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: ``(x, y, z)`` coordinates of cell centers.
+- `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: ``(x, y, z)`` coordinates of cell `Center`s.
 
-- `(xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)`: ``(x, y, z)`` coordinates of cell faces.
+- `(xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)`: ``(x, y, z)`` coordinates of cell `Face`s.
 
 Examples
 ========
@@ -406,7 +408,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        new_properties...)
 end
 
-return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 #####
 ##### Grid nodes
