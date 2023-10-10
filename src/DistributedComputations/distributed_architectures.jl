@@ -42,25 +42,6 @@ struct Partition{S, Rx, Ry, Rz}
         Rz = size(sizes, 3)
         return new{S, Rx, Ry, Rz}(sizes)
     end
-
-    #=
-    @doc"""
-        Partition(sizes::AbstractArray{<:Any, 2})
-
-    Return `Partition` dividing a domain into `length(sizes)` parts,
-    with `Rx = size(sizes, 1)` in `x` and `Ry = size(sizes, 2)` in `y`.
-    The elements of `sizes` denote the size of each part.
-    """
-    function Partition(sizes::Array{<:Any, 2})
-        # Note: restricting `lengths` to 2D forbids partitioning in z.
-        Rx = size(sizes, 1)
-        Ry = size(sizes, 2)
-        # TODO: make lengths static somehow?
-        # sizes = [regularize_size(sizes[ri, rj], Rx, Ry) for ri = 1:Rx, rj = 1:Ry]
-        S = typeof(sizes)
-        return new{Rx, Ry, 1, L}(sizes)
-    end
-    =#
 end
 
 """
@@ -130,7 +111,7 @@ Keyword arguments
 
 - `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
                         
-- `synched_communication`: if true, always use synchronized communication through ranks
+- `synchronized_communication`: if true, always use synchronized communication through ranks
 
 - `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
                       `y` and `z` direction. NOTE: support for distributed z direction is 
@@ -147,7 +128,7 @@ function Distributed(child_architecture = CPU();
                      topology, 
                      communicator = MPI.COMM_WORLD,
                      devices = nothing, 
-                     synched_communication = false,
+                     synchronized_communication = false,
                      partition = Partition(MPI.Comm_size(communicator)))
 
     if !(MPI.Initialized())
@@ -179,15 +160,15 @@ function Distributed(child_architecture = CPU();
 
     mpi_requests = MPI.Request[]
 
-    return Distributed{synched_communication}(child_architecture,
-                                              partition,
-                                              ranks,
-                                              local_rank,
-                                              local_index,
-                                              local_connectivity,
-                                              communicator,
-                                              mpi_requests,
-                                              Ref(0))
+    return Distributed{synchronized_communication}(child_architecture,
+                                                   partition,
+                                                   ranks,
+                                                   local_rank,
+                                                   local_index,
+                                                   local_connectivity,
+                                                   communicator,
+                                                   mpi_requests,
+                                                   Ref(0))
 end
 
 const DistributedCPU = Distributed{CPU}
