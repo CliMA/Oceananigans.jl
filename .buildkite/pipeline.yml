@@ -508,7 +508,7 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  - label: "🤺 cpu hydrostatic regression tests"
+  - label: "🤺 cpu distributed hydrostatic regression tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed_hydrostatic_regression"

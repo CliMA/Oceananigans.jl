@@ -146,7 +146,7 @@ function Distributed(child_architecture = CPU();
     
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    # This rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
+    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
     local_connectivity = RankConnectivity(local_index, ranks) 
 
     # Assign CUDA device if on GPUs
@@ -214,9 +214,6 @@ end
 ##### Rank connectivity graph
 #####
 
-# RankConnectivity needs to be mutable since it has to be regularized
-# when constructing a grid with a certain topology (topology is not known when
-# constructing the architecture)
 struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
