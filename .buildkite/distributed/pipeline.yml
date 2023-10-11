@@ -67,7 +67,7 @@ steps:
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_solvers_cpu"
     env:
-      TEST_GROUP: "distributed_solvers"
+      TEST_GROUP: "distributed_hydrostatic_model"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -76,7 +76,7 @@ steps:
   - label: "🕺 gpu distributed hydrostatic model tests"
     key: "distributed_solvers_cpu"
     env:
-      TEST_GROUP: "distributed_solvers"
+      TEST_GROUP: "distributed_hydrostatic_model"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
