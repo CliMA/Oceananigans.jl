@@ -1,6 +1,8 @@
 using Oceananigans
 using Enzyme
 
+# Required presently
+Enzyme.API.runtimeActivity!(true)
 
 f(grid) = CenterField(grid)
 
@@ -11,8 +13,7 @@ f(grid) = CenterField(grid)
 	N = 100
 	topo = (Periodic, Flat, Flat)
 	grid = RectilinearGrid(arch, FT, topology=topo, size=(N), halo=2, x=(-1, 1), y=(-1, 1), z=(-1, 1))
-
-	fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, Const(grid))
+	fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, typeof(Const(grid)))
 
 	tape, primal, shadow = fwd(Const(f), Const(grid) )
 
