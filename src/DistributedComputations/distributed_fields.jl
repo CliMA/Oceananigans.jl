@@ -35,7 +35,7 @@ function set!(u::DistributedField, f::Function)
 end
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, v::AbstractArray)
+function set!(u::DistributedField, v::Union{Array, CuArray})
     gsize = global_size(architecture(u), size(u))
 
     if size(v) == size(u)
