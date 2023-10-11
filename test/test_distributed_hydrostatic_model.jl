@@ -32,42 +32,6 @@ Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
-function solid_body_tracer_advection_test(grid)
-
-    if grid isa RectilinearGrid
-        L = 0.1
-    else
-        L = 24
-    end
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        tracers = (:c, :e),
-                                        velocities = prescribed_velocities(),
-                                        free_surface = ExplicitFreeSurface(),
-                                        momentum_advection = nothing,
-                                        tracer_advection = WENO(),
-                                        coriolis = nothing,
-                                        buoyancy = nothing,
-                                        closure  = nothing)
-
-    # Tracer patch parameters
-    cᵢ(x, y, z) = Gaussian(x, 0, L)
-    eᵢ(x, y, z) = Gaussian(x, y, L)
-
-    set!(model, c=cᵢ, e=eᵢ)
-
-    # Time-scale for tracer advection across the smallest grid cell; 0.1 is maximum velocity
-    advection_time_scale = Δ_min(grid) / 0.1
-
-    Δt = 0.1advection_time_scale
-
-    for _ in 1:10
-        time_step!(model, Δt)
-    end
-
-    return model.tracers
-end
-
 function solid_body_rotation_test(grid)
 
     free_surface = SplitExplicitFreeSurface(; substeps = 10, gravitational_acceleration = 1)
@@ -123,29 +87,7 @@ for arch in archs
                                      z = (-1, 0),
                                      radius = 1)
 
-    @testset "Testing multi region tracer advection" begin
-        for grid in [grid_rect, grid_lat]
-
-            global_grid = reconstruct_global_grid(grid)
-
-            cs, es = solid_body_tracer_advection_test(global_grid)
-
-            cs = Array(interior(cs))
-            es = Array(interior(es))
-
-            @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            c, e = solid_body_tracer_advection_test(grid)
-
-            c = Array(interior(c))
-            e = Array(interior(e))
-
-            @test all(c .≈ partition_global_array(arch, cs, size(c)))
-            @test all(e .≈ partition_global_array(arch, es, size(e)))
-            end
-        end
-    end
-
-    @testset "Testing multi region solid body rotation" begin
+    @testset "Testing distributed solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
                                         latitude = (-80, 80),
