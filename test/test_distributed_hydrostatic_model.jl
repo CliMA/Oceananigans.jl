@@ -112,21 +112,19 @@ for arch in archs
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
 
-        for regions in [2], P in partitioning
-            @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
+        @info "  Testing distributed solid body rotation with architecture $arch"
+        u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
 
-            u = Array(interior(u))
-            v = Array(interior(v))
-            w = Array(interior(w))
-            c = Array(interior(c))
-            η = Array(interior(η))
+        u = Array(interior(u))
+        v = Array(interior(v))
+        w = Array(interior(w))
+        c = Array(interior(c))
+        η = Array(interior(η))
 
-            @test all(isapprox(u, partition_global_array(arch, us, size(u)), atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(v, partition_global_array(arch, vs, size(v)), atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(w, partition_global_array(arch, ws, size(w)), atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(c, partition_global_array(arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(η, partition_global_array(arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
-        end
+        @test all(isapprox(u, partition_global_array(arch, us, size(u)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(v, partition_global_array(arch, vs, size(v)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(w, partition_global_array(arch, ws, size(w)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(c, partition_global_array(arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(η, partition_global_array(arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
     end
 end          
