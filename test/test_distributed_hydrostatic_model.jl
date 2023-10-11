@@ -26,11 +26,9 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition_global_array, reconstruct_global_grid
+using Oceananigans.DistributedComputations: partition_global_array, all_reduce, reconstruct_global_grid
 
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
-
-prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -40,7 +38,7 @@ end
 
 function solid_body_rotation_test(grid)
 
-    free_surface = SplitExplicitFreeSurface(; substeps = 10, gravitational_acceleration = 1)
+    free_surface = SplitExplicitFreeSurface(; substeps = 5, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -62,8 +60,8 @@ function solid_body_rotation_test(grid)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    @show Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
-    @show Δt = all_reduce(Δt, architecture(grid), op = min)
+    @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
+    @show Δt = all_reduce(Δt_local, architecture(grid), op = min)
 
     for _ in 1:10
         time_step!(model, Δt)
@@ -77,22 +75,6 @@ Nx = 32
 Ny = 32
 
 for arch in archs
-
-    grid_rect = RectilinearGrid(arch,
-                                size = (Nx, Ny, 1),
-                                halo = (3, 3, 3),
-                                topology = (Periodic, Bounded, Bounded),
-                                x = (0, 1),
-                                y = (0, 1),
-                                z = (0, 1))
-
-    grid_lat = LatitudeLongitudeGrid(arch,
-                                     size = (Nx, Ny, 1),
-                                     halo = (3, 3, 3),
-                                     latitude = (-80, 80),
-                                     longitude = (-180, 180),
-                                     z = (-1, 0),
-                                     radius = 1)
 
     @testset "Testing distributed solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
