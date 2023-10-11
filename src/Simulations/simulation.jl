@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
-using Oceananigans.DistributedComputations: Distributed, allreduce
+using Oceananigans.DistributedComputations: Distributed, all_reduce
 
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
@@ -117,7 +117,7 @@ end
 Make sure different workers are using the same time step
 """
 function validate_Δt(Δt, arch::Distributed)
-    Δt_min = allreduce(Δt, arch, op = min)
+    Δt_min = all_reduce(Δt, arch, op = min)
     if Δt != Δt_min
         @warn "On rank $(arch.local_rank), Δt = $Δt is not the same as for the other workers. Using the minimum Δt = $Δt_min instead."
     end
