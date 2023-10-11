@@ -39,7 +39,7 @@ function set!(u::DistributedField, v::AbstractArray)
     gsize = global_size(architecture(u), size(u))
 
     if size(v) == size(u)
-        f = arch_array(architecture(u), f)
+        f = arch_array(architecture(u), v)
         u .= f
         return u
     elseif size(v) == gsize
