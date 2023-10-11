@@ -1,5 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+using Oceananigans.DistributedComputations: Distributed, allreduce
 
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
@@ -57,6 +58,8 @@ function Simulation(model; Δt,
              "= wall time limit = Inf."
    end
 
+   Δt = validate_Δt(Δt, architecture(model))
+
    diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
    output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
    callbacks = OrderedDict{Symbol, Callback}()
@@ -107,6 +110,22 @@ end
 #####
 ##### Utilities
 #####
+
+"""
+    validate_Δt(Δt, arch)
+
+Make sure different workers are using the same time step
+"""
+function validate_Δt(Δt, arch::Distributed)
+    Δt_min = allreduce(Δt, arch, op = min)
+    if Δt != Δt_min
+        @warn "On rank $(arch.local_rank), Δt = $Δt is not the same as for the other workers. Using the minimum Δt = $Δt_min instead."
+    end
+    return Δt_min
+end
+
+# Fallback
+validate_Δt(Δt, arch) = Δt
 
 """
     time(sim::Simulation)
