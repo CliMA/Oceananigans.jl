@@ -36,7 +36,7 @@ end
 # Individual local size for unequal partitioning
 function local_size(N, R::Vector, arch, i::Int)
     r   = arch.local_index[i]
-    N𝓁  = Tuple(N * R[i] for i in 1:length(R))
+    N𝓁  = Tuple(ceil(Int, N * R[i]) for i in 1:length(R))
     Nℊ = concatenate_local_sizes(N𝓁, arch)
     if r == length(R) # If R does not divide N, we add the remainder to the last rank
         return N𝓁[r] + N - Nℊ
