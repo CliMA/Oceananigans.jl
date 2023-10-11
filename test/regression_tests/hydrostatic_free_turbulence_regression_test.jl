@@ -15,7 +15,7 @@ get_topology(grid, i) = string(topology(grid, i))
 
 function get_topology(grid::DistributedGrid, i) 
     arch = architecture(grid)
-    R = size(arch.partition, i)
+    R = arch.ranks[i]
     r = ordered_indices(arch.local_index, i)
     T = reconstruct_global_topology(topology(grid, i), R, r..., arch.communicator)
     return string(T)
