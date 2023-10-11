@@ -2,16 +2,12 @@ using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
 
-MPI.Init()
-
-comm = MPI.COMM_WORLD
-rank = MPI.Comm_rank(comm)
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-
-# Setup model
 topology = (Periodic, Periodic, Flat)
-arch = Distributed(CPU(); topology, ranks=(1, Nranks, 1))
+arch = Distributed(CPU(); topology)
+
+Nranks = MPI.Comm_size(arch.communicator)
 grid = RectilinearGrid(arch; topology, size=(16 ÷ Nranks, 16), extent=(2π, 2π))
+
 c = CenterField(grid)
 
 f(x, y, z) = rand()
