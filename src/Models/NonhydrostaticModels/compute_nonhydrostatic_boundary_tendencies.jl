@@ -1,4 +1,4 @@
-import Oceananigans.DistributedComputations: compute_boundary_tendencies!
+import Oceananigans.Models: compute_boundary_tendencies!
 
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
