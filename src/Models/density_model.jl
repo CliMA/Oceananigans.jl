@@ -55,14 +55,13 @@ Example
 
 Compute a density `Field` using the `KernelFunctionOperation` returned from `SeawaterDensity`
 
-```jldoctest density1
-
+```jldoctest density
 julia> using Oceananigans, Oceananigans.Models, SeawaterPolynomials.TEOS10
 
 julia> grid = RectilinearGrid(CPU(), size=(32, 32), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-128×128×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [-7.51279e-18, 6.28319) regularly spaced with Δx=0.0490874
-├── Periodic y ∈ [-7.51279e-18, 6.28319) regularly spaced with Δy=0.0490874
+32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [3.60072e-17, 6.28319) regularly spaced with Δy=0.19635
 └── Flat z
 
 julia> tracers = (:S, :T)
@@ -108,7 +107,6 @@ julia> compute!(density_field)
 ├── status: time=0.0
 └── data: 38×38×1 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, 1:1) with eltype Float64 with indices -2:35×-2:35×1:1
     └── max=1027.7, min=1027.7, mean=1027.7
-
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to

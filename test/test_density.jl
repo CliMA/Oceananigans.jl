@@ -9,7 +9,16 @@ using SeawaterPolynomials: TEOS10EquationOfState, TEOS10SeawaterPolynomial
 using Oceananigans.BuoyancyModels: Zᶜᶜᶜ
 
 tracers = (:S, :T)
-S_testval, T_testval = (34.7, 0.5)
+ST_testvals = (S = 34.7, T = 0.5)
+
+"Return and `Array` on `arch` that is `size(grid)` flled with `value`"
+function grid_size_value(arch, grid, value)
+
+    value_array = fill(value, size(grid))
+
+    return arch_array(arch, value_array)
+
+end
 
 function error_non_Boussinesq(arch, FT)
 
@@ -38,7 +47,7 @@ end
 function Roquet_eos_constant_T_works(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
     return SeawaterDensity(model) isa KernelFunctionOperation
@@ -46,7 +55,7 @@ end
 function Roquet_eos_constant_S_works(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
     return SeawaterDensity(model) isa KernelFunctionOperation
@@ -62,14 +71,14 @@ end
 function TEOS10_eos_constant_T_works(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
     return SeawaterDensity(model) isa KernelFunctionOperation
 end
 function TEOS10_eos_constant_S_works(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
     return SeawaterDensity(model) isa KernelFunctionOperation
 end
@@ -78,75 +87,61 @@ end
     function insitu_density_Roquet_computation(arch, FT, eos)
 Use the `KernelFunctionOperation` returned from `SeawaterDensity` to compute a density `Field`
 and compare the computed values to density values explicitly calculate using
-`SeawaterPolynomials.ρ`. The funciton `sum`s over the `Array{Bool}` that is returned from the
-equality comparison between the density `Field` (computed using `SeawaterDensity`) and the
-values calculated using `SeawaterPolynomials.ρ`. If the `sum` is the same size as the product of
-the dimensions of the grid then all values must be equal the returned value for the equality
-comparison is 1 if `true`.
-
-This same method is used for testing the output from `SeawaterDensity` in
-`potential_density_Roquet_computation_test`, `insitu_density_TEOS10_computation_test` and
-`potential_density_TEOS10_computation_test`.
+`SeawaterPolynomials.ρ`. Similar function is used to test the potential density computation
 """
 function insitu_density_Roquet(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval, T = T_testval)
+    set!(model, S = ST_testvals.S, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function insitu_density_Roquet_constant_T(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval)
+    set!(model, S = ST_testvals.S)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function insitu_density_Roquet_constant_S(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, T = T_testval)
+    set!(model, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 
 function potential_density_Roquet(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
@@ -154,60 +149,54 @@ function potential_density_Roquet(arch, FT, eos::BoussinesqEquationOfState{<:Sec
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval, T = T_testval)
+    set!(model, S = ST_testvals.S, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function potential_density_Roquet_constant_T(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval)
+    set!(model, S = ST_testvals.S)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function potential_density_Roquet_constant_S(arch, FT, eos::BoussinesqEquationOfState{<:SecondOrderSeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, T = T_testval)
+    set!(model, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 
 function insitu_density_TEOS10(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
@@ -215,60 +204,53 @@ function insitu_density_TEOS10(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval, T = T_testval)
+    set!(model, S = ST_testvals.S, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
-
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function insitu_density_TEOS10_constant_T(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval)
+    set!(model, S = ST_testvals.S)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function insitu_density_TEOS10_constant_S(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, T = T_testval)
+    set!(model, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 
 function potential_density_TEOS10(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
@@ -276,65 +258,61 @@ function potential_density_TEOS10(arch, FT, eos::BoussinesqEquationOfState{<:TEO
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state = eos)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval, T = T_testval)
+    set!(model, S = ST_testvals.S, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function potential_density_TEOS10_constant_T(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = T_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_temperature = ST_testvals.T)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, S = S_testval)
+    set!(model, S = ST_testvals.S)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 function potential_density_TEOS10_constant_S(arch, FT, eos::BoussinesqEquationOfState{<:TEOS10SeawaterPolynomial})
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = S_testval)
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos, constant_salinity = ST_testvals.S)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    set!(model, T = T_testval)
+    set!(model, T = ST_testvals.T)
     d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
-    geopotential_height = zeros(size(model.grid))
-    T_testval_vec = fill(T_testval, model.grid.Nz)
-    S_testval_vec = fill(S_testval, model.grid.Nz)
-    eos_vec = fill(model.buoyancy.model.equation_of_state, model.grid.Nz)
+    geopotential_height = grid_size_value(arch, grid, 0)
+    T_vec = grid_size_value(arch, grid, ST_testvals.T)
+    S_vec = grid_size_value(arch, grid, ST_testvals.S)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_testval_vec, S_testval_vec, geopotential_height, eos_vec)
+    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
 
-    equal_values = sum(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
-
-    return equal_values == model.grid.Nx * model.grid.Ny * model.grid.Nz
+    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
 end
 
 @testset "Density models" begin
+    @info "Testing `SeawaterDensity`..."
 
     @testset "Error for non-`BoussinesqEquationOfState`" begin
+        @info "Testing error is thrown... "
         for FT in float_types
             for arch in archs
                 @test_throws ArgumentError error_non_Boussinesq(arch, FT)
@@ -343,6 +321,8 @@ end
     end
 
     @testset "SeawaterDensity `KernelFunctionOperation` instantiation" begin
+        @info "Testing `KernelFunctionOperation` is returned..."
+
         for FT in float_types
             for arch in archs
                 for eos in Roquet_eos
@@ -358,6 +338,8 @@ end
     end
 
     @testset "In-situ density computation tests" begin
+        @info "Testing in-situ density compuation..."
+
         for FT in float_types
             for arch in archs
                 for eos in Roquet_eos
@@ -373,6 +355,8 @@ end
     end
 
     @testset "Potential density computation tests" begin
+        @info "Testing a potential density comnputation..."
+
         for FT in float_types
             for arch in archs
                 for eos in Roquet_eos
