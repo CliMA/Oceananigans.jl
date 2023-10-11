@@ -27,6 +27,10 @@ MPI.Initialized() || MPI.Init()
 
 using Oceananigans.DistributedComputations: partition_global_array, reconstruct_global_grid
 
+Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
+
+prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
+
 function solid_body_tracer_advection_test(grid)
 
     if grid isa RectilinearGrid
@@ -35,7 +39,7 @@ function solid_body_tracer_advection_test(grid)
         L = 24
     end
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
@@ -63,12 +67,12 @@ function solid_body_tracer_advection_test(grid)
     return model.tracers
 end
 
-function solid_body_rotation_test(grid; P = XPartition, regions = 1)
+function solid_body_rotation_test(grid)
 
     free_surface = SplitExplicitFreeSurface(; substeps = 10, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,

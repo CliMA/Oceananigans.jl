@@ -508,10 +508,10 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  - label: "🤺 cpu distributed hydrostatic regression tests"
+  - label: "🤺 cpu distributed hydrostatic model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "distributed_hydrostatic_regression"
+      TEST_GROUP: "distributed_hydrostatic_model"
       CUDA_VISIBLE_DEVICES: "-1"
       PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
