@@ -25,6 +25,7 @@ MPI.Initialized() || MPI.Init()
 
 # to initialize MPI.
 
+using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: partition_global_array, reconstruct_global_grid
 
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
