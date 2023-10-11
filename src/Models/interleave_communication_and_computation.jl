@@ -1,5 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
+using Pceananigans.Utils: KernelParameters
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
