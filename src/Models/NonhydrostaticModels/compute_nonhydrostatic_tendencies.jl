@@ -1,7 +1,7 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
-using Oceananigans.DistributedComputations: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
+using Oceananigans.Models: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_interior_tuple

@@ -1,12 +1,11 @@
-import Oceananigans.DistributedComputations: compute_boundary_tendencies!
-using Oceananigans.Utils: worktuple, offsets
+import Oceananigans.Models: compute_boundary_tendencies!
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-import Oceananigans.DistributedComputations: compute_boundary_tendencies!
+import Oceananigans.Models: compute_boundary_tendencies!
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)

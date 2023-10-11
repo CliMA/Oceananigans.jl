@@ -123,7 +123,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon after tendency calculation
-    if async && !(arch isa BlockingDistributed)
+    if async && !(arch isa SynchronizedDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end

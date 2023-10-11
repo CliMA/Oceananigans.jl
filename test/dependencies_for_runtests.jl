@@ -7,6 +7,10 @@ using Logging
 
 using CUDA
 using MPI
+
+MPI.versioninfo()
+MPI.Initialized() || MPI.Init()
+
 using JLD2
 using FFTW
 using OffsetArrays

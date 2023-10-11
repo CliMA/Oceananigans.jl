@@ -7,7 +7,7 @@ using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
+import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple
 import Oceananigans.TimeSteppers: time_step!
 
