@@ -10,8 +10,7 @@ using CairoMakie
 include("generate_input_data.jl")
 
 #####
-##### One-sided channel with time-dependent open boundary condition on the west and 
-##### prescribed surface temperature and zonal velocity
+##### Periodic channel with time-dependent surface boundary fluxes 
 #####
 
 # Simulation parameters
@@ -26,6 +25,7 @@ grid = LatitudeLongitudeGrid(arch;
                              size = (60, 60, 10), 
                          latitude = (15, 75), 
                         longitude = (0, 60), 
+                         topology = (Periodic, Bounded, Bounded),
                              halo = (4, 4, 4),
                                 z = (-1000, 0))
 
@@ -54,7 +54,7 @@ iter = Observable(1)
 Q = @lift(interior(Qˢ[$iter], :, :, 1))
 τ = @lift(interior(τₓ[$iter], :, :, 1))
 
-fig = Figure()
+fig = Figure(resolution = (800, 300))
 ax = Axis(fig[1, 1], title = "Surface heat flux")
 heatmap!(ax, Q, colormap = :thermal, colorrange = (-5e-5, 5e-5))
 ax = Axis(fig[1, 2], title = "Surface wind stress")
@@ -128,9 +128,11 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
+output_file = "seasonal_baroclinic_channel.jld2"
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                                                       schedule = TimeInterval(1day), 
-                                                      filename ="seasonal_double_gyre",
+                                                      filename = output_file,
                                                       overwrite_existing = true)
 
 run!(simulation)
@@ -138,8 +140,6 @@ run!(simulation)
 #####
 ##### Visualize the simulation!!
 #####
-
-output_file = "seasonal_double_gyre.jld2"
 
 T_series = FieldTimeSeries(output_file, "T")
 u_series = FieldTimeSeries(output_file, "u")
