@@ -137,6 +137,6 @@ function default_nan_checker(model::OceananigansModels)
 end
 
 # This is here so that `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
-include("density_model.jl")
+include("seawater_density.jl")
 
 end # module
