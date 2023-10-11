@@ -1,0 +1,92 @@
+agents:
+  queue: central
+  slurm_mem: 8G
+  modules: julia/1.9.3 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 hdf5/1.12.2-ompi415 nsight-systems/2023.2.1
+
+env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
+  OPENBLAS_NUM_THREADS: 1
+  JULIA_NVTX_CALLBACKS: gc
+  OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  JULIA_CPU_TARGET: 'broadwell;skylake'
+  JULIA_CUDA_MEMORY_POOL: none
+
+steps:
+  - label: "initialize"
+    key: "init_central"
+    command:
+      - echo "--- Instantiate project"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true)'"
+      # force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
+      - "julia --project -e 'using MPI; MPI.versioninfo()'"
+      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
+      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+      - echo "--- Instantiate status"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+    agents:
+      slurm_mem: 80G
+      slurm_gpus: 1
+      slurm_cpus_per_task: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+      TEST_GROUP: "init"
+
+  - wait
+
+  - label: "🐉 cpu distributed unit tests"
+    key: "distributed_cpu"
+    env:
+      TEST_GROUP: "distributed"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_ntasks: 4
+
+  - label: "🐲 gpu distributed unit tests"
+    key: "distributed_gpu"
+    env:
+      TEST_GROUP: "distributed"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+
+  - label: "🦾 cpu distributed solvers tests"
+    key: "distributed_solvers_cpu"
+    env:
+      TEST_GROUP: "distributed_solvers"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_ntasks: 4
+
+  - label: "🤺 cpu distributed hydrostatic model tests"
+    key: "distributed_solvers_cpu"
+    env:
+      TEST_GROUP: "distributed_hydrostatic_model"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_ntasks: 4
+
+  - label: "🕺 gpu distributed hydrostatic model tests"
+    key: "distributed_solvers_cpu"
+    env:
+      TEST_GROUP: "distributed_hydrostatic_model"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    
+  - wait
+
+  - label: ":chart_with_downwards_trend: build history"
+    command:
+      - "build_history staging"
+    artifact_paths:
+      - "build_history.html"

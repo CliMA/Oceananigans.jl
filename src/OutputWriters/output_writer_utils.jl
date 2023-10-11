@@ -85,7 +85,7 @@ serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_archi
 
 function serializeproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
+    cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
 end
 

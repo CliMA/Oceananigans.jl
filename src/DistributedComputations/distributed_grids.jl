@@ -63,10 +63,10 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_size, halo, x, y, z =
+    TX, TY, TZ, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    local_sz = local_size(arch, global_size)
+    local_sz = local_size(arch, global_sz)
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -114,7 +114,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
         validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
-    local_sz = local_size(arch, global_size)
+    local_sz = local_size(arch, (Nλ, Nφ, Nz))
 
     nλ, nφ, nz = local_sz
     ri, rj, rk = arch.local_index

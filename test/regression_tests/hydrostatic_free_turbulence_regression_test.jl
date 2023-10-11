@@ -5,8 +5,21 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
 using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array
 
 using JLD2
+
+ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], r[1])
+
+get_topology(grid, i) = string(topology(grid, i))
+
+function get_topology(grid::DistributedGrid, i) 
+    arch = architecture(grid)
+    R = arch.ranks[i]
+    r = ordered_indices(arch.local_index, i)
+    T = reconstruct_global_topology(topology(grid, i), R, r..., arch.communicator)
+    return string(T)
+end
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
@@ -67,7 +80,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     η = model.free_surface.η
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
-    x_topology_str = string(topology(grid, 1))
+    x_topology_str = get_topology(grid, 1)
     output_filename = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$(free_surface_str).jld2"
 
     if regenerate_data && !(grid isa DistributedGrid) # never regenerate on Distributed

@@ -14,8 +14,8 @@ function show_hydrostatic_test(grid, free_surface, precompute_metrics)
     
     strc = "$(precompute_metrics ? ", metrics are precomputed" : "")"
 
-    testset_str = "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
-    info_str    =  "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+    testset_str = "Hydrostatic free turbulence regression [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+    info_str    =  "  Testing Hydrostatic free turbulence [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
 
     return testset_str, info_str
 end

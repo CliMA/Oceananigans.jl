@@ -29,8 +29,8 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
 
     TX, TY, _ = topology
 
-    # When a rank is `nothing` the grid is not partitioned in that direction
-    # when a grid is partitioned you communicate only of the direction is "connected"
+    # `rank == nothing`indicates no partitioning in that specific direction.
+    # Communication is required only if the direction is "connected"
     inject_west  = !isnothing(rank_west)  && !(TX isa LeftConnected) 
     inject_east  = !isnothing(rank_east)  && !(TX isa RightConnected) 
     inject_south = !isnothing(rank_south) && !(TY isa LeftConnected) 
