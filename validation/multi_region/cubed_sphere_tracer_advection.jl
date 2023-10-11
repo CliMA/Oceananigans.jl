@@ -26,24 +26,30 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 
 ψ = Field{Face, Face, Center}(grid)
 
-# Here we avoid set! (which also isn't implemented btw) because we would like
-# to manually determine the streamfunction within halo regions.
-# This allows us to avoid having to fill_halo_regions! correctly for a (Face, Face, Center) field.
-# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that 
-# do not correspond to an interior point!
-for region in 1:number_of_regions(grid)
-    i₀ = 1
-    i⁺ = Nx + 1
-    j₀ = 1
-    j⁺ = Ny + 1
-    k₀ = 1
-    k⁺ = Nz + 1
+# set fills only interior points; to compute u and v we need information in the halo regions
+set!(ψ, ψᵣ)
 
-    for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
+# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the
+# two corner points that do not correspond to an interior point!
+# We need to manually fill the Face-Face halo points of the two corners
+# that do not have a corresponding interior point.
+for region in [1, 3, 5]
+    for k in 1:Nz, j=Ny+1, i=1
         λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
         φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
+end
+for region in [2, 4, 6]
+    for k in 1:Nz, j=1, i=Nx+1
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for passes in 1:3
+    fill_halo_regions!(ψ)
 end
 
 u = XFaceField(grid)
