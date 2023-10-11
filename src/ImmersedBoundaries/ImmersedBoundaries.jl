@@ -311,5 +311,8 @@ include("conditional_differences.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
+# Extension to distributed Immersed boundaries
+include("distributed_immersed_boundaries.jl")
+
 end # module
 
