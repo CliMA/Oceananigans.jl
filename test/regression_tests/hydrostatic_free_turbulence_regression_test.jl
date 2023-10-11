@@ -111,11 +111,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 
+        cpu_arch = cpu_architecture(architecture(grid))
+
         truth_fields = (
-            u = partition_global_array(architecture(grid), file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
-            v = partition_global_array(architecture(grid), file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
-            w = partition_global_array(architecture(grid), file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
-            η = partition_global_array(architecture(grid), file["timeseries/η/$stop_iteration"][:, :, :], size(η))
+            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
+            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
+            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
+            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
         )
 
         close(file)
