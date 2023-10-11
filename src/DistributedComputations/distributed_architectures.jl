@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
