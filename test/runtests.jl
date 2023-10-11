@@ -12,6 +12,7 @@ CUDA.allowscalar() do
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
+            include("test_enzyme.jl")
             include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")

@@ -7,13 +7,13 @@ isdefined(Base, :get_extension) ? (import EnzymeCore) : (import ..EnzymeCore)
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
 
-function EnzymeCore.EnzymeRules.augmented_primal(config::EnzymeCore.EnzymeRules.ConfigWidth{1},
-                                                 func::Const{Type{Field}},
-                                                 ::Type{Duplicated{RT}},
-                                                 loc::Union{Const{<:Tuple},
-                                                 Duplicated{<:Tuple}},
-                                                 grid::Const{<:Oceananigans.Grids.AbstractGrid},
-                                                 T::Const{<:DataType}; kw...) where RT
+function EnzymeCore.EnzymeRules.augmented_primal(config,
+                                                 func::EnzymeCore.Const{Type{Field}},
+                                                 ::RT,
+                                                 loc::Union{EnzymeCore.Const{<:Tuple},
+                                                 EnzymeCore.Duplicated{<:Tuple}},
+                                                 grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid},
+                                                 T::EnzymeCore.Const{<:DataType}; kw...) where RT
   primal = func.val(loc.val, grid.val, T.val; kw...)
 
   if haskey(kw, :a)
@@ -21,12 +21,19 @@ function EnzymeCore.EnzymeRules.augmented_primal(config::EnzymeCore.EnzymeRules.
     kw[:data] = copy(kw[:data])
   end
 
-  shadow = func.val(loc.val, grid.val, T.val; kw...)
+  shadow = if EnzymeCore.EnzymeRules.width(config) == 1
+  	func.val(loc.val, grid.val, T.val; kw...)
+  else
+  	ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+  		Base.@_inline_meta
+	  	func.val(loc.val, grid.val, T.val; kw...)
+  	end
+  end
 
-  return EnzymeCore.EnzymeRules.AugmentedReturn{RT, RT, Nothing}(primal, shadow, nothing)
+  return EnzymeCore.EnzymeRules.AugmentedReturn(primal, shadow, nothing)
 end
 
-function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1}, func::Const{Type{Field}}, ::Type{Duplicated{RT}}, tape, loc::Union{Const{<:Tuple}, Duplicated{<:Tuple}}, grid::Const{<:Oceananigans.Grids.AbstractGrid}, T::Const{<:DataType}; kw...) where RT
+function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1}, func::EnzymeCore.Const{Type{Field}}, ::RT, tape, loc::Union{EnzymeCore.Const{<:Tuple}, EnzymeCore.Duplicated{<:Tuple}}, grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid}, T::EnzymeCore.Const{<:DataType}; kw...) where RT
   return (nothing, nothing, nothing, nothing)
 end
 
