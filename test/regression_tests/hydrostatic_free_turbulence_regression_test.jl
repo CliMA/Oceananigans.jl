@@ -4,7 +4,8 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations, partition_global_array
+using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array
 
 using JLD2
 
@@ -12,9 +13,9 @@ ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], 
 
 get_topology(grid, i) = string(topology(grid, i))
 
-function get_topology(grid::Distributed, i) 
+function get_topology(grid::DistributedGrid, i) 
     arch = architecture(grid)
-    R = size(arch.partition, 1)
+    R = size(arch.partition, i)
     r = ordered_indices(arch.local_index, i)
     T = reconstruct_global_topology(topology(grid, i), R, r..., arch.communicator)
     return string(T)
