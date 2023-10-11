@@ -7,6 +7,10 @@ using Logging
 
 using CUDA
 using MPI
+
+MPI.versioninfo()
+MPI.Initialized() || MPI.Init()
+
 using JLD2
 using FFTW
 using OffsetArrays
@@ -75,5 +79,3 @@ archs = test_architectures()
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
-
-MPI.versioninfo()
