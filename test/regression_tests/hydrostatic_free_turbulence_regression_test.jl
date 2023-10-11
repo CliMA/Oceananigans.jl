@@ -49,6 +49,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     u, v, w = model.velocities
     U       = 0.1 * maximum(abs, u)
+    U       = all_reduce(U, architecture(grid), op = max)
     shear   = FunctionField{Face, Center, Center}(shear_func, grid, parameters=(U=U, Lz=grid.Lz))
     u      .= u + shear
 
