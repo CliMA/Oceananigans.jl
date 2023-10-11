@@ -12,8 +12,11 @@ function generate_input_data!(grid, times, filename; ρ_ocean = 1000, cp_ocean =
     
     # Fictitious data
     Qₜ(y, t) = 200 * cos(2π * (y - 15) / 60) * sin(π * (t - 365days) / 365days) / ρ_ocean / cp_ocean
-    τₜ(y, t) = 0.1 * cos(4π * (y - 15) / 60) * cos(π * (t - 365days) / 365days) / ρ_ocean
+    τₜ(y, t) = 0.1 * cos(4π * (y - 15) / 60) * cos(π * (t - 365days) / 365days) / ρ_ocean 
 
+    mask(y)  = -4 * ((y - 15) / 60) * ((y - 15) / 60 - 1)
+    τᵢ(y, t) = τₜ(y, t) * mask(y)
+    
     Qˢ = FieldTimeSeries((Center, Center, Nothing), grid, times; 
                          backend = OnDisk(),
                          path = filename,
@@ -28,7 +31,7 @@ function generate_input_data!(grid, times, filename; ρ_ocean = 1000, cp_ocean =
     for t in eachindex(times)
         @info "writing down data for time $t"
         set!(Qˢ_tmp, (x, y) -> Qₜ(y, times[t]))
-        set!(τˣ_tmp, (x, y) -> τₜ(y, times[t]))
+        set!(τˣ_tmp, (x, y) -> τᵢ(y, times[t]))
 
         set!(Qˢ, Qˢ_tmp, t)
         set!(τˣ, τˣ_tmp, t)

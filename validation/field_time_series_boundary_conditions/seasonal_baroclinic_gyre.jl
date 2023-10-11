@@ -86,10 +86,11 @@ free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7)
 
 coriolis = HydrostaticSphericalCoriolis()
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 0.1)
-vertical_diffusivity  = VerticalScalarDiffusivity(κ = 1e-5, ν = 1e-4)
+convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 0.5)
+vertical_diffusivity   = VerticalScalarDiffusivity(κ = 1e-5, ν = 1e-4)
+horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(κ = 1e9, ν = 1e9)
 
-closure = (convective_adjustment, vertical_diffusivity)
+closure = (convective_adjustment, vertical_diffusivity, horizontal_diffusivity)
 
 #####
 ##### Create the model and initial conditions
@@ -129,7 +130,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                                                       schedule = TimeInterval(1day), 
-                                                      filename = "one_sided_channel",
+                                                      filename ="seasonal_double_gyre",
                                                       overwrite_existing = true)
 
 run!(simulation)
@@ -138,9 +139,11 @@ run!(simulation)
 ##### Visualize the simulation!!
 #####
 
-T_series = FieldTimeSeries("seasonal_double_gyre.jld2", "T")
-u_series = FieldTimeSeries("seasonal_double_gyre.jld2", "u")
-v_series = FieldTimeSeries("seasonal_double_gyre.jld2", "v")
+output_file = "seasonal_double_gyre.jld2"
+
+T_series = FieldTimeSeries(output_file, "T")
+u_series = FieldTimeSeries(output_file, "u")
+v_series = FieldTimeSeries(output_file, "v")
 
 iter = Observable(1)
 
@@ -157,6 +160,6 @@ ax = Axis(fig[2, 2], title = "top v")
 heatmap!(ax, vt, colormap = :viridis, colorrange = (-0.1, 0.1))
 
 CairoMakie.record(fig, "results.mp4", 1:length(T_series), framerate = 10) do i
-    @info "frame $i of $(length(T_top))"
+    @info "frame $i of $(length(T_series))"
     iter[] = i
 end
