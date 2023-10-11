@@ -4,6 +4,8 @@ using Enzyme
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 
+EnzymeCore.EnzymeRules.inactive_type(::Type{<:Oceananigans.Grids.AbstractGrid}) = true
+
 f(grid) = CenterField(grid)
 
 @testset "Enzyme Unit Tests" begin
