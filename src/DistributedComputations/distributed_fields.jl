@@ -1,6 +1,7 @@
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
+using CUDA: CuArray
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
 
