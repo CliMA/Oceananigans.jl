@@ -27,12 +27,21 @@ respectively.
 `Rx`, `Ry` and `Rz` can be vectors containing the percentage of the domain
 ascribed to the different cores. In this case `length(Rx)` represent the number
 of divisions in the first dimension with `sum(Rx)` equal to 1.0. 
-Rank `arch.local_rank[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
+Rank `arch.local_index[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
 """
-Partition(Rx)     = Partition(Rx, 1, 1)
-Partition(Rx, Ry) = Partition(Rx, Ry, 1)
+Partition(Rx)     = Partition(validate_partition(Rx), 1, 1)
+Partition(Rx, Ry) = Partition(validate_partition(Rx), validate_partition(Ry), 1)
 
-Partition(; Rx = 1, Ry = 1, Rz = 1) = Partition(Rx, Ry, Rz)
+function Partition(; Rx = 1, Ry = 1, Rz = 1)
+    Rx = validate_partition(Rx)
+    Ry = validate_partition(Ry)
+    Rz = validate_partition(Rz)
+    return Partition(Rx, Ry, Rz)
+end
+
+# We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
+validate_partition(r::Number) = r
+validate_partition(r::AbstractVector) = sum(r) == 1 ? r : throw(ArgumentError("The sum of the partition must be 1.0"))
 
 ranks(p::Partition) = (p.Rx, p.Ry, p.Rz)
 
