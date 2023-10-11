@@ -9,7 +9,7 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) =
 
 function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  func::EnzymeCore.Const{Type{Field}},
-                                                 ::RT,
+                                                 ::Type{<:EnzymeCore.Annotation{RT}},
                                                  loc::Union{EnzymeCore.Const{<:Tuple},
                                                  EnzymeCore.Duplicated{<:Tuple}},
                                                  grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid},
@@ -30,7 +30,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
   	end
   end
 
-  return EnzymeCore.EnzymeRules.AugmentedReturn{eltype(RT), EnzymeCore.EnzymeRules.width(config) == 1 ? eltype(RT) : NTuple{EnzymeCore.EnzymeRules.width(config), eltype(RT)}, Nothing}(primal, shadow, nothing)
+  return EnzymeCore.EnzymeRules.AugmentedReturn{RT, EnzymeCore.EnzymeRules.width(config) == 1 ? eltype(RT) : NTuple{EnzymeCore.EnzymeRules.width(config), RT}, Nothing}(primal, shadow, nothing)
 end
 
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1}, func::EnzymeCore.Const{Type{Field}}, ::RT, tape, loc::Union{EnzymeCore.Const{<:Tuple}, EnzymeCore.Duplicated{<:Tuple}}, grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid}, T::EnzymeCore.Const{<:DataType}; kw...) where RT

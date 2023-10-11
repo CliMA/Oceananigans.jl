@@ -215,7 +215,7 @@ version = "1.0.1"
 
 [[deps.Enzyme]]
 deps = ["CEnum", "EnzymeCore", "Enzyme_jll", "GPUCompiler", "LLVM", "Libdl", "LinearAlgebra", "ObjectFile", "Preferences", "Printf", "Random"]
-git-tree-sha1 = "e02d038d7a69e11a067c7246f39cd84f169052f8"
+git-tree-sha1 = "0b35bad541ac5725a30465a6c53a20bc71ded86b"
 repo-rev = "main"
 repo-url = "https://github.com/EnzymeAD/Enzyme.jl.git"
 uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
