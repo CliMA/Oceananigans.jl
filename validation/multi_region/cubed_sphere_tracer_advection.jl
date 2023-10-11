@@ -34,14 +34,18 @@ set!(ψ, ψᵣ)
 # We need to manually fill the Face-Face halo points of the two corners
 # that do not have a corresponding interior point.
 for region in [1, 3, 5]
-    for k in 1:Nz, j=Ny+1, i=1
+    i = 1
+    j = Ny+1
+    for k in 1:Nz
         λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
         φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
 end
 for region in [2, 4, 6]
-    for k in 1:Nz, j=1, i=Nx+1
+    i = Nx+1
+    j = 1
+    for k in 1:Nz
         λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
         φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
