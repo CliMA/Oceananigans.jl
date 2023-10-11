@@ -113,9 +113,9 @@ version = "0.2.2"
 
 [[deps.CUDA_Runtime_jll]]
 deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "bfe5a693a11522d58392f742243f2b50dc27afd6"
+git-tree-sha1 = "178a606891f82b6d734f0eadd5336b7aad44d5df"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-version = "0.9.2+0"
+version = "0.9.2+1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -131,9 +131,9 @@ version = "0.12.10"
 
 [[deps.CommonDataModel]]
 deps = ["CFTime", "DataStructures", "Dates", "Preferences", "Printf"]
-git-tree-sha1 = "2678b3fc170d582655a14d22867b031b6e43c2d4"
+git-tree-sha1 = "7f5717cbb2c1ce650cfd454451f282df33103596"
 uuid = "1fbeeb36-5f17-413c-809b-666fb144f157"
-version = "0.2.4"
+version = "0.2.5"
 
 [[deps.Compat]]
 deps = ["UUIDs"]
@@ -203,13 +203,17 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
-git-tree-sha1 = "b6def76ffad15143924a2199f72a5cd883a2e8a9"
+git-tree-sha1 = "5225c965635d8c21168e32a12954675e7bea1151"
 uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
-version = "0.10.9"
-weakdeps = ["SparseArrays"]
+version = "0.10.10"
 
     [deps.Distances.extensions]
+    DistancesChainRulesCoreExt = "ChainRulesCore"
     DistancesSparseArraysExt = "SparseArrays"
+
+    [deps.Distances.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
