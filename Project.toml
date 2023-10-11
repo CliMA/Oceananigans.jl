@@ -37,9 +37,9 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [compat]
 Adapt = "3"
+CUDA = "4"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
-CUDA = "4"
 Distances = "0.10"
 DocStringExtensions = "0.8, 0.9"
 FFTW = "1"
