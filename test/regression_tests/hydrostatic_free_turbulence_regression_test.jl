@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations
+using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations, partition_global_array
 
 using JLD2
 

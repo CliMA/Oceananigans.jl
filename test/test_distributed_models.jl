@@ -112,7 +112,6 @@ mpi_ranks = MPI.Comm_size(comm)
 #####
 
 function test_triply_periodic_rank_connectivity_with_411_ranks()
-    topo = (Periodic, Periodic, Periodic)
     arch = Distributed(CPU(), partition=Partition(4))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
