@@ -30,11 +30,13 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     TX, TY, _ = topology
 
     # `rank == nothing`indicates no partitioning in that specific direction.
-    # Communication is required only if the direction is "connected"
-    inject_west  = !isnothing(rank_west)  && !(TX isa LeftConnected) 
-    inject_east  = !isnothing(rank_east)  && !(TX isa RightConnected) 
-    inject_south = !isnothing(rank_south) && !(TY isa LeftConnected) 
-    inject_north = !isnothing(rank_north) && !(TY isa RightConnected) 
+    # Communication is required only if the direction is "connected" 
+    # Remember `RightConnected` means bounded on the left and viceversa
+    # `LeftConnected` means bounded on the right
+    inject_west  = !isnothing(rank_west)  && !(TX isa RightConnected) 
+    inject_east  = !isnothing(rank_east)  && !(TX isa LeftConnected) 
+    inject_south = !isnothing(rank_south) && !(TY isa RightConnected) 
+    inject_north = !isnothing(rank_north) && !(TY isa LeftConnected) 
 
     west     = inject_west  ? west_comm_bc  : field_bcs.west  
     east     = inject_east  ? east_comm_bc  : field_bcs.east  
