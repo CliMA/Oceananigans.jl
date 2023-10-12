@@ -56,7 +56,7 @@ create_buffer_x(arch, grid, data, H, bc) = nothing
 create_buffer_y(arch, grid, data, H, bc) = nothing
 
 # Corner buffers are filled only if the corner is connected. which means that either edges are
-# connected
+# connected and rank is not a nothing
 create_buffer_corner(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
 create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
 create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
