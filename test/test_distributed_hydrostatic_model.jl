@@ -87,6 +87,7 @@ for arch in archs
 
         global_grid = reconstruct_global_grid(grid)
 
+        # "s" for "serial" computation
         us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
         us = Array(interior(us))
@@ -112,4 +113,4 @@ for arch in archs
         @test all(isapprox(c, partition_global_array(cpu_arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
         @test all(isapprox(η, partition_global_array(cpu_arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
     end
-end          
+end

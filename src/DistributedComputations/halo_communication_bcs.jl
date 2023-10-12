@@ -38,10 +38,10 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     inject_south = !isnothing(rank_south) && (TY != RightConnected) 
     inject_north = !isnothing(rank_north) && (TY != LeftConnected) 
 
-    west     = inject_west  ? west_comm_bc  : field_bcs.west  
-    east     = inject_east  ? east_comm_bc  : field_bcs.east  
-    south    = inject_south ? south_comm_bc : field_bcs.south 
-    north    = inject_north ? north_comm_bc : field_bcs.north 
+    west  = inject_west  ? west_comm_bc  : field_bcs.west  
+    east  = inject_east  ? east_comm_bc  : field_bcs.east  
+    south = inject_south ? south_comm_bc : field_bcs.south 
+    north = inject_north ? north_comm_bc : field_bcs.north 
     
     bottom   = field_bcs.bottom 
     top      = field_bcs.top    

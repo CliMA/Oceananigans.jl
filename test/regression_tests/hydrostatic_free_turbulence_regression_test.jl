@@ -64,7 +64,6 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     CUDA.allowscalar(false)
 
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
-    
     # Δt based on wave propagation time scale
     Δt = 0.2 * wave_time_scale
     Δt = all_reduce(min, Δt, architecture(grid))
