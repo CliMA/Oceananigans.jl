@@ -5,6 +5,9 @@ using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
+
 Nx = 30
 Ny = 30
 Nz = 1
@@ -59,7 +62,8 @@ for region in 1:number_of_regions(grid)
 end
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO()),
+                                    momentum_advection = VectorInvariant(),
+                                    # momentum_advection = nothing,
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration),
                                     tracer_advection = WENO(order=5),
                                     tracers = :θ,
@@ -86,19 +90,54 @@ c = sqrt(Lz * gravitational_acceleration) # surface wave speed
 Δt = 0.1 * min(Δx, Δy) / c # CFL for free surface wave propagation
 
 stop_time = 2π * U / R
+stop_time = 100Δt
 simulation = Simulation(model; Δt, stop_time)
 
-# Print a progress message
 
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n",
+
+
+
+# Print a progress message
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.u),
                                 prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(5))
 
 tracer_fields = Field[]
 save_tracer(sim) = push!(tracer_fields, deepcopy(sim.model.tracers.θ))
-simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(50))
+
+ζ = Field{Face, Face, Center}(grid)
+
+vorticity_fields = Field[]
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+function save_vorticity(sim)
+    Hx, Hy, Hz = halo_size(grid)
+
+    u, v = sim.model.velocities.u, sim.model.velocities.v
+
+    for passes in 1:3
+        fill_halo_regions!(u)
+        fill_halo_regions!(v)
+        @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
+    end
+    
+    @apply_regionally begin
+        params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
+        launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+    end
+
+    push!(vorticity_fields, deepcopy(ζ))
+end
+
+simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(1))
+simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(1))
 
 run!(simulation)
 
@@ -115,7 +154,7 @@ n = Observable(1)
 Θₙ = @lift tracer_fields[$n]
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
-ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+ax = Axis(fig[1, 1])
 heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
 
 fig
@@ -126,4 +165,141 @@ GLMakie.record(fig, "cubed_sphere_momentum_dynamics.mp4", frames, framerate = 12
     @info string("Plotting frame ", i, " of ", frames[end])
     Θₙ[] = tracer_fields[i]
     heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
+end
+
+
+
+
+
+function panel_wise_visualization(field, k=1; hide_decorations = true, colorrange = (-1, 1), colormap = :balance)
+
+    fig = Figure(resolution = (1800, 1200))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
+
+    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
+    hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[3, 2], hm_1)
+
+    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
+    hm_2 = heatmap!(ax_2, parent(getregion(field, 2).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[3, 4], hm_2)
+
+    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
+    hm_3 = heatmap!(ax_3, parent(getregion(field, 3).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[2, 4], hm_3)
+
+    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
+    hm_4 = heatmap!(ax_4, parent(getregion(field, 4).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[2, 6], hm_4)
+
+    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
+    hm_5 = heatmap!(ax_5, parent(getregion(field, 5).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[1, 6], hm_5)
+
+    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
+    hm_6 = heatmap!(ax_6, parent(getregion(field, 6).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[1, 8], hm_6)
+
+    if hide_decorations
+        hidedecorations!(ax_1)
+        hidedecorations!(ax_2)
+        hidedecorations!(ax_3)
+        hidedecorations!(ax_4)
+        hidedecorations!(ax_5)
+        hidedecorations!(ax_6)
+    end
+
+    return fig
+end
+
+# Now compute vorticity
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
+
+ζ = Field{Face, Face, Center}(grid)
+
+Hx, Hy, Hz = halo_size(grid)
+
+u, v = model.velocities.u, model.velocities.v
+
+for passes in 1:3
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
+end
+
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+@apply_regionally begin
+    params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
+    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
+
+fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
+save("vorticity.png", fig)
+fig
+
+
+n = Observable(1)
+
+ζₙ = @lift vorticity_fields[$n]
+
+k = 1
+
+hide_decorations = true
+colorrange = (-1, 1)
+colormap = :balance
+
+fig = Figure(resolution = (1800, 1200))
+
+axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
+               xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+               xlabel = "Local x direction", ylabel = "Local y direction")
+
+ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
+hm_1 = heatmap!(ax_1, parent(getregion(ζₙ[], 1).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[3, 2], hm_1)
+
+ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
+hm_2 = heatmap!(ax_2, parent(getregion(ζₙ[], 2).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[3, 4], hm_2)
+
+ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
+hm_3 = heatmap!(ax_3, parent(getregion(ζₙ[], 3).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[2, 4], hm_3)
+
+ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
+hm_4 = heatmap!(ax_4, parent(getregion(ζₙ[], 4).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[2, 6], hm_4)
+
+ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
+hm_5 = heatmap!(ax_5, parent(getregion(ζₙ[], 5).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[1, 6], hm_5)
+
+ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
+hm_6 = heatmap!(ax_6, parent(getregion(ζₙ[], 6).data[:, :, k]); colorrange, colormap)
+Colorbar(fig[1, 8], hm_6)
+
+if hide_decorations
+    hidedecorations!(ax_1)
+    hidedecorations!(ax_2)
+    hidedecorations!(ax_3)
+    hidedecorations!(ax_4)
+    hidedecorations!(ax_5)
+    hidedecorations!(ax_6)
+end
+
+
+frames = 1:length(vorticity_fields)
+
+GLMakie.record(fig, "cubed_sphere_momentum_dynamics_vort.mp4", frames, framerate = 12) do i
+    @info string("Plotting frame ", i, " of ", frames[end])
+    ζₙ[] = vorticity_fields[i]
 end
