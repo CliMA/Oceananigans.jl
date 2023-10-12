@@ -45,7 +45,6 @@ opposite_side = Dict(
 #   digit 1-2: an identifier for the field that is reset each timestep
 #   digit 3: an identifier for the field's Z-location
 #   digit 4: the side we send to/recieve from
-
 ID_DIGITS   = 2
 
 @inline loc_id(::Face)    = 0
@@ -209,7 +208,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(corner, c, indices, loc, arch, grid, ::Nothing; kwargs...) = nothing
 
         function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, args...; kwargs...) 
             child_arch = child_architecture(arch)
