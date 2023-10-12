@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
-using Oceananigans.DistributedComputations: BlockingDistributed, complete_halo_communication!
+using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
@@ -93,7 +93,7 @@ end
 
 const DistributedSplitExplicit = SplitExplicitFreeSurface{<:DistributedField}
 
-wait_free_surface_communication!(::DistributedSplitExplicit, ::BlockingDistributed) = nothing
+wait_free_surface_communication!(::DistributedSplitExplicit, ::SynchronizedDistributed) = nothing
     
 function wait_free_surface_communication!(free_surface::DistributedSplitExplicit, arch)
     
@@ -106,7 +106,7 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
     auxiliary = free_surface.auxiliary
 
     for field in (auxiliary.Gᵁ, auxiliary.Gⱽ)
-        complete_halo_communication!(field)
+        synchronize_communication!(field)
     end
 
     return nothing
