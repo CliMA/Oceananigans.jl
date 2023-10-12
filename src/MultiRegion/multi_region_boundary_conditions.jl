@@ -132,17 +132,28 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     deviceeast = getdevice(eastsrc)
 
     switch_device!(devicewest)
-    westsrc = flip_west_and_east_indices(westsrc, westbc.condition)
+    westsrc = flip_west_and_east_indices(westsrc, loc[1], westbc.condition)
 
     switch_device!(deviceeast)
-    eastsrc = flip_west_and_east_indices(eastsrc, eastbc.condition)
+    eastsrc = flip_west_and_east_indices(eastsrc, loc[1], eastbc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
-    view(parent(c), 1:H, :, :)        .= westdst
-    view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+    if loc[2] == Face() && westbc.condition isa NonTrivialConnectivity
+        Mx, My, _ = size(parent(c))
+        view(parent(c), 1:H, 2:My, :) .= view(westdst, :, 1:My-1, :)
+    else
+        view(parent(c), 1:H, :, :) .= westdst
+    end
+
+    if loc[2] == Face() && eastbc.condition isa NonTrivialConnectivity
+        Mx, My, _ = size(parent(c))
+        view(parent(c), N+1+H:N+2H, 2:My, :) .= view(eastdst, :, 1:My-1, :)
+    else
+        view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+    end
 
     return nothing
 end
@@ -156,22 +167,36 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
 
     southsrc = getside(buffers[southbc.condition.from_rank], southbc.condition.from_side).send
     northsrc = getside(buffers[northbc.condition.from_rank], northbc.condition.from_side).send
-    
+
     devicesouth = getdevice(southsrc)
     devicenorth = getdevice(northsrc)
 
     switch_device!(devicesouth)
-    southsrc = flip_south_and_north_indices(southsrc, southbc.condition)
+    southsrc = flip_south_and_north_indices(southsrc, loc[2], southbc.condition)
 
     switch_device!(devicenorth)
-    northsrc = flip_south_and_north_indices(northsrc, northbc.condition)
+    northsrc = flip_south_and_north_indices(northsrc, loc[2], northbc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
-    view(parent(c), :, 1:H, :, :)        .= southdst
-    view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
+    if loc[1] == Face() && southbc.condition isa NonTrivialConnectivity
+        Mx, My, _ = size(parent(c))
+        view(parent(c), 2:Mx, 1:H, :) .= view(southdst, 1:Mx-1, :, :)
+    else
+        view(parent(c), :, 1:H, :) .= southdst
+    end
+
+    if loc[1] == Face() && loc[2] == Face() && northbc.condition isa NonTrivialConnectivity
+        Mx, My, _ = size(parent(c))
+        view(parent(c), 2:Mx, N+H+1:N+2H, :) .= view(northdst, 1:Mx-1, :, :)
+    elseif loc[1] == Face() && loc[2] == Center() && northbc.condition isa NonTrivialConnectivity
+        Mx, My, _ = size(parent(c))
+        view(parent(c), :, N+H+1:N+2H, :) .= view(northdst, :, :, :)
+    else
+        view(parent(c), :, N+H+1:N+2H, :) .= northdst
+    end
 
     return nothing
 end
@@ -179,7 +204,7 @@ end
 #####
 ##### Single fill_halo! for Communicating boundary condition
 #####
-    
+
 function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -189,7 +214,7 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_west_and_east_indices(src, bc.condition)
+    src = flip_west_and_east_indices(src, loc[1], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -209,7 +234,7 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buff
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_west_and_east_indices(src, bc.condition)
+    src = flip_west_and_east_indices(src, loc[1], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -229,7 +254,7 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_south_and_north_indices(src, bc.condition)
+    src = flip_south_and_north_indices(src, loc[2], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -249,13 +274,19 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
 
     dev = getdevice(src)
     switch_device!(dev)
-    src = flip_south_and_north_indices(src, bc.condition)
+    src = flip_south_and_north_indices(src, loc[2], bc.condition)
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
-    p  = view(parent(c), :, N+H+1:N+2H, :)
-    p .= dst
+    p = view(parent(c), :, N+H+1:N+2H, :)
+
+    if loc[1] == Center()
+        p .= dst
+    elseif loc[1] == Face()
+        Mx, My, _ = size(p)
+        view(p, 2:My, :, :) .= view(dst, 1:My-1, :, :)
+    end
 
     return nothing
 end
@@ -306,12 +337,13 @@ end
 @inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
-validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing
-validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing
-validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing
-validate_boundary_condition_topology(::MultiRegionObject, topo::Flat,     side) = nothing
+validate_boundary_condition_location(::MultiRegionObject, ::Center, side) = nothing
+validate_boundary_condition_location(::MultiRegionObject, ::Face,   side) = nothing
 
- inject_west_boundary(connectivity, global_bc) = connectivity.west  == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.west)
- inject_east_boundary(connectivity, global_bc) = connectivity.east  == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.east)
-inject_south_boundary(connectivity, global_bc) = connectivity.south == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.south)
-inject_north_boundary(connectivity, global_bc) = connectivity.north == nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.north)
+validate_boundary_condition_topology(::MultiRegionObject, ::Periodic, side) = nothing
+validate_boundary_condition_topology(::MultiRegionObject, ::Flat,     side) = nothing
+
+ inject_west_boundary(connectivity, global_bc) = connectivity.west  === nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.west)
+ inject_east_boundary(connectivity, global_bc) = connectivity.east  === nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.east)
+inject_south_boundary(connectivity, global_bc) = connectivity.south === nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.south)
+inject_north_boundary(connectivity, global_bc) = connectivity.north === nothing ? global_bc : MultiRegionCommunicationBoundaryCondition(connectivity.north)
