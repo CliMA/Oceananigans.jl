@@ -19,8 +19,7 @@ function test_architectures()
     # and `Partition(x = 4, y = 4)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 2))
-                Distributed(child_arch; partition = Partition(2, 2)))
+                Distributed(child_arch; partition = Partition(1, 4)))
     else
         return tuple(child_arch)
     end
