@@ -69,8 +69,8 @@ function validate_dimension_specification(T, ξ, dir, N, FT)
 
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
-    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
-    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ should be an increasing interval."))
+    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ must contain numbers."))
+    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ must be an increasing interval."))
 
     return FT.(ξ)
 end
@@ -106,7 +106,7 @@ end
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
 
-    ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
+    ξ[end] ≥ ξ[1] || throw(ArgumentError("The elements of $dir=$ξ must be increasing."))
 
     # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
@@ -123,7 +123,7 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
 end
 
 function validate_dimension_specification(T, ξ::Function, dir, N, FT)
-    ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
+    ξ(N) ≥ ξ(1) || throw(ArgumentError("The function $dir(index) must increase as index increases."))
     return ξ
 end
 
