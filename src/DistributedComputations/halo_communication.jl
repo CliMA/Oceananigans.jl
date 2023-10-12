@@ -208,7 +208,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(corner, c, indices, loc, arch, grid, ::Nothing; kwargs...) = nothing
+        $fill_corner_halo!(corner, c, indices, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
 
         function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, args...; kwargs...) 
             child_arch = child_architecture(arch)
