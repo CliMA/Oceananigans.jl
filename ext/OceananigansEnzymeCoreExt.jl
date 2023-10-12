@@ -17,7 +17,11 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  EnzymeCore.Duplicated{<:Tuple}},
                                                  grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid},
                                                  T::EnzymeCore.Const{<:DataType}; kw...) where RT
-  primal = func.val(loc.val, grid.val, T.val; kw...)
+  primal = if EnzymeRules.needs_primal(config)
+      func.val(loc.val, grid.val, T.val; kw...)
+  else
+      nothing
+  end
 
   if haskey(kw, :a)
     # copy zeroing
@@ -33,11 +37,11 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
   	end
   end
 
-  return EnzymeCore.EnzymeRules.AugmentedReturn{RT, batch(Val(EnzymeCore.EnzymeRules.width(config)), RT), Nothing}(primal, shadow, nothing)
+  return EnzymeCore.EnzymeRules.AugmentedReturn{EnzymeRules.needs_primal(config) ? RT : Nothing, batch(Val(EnzymeCore.EnzymeRules.width(config)), RT), Nothing}(primal, shadow, nothing)
 end
 
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1}, func::EnzymeCore.Const{Type{Field}}, ::RT, tape, loc::Union{EnzymeCore.Const{<:Tuple}, EnzymeCore.Duplicated{<:Tuple}}, grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid}, T::EnzymeCore.Const{<:DataType}; kw...) where RT
-  return (nothing, nothing, nothing, nothing)
+  return (nothing, nothing, nothing)
 end
 
 end
