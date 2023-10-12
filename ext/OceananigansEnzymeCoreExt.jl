@@ -18,7 +18,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  EnzymeCore.Duplicated{<:Tuple}},
                                                  grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid},
                                                  T::EnzymeCore.Const{<:DataType}; kw...) where RT
-  primal = if EnzymeRules.needs_primal(config)
+  primal = if EnzymeCore.EnzymeRules.needs_primal(config)
       func.val(loc.val, grid.val, T.val; kw...)
   else
       nothing
@@ -38,7 +38,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
   	end
   end
 
-  return EnzymeCore.EnzymeRules.AugmentedReturn{EnzymeRules.needs_primal(config) ? RT : Nothing, batch(Val(EnzymeCore.EnzymeRules.width(config)), RT), Nothing}(primal, shadow, nothing)
+  return EnzymeCore.EnzymeRules.AugmentedReturn{EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing, batch(Val(EnzymeCore.EnzymeRules.width(config)), RT), Nothing}(primal, shadow, nothing)
 end
 
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1}, func::EnzymeCore.Const{Type{Field}}, ::RT, tape, loc::Union{EnzymeCore.Const{<:Tuple}, EnzymeCore.Duplicated{<:Tuple}}, grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid}, T::EnzymeCore.Const{<:DataType}; kw...) where RT
@@ -47,8 +47,8 @@ end
 
 
 function EnzymeCore.EnzymeRules.augmented_primal(config,
-                                                 func::Const{typeof(Oceananigans.Utils.launch!)},
-                                                 ::Type{Const{Nothing}},
+                                                 func::EnzymeCore.Const{typeof(Oceananigans.Utils.launch!)},
+                                                 ::Type{EnzymeCore.Const{Nothing}},
                                                  arch,
                                                  grid,
                                                  workspec,
@@ -79,19 +79,19 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 
       if isnothing(offset)
           loop! = kernel!.val(Oceananigans.Architectures.device(arch.val), workgroup, worksize)
-          dloop! = (typeof(kernel!) <: Const) ? nothing : kernel!.dval(Oceananigans.Architectures.device(arch.val), workgroup, worksize)
+          dloop! = (typeof(kernel!) <: EnzymeCore.Const) ? nothing : kernel!.dval(Oceananigans.Architectures.device(arch.val), workgroup, worksize)
       else
           loop! = kernel!.val(Oceananigans.Architectures.device(arch.val), KernelAbstractions.StaticSize(workgroup), Oceananigans.Utils.OffsetStaticSize(contiguousrange(worksize, offset))) 
-          dloop! = (typeof(kernel!) <: Const) ? nothing : kernel!.val(Oceananigans.Architectures.device(arch.val), KernelAbstractions.StaticSize(workgroup), Oceananigans.Utils.OffsetStaticSize(contiguousrange(worksize, offset)))
+          dloop! = (typeof(kernel!) <: EnzymeCore.Const) ? nothing : kernel!.val(Oceananigans.Architectures.device(arch.val), KernelAbstractions.StaticSize(workgroup), Oceananigans.Utils.OffsetStaticSize(contiguousrange(worksize, offset)))
       end
 
       @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec.val"
 
 
-      duploop = (typeof(kernel!) <: Const) ? Const(loop!) : Duplicated(loop!, dloop!)
+      duploop = (typeof(kernel!) <: EnzymeCore.Const) ? EnzymeCore.Const(loop!) : EnzymeCore.Duplicated(loop!, dloop!)
 
       config2 = EnzymeCore.EnzymeRules.Config{#=needsprimal=#false, #=needsshadow=#false, #=width=#EnzymeCore.EnzymeRules.width(config), EnzymeCore.EnzymeRules.overwritten(config)[5:end]}()
-      subtape = EnzymeCore.EnzymeRules.augmented_primal(config2, duploop, Const{Nothing}, kernel_args...).tape
+      subtape = EnzymeCore.EnzymeRules.augmented_primal(config2, duploop, EnzymeCore.Const{Nothing}, kernel_args...).tape
 
       tape = (duploop, subtape)
     else
@@ -102,8 +102,8 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 end
 
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1},
-                                                func::Const{typeof(Oceananigans.Utils.launch!)},
-                                                 ::Type{Const{Nothing}},
+                                                func::EnzymeCore.Const{typeof(Oceananigans.Utils.launch!)},
+                                                 ::Type{EnzymeCore.Const{Nothing}},
                                                  tape,
                                                  arch,
                                                  grid,
@@ -121,7 +121,7 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
 
     config2 = EnzymeCore.EnzymeRules.Config{#=needsprimal=#false, #=needsshadow=#false, #=width=#EnzymeCore.EnzymeRules.width(config), EnzymeCore.EnzymeRules.overwritten(config)[5:end]}()
 
-    EnzymeCore.EnzymeRules.reverse(config2, duploop, Const{Nothing}, subtape, kernel_args...)
+    EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
   else
     ntuple(Val(length(kernel_args))) do _
       Base.@_inline_meta
