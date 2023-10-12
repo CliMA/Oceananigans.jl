@@ -65,16 +65,6 @@ end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
-function validate_dimension_specification(T, ξ, dir, N, FT)
-
-    isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
-    length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
-    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ must contain numbers."))
-    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ must be an increasing interval."))
-
-    return FT.(ξ)
-end
-
 function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     # Find domain endpoints or domain extent, depending on user input:
@@ -103,11 +93,21 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
     return x, y, z
 end
 
+# Fallback
+validate_dimension_specification(T, ξ, dir, N, FT) = ξ
+
+function validate_dimension_specification(T, ξ::Tuple, dir, N, FT)
+
+    isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
+    length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
+    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ must contain numbers."))
+    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ must be an increasing interval."))
+
+    return FT.(ξ)
+end
+
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
-
-    ξ[end] ≥ ξ[1] ||
-        throw(ArgumentError("The elements of the vector $dir[index] must increase with increasing index."))
 
     # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
@@ -120,11 +120,6 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
         @warn msg
     end
 
-    return ξ
-end
-
-function validate_dimension_specification(T, ξ::Function, dir, N, FT)
-    ξ(N) ≥ ξ(1) || throw(ArgumentError("The function $dir(index) must increase as index increases."))
     return ξ
 end
 
