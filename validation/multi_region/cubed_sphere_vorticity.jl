@@ -1,18 +1,18 @@
 using Oceananigans, Printf
 
-using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 
-Nx = 30
-Ny = 30
+Nx = 16
+Ny = 16
 Nz = 1
 
 Lz = 1
 R = 1 # sphere's radius
 U = 1 # velocity scale
-gravitational_acceleration = 100
 
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   z = (-Lz, 0),
@@ -28,22 +28,34 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 
 ψ = Field{Face, Face, Center}(grid)
 
-# Here we avoid set! (which also isn't implemented btw) because we would like
-# to manually determine the streamfunction within halo regions. This allows us
-# to avoid having to fill_halo_regions correctly for a Face, Face, Center field.
-for region in 1:number_of_regions(grid)
-    i₀ = 1
-    i⁺ = Nx + 1
-    j₀ = 1
-    j⁺ = Ny + 1
-    k₀ = 1
-    k⁺ = Nz + 1
+# set fills only interior points; to compute u and v we need information in the halo regions
+set!(ψ, ψᵣ)
 
-    for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
+# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the
+# two corner points that do not correspond to an interior point!
+# We need to manually fill the Face-Face halo points of the two corners
+# that do not have a corresponding interior point.
+for region in [1, 3, 5]
+    i = 1
+    j = Ny+1
+    for k in 1:Nz
         λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
         φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
+end
+for region in [2, 4, 6]
+    i = Nx+1
+    j = 1
+    for k in 1:Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for passes in 1:3
+    fill_halo_regions!(ψ)
 end
 
 u = XFaceField(grid)
@@ -58,39 +70,37 @@ for region in 1:number_of_regions(grid)
     v[region] .= + ∂x(ψ[region])
 end
 
-model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(vorticity_scheme = WENO()),
-                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration),
-                                    tracer_advection = WENO(order=5),
-                                    tracers = :θ,
-                                    buoyancy = nothing)
-
-using Oceananigans.Operators: ζ₃ᶠᶠᶜ
-
-# Initial conditions
-
-for region in 1:number_of_regions(grid)
-    model.velocities.u[region] .= - ∂y(ψ[region])
-    model.velocities.v[region] .= + ∂x(ψ[region])
+for passes in 1:3
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
 end
 
-θ₀ = 1
-Δφ = 20
-θᵢ(λ, φ, z) = θ₀ * cosd(4λ) * exp(-φ^2 / 2Δφ^2)
+# Now compute vorticity
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
 
-set!(model, θ = θᵢ)
+ζ = Field{Face, Face, Center}(grid)
+
+Hx, Hy, Hz = halo_size(grid)
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+@apply_regionally begin
+    params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
+    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
 
 
-u, v, w = model.velocities
+# using Imaginocean
 
-ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
-ζ = Field(ζ_op)
-compute!(ζ)
+using GLMakie
 
-using Imaginocean
-
-using GLMakie, GeoMakie
-
+#=
+# Imaginocean still doesn't work with Face-Face fields
 fig = Figure(resolution = (2000, 2000), fontsize=30)
 
 ax1 = Axis(fig[1, 1])
@@ -106,7 +116,7 @@ for region in 1:6
 end
 
 fig
-
+=#
 
 function panel_wise_visualization(field, k=1; hide_decorations = true, colorrange = (-1, 1), colormap = :balance)
 
@@ -152,8 +162,9 @@ function panel_wise_visualization(field, k=1; hide_decorations = true, colorrang
     return fig
 end
 
-fill_halo_regions!(ψ)
-fill_halo_regions!(ψ)
 fig = panel_wise_visualization(ψ)
-fig
+save("streamfunction.png", fig)
 
+fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
+save("vorticity.png", fig)
+fig
