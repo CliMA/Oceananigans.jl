@@ -210,13 +210,25 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            region_grids,
                                                                                            devices)
 
+    # TODO: Use fill_halo_regions! for the Face-Face-Any fields.
+    #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
+    #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
+
     fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
     LXs₁    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
     LYs₁    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
 
+    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
+    # LXs₁    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
+    # LYs₁    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
+
     fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
     LXs₂    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
     LYs₂    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
+
+    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
+    # LXs₂    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
+    # LYs₂    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
 
     for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
         expr = quote
@@ -224,7 +236,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
-                for region in 1:6
+                for region in 1:number_of_regions($(grid))
                     getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
                     getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
                 end
@@ -242,7 +254,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             CUDA.@allowscalar begin
-                for region in 1:6
+                for region in 1:number_of_regions($(grid))
                     getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
                     getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
                 end
