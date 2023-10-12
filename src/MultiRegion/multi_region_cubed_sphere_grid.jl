@@ -10,7 +10,7 @@ using CubedSphere
 using Distances
 
 import Oceananigans.Grids: grid_name
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: second_halo_pass!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: second_pass_of_fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
