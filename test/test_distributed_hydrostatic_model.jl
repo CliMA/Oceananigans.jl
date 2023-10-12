@@ -26,7 +26,7 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition_global_array, all_reduce, reconstruct_global_grid
+using Oceananigans.DistributedComputations: partition_global_array, all_reduce, cpu_architecture, reconstruct_global_grid
 
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
@@ -104,10 +104,12 @@ for arch in archs
         c = Array(interior(c))
         η = Array(interior(η))
 
-        @test all(isapprox(u, partition_global_array(arch, us, size(u)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(v, partition_global_array(arch, vs, size(v)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(w, partition_global_array(arch, ws, size(w)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(c, partition_global_array(arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(η, partition_global_array(arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
+        cpu_arch = cpu_architecture(arch)
+
+        @test all(isapprox(u, partition_global_array(cpu_arch, us, size(u)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(v, partition_global_array(cpu_arch, vs, size(v)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(w, partition_global_array(cpu_arch, ws, size(w)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(c, partition_global_array(cpu_arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(η, partition_global_array(cpu_arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
     end
 end          
