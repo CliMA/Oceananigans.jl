@@ -19,15 +19,15 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-function local_size(p::Partition, topo, ranks, gsize)
+function local_size(p::Partition, topo, ranks, global_sz)
     # TODO: check correctness
     return p.sizes[rank]
 end
 
 const EqualPartition = Partition{Nothing}
 
-function local_size(p::EqualPartition, rank, gsize)
-    Nx, Ny, Nz = gsize
+function local_size(p::EqualPartition, rank, global_sz)
+    Nx, Ny, Nz = global_sz
     Rx, Ry, Rz = size(p)
     # TODO: Check that it is possible to partition Nx by Rx, etc
     Nxℓ = Nx ÷ Rx
@@ -54,10 +54,10 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, gsize, halo, x, y, z =
+    TX, TY, TZ, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    local_sz = local_size(arch.partition, arch.local_rank, gsize)
+    local_sz = local_size(arch.partition, arch.local_rank, global_sz)
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -275,14 +275,14 @@ end
 
 function scatter_local_grids(arch::Distributed, global_grid::RectilinearGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    gsize = global_size(arch, local_size)
-    return RectilinearGrid(arch, eltype(global_grid); size=gsize, x=x, y=y, z=z, halo=halo, topology=topo)
+    global_sz = global_size(arch, local_size)
+    return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    gsize = global_size(arch, local_size)
-    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=gsize, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
+    global_sz = global_size(arch, local_size)
+    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
 end
 
 """ 
