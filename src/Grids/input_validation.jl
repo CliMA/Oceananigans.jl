@@ -106,7 +106,8 @@ end
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
 
-    ξ[end] ≥ ξ[1] || throw(ArgumentError("The elements of $dir=$ξ must be increasing."))
+    ξ[end] ≥ ξ[1] ||
+        throw(ArgumentError("The elements of the vector $dir[index] must increase with increasing index."))
 
     # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
