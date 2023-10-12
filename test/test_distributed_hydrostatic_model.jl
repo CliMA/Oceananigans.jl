@@ -87,6 +87,7 @@ for arch in archs
 
         global_grid = reconstruct_global_grid(grid)
 
+        # "s" for "serial" computation
         us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
         us = Array(interior(us))
