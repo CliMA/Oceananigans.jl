@@ -24,7 +24,6 @@ CUDA.allowscalar() do
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
-            include("test_sewater_density.jl")
         end
     end
 
@@ -100,6 +99,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
+            include("test_sewater_density.jl")
         end
     end
 

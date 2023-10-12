@@ -31,7 +31,7 @@ function error_non_Boussinesq(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy()
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
-    SeawaterDensity(model) # throws error
+    seawater_density(model) # throws error
 
     return nothing
 end
@@ -44,23 +44,15 @@ function eos_works(arch, FT, eos::BoussinesqEquationOfState;
                    constant_temperature = nothing, constant_salinity = nothing)
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-
-    buoyancy =  if !isnothing(constant_temperature)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_temperature)
-                elseif !isnothing(constant_salinity)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_salinity)
-                else
-                    SeawaterBuoyancy(equation_of_state = eos)
-                end
-
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos; constant_temperature, constant_salinity)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
-    return SeawaterDensity(model) isa KernelFunctionOperation
+    return seawater_density(model) isa KernelFunctionOperation
 end
 
 """
     function insitu_density(arch, FT, eos)
-Use the `KernelFunctionOperation` returned from `SeawaterDensity` to compute a density `Field`
+Use the `KernelFunctionOperation` returned from `seawater_density` to compute a density `Field`
 and compare the computed values to density values explicitly calculate using
 `SeawaterPolynomials.ρ`. Similar function is used to test the potential density computation.
 """
@@ -68,13 +60,7 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
                         constant_temperature = nothing, constant_salinity = nothing)
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy =  if !isnothing(constant_temperature)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_temperature)
-                elseif !isnothing(constant_salinity)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_salinity)
-                else
-                    SeawaterBuoyancy(equation_of_state = eos)
-                end
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos; constant_temperature, constant_salinity)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
     if !isnothing(constant_temperature)
@@ -85,7 +71,7 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
         set!(model, S = ST_testvals.S, T = ST_testvals.T)
     end
 
-    d_field = compute!(Field(SeawaterDensity(model)))
+    d_field = compute!(Field(seawater_density(model)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = model_geopotential_height(model)
@@ -102,13 +88,7 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
                            constant_temperature = nothing, constant_salinity = nothing)
 
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    buoyancy =  if !isnothing(constant_temperature)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_temperature)
-                elseif !isnothing(constant_salinity)
-                    SeawaterBuoyancy(equation_of_state = eos; constant_salinity)
-                else
-                    SeawaterBuoyancy(equation_of_state = eos)
-                end
+    buoyancy = SeawaterBuoyancy(equation_of_state = eos; constant_temperature, constant_salinity)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
     if !isnothing(constant_temperature)
@@ -119,7 +99,7 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
         set!(model, S = ST_testvals.S, T = ST_testvals.T)
     end
 
-    d_field = compute!(Field(SeawaterDensity(model, geopotential_height = 0)))
+    d_field = compute!(Field(seawater_density(model, geopotential_height = 0)))
 
     # Computation from SeawaterPolynomials to check against
     geopotential_height = grid_size_value(arch, grid, 0)
@@ -133,7 +113,7 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
 end
 
 @testset "Density models" begin
-    @info "Testing `SeawaterDensity`..."
+    @info "Testing `seawater_density`..."
 
     @testset "Error for non-`BoussinesqEquationOfState`" begin
         @info "Testing error is thrown... "
@@ -144,7 +124,7 @@ end
         end
     end
 
-    @testset "SeawaterDensity `KernelFunctionOperation` instantiation" begin
+    @testset "seawater_density `KernelFunctionOperation` instantiation" begin
         @info "Testing `KernelFunctionOperation` is returned..."
 
         for FT in float_types

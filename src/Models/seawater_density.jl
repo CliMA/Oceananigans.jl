@@ -1,11 +1,11 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: SeawaterBuoyancy, Zᶜᶜᶜ
-using Oceananigans.Fields: field
+using Oceananigans.Fields: field, ConstantField
 using Oceananigans.Grids: Center
 using SeawaterPolynomials: BoussinesqEquationOfState
 import SeawaterPolynomials.ρ
 
-export SeawaterDensity
+export seawater_density
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
@@ -17,8 +17,9 @@ seawater_density(grid, eos, temperature, salinity, geopotential_height) =
 
 const ModelsWithBuoyancy = Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel}
 
-validate_model_eos(eos) = eos isa BoussinesqEquationOfState ? nothing :
-                                                              throw(ArgumentError("The equation of state must be a `BoussinesqEquationOfState` to compute the density."))
+validate_model_eos(eos:: BoussinesqEquationOfState) = nothing
+validate_model_eos(eos) = throw(ArgumentError("seawater_density is not defined for $eos."))
+
 # some nice fallbacks
 model_temperature(bf, model)     = model.tracers.T
 model_salinity(bf, model)        = model.tracers.S
@@ -31,7 +32,7 @@ model_temperature(b::ConstantTemperatureSB, model) = b.constant_temperature
 model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
 
 """
-    SeawaterDensity(model; temperature, salinity, geopotential_height)
+    seawater_density(model; temperature, salinity, geopotential_height)
 
 Return a `KernelFunctionOperation` that computes the in-situ density of seawater
 with (gridded) `temperature`, `salinity`, and at `geopotential_height`. To compute the
@@ -46,14 +47,14 @@ geopotential_height = 0 # sea-surface height
 σ₀ = seawater_density(model; geopotential_height)
 ```
 
-**Note:** `SeawaterDensity` must be passed a `BoussinesqEquationOfState` to compute the
+**Note:** `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
 density. See the [relevant documentation](https://clima.github.io/OceananigansDocumentation/dev/model_setup/buoyancy_and_equation_of_state/#Idealized-nonlinear-equations-of-state)
 for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
 
 Example
 =======
 
-Compute a density `Field` using the `KernelFunctionOperation` returned from `SeawaterDensity`
+Compute a density `Field` using the `KernelFunctionOperation` returned from `seawater_density`
 
 ```jldoctest density
 julia> using Oceananigans, Oceananigans.Models, SeawaterPolynomials.TEOS10
@@ -88,7 +89,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 
 julia> set!(model, S = 34.7, T = 0.5)
 
-julia> density_field = Field(SeawaterDensity(model))
+julia> density_field = Field(seawater_density(model))
 32×32×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
 ├── boundary conditions: FieldBoundaryConditions
@@ -110,9 +111,9 @@ julia> compute!(density_field)
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to
-`SeawaterDensity` to override the defaults that are obtained from the `model`.
+`seawater_density` to override the defaults that are obtained from the `model`.
 """
-function SeawaterDensity(model::ModelsWithBuoyancy;
+function seawater_density(model::ModelsWithBuoyancy;
                          temperature = model_temperature(model.buoyancy.model, model),
                          salinity = model_salinity(model.buoyancy.model, model),
                          geopotential_height = model_geopotential_height(model))
@@ -124,8 +125,8 @@ function SeawaterDensity(model::ModelsWithBuoyancy;
     loc = (Center, Center, Center)
     temperature = field(loc, temperature, grid)
     salinity = field(loc, salinity, grid)
-    # Preferable here is to leave `geopotential_height` as an `AbstractOperation` rather than creating a `Field`
-    geopotential_height = geopotential_height isa KernelFunctionOperation ? Field(geopotential_height) :
+
+    geopotential_height = geopotential_height isa KernelFunctionOperation ? geopotential_height :
                                                                             field(loc, geopotential_height, grid)
 
     return seawater_density(grid, eos, temperature, salinity, geopotential_height)
