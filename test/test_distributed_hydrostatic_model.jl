@@ -112,4 +112,4 @@ for arch in archs
         @test all(isapprox(c, partition_global_array(cpu_arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
         @test all(isapprox(η, partition_global_array(cpu_arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
     end
-end          
+end
