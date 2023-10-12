@@ -25,11 +25,11 @@ upper_interior_F(::BoundedTopology, coord) = coord
 total_interior_length(::AT, N)              = N
 total_interior_length(::BoundedTopology, N) = N + 1
 
-bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
-bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
+bad_coordinate_message(ξ::Function, dir) = "The function $dir(index) must increase as index increases."
+bad_coordinate_message(ξ::AbstractArray, dir) = "The elements of $dir must be increasing."
 
-# generate a variably-spaced coordinate passing the explicit coord faces as vector or function
-function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name, arch)
+# Generate a variably-spaced coordinate passing the explicit coord faces as vector or function
+function generate_coordinate(FT, topo::AT, N, H, node_generator, dir, arch)
 
     # Ensure correct type for F and derived quantities
     interior_face_nodes = zeros(FT, N+1)
@@ -41,7 +41,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     # Check that the interior nodes are increasing
     if !issorted(interior_face_nodes)
-        msg = bad_coordinate_message(node_generator, coordinate_name)
+        msg = bad_coordinate_message(node_generator, dir)
         throw(ArgumentError(msg))
     end
 
@@ -89,10 +89,10 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
+function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, dir, arch)
 
     if node_interval[2] < node_interval[1]
-        msg = "$coordinate_name must be an increasing interval!"
+        msg = "$dir must be an increasing interval."
         throw(ArgumentError(msg))
     end
 
