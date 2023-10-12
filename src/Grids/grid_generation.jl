@@ -26,7 +26,7 @@ total_interior_length(::AT, N)              = N
 total_interior_length(::BoundedTopology, N) = N + 1
 
 bad_coordinate_message(ξ::Function, dir) = "The function $dir(index) must increase as index increases."
-bad_coordinate_message(ξ::AbstractArray, dir) = "The elements of $dir must be increasing."
+bad_coordinate_message(ξ::AbstractArray, dir) = "The elements of the vector $dir[index] must increase with increasing index."
 
 # Generate a variably-spaced coordinate passing the explicit coord faces as vector or function
 function generate_coordinate(FT, topo::AT, N, H, node_generator, dir, arch)
