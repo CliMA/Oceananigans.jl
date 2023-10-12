@@ -117,7 +117,7 @@ end
 Make sure different workers are using the same time step
 """
 function validate_Δt(Δt, arch::Distributed)
-    Δt_min = all_reduce(Δt, arch, op = min)
+    Δt_min = all_reduce(min, Δt, arch)
     if Δt != Δt_min
         @warn "On rank $(arch.local_rank), Δt = $Δt is not the same as for the other workers. Using the minimum Δt = $Δt_min instead."
     end

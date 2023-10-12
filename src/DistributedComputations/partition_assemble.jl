@@ -1,9 +1,9 @@
 using Oceananigans.Architectures: arch_array
 
-all_reduce(val, arch::Distributed; op = +) = 
+all_reduce(op, val, arch::Distributed) = 
     MPI.Allreduce(val, op, arch.communicator)
 
-all_reduce(val, arch; kwargs...) = val
+all_reduce(op, val, arch) = val
 
 # MPI Barrier
 barrier!(arch) = nothing

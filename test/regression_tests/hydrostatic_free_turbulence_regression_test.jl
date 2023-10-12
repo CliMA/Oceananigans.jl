@@ -49,7 +49,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     u, v, w = model.velocities
     U       = 0.1 * maximum(abs, u)
-    U       = all_reduce(U, architecture(grid), op = max)
+    U       = all_reduce(max, U, architecture(grid))
     shear   = FunctionField{Face, Center, Center}(shear_func, grid, parameters=(U=U, Lz=grid.Lz))
     u      .= u + shear
 
@@ -67,7 +67,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     
     # Δt based on wave propagation time scale
     Δt = 0.2 * wave_time_scale
-    Δt = all_reduce(Δt, architecture(grid), op = min)
+    Δt = all_reduce(min, Δt, architecture(grid))
 
     #####
     ##### Simulation setup

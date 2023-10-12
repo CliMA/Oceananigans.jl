@@ -61,7 +61,7 @@ function solid_body_rotation_test(grid)
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
     @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
-    @show Δt = all_reduce(Δt_local, architecture(grid), op = min)
+    @show Δt = all_reduce(min, Δt_local, architecture(grid))
 
     for _ in 1:10
         time_step!(model, Δt)
