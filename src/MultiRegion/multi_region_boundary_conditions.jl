@@ -91,7 +91,7 @@ end
 #####
 ##### fill_halo! for Communicating boundary condition 
 #####
-    
+
 ## Fill communicating boundary condition halos
 for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halo!  = Symbol(:fill_, lside, :_and_, rside, :_halo!)
