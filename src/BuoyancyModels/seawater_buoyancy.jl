@@ -43,22 +43,39 @@ end
     SeawaterBuoyancy([FT = Float64;]
                      gravitational_acceleration = g_Earth,
                      equation_of_state = LinearEquationOfState(FT),
-                     constant_temperature = false,
-                     constant_salinity = false)
+                     constant_temperature = nothing,
+                     constant_salinity = nothing)
 
 Returns parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called ``g``), and an
 `equation_of_state` that related temperature and salinity (or conservative temperature
 and absolute salinity) to density anomalies and buoyancy.
 
-`constant_temperature` indicates that buoyancy depends only on salinity. For a nonlinear
-equation of state, `constant_temperature` is used as the temperature of the system.
-The same logic, with the roles of salinity and temperature reversed, holds when
-`constant_salinity` is provided.
+Setting `constant_temperature` to something that is not `nothing` indicates that buoyancy depends only on salinity.
+For a nonlinear equation of state, the value provided `constant_temperature` is used as the temperature of the system.
+Vice versa, setting `constant_salinity` indicates that buoyancy depends only on temperature.
 
 For a linear equation of state, the values of `constant_temperature` or `constant_salinity`
-are irrelevant; in this case, `constant_temperature=true` (and similar for `constant_salinity`)
-is valid input.
+are irrelevant.
+
+Examples
+========
+
+```julia
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+
+# The "TEOS10" equation of state, see https://www.teos-10.org
+teos10 = TEOS10EquationOfState()
+
+# Buoyancy that depends on both temperature and salinity
+buoyancy = SeawaterBuoyancy(equation_of_state=teos10)
+
+# Buoyancy that depends only on salinity with temperature held at 20 degrees Celsius
+salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_temperature=20) 
+
+# Buoyancy that depends only on temperature with salinity held at 35 psu
+temperature_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_salinity=35)
+```
 """
 function SeawaterBuoyancy(FT = Float64;
                           gravitational_acceleration = g_Earth,
