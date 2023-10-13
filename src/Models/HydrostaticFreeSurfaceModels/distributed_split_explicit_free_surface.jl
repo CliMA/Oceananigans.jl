@@ -100,7 +100,7 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
     state = free_surface.state
 
     for field in (state.U̅, state.V̅)
-        complete_halo_communication!(field)
+        synchronize_communication!(field)
     end
 
     auxiliary = free_surface.auxiliary

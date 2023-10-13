@@ -80,6 +80,9 @@ arch_array(::GPU, a::Function) = a
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
+cpu_architecture(::CPU) = CPU()
+cpu_architecture(::GPU) = CPU()
+
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
 
