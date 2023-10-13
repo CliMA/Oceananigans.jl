@@ -6,7 +6,7 @@ using Test
 using Printf
 using Test
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
-using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Relative
+using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Relative, Equal
 using MPI
 
 import Oceananigans.Fields: interior
