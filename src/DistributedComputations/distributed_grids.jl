@@ -293,7 +293,7 @@ function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGr
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, 
-                                 latitude=y, z=z, halo=halo, topology=topo, radius=old_grid.radius)
+                                 latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end
 
 """ 
