@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height
 using Oceananigans.Models: ConstantTemperatureSB, ConstantSalinitySB
 using SeawaterPolynomials: ρ, BoussinesqEquationOfState
@@ -47,7 +48,7 @@ function eos_works(arch, FT, eos::BoussinesqEquationOfState;
     buoyancy = SeawaterBuoyancy(equation_of_state = eos; constant_temperature, constant_salinity)
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
-    return seawater_density(model) isa KernelFunctionOperation
+    return seawater_density(model) isa AbstractOperation
 end
 
 """
@@ -125,7 +126,7 @@ end
     end
 
     @testset "seawater_density `KernelFunctionOperation` instantiation" begin
-        @info "Testing `KernelFunctionOperation` is returned..."
+        @info "Testing `AbstractOperation` is returned..."
 
         for FT in float_types
             for arch in archs

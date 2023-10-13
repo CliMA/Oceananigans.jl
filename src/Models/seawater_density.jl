@@ -1,11 +1,9 @@
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
 using Oceananigans.BuoyancyModels: SeawaterBuoyancy, Zᶜᶜᶜ
-using Oceananigans.Fields: field, ConstantField
+using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
 using SeawaterPolynomials: BoussinesqEquationOfState
 import SeawaterPolynomials.ρ
-
-export seawater_density
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
@@ -126,8 +124,8 @@ function seawater_density(model::ModelsWithBuoyancy;
     temperature = field(loc, temperature, grid)
     salinity = field(loc, salinity, grid)
 
-    geopotential_height = geopotential_height isa KernelFunctionOperation ? geopotential_height :
-                                                                            field(loc, geopotential_height, grid)
+    geopotential_height = geopotential_height isa AbstractOperation ? geopotential_height :
+                                                                      field(loc, geopotential_height, grid)
 
     return seawater_density(grid, eos, temperature, salinity, geopotential_height)
 end
