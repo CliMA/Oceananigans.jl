@@ -96,9 +96,11 @@ end
 # Fallback
 validate_dimension_specification(T, ξ, dir, N, FT) = ξ
 
-function validate_dimension_specification(T, ξ::Tuple, dir, N, FT)
+# Validation when a dimension is not provided (and T != Flat)
+validate_dimension_specification(T, ::Nothing, dir, N, FT) =
+    throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
 
-    isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
+function validate_dimension_specification(T, ξ::Tuple, dir, N, FT)
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
     all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ must contain numbers."))
     ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ must be an increasing interval."))
