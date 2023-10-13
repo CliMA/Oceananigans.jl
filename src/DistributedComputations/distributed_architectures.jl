@@ -49,6 +49,8 @@ Relative(args...) = sum(args) != 1 ? Relative{args ./ sum(args)}() : Relative{ar
 
 Base.getindex(::Sizes{S}, i) where S = S[i]
 Base.getindex(::Relative{S}, i) where S = S[i]
+Base.length(::Relative{S}) = length(S)
+Base.length(::Sizes{S}) = length(S)
 
 # We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
 validate_partition(x, y, z) = (x, y, z)
