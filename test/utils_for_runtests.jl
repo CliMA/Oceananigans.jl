@@ -17,7 +17,7 @@ function test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 4, y = 4)`
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 2
+    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
                 Distributed(child_arch; partition = Partition(1, 4)),
                 Distributed(child_arch; partition = Partition(2, 2))) 
