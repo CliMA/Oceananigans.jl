@@ -75,15 +75,14 @@ Nx = 32
 Ny = 32
 
 for arch in archs
-
     @testset "Testing distributed solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                        halo = (3, 3, 3),
-                                        latitude = (-80, 80),
-                                        longitude = (-160, 160),
-                                        z = (-1, 0),
-                                        radius = 1,
-                                        topology=(Bounded, Bounded, Bounded))
+                                     halo = (3, 3, 3),
+                                     latitude = (-80, 80),
+                                     longitude = (-160, 160),
+                                     z = (-1, 0),
+                                     radius = 1,
+                                     topology=(Bounded, Bounded, Bounded))
 
         global_grid = reconstruct_global_grid(grid)
 
@@ -107,10 +106,16 @@ for arch in archs
 
         cpu_arch = cpu_architecture(arch)
 
-        @test all(isapprox(u, partition_global_array(cpu_arch, us, size(u)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(v, partition_global_array(cpu_arch, vs, size(v)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(w, partition_global_array(cpu_arch, ws, size(w)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(c, partition_global_array(cpu_arch, cs, size(c)), atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(η, partition_global_array(cpu_arch, ηs, size(η)), atol=1e-20, rtol = 1e-15))
+        us = partition_global_array(cpu_arch, us, size(u))
+        vs = partition_global_array(cpu_arch, vs, size(v))
+        ws = partition_global_array(cpu_arch, ws, size(w))
+        cs = partition_global_array(cpu_arch, cs, size(c))
+        ηs = partition_global_array(cpu_arch, ηs, size(η))
+
+        @test all(isapprox(u, us, atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(v, vs, atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(w, ws, atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
+        @test all(isapprox(η, ηs, atol=1e-20, rtol = 1e-15))
     end
 end
