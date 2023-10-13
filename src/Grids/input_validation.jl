@@ -93,12 +93,18 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
     return x, y, z
 end
 
-# Fallback
-validate_dimension_specification(T, ξ, dir, N, FT) = ξ
+# Fallback errors
+validate_dimension_specification(T, ξ, dir, N, FT) =
+    throw(ArgumentError("$dir = $(typeof(ξ)) is not supported. $dir must be Tuple, Vector, or Function."))
+
+# Generators of the form ξ(index) must explicitly subtype Function
+validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
 
 # Validation when a dimension is not provided (and T != Flat)
 validate_dimension_specification(T, ::Nothing, dir, N, FT) =
     throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
+
+
 
 function validate_dimension_specification(T, ξ::Tuple, dir, N, FT)
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
