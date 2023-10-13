@@ -18,7 +18,7 @@ function test_architectures()
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 4, y = 4)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(Rx = [0.7, 0.3])),
+        return (Distributed(child_arch; partition = Partition(Rx = [0.1, 0.2, 0.4, 0.3])),
                 Distributed(child_arch; partition = Partition(4)))
                # TODO: add support for Y partitioning and 2D partitioning 
                # Should work but tests are failing for some reason
