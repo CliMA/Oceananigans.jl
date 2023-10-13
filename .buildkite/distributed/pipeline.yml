@@ -65,7 +65,11 @@ steps:
       slurm_ntasks: 4
 
   - label: "🤺 cpu distributed hydrostatic model tests"
+<<<<<<< HEAD
     key: "distributed_solvers_cpu"
+=======
+    key: "distributed_hydrostatic_model_cpu"
+>>>>>>> origin/main
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
     commands:
@@ -74,7 +78,11 @@ steps:
       slurm_ntasks: 4
 
   - label: "🕺 gpu distributed hydrostatic model tests"
+<<<<<<< HEAD
     key: "distributed_solvers_cpu"
+=======
+    key: "distributed_hydrostatic_model_gpu"
+>>>>>>> origin/main
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
     commands:

@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -175,15 +175,16 @@ array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::DistributedGPU) = Distributed(CPU(),
-                                                     arch.partition, 
-                                                     arch.ranks, 
-                                                     arch.local_rank,
-                                                     arch.local_index,
-                                                     arch.connectivity,
-                                                     arch.communicator,
-                                                     arch.mpi_requests,
-                                                     arch.mpi_tag)
+cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+    Distributed{S}(CPU(),
+                   arch.partition, 
+                   arch.ranks, 
+                   arch.local_rank,
+                   arch.local_index,
+                   arch.connectivity,
+                   arch.communicator,
+                   arch.mpi_requests,
+                   arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index

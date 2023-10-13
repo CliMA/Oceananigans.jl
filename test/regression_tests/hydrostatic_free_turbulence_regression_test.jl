@@ -4,16 +4,16 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations
-using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array
+using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations, all_reduce
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array, cpu_architecture
 
 using JLD2
 
 ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], r[1])
 
-get_topology(grid, i) = string(topology(grid, i))
+global_topology(grid, i) = string(topology(grid, i))
 
-function get_topology(grid::DistributedGrid, i) 
+function global_topology(grid::DistributedGrid, i) 
     arch = architecture(grid)
     R = arch.ranks[i]
     r = ordered_indices(arch.local_index, i)
@@ -49,6 +49,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     u, v, w = model.velocities
     U       = 0.1 * maximum(abs, u)
+    U       = all_reduce(max, U, architecture(grid))
     shear   = FunctionField{Face, Center, Center}(shear_func, grid, parameters=(U=U, Lz=grid.Lz))
     u      .= u + shear
 
@@ -63,10 +64,10 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     CUDA.allowscalar(false)
 
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
-
     # Δt based on wave propagation time scale
     Δt = 0.2 * wave_time_scale
-    
+    Δt = all_reduce(min, Δt, architecture(grid))
+
     #####
     ##### Simulation setup
     #####
@@ -80,7 +81,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     η = model.free_surface.η
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
-    x_topology_str = get_topology(grid, 1)
+    x_topology_str = global_topology(grid, 1)
     output_filename = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$(free_surface_str).jld2"
 
     if regenerate_data && !(grid isa DistributedGrid) # never regenerate on Distributed
@@ -111,11 +112,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 
+        cpu_arch = cpu_architecture(architecture(grid))
+
         truth_fields = (
-            u = partition_global_array(architecture(grid), file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
-            v = partition_global_array(architecture(grid), file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
-            w = partition_global_array(architecture(grid), file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
-            η = partition_global_array(architecture(grid), file["timeseries/η/$stop_iteration"][:, :, :], size(η))
+            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
+            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
+            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
+            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
         )
 
         close(file)
