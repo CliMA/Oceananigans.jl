@@ -29,22 +29,40 @@ ascribed to the different cores. In this case, `length(Rx)` represent the number
 of divisions in the first dimension with `sum(Rx)` equal to 1.0. 
 Rank `arch.local_index[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
 """
-Partition(Rx)     = Partition(validate_partition(Rx), 1, 1)
-Partition(Rx, Ry) = Partition(validate_partition(Rx), validate_partition(Ry), 1)
+Partition(Rx)     = Partition(validate_partition(Rx, 1, 1)...)
+Partition(Rx, Ry) = Partition(validate_partition(Rx, Ry, 1)...)
 
-function Partition(; Rx = 1, Ry = 1, Rz = 1)
-    Rx = validate_partition(Rx)
-    Ry = validate_partition(Ry)
-    Rz = validate_partition(Rz)
-    return Partition(Rx, Ry, Rz)
+function Partition(; x = 1, y = 1, z = 1)
+    x, y, z = validate_partition(x, y, z)
+    return Partition(x, y, z)
 end
-
-# We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
-validate_partition(r::Number) = r
-validate_partition(r::AbstractVector) = sum(r) == 1 ? r : throw(ArgumentError("The sum of the partition must be 1.0"))
 
 ranks(p::Partition) = (p.Rx, p.Ry, p.Rz)
 Base.size(p::Partition) = Tuple(r isa Int ? r : length(r) for r in ranks(p))
+
+struct Equal end
+struct Relative{S} end
+struct Sizes{S} end
+
+Relative(args...) = sum(args) != 1 ? Relative{args ./ sum(args)}() : Relative{args}()
+   Sizes(args...) = Sizes{tuple(args...)}()
+
+Base.getindex(::Sizes{S}, i) where S = S[i]
+Base.getindex(::Relative{S}, i) where S = S[i]
+
+# We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
+validate_partition(x, y, z) = (x, y, z)
+validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
+validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
+validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
+
+# Non uniform Partitioning
+const NUP = Union{Sizes, Relative}
+
+remaining_workers(r1::Number, r2::Number) = MPI.Comm_size(MPI.COMM_WORLD) - r1*r2
+remaining_workers(r1::Number, r2::NUP)    = MPI.Comm_size(MPI.COMM_WORLD) - r1*length(r2)
+remaining_workers(r1::NUP, r2::Number)    = MPI.Comm_size(MPI.COMM_WORLD) - length(r1)*r2
+remaining_workers(r1::NUP, r2::NUP)       = MPI.Comm_size(MPI.COMM_WORLD) - length(r1)*length(r2)
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
