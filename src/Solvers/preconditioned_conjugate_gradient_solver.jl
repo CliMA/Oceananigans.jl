@@ -6,7 +6,7 @@ using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
 
-mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
+mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P} 
                architecture :: A
                        grid :: G
           linear_operation! :: L
