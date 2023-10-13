@@ -61,9 +61,9 @@ are irrelevant.
 Examples
 ========
 
-```julia
+```jldoctest
+Suggested change
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
-
 # The "TEOS10" equation of state, see https://www.teos-10.org
 teos10 = TEOS10EquationOfState()
 
@@ -75,6 +75,34 @@ salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constan
 
 # Buoyancy that depends only on temperature with salinity held at 35 psu
 temperature_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_salinity=35)
+julia> using Oceananigans
+julia> using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+
+# The "TEOS10" equation of state, see https://www.teos-10.org
+julia> teos10 = TEOS10EquationOfState()
+BoussinesqEquationOfState{Float64}:
+    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+    └── reference_density: 1020.0
+
+# Buoyancy that depends on both temperature and salinity
+julia> buoyancy = SeawaterBuoyancy(equation_of_state=teos10)
+SeawaterBuoyancy{Float64}:
+├── gravitational_acceleration: 9.80665
+└── equation of state: BoussinesqEquationOfState{Float64}
+
+# Buoyancy that depends only on salinity with temperature held at 20 degrees Celsius
+julia> salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_temperature=20)
+SeawaterBuoyancy{Float64}:
+├── gravitational_acceleration: 9.80665
+├── constant_temperature: 20
+└── equation of state: BoussinesqEquationOfState{Float64}
+
+# Buoyancy that depends only on temperature with salinity held at 35 psu
+julia> temperature_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_salinity=35)
+SeawaterBuoyancy{Float64}:
+├── gravitational_acceleration: 9.80665
+├── constant_salinity: 35
+└── equation of state: BoussinesqEquationOfState{Float64}
 ```
 """
 function SeawaterBuoyancy(FT = Float64;
