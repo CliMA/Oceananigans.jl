@@ -20,7 +20,7 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
 # Local size from global size and architecture
-local_size(arch, global_sz) = local_size.(global_sz, ranks(arch.partition), arch, (1, 2, 3))
+local_size(arch, global_sz) = local_size.(global_sz, ranks(arch.partition), Ref(arch), (1, 2, 3))
 
 # Individual local size for equal partitioning
 function local_size(N, R::Int, arch, i::Int)
@@ -37,11 +37,11 @@ end
 function local_size(N, R::Vector, arch, i::Int)
     r   = arch.local_index[i]
     N𝓁  = Tuple(ceil(Int, N * R[i]) for i in 1:length(R))
-    Nℊ = concatenate_local_sizes(N𝓁, arch)
+    Nℊ = sum(N𝓁)
     if r == length(R) # If R does not divide N, we add the remainder to the last rank
         return N𝓁[r] + N - Nℊ
     else
-        return N𝓁
+        return N𝓁[r]
     end
 end
 

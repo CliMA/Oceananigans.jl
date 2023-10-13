@@ -25,7 +25,7 @@ where `x, y, z` are the first, second, and third dimension
 respectively.
 
 `Rx`, `Ry` and `Rz` can be vectors containing the percentage of the domain
-ascribed to the different cores. In this case `length(Rx)` represent the number
+ascribed to the different cores. In this case, `length(Rx)` represent the number
 of divisions in the first dimension with `sum(Rx)` equal to 1.0. 
 Rank `arch.local_index[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
 """
@@ -44,6 +44,7 @@ validate_partition(r::Number) = r
 validate_partition(r::AbstractVector) = sum(r) == 1 ? r : throw(ArgumentError("The sum of the partition must be 1.0"))
 
 ranks(p::Partition) = (p.Rx, p.Ry, p.Rz)
+Base.size(p::Partition) = Tuple(r isa Int ? r : length(r) for r in ranks(p))
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
