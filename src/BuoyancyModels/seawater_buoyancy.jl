@@ -46,7 +46,7 @@ end
                      constant_temperature = nothing,
                      constant_salinity = nothing)
 
-Returns parameters for a temperature- and salt-stratified seawater buoyancy model
+Return parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called ``g``), and an
 `equation_of_state` that related temperature and salinity (or conservative temperature
 and absolute salinity) to density anomalies and buoyancy.
