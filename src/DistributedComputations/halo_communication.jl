@@ -45,7 +45,6 @@ opposite_side = Dict(
 #   digit 1-2: an identifier for the field that is reset each timestep
 #   digit 3: an identifier for the field's Z-location
 #   digit 4: the side we send to/recieve from
-
 ID_DIGITS   = 2
 
 @inline loc_id(::Face)    = 0
@@ -116,14 +115,14 @@ end
 
 @inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
    
-    # if `isnothing(requests)`, `fill_halo!` did not involve MPI 
+    # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
     if isnothing(requests)
         return nothing
     end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
-    # pool to be waited upon after tendency calculation
-    if async && !(arch isa BlockingDistributed)
+    # pool to be waited upon later on when halos are required.
+    if async && !(arch isa SynchronizedDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -151,10 +150,10 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
+    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
+    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
+    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -173,6 +172,9 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
+# There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
+# - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
+# - async: if true, ansynchronous MPI communication is enabled
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
@@ -206,9 +208,9 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
-        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, args...; kwargs...) 
+        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, side, args...; kwargs...) 
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 

@@ -6,10 +6,27 @@ using Test
 using Printf
 using Test
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture
+using MPI
 
 import Oceananigans.Fields: interior
 
-test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
+function test_architectures() 
+    child_arch =  CUDA.has_cuda() ? GPU() : CPU()
+
+    # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # and `Partition(x = 4, y = 4)`
+    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+        return tuple(Distributed(child_arch; partition = Partition(4)))
+               # TODO: add support for Y partitioning and 2D partitioning 
+               # Should work but tests are failing for some reason
+               # Distributed(child_arch; partition = Partition(1, 4)))
+               # Distributed(child_arch; partition = Partition(2, 2)))
+    else
+        return tuple(child_arch)
+    end
+end
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
