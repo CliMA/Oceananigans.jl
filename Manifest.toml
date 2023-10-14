@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "1172b620e893669f8fc7291ba088c307bd6059d6"
+project_hash = "6aaff39ff92770d33ce87fedfcd4361b383a7161"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -201,6 +201,12 @@ version = "1.0.0"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
+[[deps.DiskArrays]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "1bfa9de80f35ac63c6c381b2d43c590875896a1f"
+uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
+version = "0.3.22"
+
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
 git-tree-sha1 = "5225c965635d8c21168e32a12954675e7bea1151"
@@ -374,9 +380,9 @@ version = "0.2.1+0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "PrecompileTools", "Requires", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "4c5875e4c228247e1c2b087669846941fb6e0118"
+git-tree-sha1 = "5f1ecfddb6abde48563d08b2cc7e5116ebcd6c27"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.9.8"
+version = "0.9.10"
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
@@ -535,10 +541,10 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 version = "2022.10.11"
 
 [[deps.NCDatasets]]
-deps = ["CFTime", "CommonDataModel", "DataStructures", "Dates", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "4263c4220f22e20729329838bf7e94a49d1ac32f"
+deps = ["CFTime", "CommonDataModel", "DataStructures", "Dates", "DiskArrays", "NetCDF_jll", "NetworkOptions", "Printf"]
+git-tree-sha1 = "7fcb4378f9c648a186bcb996fa29acc929a179ed"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.12.17"
+version = "0.13.1"
 
 [[deps.NVTX]]
 deps = ["Colors", "JuliaNVTXCallbacks_jll", "Libdl", "NVTX_jll"]

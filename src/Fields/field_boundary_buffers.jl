@@ -38,10 +38,10 @@ function FieldBoundaryBuffers(grid, data, boundary_conditions)
     north = create_buffer_y(architecture(grid), grid, data, Hy, boundary_conditions.north)
 
     if hasproperty(arch, :connectivity)
-        sw = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.southwest)
-        se = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.southeast)
-        nw = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.northwest)
-        ne = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.northeast)
+        sw = create_buffer_corner(arch, grid, data, Hx, Hy, west, south)
+        se = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
+        nw = create_buffer_corner(arch, grid, data, Hx, Hy, west, north)
+        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
     else
         sw = nothing
         se = nothing
@@ -55,9 +55,13 @@ end
 create_buffer_x(arch, grid, data, H, bc) = nothing
 create_buffer_y(arch, grid, data, H, bc) = nothing
 
-create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing) = nothing
+# Corner buffers are filled only if the corner is connected. which means that either edges are
+# connected and rank is not a nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
-function create_buffer_corner(arch, grid, data, Hx, Hy, side)
+function create_buffer_corner(arch, grid, data, Hx, Hy, edge1, edge2)
     return (send = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
 end

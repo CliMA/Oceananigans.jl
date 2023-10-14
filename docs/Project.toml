@@ -15,4 +15,4 @@ CairoMakie = "0.10 - 0.10.4" # v0.10.5, v0.10.6 very slow with contourf + prescr
 Documenter = "1"
 DocumenterCitations = "1"
 Literate = "≥2.9.0"
-NCDatasets = "0.12.10"
+NCDatasets = "0.12.10, 0.13.1"

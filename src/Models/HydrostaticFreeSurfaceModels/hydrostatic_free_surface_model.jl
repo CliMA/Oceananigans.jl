@@ -138,7 +138,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :η, tracernames(tracers)...)
+    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., :η, keys(auxiliary_fields)...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
@@ -175,7 +175,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
@@ -206,6 +206,7 @@ function validate_vertical_velocity_boundary_conditions(w)
 end
 
 validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
+validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
