@@ -21,8 +21,8 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant,
-    EnergyConservingScheme,
-    EnstrophyConservingScheme
+    EnergyConserving,
+    EnstrophyConserving
 
 using DocStringExtensions
 
