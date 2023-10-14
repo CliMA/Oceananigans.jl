@@ -65,7 +65,7 @@ lines(zspacings(grid, Center()), znodes(grid, Center()),
 
 scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
-current_figure() # hide
+current_figure() #hide
 
 # ## Tilting the domain
 #
@@ -232,7 +232,7 @@ times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.

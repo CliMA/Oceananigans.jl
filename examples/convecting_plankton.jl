@@ -76,7 +76,7 @@ ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m
 flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 lines!(ax, times ./ hour, flux_time_series)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # The buoyancy flux effectively shuts off after 6 hours of simulation time.
@@ -106,7 +106,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 # due to viruses and grazing by zooplankton,
 
 growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
-nothing # hide
+nothing #hide
 
 # with parameters
 
@@ -214,13 +214,13 @@ avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
 
 times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
-nothing # hide
+nothing #hide
 
 # and then we construct the ``x, z`` grid,
 
 xw, yw, zw = nodes(w_timeseries)
 xp, yp, zp = nodes(P_timeseries)
-nothing # hide
+nothing #hide
 
 # Finally, we animate plankton mixing and blooming,
 
@@ -264,7 +264,7 @@ b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
 lines!(ax_avg_P, avg_Pₙ, zp)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And, finally, we record a movie.
