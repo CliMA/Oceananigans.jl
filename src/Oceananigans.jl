@@ -32,7 +32,7 @@ export
     Centered, CenteredSecondOrder, CenteredFourthOrder, 
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant, WENOVectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
+    VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
 
     # Boundary conditions
     BoundaryCondition,
