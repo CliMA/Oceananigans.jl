@@ -1,6 +1,7 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
 
+# These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
 
