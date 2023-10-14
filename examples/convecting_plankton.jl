@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \boldsymbol{v ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \boldsymbol{v \cdot \nabla} P - κ ∇²P = [μ₀ \exp(z / λ) - m] \, P \, ,
 # ```
 #
 # where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
