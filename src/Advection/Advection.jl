@@ -20,7 +20,7 @@ export
     Centered, CenteredSecondOrder, CenteredFourthOrder,
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant,
+    VectorInvariant, WENOVectorInvariant,
     EnergyConservingScheme,
     EnstrophyConservingScheme
 
@@ -55,6 +55,7 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 @inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
+@inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
