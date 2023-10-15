@@ -125,13 +125,15 @@ end
 # (either shared, MCBC or distributed DCBC), paired with a Flux, Value or Gradient boundary condition
 split_boundary(bcs1, bcs2)     = false
 split_boundary(::DCBC, ::DCBC) = false
-split_boundary(::MCBC, ::DCBC) = false
-split_boundary(::DCBC, ::MCBC) = false
-split_boundary(::MCBC, ::MCBC) = false
 split_boundary(bcs1, ::DCBC)   = true
 split_boundary(::DCBC, bcs2)   = true
-split_boundary(bcs1, ::MCBC)   = true
-split_boundary(::MCBC, bcs2)   = true
+
+# TODO: support heterogeneous distributed-shared communication
+# split_boundary(::MCBC, ::DCBC) = false
+# split_boundary(::DCBC, ::MCBC) = false
+# split_boundary(::MCBC, ::MCBC) = false
+# split_boundary(bcs1, ::MCBC)   = true
+# split_boundary(::MCBC, bcs2)   = true
 
 #####
 ##### Halo filling order

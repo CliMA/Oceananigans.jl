@@ -168,8 +168,8 @@ end
 @inline communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-@inline communication_side(::Val{fill_west_halo!})   = :west
-@inline communication_side(::Val{fill_east_halo!})   = :east
+@inline communication_side(::Val{fill_west_halo!})   = :west 
+@inline communication_side(::Val{fill_east_halo!})   = :east 
 @inline communication_side(::Val{fill_south_halo!})  = :south
 @inline communication_side(::Val{fill_north_halo!})  = :north
 @inline communication_side(::Val{fill_bottom_halo!}) = :bottom
@@ -233,9 +233,7 @@ end
 
 for (side, opposite_side) in zip([:west, :south], [:east, :north])
     fill_both_halo! = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
-    fill_side_halo! = Symbol("fill_$(side)_halo!")
     send_side_halo  = Symbol("send_$(side)_halo")
-    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
     send_opposite_side_halo  = Symbol("send_$(opposite_side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
