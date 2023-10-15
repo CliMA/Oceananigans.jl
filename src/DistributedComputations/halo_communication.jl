@@ -101,7 +101,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch       = architecture(grid)
     halo_tuple = permute_boundary_conditions(bcs)
 
-    for task = 1:3
+    for task = 1:length(halo_tuple[1])
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
@@ -223,8 +223,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
 end
 
 #####
-##### fill_west_and_east_halo!  
-##### fill_south_and_north_halo! 
+##### Double-sided Distributed fill_halo!s
 #####
 
 for (side, opposite_side) in zip([:west, :south], [:east, :north])
@@ -235,9 +234,6 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
     send_opposite_side_halo  = Symbol("send_$(opposite_side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
-    fill_all_send_buffers! = Symbol("fill_$(side)_and_$(opposite_side)_send_buffers!")
-    fill_side_send_buffers! = Symbol("fill_$(side)_send_buffers!")
-    fill_opposite_side_send_buffers! = Symbol("fill_$(opposite_side)_send_buffers!")
 
     @eval begin
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
@@ -256,37 +252,31 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
 
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
+    end
+end
 
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::Distributed, 
-                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
+#####
+##### Single-sided Distributed fill_halo!s
+#####
 
-            $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+for (side, opposite_side) in zip([:west, :south], [:east, :north])
+    fill_side_halo! = Symbol("fill_$(side)_halo!")
+    send_side_halo  = Symbol("send_$(side)_halo")
+    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+
+    @eval begin
+        function $fill_side_halo!(c, bc_side::DCBCT, size, offset, loc, arch::Distributed, grid::DistributedGrid,
+                                 buffers, args...; only_local_halos = false, kwargs...)
 
             only_local_halos && return nothing
             
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
-
+            
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
+            
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
             
-            return [send_req, recv_req]
-        end
-
-        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
-                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
-
-            $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-
-            only_local_halos && return nothing
-
-            child_arch = child_architecture(arch)
-            local_rank = bc_opposite_side.condition.from
-
-            recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
-
-            send_req = $send_opposite_side_halo(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
-
             return [send_req, recv_req]
         end
     end

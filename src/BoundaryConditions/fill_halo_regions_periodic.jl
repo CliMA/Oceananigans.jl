@@ -106,3 +106,14 @@ end
         end
     end
 end
+
+#####
+##### Throw error if single-sided periodic boundary conditions are used
+#####
+
+fill_only_west_halo!(c, ::PBCT, args...; kwargs...)   = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_only_east_halo!(c, ::PBCT, args...; kwargs...)   = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_only_south_halo!(c, ::PBCT, args...; kwargs...)  = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_only_north_halo!(c, ::PBCT, args...; kwargs...)  = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_only_bottom_halo!(c, ::PBCT, args...; kwargs...) = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_only_top_halo!(c, ::PBCT, args...; kwargs...)    = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
