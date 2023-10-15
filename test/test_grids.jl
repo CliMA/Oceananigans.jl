@@ -449,8 +449,10 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+    # Should add 2 points because grid.φ should have one extra halo to 
+    # calculate metrics (specifically `Az`) on the halos
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 3
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ + 2
 
     @test grid.λᶠᵃᵃ[1] == -90
     @test grid.λᶠᵃᵃ[Nλ+1] == 90
@@ -498,8 +500,10 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+    # Should add 2 points because grid.φ should have one extra halo to 
+    # calculate metrics (specifically `Az`) on the halos
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 3
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ + 2
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
@@ -582,8 +586,10 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
         
-    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
+    # Should add 2 points because grid.φ should have one extra halo to 
+    # calculate metrics (specifically `Az`) on the halos
+    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 3
+    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ + 2
     
     @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
