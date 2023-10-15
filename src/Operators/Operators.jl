@@ -70,8 +70,6 @@ import Oceananigans.Grids: xspacing, yspacing, zspacing
 
 const AG   = AbstractGrid
 const RCG  = RectilinearGrid
-const ACG  = AbstractCurvilinearGrid
-const AHCG = AbstractHorizontallyCurvilinearGrid
 
 const Δx = xspacing
 const Δy = yspacing
