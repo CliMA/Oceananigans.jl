@@ -48,7 +48,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     arch = architecture(grid)
 
-    halo_tuple  = permute_boundary_conditions(boundary_condition)
+    halo_tuple  = permute_boundary_conditions(boundary_conditions)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task in 1:3
