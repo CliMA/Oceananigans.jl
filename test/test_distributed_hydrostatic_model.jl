@@ -71,7 +71,6 @@ function solid_body_rotation_test(grid)
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
-
 Nx = 32
 Ny = 32
 
