@@ -264,7 +264,7 @@ end
 ##### Single-sided Distributed fill_halo!s
 #####
 
-for (side, opposite_side) in zip([:west, :south], [:east, :north])
+for side in [:west, :east, :south, :north]
     fill_side_halo! = Symbol("fill_$(side)_halo!")
     send_side_halo  = Symbol("send_$(side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
