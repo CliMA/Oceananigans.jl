@@ -9,62 +9,73 @@ using Adapt: adapt_structure
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, M, MY, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
+    classification :: C
     Nx :: Int
     Ny :: Int
     Nz :: Int
     Hx :: Int
     Hy :: Int
     Hz :: Int
+    Lx :: FT
+    Ly :: FT
     Lz :: FT
-    λᶜᶜᵃ :: A
-    λᶠᶜᵃ :: A
-    λᶜᶠᵃ :: A
-    λᶠᶠᵃ :: A
-    φᶜᶜᵃ :: A
-    φᶠᶜᵃ :: A
-    φᶜᶠᵃ :: A
-    φᶠᶠᵃ :: A
-    zᵃᵃᶜ :: R
-    zᵃᵃᶠ :: R
-    Δxᶜᶜᵃ :: A
-    Δxᶠᶜᵃ :: A
-    Δxᶜᶠᵃ :: A
-    Δxᶠᶠᵃ :: A
-    Δyᶜᶜᵃ :: A
-    Δyᶜᶠᵃ :: A
-    Δyᶠᶜᵃ :: A
-    Δyᶠᶠᵃ :: A
-    Δzᵃᵃᶜ :: FR
-    Δzᵃᵃᶠ :: FR
-    Azᶜᶜᵃ :: A
-    Azᶠᶜᵃ :: A
-    Azᶜᶠᵃ :: A
-    Azᶠᶠᵃ :: A
+    λᶜᶜᵃ :: X
+    λᶠᶜᵃ :: X
+    λᶜᶠᵃ :: X
+    λᶠᶠᵃ :: X
+    φᶜᶜᵃ :: Y
+    φᶠᶜᵃ :: Y
+    φᶜᶠᵃ :: Y
+    φᶠᶠᵃ :: Y
+    zᵃᵃᶜ :: Z
+    zᵃᵃᶠ :: Z
+    # Simple spacing useful for structured grids (LatitudeLongitude)
+    Δλᶜᵃᵃ :: FX
+    Δλᶠᵃᵃ :: FX
+    Δφᵃᶜᵃ :: FY
+    Δφᵃᶠᵃ :: FY
+    Δzᵃᵃᶜ :: FZ
+    Δzᵃᵃᶠ :: FZ
+    # Spacings
+    Δxᶜᶜᵃ :: M
+    Δxᶠᶜᵃ :: M
+    Δxᶜᶠᵃ :: M
+    Δxᶠᶠᵃ :: M
+    Δyᶜᶜᵃ :: MY
+    Δyᶜᶠᵃ :: MY
+    Δyᶠᶜᵃ :: MY
+    Δyᶠᶠᵃ :: MY
+    Azᶜᶜᵃ :: M
+    Azᶠᶜᵃ :: M
+    Azᶜᶠᵃ :: M
+    Azᶠᶠᵃ :: M
     radius :: FT
-    conformal_mapping :: C
 
     OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
+                                             classification :: C,
                                              Nx, Ny, Nz,
                                              Hx, Hy, Hz,
-                                                Lz :: FT,
-                                              λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
-                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
-                                             Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, Δzᵃᵃᶜ :: FR, Δzᵃᵃᶠ :: FR,
-                                             Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
-                                             radius :: FT,
-                                             conformal_mapping :: C) where {TX, TY, TZ, FT, A, R, FR, C, Arch} =
-        new{FT, TX, TY, TZ, A, R, FR, C, Arch}(architecture,
-                                            Nx, Ny, Nz,
-                                            Hx, Hy, Hz,
-                                            Lz,
-                                            λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-                                            Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
-                                            Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, conformal_mapping)
+                                             Lx :: FT, Ly :: FT, Lz :: FT,
+                                              λᶜᶜᵃ :: X,   λᶠᶜᵃ :: X,   λᶜᶠᵃ :: X,   λᶠᶠᵃ :: X,
+                                              φᶜᶜᵃ :: Y,   φᶠᶜᵃ :: Y,   φᶜᶠᵃ :: Y,   φᶠᶠᵃ :: Y,  zᵃᵃᶜ :: Z,   zᵃᵃᶠ :: Z,
+                                             Δλᶜᵃᵃ :: FX, Δλᶠᵃᵃ :: FX, Δφᵃᶜᵃ :: FY, Δφᵃᶠᵃ :: FY, Δzᵃᵃᶜ :: FZ, Δzᵃᵃᶠ :: FZ,
+                                             Δxᶜᶜᵃ :: M,  Δxᶠᶜᵃ :: M,  Δxᶜᶠᵃ :: M,  Δxᶠᶠᵃ :: M,
+                                             Δyᶜᶜᵃ :: MY, Δyᶜᶠᵃ :: MY, Δyᶠᶜᵃ :: MY, Δyᶠᶠᵃ :: MY,
+                                             Azᶜᶜᵃ :: M,  Azᶠᶜᵃ :: M,  Azᶜᶠᵃ :: M,  Azᶠᶠᵃ :: M,
+                                             radius :: FT) where {TX, TY, TZ, FT, C, X, Y, Z, FX, FY, FZ, M, MY, Arch} =
+        new{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, M, MY, Arch}(architecture,
+                                                                 classification,
+                                                                 Nx, Ny, Nz,
+                                                                 Hx, Hy, Hz,
+                                                                 Lx, Ly, Lz,
+                                                                 λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                                                                 φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                 Δλᶜᵃᵃ, Δλᶠᵃᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                                 Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                                                 Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 const OSSG = OrthogonalSphericalShellGrid
@@ -72,14 +83,15 @@ const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
 # convenience constructor for OSSG without any conformal_mapping properties
-OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
                              λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) =
-    OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+    OrthogonalSphericalShellGrid(architecture, nothing, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
                                  λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
-                                 Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, nothing)
+                                 nothing, nothing, nothing, nothing, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                 Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 
 """
     conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU(),
@@ -591,15 +603,19 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
     coordinate_arrays = map(a -> arch_array(architecture, a), coordinate_arrays)
 
-    metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+    metric_arrays = (nothing, nothing, nothing, nothing, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                     Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
     conformal_mapping = (; ξ, η, rotation)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+    Lx = convert(FT, 90)
+    Ly = convert(FT, 90)
+
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, nothing, Nξ, Nη, Nz, Hx, Hy, Hz, 
+                                                    Lx, Ly, Lz,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
@@ -925,6 +941,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     TX, TY, TZ = topology(grid)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
+                                                    grid.classification,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
                                                     grid.Lz,
@@ -938,6 +955,12 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     adapt(to, grid.φᶠᶠᵃ),
                                                     adapt(to, grid.zᵃᵃᶜ),
                                                     adapt(to, grid.zᵃᵃᶠ),
+                                                    adapt(to, grid.Δλᶜᵃᵃ),
+                                                    adapt(to, grid.Δλᶠᵃᵃ),
+                                                    adapt(to, grid.Δφᵃᶜᵃ),
+                                                    adapt(to, grid.Δφᵃᶠᵃ),
+                                                    adapt(to, grid.Δzᵃᵃᶜ),
+                                                    adapt(to, grid.Δzᵃᵃᶠ),
                                                     adapt(to, grid.Δxᶜᶜᵃ),
                                                     adapt(to, grid.Δxᶠᶜᵃ),
                                                     adapt(to, grid.Δxᶜᶠᵃ),
@@ -946,14 +969,11 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     adapt(to, grid.Δyᶜᶠᵃ),
                                                     adapt(to, grid.Δyᶠᶜᵃ),
                                                     adapt(to, grid.Δyᶠᶠᵃ),
-                                                    adapt(to, grid.Δzᵃᵃᶜ),
-                                                    adapt(to, grid.Δzᵃᵃᶠ),
                                                     adapt(to, grid.Azᶜᶜᵃ),
                                                     adapt(to, grid.Azᶠᶜᵃ),
                                                     adapt(to, grid.Azᶜᶠᵃ),
                                                     adapt(to, grid.Azᶠᶠᵃ),
-                                                    grid.radius,
-                                                    grid.conformal_mapping)
+                                                    grid.radius)
 end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
