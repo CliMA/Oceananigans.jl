@@ -57,8 +57,8 @@ function solid_body_rotation_test(grid)
     uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
     # Gaussian leads to values with O(1e-60),
-    # too small for repetible testing. We cap it at 1e-10.
-    cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 1e-10)
+    # too small for repetible testing. We cap it at 1e-5.
+    cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 1e-5)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 

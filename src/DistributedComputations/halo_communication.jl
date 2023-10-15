@@ -16,7 +16,7 @@ using Oceananigans.BoundaryConditions:
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
-    fill_west_halo!, fill_east_halo!, fill_south_halo!,
+    fill_west_halo!,  fill_east_halo!,   fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
     fill_west_and_east_halo!,
     fill_south_and_north_halo!,
@@ -168,12 +168,12 @@ end
 @inline communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
 @inline communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-@inline communication_side(::Val{fill_only_west_halo!})   = :west
-@inline communication_side(::Val{fill_only_east_halo!})   = :east
-@inline communication_side(::Val{fill_only_south_halo!})  = :south
-@inline communication_side(::Val{fill_only_north_halo!})  = :north
-@inline communication_side(::Val{fill_only_bottom_halo!}) = :bottom
-@inline communication_side(::Val{fill_only_top_halo!})    = :top
+@inline communication_side(::Val{fill_west_halo!})   = :west
+@inline communication_side(::Val{fill_east_halo!})   = :east
+@inline communication_side(::Val{fill_south_halo!})  = :south
+@inline communication_side(::Val{fill_north_halo!})  = :north
+@inline communication_side(::Val{fill_bottom_halo!}) = :bottom
+@inline communication_side(::Val{fill_top_halo!})    = :top
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
@@ -193,7 +193,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::Distrib
     end
 
     # Calculate size and offset of the fill_halo kernel
-    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
+    size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
     requests = fill_halo!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
