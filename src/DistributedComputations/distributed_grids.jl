@@ -133,14 +133,16 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # when constructing the metrics!
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ, φl, :latitude, arch.child_architecture)
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
-                                                         nλ, nφ, nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., convert(FT, radius))
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
+                                                                LatitudeLongitude(),
+                                                                nλ, nφ, nz,
+                                                                Hλ, Hφ, Hz,
+                                                                Lλ, Lφ, Lz,
+                                                                λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
+                                                                φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
+                                                                zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                Δλᶜᵃᵃ, Δλᶠᵃᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ,
+                                                                (nothing for i=1:12)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
@@ -232,15 +234,17 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     precompute_metrics = metrics_precomputed(grid)
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(child_arch,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., grid.radius)
-
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
+                                                                LatitudeLongitude(),
+                                                                Nλ, Nφ, Nz,
+                                                                Hλ, Hφ, Hz,
+                                                                Lλ, Lφ, Lz,
+                                                                λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
+                                                                φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
+                                                                zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                Δλᶜᵃᵃ, Δλᶠᵃᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ,
+                                                                (nothing for i=1:12)..., FT(radius))
+                                                                
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
