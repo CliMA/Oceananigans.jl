@@ -158,12 +158,12 @@ run!(simulation)
 # Load required packages to read output and plot.
 
 using NCDatasets, Printf, CairoMakie
-nothing # hide
+nothing #hide
 
 # Define the coordinates for plotting.
 
 x, y = xnodes(ω), ynodes(ω)
-nothing # hide
+nothing #hide
 
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
@@ -191,7 +191,7 @@ Colorbar(fig[2, 4], hm_ω′)
 title = @lift @sprintf("t = %.1f", times[$n])
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -217,7 +217,7 @@ ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 norm_v = ds2["perturbation_norm"][:]
 
 close(ds2)
-nothing # hide
+nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
@@ -254,7 +254,7 @@ lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visua
 
 axislegend(position = :rb)
 
-current_figure() # hide
+current_figure() #hide
 
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.
