@@ -130,7 +130,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
     # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
     # But we need an extra point to precompute the Y direction in case of only one halo so we disregard the topology
-    # when constructing the metrics! (to see why we need an extra point, see the constructor of `LatitudeLongitudeGrid`)
+    # when constructing the metrics! (to see why we pass an extra halo, see the constructor of `LatitudeLongitudeGrid`)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
