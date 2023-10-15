@@ -56,16 +56,17 @@ function solid_body_rotation_test(grid)
 
     uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
-    cᵢ(λ, φ, z) = Gaussian(λ, φ - 5, 10)
+    # Gaussian leads to values with O(1e-60),
+    # too small for repetible testing. We cap it at 1e-10.
+    cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 1e-10)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
     @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
     @show Δt = all_reduce(min, Δt_local, architecture(grid))
 
-    for _ in 1:10
-        time_step!(model, Δt)
-    end
+    simulation = Simulation(model; Δt, stop_iteration = 10)
+    run!(simulation)
 
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
@@ -112,10 +113,10 @@ for arch in archs
         cs = partition_global_array(cpu_arch, cs, size(c))
         ηs = partition_global_array(cpu_arch, ηs, size(η))
 
-        @test all(isapprox(u, us, atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(v, vs, atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(w, ws, atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
-        @test all(isapprox(η, ηs, atol=1e-20, rtol = 1e-15))
+        @test all(u .≈ us)
+        @test all(v .≈ vs)
+        @test all(w .≈ ws)
+        @test all(c .≈ cs)
+        @test all(η .≈ ηs)
     end
 end
