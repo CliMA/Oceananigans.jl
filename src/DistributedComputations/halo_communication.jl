@@ -150,10 +150,10 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
-    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
-    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
-    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -213,12 +213,13 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
-        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, side, args...; kwargs...) 
+        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
+            @info "rank $local_rank communicating with $corner"
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
             
