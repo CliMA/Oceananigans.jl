@@ -210,9 +210,9 @@ validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = f
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
-validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
-validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid)   = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)       = momentum_advection
+validate_momentum_advection(momentum_advection, grid::LatitudeLongitudeGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
