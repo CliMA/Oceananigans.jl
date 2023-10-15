@@ -28,8 +28,6 @@ MPI.Initialized() || MPI.Init()
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: partition_global_array, all_reduce, cpu_architecture, reconstruct_global_grid
 
-Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
-
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
@@ -58,7 +56,7 @@ function solid_body_rotation_test(grid)
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
     # Gaussian leads to values with O(1e-60),
     # too small for repetible testing. We cap it at 1e-5.
-    cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 1e-5)
+    cᵢ(λ, φ, z) = λ > 0 && λ < 40 && φ > 0 && φ < 40 ? 1 : 0 
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
