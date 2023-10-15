@@ -2,6 +2,7 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.DistributedComputations: communication_side
 
 using Oceananigans.BoundaryConditions:
             ContinuousBoundaryFunction,
@@ -63,14 +64,12 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     arch       = architecture(mrg)
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
-    for passes in 1:1
-        for task in 1:3
-            @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
-            buff = Reference(buffers.regional_objects)
-            apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                            c, indices, loc, arch, mrg, buff, 
-                            args...; kwargs...)
-        end
+    for task in 1:3
+        @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
+        buff = Reference(buffers.regional_objects)
+        apply_regionally!(fill_halo_event!, task, halo_tuple, 
+                          c, indices, loc, arch, mrg, buff, 
+                          args...; kwargs...)
     end
 
     return nothing
@@ -78,11 +77,11 @@ end
 
 # Find a better way to do this (this will not work for corners!!)
 function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
-    bc_left  = halo_tuple[2][task]
-    bc_right = halo_tuple[3][task]
-
-    if bc_left isa MCBC || bc_right isa MCBC
-        fill_send_buffers!(c, buffers, grid)
+    bcs        = halo_tuple[2][task]
+    fill_halo! = halo_tuple[1][task] 
+    side       = communication_side(fill_halo!)
+    if !isempty(filter(x -> x isa MCBC, bcs))
+        fill_send_buffers!(c, buffers, grid, Val(side))
     end
 
     return nothing
