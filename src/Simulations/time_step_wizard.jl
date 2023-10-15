@@ -108,7 +108,7 @@ function new_time_step(old_Δt, wizard, model)
     new_Δt = min(wizard.max_change * old_Δt, new_Δt)
     new_Δt = max(wizard.min_change * old_Δt, new_Δt)
     new_Δt = clamp(new_Δt, wizard.min_Δt, wizard.max_Δt)
-    new_Δt = all_reduce(new_Δt, architecture(model.grid); op = min)
+    new_Δt = all_reduce(min, new_Δt, architecture(model.grid))
 
     return new_Δt
 end
