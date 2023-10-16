@@ -77,8 +77,8 @@ end
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)
 
-    split_x_boundaries = split_boundary(extract_west_bc(boundary_conditions), extract_east_bc(boundary_conditions))
-    split_y_boundaries = split_boundary(extract_north_bc(boundary_conditions), extract_south_bc(boundary_conditions))
+    split_x_boundaries = split_boundary(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
+    split_y_boundaries = split_boundary(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
 
     fill_x_side_halo! = split_x_boundaries ? (fill_west_halo!,  fill_east_halo!)  : tuple(fill_west_and_east_halo!)
     fill_y_side_halo! = split_y_boundaries ? (fill_south_halo!, fill_north_halo!) : tuple(fill_south_and_north_halo!)
