@@ -17,6 +17,7 @@ using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCon
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
+using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -24,7 +25,7 @@ using Oceananigans.TurbulenceClosures:
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
-
+    
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
@@ -33,7 +34,7 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_flux,
     dissipation,
     add_closure_specific_boundary_conditions,
-    calculate_diffusivities!,
+    compute_diffusivities!,
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
@@ -44,7 +45,7 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
-struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
     maximum_tracer_diffusivity :: FT
@@ -236,7 +237,7 @@ const f = Face()
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
@@ -252,7 +253,7 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
             compute_average_surface_buoyancy_flux!,
             diffusivities.Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             compute_CATKE_diffusivities!,
             diffusivities, grid, closure, velocities, tracers, buoyancy)
 

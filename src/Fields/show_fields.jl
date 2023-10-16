@@ -31,6 +31,8 @@ data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
                              "min=", prettysummary(minimum(field)), ", ",
                              "mean=", prettysummary(mean(field)))
 
+indices_summary(field) = replace(string(field.indices), "Colon()"=> ":")
+
 function Base.show(io::IO, field::Field)
 
     bcs = field.boundary_conditions
@@ -40,19 +42,23 @@ function Base.show(io::IO, field::Field)
 
     bcs_str = isnothing(bcs) ? "├── boundary conditions: Nothing \n" :
         string("├── boundary conditions: ", summary(bcs), "\n",
-               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+        "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
                ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
                ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
                ", immersed: ", bc_str(bcs.immersed), "\n")
 
-    middle = isnothing(field.operand) ? "" :
-        string("├── operand: ", summary(field.operand), "\n",
-               "├── status: ", summary(field.status), "\n")
+    indices_str = indices_summary(field) == "(:, :, :)" ?
+                      "" :
+                      string("├── indices: ", indices_summary(field), "\n")
 
-    suffix = string("└── data: ", summary(field.data), "\n",
-                    "    └── ", data_summary(field))
+    operand_str = isnothing(field.operand) ? "" :
+                      string("├── operand: ", summary(field.operand), "\n",
+                             "├── status: ", summary(field.status), "\n")
 
-    print(io, prefix, bcs_str, middle, suffix)
+    data_str = string("└── data: ", summary(field.data), "\n",
+                      "    └── ", data_summary(field))
+
+    print(io, prefix, bcs_str, indices_str, operand_str, data_str)
 end
 
 Base.summary(status::FieldStatus) = "time=$(status.time)"

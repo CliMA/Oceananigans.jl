@@ -1,16 +1,12 @@
 using MPI
 using Oceananigans
-using Oceananigans.Distributed
-
-MPI.Init()
-
-comm = MPI.COMM_WORLD
-rank = MPI.Comm_rank(comm)
-Nranks = MPI.Comm_size(comm)
+using Oceananigans.DistributedComputations
 
 topology = (Periodic, Periodic, Flat)
-arch = DistributedArch(CPU(); topology, ranks=(1, Nranks, 1))
-grid = RectilinearGrid(arch; topology, size=(16, 16), halo=(3, 3), extent=(2π, 2π))
+arch = Distributed(CPU(); topology)
+
+Nranks = MPI.Comm_size(comm)
+grid = RectilinearGrid(arch; topology, size=(16 ÷ Nranks, 16), halo=(3, 3), extent=(2π, 2π))
 
 model = NonhydrostaticModel(; grid)
 
@@ -23,6 +19,7 @@ u, v, w = model.velocities
 
 simulation = Simulation(model, Δt=0.01, stop_iteration=3)
 
+rank = MPI.Comm_rank(comm)
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, (; ζ)),
                                                       schedule = IterationInterval(1),
                                                       with_halos = true,

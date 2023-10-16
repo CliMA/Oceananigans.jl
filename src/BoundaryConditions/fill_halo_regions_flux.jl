@@ -38,46 +38,34 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Single halo filling kernels
 #####
 
-@kernel function fill_flux_west_halo!(c, offset, grid)
+@kernel function fill_flux_west_halo!(c, grid)
     j, k = @index(Global, NTuple)
-    j′ = j + offset[1]
-    k′ = k + offset[2]
-    _fill_flux_west_halo!(1, j′, k′, grid, c)
+    _fill_flux_west_halo!(1, j, k, grid, c)
 end
 
-@kernel function fill_flux_south_halo!(c, offset, grid)
+@kernel function fill_flux_south_halo!(c, grid)
     i, k = @index(Global, NTuple)
-    i′ = i + offset[1]
-    k′ = k + offset[2]
-    _fill_flux_south_halo!(i′, 1, k′, grid, c)
+    _fill_flux_south_halo!(i, 1, k, grid, c)
 end
 
-@kernel function fill_flux_bottom_halo!(c, offset, grid)
+@kernel function fill_flux_bottom_halo!(c, grid)
     i, j = @index(Global, NTuple)
-    i′ = i + offset[1]
-    j′ = j + offset[2]
-    _fill_flux_bottom_halo!(i′, j′, 1, grid, c)
+    _fill_flux_bottom_halo!(i, j, 1, grid, c)
 end
 
-@kernel function fill_flux_east_halo!(c, offset, grid)
+@kernel function fill_flux_east_halo!(c, grid)
     j, k = @index(Global, NTuple)
-    j′ = j + offset[1]
-    k′ = k + offset[2]
-    _fill_flux_east_halo!(1, j′, k′, grid, c)
+    _fill_flux_east_halo!(1, j, k, grid, c)
 end
 
-@kernel function fill_flux_north_halo!(c, offset, grid)
+@kernel function fill_flux_north_halo!(c, grid)
     i, k = @index(Global, NTuple)
-    i′ = i + offset[1]
-    k′ = k + offset[2]
-    _fill_flux_north_halo!(i′, 1, k′, grid, c)
+    _fill_flux_north_halo!(i, 1, k, grid, c)
 end
 
-@kernel function fill_flux_top_halo!(c, offset, grid)
+@kernel function fill_flux_top_halo!(c, grid)
     i, j = @index(Global, NTuple)
-    j′ = j + offset[1]
-    k′ = k + offset[2]
-    _fill_flux_top_halo!(i′, j′, 1, grid, c)
+    _fill_flux_top_halo!(i, j, 1, grid, c)
 end
 
 #####
@@ -85,15 +73,15 @@ end
 #####
 
 fill_west_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_west_halo!, c, offset,grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_west_halo!, c,grid; kwargs...)
 fill_east_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_east_halo!, c, offset,grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_east_halo!, c, grid; kwargs...)
 fill_south_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_south_halo!, c, offset,grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_south_halo!, c, grid; kwargs...)
 fill_north_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_north_halo!, c, offset,grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_north_halo!, c, grid; kwargs...)
 fill_bottom_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_bottom_halo!, c, offset,grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_bottom_halo!, c, grid; kwargs...)
 fill_top_halo!(c, bc::FBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_top_halo!, c, offset, grid; kwargs...)
+            launch!(arch, grid, KernelParameters(kernel_size, offset), fill_flux_top_halo!, c, grid; kwargs...)
 
