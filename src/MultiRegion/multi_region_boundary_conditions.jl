@@ -82,7 +82,7 @@ function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
     side       = communication_side(Val(fill_halo!))
     
     if bcs[1] isa MCBCT || bcs[2] isa MCBCT
-        fill_send_buffers!(c, buffers, grid, side)
+        fill_send_buffers!(c, buffers, grid, Val(side))
     end
 
     return nothing
