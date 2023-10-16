@@ -102,7 +102,7 @@ c = sqrt(Lz * gravitational_acceleration) # surface wave speed
 Δt = 0.1 * min(Δx, Δy) / c # CFL for free surface wave propagation
 
 stop_time = 2π * U / R
-stop_time = 200Δt
+stop_time = 5Δt
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -141,6 +141,13 @@ function save_vorticity(sim)
         fill_halo_regions!(v)
         @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
     end
+
+    for region in [1, 3, 5]
+        for k in -Hz+1:Nz+Hz
+            u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region][Nx+1:Nx+Hx, Ny+1, k]'
+            v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region][Nx+1:Nx+Hx, Ny+1, k]'
+        end
+    end
     
     @apply_regionally begin
         params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
@@ -174,6 +181,7 @@ for region in 1:6
 end
 
 fig = Figure(resolution = (1600, 1200), fontsize=30)
+
 axs = []
 push!(axs, Axis(fig[3, 1]))
 push!(axs, Axis(fig[3, 2]))
@@ -185,7 +193,10 @@ push!(axs, Axis(fig[1, 4]))
 for region in 1:6
     heatmap!(axs[region], ζₙ[region], colorrange=(-2, 2), colormap = :balance)
 end
+
 fig
+
+save("vorticity_test_2.png", fig)
 
 frames = 1:length(vorticity_fields)
 
@@ -201,3 +212,22 @@ GLMakie.record(fig, "cubed_sphere_momentum_dynamics_vort.mp4", frames, framerate
         heatmap!(axs[region], ζₙ[region], colorrange=(-2, 2), colormap = :balance)
     end
 end
+
+
+fig = Figure(resolution = (1600, 1200), fontsize=30)
+
+axs = []
+push!(axs, Axis(fig[3, 1]))
+push!(axs, Axis(fig[3, 2]))
+push!(axs, Axis(fig[2, 2]))
+push!(axs, Axis(fig[2, 3]))
+push!(axs, Axis(fig[1, 3]))
+push!(axs, Axis(fig[1, 4]))
+
+for region in 1:6
+    heatmap!(axs[region], ζₙ[region], colorrange=(-2, 2), colormap = :balance)
+end
+
+fig
+
+save("vorticity_test.png", fig)
