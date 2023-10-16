@@ -1,6 +1,6 @@
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid, construct_global_array
+using Oceananigans.DistributedComputations: DistributedGrid, construct_global_array, global_size
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid, scatter_local_grids
 

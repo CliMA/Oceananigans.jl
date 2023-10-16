@@ -19,15 +19,15 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-function local_size(p::Partition, topo, rank, global_size)
+function local_size(p::Partition, topo, ranks, global_sz)
     # TODO: check correctness
     return p.sizes[rank]
 end
 
 const EqualPartition = Partition{Nothing}
 
-function local_size(p::EqualPartition, rank, global_size)
-    Nx, Ny, Nz = global_size
+function local_size(p::EqualPartition, rank, global_sz)
+    Nx, Ny, Nz = global_sz
     Rx, Ry, Rz = size(p)
     # TODO: Check that it is possible to partition Nx by Rx, etc
     Nxℓ = Nx ÷ Rx
@@ -35,6 +35,9 @@ function local_size(p::EqualPartition, rank, global_size)
     Nzℓ = Nz ÷ Rz
     return (Nxℓ, Nyℓ, Nzℓ)
 end
+
+# Global size from local size
+global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
 
 """
     RectilinearGrid(arch::Distributed, FT=Float64; kw...)
@@ -51,10 +54,10 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_size, halo, x, y, z =
+    TX, TY, TZ, global_sz, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    local_sz = local_size(arch.partition, arch.local_rank, global_size)
+    local_sz = local_size(arch.partition, arch.local_rank, global_sz)
 
     nx, ny, nz = local_sz
     Hx, Hy, Hz = halo
@@ -98,11 +101,13 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                topology = nothing,           
                                radius = R_Earth,
                                halo = (1, 1, 1))
-
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, global_size, halo, topology, precompute_metrics)
     
-    nλ, nφ, nz = validate_size(topology..., size)
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+
+    local_sz = local_size(arch.partition, arch.local_rank, (Nλ, Nφ, Nz))
+
+    nλ, nφ, nz = local_sz
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
@@ -271,12 +276,14 @@ end
 
 function scatter_local_grids(arch::Distributed, global_grid::RectilinearGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    return RectilinearGrid(arch, eltype(global_grid); size=local_size, x=x, y=y, z=z, halo=halo, topology=topo)
+    global_sz = global_size(arch, local_size)
+    return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
 function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
-    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=local_size, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
+    global_sz = global_size(arch, local_size)
+    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
 end
 
 """ 

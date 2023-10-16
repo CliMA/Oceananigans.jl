@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -26,7 +26,7 @@ end
 
 regularize_size(sz::Array{<:Int, 1}) = regularize_size(sz[1])
 regularize_size(sz::Array{<:Int, 2}) = regularize_size((sz[1], sz[2]))
-regularize_size(sz::Tuple{<:Int}) = regularize_size(sz[1])
+regularize_size(sz::Tuple{<:Int})    = regularize_size(sz[1])
 
 # For 3D partitions:
 # regularize_size(sz::Tuple{<:Int, <:Int, <:Int}, Rx, Ry) = sz
@@ -76,15 +76,15 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    communicator :: γ,
                    mpi_requests :: M,
                    mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                       new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
-                                                         partition,
-                                                         ranks,
-                                                         local_rank,
-                                                         local_index,
-                                                         connectivity,
-                                                         communicator,
-                                                         mpi_requests,
-                                                         mpi_tag)
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
+                                                     partition,
+                                                     ranks,
+                                                     local_rank,
+                                                     local_index,
+                                                     connectivity,
+                                                     communicator,
+                                                     mpi_requests,
+                                                     mpi_tag)
 end
 
 #####
@@ -108,8 +108,6 @@ Positional arguments
 
 Keyword arguments
 =================
-
-- `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
                         
 - `synchronized_communication`: if true, always use synchronized communication through ranks
 
@@ -125,7 +123,6 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                     topology, 
                      communicator = MPI.COMM_WORLD,
                      devices = nothing, 
                      synchronized_communication = false,
@@ -143,13 +140,14 @@ function Distributed(child_architecture = CPU();
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
     
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    local_connectivity = RankConnectivity(local_index, ranks, topology)
+    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
+    local_connectivity = RankConnectivity(local_index, ranks) 
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
@@ -188,15 +186,16 @@ array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::DistributedGPU) = Distributed(CPU(),
-                                                     arch.partition, 
-                                                     arch.ranks, 
-                                                     arch.local_rank,
-                                                     arch.local_index,
-                                                     arch.connectivity,
-                                                     arch.communicator,
-                                                     arch.mpi_requests,
-                                                     arch.mpi_tag)
+cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+    Distributed{S}(CPU(),
+                   arch.partition, 
+                   arch.ranks, 
+                   arch.local_rank,
+                   arch.local_index,
+                   arch.connectivity,
+                   arch.communicator,
+                   arch.mpi_requests,
+                   arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -237,42 +236,32 @@ RankConnectivity(; east, west, north, south, southwest, southeast, northwest, no
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
-
-function increment_index(i, R, topo)
+function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R
-        if topo == Periodic || topo == FullyConnected || topo == RightConnected
-            return 1
-        else
-            return nothing
-        end
+        return 1
     else
         return i+1
     end
 end
 
-function decrement_index(i, R, topo)
+function decrement_index(i, R)
     R == 1 && return nothing
     if i-1 < 1
-        if topo == Periodic || topo == FullyConnected || topo == RightConnected
-            return R
-        else
-            return nothing
-        end
+        return R
     else
         return i-1
     end
 end
 
-function RankConnectivity(local_index, ranks, topology)
+function RankConnectivity(local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
-    TX, TY, TZ = topology
 
-    i_east  = increment_index(i, Rx, TX)
-    i_west  = decrement_index(i, Rx, TX)
-    j_north = increment_index(j, Ry, TY)
-    j_south = decrement_index(j, Ry, TY)
+    i_east  = increment_index(i, Rx)
+    i_west  = decrement_index(i, Rx)
+    j_north = increment_index(j, Ry)
+    j_south = decrement_index(j, Ry)
 
      east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
      west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
