@@ -32,7 +32,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
                  clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-             advection :: V        # Advection scheme for tracers
+             advection :: V        # Advection scheme for velocities and tracers
               buoyancy :: B        # Set of parameters for buoyancy model
               coriolis :: R        # Set of parameters for the background rotation rate of `Model`
           free_surface :: S        # Free surface parameters and fields
