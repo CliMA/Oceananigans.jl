@@ -131,7 +131,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
     # We also need an extra point to precompute the Y direction in case of only one halo, we disregard the topology
     # when constructing the metrics and add a halo point! 
-    # The LatitudeLongitudeGrid requires an extra halo on it's latitudinal metrics to allow calculate
+    # The LatitudeLongitudeGrid requires an extra halo on it's latitudinal coordinate to allow calculating
     # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
