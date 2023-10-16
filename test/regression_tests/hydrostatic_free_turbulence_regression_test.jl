@@ -121,7 +121,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
             u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
             v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
             w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
-            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(η))
+            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], size(η))
         )
 
         close(file)
@@ -143,14 +143,14 @@ function test_fields_equality(arch, test_fields, truth_fields)
     return nothing
 end
 
-function test_fields_equality(::Distributed, test_fields, truth_fields)
-    rtol = 10 * sqrt(eps(eltype(truth_fields.u)))
+# function test_fields_equality(::Distributed, test_fields, truth_fields)
+#     rtol = 10 * sqrt(eps(eltype(truth_fields.u)))
 
-    @test all(isapprox.(test_fields.u, truth_fields.u; rtol))
-    @test all(isapprox.(test_fields.v, truth_fields.v; rtol))
-    @test all(isapprox.(test_fields.w, truth_fields.w; rtol))
-    @test all(isapprox.(test_fields.η, truth_fields.η; rtol))
+#     @test all(isapprox.(test_fields.u, truth_fields.u; rtol))
+#     @test all(isapprox.(test_fields.v, truth_fields.v; rtol))
+#     @test all(isapprox.(test_fields.w, truth_fields.w; rtol))
+#     @test all(isapprox.(test_fields.η, truth_fields.η; rtol))
 
-    return nothing
-end
+#     return nothing
+# end
 
