@@ -19,7 +19,8 @@ function test_architectures()
     # and `Partition(x = 4, y = 4)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4))) 
+                Distributed(child_arch; partition = Partition(1, 4)),
+                Distributed(child_arch; partition = Partition(2, 2))) 
                # TODO: add support for Non uniform partitioning
                # Distributed(child_arch; partition = Partition(Rx = [0.2, 0.1, 0.5, 0.3])))
                # Distributed(child_arch; partition = Partition(Ry = [0.2, 0.1, 0.5, 0.3])))

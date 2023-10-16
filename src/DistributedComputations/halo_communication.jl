@@ -105,7 +105,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
-    fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
     
     # Switch to the next field to send
     arch.mpi_tag[] += 1
@@ -138,7 +138,7 @@ end
 end
 
 # corner passing routine
-function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
     
     if only_local_halos # No corner filling needed!
         return nothing
@@ -219,7 +219,6 @@ for side in [:southwest, :southeast, :northwest, :northeast]
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
-            @info "rank $local_rank communicating with $corner"
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
             
