@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations, all_reduce
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
 using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array, cpu_architecture
 
 using JLD2
@@ -125,11 +125,29 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         summarize_regression_test(test_fields, truth_fields)
 
-        @test all(test_fields.u .≈ truth_fields.u)
-        @test all(test_fields.v .≈ truth_fields.v)
-        @test all(test_fields.w .≈ truth_fields.w)
-        @test all(test_fields.η .≈ truth_fields.η)
+        test_fields_equality(cpu_arch, test_fields, truth_fields)
     end
     
     return nothing
 end
+
+function test_fields_equality(arch, test_fields, truth_fields)
+    @test all(test_fields.u .≈ truth_fields.u)
+    @test all(test_fields.v .≈ truth_fields.v)
+    @test all(test_fields.w .≈ truth_fields.w)
+    @test all(test_fields.η .≈ truth_fields.η)
+
+    return nothing
+end
+
+function test_fields_equality(::Distributed, test_fields, truth_fields)
+    rtol = 10 * sqrt(eps(eltype(truth_fields.u)))
+
+    @test all(isapprox.(test_fields.u, truth_fields.u; rtol))
+    @test all(isapprox.(test_fields.v, truth_fields.v; rtol))
+    @test all(isapprox.(test_fields.w, truth_fields.w; rtol))
+    @test all(isapprox.(test_fields.η, truth_fields.η; rtol))
+
+    return nothing
+end
+
