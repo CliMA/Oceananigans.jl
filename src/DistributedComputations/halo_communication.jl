@@ -215,7 +215,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     @eval begin
         $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
-        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
+        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
