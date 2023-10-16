@@ -6,7 +6,8 @@ export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
-    LagrangianParticles
+    LagrangianParticles,
+    seawater_density
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
@@ -23,15 +24,13 @@ import Oceananigans.TimeSteppers: reset!
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_timeseries
 
 # A prototype interface for AbstractModel.
-# 
+#
 # TODO: decide if we like this.
 #
 # We assume that model has some properties, eg:
 #   - model.clock::Clock
 #   - model.architecture.
 #   - model.timestepper with timestepper.G⁻ and timestepper.Gⁿ :spiral_eyes:
-#
-# Perhaps this is a little unclean.
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
@@ -169,5 +168,7 @@ function default_nan_checker(model::OceananigansModels)
     return nan_checker
 end
 
-end # module
+# This is here so that `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
+include("seawater_density.jl")
 
+end # module
