@@ -31,9 +31,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-
 ψ = Field{Face, Face, Center}(grid)
-
 
 # Here we avoid set! (which also isn't implemented btw) because we would like
 # to manually determine the streamfunction within halo regions. This allows us
@@ -53,6 +51,7 @@ for region in 1:number_of_regions(grid)
     end
 end
 
+#=
 u = XFaceField(grid)
 v = YFaceField(grid)
 
@@ -70,8 +69,7 @@ for passes in 1:3
     fill_halo_regions!(v)
     @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
 end
-
-
+=#
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
@@ -213,7 +211,6 @@ GLMakie.record(fig, "cubed_sphere_momentum_dynamics_vort.mp4", frames, framerate
     end
 end
 
-
 fig = Figure(resolution = (1600, 1200), fontsize=30)
 
 axs = []
@@ -230,4 +227,4 @@ end
 
 fig
 
-save("vorticity_test.png", fig)
+save("vorticity_test_1.png", fig)
