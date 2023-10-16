@@ -77,11 +77,12 @@ end
 
 # Find a better way to do this (this will not work for corners!!)
 function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
-    bcs        = halo_tuple[2][task]
     fill_halo! = halo_tuple[1][task] 
+    bcs        = halo_tuple[2][task]
     side       = communication_side(Val(fill_halo!))
-    if !isempty(filter(x -> x isa MCBC, bcs))
-        fill_send_buffers!(c, buffers, grid)
+    
+    if bcs[1] isa MCBCT || bcs[2] isa MCBCT
+        fill_send_buffers!(c, buffers, grid, side)
     end
 
     return nothing
