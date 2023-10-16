@@ -93,6 +93,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                                               dir = directory,
                                                               schedule = IterationInterval(stop_iteration),
                                                               filename = output_filename,
+                                                              with_halos = true,
                                                               overwrite_existing = true)
     end
    
@@ -114,11 +115,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         cpu_arch = cpu_architecture(architecture(grid))
 
+        # Data was saved with 2 halos per direction
+        H = 2
         truth_fields = (
-            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
-            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
-            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
-            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
+            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
+            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
+            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
+            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(η))
         )
 
         close(file)
