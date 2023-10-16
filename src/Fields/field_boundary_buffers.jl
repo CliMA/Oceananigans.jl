@@ -41,7 +41,7 @@ function FieldBoundaryBuffers(grid, data, boundary_conditions)
         sw = create_buffer_corner(arch, grid, data, Hx, Hy, west, south)
         se = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
         nw = create_buffer_corner(arch, grid, data, Hx, Hy, west, north)
-        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
+        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, north)
     else
         sw = nothing
         se = nothing
