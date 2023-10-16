@@ -198,7 +198,6 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
     end
 end
 
-
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
