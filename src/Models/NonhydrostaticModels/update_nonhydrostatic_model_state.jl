@@ -5,6 +5,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Models: update_model_field_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -21,6 +22,9 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     foreach(model.tracers) do tracer
         @apply_regionally mask_immersed_field!(tracer)
     end
+
+    # Update all FieldTimeSeries used in the model
+    update_model_field_time_series!(model, model.clock)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); async = true)
