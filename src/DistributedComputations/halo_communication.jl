@@ -16,7 +16,7 @@ using Oceananigans.BoundaryConditions:
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
-    fill_west_halo!, fill_east_halo!, fill_south_halo!,
+    fill_west_halo!,  fill_east_halo!,   fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
     fill_west_and_east_halo!,
     fill_south_and_north_halo!,
@@ -101,11 +101,11 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch       = architecture(grid)
     halo_tuple = permute_boundary_conditions(bcs)
 
-    for task = 1:3
+    for task = 1:length(halo_tuple[1])
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
-    fill_corners!(arch.connectivity, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
     
     # Switch to the next field to send
     arch.mpi_tag[] += 1
@@ -138,7 +138,7 @@ end
 end
 
 # corner passing routine
-function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
     
     if only_local_halos # No corner filling needed!
         return nothing
@@ -150,10 +150,10 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(connectivity.southwest, c, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
-    reqse = fill_southeast_halo!(connectivity.southeast, c, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
-    reqnw = fill_northwest_halo!(connectivity.northwest, c, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
-    reqne = fill_northeast_halo!(connectivity.northeast, c, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -165,9 +165,15 @@ function fill_corners!(connectivity, c, indices, loc, arch, grid, buffers, args.
     return nothing
 end
 
-@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
-@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
-@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
+@inline communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
+@inline communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
+@inline communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
+@inline communication_side(::Val{fill_west_halo!})   = :west 
+@inline communication_side(::Val{fill_east_halo!})   = :east 
+@inline communication_side(::Val{fill_south_halo!})  = :south
+@inline communication_side(::Val{fill_north_halo!})  = :north
+@inline communication_side(::Val{fill_bottom_halo!}) = :bottom
+@inline communication_side(::Val{fill_top_halo!})    = :top
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
@@ -176,11 +182,10 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
-    fill_halo!  = halo_tuple[1][task]
-    bc_left     = halo_tuple[2][task]
-    bc_right    = halo_tuple[3][task]
+    fill_halo! = halo_tuple[1][task]
+    bcs        = halo_tuple[2][task]
 
-    buffer_side = mpi_communication_side(Val(fill_halo!))
+    buffer_side = communication_side(Val(fill_halo!))
 
     if !only_local_halos # Then we need to fill the `send` buffers
         fill_send_buffers!(c, buffers, grid, Val(buffer_side))
@@ -188,10 +193,10 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::Distrib
     end
 
     # Calculate size and offset of the fill_halo kernel
-    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
+    size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    requests = fill_halo!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
 
@@ -208,9 +213,9 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
-        function $fill_corner_halo!(corner, c, indices, loc, arch, grid, buffers, side, args...; kwargs...) 
+        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
@@ -223,21 +228,15 @@ for side in [:southwest, :southeast, :northwest, :northeast]
 end
 
 #####
-##### fill_west_and_east_halo!  
-##### fill_south_and_north_halo! 
+##### Double-sided Distributed fill_halo!s
 #####
 
 for (side, opposite_side) in zip([:west, :south], [:east, :north])
     fill_both_halo! = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
-    fill_side_halo! = Symbol("fill_$(side)_halo!")
     send_side_halo  = Symbol("send_$(side)_halo")
-    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
     send_opposite_side_halo  = Symbol("send_$(opposite_side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
-    fill_all_send_buffers! = Symbol("fill_$(side)_and_$(opposite_side)_send_buffers!")
-    fill_side_send_buffers! = Symbol("fill_$(side)_send_buffers!")
-    fill_opposite_side_send_buffers! = Symbol("fill_$(opposite_side)_send_buffers!")
 
     @eval begin
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
@@ -256,36 +255,30 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
 
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
+    end
+end
 
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side, size, offset, loc, arch::Distributed, 
-                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
+#####
+##### Single-sided Distributed fill_halo!s
+#####
 
-            $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+for side in [:west, :east, :south, :north]
+    fill_side_halo! = Symbol("fill_$(side)_halo!")
+    send_side_halo  = Symbol("send_$(side)_halo")
+    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+
+    @eval begin
+        function $fill_side_halo!(c, bc_side::DCBCT, size, offset, loc, arch::Distributed, grid::DistributedGrid,
+                                 buffers, args...; only_local_halos = false, kwargs...)
 
             only_local_halos && return nothing
-            
+
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
+
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
-            
-            return [send_req, recv_req]
-        end
-
-        function $fill_both_halo!(c, bc_side, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
-                                  grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
-
-            $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-
-            only_local_halos && return nothing
-
-            child_arch = child_architecture(arch)
-            local_rank = bc_opposite_side.condition.from
-
-            recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
-
-            send_req = $send_opposite_side_halo(c, grid, arch, loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req, recv_req]
         end

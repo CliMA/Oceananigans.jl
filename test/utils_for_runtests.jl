@@ -18,12 +18,15 @@ function test_architectures()
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 4, y = 4)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(x = Relative(1, 2, 4, 3))),
-                Distributed(child_arch; partition = Partition(x = Equal())))
-               # TODO: add support for Y partitioning and 2D partitioning 
-               # Should work but tests are failing for some reason
-               # Distributed(child_arch; partition = Partition(1, 4)))
-               # Distributed(child_arch; partition = Partition(2, 2)))
+        return (Distributed(child_arch; partition = Partition(4)),
+                Distributed(child_arch; partition = Partition(1, 4)),
+                Distributed(child_arch; partition = Partition(2, 2)),
+                Distributed(child_arch; partition = Partition(x = Relative(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(y = Relative(1, 2, 3, 4)))) 
+               # TODO: add support for Non uniform partitioning
+               # Distributed(child_arch; partition = Partition(Rx = [0.2, 0.1, 0.5, 0.3])))
+               # Distributed(child_arch; partition = Partition(Ry = [0.2, 0.1, 0.5, 0.3])))
+               # Distributed(child_arch; partition = Partition(Rx = [0.3, 0.7], Ry = [0.6, 0.4])))
     else
         return tuple(child_arch)
     end
