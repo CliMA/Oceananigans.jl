@@ -34,6 +34,8 @@ function Δ_min(grid)
     return min(Δx_min, Δy_min)
 end
 
+@inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
+
 function solid_body_rotation_test(grid)
 
     free_surface = SplitExplicitFreeSurface(; substeps = 5, gravitational_acceleration = 1)
