@@ -37,16 +37,16 @@ function Partition(; x = 1, y = 1, z = 1)
     return Partition(x, y, z)
 end
 
+struct Equal end
+struct Relative{S} end
+struct Sizes{S} end
+
 ranks(p::Partition) = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
 ranks(r::Int)      = r
 ranks(r::Sizes)    = length(r)
 ranks(r::Relative) = length(r)
 
 Base.size(p::Partition) = ranks(p)
-
-struct Equal end
-struct Relative{S} end
-struct Sizes{S} end
 
 Relative(args...) = sum(args) != 1 ? Relative{args ./ sum(args)}() : Relative{args}()
    Sizes(args...) = Sizes{tuple(args...)}()
@@ -62,13 +62,7 @@ validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
 validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
-# Non uniform Partitioning
-const NUP = Union{Sizes, Relative}
-
-remaining_workers(r1::Number, r2::Number) = MPI.Comm_size(MPI.COMM_WORLD) - r1*r2
-remaining_workers(r1::Number, r2::NUP)    = MPI.Comm_size(MPI.COMM_WORLD) - r1*length(r2)
-remaining_workers(r1::NUP, r2::Number)    = MPI.Comm_size(MPI.COMM_WORLD) - length(r1)*r2
-remaining_workers(r1::NUP, r2::NUP)       = MPI.Comm_size(MPI.COMM_WORLD) - length(r1)*length(r2)
+remaining_workers(r1, r2) = MPI.Comm_size(MPI.COMM_WORLD) - ranks(r1)*ranks(r2)
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
