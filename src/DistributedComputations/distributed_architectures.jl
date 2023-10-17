@@ -37,8 +37,12 @@ function Partition(; x = 1, y = 1, z = 1)
     return Partition(x, y, z)
 end
 
-ranks(p::Partition) = (p.Rx, p.Ry, p.Rz)
-Base.size(p::Partition) = Tuple(r isa Int ? r : length(r) for r in ranks(p))
+ranks(p::Partition) = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
+ranks(r::Int)      = r
+ranks(r::Sizes)    = length(r)
+ranks(r::Relative) = length(r)
+
+Base.size(p::Partition) = ranks(p)
 
 struct Equal end
 struct Relative{S} end
