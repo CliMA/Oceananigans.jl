@@ -62,8 +62,10 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
-# TODO: Make MultiRegion work like Distributed aka split the
+# TODO: Adapt MultiRegion boundary conditions to the Distributed logic: aka split the
 # halo sides in two different sides. Requires synchronizing all workers.
+# Might be difficult for `CubedSphereGrids` where all buffers must be filled prior
+# communicating.
 # For the moment we keep the old version because asynchronous communication,
 # which requires splitting, is not yet implemented.
 extract_west_or_east_bc(bc)   = max(bc.west,   bc.east)
