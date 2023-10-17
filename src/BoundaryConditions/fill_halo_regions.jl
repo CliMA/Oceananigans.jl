@@ -51,7 +51,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     halo_tuple  = permute_boundary_conditions(boundary_conditions)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    for task in 1:3
+    for task in 1:length(halo_tuple[1])
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     end
 
@@ -129,11 +129,11 @@ split_boundary(bcs1, ::DCBC)   = true
 split_boundary(::DCBC, bcs2)   = true
 
 # TODO: support heterogeneous distributed-shared communication
-# split_boundary(::MCBC, ::DCBC) = false
-# split_boundary(::DCBC, ::MCBC) = false
-# split_boundary(::MCBC, ::MCBC) = false
-# split_boundary(bcs1, ::MCBC)   = true
-# split_boundary(::MCBC, bcs2)   = true
+split_boundary(::MCBC, ::DCBC) = false
+split_boundary(::DCBC, ::MCBC) = false
+split_boundary(::MCBC, ::MCBC) = false
+split_boundary(bcs1, ::MCBC)   = true
+split_boundary(::MCBC, bcs2)   = true
 
 #####
 ##### Halo filling order

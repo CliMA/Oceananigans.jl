@@ -81,7 +81,7 @@ function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
     bcs        = halo_tuple[2][task]
     side       = communication_side(Val(fill_halo!))
     
-    if bcs[1] isa MCBCT || bcs[2] isa MCBCT
+    if !isempty(filter(x -> x isa MCBCT, bcs))
         fill_send_buffers!(c, buffers, grid, Val(side))
     end
 
@@ -204,6 +204,9 @@ end
 #####
 ##### Single fill_halo! for Communicating boundary condition
 #####
+
+# TODO: Allow support for `Bounded` Cubed sphere grids 
+# (i.e. with the same shift implemented in the double-sided fill halo)
 
 function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
