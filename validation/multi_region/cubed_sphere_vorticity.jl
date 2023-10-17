@@ -20,7 +20,6 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   horizontal_direction_halo = 4,
                                   partition = CubedSpherePartition(; R = 1))
 
-
 # Solid body rotation
 φʳ = 0        # Latitude pierced by the axis of rotation
 α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
@@ -90,10 +89,9 @@ Hx, Hy, Hz = halo_size(grid)
 end
 
 @apply_regionally begin
-    params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
+    params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), 1 .- halo_size(grid))
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
-
 
 # using Imaginocean
 

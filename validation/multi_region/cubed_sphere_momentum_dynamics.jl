@@ -25,7 +25,6 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   horizontal_direction_halo = 4,
                                   partition = CubedSpherePartition(; R = 1))
 
-
 # Solid body rotation
 φʳ = 0        # Latitude pierced by the axis of rotation
 α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
@@ -50,26 +49,6 @@ for region in 1:number_of_regions(grid)
         ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
     end
 end
-
-#=
-u = XFaceField(grid)
-v = YFaceField(grid)
-
-# What we want eventually:
-# u .= - ∂y(ψ)
-# v .= + ∂x(ψ)
-
-for region in 1:number_of_regions(grid)
-    u[region] .= - ∂y(ψ[region])
-    v[region] .= + ∂x(ψ[region])
-end
-
-for passes in 1:3
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-    @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
-end
-=#
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
@@ -148,7 +127,7 @@ function save_vorticity(sim)
     end
     
     @apply_regionally begin
-        params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), -1 .* halo_size(grid))
+        params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), 1 .- halo_size(grid))
         launch!(architecture(grid), grid, params, _compute_vorticity!, ζ, grid, u, v)
     end
 
@@ -194,11 +173,11 @@ end
 
 fig
 
-save("vorticity_test_2.png", fig)
+save("vorticity_test_2.png", fig) 
 
 frames = 1:length(vorticity_fields)
 
-GLMakie.record(fig, "cubed_sphere_momentum_dynamics_vort.mp4", frames, framerate = 12) do i
+GLMakie.record(fig, "cubed_sphere_momentum_dynamics_vorticity.mp4", frames, framerate = 1) do i
     @info string("Plotting frame ", i, " of ", frames[end])
 
     ζₙ = []
