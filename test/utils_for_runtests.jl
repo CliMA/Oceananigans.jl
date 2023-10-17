@@ -6,7 +6,7 @@ using Test
 using Printf
 using Test
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
-using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Relative, Equal
+using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
 using MPI
 
 import Oceananigans.Fields: interior
@@ -21,8 +21,8 @@ function test_architectures()
         return (Distributed(child_arch; partition = Partition(4)),
                 Distributed(child_arch; partition = Partition(1, 4)),
                 Distributed(child_arch; partition = Partition(2, 2)),
-                Distributed(child_arch; partition = Partition(x = Relative(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(y = Relative(1, 2, 3, 4)))) 
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4)))) 
                # TODO: add support for Non uniform partitioning
                # Distributed(child_arch; partition = Partition(Rx = [0.2, 0.1, 0.5, 0.3])))
                # Distributed(child_arch; partition = Partition(Ry = [0.2, 0.1, 0.5, 0.3])))

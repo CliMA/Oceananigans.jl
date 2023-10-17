@@ -38,22 +38,22 @@ function Partition(; x = 1, y = 1, z = 1)
 end
 
 struct Equal end
-struct Relative{S} end
+struct Fractional{S} end
 struct Sizes{S} end
 
 ranks(p::Partition) = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
 ranks(r::Int)      = r
 ranks(r::Sizes)    = length(r)
-ranks(r::Relative) = length(r)
+ranks(r::Fractional) = length(r)
 
 Base.size(p::Partition) = ranks(p)
 
-Relative(args...) = sum(args) != 1 ? Relative{args ./ sum(args)}() : Relative{args}()
-   Sizes(args...) = Sizes{tuple(args...)}()
+Fractional(args...) = sum(args) != 1 ? Fractional{args ./ sum(args)}() : Fractional{args}()
+     Sizes(args...) = Sizes{tuple(args...)}()
 
 Base.getindex(::Sizes{S}, i) where S = S[i]
-Base.getindex(::Relative{S}, i) where S = S[i]
-Base.length(::Relative{S}) where S = length(S)
+Base.getindex(::Fractional{S}, i) where S = S[i]
+Base.length(::Fractional{S}) where S = length(S)
 Base.length(::Sizes{S}) where S = length(S)
 
 # We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
