@@ -79,25 +79,39 @@ end
 
 for region in [1, 3, 5]
 
-    region_north = mod(region + 2, 6)
     region_east = region + 1
+    region_north = mod(region + 2, 6)
+    region_west = mod(region + 4, 6)
     
     # Northeast corner
     for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'  
+        u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
         v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
     end
     
+    # Southwest corner
+    for k in -Hz+1:Nz+Hz
+        u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
+        v[region][0, 1-Hy:0, k] .= v[region][Nx, Ny-Hy+1:Ny, k]'
+    end
+    
 end
-
+    
 for region in [2, 4, 6]
 
     region_east = mod(region, 6) + 2
+    region_west = region - 1
     
     # Northeast corner
     for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'  
+        u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
         v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+    end
+    
+    # Southwest corner
+    for k in -Hz+1:Nz+Hz
+        u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
+        v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
     end
     
 end
