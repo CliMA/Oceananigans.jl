@@ -1,7 +1,7 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
@@ -44,8 +44,7 @@ saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, add
 
 function saveproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = Distributed(CPU(); topology = topology(grid),
-                                      ranks = arch.ranks)
+    cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
@@ -86,8 +85,7 @@ serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_archi
 
 function serializeproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = Distributed(CPU(); topology = topology(grid),
-                                      ranks = arch.ranks)
+    cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
 end
 

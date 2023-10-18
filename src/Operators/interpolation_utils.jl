@@ -106,6 +106,8 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
         findfirst(isequal(name), model_field_names)
     end
 
+    !any(isnothing.(indices)) || error("$dependencies are required to be model fields but only $model_field_names are present")
+
     return indices, interps
 end
 
