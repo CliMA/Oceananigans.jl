@@ -8,11 +8,13 @@ using Oceananigans.Models: total_velocities
 # Functions for bouncing particles off walls to the right and left
 @inline function bounce_left(x, xᴸ, xᴿ, Cʳ)
     xᵢ = xᴿ - Cʳ * (x - xᴿ)
+    # Limit the particle to the left boundary when it leaves from there
     return ifelse(xᵢ > xᴸ, xᵢ, xᴸ)
 end
 
 @inline function bounce_right(x, xᴸ, xᴿ, Cʳ)
     xᵢ = xᴸ + Cʳ * (xᴸ - x)
+    # Limit the particle to the right boundary when it leaves from there
     return ifelse(xᵢ < xᴿ, xᵢ, xᴿ)
 end
 
