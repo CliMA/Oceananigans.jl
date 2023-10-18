@@ -20,6 +20,8 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   horizontal_direction_halo = 4,
                                   partition = CubedSpherePartition(; R = 1))
 
+Hx, Hy, Hz = halo_size(grid)
+
 # Solid body rotation
 φʳ = 0        # Latitude pierced by the axis of rotation
 α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
@@ -75,13 +77,36 @@ for passes in 1:3
     @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
 end
 
+for region in [1, 3, 5]
+
+    region_north = mod(region + 2, 6)
+    region_east = region + 1
+    
+    # Northeast corner
+    for k in -Hz+1:Nz+Hz
+        u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'  
+        v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
+    end
+    
+end
+
+for region in [2, 4, 6]
+
+    region_east = mod(region, 6) + 2
+    
+    # Northeast corner
+    for k in -Hz+1:Nz+Hz
+        u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'  
+        v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+    end
+    
+end
+
 # Now compute vorticity
 using Oceananigans.Utils
 using KernelAbstractions: @kernel, @index
 
 ζ = Field{Face, Face, Center}(grid)
-
-Hx, Hy, Hz = halo_size(grid)
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
     i, j, k = @index(Global, NTuple)
@@ -165,4 +190,3 @@ save("streamfunction.png", fig)
 
 fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
 save("vorticity.png", fig)
-fig
