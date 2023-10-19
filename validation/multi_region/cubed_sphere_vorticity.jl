@@ -2,7 +2,7 @@ using Oceananigans, Printf
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.Grids: φnode, λnode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 
@@ -23,9 +23,14 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 Hx, Hy, Hz = halo_size(grid)
 
 # Solid body rotation
-φʳ = 0        # Latitude pierced by the axis of rotation
+φʳ = 90       # Latitude pierced by the axis of rotation
 α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+
+# for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
+#              uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
+#              vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
+#              ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
 
 ψ = Field{Face, Face, Center}(grid)
 
@@ -76,8 +81,6 @@ for passes in 1:3
     fill_halo_regions!(v)
     @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
 end
-
-nan = convert(eltype(grid), NaN)
 
 for region in [1, 3, 5]
 
@@ -156,18 +159,34 @@ using KernelAbstractions: @kernel, @index
     @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 end
 
+offset = -1 .* halo_size(grid)
 @apply_regionally begin
-    params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), 1 .- halo_size(grid))
+    params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-for region in 1:6
-    
+nan = convert(eltype(grid), NaN)
+
+for region in 1:number_of_regions(grid)
     ζ[region][1-Hx:0, :, :] .= nan
     ζ[region][Nx+2:Nx+Hx, :, :] .= nan
     ζ[region][:, 1-Hy:0, :] .= nan
     ζ[region][:, Ny+2:Ny+Hy, :] .= nan
-    
+end
+
+f = Field{Face, Face, Center}(grid)
+for region in 1:number_of_regions(grid)
+    f[region] .= 2 * (U/R) * sind.(grid[region].φᶠᶠᵃ)
+end
+
+abs_error = Field{Face, Face, Center}(grid)
+for region in 1:number_of_regions(grid)
+    abs_error[region] .= abs.(f[region] .- ζ[region])
+end
+
+rel_error = Field{Face, Face, Center}(grid)
+for region in 1:number_of_regions(grid)
+    rel_error[region] .= abs_error[region] ./ abs.(f[region] .+ 100*eps(eltype(grid)))
 end
 
 # using Imaginocean
@@ -183,7 +202,7 @@ ax2 = Axis(fig[1, 2])
 ax3 = Axis(fig[2, 1])
 ax4 = Axis(fig[2, 2])
 
-for region in 1:6
+for region in 1:number_of_regions(grid)
     heatmap!(ax1, u, colorrange=(-1, 1), colormap = :balance)
     heatmap!(ax2, v, colorrange=(-1, 1), colormap = :balance)
     heatmap!(ax3, ψ, colorrange=(-1, 1), colormap = :balance)
@@ -237,8 +256,21 @@ function panel_wise_visualization(field, k=1; hide_decorations = true, colorrang
     return fig
 end
 
-fig = panel_wise_visualization(ψ)
-save("streamfunction.png", fig)
+# u_theoretical = XFaceField(grid)
+# v_theoretical = YFaceField(grid)
 
-fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
-save("vorticity.png", fig)
+# for region in 1:number_of_regions(grid)
+#     u_theoretical[region][1:Nx, 1:Ny, :] .= U * cosd.(grid[region].φᶠᶜᵃ[1:Nx, 1:Ny, :])
+#     v_theoretical[region].data .= 0
+# end
+
+# fig = panel_wise_visualization(rel_error, colorrange=(0, 1))
+
+# fig = panel_wise_visualization(ψ)
+# save("streamfunction.png", fig)
+
+# fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
+# save("vorticity.png", fig)
+
+# fig = panel_wise_visualization(f, colorrange=(-2, 2))
+# save("vorticity.png", fig)
