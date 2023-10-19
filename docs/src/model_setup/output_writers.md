@@ -25,9 +25,7 @@ The `Checkpointer` is discussed on a separate documentation page.
 
 Other important keyword arguments are
 
-* `field_slicer::FieldSlicer` for outputting subregions, two- and one-dimensional slices of fields.
-  By default a `FieldSlicer` is used to remove halo regions from fields so that only the physical
-  portion of model data is saved to disk.
+* `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,or `Int` elements. For example, `indices = (:, :, 1)` will save xy-slices of the bottom-most index. Defaults to `(:, :, :)` or "all indices". If `with_halos = false`, halo regions are removed from `indices`.
 
 * `array_type` for specifying the type of the array that holds outputted field data. The default is
   `Array{Float64}`, or arrays of single-precision floating point numbers.
