@@ -17,10 +17,10 @@ end
 @inline on_corner(i, j, grid) = on_south_west_corner(i, j, grid) | on_south_east_corner(i, j, grid) | on_north_west_corner(i, j, grid) | on_north_east_corner(i, j, grid)
 
 # South-west, south-east, north-west, north-east corners
-@inline on_south_west_corner(i, j, grid) = (i == 1 & j == 1)
-@inline on_south_east_corner(i, j, grid) = (i == grid.Nx+1 & j == 1)
-@inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1 & j == grid.Ny+1)
-@inline on_north_west_corner(i, j, grid) = (i == 1 & j == grid.Ny+1)
+@inline on_south_west_corner(i, j, grid) = (i == 1 && j == 1)
+@inline on_south_east_corner(i, j, grid) = (i == grid.Nx+1 && j == 1)
+@inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1 && j == grid.Ny+1)
+@inline on_north_west_corner(i, j, grid) = (i == 1 && j == grid.Ny+1)
 
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
