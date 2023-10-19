@@ -45,7 +45,7 @@ struct Sizes{S}
     sizes :: S
 end
 
-ranks(p::Partition)  = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
+ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
@@ -54,11 +54,6 @@ Base.size(p::Partition) = ranks(p)
 
 Fractional(args...) = sum(args) != 1 ? Fractional(tuple(args ./ sum(args)...)) : Fractional(tuple(args))
      Sizes(args...) = Sizes(tuple(args...))
-
-Base.getindex(::Sizes{S}, i) where S = S[i]
-Base.getindex(::Fractional{S}, i) where S = S[i]
-Base.length(::Fractional{S}) where S = length(S)
-Base.length(::Sizes{S}) where S = length(S)
 
 # We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
 validate_partition(x, y, z) = (x, y, z)
