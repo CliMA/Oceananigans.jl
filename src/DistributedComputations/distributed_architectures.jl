@@ -38,18 +38,22 @@ function Partition(; x = 1, y = 1, z = 1)
 end
 
 struct Equal end
-struct Fractional{S} end
-struct Sizes{S} end
+struct Fractional{S} 
+    sizes :: S
+end
+struct Sizes{S} 
+    sizes :: S
+end
 
-ranks(p::Partition) = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
-ranks(r::Int)      = r
-ranks(r::Sizes)    = length(r)
-ranks(r::Fractional) = length(r)
+ranks(p::Partition)  = (ranks(p.Rx), ranks(p.Ry), ranks(p.Rz))
+ranks(r::Int)        = r
+ranks(r::Sizes)      = length(r.sizes)
+ranks(r::Fractional) = length(r.sizes)
 
 Base.size(p::Partition) = ranks(p)
 
-Fractional(args...) = sum(args) != 1 ? Fractional{args ./ sum(args)}() : Fractional{args}()
-     Sizes(args...) = Sizes{tuple(args...)}()
+Fractional(args...) = sum(args) != 1 ? Fractional(tuple(args ./ sum(args)...)) : Fractional(tuple(args))
+     Sizes(args...) = Sizes(tuple(args...))
 
 Base.getindex(::Sizes{S}, i) where S = S[i]
 Base.getindex(::Fractional{S}, i) where S = S[i]

@@ -22,7 +22,8 @@ function test_architectures()
                 Distributed(child_arch; partition = Partition(1, 4)),
                 Distributed(child_arch; partition = Partition(2, 2)),
                 Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4)))) 
+                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(y = Fractional(1, 2), y = Equal()))) 
                # TODO: add support for Non uniform partitioning
                # Distributed(child_arch; partition = Partition(Rx = [0.2, 0.1, 0.5, 0.3])))
                # Distributed(child_arch; partition = Partition(Ry = [0.2, 0.1, 0.5, 0.3])))
