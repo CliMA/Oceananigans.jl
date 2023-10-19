@@ -11,14 +11,13 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions, validate_tracer_advection
+using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions, validate_tracer_advection, validate_momentum_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_momentum_advection
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities, default_nan_checker, timestepper

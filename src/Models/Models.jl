@@ -9,7 +9,9 @@ export
     LagrangianParticles
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
-using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.Grids: AbstractGrid, RectilinearGrid, OrthogonalSphericalShellGrid, AbstractHorizontallyCurvilinearGrid
+using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values
@@ -84,6 +86,14 @@ validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_trac
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
+
+# Util for validation momentum advection schemes
+validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 # Util for checking whether the model's prognostic state has NaN'd
 include("nan_checker.jl")
