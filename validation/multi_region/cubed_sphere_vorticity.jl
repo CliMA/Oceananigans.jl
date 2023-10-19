@@ -77,6 +77,8 @@ for passes in 1:3
     @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
 end
 
+nan = convert(eltype(grid), NaN)
+
 for region in [1, 3, 5]
 
     region_east = region + 1
@@ -157,6 +159,15 @@ end
 @apply_regionally begin
     params = KernelParameters(size(ζ) .+ 2 .* halo_size(grid), 1 .- halo_size(grid))
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
+
+for region in 1:6
+    
+    ζ[region][1-Hx:0, :, :] .= nan
+    ζ[region][Nx+2:Nx+Hx, :, :] .= nan
+    ζ[region][:, 1-Hy:0, :] .= nan
+    ζ[region][:, Ny+2:Ny+Hy, :] .= nan
+    
 end
 
 # using Imaginocean
