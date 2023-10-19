@@ -83,6 +83,13 @@ for region in [1, 3, 5]
     region_north = mod(region + 2, 6)
     region_west = mod(region + 4, 6)
     
+    # Northwest corner
+    for k in -Hz+1:Nz+Hz
+        u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
+        v[region][0, Ny+1, k] = -u[region][1, Ny, k]
+        v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+    end
+    
     # Northeast corner
     for k in -Hz+1:Nz+Hz
         u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
@@ -102,9 +109,10 @@ for region in [1, 3, 5]
     end 
     
 end
-    
-for region in [2, 4, 6]
 
+for region in [2, 4, 6]
+    
+    region_south = mod(region + 3, 6) + 1
     region_east = mod(region, 6) + 2
     region_west = region - 1
     
@@ -112,7 +120,7 @@ for region in [2, 4, 6]
     for k in -Hz+1:Nz+Hz
         u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
         v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-        v[region][0, Ny+2:Ny+Hy, k] .= -reverse(u[region_west][Nx-Hy+2:Nx, Ny, k]')
+        v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
     end
     
     # Northeast corner
@@ -125,6 +133,12 @@ for region in [2, 4, 6]
     for k in -Hz+1:Nz+Hz
         u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
         v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
+    end
+    
+    # Southeast corner
+    for k in -Hz+1:Nz+Hz
+        u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
+        v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
     end
     
 end
