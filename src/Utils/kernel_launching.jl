@@ -203,7 +203,7 @@ const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} 
         gidx = groupidx.I[I]
         (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
     end
-    CartesianIndex(nI)
+    return CartesianIndex(nI)
 end
 
 using KernelAbstractions.NDIteration
@@ -247,4 +247,3 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
-
