@@ -8,7 +8,7 @@ using Oceananigans.Models: total_velocities
 # Functions for bouncing particles off walls to the right and left
 @inline function bounce_left(x, xᴸ, xᴿ, Cʳ)
     xᵢ = xᴿ - Cʳ * (x - xᴿ)
-    # Limit the particle to the left boundary when it leaves from there
+    # Keep the particle from bouncing so far left it leaves the domain
     return ifelse(xᵢ > xᴸ, xᵢ, xᴸ)
 end
 
