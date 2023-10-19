@@ -205,7 +205,7 @@ function NonhydrostaticModel(;    grid,
                                           (name, tracer_advection) -> default_tracer_advection,
                                           with_velocities=false)
 
-    advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
+    advection = merge((; momentum=momentum_advection), tracer_advection_tuple)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
