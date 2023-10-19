@@ -8,7 +8,7 @@ using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, Diagonall
 ##### Model setup
 #####
 
-function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
+function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-10)
     Lx = 1
     Lz = 1
     Nx = Nz
@@ -78,7 +78,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
     if solver == "FFT"
         model = NonhydrostaticModel(; grid,
                                     # advection = CenteredSecondOrder(),
-                                    advection = WENO(),
+                                    advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),
@@ -86,9 +86,9 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
                                     boundary_conditions=(; u=u_bcs, v=v_bcs, w=w_bcs, b=b_bcs))
     else
         model = NonhydrostaticModel(; grid,
-                                    pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=1e-12),
+                                    pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=IPS_reltol),
                                     # advection = CenteredSecondOrder(),
-                                    advection = WENO(),
+                                    advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),
@@ -152,7 +152,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1)
                        
     simulation.callbacks[:p] = Callback(print_progress, IterationInterval(1000))
     
-    solver_type = model.pressure_solver isa ImmersedPoissonSolver ? "ImmersedPoissonSolver" : "FFTBasedPoissonSolver"
+    solver_type = model.pressure_solver isa ImmersedPoissonSolver ? "ImmersedPoissonSolver_reltol_$(IPS_reltol)" : "FFTBasedPoissonSolver"
     prefix = "2D_rough_rayleighbenard_" * solver_type
     
     outputs = merge(model.velocities, model.tracers, (; δ))
@@ -185,8 +185,9 @@ end
 Nr = 8
 Ra = 1e11
 Nz = 512
+IPS_reltol = 1e-10
 
-run_simulation("ImmersedPoissonSolver", "FFT", Nr=Nr, Ra=Ra, Nz=Nz)
+run_simulation("ImmersedPoissonSolver", "FFT", Nr=Nr, Ra=Ra, Nz=Nz, IPS_reltol=IPS_reltol)
 run_simulation("FFT", nothing, Nr=Nr, Ra=Ra, Nz=Nz)
 #####
 ##### Visualize
@@ -227,15 +228,23 @@ n = Observable(1)
 
 titlestr = @lift @sprintf("t = %.2f", times[$n])
 
+blim = maximum([maximum(abs, bt_FFT), maximum(abs, bt_PCG)])
+ulim = maximum([maximum(abs, ut_FFT), maximum(abs, ut_PCG)])
+wlim = maximum([maximum(abs, wt_FFT), maximum(abs, wt_PCG)])
+δlim = maximum([maximum(abs, δt_FFT), maximum(abs, δt_PCG)])
+# δlim = sqrt(eps(eltype(δt_FFT[1])))
+# δlim = 1e-7
+Nulim = maximum([maximum(abs, Nu_FFT), maximum(abs, Nu_PCG)])
+
 axb_FFT = Axis(fig[1, 1], title="b (FFT solver)")
 axu_FFT = Axis(fig[1, 2], title="u (FFT solver)")
 axw_FFT = Axis(fig[1, 3], title="w (FFT solver)")
-axd_FFT = Axis(fig[1, 4], title="Divergence (FFT solver)")
+axd_FFT = Axis(fig[1, 4], title="Divergence (FFT solver), colorrange=($(-δlim), $(δlim))")
 
 axb_PCG = Axis(fig[2, 1], title="b (PCG solver)")
 axu_PCG = Axis(fig[2, 2], title="u (PCG solver)")
 axw_PCG = Axis(fig[2, 3], title="w (PCG solver)")
-axd_PCG = Axis(fig[2, 4], title="Divergence (PCG solver)")
+axd_PCG = Axis(fig[2, 4], title="Divergence (PCG solver), colorrange=($(-δlim), $(δlim))")
 
 axNu = Axis(fig[3, 2:3], title="Nu", xlabel="Nu", ylabel="z")
 
@@ -259,13 +268,6 @@ xC = bt_FFT.grid.xᶜᵃᵃ[1:Nx]
 zC = bt_FFT.grid.zᵃᵃᶜ[1:Nz]
 xNu, yNu, zNu = nodes(FieldTimeSeries(filename_FFT_timeseries, "WB"))
 
-blim = maximum([maximum(abs, bt_FFT), maximum(abs, bt_PCG)])
-ulim = maximum([maximum(abs, ut_FFT), maximum(abs, ut_PCG)])
-wlim = maximum([maximum(abs, wt_FFT), maximum(abs, wt_PCG)])
-# δlim = sqrt(eps(eltype(Nu_FFT[1])))
-δlim = 1e-7
-Nulim = maximum([maximum(abs, Nu_FFT), maximum(abs, Nu_PCG)])
-
 heatmap!(axb_FFT, xC, zC, bn_FFT, colormap=:balance, colorrange=(-blim, blim))
 heatmap!(axu_FFT, xC, zC, un_FFT, colormap=:balance, colorrange=(-ulim, ulim))
 heatmap!(axw_FFT, xC, zC, wn_FFT, colormap=:balance, colorrange=(-wlim, wlim))
@@ -284,8 +286,10 @@ Label(fig[0, :], titlestr, font=:bold, tellwidth=false, tellheight=false)
 
 # display(fig)
 
-record(fig, "FFT_PCG_2D_rough_rayleighbenard_Ra_$(Ra)_Nr_$(Nr)_WENO.mp4", 1:Nt, framerate=10) do nn
+record(fig, "FFT_PCG_reltol_$(IPS_reltol)_2D_rough_rayleighbenard_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO7.mp4", 1:Nt, framerate=10) do nn
     # @info string("Plotting frame ", nn, " of ", Nt)
     n[] = nn
 end
+
+@info "Animation completed"
 ##
