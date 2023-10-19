@@ -11,9 +11,9 @@ import Oceananigans.Utils: sync_device!, tupleit
 #####
 
 struct Partition{Sx, Sy, Sz}
-    Rx :: Sx
-    Ry :: Sy
-    Rz :: Sz
+    x :: Sx
+    y :: Sy
+    z :: Sz
 end
 
 """
