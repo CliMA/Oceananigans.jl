@@ -12,7 +12,6 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            include("test_enzyme.jl")
             include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
@@ -165,6 +164,13 @@ CUDA.allowscalar() do
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
+        end
+    end
+
+    # Tests for Enzyme extension
+    if group == :enzyme || group == :all
+        @testset "Enzyme extension tests" begin
+            include("test_enzyme.jl")
         end
     end
 
