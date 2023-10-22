@@ -944,7 +944,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     grid.classification,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
-                                                    grid.Lz,
+                                                    grid.Lx, grid.Ly, grid.Lz,
                                                     adapt(to, grid.λᶜᶜᵃ),
                                                     adapt(to, grid.λᶠᶜᵃ),
                                                     adapt(to, grid.λᶜᶠᵃ),
