@@ -446,11 +446,11 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
-    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
-    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+    @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -90
     @test grid.λᶠᵃᵃ[Nλ+1] == 90
@@ -464,11 +464,11 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφᵃᶠᵃ
     @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφᵃᶠᵃ
 
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
+    @test all(diff(grid.λᶠᶠᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᶜᵃ.parent) .== grid.Δλᶜᵃᵃ)
 
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+    @test all(diff(grid.φᶠᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᶜᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
@@ -495,11 +495,11 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
-    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
-    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+    @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
@@ -513,11 +513,11 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφᵃᶠᵃ
     @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφᵃᶠᵃ
 
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
+    @test all(diff(grid.λᶠᶠᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᶜᵃ.parent) .== grid.Δλᶜᵃᵃ)
 
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+    @test all(diff(grid.φᶠᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᶜᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
@@ -579,11 +579,11 @@ function test_basic_lat_lon_general_grid(FT)
 
     grid_str = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
 
-    @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
-    @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶠᶠᵃ) == length(grid_reg.λᶠᶠᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶜᶜᵃ) == length(grid_reg.λᶜᶜᵃ) == Nλ + 2Hλ
         
-    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
+    @test length(grid_str.φᶠᶠᵃ) == length(grid_reg.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid_str.φᶜᶜᵃ) == length(grid_reg.φᶜᶜᵃ) == Nφ + 2Hφ
     
     @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
@@ -591,10 +591,10 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
 
-    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
-    @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
-    @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
-    @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
+    @test all(grid_str.λᶜᶜᵃ == grid_reg.λᶜᶜᵃ)
+    @test all(grid_str.λᶠᶠᵃ == grid_reg.λᶠᶠᵃ)
+    @test all(grid_str.φᶜᶜᵃ == grid_reg.φᶜᶜᵃ)
+    @test all(grid_str.φᶠᶠᵃ == grid_reg.φᶠᶠᵃ)
     @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
     @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
 

@@ -59,7 +59,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     wave_speed = sqrt(gravity * grid.Lz)                                 
     
     CUDA.allowscalar(true)
-    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
+    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᶜᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
     minimum_Δy = grid.radius * deg2rad(minimum(grid.Δφᵃᶜᵃ))
     CUDA.allowscalar(false)
 
