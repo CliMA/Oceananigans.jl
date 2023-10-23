@@ -54,8 +54,7 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
-@inline boundary_buffer(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size(scheme::AbstractAdvectionScheme{B}) where B = B
+@inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")

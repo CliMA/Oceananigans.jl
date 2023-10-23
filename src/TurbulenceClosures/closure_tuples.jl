@@ -73,10 +73,10 @@ end
 
 with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
-function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...)
+function compute_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
     for (α, closure) in enumerate(closure_tuple)
         diffusivity_fields = diffusivity_fields_tuple[α]
-        calculate_diffusivities!(diffusivity_fields, closure, args...)
+        compute_diffusivities!(diffusivity_fields, closure, args...; kwargs...)
     end
     return nothing
 end
@@ -88,6 +88,8 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     end
     return bcs
 end
+
+required_halo_size(closure_tuple::Tuple) = maximum(map(required_halo_size, closure_tuple))
 
 #####
 ##### Compiler-inferrable time_discretization for tuples

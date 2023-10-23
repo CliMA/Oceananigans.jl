@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@citet) and [Abkar16](@citet), then modified by [Verstappen18](@citet),
 and finally described and validated for by [Vreugdenhil18](@citet).
 """
-struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
+struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -143,7 +143,9 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, velocities, tracers)
+@kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
+    i, j, k = @index(Global, NTuple)
+    
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
@@ -162,10 +164,11 @@ end
         νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
-    return max(zero(FT), νˢᵍˢ)
+    @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
+@kernel function _compute_AMD_diffusivity!(κₑ, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
+    i, j, k = @index(Global, NTuple)
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
@@ -182,25 +185,23 @@ end
         κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
-    return max(zero(FT), κˢᵍˢ)
+    @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model)
+function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
-    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
-
-    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+    launch!(arch, grid, parameters, _compute_AMD_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        diffusivity_kernel!(κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
+                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
     return nothing
