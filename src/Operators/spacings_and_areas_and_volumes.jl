@@ -1,9 +1,9 @@
 using Oceananigans.Grids: Center, Face
 
 const RG   = RectilinearGrid
-const RGX  = XRegRectilinearGrid
-const RGY  = YRegRectilinearGrid
-const RGZ  = ZRegRectilinearGrid
+const RGX  = XRegularRG
+const RGY  = YRegularRG
+const RGZ  = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid

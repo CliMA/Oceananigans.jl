@@ -4,7 +4,7 @@ export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
-export AbstractRectilinearGrid, RectilinearGrid
+export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
@@ -116,13 +116,6 @@ Abstract supertype for "primary" grids (as opposed to grids with immersed bounda
 with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractRectilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractRectilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}
