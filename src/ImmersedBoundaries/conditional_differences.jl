@@ -7,9 +7,9 @@ import Oceananigans.Operators:
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
 import Oceananigans.Operators: 
-    δxᶠᵃᵃ_c, δyᵃᶠᵃ_c, 
-    δxᶜᵃᵃ_U, δyᵃᶜᵃ_V,
-    ∂xᶠᶜᶠ_c, ∂yᶜᶠᶠ_c
+    δxCᶠᵃᵃ, δyCᵃᶠᵃ, 
+    δxUᶜᵃᵃ, δyVᵃᶜᵃ,
+    ∂xCᶠᶜᶠ, ∂yCᶜᶠᶠ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -85,7 +85,7 @@ end
 @inline conditional_∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᶠᶜᶠ_c(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᶜᶠᶠ_c(i, j, k, ibg.underlying_grid, args...))
 
-@inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, conditional_U_fcc,  ibg, U★, args...)
-@inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, conditional_V_cfc,  ibg, V★, args...)
-@inline ∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂xᶠᶜᶠ_c(i, j, k, ibg, c★, args...)
-@inline ∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂yᶜᶠᶠ_c(i, j, k, ibg, c★, args...)        
+@inline δxUᶜᵃᵃ(i, j, k, ibg::IBG, U★::Function, args...) = δxUᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_U_fcc,  ibg, U★, args...)
+@inline δyVᵃᶜᵃ(i, j, k, ibg::IBG, V★::Function, args...) = δyVᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_V_cfc,  ibg, V★, args...)
+@inline ∂xCᶠᶜᶠ(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂xᶠᶜᶠ_c(i, j, k, ibg, c★, args...)
+@inline ∂yCᶜᶠᶠ(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂yᶜᶠᶠ_c(i, j, k, ibg, c★, args...)        
