@@ -16,7 +16,7 @@ using Oceananigans.BoundaryConditions:
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_first, fill_halo_event!,
-    fill_west_halo!,  fill_east_halo!,   fill_south_halo!,
+    fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
     fill_west_and_east_halo!,
     fill_south_and_north_halo!,
