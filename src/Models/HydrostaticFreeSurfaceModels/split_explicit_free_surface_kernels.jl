@@ -28,8 +28,8 @@ const μ = 1.0 - δ - γ - ϵ
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
                                
 # Special ``partial'' divergence for free surface evolution
-@inline div_xᶜᶜᶠ_U(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_U(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...) 
-@inline div_yᶜᶜᶠ_V(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_V(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...) 
+@inline div_xᶜᶜᶠ_U(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxUᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...) 
+@inline div_yᶜᶜᶠ_V(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyVᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...) 
 
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 
@@ -99,8 +99,8 @@ end
         advance_previous_velocity!(i, j, 1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_c(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_c(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
+        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xCᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
+        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yCᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
                           
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
