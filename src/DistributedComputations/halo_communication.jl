@@ -183,9 +183,9 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_halo_event!(fill_halos!, bcs, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
 
-    buffer_side = communication_side(Val(fill_halo!))
+    buffer_side = communication_side(Val(fill_halos!))
 
     if !only_local_halos # Then we need to fill the `send` buffers
         fill_send_buffers!(c, buffers, grid, Val(buffer_side))
@@ -195,10 +195,10 @@ function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid::Distribu
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
     # south and north boundaries and bottom and top boundaries
-    size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
-    offset = fill_halo_offset(size, fill_halo!, indices)
+    size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
+    offset = fill_halo_offset(size, fill_halos!, indices)
 
-    requests = fill_halo!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
 

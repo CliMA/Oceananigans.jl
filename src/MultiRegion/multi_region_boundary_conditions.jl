@@ -100,7 +100,7 @@ end
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
     arch       = architecture(mrg)
-    @apply_regionally fill_halo!, bcs = multi_region_permute_boundary_conditions(bcs)
+    @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
     
     # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
     # When we want to allow asynchronous communication, we will might need to split the halos sides 
@@ -108,7 +108,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     for task in 1:3
         @apply_regionally begin
             fill_send_buffers!(c, buffers, mrg, bcs)
-            fill_halo_side! = getindex(fill_halo!, task)
+            fill_halo_side! = getindex(fill_halos!, task)
             bcs_side = getindex(bcs, task)
         end
         buff = Reference(buffers.regional_objects)
