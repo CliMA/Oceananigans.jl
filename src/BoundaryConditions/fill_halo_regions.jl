@@ -53,13 +53,13 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
-        fill_halo_event!(fill_halos![task], bcs[task], c, indices, loc, arch, grid, args...; kwargs...)
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(fill_halos!, bcs, c, indices, loc, arch, grid, args...; kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...; kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 

@@ -112,8 +112,8 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
             fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
         buff = Reference(buffers.regional_objects)
-        apply_regionally!(fill_halo_event!, fill_halo_side!, bcs_side, 
-                          c, indices, loc, arch, mrg, buff, 
+        apply_regionally!(fill_halo_event!, c, fill_halo_side!, bcs_side, 
+                          indices, loc, arch, mrg, buff, 
                           args...; kwargs...)
     end
 
