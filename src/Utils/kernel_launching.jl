@@ -8,6 +8,8 @@ using Oceananigans.Grids
 
 using Oceananigans.Grids: AbstractGrid
 
+import Base
+
 struct KernelParameters{S, O} end
 
 """
@@ -193,7 +195,14 @@ import KernelAbstractions: get, expand
 @inline worksize(i::Int) = i
 @inline worksize(i::UnitRange) = length(i)
 
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} where N
+"""a type used to store offsets in `NDRange` types"""
+struct KernelOffsets{O}
+    offsets :: O
+end
+
+Base.getindex(o::KernelOffsets, i::Int) = o.offsets[i]
+
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 @inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
@@ -243,7 +252,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, offsets)
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
 
     return iterspace, dynamic
 end
