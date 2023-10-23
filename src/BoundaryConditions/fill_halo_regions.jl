@@ -48,32 +48,34 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     arch = architecture(grid)
 
-    halo_tuple  = permute_boundary_conditions(boundary_conditions)
+    fill_halos!, bcs  = permute_boundary_conditions(boundary_conditions)
+    number_of_tasks = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    for task in 1:length(halo_tuple[1])
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
+    for task = 1:number_of_tasks
+        fill_halo_event!(fill_halos![task], bcs[task], c, indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
-    fill_halo! = halo_tuple[1][task]
-    bcs        = halo_tuple[2][task]
+function fill_halo_event!(fill_halos!, bcs, c, indices, loc, arch, grid, args...; kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
-    size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
-    offset = fill_halo_offset(size, fill_halo!, indices)
+    # We assume that the kernel size is the same for west and east boundaries, 
+    # south and north boundaries and bottom and top boundaries
+    size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
+    offset = fill_halo_offset(size, fill_halos!, indices)
 
-    fill_halo!(c, bcs..., size, offset, loc, arch, grid, args...; kwargs...)
+    fill_halos!(c, bcs..., size, offset, loc, arch, grid, args...; kwargs...)
 
     return nothing
 end
 
 # In case of a DistributedCommunication paired with a 
-# Flux, Value or Gradient boundary condition, we split the two sides (see issue #3342)
-# permute_boundary_conditions returns a tuple with the orderes operations to execute at 
+# Flux, Value or Gradient boundary condition, we split the direction in two single-sided
+# fill_halo! events (see issue #3342)
+# `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in 
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)
 
@@ -118,11 +120,11 @@ function permute_boundary_conditions(boundary_conditions)
     
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
-    return (fill_halos!, boundary_conditions)
+    return fill_halos!, boundary_conditions
 end
 
-# Split boundary filling when we have a Communication boundary condition 
-# (either shared, MCBC or distributed DCBC), paired with a Flux, Value or Gradient boundary condition
+# Split direction in two distinct fill_halo! events in case of a communication boundary condition 
+# (distributed DCBC), paired with a Flux, Value or Gradient boundary condition
 split_boundary(bcs1, bcs2)     = false
 split_boundary(::DCBC, ::DCBC) = false
 split_boundary(bcs1, ::DCBC)   = true
@@ -143,10 +145,14 @@ const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
 const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
 const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
-# Distributed halos have to be filled for last in case of 
-# buffered communication. Hence, we always fill them last
+# Distributed halos have to be filled last to allow the 
+# possibility of asynchronous communication: 
+# If other halos are filled after we initiate the distributed communication, 
+# (but before communication is completed) the halos will be overwritten. 
+# For this reason we always want to perform local halo filling first and then 
+# initiate communication
 
-# The reasoning for filling Periodic after Flux, Value, Gradient 
+# Periodic is handled after Flux, Value, Gradient because
 # Periodic fills also corners while Flux, Value, Gradient do not
 
 # Order of halo filling
@@ -244,8 +250,8 @@ end
 ##### Tupled double-sided fill_halo! kernels
 #####
 
-# Note, we do not need tuples single-sided fill_halo! kernels because `Distributed` does not 
-# use tupled fill_halo!
+# Note, we do not need tupled single-sided fill_halo! kernels since `DCBC` do not 
+# support tupled halo filling
 import Oceananigans.Utils: @constprop
 
 @kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args)

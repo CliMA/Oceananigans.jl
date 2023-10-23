@@ -62,8 +62,10 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
-# TODO: Make MultiRegion work like Distributed aka split the
+# TODO: Adapt MultiRegion boundary conditions to the Distributed logic: aka split the
 # halo sides in two different sides. Requires synchronizing all workers.
+# Might be difficult for `CubedSphereGrids` where all buffers must be filled prior
+# communicating.
 # For the moment we keep the old version because asynchronous communication,
 # which requires splitting, is not yet implemented.
 extract_west_or_east_bc(bc)   = max(bc.west,   bc.east)
@@ -98,12 +100,19 @@ end
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
     arch       = architecture(mrg)
-    @apply_regionally halo_tuple = multi_region_permute_boundary_conditions(bcs)
+    @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
     
+    # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
+    # When we want to allow asynchronous communication, we will might need to split the halos sides 
+    # and the number of tasks might increase.
     for task in 1:3
-        @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
+        @apply_regionally begin
+            fill_send_buffers!(c, buffers, mrg, bcs)
+            fill_halo_side! = getindex(fill_halos!, task)
+            bcs_side = getindex(bcs, task)
+        end
         buff = Reference(buffers.regional_objects)
-        apply_regionally!(fill_halo_event!, task, halo_tuple, 
+        apply_regionally!(fill_halo_event!, fill_halo_side!, bcs_side, 
                           c, indices, loc, arch, mrg, buff, 
                           args...; kwargs...)
     end
@@ -112,10 +121,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 end
 
 # Find a better way to do this (this will not work for corners!!)
-function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
-    fill_halo! = halo_tuple[1][task] 
-    bcs        = halo_tuple[2][task]
-    side       = communication_side(Val(fill_halo!))
+function fill_send_buffers!(c, buffers, grid, bcs::FieldBoundaryConditions)
 
     if !isempty(filter(x -> x isa MCBCT, bcs))
         fill_send_buffers!(c, buffers, grid)

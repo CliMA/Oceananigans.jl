@@ -115,7 +115,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         cpu_arch = cpu_architecture(architecture(grid))
 
-        # Data was saved with 2 halos per direction
+        # Data was saved with 2 halos per direction (see issue #3260)
         H = 2
         truth_fields = (
             u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),

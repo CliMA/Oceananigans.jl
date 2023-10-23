@@ -282,6 +282,8 @@ end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
+    # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
+    # since halo_size(free_surface.η.grid) != halo_size(model.grid)
     grid = free_surface.η.grid
 
     # Wait for previous set up
