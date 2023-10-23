@@ -2,10 +2,10 @@ using Oceananigans.Operators
 
 const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, AbstractArray}
 
-tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
-tracer_diffusivities(tracers, ::Nothing) = nothing
+@inline tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
+@inline tracer_diffusivities(tracers, ::Nothing) = nothing
 
-function tracer_diffusivities(tracers, κ::NamedTuple)
+@inline function tracer_diffusivities(tracers, κ::NamedTuple)
 
     all(name ∈ propertynames(κ) for name in tracers) ||
         throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants
