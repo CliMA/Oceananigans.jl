@@ -147,11 +147,10 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
 # Distributed halos have to be filled last to allow the 
 # possibility of asynchronous communication: 
-# Communication is initiated, and halos are filled when communication is completed. 
 # If other halos are filled after we initiate the distributed communication, 
 # (but before communication is completed) the halos will be overwritten. 
 # For this reason we always want to perform local halo filling first and then 
-# initiate commuincation
+# initiate communication
 
 # Periodic is handled after Flux, Value, Gradient because
 # Periodic fills also corners while Flux, Value, Gradient do not
