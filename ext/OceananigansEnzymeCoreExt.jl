@@ -1,6 +1,7 @@
 module OceananigansEnzymeCoreExt
 
 using Oceananigans
+using Oceananigans.Utils: contiguousrange
 using KernelAbstractions
 
 isdefined(Base, :get_extension) ? (import EnzymeCore) : (import ..EnzymeCore)
@@ -18,6 +19,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  EnzymeCore.Duplicated{<:Tuple}},
                                                  grid::EnzymeCore.Const{<:Oceananigans.Grids.AbstractGrid},
                                                  T::EnzymeCore.Const{<:DataType}; kw...) where RT
+
   primal = if EnzymeCore.EnzymeRules.needs_primal(config)
       func.val(loc.val, grid.val, T.val; kw...)
   else
@@ -62,9 +64,9 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 
 
     workgroup, worksize = Oceananigans.Utils.work_layout(grid.val, workspec.val;
-                                      include_right_boundaries,
-                                      reduced_dimensions,
-                                      location)
+                                                         include_right_boundaries,
+                                                         reduced_dimensions,
+                                                         location)
 
     offset = Oceananigans.Utils.offsets(workspec.val)
 
