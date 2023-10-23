@@ -154,8 +154,15 @@ end
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
-##### Allows to call a kernel with kernel(dev, workgroup, worksize, offsets) 
+##### Allows to use `launch!` with offsets, e.g.:
+##### `launch!(arch, grid, KernelParameters(size, offsets), kernel!; kernel_args...)` 
 ##### where offsets is a tuple containing the offset to pass to @index
+##### Note that this syntax is only usable in conjunction with the `launch!` function and
+##### will have no effect if the kernel is launched with `kernel!` directly.
+##### To achieve the same result with kernel launching, the correct syntax is:
+##### `kernel!(arch, StaticSize(size), OffsetStaticSize(contiguousrange(size, offset)))`
+##### Using offsets is (at the moment) incompatible with dynamic workgroup sizes: in case of offset dynamic kernels
+##### offsets will have to be passed manually.
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
@@ -200,7 +207,7 @@ struct KernelOffsets{O}
     offsets :: O
 end
 
-Base.getindex(o::KernelOffsets, i::Int) = o.offsets[i]
+Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
 
 const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
 
