@@ -63,7 +63,7 @@ function fill_halo_event!(fill_halos!, bcs, c, indices, loc, arch, grid, args...
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
-    # south and north boundaries and bottom and top boundaries
+    # south and north boundaries, and bottom and top boundaries
     size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halos!, indices)
 
@@ -154,6 +154,7 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
 # Periodic is handled after Flux, Value, Gradient because
 # Periodic fills also corners while Flux, Value, Gradient do not
+# TODO: remove this ordering requirement (see issue https://github.com/CliMA/Oceananigans.jl/issues/3342)
 
 # Order of halo filling
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)

@@ -107,7 +107,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     # and the number of tasks might increase.
     for task in 1:3
         @apply_regionally begin
-            fill_send_buffers!(c, buffers, mrg, bcs)
+            fill_multiregion_send_buffers!(c, buffers, mrg, bcs)
             fill_halo_side! = getindex(fill_halos!, task)
             bcs_side = getindex(bcs, task)
         end
@@ -121,7 +121,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 end
 
 # Find a better way to do this (this will not work for corners!!)
-function fill_send_buffers!(c, buffers, grid, bcs::FieldBoundaryConditions)
+function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
 
     if !isempty(filter(x -> x isa MCBCT, bcs))
         fill_send_buffers!(c, buffers, grid)
