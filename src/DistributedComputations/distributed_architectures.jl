@@ -52,7 +52,7 @@ ranks(r::Fractional) = length(r.sizes)
 
 Base.size(p::Partition) = ranks(p)
 
-Fractional(args...) = sum(args) != 1 ? Fractional(tuple(args ./ sum(args)...)) : Fractional(tuple(args))
+Fractional(args...) = Fractional(tuple(args ./ sum(args)...)) 
      Sizes(args...) = Sizes(tuple(args...))
 
 # We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
