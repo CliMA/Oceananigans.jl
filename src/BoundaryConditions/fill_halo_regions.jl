@@ -48,21 +48,21 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     arch = architecture(grid)
 
-    halo_tuple  = permute_boundary_conditions(boundary_conditions)
+    fill_halo!, bcs  = permute_boundary_conditions(boundary_conditions)
+    number_of_tasks = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    for task in 1:length(halo_tuple[1])
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
+    for task = 1:number_of_tasks
+        fill_halo_event!(fill_halo![task], bcs[task], c, indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
-    fill_halo! = halo_tuple[1][task]
-    bcs        = halo_tuple[2][task]
+function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid, args...; kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
+    # We assume that the kernel size is the same west-east, south-north and bottom-top
     size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
@@ -119,7 +119,7 @@ function permute_boundary_conditions(boundary_conditions)
     
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
-    return (fill_halos!, boundary_conditions)
+    return fill_halos!, boundary_conditions
 end
 
 # Split direction in two distinct fill_halo! events in case of a communication boundary condition 

@@ -98,11 +98,13 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
-    arch       = architecture(grid)
-    halo_tuple = permute_boundary_conditions(bcs)
+    arch             = architecture(grid)
+    fill_halos!, bcs = permute_boundary_conditions(bcs) 
 
-    for task = 1:length(halo_tuple[1])
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    number_of_tasks = length(fill_halos!)
+
+    for task = 1:number_of_tasks
+        fill_halo_event!(fill_halos![task], bcs[task], c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -181,9 +183,7 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
-    fill_halo! = halo_tuple[1][task]
-    bcs        = halo_tuple[2][task]
+function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
 
     buffer_side = communication_side(Val(fill_halo!))
 
@@ -193,6 +193,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid::Distrib
     end
 
     # Calculate size and offset of the fill_halo kernel
+    # We assume that the kernel size is the same west-east, south-north and bottom-top
     size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
