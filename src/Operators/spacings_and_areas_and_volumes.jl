@@ -9,9 +9,9 @@ const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
-const LLGX = XRegLatLonGrid
-const LLGY = YRegLatLonGrid
-const LLGZ = ZRegLatLonGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}

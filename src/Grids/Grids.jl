@@ -7,8 +7,8 @@ export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
-export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG,
-export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
+export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
 export conformal_cubed_sphere_panel
 export node, nodes
