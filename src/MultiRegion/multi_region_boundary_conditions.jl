@@ -99,7 +99,7 @@ function multi_region_permute_boundary_conditions(bcs)
 end
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
-    arch       = architecture(mrg)
+    arch = architecture(mrg)
     @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
     
     # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
@@ -107,9 +107,9 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     # and the number of tasks might increase.
     for task in 1:3
         @apply_regionally begin
-            fill_multiregion_send_buffers!(c, buffers, mrg, bcs)
-            fill_halo_side! = getindex(fill_halos!, task)
             bcs_side = getindex(bcs, task)
+            fill_halo_side! = getindex(fill_halos!, task)
+            fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
         buff = Reference(buffers.regional_objects)
         apply_regionally!(fill_halo_event!, fill_halo_side!, bcs_side, 
