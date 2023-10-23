@@ -145,9 +145,7 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 abstract type AbstractDirection end
 
 struct XDirection <: AbstractDirection end
-
 struct YDirection <: AbstractDirection end
-
 struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
@@ -155,6 +153,12 @@ struct NegativeZDirection <: AbstractDirection end
 const XFlatGrid = AbstractGrid{<:Any, Flat}
 const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
 const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
+
+const XYFlatGrid = AbstractGrid{<:Any, Flat, Flat}
+const XZFlatGrid = AbstractGrid{<:Any, Flat, <:Any, Flat}
+const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
+
+const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 
 isrectilinear(grid) = false
 
