@@ -193,7 +193,8 @@ function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid::Distribu
     end
 
     # Calculate size and offset of the fill_halo kernel
-    # We assume that the kernel size is the same west-east, south-north and bottom-top
+    # We assume that the kernel size is the same for west and east boundaries, 
+    # south and north boundaries and bottom and top boundaries
     size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 

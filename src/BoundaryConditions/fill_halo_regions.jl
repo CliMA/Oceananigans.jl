@@ -62,7 +62,8 @@ end
 function fill_halo_event!(fill_halo!, bcs, c, indices, loc, arch, grid, args...; kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
-    # We assume that the kernel size is the same west-east, south-north and bottom-top
+    # We assume that the kernel size is the same for west and east boundaries, 
+    # south and north boundaries and bottom and top boundaries
     size   = fill_halo_size(c, fill_halo!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
@@ -144,9 +145,14 @@ const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
 const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
 const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
-# Distributed halos have to be filled last because of
-# buffered communication. 
- 
+# Distributed halos have to be filled last to allow the 
+# possibility of asynchronous communication: 
+# Communication is initiated, and halos are filled when communication is completed. 
+# If other halos are filled after we initiate the distributed communication, 
+# (but before communication is completed) the halos will be overwritten. 
+# For this reason we always want to perform local halo filling first and then 
+# initiate commuincation
+
 # Periodic is handled after Flux, Value, Gradient because
 # Periodic fills also corners while Flux, Value, Gradient do not
 
