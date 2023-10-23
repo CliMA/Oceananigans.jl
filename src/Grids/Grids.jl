@@ -163,6 +163,7 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 include("grid_utils.jl")
+include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
 include("new_data.jl")
 include("inactive_node.jl")
