@@ -431,6 +431,8 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     return (x, y, z)
 end
 
+const F = Face
+const C = Center
 
 @inline xnodes(grid::RG, ℓx::F; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
 @inline xnodes(grid::RG, ℓx::C; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
@@ -472,9 +474,6 @@ end
 #####
 ##### Grid spacings
 #####
-
-const F = Face
-const C = Center
 
 @inline xspacings(grid::RG,         ℓx::C; with_halos=false) = with_halos ? grid.Δxᶜᵃᵃ : view(grid.Δxᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
 @inline xspacings(grid::XRegularRG, ℓx::C; with_halos=false) = grid.Δxᶜᵃᵃ

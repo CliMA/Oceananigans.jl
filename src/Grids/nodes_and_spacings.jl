@@ -4,6 +4,7 @@
 
 # "Flatten" locations
 @inline node(i, j, k, grid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, ℓz)
+
 @inline node(i, j, k, grid::XFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, nothing, ℓy, ℓz)
 @inline node(i, j, k, grid::YFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, nothing, ℓz)
 @inline node(i, j, k, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, nothing)
