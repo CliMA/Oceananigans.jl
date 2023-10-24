@@ -83,34 +83,52 @@ for passes in 1:3
 end
 
 for region in [1, 3, 5]
-
+    
+    region_south = mod(region + 4, 6) + 1
     region_east = region + 1
     region_north = mod(region + 2, 6)
     region_west = mod(region + 4, 6)
     
     # Northwest corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
         v[region][0, Ny+1, k] = -u[region][1, Ny, k]
         v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+        # Local x direction
+        u[region][1-Hx:0, Ny+1, k] .= reverse(-u[region_north][2:Hx+1, Ny, k])
+        v[region][1-Hx:0, Ny+1, k] .= -u[region_west][1, Ny-Hx+1:Ny, k]
     end
-    
+
     # Northeast corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
         v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
+        # Local x direction
+        u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_north][1:Hx, 1, k]
+        v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][1:Hy, 1, k]
     end
     
     # Southwest corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
         v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
+        # Local x direction
+        u[region][1-Hx:0, 0, k] .= v[region_south][1, Ny-Hx+1:Ny, k]
+        v[region][1-Hx:0, 0, k] .= -u[region_south][2, Ny-Hx+1:Ny, k]
     end
     
     # Southeast corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
         v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
+        # Local x direction
+        u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+        u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
+        v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
     end 
     
 end
@@ -256,21 +274,21 @@ function panel_wise_visualization(field, k=1; hide_decorations = true, colorrang
     return fig
 end
 
-# u_theoretical = XFaceField(grid)
-# v_theoretical = YFaceField(grid)
+u_theoretical = XFaceField(grid)
+v_theoretical = YFaceField(grid)
 
-# for region in 1:number_of_regions(grid)
-#     u_theoretical[region][1:Nx, 1:Ny, :] .= U * cosd.(grid[region].φᶠᶜᵃ[1:Nx, 1:Ny, :])
-#     v_theoretical[region].data .= 0
-# end
+for region in 1:number_of_regions(grid)
+    u_theoretical[region][1:Nx, 1:Ny, :] .= U * cosd.(grid[region].φᶠᶜᵃ[1:Nx, 1:Ny, :])
+    v_theoretical[region].data .= 0
+end
 
-# fig = panel_wise_visualization(rel_error, colorrange=(0, 1))
+fig = panel_wise_visualization(rel_error, colorrange=(0, 1))
 
-# fig = panel_wise_visualization(ψ)
-# save("streamfunction.png", fig)
+fig = panel_wise_visualization(ψ)
+save("streamfunction.png", fig)
 
-# fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
-# save("vorticity.png", fig)
+fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
+save("vorticity.png", fig)
 
-# fig = panel_wise_visualization(f, colorrange=(-2, 2))
-# save("vorticity.png", fig)
+fig = panel_wise_visualization(f, colorrange=(-2, 2))
+save("f.png", fig)
