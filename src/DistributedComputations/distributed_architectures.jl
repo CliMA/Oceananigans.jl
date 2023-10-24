@@ -26,10 +26,8 @@ Return `Partition` representing the division of a domain into
 where `x, y, z` are the first, second, and third dimension
 respectively.
 
-`Rx`, `Ry` and `Rz` can be vectors containing the percentage of the domain
-ascribed to the different cores. In this case, `length(Rx)` represent the number
-of divisions in the first dimension with `sum(Rx)` equal to 1.0. 
-Rank `arch.local_index[i]` will have `global_size[i] * Rx[i]` elements in the first dimension.
+`Rx`, `Ry` and `Rz` can be `Int` or `Equal`, `Fractional` or `Sizes` 
+(see below)
 """
 Partition(Rx)     = Partition(validate_partition(Rx, 1, 1)...)
 Partition(Rx, Ry) = Partition(validate_partition(Rx, Ry, 1)...)
@@ -39,10 +37,15 @@ function Partition(; x = 1, y = 1, z = 1)
     return Partition(x, y, z)
 end
 
+"""type representing equal domain partitioning"""
 struct Equal end
+
+"""type representing fractional domain partioning where rank `1` holds `sizes[1]` parts of the domain"""
 struct Fractional{S} 
     sizes :: S
 end
+
+"""type representing domain partioning where rank `1` holds `sizes[1]` cells"""
 struct Sizes{S} 
     sizes :: S
 end
