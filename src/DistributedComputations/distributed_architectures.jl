@@ -55,9 +55,7 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
-Base.getindex(p::Partition, idx) = i == 1 ? p.x : i == 2 ? p.y : p.z
 Base.size(p::Partition) = ranks(p)
-Base.length(p::Partition) = 3
 
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
      Sizes(args...) = Sizes(tuple(args...))
