@@ -137,31 +137,49 @@ for region in [2, 4, 6]
     
     region_south = mod(region + 3, 6) + 1
     region_east = mod(region, 6) + 2
+    region_north = mod(region, 6) + 1
     region_west = region - 1
     
     # Northwest corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
         v[region][0, Ny+1, k] = -u[region][1, Ny, k]
         v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+        # Local x direction
+        u[region][1-Hx:0, Ny+1, k] .= reverse(-v[region_north][1, 2:Hx+1, k])
+        v[region][1-Hx:0, Ny+1, k] .= reverse(u[region_north][1, 1:Hx, k])
     end
     
     # Northeast corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
         v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+        # Local x direction
+        u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_east][1:Hx, 1, k]
+        v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_east][1:Hx, 1, k]
     end
     
     # Southwest corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
         v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
+        # Local x direction
+        u[region][1-Hx:0, 0, k] .= u[region_south][Nx-Hx+1:Nx, Ny, k]
+        v[region][1-Hx:0, 0, k] .= v[region_south][Nx-Hx+1:Nx, Ny, k]
     end
     
     # Southeast corner
     for k in -Hz+1:Nz+Hz
+        # Local y direction
         u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
         v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
+        # Local x direction
+        u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+        u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
+        v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
     end
     
 end
