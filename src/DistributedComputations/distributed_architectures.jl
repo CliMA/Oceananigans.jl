@@ -37,7 +37,7 @@ function Partition(; x = 1, y = 1, z = 1)
     return Partition(x, y, z)
 end
 
-"""type representing equal domain partitioning"""
+"""type representing equal domain partitioning (not supported for more than one direction)"""
 struct Equal end
 
 """type representing fractional domain partioning where rank `1` holds `sizes[1]` parts of the domain"""
