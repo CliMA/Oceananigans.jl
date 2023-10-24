@@ -413,8 +413,24 @@ end
 coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 #####
-##### Definition of nodes for RectilinearGrid
+##### Definition of RectilinearGrid nodes
 #####
+
+@inline xnode(i, grid::RG, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(i, grid::RG, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
+@inline ynode(j, grid::RG, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(j, grid::RG, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
+@inline znode(k, grid::RG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::RG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline ξnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
+@inline ηnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
+@inline rnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
+
+# Convenience definitions for x, y, znode
+@inline xnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
+@inline ynode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
+@inline znode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
@@ -447,29 +463,6 @@ const C = Center
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
 @inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 @inline znodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
-
-@inline _node(i, j, k, grid::RG, ℓx, ℓy, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                                ynode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                                znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline _node(i, j, k, grid::RG, ℓx::Nothing, ℓy, ℓz) = (ynode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid::RG, ℓx, ℓy::Nothing, ℓz) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid::RG, ℓx, ℓy, ℓz::Nothing) = (xnode(i, j, k, grid, ℓx, ℓy, ℓz), ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid::RG, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(xnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid::RG, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ynode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid::RG, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline xnode(i, grid::RG, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(i, grid::RG, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
-@inline ynode(j, grid::RG, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(j, grid::RG, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
-@inline znode(k, grid::RG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(k, grid::RG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
-
-# convenience
-@inline xnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
-@inline ynode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
-@inline znode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 #####
 ##### Grid spacings
