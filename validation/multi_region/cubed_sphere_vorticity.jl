@@ -103,70 +103,106 @@ function fill_velocity_halos!(u, v)
         @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
     end
 
-for region in [1, 3, 5]
+    for region in [1, 3, 5]
 
-    region_east = region + 1
-    region_north = mod(region + 2, 6)
-    region_west = mod(region + 4, 6)
-    
-    # Northwest corner
-    for k in -Hz+1:Nz+Hz
-        u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
-        v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-        v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
-    end
-    
-    # Northeast corner
-    for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
-        v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
-    end
-    
-    # Southwest corner
-    for k in -Hz+1:Nz+Hz
-        u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
-        v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
-    end
-    
-    # Southeast corner
-    for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
-        v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
-    end 
-    
-end
+        region_south = mod(region + 4, 6) + 1
+        region_east = region + 1
+        region_north = mod(region + 2, 6)
+        region_west = mod(region + 4, 6)
 
-for region in [2, 4, 6]
-    
-    region_south = mod(region + 3, 6) + 1
-    region_east = mod(region, 6) + 2
-    region_west = region - 1
-    
-    # Northwest corner
-    for k in -Hz+1:Nz+Hz
-        u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
-        v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-        v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+        # Northwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
+            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
+            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+            # Local x direction
+            u[region][1-Hx:0, Ny+1, k] .= reverse(-u[region_north][2:Hx+1, Ny, k])
+            v[region][1-Hx:0, Ny+1, k] .= -u[region_west][1, Ny-Hx+1:Ny, k]
+        end
+
+        # Northeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
+            v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
+            # Local x direction
+            u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_north][1:Hx, 1, k]
+            v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][1:Hy, 1, k]
+        end
+
+        # Southwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
+            v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
+            # Local x direction
+            u[region][1-Hx:0, 0, k] .= v[region_south][1, Ny-Hx+1:Ny, k]
+            v[region][1-Hx:0, 0, k] .= -u[region_south][2, Ny-Hx+1:Ny, k]
+        end
+
+        # Southeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
+            v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
+            # Local x direction
+            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
+            v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
+        end
     end
     
-    # Northeast corner
-    for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
-        v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+    for region in [2, 4, 6]
+        region_south = mod(region + 3, 6) + 1
+        region_east = mod(region, 6) + 2
+        region_north = mod(region, 6) + 1
+        region_west = region - 1
+
+        # Northwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
+            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
+            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+            # Local x direction
+            u[region][1-Hx:0, Ny+1, k] .= reverse(-v[region_north][1, 2:Hx+1, k])
+            v[region][1-Hx:0, Ny+1, k] .= reverse(u[region_north][1, 1:Hx, k])
+        end
+
+        # Northeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
+            v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+            # Local x direction
+            u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_east][1:Hx, 1, k]
+            v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_east][1:Hx, 1, k]
+        end
+        
+        # Southwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
+            v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
+            # Local x direction
+            u[region][1-Hx:0, 0, k] .= u[region_south][Nx-Hx+1:Nx, Ny, k]
+            v[region][1-Hx:0, 0, k] .= v[region_south][Nx-Hx+1:Nx, Ny, k]
+        end
+        
+        # Southeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
+            v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
+            # Local x direction
+            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
+            v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
+        end        
     end
-    
-    # Southwest corner
-    for k in -Hz+1:Nz+Hz
-        u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
-        v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
-    end
-    
-    # Southeast corner
-    for k in -Hz+1:Nz+Hz
-        u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
-        v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
-    end
-    
+
+    return nothing
 end
 
 # Now compute vorticity
