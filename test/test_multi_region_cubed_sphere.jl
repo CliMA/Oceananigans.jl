@@ -100,13 +100,6 @@ U = 1        # velocity scale
 α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
 ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-# Solid body rotation
-R = 1        # sphere's radius
-U = 1        # velocity scale
-φʳ = 0       # Latitude pierced by the axis of rotation
-α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
-
 """
     create_test_data(grid, region)
 
@@ -118,7 +111,7 @@ function create_test_data(grid, region; trailing_zeros=0)
     Nx, Ny, Nz = size(grid)
     (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
     !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
-    factor = 10^(trailing_zeros)
+    factor = 10^trailing_zeros
 
     return factor .* [100region + 10i + j for i in 1:Nx, j in 1:Ny, k in 1:Nz]
 end
