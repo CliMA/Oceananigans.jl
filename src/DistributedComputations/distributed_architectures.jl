@@ -6,6 +6,8 @@ import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_t
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
+import Base
+
 #####
 ##### Partitioning
 #####
@@ -50,12 +52,12 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
+Base.getindex(p::Partition, idx) = i == 1 ? p.x : i == 2 ? p.y : p.z
 Base.size(p::Partition) = ranks(p)
 
-Fractional(args...) = Fractional(tuple(args ./ sum(args)...)) 
+Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
      Sizes(args...) = Sizes(tuple(args...))
 
-# We need to make sure that the domain is partitioned correctly in percentages, i.e that `sum(R) == 1`
 validate_partition(x, y, z) = (x, y, z)
 validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z

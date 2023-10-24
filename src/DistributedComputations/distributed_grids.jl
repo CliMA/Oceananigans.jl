@@ -20,29 +20,29 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
 # Local size from global size and architecture
-local_size(arch, global_sz) = local_size.(global_sz, ranks(arch.partition), Ref(arch), (1, 2, 3))
+local_size(arch, global_sz) = local_size.(global_sz, arch.partition, Ref(arch), (1, 2, 3))
 
-# Individual local size for equal partitioning
-function local_size(N, R::Int, arch, i::Int)
-    r = arch.local_index[i]
-    N𝓁 = N ÷ R
-    if r == R # If R does not divide N, we add the remainder to the last rank
-        return N - (R - 1) * N𝓁
+# Individual local size for unequal `Fractional` partitioning
+function local_size(N, R, arch, i::Int)
+    rank = arch.local_index[i]
+    N𝓁  = local_sizes(N, R)
+    Nℊ = sum(N𝓁)
+    if rank == length(R) # If R does not divide N, we add the remainder to the last rank
+        return N𝓁[rank] + N - Nℊ
     else
-        return N𝓁
+        return N𝓁[rank]
     end
 end
 
-# Individual local size for unequal partitioning
-function local_size(N, R::Vector, arch, i::Int)
-    r   = arch.local_index[i]
-    N𝓁  = Tuple(ceil(Int, N * R[i]) for i in 1:length(R))
-    Nℊ = sum(N𝓁)
-    if r == length(R) # If R does not divide N, we add the remainder to the last rank
-        return N𝓁[r] + N - Nℊ
-    else
-        return N𝓁[r]
+# Differentiate between equal and unequal partitioning
+@inline local_sizes(N, R::Int) = Tuple(N ÷ R for i in 1:R)
+@inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
+@inline function local_sizes(N, R::Sizes)
+    if N != sum(R.sizes)
+        @warn "The sum of the domain sizes specified in the architecture is inconsistent 
+               than the grid size $N, using the architecture-specified sizes $R"
     end
+    return R.sizes
 end
 
 # Global size from local size
