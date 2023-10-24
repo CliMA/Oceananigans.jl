@@ -573,6 +573,10 @@ coordinates(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ
 ##### Grid nodes
 #####
 
+ξname(::LLG) = :λ
+ηname(::LLG) = :η
+rname(::LLG) = :z
+
 @inline λnode(i, grid::LLG, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
 @inline λnode(i, grid::LLG, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
 @inline φnode(j, grid::LLG, ::Center) = @inbounds grid.φᵃᶜᵃ[j]

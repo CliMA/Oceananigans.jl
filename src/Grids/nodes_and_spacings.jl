@@ -5,6 +5,25 @@
 ##### the first, second, and third coordinates respectively.
 #####
 
+node_names(grid, ℓx, ℓy, ℓz) = _node_names(grid, ℓx, ℓy, ℓz)
+
+node_names(grid::XFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, nothing, ℓy, ℓz)
+node_names(grid::YFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, ℓx, nothing, ℓz)
+node_names(grid::ZFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, ℓx, ℓy, nothing)
+node_names(grid::XYFlatGrid, ℓx, ℓy, ℓz) = _node_names(grid, nothing, nothing, ℓz)
+node_names(grid::XZFlatGrid, ℓx, ℓy, ℓz) = _node_names(grid, nothing, ℓy, nothing)
+node_names(grid::YZFlatGrid, ℓx, ℓy, ℓz) = _node_names(grid, ℓx, nothing, nothing)
+
+_node_names(grid, ℓx, ℓy, ℓz) = (ξname(grid), ηname(grid), rname(grid))
+
+_node_names(grid, ::Nothing, ℓy, ℓz) = (ηname(grid), rname(grid))
+_node_names(grid, ℓx, ::Nothing, ℓz) = (ξname(grid), rname(grid))
+_node_names(grid, ℓx, ℓy, ::Nothing) = (ξname(grid), ηname(grid))
+
+_node_names(grid, ℓx, ::Nothing, ::Nothing) = tuple(ξname(grid))
+_node_names(grid, ::Nothing, ℓy, ::Nothing) = tuple(ηname(grid))
+_node_names(grid, ::Nothing, ::Nothing, ℓz) = tuple(rname(grid))
+
 # Interface for grids to opt-in to `node`: ξnode, ηnode, rnode
 @inline _node(i, j, k, grid, ℓx, ℓy, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz),
                                             ηnode(i, j, k, grid, ℓx, ℓy, ℓz),

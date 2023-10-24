@@ -416,6 +416,10 @@ coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃ�
 ##### Definition of RectilinearGrid nodes
 #####
 
+ξname(::RG) = :x
+ηname(::RG) = :y
+rname(::RG) = :z
+
 @inline xnode(i, grid::RG, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(i, grid::RG, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
 @inline ynode(j, grid::RG, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
