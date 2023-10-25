@@ -155,7 +155,7 @@ for arch in archs
         # Flavors of output: functions, AbstractOperations, FunctionFields
         clock = model.clock
         α = 0.12
-        test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t; clock, parameters=α)
+        test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t, grid; clock, parameters=α)
         function_field_outputs = (; αt = test_function_field)
 
         u, v, w = model.velocities
