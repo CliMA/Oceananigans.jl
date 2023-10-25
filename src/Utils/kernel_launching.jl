@@ -8,6 +8,8 @@ using Oceananigans.Grids
 
 using Oceananigans.Grids: AbstractGrid
 
+import Base
+
 struct KernelParameters{S, O} end
 
 """
@@ -152,8 +154,15 @@ end
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
-##### Allows to call a kernel with kernel(dev, workgroup, worksize, offsets) 
+##### Allows to use `launch!` with offsets, e.g.:
+##### `launch!(arch, grid, KernelParameters(size, offsets), kernel!; kernel_args...)` 
 ##### where offsets is a tuple containing the offset to pass to @index
+##### Note that this syntax is only usable in conjunction with the `launch!` function and
+##### will have no effect if the kernel is launched with `kernel!` directly.
+##### To achieve the same result with kernel launching, the correct syntax is:
+##### `kernel!(arch, StaticSize(size), OffsetStaticSize(contiguousrange(size, offset)))`
+##### Using offsets is (at the moment) incompatible with dynamic workgroup sizes: in case of offset dynamic kernels
+##### offsets will have to be passed manually.
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
@@ -193,7 +202,14 @@ import KernelAbstractions: get, expand
 @inline worksize(i::Int) = i
 @inline worksize(i::UnitRange) = length(i)
 
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:Tuple} where N
+"""a type used to store offsets in `NDRange` types"""
+struct KernelOffsets{O}
+    offsets :: O
+end
+
+Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
+
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 @inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
@@ -243,7 +259,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, offsets)
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
 
     return iterspace, dynamic
 end
