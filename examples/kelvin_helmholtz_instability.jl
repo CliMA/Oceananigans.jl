@@ -293,7 +293,7 @@ xb, yb, zb = nodes(b)
 using Random, Statistics
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
-noise(x, y, z) = randn()
+noise(x, z) = randn()
 set!(model, u=noise, w=noise, b=noise)
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
