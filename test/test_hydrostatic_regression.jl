@@ -1,13 +1,13 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 
 function show_hydrostatic_test(grid, free_surface, precompute_metrics) 
 
-    typeof(grid) <: XRegLatLonGrid ? gx = :regular : gx = :stretched
-    typeof(grid) <: YRegLatLonGrid ? gy = :regular : gy = :stretched
-    typeof(grid) <: ZRegLatLonGrid ? gz = :regular : gz = :stretched
+    typeof(grid) <: XRegularLLG ? gx = :regular : gx = :stretched
+    typeof(grid) <: YRegularLLG ? gy = :regular : gy = :stretched
+    typeof(grid) <: ZRegularLLG ? gz = :regular : gz = :stretched
  
     arch = grid.architecture
     free_surface_str = string(typeof(free_surface).name.wrapper)
