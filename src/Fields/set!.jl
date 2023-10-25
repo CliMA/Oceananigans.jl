@@ -24,6 +24,8 @@ function tuple_string(tup::Tuple)
     return str[1:end-2] # remove trailing ", "
 end
 
+tuple_string(tup::Tuple{}) = ""
+
 function set!(u::Field, f::Function)
 
     # Determine cpu_grid and cpu_u
