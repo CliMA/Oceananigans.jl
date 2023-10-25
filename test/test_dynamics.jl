@@ -94,7 +94,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
     immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
 
-    initial_temperature(x, y, z) = exp(-z^2 / 0.02)
+    initial_temperature(z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
     set!(immersed_model, c=initial_temperature)
 
