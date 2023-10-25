@@ -48,7 +48,11 @@ include("set_nonhydrostatic_model.jl")
 ##### AbstractModel interface
 #####
 
-cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(model.grid, model.velocities)
+function cell_advection_timescale(model::NonhydrostaticModel)
+    grid = model.grid
+    velocities = total_velocities(model)
+    return cell_advection_timescale(grid, velocities)
+end
 
 """
     fields(model::NonhydrostaticModel)
