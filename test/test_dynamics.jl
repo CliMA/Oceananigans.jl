@@ -86,7 +86,7 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
     
     Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
