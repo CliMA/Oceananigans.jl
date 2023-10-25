@@ -35,7 +35,7 @@ end
 ##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
 #####
 
-@inline Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
+@inline Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v) =
     ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
            Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u),
            ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
