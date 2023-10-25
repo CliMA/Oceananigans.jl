@@ -30,9 +30,9 @@ grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
 #
 # and the width of the stratification layer, ``h``.
 
-shear_flow(x, y, z, t) = tanh(z)
+shear_flow(x, z, t) = tanh(z)
 
-stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
+stratification(x, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
 U = BackgroundField(shear_flow)
 
@@ -51,10 +51,10 @@ Ri, h = B.parameters
 fig = Figure(resolution = (850, 450))
  
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
-lines!(ax, shear_flow.(0, 0, zC, 0), zC; linewidth = 3)
+lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
 ax = Axis(fig[1, 2], xlabel = "B(z)")
-lines!(ax, [stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
+lines!(ax, [stratification(0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
 
 ax = Axis(fig[1, 3], xlabel = "Ri(z)")
 lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, color = :black) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
