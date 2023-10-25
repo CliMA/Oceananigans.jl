@@ -19,9 +19,8 @@ function set!(u::Field, v)
     return u
 end
 
-function tuple_string(tup)
-    tuple_of_strings = Tuple(string(t, ", ") for t in tup)
-    str = prod(tuple_of_strings)
+function tuple_string(tup::Tuple)
+    str = prod(string(t, ", ") for t in tup)
     return str[1:end-2] # remove trailing ", "
 end
 

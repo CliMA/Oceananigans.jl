@@ -41,6 +41,8 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 @inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
 @inline _node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(rnode(i, j, k, grid, ℓx, ℓy, ℓz))
 
+@inline _node(i, j, k, grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
+
 # Omission of Flat directions by "nullifying" locations in Flat directions
 @inline node(i, j, k, grid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, ℓz)
 
