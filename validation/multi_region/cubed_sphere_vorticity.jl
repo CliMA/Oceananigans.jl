@@ -329,5 +329,5 @@ save("streamfunction.png", fig)
 fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
 save("vorticity.png", fig)
 
-# fig = panel_wise_visualization(f, colorrange=(-2, 2))
-# save("vorticity.png", fig)
+fig = panel_wise_visualization(f, colorrange=(-2, 2))
+save("f.png", fig)
