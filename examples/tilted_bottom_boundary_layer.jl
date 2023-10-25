@@ -65,7 +65,7 @@ lines(zspacings(grid, Center()), znodes(grid, Center()),
 
 scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
-current_figure() # hide
+current_figure() #hide
 
 # ## Tilting the domain
 #
@@ -84,7 +84,7 @@ ĝ = [sind(θ), 0, cosd(θ)]
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
-# where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
+# where we have used a constant Coriolis parameter ``$f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
@@ -125,7 +125,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
+# and a constant viscosity and diffusivity. Here we use a smallish value
+# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
 closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
@@ -139,7 +140,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 # Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
 # turbulence:
 
-noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2 / grid.Lz^2)
 set!(model, u=noise, w=noise)
 
 # ## Create and run a simulation
@@ -232,7 +233,7 @@ times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
