@@ -86,7 +86,7 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
     
     Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
@@ -94,7 +94,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
     immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
 
-    initial_temperature(x, y, z) = exp(-z^2 / 0.02)
+    initial_temperature(z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
     set!(immersed_model, c=initial_temperature)
 

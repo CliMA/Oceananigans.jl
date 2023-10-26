@@ -147,7 +147,7 @@ mixed_layer_depth = 32 # m
 
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
-initial_buoyancy(x, y, z) = stratification(z) + noise(z)
+initial_buoyancy(x, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 

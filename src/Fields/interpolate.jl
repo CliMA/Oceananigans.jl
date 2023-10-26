@@ -2,8 +2,8 @@ using Oceananigans.Grids: topology, node,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XYFlatGrid,
-                          XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid,
-                          XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid,
+                          XRegularRG, YRegularRG, ZRegularRG,
+                          XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
 
@@ -61,15 +61,15 @@ end
 
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
 
-@inline function fractional_x_index(x::FT, locs, grid::XRegRectilinearGrid) where FT
-    x₀ = @inbounds xnode(1, 1, 1, grid, locs...)
-    Δx = @inbounds xspacings(grid, locs...)
+@inline function fractional_x_index(x::FT, locs, grid::XRegularRG) where FT
+    x₀ = xnode(1, 1, 1, grid, locs...)
+    Δx = xspacings(grid, locs...)
     return convert(FT, (x - x₀) / Δx)
 end
 
-@inline function fractional_x_index(λ::FT, locs, grid::XRegLatLonGrid) where FT
+@inline function fractional_x_index(λ::FT, locs, grid::XRegularLLG) where FT
     λ₀ = @inbounds λnode(1, 1, 1, grid, locs...)
-    Δλ = @inbounds λspacings(grid, locs...)
+    Δλ = λspacings(grid, locs...)
     return convert(FT, (λ - λ₀) / Δλ)
 end
 
@@ -83,13 +83,13 @@ end
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
-@inline function fractional_y_index(y::FT, locs, grid::YRegRectilinearGrid) where FT
+@inline function fractional_y_index(y::FT, locs, grid::YRegularRG) where FT
     y₀ = @inbounds ynode(1, 1, 1, grid, locs...)
     Δy = @inbounds yspacings(grid, locs...)
     return convert(FT, (y - y₀) / Δy)
 end
 
-@inline function fractional_y_index(φ::FT, locs, grid::YRegLatLonGrid) where FT
+@inline function fractional_y_index(φ::FT, locs, grid::YRegularLLG) where FT
     φ₀ = @inbounds φnode(1, 1, 1, grid, locs...)
     Δφ = @inbounds φspacings(grid, locs...)
     return convert(FT, (φ - φ₀) / Δφ)
@@ -105,7 +105,7 @@ end
 
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
 
-ZRegGrid = Union{ZRegRectilinearGrid, ZRegLatLonGrid, ZRegOrthogonalSphericalShellGrid}
+ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = @inbounds znode(1, 1, 1, grid, locs...)
@@ -195,9 +195,14 @@ the field is specified with `(LX, LY, LZ)` and the field is defined on `grid`.
 
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
+<<<<<<< HEAD
 @inline function interpolate(to_node, from_field, from_loc, from_grid)
     # field, LX, LY, LZ, grid, x, y, z)
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
+=======
+@inline function interpolate(field, LX, LY, LZ, grid, x, y, z)
+    i, j, k = fractional_indices(x, y, z, (LX, LY, LZ), grid)
+>>>>>>> origin/glw/change-node-behavior
 
     # We use mod and trunc as CUDA.modf is not defined.
     # For why we use Base.unsafe_trunc instead of trunc see:
