@@ -202,11 +202,11 @@ function time_stepping_with_background_fields(arch)
     background_S_func(x, y, z, t, α) = α * y
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
-    background_fields=(u = background_u,
-                       v = background_v,
-                       w = background_w,
-                       T = background_T,
-                       S = background_S),
+    background_fields = (u = background_u,
+                         v = background_v,
+                         w = background_w,
+                         T = background_T,
+                         S = background_S)
 
     model = NonhydrostaticModel(; grid, background_fields,
                                 buoyancy = SeawaterBuoyancy(),
