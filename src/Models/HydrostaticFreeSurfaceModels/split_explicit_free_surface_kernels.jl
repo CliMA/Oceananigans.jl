@@ -282,16 +282,18 @@ end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
 
-    grid = model.grid
+    # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
+    # since halo_size(free_surface.η.grid) != halo_size(model.grid)
+    free_surface_grid = free_surface.η.grid
 
     # Wait for previous set up
-    wait_free_surface_communication!(free_surface, architecture(grid))
+    wait_free_surface_communication!(free_surface, architecture(free_surface_grid))
 
     # reset free surface averages
     @apply_regionally begin 
         initialize_free_surface_state!(free_surface.state, free_surface.η)
         # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, grid, Δt)
+        iterate_split_explicit!(free_surface, free_surface_grid, Δt)
         # Reset eta for the next timestep
         set!(free_surface.η, free_surface.state.η̅)
     end
@@ -367,7 +369,7 @@ end
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 
-    grid = free_surface.η.grid
+    free_surface_grid = free_surface.η.grid
     
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
@@ -377,7 +379,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     
     auxiliary = free_surface.auxiliary
 
-    @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    @apply_regionally setup_split_explicit_tendency!(auxiliary, free_surface_grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
     fill_halo_regions!(fields_to_fill; async = true)
