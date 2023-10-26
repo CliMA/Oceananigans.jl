@@ -9,7 +9,8 @@ import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), u_num.grid)
-    set!(u_ans, (x, y, z) -> u(x, y, z, time))
+    u_set(x...) = u(x..., time)
+    set!(u_ans, u_set)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
@@ -17,9 +18,7 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
     model = NonhydrostaticModel(; timestepper,
                                   grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
                                   closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                  coriolis = nothing,
-                                  tracers = :c,
-                                  buoyancy = nothing)
+                                  tracers = :c)
 
     value = π
     field = fields(model)[fieldname]
