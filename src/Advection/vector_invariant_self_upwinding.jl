@@ -1,5 +1,3 @@
-const VectorInvariantSelfVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:OnlySelfUpwinding}
-
 ##### 
 ##### Self Upwinding of Divergence Flux, the best option!
 #####
@@ -44,8 +42,6 @@ end
 ##### Self Upwinding of Kinetic Energy Gradient 
 #####
 
-const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
-
 @inline half_ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2 / 2
 
 @inline δx_u²(i, j, k, grid, u, v) = δxᶜᵃᵃ(i, j, k, grid, half_ϕ², u)
@@ -65,8 +61,8 @@ const VectorInvariantKineticEnergyUpwinding = VectorInvariant{<:Any, <:Any, <:An
     cross_scheme = scheme.upwinding.cross_scheme
 
     δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
-    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, δx_u², δu²_stencil, u, v)
-    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, δx_u², δu²_stencil, u, v)
+    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
+    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
     
     ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
     ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
@@ -82,8 +78,8 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
-    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, δy_v², δv²_stencil, u, v) 
-    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, δy_v², δv²_stencil, u, v) 
+    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
+    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
     
     ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
     ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)

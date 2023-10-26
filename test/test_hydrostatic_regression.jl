@@ -1,4 +1,4 @@
-include("dependencies_for_runtests.jl")
+# include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
@@ -70,12 +70,14 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                     solver_method = :PreconditionedConjugateGradient,
                                                     reltol = 0, abstol = 1e-15)
+        split_explicit_free_surface = SplitExplicitFreeSurface(gravitational_acceleration = 1.0, substeps = 5)
+        
 
         for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false)
             longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
             grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
-            for free_surface in [explicit_free_surface, implicit_free_surface]
+            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
                                     
                 # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
                 # because "uses too much parameter space (maximum 0x1100 bytes)" error 
