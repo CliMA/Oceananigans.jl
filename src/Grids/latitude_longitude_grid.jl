@@ -575,7 +575,7 @@ coordinates(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ
 #####
 
 ξname(::LLG) = :λ
-ηname(::LLG) = :η
+ηname(::LLG) = :φ
 rname(::LLG) = :z
 
 @inline λnode(i, grid::LLG, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
