@@ -2,11 +2,14 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.DistributedComputations: communication_side
 
 using Oceananigans.BoundaryConditions:
             ContinuousBoundaryFunction,
             DiscreteBoundaryFunction,
             permute_boundary_conditions,
+            extract_west_bc, extract_east_bc, extract_south_bc, 
+            extract_north_bc, extract_top_bc, extract_bottom_bc,
             fill_halo_event!,
             MCBCT,
             MCBC
@@ -59,29 +62,68 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
-    arch       = architecture(mrg)
-    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
+# TODO: Adapt MultiRegion boundary conditions to the Distributed logic: aka split the
+# halo sides in two different sides. Requires synchronizing all workers.
+# Might be difficult for `CubedSphereGrids` where all buffers must be filled prior
+# communicating.
+# For the moment we keep the old version because asynchronous communication,
+# which requires splitting, is not yet implemented.
+extract_west_or_east_bc(bc)   = max(bc.west,   bc.east)
+extract_south_or_north_bc(bc) = max(bc.south,  bc.north)
+extract_bottom_or_top_bc(bc)  = max(bc.bottom, bc.top)
 
-    for passes in 1:1
-        for task in 1:3
-            @apply_regionally fill_send_buffers!(c, buffers, mrg, halo_tuple, task)
-            buff = Reference(buffers.regional_objects)
-            apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                            c, indices, loc, arch, mrg, buff, 
-                            args...; kwargs...)
+function multi_region_permute_boundary_conditions(bcs) 
+    fill_halos! = [
+        fill_west_and_east_halo!,
+        fill_south_and_north_halo!,
+        fill_bottom_and_top_halo!,
+    ]
+
+    boundary_conditions_array = [
+        extract_west_or_east_bc(bcs),
+        extract_south_or_north_bc(bcs),
+        extract_bottom_or_top_bc(bcs)
+    ]
+
+    boundary_conditions = [
+        (extract_west_bc(bcs), extract_east_bc(bcs)),
+        (extract_south_bc(bcs), extract_north_bc(bcs)),
+        (extract_bottom_bc(bcs), extract_top_bc(bcs))
+    ]
+
+    perm = sortperm(boundary_conditions_array)
+    fill_halos! = fill_halos![perm]
+    boundary_conditions = boundary_conditions[perm]
+
+    return (fill_halos!, boundary_conditions)
+end
+
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+    arch = architecture(mrg)
+    @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
+    
+    # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
+    # When we want to allow asynchronous communication, we will might need to split the halos sides 
+    # and the number of tasks might increase.
+    for task in 1:3
+        @apply_regionally begin
+            bcs_side = getindex(bcs, task)
+            fill_halo_side! = getindex(fill_halos!, task)
+            fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
+        buff = Reference(buffers.regional_objects)
+        apply_regionally!(fill_halo_event!, c, fill_halo_side!, bcs_side, 
+                          indices, loc, arch, mrg, buff, 
+                          args...; kwargs...)
     end
 
     return nothing
 end
 
 # Find a better way to do this (this will not work for corners!!)
-function fill_send_buffers!(c, buffers, grid, halo_tuple, task)
-    bc_left  = halo_tuple[2][task]
-    bc_right = halo_tuple[3][task]
+function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
 
-    if bc_left isa MCBC || bc_right isa MCBC
+    if !isempty(filter(x -> x isa MCBCT, bcs))
         fill_send_buffers!(c, buffers, grid)
     end
 
@@ -204,6 +246,9 @@ end
 #####
 ##### Single fill_halo! for Communicating boundary condition
 #####
+
+# TODO: Allow support for `Bounded` Cubed sphere grids 
+# (i.e. with the same shift implemented in the double-sided fill halo)
 
 function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
