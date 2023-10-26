@@ -105,7 +105,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
+growing_and_grazing(x, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing #hide
 
 # with parameters
