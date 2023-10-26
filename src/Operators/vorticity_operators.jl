@@ -40,7 +40,7 @@ end
 
 @inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
     on_sw_or_nw = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
-    on_se_or_ne = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
+    on_se_or_ne = on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid)
 
     return ifelse(on_sw_or_nw, Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v),
                   ifelse(on_se_or_ne, Γᶠᶠᶜ_se_or_ne(i, j, k, grid, u, v),
