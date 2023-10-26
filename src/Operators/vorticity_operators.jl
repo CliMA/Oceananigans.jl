@@ -13,6 +13,11 @@ The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 
+#####
+##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
+##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
+#####
+
 @inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
     scaling = ifelse(on_horizontal_corner(i, j, grid), convert(FT, 4/3), 1)
     return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
@@ -30,14 +35,14 @@ end
                                            on_north_west_corner(i, j, grid) |
                                            on_north_east_corner(i, j, grid)
 
-#####
-##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
-##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
-#####
+@inline Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v) =   Δy_qᶜᶠᶜ(i, j, k, grid, v)   - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+@inline Γᶠᶠᶜ_se_or_ne(i, j, k, grid, u, v) = - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
 
-@inline Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v) =
-    ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-           Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u),
-           ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                  - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u),
-                  δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
+@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
+    on_sw_or_nw = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
+    on_se_or_ne = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
+
+    return ifelse(on_sw_or_nw, Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v),
+                  ifelse(on_se_or_ne, Γᶠᶠᶜ_se_or_ne(i, j, k, grid, u, v),
+                         δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
+end
