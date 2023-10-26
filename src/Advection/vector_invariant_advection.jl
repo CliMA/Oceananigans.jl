@@ -167,7 +167,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 ##### Convenience for WENO Vector Invariant
 #####
 
-#                           VectorInvariant{N,     FT,    M,     Z,      ZS,    V,      K (kinetic energy gradient scheme)
+#                           VectorInvariant{N,     FT,    M,     Z (vorticity scheme),      ZS,    V (vertical scheme),      K (kinetic energy gradient scheme)
 const WENOVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:WENO, <:Any, <:WENO, <:WENO}
 
 """
