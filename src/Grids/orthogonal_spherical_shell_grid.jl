@@ -1165,7 +1165,7 @@ end
 @inline rnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 ξname(::OSSG) = :λ
-ηname(::OSSG) = :η
+ηname(::OSSG) = :φ
 rname(::OSSG) = :z
 
 #####
