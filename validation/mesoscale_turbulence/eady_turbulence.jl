@@ -229,7 +229,7 @@ v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
 model.velocities.u.data.parent .-= ū
 model.velocities.v.data.parent .-= v̄
-nothing # hide
+nothing #hide
 
 # ## Simulation set-up
 #
@@ -294,7 +294,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
                                                         filename = "eady_turbulence.jld2",
                                                          overwrite_existing = true)
-nothing # hide
+nothing #hide
 
 # All that's left is to press the big red button:
 
@@ -326,7 +326,7 @@ function nice_divergent_levels(c, clim, nlevels=31)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
-nothing # hide
+nothing #hide
 
 # Now we're ready to animate.
 
@@ -375,4 +375,4 @@ anim = @animate for (i, t) in enumerate(times)
           title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
 end
 
-mp4(anim, "eady_turbulence.mp4", fps = 8) # hide
+mp4(anim, "eady_turbulence.mp4", fps = 8) #hide

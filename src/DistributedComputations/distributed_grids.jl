@@ -28,7 +28,7 @@ local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partit
 function local_size(N, R, local_index)
     N𝓁  = local_sizes(N, R) # tuple of local sizes per rank
     Nℊ = sum(N𝓁) # global size (should be equal to `N` if `N` is divisible by `R`)
-    if local_index == length(R) # If R does not divide `N`, we add the remainder to the last rank
+    if local_index == ranks(R) # If R does not divide `N`, we add the remainder to the last rank
         return N𝓁[local_index] + N - Nℊ
     else
         return N𝓁[local_index]

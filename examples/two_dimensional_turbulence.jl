@@ -111,7 +111,7 @@ times = ω_timeseries.times
 
 xω, yω, zω = nodes(ω_timeseries)
 xs, ys, zs = nodes(s_timeseries)
-nothing # hide
+nothing #hide
 
 # and animate the vorticity and fluid speed.
 
@@ -147,7 +147,7 @@ heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.

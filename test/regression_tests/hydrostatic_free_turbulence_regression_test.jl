@@ -142,15 +142,3 @@ function test_fields_equality(arch, test_fields, truth_fields)
 
     return nothing
 end
-
-# function test_fields_equality(::Distributed, test_fields, truth_fields)
-#     rtol = 10 * sqrt(eps(eltype(truth_fields.u)))
-
-#     @test all(isapprox.(test_fields.u, truth_fields.u; rtol))
-#     @test all(isapprox.(test_fields.v, truth_fields.v; rtol))
-#     @test all(isapprox.(test_fields.w, truth_fields.w; rtol))
-#     @test all(isapprox.(test_fields.η, truth_fields.η; rtol))
-
-#     return nothing
-# end
-
