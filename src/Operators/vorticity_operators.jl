@@ -36,13 +36,35 @@ end
                                            on_north_east_corner(i, j, grid)
 
 @inline Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v) =   Δy_qᶜᶠᶜ(i, j, k, grid, v)   - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
-@inline Γᶠᶠᶜ_se_or_ne(i, j, k, grid, u, v) = - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
 
-@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
+
+@inline function Γᶠᶠᶜ_se(i, j, k, grid, u, v; debug = false)
+    if debug
+        @show - Δy_qᶜᶠᶜ(i-1, j, k, grid, v)
+        @show - Δx_qᶠᶜᶜ(i, j, k, grid, u)
+        @show + Δy_qᶜᶠᶜ(i, j, k, grid, v)
+    end
+    return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δy_qᶜᶠᶜ(i, j, k, grid, v)
+end
+
+@inline function Γᶠᶠᶜ_ne(i, j, k, grid, u, v; debug = false)
+    if debug
+        @show - Δy_qᶜᶠᶜ(i-1, j, k, grid, v)
+        @show - Δx_qᶠᶜᶜ(i, j, k, grid, u)
+        @show + Δy_qᶜᶠᶜ(i, j, k, grid, v)
+    end
+    return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+end
+
+@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v; debug = false)
     on_sw_or_nw = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
-    on_se_or_ne = on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid)
 
+    if debug
+        @show i, j, δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v)
+        @show i, j, - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
+    end
     return ifelse(on_sw_or_nw, Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v),
-                  ifelse(on_se_or_ne, Γᶠᶠᶜ_se_or_ne(i, j, k, grid, u, v),
-                         δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
+           ifelse(on_south_east_corner(i, j, grid), Γᶠᶠᶜ_se(i, j, k, grid, u, v),
+           ifelse(on_north_east_corner(i, j, grid), Γᶠᶠᶜ_ne(i, j, k, grid, u, v),
+                  δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u))))
 end
