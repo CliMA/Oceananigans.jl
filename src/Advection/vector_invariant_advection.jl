@@ -208,8 +208,9 @@ function WENOVectorInvariant(; upwinding = nothing,
     default_upwinding = OnlySelfUpwinding(cross_scheme=divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
-    N = required_halo_size(weno)
-    FT = eltype(weno)
+    schemes = (vorticity_scheme, vertical_scheme, kinetic_energy_gradient_scheme, divergence_scheme)
+    N = maximum(required_halo_size(s) for s in schemes)
+    FT = eltype(vorticity_scheme) # assumption
 
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
                                                              vorticity_stencil, 
