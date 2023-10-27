@@ -73,7 +73,7 @@ times = range(0, 12hours, length=100)
 fig = Figure(resolution = (800, 300))
 ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)")
 
-flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 lines!(ax, times ./ hour, flux_time_series)
 
 current_figure() #hide
@@ -213,7 +213,7 @@ P_timeseries = FieldTimeSeries(filepath, "P")
 avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
 
 times = w_timeseries.times
-buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 nothing #hide
 
 # and then we construct the ``x, z`` grid,
