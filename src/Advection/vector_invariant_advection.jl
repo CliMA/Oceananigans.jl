@@ -170,6 +170,8 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 #                           VectorInvariant{N,     FT,    M,     Z (vorticity scheme),      ZS,    V (vertical scheme),      K (kinetic energy gradient scheme)
 const WENOVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:WENO, <:Any, <:WENO, <:WENO}
 
+nothing_to_default(user_value, default) = isnothing(user_value) ? default : user_value
+
 """
     function WENOVectorInvariant(; upwinding = nothing,
                                    multi_dimensional_stencil = false,
@@ -178,18 +180,33 @@ const WENOVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:WENO, <:Any, 
 """
 function WENOVectorInvariant(; upwinding = nothing,
                                vorticity_stencil = VelocityStencil(),
+                               order = nothing,
+                               vorticity_order = nothing,
+                               vertical_order = nothing,
+                               divergence_order = nothing,
+                               kinetic_energy_gradient_order = nothing, 
                                multi_dimensional_stencil = false,
                                weno_kw...)
 
-    weno = WENO(; weno_kw...)
-    vorticity_scheme = weno
-    vertical_scheme = weno
-    kinetic_energy_gradient_scheme = weno
-    divergence_scheme = weno
-
-    if isnothing(upwinding)
-        upwinding  = OnlySelfUpwinding(; cross_scheme = weno)
+    if isnothing(order) # apply global defaults
+        vorticity_order               = nothing_to_default(vorticity_order, default=9)
+        vertical_order                = nothing_to_default(vertical_order, default=5)
+        divergence_order              = nothing_to_default(divergence_order, default=5)
+        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default=5)
+    else # apply user supplied `order` unless overridden by more specific value
+        vorticity_order               = nothing_to_default(vorticity_order, default=order)
+        vertical_order                = nothing_to_default(vertical_order, default=order)
+        divergence_order              = nothing_to_default(divergence_order, default=order)
+        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default=order)
     end
+
+    vorticity_scheme               = WENO(; order=vorticity_order, weno_kw...)
+    vertical_scheme                = WENO(; order=vertical_order, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(; order=kinetic_energy_gradient_order, weno_kw...)
+    divergence_scheme              = WENO(; order=divergence_order, weno_kw...)
+
+    default_upwinding = OnlySelfUpwinding(cross_scheme=divergence_scheme)
+    upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
     N = required_halo_size(weno)
     FT = eltype(weno)
