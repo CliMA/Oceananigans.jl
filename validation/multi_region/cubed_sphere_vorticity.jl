@@ -18,7 +18,7 @@ U = 1 # velocity scale
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   z = (-Lz, 0),
                                   radius = R,
-                                  horizontal_direction_halo = 3,
+                                  horizontal_direction_halo = 2,
                                   partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
@@ -81,11 +81,13 @@ function create_test_data(grid, region; trailing_zeros=0)
     return factor .* [100region + 10i + j for i in 1:Nx, j in 1:Ny, k in 1:Nz]
 end
 
-region = Iterate(1:6)
-@apply_regionally u_data = create_test_data(grid, region, trailing_zeros=0)
-@apply_regionally v_data = create_test_data(grid, region, trailing_zeros=1)
-set!(ut, u_data)
-set!(vt, v_data)
+if Nx ≤ 9
+    region = Iterate(1:6)
+    @apply_regionally u_data = create_test_data(grid, region, trailing_zeros=0)
+    @apply_regionally v_data = create_test_data(grid, region, trailing_zeros=1)
+    set!(ut, u_data)
+    set!(vt, v_data)
+end
 
 # What we want eventually:
 # u .= - ∂y(ψ)
@@ -206,7 +208,9 @@ function fill_velocity_halos!(u, v)
 end
 
 fill_velocity_halos!(u, v)
-fill_velocity_halos!(ut, vt)
+if Nx ≤ 9
+    fill_velocity_halos!(ut, vt)
+end
 
 # Now compute vorticity
 using Oceananigans.Utils
@@ -234,134 +238,140 @@ for region in 1:number_of_regions(grid)
     ζ[region][:, Ny+2:Ny+Hy, :] .= nan
 end
 
-for region in [1, 3, 5]
+function recompute_vorticity_corners_using_interior_points!(ζ)
+    Nx, Ny, Nz = size(ζ.grid)
+    Hx, Hy, Hz = halo_size(ζ.grid)
+    for region in [1, 3, 5]
 
-    region_south = mod(region + 4, 6) + 1
-    region_east = region + 1
-    region_north = mod(region + 2, 6)
-    region_west = mod(region + 4, 6)
-    
-    # Northwest corner
-    i = 1; j = Ny + 1
-    
-    # Indices of interior points
-    i₁ = 1; j₁ = Ny
-    i₂ = 1; j₂ = Ny
-    i₃ = 1; j₃ = Ny
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region], u[region])
-                              + Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_north], u[region_north]) 
-                              + Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_west], u[region_west])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-    # Northeast corner
-    i = Nx + 1; j = Ny + 1
-    
-    # Indices of interior points
-    i₁ = 1; j₁ = Ny
-    i₂ = 1; j₂ = 1
-    i₃ = 1; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region_east], u[region_east]) 
-                              + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_north], v[region_north])
-                              - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_north], u[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-    # Southwest corner
-    i = 1; j = 1
-    
-    # Indices of interior points
-    i₁ = 1; j₁ = Ny
-    i₂ = 1; j₂ = 1
-    i₃ = 1; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region_south], u[region_south])
-                              + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region], v[region])
-                              - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region], u[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-    # Southeast corner
-    i = Nx + 1; j = 1
-    
-    # Indices of interior points
-    i₁ = 1; j₁ = 1
-    i₂ = 1; j₂ = 1
-    i₃ = Nx; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_east], v[region_east])
-                              - Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_east], u[region_east])
-                              - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region], v[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-end
-
-for region in [2, 4, 6]
-
-    region_south = mod(region + 3, 6) + 1
-    region_east = mod(region, 6) + 2
-    region_north = mod(region, 6) + 1
-    region_west = region - 1
-    
-    # Northwest corner
-    i = 1; j = Ny + 1
-    
-    # Indices of interior points
-    i₁ = 1; j₁ = Ny
-    i₂ = 1; j₂ = 1
-    i₃ = 1; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region], u[region])
-                              + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_north], v[region_north]) 
-                              - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_north], u[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-    # Northeast corner
-    i = Nx + 1; j = Ny + 1
-
-    # Indices of interior points
-    i₁ = 1; j₁ = 1
-    i₂ = 1; j₂ = 1
-    i₃ = Nx; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (+ Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_east], v[region_east]) 
-                              - Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_east], u[region_east])
-                              - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region_north], v[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end    
-    
-    # Southwest corner
-    i = 1; j = 1
-
-    # Indices of interior points
-    i₁ = Nx; j₁ = 1
-    i₂ = 1; j₂ = 1
-    i₃ = 1; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (- Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_west], v[region_west])
-                              + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region], v[region])
-                              - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region], u[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
-    end
-    
-    # Southeast corner
-    i = Nx + 1; j = 1
-    
-    # Indices of interior points
-    i₁ = Nx; j₁ = 1
-    i₂ = Nx; j₂ = 1
-    i₃ = Nx; j₃ = 1
-    
-    for k in -Hz+1:Nz+Hz
-        ζ[region][i, j, k] = (- Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_south], v[region_south])
-                              - Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_east], v[region_east])
-                              - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region], v[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        region_south = mod(region + 4, 6) + 1
+        region_east = region + 1
+        region_north = mod(region + 2, 6)
+        region_west = mod(region + 4, 6)
+        
+        # Northwest corner
+        i = 1; j = Ny + 1
+        
+        # Indices of interior points
+        i₁ = 1; j₁ = Ny
+        i₂ = 1; j₂ = Ny
+        i₃ = 1; j₃ = Ny
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region], u[region])
+                                  + Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_north], u[region_north]) 
+                                  + Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_west], u[region_west])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
+        # Northeast corner
+        i = Nx + 1; j = Ny + 1
+        
+        # Indices of interior points
+        i₁ = 1; j₁ = Ny
+        i₂ = 1; j₂ = 1
+        i₃ = 1; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region_east], u[region_east]) 
+                                  + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_north], v[region_north])
+                                  - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_north], u[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
+        # Southwest corner
+        i = 1; j = 1
+        
+        # Indices of interior points
+        i₁ = 1; j₁ = Ny
+        i₂ = 1; j₂ = 1
+        i₃ = 1; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region_south], u[region_south])
+                                  + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region], v[region])
+                                  - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region], u[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
+        # Southeast corner
+        i = Nx + 1; j = 1
+        
+        # Indices of interior points
+        i₁ = 1; j₁ = 1
+        i₂ = 1; j₂ = 1
+        i₃ = Nx; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_east], v[region_east])
+                                  - Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_east], u[region_east])
+                                  - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region], v[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
     end
 
+    for region in [2, 4, 6]
+
+        region_south = mod(region + 3, 6) + 1
+        region_east = mod(region, 6) + 2
+        region_north = mod(region, 6) + 1
+        region_west = region - 1
+        
+        # Northwest corner
+        i = 1; j = Ny + 1
+        
+        # Indices of interior points
+        i₁ = 1; j₁ = Ny
+        i₂ = 1; j₂ = 1
+        i₃ = 1; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δx_qᶠᶜᶜ(i₁, j₁, k, grid[region], u[region])
+                                  + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_north], v[region_north]) 
+                                  - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region_north], u[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
+        # Northeast corner
+        i = Nx + 1; j = Ny + 1
+
+        # Indices of interior points
+        i₁ = 1; j₁ = 1
+        i₂ = 1; j₂ = 1
+        i₃ = Nx; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (+ Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_east], v[region_east]) 
+                                  - Δx_qᶠᶜᶜ(i₂, j₂, k, grid[region_east], u[region_east])
+                                  - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region_north], v[region_north])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end    
+        
+        # Southwest corner
+        i = 1; j = 1
+
+        # Indices of interior points
+        i₁ = Nx; j₁ = 1
+        i₂ = 1; j₂ = 1
+        i₃ = 1; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (- Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_west], v[region_west])
+                                  + Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region], v[region])
+                                  - Δx_qᶠᶜᶜ(i₃, j₃, k, grid[region], u[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+        
+        # Southeast corner
+        i = Nx + 1; j = 1
+        
+        # Indices of interior points
+        i₁ = Nx; j₁ = 1
+        i₂ = Nx; j₂ = 1
+        i₃ = Nx; j₃ = 1
+        
+        for k in -Hz+1:Nz+Hz
+            ζ[region][i, j, k] = (- Δy_qᶜᶠᶜ(i₁, j₁, k, grid[region_south], v[region_south])
+                                  - Δy_qᶜᶠᶜ(i₂, j₂, k, grid[region_east], v[region_east])
+                                  - Δy_qᶜᶠᶜ(i₃, j₃, k, grid[region], v[region])) / Azᶠᶠᶜ(i, j, k, grid[region]) * 4/3
+        end
+
+    end
+
+    return nothing
 end
 
 f = Field{Face, Face, Center}(grid)
@@ -369,14 +379,20 @@ for region in 1:number_of_regions(grid)
     f[region] .= 2 * (U/R) * sind.(grid[region].φᶠᶠᵃ)
 end
 
-abs_error = Field{Face, Face, Center}(grid)
-for region in 1:number_of_regions(grid)
-    abs_error[region] .= abs.(f[region] .- ζ[region])
-end
+function error_ζ_ζtheoretical(ζ, ζtheoretical)
+    grid = ζ.grid
 
-rel_error = Field{Face, Face, Center}(grid)
-for region in 1:number_of_regions(grid)
-    rel_error[region] .= abs_error[region] ./ abs.(f[region] .+ 100*eps(eltype(grid)))
+    abs_error = Field{Face, Face, Center}(grid)
+    for region in 1:number_of_regions(grid)
+        parent(abs_error[region]) .= abs.(parent(ζtheoretical[region]) .- parent(ζ[region]))
+    end
+
+    rel_error = Field{Face, Face, Center}(grid)
+    for region in 1:number_of_regions(grid)
+        parent(rel_error[region]) .= parent(abs_error[region]) ./ abs.(parent(ζtheoretical[region]) .+ 100*eps(eltype(grid)))
+    end
+
+    return abs_error, rel_error
 end
 
 # using Imaginocean
@@ -454,13 +470,81 @@ for region in 1:number_of_regions(grid)
     v_theoretical[region].data .= 0
 end
 
-fig = panel_wise_visualization(rel_error, colorrange=(0, 1))
-
 fig = panel_wise_visualization(ψ)
 save("streamfunction.png", fig)
+
+fig = panel_wise_visualization(f, colorrange=(-2, 2))
+save("f.png", fig)
 
 fig = panel_wise_visualization(ζ, colorrange=(-2, 2))
 save("vorticity.png", fig)
 
-fig = panel_wise_visualization(f, colorrange=(-2, 2))
-save("f.png", fig)
+abs_error1, rel_error1 = error_ζ_ζtheoretical(ζ, f)
+
+ζ2 = deepcopy(ζ)
+recompute_vorticity_corners_using_interior_points!(ζ2)
+
+fig = panel_wise_visualization(ζ2, colorrange=(-2, 2))
+save("vorticity2.png", fig)
+
+abs_error2, rel_error2 = error_ζ_ζtheoretical(ζ2, f)
+
+fig = panel_wise_visualization(rel_error1, colorrange=(0, 0.8), colormap=:thermal)
+save("rel_error1.png", fig)
+fig = panel_wise_visualization(rel_error2, colorrange=(0, 0.8), colormap=:thermal)
+save("rel_error2.png", fig)
+
+
+
+using Oceananigans.Operators
+using Oceananigans.Operators: Γᶠᶠᶜ, ζ₃ᶠᶠᶜ
+using Oceananigans.Grids: lat_lon_to_cartesian, spherical_area_quadrilateral
+
+relative_error_from_f(i, j,  region, ζ, f) = abs(ζ[region][i, j, 1] - f[region][i, j, 1]) / abs(f[region][i, j, 1])
+
+# SouthEast
+@show ζ[1][Nx+1, 1, 1]
+@show f[1][Nx+1, 1, 1]
+@show relative_error_from_f(1, 1, 1, ζ2, f)
+
+Γse = - grid[1].Δyᶜᶠᵃ[Nx, 1] * v[1][Nx, 1, 1] - grid[2].Δxᶠᶜᵃ[1, 1] * u[2][1, 1, 1] + grid[2].Δyᶜᶠᵃ[1, 1] * v[2][1, 1, 1]
+
+@show Γse
+@show Γse - Γᶠᶠᶜ(Nx+1, 1, 1, grid[1], u[1], v[1])
+
+a = lat_lon_to_cartesian(grid[1].φᶠᶠᵃ[Nx+1, 1], grid[1].λᶠᶠᵃ[Nx+1, 1], 1)
+b = lat_lon_to_cartesian(grid[1].φᶠᶜᵃ[Nx+1, 1], grid[1].λᶠᶜᵃ[Nx+1, 1], 1)
+c = lat_lon_to_cartesian(grid[1].φᶜᶜᵃ[Nx, 1], grid[1].λᶜᶜᵃ[Nx, 1], 1)
+d = lat_lon_to_cartesian(grid[1].φᶜᶠᵃ[Nx, 1], grid[1].λᶜᶠᵃ[Nx  , 1], 1)
+area_se = 3 * spherical_area_quadrilateral(a, b, c, d) * grid.radius^2
+
+@show area_se - 3/4 * grid[1].Azᶠᶠᵃ[Nx+1, 1]
+
+@show ζse = Γse / area_se
+@show ζse - ζ₃ᶠᶠᶜ(Nx+1, 1, 1, grid[1], u[1], v[1])
+
+
+@show ζ[1][1, 2, 1]
+@show f[1][1, 2, 1]
+@show relative_error_from_f(1, 2, 1, ζ2, f)
+
+Γ12 = grid[1].Δyᶜᶠᵃ[1, 2] * v[1][1, 2, 1] - grid[1].Δyᶜᶠᵃ[0, 2] * v[1][0, 2, 1] +
+      grid[1].Δxᶠᶜᵃ[1, 1] * u[1][1, 1, 1] - grid[1].Δxᶠᶜᵃ[1, 2] * u[1][1, 2, 1]
+
+@show Γ12
+@show Γ12 - Γᶠᶠᶜ(1, 2, 1, grid[1], u[1], v[1])
+
+i = 1
+j = 2
+a = lat_lon_to_cartesian(grid[1].φᶠᶜᵃ[ i , j-1], grid[1].λᶠᶜᵃ[ i , j-1], 1)
+b = lat_lon_to_cartesian(grid[1].φᶜᶜᵃ[ i , j-1], grid[1].λᶜᶜᵃ[ i , j-1], 1)
+c = lat_lon_to_cartesian(grid[1].φᶜᶜᵃ[ i ,  j ], grid[1].λᶜᶜᵃ[ i ,  j ], 1)
+d = lat_lon_to_cartesian(grid[1].φᶠᶜᵃ[ i ,  j ], grid[1].λᶠᶜᵃ[ i ,  j ], 1)
+
+area_12 = 2 * spherical_area_quadrilateral(a, b, c, d) * grid.radius^2
+@show area_12 - grid[1].Azᶠᶠᵃ[i, j]
+
+ζ12 = Γ12 / grid[1].Azᶠᶠᵃ[1, 2]
+
+@show ζ12
+@show ζ12 - ζ₃ᶠᶠᶜ(1, 2, 1, grid[1], u[1], v[1])
