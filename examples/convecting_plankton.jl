@@ -54,7 +54,7 @@ grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Pe
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
+buoyancy_flux(x, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
