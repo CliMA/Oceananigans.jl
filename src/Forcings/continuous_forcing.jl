@@ -54,14 +54,34 @@ If neither `parameters` nor `field_dependencies` are provided, then `func` must 
 callable with the signature
 
 ```julia
-func(x, y, z, t)
+func(X..., t)
 ```
 
-where `x, y, z` are the east-west, north-south, and vertical spatial coordinates, and `t` is time.
+where, on a three-dimensional grid with no `Flat` directions, `X = (x, y, z)`
+is a 3-tuple containing the east-west, north-south, and vertical spatial coordinates, and `t` is time.
+
+Dimensions with `Flat` topology are omitted from the coordinate tuple `X`.
+For example, on a grid with topology `(Periodic, Periodic, Flat)`, and with no `parameters` or `field_dependencies`,
+then `func` must be callable
+
+```julia
+func(x, y, t)
+```
+
+where `x` and `y` are the east-west and north-south coordinates, respectively.
+For another example, on a grid with topology `(Flat, Flat, Bounded)` (e.g. a single column), and
+for a forcing with no `parameters` or `field_dependencies`, then `func` must be callable with
+
+```julia
+func(z, t)
+```
+
+where `z` is the vertical coordinate.
+
 
 If `field_dependencies` are provided, the signature of `func` must include them.
-For example, if `field_dependencies=(:u, :S)` (and `parameters` are _not_ provided), then
-`func` must be callable with the signature
+For example, if `field_dependencies=(:u, :S)` (and `parameters` are _not_ provided), and
+on a three-dimensional grid with no `Flat` dimensions, then `func` must be callable with the signature
 
 ```julia
 func(x, y, z, t, u, S)
@@ -73,19 +93,18 @@ in `model.tracers`.
 
 If `parameters` are provided, then the _last_ argument to `func` must be `parameters`.
 For example, if `func` has no `field_dependencies` but does depend on `parameters`, then
-it must be callable with the signature
+on a three-dimensional grid it must be callable with the signature
 
 ```julia
 func(x, y, z, t, parameters)
 ```
 
-With `field_dependencies=(:u, :v, :w, :c)` and `parameters`, then `func` must be
-callable with the signature
+With `field_dependencies=(:u, :v, :w, :c)` and `parameters` and on a three-dimensional grid,
+then `func` must be callable with the signature
 
 ```julia
 func(x, y, z, t, u, v, w, c, parameters)
 ```
-
 """
 ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing(func, parameters, field_dependencies)
@@ -117,11 +136,9 @@ end
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
-    x = xnode(i, j, k, grid, LX(), LY(), LZ())
-    y = ynode(i, j, k, grid, LX(), LY(), LZ())
-    z = znode(i, j, k, grid, LX(), LY(), LZ())
+    X = node(i, j, k, grid, LX(), LY(), LZ())
 
-    return forcing.func(x, y, z, clock.time, args...)
+    return forcing.func(X..., clock.time, args...)
 end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
