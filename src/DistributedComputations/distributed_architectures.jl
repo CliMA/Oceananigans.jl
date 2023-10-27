@@ -21,7 +21,7 @@ end
 """
     Partition(; x = 1, y = 1, z = 1)
 
-Return `Partition` representing the division of a domain into
+Return `Partition` representing the division of a domain in
 the `x` (first), `y` (second) and `z` (third) dimension
 
 Keyword arguments: 
