@@ -24,7 +24,7 @@ local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partit
                                             local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
                                             local_size(global_sz[3], arch.partition.z, arch.local_index[3]))
 
-# Individual local size for unequal `Fractional` partitioning
+# Individual, per-direction local size
 function local_size(N, R, local_index)
     N𝓁  = local_sizes(N, R) # tuple of local sizes per rank
     Nℊ = sum(N𝓁) # global size (should be equal to `N` if `N` is divisible by `R`)
@@ -40,8 +40,8 @@ end
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
-        @warn "The sum of the domain sizes specified in the architecture is inconsistent 
-               than the grid size $N, using the architecture-specified sizes $R"
+        @warn "The domain size specified in the architecture $(R.sizes) is inconsistent 
+               with the grid size $N: using the architecture-specified size"
     end
     return R.sizes
 end
