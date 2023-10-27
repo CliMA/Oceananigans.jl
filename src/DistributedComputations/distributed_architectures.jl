@@ -19,23 +19,55 @@ struct Partition{Sx, Sy, Sz}
 end
 
 """
-    Partition(Rx::Number, Ry::Number=1, Rz::Number=1)
+    Partition(; x = 1, y = 1, z = 1)
 
 Return `Partition` representing the division of a domain into
-`Rx` parts in `x` and `Ry` parts in `y` and `Rz` parts in `z`,
-where `x, y, z` are the first, second, and third dimension
-respectively.
+the `x` (first), `y` (second) and `z` (third) dimension
 
-`Rx`, `Ry` and `Rz` can be `Int` or `Equal`, `Fractional` or `Sizes` 
+Keyword arguments: 
+==================
+
+- `x`: partitioning of the first dimension 
+- `y`: partitioning of the second dimension
+- `z`: partitioning of the third dimension
+
+if supplied as positional arguments `x` will be the first argument, 
+`y` the second and `z` the third
+
+`x`, `y` and `z` can be `Int`, `Equal`, `Fractional` or `Sizes` 
 (see below)
-"""
-Partition(Rx)     = Partition(validate_partition(Rx, 1, 1)...)
-Partition(Rx, Ry) = Partition(validate_partition(Rx, Ry, 1)...)
 
-function Partition(; x = 1, y = 1, z = 1)
-    x, y, z = validate_partition(x, y, z)
-    return Partition(x, y, z)
-end
+Examples:
+========
+
+```jldoctest
+julia> using Oceananigans; using Oceananigans.DistributedComputations
+
+julia> Partition(1, 4)
+Domain partitioning with (1, 4, 1) ranks
+├── x-partitioning: none
+├── y-partitioning: 4
+└── z-partitioning: none
+
+julia> Partition(x = Fractional(1, 2, 3, 4))
+Domain partitioning with (4, 1, 1) ranks
+├── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
+├── y-partitioning: none
+└── z-partitioning: none
+
+```
+"""
+Partition(x)       = Partition(validate_partition(x, 1, 1)...)
+Partition(x, y)    = Partition(validate_partition(x, y, 1)...)
+
+Partition(; x = 1, y = 1, z = 1) = Partition(validate_partition(x, y, z)...)
+
+Base.show(io::IO, p::Partition) =
+    print(io,
+    "Domain partitioning with $(ranks(p)) ranks", "\n",
+    "├── x-partitioning: $(ranks(p.x) == 1 ? "none" : p.x)", "\n",
+    "├── y-partitioning: $(ranks(p.y) == 1 ? "none" : p.y)", "\n",
+    "└── z-partitioning: $(ranks(p.z) == 1 ? "none" : p.z)")
 
 """type representing equal domain partitioning (not supported for more than one direction)"""
 struct Equal end
@@ -50,6 +82,13 @@ struct Sizes{S}
     sizes :: S
 end
 
+Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
+Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
+Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
+
+Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
+Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
+
 ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
@@ -62,10 +101,14 @@ Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make
 
 validate_partition(x, y, z) = (x, y, z)
 validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
+
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
 validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
-remaining_workers(r1, r2) = MPI.Comm_size(MPI.COMM_WORLD) - ranks(r1)*ranks(r2)
+function remaining_workers(r1, r2)
+    MPI.Initialized() || MPI.Init()    
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ ranks(r1)*ranks(r2)
+end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
