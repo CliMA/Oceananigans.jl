@@ -113,3 +113,26 @@ end
                     ifelse(outside_symmetric_bufferᶜ(j, grid.Ny, scheme), 
                             multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))
+
+struct NoUpwinding end
+struct LeftUpwinding end
+struct RightUpwinding end
+
+Direction(::Val{1})  = LeftUpwinding()
+Direction(::Val{0})  = NoUpwinding()
+Direction(::Val{-1}) = RightUpwinding()
+
+for dir in (:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ)
+    _upwind_interpolate = Symbol(:_upwinded_interpolate, dir)
+    _left_biased_interpolate = Symbol(:_left_biased_interpolate, dir)
+    _right_biasedinterpolate = Symbol(:_right_biasedinterpolate, dir)
+    @eval begin
+        @inline $_upwind_interpolate(i, j, k, grid, scheme, u, args...) = 
+                $_upwind_interpolate(i, j, k, grid, scheme, Direction(Val(sign(u))), args...)
+        @inline $_upwind_interpolate(i, j, k, grid, scheme, ::LeftUpwinding, args...) = 
+                $_left_biased_interpolate(i, j, k, grid, scheme, args...)
+        @inline $_upwind_interpolate(i, j, k, grid, scheme, ::RightUpwinding, args...) = 
+                $_right_biased_interpolate(i, j, k, grid, scheme, args...)
+        @inline $_upwind_interpolate(i, j, k, grid, scheme, ::NoUpwinding, args...) = zero(grid)
+    end
+end
