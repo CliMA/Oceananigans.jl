@@ -32,6 +32,7 @@ using OffsetArrays
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids
+using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, coordinates
 using Oceananigans.Architectures: arch_array, architecture, CPU
 
@@ -48,13 +49,53 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
 # the halo region required for an advection scheme on a non-immersed-boundary grid.)
 # An upper limit of `advection_buffer = 6` means we can build advection schemes up to
-# `Centered(order=12`) and `UpwindBiased(order=11)`. The list can be extended in order to
+# `Centered(order=12)` and `UpwindBiased(order=11)`. The list can be extended in order to
 # compile schemes with higher orders; for example `advection_buffers = [1, 2, 3, 4, 5, 6, 8]`
 # will compile schemes for `advection_buffer=8` and thus `Centered(order=16)` and `UpwindBiased(order=15)`.
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 @inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
+
+using Oceananigans.Grids: AbstractGrid
+using CUDA: shfl_up_sync, shfl_down_sync
+@inline δxᶜᵃᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, f, args...)
+@inline δyᵃᶜᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δyᵃᶜᵃ(i, j, k, grid, f, args...)
+@inline δzᵃᵃᶜ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δzᵃᵃᶜ(i, j, k, grid, f, args...)
+
+# @inline function δxᶜᵃᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fL = f(i, j, k, grid, args...)
+#     return shfl_down_sync(0, fL, 0) - fL
+# end
+
+# @inline function δyᵃᶜᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fL = f(i, j, k, grid, args...)
+#     return shfl_down_sync(0, fL, 0) - fL
+# end
+
+# @inline function δzᵃᵃᶜ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fL = f(i, j, k, grid, args...)
+#     return shfl_down_sync(0, fL, 0) - fL
+# end
+
+@inline δxᶠᵃᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, f, args...)
+@inline δyᵃᶠᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, f, args...)
+@inline δzᵃᵃᶠ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Any}, f::Function, args...) = δzᵃᵃᶠ(i, j, k, grid, f, args...)
+
+# @inline function δxᶠᵃᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fR = f(i, j, k, grid, args...)
+#     return fR - shfl_up_sync(0, fR, 1)
+# end
+
+# @inline function δyᵃᶠᵃ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fR = f(i, j, k, grid, args...)
+#     return fR - shfl_up_sync(0, fR, 1)
+# end
+
+# @inline function δzᵃᵃᶠ_shfl(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:GPU}, f::Function, args...) 
+#     fR = f(i, j, k, grid, args...)
+#     return fR - shfl_up_sync(0, fR, 1)
+# end
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
