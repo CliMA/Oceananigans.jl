@@ -18,7 +18,10 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
     A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
     `grid` when indexed at `i, j, k`.
     """
-    @inline function FunctionField{LX, LY, LZ}(func::F, grid::G; clock::C=nothing, parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
+    @inline function FunctionField{LX, LY, LZ}(func::F,
+                                               grid::G;
+                                               clock::C=nothing,
+                                               parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
         FT = eltype(grid)
         return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
     end
@@ -28,7 +31,9 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
 
     Adds `clock` to an existing `FunctionField` and relocates it to `(LX, LY, LZ)` on `grid`.
     """
-    @inline function FunctionField{LX, LY, LZ}(f::FunctionField, grid::G; clock::C=nothing) where {LX, LY, LZ, G, C}
+    @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
+                                               grid::G;
+                                               clock::C=nothing) where {LX, LY, LZ, G, C}
         P = typeof(f.parameters)
         T = eltype(grid)
         F = typeof(f.func)
