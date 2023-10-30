@@ -3,14 +3,14 @@ module OceananigansEnzymeExt
 using Oceananigans
 using Oceananigans.Fields: FunctionField
 using Oceananigans.Utils: contiguousrange
+
 using KernelAbstractions
 
 #isdefined(Base, :get_extension) ? (import EnzymeCore) : (import ..EnzymeCore)
 isdefined(Base, :get_extension) ? (import Enzyme) : (import ..Enzyme)
 
-using Enzyme
 using Enzyme: EnzymeCore
-using EnzymeCore: Active
+using Enzyme.EnzymeCore: Active
 
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
@@ -69,6 +69,8 @@ end
 ##### FunctionField
 #####
 
+# @inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
+
 function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  enzyme_func::EnzymeCore.Const{<:Type{<:FunctionField}},
                                                  ::Type{<:EnzymeCore.Annotation{RT}},
@@ -76,6 +78,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  grid;
                                                  clock = nothing,
                                                  parameters = nothing) where RT
+
     FunctionFieldType = enzyme_func.val     
 
     primal = if EnzymeCore.EnzymeRules.needs_primal(config)
@@ -86,6 +89,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 
     # function_field_func can be Active, Const (inactive), Duplicated (active but mutable)
     function_field_is_active = function_field_func isa Active
+    # @show function_field_func
 
     # Support batched differentiation!
     config_width = EnzymeCore.EnzymeRules.width(config)
