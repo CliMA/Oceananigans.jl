@@ -1,3 +1,6 @@
+# Note: internal_wave_solution and internal_wave_dynamics_test are formulated to work
+# on grids that are _either_ Flat in y or Periodic in y.
+
 function internal_wave_solution(; L, background_stratification=false)
     # Internal wave parameters
      ν = κ = 1e-9
@@ -19,28 +22,30 @@ function internal_wave_solution(; L, background_stratification=false)
      W = a₀ * m * σ   / (σ^2 - ℕ^2)
      B = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
 
-    a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
+    a(x, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
+    u(x, z, t) = a(x, z, t) * U * cos(k*x + m*z - σ*t)
+    v(x, z, t) = a(x, z, t) * V * sin(k*x + m*z - σ*t)
+    w(x, z, t) = a(x, z, t) * W * cos(k*x + m*z - σ*t)
 
-    u(x, y, z, t) = a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-    v(x, y, z, t) = a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-    w(x, y, z, t) = a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
+    # Add a method for non-Flat y
+    u(x, y, z, t) = u(x, z, t)
+    v(x, y, z, t) = v(x, z, t)
+    w(x, y, z, t) = w(x, z, t)
 
     # Buoyancy field depends on whether we use background fields or not
-    wavy_b(x, y, z, t) = a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
-    background_b(x, y, z, t) = ℕ^2 * z
+    wavy_b(x, z, t) = a(x, z, t) * B * sin(k*x + m*z - σ*t)
+    wavy_b(x, y, z, t) = wavy_b(x, z, t)
+
+    background_b(x, z, t) = ℕ^2 * z
+    background_b(x, y, z, t) = background_b(x, z, t)
 
     if background_stratification # Move stratification to a background field
         background_fields = (; b=background_b)
         b = wavy_b
     else
         background_fields = NamedTuple()
-        b(x, y, z, t) = wavy_b(x, y, z, t) + background_b(x, y, z, t)
+        b(x, z, t) = wavy_b(x, z, t) + background_b(x, z, t)
     end
-
-    u₀(x, y, z) = u(x, y, z, 0)
-    v₀(x, y, z) = v(x, y, z, 0)
-    w₀(x, y, z) = w(x, y, z, 0)
-    b₀(x, y, z) = b(x, y, z, 0)
 
     solution = (; u, v, w, b)
 
@@ -56,18 +61,28 @@ end
 
 function internal_wave_dynamics_test(model, solution, Δt)
     # Make initial conditions
-    u₀(x, y, z) = solution.u(x, y, z, 0)
-    v₀(x, y, z) = solution.v(x, y, z, 0)
-    w₀(x, y, z) = solution.w(x, y, z, 0)
-    b₀(x, y, z) = solution.b(x, y, z, 0)
+    u₀(x, z) = solution.u(x, z, 0)
+    v₀(x, z) = solution.v(x, z, 0)
+    w₀(x, z) = solution.w(x, z, 0)
+    b₀(x, z) = solution.b(x, z, 0)
+
+    # Add a method for non-Flat y
+    u₀(x, y, z) = u₀(x, z)
+    v₀(x, y, z) = v₀(x, z)
+    w₀(x, y, z) = w₀(x, z)
+    b₀(x, y, z) = b₀(x, z)
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     simulation = Simulation(model, stop_iteration=10, Δt=Δt)
-    try run!(simulation); catch; end # so the test continues to execute if there's a NaN
+
+    # Pesky NaNChecker
+    pop!(simulation.callbacks, :nan_checker)
+    run!(simulation)
 
     # Tolerance was found by trial and error...
     @test relative_error(model.velocities.u, solution.u, model.clock.time) < 1e-4
 
     return nothing
 end
+
