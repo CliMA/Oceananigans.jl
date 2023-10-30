@@ -1,7 +1,7 @@
 using Oceananigans.Grids: topology, node,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XYFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid,
