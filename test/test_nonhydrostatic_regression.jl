@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
