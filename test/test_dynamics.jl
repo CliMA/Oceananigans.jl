@@ -9,7 +9,8 @@ import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), u_num.grid)
-    set!(u_ans, (x, y, z) -> u(x, y, z, time))
+    u_set(x...) = u(x..., time)
+    set!(u_ans, u_set)
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
@@ -17,9 +18,7 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
     model = NonhydrostaticModel(; timestepper,
                                   grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
                                   closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                  coriolis = nothing,
-                                  tracers = :c,
-                                  buoyancy = nothing)
+                                  tracers = :c)
 
     value = π
     field = fields(model)[fieldname]
@@ -86,7 +85,7 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
     
     Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
@@ -94,7 +93,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
     immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
 
-    initial_temperature(x, y, z) = exp(-z^2 / 0.02)
+    initial_temperature(z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
     set!(immersed_model, c=initial_temperature)
 

@@ -58,7 +58,7 @@ model = NonhydrostaticModel(; grid, closure, tracers=:T)
 # `model.tracers.T`. Our objective is to observe the diffusion of a Gaussian.
 
 width = 0.1
-initial_temperature(x, y, z) = exp(-z^2 / (2width^2))
+initial_temperature(z) = exp(-z^2 / (2width^2))
 set!(model, T=initial_temperature)
 
 # ## Visualizing model data
