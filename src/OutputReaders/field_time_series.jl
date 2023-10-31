@@ -71,6 +71,14 @@ function FieldTimeSeries(loc, grid, times;
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
     #backend = regularize_backend(backend, data)
 
+    if backend isa OnDisk
+        isnothing(name) && isnothing(name) &&
+            error(ArgumentError("Must provide the keyword arguments `path` and `name` when `backend=OnDisk()`."))
+
+        isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
+        isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
+    end
+
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                        indices, times, path, name)
 end
@@ -83,10 +91,10 @@ Construct a `FieldTimeSeries` on `grid` and at `times`.
 Keyword arguments
 =================
 
-indices
-backend
-path
-name
+- indices: spatial indices
+- backend: backend, `InMemory(indices=Colon())` or `OnDisk()`
+- path: path to data for `backend = OnDisk()`
+- name: name of field for `backend = OnDisk()`
 """
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} =
     FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
@@ -432,7 +440,7 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
     ii = fts.backend.index_range
 
     if ii isa Colon
-        backend_info_str = ""
+        backend_str = "├── backend: InMemory(:)"
     else
         N = length(ii)
         if N < 6
@@ -448,15 +456,21 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
                                      
         end
 
-        backend_info_str = string("│   └── index_range: ", index_range_str, '\n')
+        backend_str = string("├── backend: InMemory(", index_range_str, ")", '\n')
     end
 
-    return string("├── backend: ", summary(fts.backend), '\n',
-                  backend_info_str,
+    path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
+    name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name)
+
+    return string(backend_str, '\n',
+                  path_str,
+                  name_str,
                   "└── data: ", summary(fts.data), '\n',
                   "    └── ", data_summary(fts.data))
 end
 
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
-    string("└── backend: ", summary(fts.backend))
+    string("├── backend: ", summary(fts.backend), '\n',
+           "├── path: ", fts.path, '\n',
+           "└── name: ", fts.name)
 
