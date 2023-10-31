@@ -6,21 +6,34 @@ using KernelAbstractions: @kernel, @index
 import Oceananigans.Utils: active_cells_work_layout, 
                            use_only_active_interior_cells
 
-const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
+using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
+
+const ActiveCellsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const ActiveSurfaceIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 struct InteriorMap end
 struct SurfaceMap end
 
+@inline use_only_active_interior_cells(grid::AbstractGrid)   = nothing
 @inline use_only_active_interior_cells(grid::ActiveCellsIBG) = InteriorMap()
 
 @inline use_only_active_surface_cells(grid::AbstractGrid)   = nothing
 @inline use_only_active_surface_cells(grid::ActiveCellsIBG) = SurfaceMap()
 
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG) = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveCellsIBG) = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)   = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
+@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG) = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
 
-@inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.interior_active_cells[idx])
-@inline  active_linear_index_to_surface_tuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.surface_active_cells[idx])
+@inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG)   = Base.map(Int, grid.interior_active_cells[idx])
+@inline  active_linear_index_to_surface_tuple(idx, grid::ActiveSurfaceIBG) = Base.map(Int, grid.surface_active_cells[idx])
+
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid::ActiveSurfaceIBG, p, args, tridiagonal_direction::ZDirection)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    Nz = size(grid, 3)    
+
+    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
@@ -31,15 +44,17 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
     if active_cells_map 
         map_interior = active_cells_map_interior(ibg)
         map_interior = arch_array(architecture(ibg), map_interior)
-        # map_surface = active_cells_map_surface(ibg)
-        # map_surface = arch_array(architecture(ibg), map_surface)
+        map_surface  = active_cells_map_surface(ibg)
+        map_surface  = arch_array(architecture(ibg), map_surface)
     else
         map_interior = nothing
+        map_surface  = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
                                             ibg.immersed_boundary, 
-                                            map_interior)
+                                            map_interior,
+                                            map_surface)
 end
 
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)

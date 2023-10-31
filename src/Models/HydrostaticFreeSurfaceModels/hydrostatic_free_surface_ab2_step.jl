@@ -3,6 +3,7 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 
 import Oceananigans.TimeSteppers: ab2_step!
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, use_only_active_surface_cells
 
 #####
 ##### Step everything
@@ -33,7 +34,7 @@ end
 ##### Step velocities
 #####
 
-function ab2_step_velocities!(velocities, model, Δt, χ)
+function ab2_step_velocities!(velocities, model, Δt, χ; only_active_cells = use_only_active_surface_cells(model.grid))
 
     for (i, name) in enumerate((:u, :v))
         Gⁿ = model.timestepper.Gⁿ[name]
@@ -41,7 +42,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid; only_active_cells = use_only_active_interior_cells(model.grid))
 
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
@@ -52,7 +53,8 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.diffusivity_fields,
                        nothing,
                        model.clock, 
-                       Δt)
+                       Δt;
+                       only_active_cells)
     end
 
     return nothing
@@ -66,7 +68,7 @@ const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
-function ab2_step_tracers!(tracers, model, Δt, χ)
+function ab2_step_tracers!(tracers, model, Δt, χ; only_active_cells = use_only_active_surface_cells(model.grid))
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
@@ -76,7 +78,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         closure = model.closure
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻, model.grid; only_active_cells = use_only_active_interior_cells(model.grid))
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
@@ -84,7 +86,8 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
-                       Δt)
+                       Δt;
+                       only_active_cells)
     end
 
     return nothing
