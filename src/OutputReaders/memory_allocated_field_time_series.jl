@@ -7,18 +7,29 @@ function new_data(FT, grid, loc, indices, Nt, backend::InMemory)
     return data
 end
  
-@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) = f.data[i, j, k, n - f.backend.index_range[1] + 1]
-@propagate_inbounds Base.setindex!(f::InMemoryFieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
+@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) =
+    f.data[i, j, k, n - f.backend.index_range[1] + 1]
+
+@propagate_inbounds Base.setindex!(f::InMemoryFieldTimeSeries, v, i, j, k, n::Int) =
+    setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
 
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
+
+compute_time_index(index_range, n) = n - fts.backend.index_range[1] + 1
+compute_time_index(::Colon, n) = n
 
 # If `n` is not in memory, getindex automatically sets the data in memory to have the `n`
 # as the second index (to allow interpolation with the previous time step)
 # If n is `1` or within the end the timeseries different rules apply
 function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     update_field_time_series!(fts, n)
-    underlying_data = view(parent(fts), :, :, :, n - fts.backend.index_range[1] + 1) 
+
+    index_range = fts.backend.index_range
+    time_index = compute_time_index(index_range, n)
+    underlying_data = view(parent(fts), :, :, :, time_index)
+
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
 

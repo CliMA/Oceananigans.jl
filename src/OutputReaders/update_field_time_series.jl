@@ -28,6 +28,8 @@ end
 
 # fallback
 update_field_time_series!(::Nothing, time) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Int64) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Time) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
