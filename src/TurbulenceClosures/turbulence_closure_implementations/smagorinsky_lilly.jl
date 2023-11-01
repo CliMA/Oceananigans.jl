@@ -77,6 +77,7 @@ Lilly, D. K. "The representation of small-scale turbulence in numerical simulati
 """
 function SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0)
     C = C isa Number ? convert(FT, C) : C
+    TD = typeof(time_discretization)
     return SmagorinskyLilly{TD, FT}(C, Cb, Pr)
 end
 
