@@ -3,15 +3,16 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
-     C :: FT
+struct SmagorinskyLilly{TD, FT, CP, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+     C :: CP
     Cb :: FT
     Pr :: P
 
     function SmagorinskyLilly{TD, FT}(C, Cb, Pr) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        return new{TD, FT, P}(C, Cb, Pr)
+        CP = typeof(C)
+        return new{TD, FT, CP, P}(C, Cb, Pr)
     end
 end
 
@@ -74,8 +75,10 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
     NCAR Manuscript No. 281, 0, 1966.
 """
-SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
-        SmagorinskyLilly{TD, FT}(C, Cb, Pr)
+function SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0)
+    C = C isa Number ? convert(FT, C) : C
+    return SmagorinskyLilly{TD, FT}(C, Cb, Pr)
+end
 
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
@@ -114,7 +117,7 @@ end
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
     Δᶠ = cbrt(Δ³)
-    C = closure.C # free parameter
+    C = closure_constant(i, j, k, grid, closure.C)
 
     @inbounds νₑ[i, j, k] = ς * (C * Δᶠ)^2 * sqrt(2Σ²)
 end

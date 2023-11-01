@@ -161,8 +161,15 @@ include("turbulence_closure_implementations/nothing_closure.jl")
 # AbstractScalarDiffusivity closures:
 include("turbulence_closure_implementations/scalar_diffusivity.jl")
 include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
+
+# Dispatch on the type of the user-provided AMD model constant.
+# Only numbers, arrays, and functions supported now.
+@inline closure_constant(i, j, k, grid, C::Number) = C
+@inline closure_constant(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
+
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
