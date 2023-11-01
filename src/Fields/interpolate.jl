@@ -230,7 +230,7 @@ end
 """
     interpolator(ii)
 
-Given the ``interpolator tuple'' for the ``fractional'' index `ii`
+Returns an ``interpolator tuple'' from the ``fractional'' index `ii`
 defined as the 3-tuple
 
 ```
