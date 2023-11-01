@@ -10,8 +10,14 @@ end
 @propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) =
     f.data[i, j, k, n - f.backend.index_range[1] + 1]
 
+@propagate_inbounds Base.getindex(f::TotallyInMemoryFieldTimeSeries, i, j, k, n::Int) =
+    f.data[i, j, k, n]
+
 @propagate_inbounds Base.setindex!(f::InMemoryFieldTimeSeries, v, i, j, k, n::Int) =
     setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
+
+@propagate_inbounds Base.setindex!(f::TotallyInMemoryFieldTimeSeries, v, i, j, k, n::Int) =
+    setindex!(f.data, v, i, j, k, n)
 
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 
