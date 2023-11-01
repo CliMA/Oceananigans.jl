@@ -247,7 +247,8 @@ left bound `i⁻`, such that `ξ ∈ [0, 1)`.
     # https://github.com/CliMA/Oceananigans.jl/issues/828
     # https://github.com/CliMA/Oceananigans.jl/pull/997
 
-    i⁻ = Base.unsafe_trunc(Int, fractional_idx) + 1
+    i⁻ = Base.unsafe_trunc(Int, fractional_idx)
+    i⁻ = Int(i⁻ + 1) # convert to "proper" integer?
     i⁺ = i⁻ + 1
     ξ = mod(fractional_idx, 1)
 

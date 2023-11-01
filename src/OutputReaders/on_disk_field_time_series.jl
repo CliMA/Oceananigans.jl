@@ -53,9 +53,9 @@ end
 
 function initialize_file!(file, name, fts)
     maybe_write_property!(file, "serialized/grid", fts.grid)
-    maybe_write_property!(file, "timeseries/$(name)/serialized/location", location(fts))
-    maybe_write_property!(file, "timeseries/$(name)/serialized/indices", indices(fts))
-    maybe_write_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(fts))
+    maybe_write_property!(file, "timeseries/$name/serialized/location", location(fts))
+    maybe_write_property!(file, "timeseries/$name/serialized/indices", indices(fts))
+    maybe_write_property!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(fts))
     return nothing
 end
 
