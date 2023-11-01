@@ -41,15 +41,32 @@ end
 
 set!(fts::InMemoryFieldTimeSeries, f, index::Int) = set!(fts[index], f)
 
+iterations_from_file(file, ::Colon) = parse.(Int, keys(file["timeseries/t"]))
+
+function iterations_from_file(file, index_range::UnitRange)
+    all_iterations = iterations_from_file(file, Colon())
+    return all_iterations[index_range]
+end
+
+time_indices(::Colon, times) = UnitRange(1, length(times))
+time_indices(index_range, times) = index_range
+
+find_time_index(time::AbstractFloat, file_times) = findfirst(t -> t ≈ time, file_times)
+find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
+
 function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
-    file = jldopen(path)
     index_range = fts.backend.index_range
-    file_iterations = parse.(Int, keys(file["timeseries/t"]))[index_range]
+
+    file = jldopen(path)
+    file_iterations = iterations_from_file(file, index_range)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
 
-    for (n, time) in zip(index_range, fts.times[index_range])
-        file_index = findfirst(t -> t ≈ time, file_times)
+    times = fts.times[index_range]
+    indices = time_indices(index_range, times)
+
+    for (n, time) in zip(indices, times)
+        file_index = find_time_index(time, file_times)
         file_iter = file_iterations[file_index]
         
         field_n = Field(location(fts), path, name, file_iter,
@@ -62,3 +79,4 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
 
     return nothing
 end
+

@@ -69,7 +69,6 @@ function FieldTimeSeries(loc, grid, times;
     LX, LY, LZ = loc
     Nt   = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    #backend = regularize_backend(backend, data)
 
     if backend isa OnDisk
         isnothing(name) && isnothing(name) &&
@@ -211,7 +210,6 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    backend = regularize_backend(backend, data)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                               indices, times, path, name)
