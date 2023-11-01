@@ -180,9 +180,6 @@ end
 @inline function _fractional_indices((x, y), grid, ℓx, ℓy, ::Nothing)
     ii = fractional_x_index(x, (ℓx, ℓy, nothing), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, nothing), grid)
-    if y > 0
-        @show (x, y)
-    end
 
     return (ii, jj, nothing)
 end
