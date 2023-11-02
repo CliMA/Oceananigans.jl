@@ -12,7 +12,7 @@ DataDeps.register(dd)
 
 # Trigger datadep download to avoid race condition in CI.
 # See: https://github.com/oxinabox/DataDeps.jl/issues/141
-datadep"cubed_sphere_32_grid"
+datadep"cubed_sphere_32_grid" 
 
 # Downloading the regression fields
 
