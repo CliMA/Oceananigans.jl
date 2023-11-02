@@ -129,9 +129,11 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a 
     # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
     # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
-    # But we need an extra point to precompute the Y direction in case of only one halo so we disregard the topology
-    # when constructing the metrics!
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ, φl, :latitude, arch.child_architecture)
+    # An extra point is to precompute the Y-direction metrics in case of only one halo, hence
+    # we disregard the topology when constructing the metrics and add a halo point! 
+    # Furthermore, the `LatitudeLongitudeGrid` requires an extra halo on it's latitudinal coordinate to allow calculating
+    # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
                                                                 LatitudeLongitude(),
@@ -227,7 +229,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
-    # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
+    # it is stretched if being passed is a function or vector
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), Nλ, Hλ, λG, :longitude, child_arch)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY(), Nφ, Hφ, φG, :latitude,  child_arch)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), Nz, Hz, zG, :z,         child_arch)
@@ -287,7 +289,8 @@ end
 function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
-    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
+    return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, 
+                                 latitude=y, z=z, halo=halo, topology=topo, radius=global_grid.radius)
 end
 
 """ 

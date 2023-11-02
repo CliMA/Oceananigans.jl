@@ -18,9 +18,7 @@ using Oceananigans.Grids
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
-using Oceananigans.Advection:
-    EnergyConservingScheme,
-    EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,

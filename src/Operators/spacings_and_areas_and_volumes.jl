@@ -1,17 +1,17 @@
 using Oceananigans.Grids: Center, Face
 
 const RG   = RectilinearGrid
-const RGX  = XRegRectilinearGrid
-const RGY  = YRegRectilinearGrid
-const RGZ  = ZRegRectilinearGrid
+const RGX  = XRegularRG
+const RGY  = YRegularRG
+const RGZ  = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
-const LLGX = XRegLatLonGrid
-const LLGY = YRegLatLonGrid
-const LLGZ = ZRegLatLonGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -270,3 +270,4 @@ for LX in (:Center, :Face)
         end
     end
 end
+

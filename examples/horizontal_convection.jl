@@ -50,7 +50,7 @@ grid = RectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
+@inline bˢ(x, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
 

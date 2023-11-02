@@ -54,7 +54,7 @@ grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Pe
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
+buoyancy_flux(x, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
@@ -73,7 +73,7 @@ times = range(0, 12hours, length=100)
 fig = Figure(resolution = (800, 300))
 ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)")
 
-flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 lines!(ax, times ./ hour, flux_time_series)
 
 current_figure() #hide
@@ -105,7 +105,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
+growing_and_grazing(x, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing #hide
 
 # with parameters
@@ -147,7 +147,7 @@ mixed_layer_depth = 32 # m
 
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
-initial_buoyancy(x, y, z) = stratification(z) + noise(z)
+initial_buoyancy(x, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
@@ -213,7 +213,7 @@ P_timeseries = FieldTimeSeries(filepath, "P")
 avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
 
 times = w_timeseries.times
-buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 nothing #hide
 
 # and then we construct the ``x, z`` grid,

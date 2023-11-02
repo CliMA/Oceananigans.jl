@@ -17,7 +17,7 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 validate_fft_implicit_solver_grid(grid) = 
-    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
+    grid isa XYZRegularRG || grid isa XYRegularRG ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
 validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
