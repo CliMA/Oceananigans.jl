@@ -58,10 +58,10 @@ Domain partitioning with (4, 1, 1) ranks
 
 ```
 """
-Partition(x)    = Partition(validate_partition(x, 1, 1)...)
-Partition(x, y) = Partition(validate_partition(x, y, 1)...)
+Partition(x)    = Partition(validate_partition(x, nothing, nothing)...)
+Partition(x, y) = Partition(validate_partition(x, y, nothing)...)
 
-Partition(; x = 1, y = 1, z = 1) = Partition(validate_partition(x, y, z)...)
+Partition(; x = nothing, y = nothing, z = nothing) = Partition(validate_partition(x, y, z)...)
 
 Base.show(io::IO, p::Partition) =
     print(io, 
@@ -133,7 +133,7 @@ validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
     MPI.Initialized() || MPI.Init()    
-    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1)*ranks(r2))
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1) * ranks(r2))
 end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
