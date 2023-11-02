@@ -133,7 +133,7 @@ validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
     MPI.Initialized() || MPI.Init()    
-    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1)*ranks(r2))
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1) * ranks(r2))
 end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
