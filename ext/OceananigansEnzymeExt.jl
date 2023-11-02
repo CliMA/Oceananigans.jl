@@ -10,7 +10,7 @@ using KernelAbstractions
 isdefined(Base, :get_extension) ? (import Enzyme) : (import ..Enzyme)
 
 using Enzyme: EnzymeCore
-using Enzyme.EnzymeCore: Active
+using Enzyme.EnzymeCore: Active, Const, Duplicated
 
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
@@ -72,12 +72,12 @@ end
 # @inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 function EnzymeCore.EnzymeRules.augmented_primal(config,
-                                                 enzyme_func::EnzymeCore.Const{<:Type{<:FunctionField}},
+                                                 enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{<:Type{FT2}}},
                                                  ::Type{<:EnzymeCore.Annotation{RT}},
                                                  function_field_func,
                                                  grid;
                                                  clock = nothing,
-                                                 parameters = nothing) where RT
+                                                 parameters = nothing) where {RT, FT2 <: FunctionField}
 
     FunctionFieldType = enzyme_func.val     
 
@@ -143,13 +143,13 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 end
 
 function EnzymeCore.EnzymeRules.reverse(config,
-                                        enzyme_func::EnzymeCore.Const{<:Type{<:FunctionField}},
+                                        enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{<:Type{FT2}}},
                                         ::RT,
                                         tape,
                                         function_field_func,
                                         grid;
                                         clock = nothing,
-                                        parameters = nothing) where RT
+                                        parameters = nothing) where {RT, FT2 <: FunctionField}
 
     dactives = if function_field_func isa Active
         if Enzyme.Core.EnzymeRules.width(config) == 1
@@ -166,6 +166,45 @@ function EnzymeCore.EnzymeRules.reverse(config,
 
     # return (dactives, grid (nothing))
     return (dactives, nothing)
+end
+
+#####
+##### launch!
+#####
+
+function EnzymeCore.EnzymeRules.augmented_primal(config,
+                                                 func::EnzymeCore.Const{typeof(Oceananigans.Utils.flattened_unique_values)},
+                                                 ::Type{<:EnzymeCore.Annotation{RT}},
+                                                 a) where RT
+
+    primal = if EnzymeCore.EnzymeRules.needs_primal(config)
+        func.val(a.val)
+    else
+        nothing
+    end
+
+    shadow = if Enzyme.Core.EnzymeRules.width(config) == 1
+        func.val(a.dval)
+    else
+        ntuple(Val(Enzyme.Core.EnzymeRules.width(config))) do i
+            Base.@_inline_meta
+            func.val(a.dval[i])
+        end
+    end
+
+    P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
+    B = batch(Val(EnzymeCore.EnzymeRules.width(config)), RT)
+
+    return EnzymeCore.EnzymeRules.AugmentedReturn{P, B, Nothing}(primal, shadow, tape)
+end
+
+function EnzymeCore.EnzymeRules.reverse(config,
+                                        func::EnzymeCore.Const{typeof(Oceananigans.Utils.flattened_unique_values)},
+                                         ::Type{<:EnzymeCore.Annotation{RT}},
+                                         tape,
+                                         a) where RT
+
+  return (nothing,)
 end
 
 #####
@@ -258,5 +297,105 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
   return (nothing, nothing, nothing, nothing, subrets...)
 
 end
+
+#####
+##### update_model_field_time_series!
+#####
+
+#=
+function EnzymeCore.EnzymeRules.augmented_primal(config,
+                                                 func::EnzymeCore.Const{typeof(Oceananigans.Models.update_model_field_time_series!)},
+                                                 ::Type{EnzymeCore.Const{Nothing}},
+                                                 model,
+                                                 clock)
+
+    time = (typeof(clock) <: Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+
+    possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
+
+    time_series_tuple = Oceananigans.Models.extract_field_timeseries(possible_fts)
+    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
+
+    fulltape = if EnzymeCore.EnzymeRules.width(config) == 1
+        dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
+        dtime_series_tuple = Oceananigans.Models.extract_field_timeseries(possible_fts)
+        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
+
+        tapes = []
+        for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
+            dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
+            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+            tape, primal, shadow = fwdfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time)
+            push!(tapes, tape)
+        end
+        tapes
+    else
+        ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+            Base.@_inline_meta
+            dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
+            dtime_series_tuple = Oceananigans.Models.extract_field_timeseries(possible_fts)
+            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
+
+            tapes = []
+            for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
+                dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
+                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+                tape, primal, shadow = fwdfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time)
+                push!(tapes, tape)
+            end
+            tapes
+        end
+    end
+
+    return EnzymeCore.EnzymeRules.AugmentedReturn{Nothing, Nothing, Any}(nothing, nothing, fulltape::Any)
+end
+
+function EnzymeCore.EnzymeRules.reverse(config,
+                                        func::EnzymeCore.Const{typeof(Oceananigans.Models.update_model_field_time_series!)},
+                                        ::Type{EnzymeCore.Const{Nothing}},
+                                        fulltape,
+                                        model,
+                                        clock)
+
+    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+
+    if EnzymeCore.EnzymeRules.width(config) == 1
+        dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
+        dtime_series_tuple = Oceananigans.Models.extract_field_timeseries(possible_fts)
+        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
+
+        tapes = fulltape
+        i = 1
+        for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
+            dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
+            fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+            revfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time, tapes[i])
+            push!(tapes, tape)
+            i+= 1
+        end
+    else
+        ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+            Base.@_inline_meta
+
+            tapes = fulltape[i]
+            dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
+            dtime_series_tuple = Oceananigans.Models.extract_field_timeseries(possible_fts)
+            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
+
+            i += 1
+            for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
+                dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
+                fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
+                revfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time, tapes[i])
+                i+=1
+            end
+        end
+    end
+
+  return (nothing, nothing)
+
+end
+
+=#
 
 end
