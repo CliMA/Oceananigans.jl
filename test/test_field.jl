@@ -143,13 +143,13 @@ function run_field_interpolation_tests(grid)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    nodes = [(x, y, z) for (x, y, z) in zip(xs, ys, zs)]
+    X = [(x, y, z) for (x, y, z) in zip(xs, ys, zs)]
 
     CUDA.@allowscalar begin
-        ℑu = interpolate.(nodes, Ref(u))
-        ℑv = interpolate.(nodes, Ref(v))
-        ℑw = interpolate.(nodes, Ref(w))
-        ℑc = interpolate.(nodes, Ref(c))
+        ℑu = interpolate.(X, Ref(u))
+        ℑv = interpolate.(X, Ref(v))
+        ℑw = interpolate.(X, Ref(w))
+        ℑc = interpolate.(X, Ref(c))
 
         F = f.(xs, ys, zs)
 
