@@ -1,5 +1,3 @@
-const VectorInvariantCrossVerticalUpwinding = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:CrossAndSelfUpwinding}
-
 #####
 ##### Cross upwinding results in the largest kinetic energy content, 
 ##### but because of presence of mixed upwinding the truncation error of 
