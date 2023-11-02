@@ -39,7 +39,7 @@ if supplied as positional arguments `x` will be the first argument,
     `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
     `Fractional(ϵ1, ϵ2, ..., ϵN):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵi)`, 
                                    and each process is then allocated `ϵi / W` of the domain.
-    `Sizes(ϵ1, ϵ2, ..., ϵN)`: divide the domain unequally. EThe total work is `W = sum(ϵi)`, 
+    `Sizes(ϵ1, ϵ2, ..., ϵN)`: divide the domain unequally. The total work is `W = sum(ϵi)`, 
                               and each process is then allocated `ϵi`.
 
 Examples:
@@ -83,18 +83,29 @@ specifically defined by `Int`, `Fractional`, or `Sizes`.
 """
 struct Equal end
 
-"""type representing fractional domain partioning where worker `i` is allocates `sizes[i] / sum(sizes)` parts of the domain"""
 struct Fractional{S} 
     sizes :: S
 end
 
-"""type representing domain partioning where worker `i` holds `sizes[i]` parts of the domain"""
 struct Sizes{S} 
     sizes :: S
 end
 
+"""
+    Fractional(ϵ1, ϵ2, ..., ϵN)
+
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵi)`, 
+and each process is then allocated `ϵi / W` of the domain.
+"""
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
-     Sizes(args...) = Sizes(tuple(args...))
+
+"""
+`Sizes(ϵ1, ϵ2, ..., ϵN)`
+
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵi)`, 
+and each process is then allocated `ϵi`.
+"""
+Sizes(args...) = Sizes(tuple(args...))
 
 Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
