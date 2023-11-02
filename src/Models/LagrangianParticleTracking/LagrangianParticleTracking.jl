@@ -115,6 +115,15 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
+# To support interpolation on Flat grids
+@inline flattened_node((x, y, z), grid) = (x, y, z)
+@inline flattened_node((x, y, z), grid::XFlatGrid) = (y, z)
+@inline flattened_node((x, y, z), grid::YFlatGrid) = (x, z)
+@inline flattened_node((x, y, z), grid::ZFlatGrid) = (x, y)
+@inline flattened_node((x, y, z), grid::YZFlatGrid) = tuple(x)
+@inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
+@inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
+
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
 
