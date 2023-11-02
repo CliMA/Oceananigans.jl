@@ -115,6 +115,7 @@ Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
 Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
 
 ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
+ranks(r::Nothing)    = 1 # a direction not partitioned fits in 1 rank
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)

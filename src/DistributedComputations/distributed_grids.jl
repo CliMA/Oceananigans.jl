@@ -36,7 +36,8 @@ function local_size(N, R, local_index)
 end
 
 # Differentiate between equal and unequal partitioning
-@inline local_sizes(N, R::Int) = Tuple(N ÷ R for i in 1:R)
+@inline local_sizes(N, R::Nothing)    = N
+@inline local_sizes(N, R::Int)        = Tuple(N ÷ R for i in 1:R)
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
