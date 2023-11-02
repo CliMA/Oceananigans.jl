@@ -122,7 +122,6 @@ function fill_velocity_halos!(u, v)
     end
 
     for region in [1, 3, 5]
-
         region_south = mod(region + 4, 6) + 1
         region_east = region + 1
         region_north = mod(region + 2, 6)
@@ -248,6 +247,14 @@ end
 nan = convert(eltype(grid), NaN)
 
 for region in 1:number_of_regions(grid)
+    u[region][1-Hx:0, :, :] .= nan
+    u[region][Nx+2:Nx+Hx, :, :] .= nan
+    u[region][:, 1-Hy:0, :] .= nan
+    u[region][:, Ny+1:Ny+Hy, :] .= nan
+    v[region][1-Hx:0, :, :] .= nan
+    v[region][Nx+1:Nx+Hx, :, :] .= nan
+    v[region][:, 1-Hy:0, :] .= nan
+    v[region][:, Ny+2:Ny+Hy, :] .= nan
     ζ[region][1-Hx:0, :, :] .= nan
     ζ[region][Nx+2:Nx+Hx, :, :] .= nan
     ζ[region][:, 1-Hy:0, :] .= nan
@@ -547,33 +554,54 @@ end
 Nx = 32; Ny = 32
 XGs = zeros(Nx, Ny, 6)
 YGs = zeros(Ny, Ny, 6)
+Us = zeros(Nx, Ny, 6)
+Vs = zeros(Nx, Ny, 6)
 momVort3s = zeros(Nx, Ny, 6)
 
 for pidx in 1:6
     XG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/XG.00$(pidx).001.data")
     YG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/YG.00$(pidx).001.data")
+    U = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/U.0000000000.00$(pidx).001.data")
+    V = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/V.0000000000.00$(pidx).001.data")
     momKE, momVort3 = read_big_endian_diagnostic_data("validation/multi_region/MITgcm_Output/2023-11-01/momDiag.0000000000.00$(pidx).001.data")
     XGs[:, :, pidx] = XG
     YGs[:, :, pidx] = YG
+    Us[:, :, pidx] = U
+    Vs[:, :, pidx] = V
     momVort3s[:, :, pidx] = momVort3
 end
 
 recompute_vorticity_corners_using_interior_points!(ζ)
 
 ψ_Array = zeros(Nx+1, Ny+1, 6)
+u_Array = zeros(Nx, Ny, 6)
+v_Array = zeros(Nx, Ny, 6)
 ζ_Array = zeros(Nx+1, Ny+1, 6)
 f_Array = zeros(Nx+1, Ny+1, 6)
 for pidx in 1:6
     ψ_Array[1:Nx+1, 1:Ny+1, pidx] = getregion(ψ, pidx).data[1:Nx+1, 1:Ny+1, 1]
+    u_Array[1:Nx, 1:Ny, pidx] = getregion(u, pidx).data[1:Nx, 1:Ny, 1]
+    v_Array[1:Nx, 1:Ny, pidx] = getregion(v, pidx).data[1:Nx, 1:Ny, 1]
     ζ_Array[1:Nx+1, 1:Ny+1, pidx] = getregion(ζ, pidx).data[1:Nx+1, 1:Ny+1, 1]
     f_Array[1:Nx+1, 1:Ny+1, pidx] = getregion(f, pidx).data[1:Nx+1, 1:Ny+1, 1]
 end
+
+u_difference = u_Array - Us
+v_difference = v_Array - Vs
 momVort3s_difference = ζ_Array[1:Nx, 1:Ny, :] - momVort3s[:, :, :]
 
 useSymmetricColorRange = true
 if useSymmetricColorRange
     ψ_Array_limit = max(maximum(abs.(ψ_Array)), minimum(abs.(ψ_Array)))
     ψ_Array_color_range = (-ψ_Array_limit, ψ_Array_limit)
+    u_Array_limit = max(maximum(abs.(u_Array)), minimum(abs.(u_Array)))
+    u_Array_color_range = (-u_Array_limit, u_Array_limit)
+    u_difference_limit = max(maximum(abs.(u_difference)), minimum(abs.(u_difference)))
+    u_difference_color_range = (-u_difference_limit, u_difference_limit)
+    v_Array_limit = max(maximum(abs.(v_Array)), minimum(abs.(v_Array)))
+    v_Array_color_range = (-v_Array_limit, v_Array_limit)
+    v_difference_limit = max(maximum(abs.(v_difference)), minimum(abs.(v_difference)))
+    v_difference_color_range = (-v_difference_limit, v_difference_limit)
     ζ_Array_limit = max(maximum(abs.(ζ_Array)), minimum(abs.(ζ_Array)))
     ζ_Array_color_range = (-ζ_Array_limit, ζ_Array_limit)
     f_Array_limit = max(maximum(abs.(f_Array)), minimum(abs.(f_Array)))
@@ -584,6 +612,10 @@ if useSymmetricColorRange
     momVort3s_difference_color_range = (-momVort3s_limit, momVort3s_limit)
 else
     ψ_Array_color_range = (minimum(ψ_Array), maximum(ψ_Array))
+    u_Array_color_range = (minimum(u_Array), maximum(u_Array))
+    u_difference_color_range = (minimum(u_difference), maximum(u_difference))
+    v_Array_color_range = (minimum(v_Array), maximum(v_Array))
+    v_difference_color_range = (minimum(v_difference), maximum(v_difference))
     ζ_Array_color_range = (minimum(ζ_Array), maximum(ζ_Array))
     f_Array_color_range = (minimum(f_Array), maximum(f_Array))
     momVort3s_color_range = (minimum(momVort3s), maximum(momVort3s))
@@ -594,14 +626,42 @@ end
 fig = panel_wise_visualization(ψ, colorrange=ψ_Array_color_range)
 save("streamfunction.png", fig)
 
+# Plot the zonal velocity u.
+fig = panel_wise_visualization(u, colorrange=u_Array_color_range)
+save("zonal_velocity.png", fig)
+
+# Plot the meridional velocity v.
+fig = panel_wise_visualization(v, colorrange=v_Array_color_range)
+save("meridional_velocity.png", fig)
+
+# Plot the Coriolis parameter.
 fig = panel_wise_visualization(f, colorrange=f_Array_color_range)
 save("f.png", fig)
 
+# Plot the vorticity.
 fig = panel_wise_visualization(ζ, colorrange=ζ_Array_color_range)
 save("vorticity.png", fig)
 
-fig = panel_wise_visualization_MITgcm(XGs, YGs, momVort3s, hide_decorations = false, colorrange = momVort3s_color_range, colormap = :balance)
-save("vorticity_MITgcm.png",fig)
+# Plot the MITgcm zonal velocity.
+fig = panel_wise_visualization_MITgcm(XGs, YGs, Us, hide_decorations = false, colorrange = u_Array_color_range, colormap = :balance)
+save("zonal_velocity_MITgcm.png", fig)
 
+# Plot the MITgcm meridional velocity.
+fig = panel_wise_visualization_MITgcm(XGs, YGs, Vs, hide_decorations = false, colorrange = v_Array_color_range, colormap = :balance)
+save("meridional_velocity_MITgcm.png", fig)
+
+# Plot the MITgcm vorticity.
+fig = panel_wise_visualization_MITgcm(XGs, YGs, momVort3s, hide_decorations = false, colorrange = momVort3s_color_range, colormap = :balance)
+save("vorticity_MITgcm.png", fig)
+
+# Plot the difference between the Oceananigans zonal velocity and the MITgcm zonal velocity.
+fig = panel_wise_visualization_MITgcm(XGs, YGs, u_difference, hide_decorations = false, colorrange = u_difference_color_range, colormap = :balance)
+save("zonal_velocity_difference.png", fig)
+
+# Plot the difference between the Oceananigans meridional velocity and the MITgcm meridional velocity.
+fig = panel_wise_visualization_MITgcm(XGs, YGs, v_difference, hide_decorations = false, colorrange = v_difference_color_range, colormap = :balance)
+save("meridional_velocity_difference.png", fig)
+
+# Plot the difference between the Oceananigansvorticity and the MITgcm vorticity.
 fig = panel_wise_visualization_MITgcm(XGs, YGs, momVort3s_difference, hide_decorations = false, colorrange = momVort3s_difference_color_range, colormap = :balance)
-save("vorticity_difference.png",fig)
+save("vorticity_difference.png", fig)
