@@ -99,6 +99,7 @@ function run_field_reduction_tests(FT, arch)
 end
 
 function run_field_interpolation_tests(grid)
+    arch = architecture(grid)
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)
 
@@ -126,6 +127,18 @@ function run_field_interpolation_tests(grid)
     # the same value as the field itself.
 
     CUDA.@allowscalar begin
+        for f in (u, v, w, c)
+            x = xnodes(f)
+            y = ynodes(f)
+            z = znodes(f)
+            Nx, Ny, Nz = size(f)
+            X = [(x[i], y[j], z[k]) for i=1:Nx, j=1:Ny, k=1:Nz]
+            X = arch_array(arch, X)
+            ℑf = interpolate.(X, Ref(f))
+            @test all(isapprox.(ℑf, Array(interior(f)), atol=tolerance))
+        end
+
+        #=
         ℑu = interpolate.(nodes(u, reshape=true), Ref(u))
         ℑv = interpolate.(nodes(v, reshape=true), Ref(v))
         ℑw = interpolate.(nodes(w, reshape=true), Ref(w))
@@ -135,6 +148,7 @@ function run_field_interpolation_tests(grid)
         @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
         @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
         @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
+        =#
     end
 
     # Check that interpolating between grid points works as expected.
@@ -143,7 +157,8 @@ function run_field_interpolation_tests(grid)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    X = [(x, y, z) for (x, y, z) in zip(xs, ys, zs)]
+    X = [(xs[i], ys[j], zs[k]) for i=1:3, j=1:3, k=1:3]
+    X = arch_array(arch, X)
 
     CUDA.@allowscalar begin
         ℑu = interpolate.(X, Ref(u))
