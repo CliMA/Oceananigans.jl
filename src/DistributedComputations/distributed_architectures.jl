@@ -35,12 +35,12 @@ if supplied as positional arguments `x` will be the first argument,
 `y` the second and `z` the third
 
 `x`, `y` and `z` can be:
-    `x::Int`: allocate `x` processors to the first dimension
-    `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
-    `Fractional(ϵ1, ϵ2, ..., ϵN):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵi)`, 
-                                   and each process is then allocated `ϵi / W` of the domain.
-    `Sizes(ϵ1, ϵ2, ..., ϵN)`: divide the domain unequally. The total work is `W = sum(ϵi)`, 
-                              and each process is then allocated `ϵi`.
+- `x::Int`: allocate `x` processors to the first dimension
+- `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
+- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`, 
+                                 and each process is then allocated `ϵᵢ / W` of the domain.
+- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`, 
+                            and each process is then allocated `nᵢ`.
 
 Examples:
 ========
@@ -58,8 +58,8 @@ Domain partitioning with (4, 1, 1) ranks
 
 ```
 """
-Partition(x)       = Partition(validate_partition(x, 1, 1)...)
-Partition(x, y)    = Partition(validate_partition(x, y, 1)...)
+Partition(x)    = Partition(validate_partition(x, 1, 1)...)
+Partition(x, y) = Partition(validate_partition(x, y, 1)...)
 
 Partition(; x = 1, y = 1, z = 1) = Partition(validate_partition(x, y, z)...)
 
@@ -92,18 +92,18 @@ struct Sizes{S}
 end
 
 """
-    Fractional(ϵ1, ϵ2, ..., ϵN)
+    Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(ϵi)`, 
-and each process is then allocated `ϵi / W` of the domain.
+Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
+and each process is then allocated `nᵢ / W` of the domain.
 """
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
 
 """
-`Sizes(ϵ1, ϵ2, ..., ϵN)`
+    Sizes(n₁, n₂, ..., nₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(ϵi)`, 
-and each process is then allocated `ϵi`.
+Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
+and each process is then allocated `nᵢ`.
 """
 Sizes(args...) = Sizes(tuple(args...))
 
@@ -121,7 +121,10 @@ ranks(r::Fractional) = length(r.sizes)
 
 Base.size(p::Partition) = ranks(p)
 
-validate_partition(x, y, z) = (x, y, z)
+# If a direction has only 1 rank, then it is not partitioned
+validate_partition(x) = ifelse(ranks(x) == 1, nothing, x)
+
+validate_partition(x, y, z) = validate_partition.(x, y, z)
 validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
 
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
@@ -129,7 +132,7 @@ validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
     MPI.Initialized() || MPI.Init()    
-    return MPI.Comm_size(MPI.COMM_WORLD) ÷ ranks(r1)*ranks(r2)
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1)*ranks(r2))
 end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
