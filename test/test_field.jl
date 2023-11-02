@@ -126,10 +126,10 @@ function run_field_interpolation_tests(grid)
     # the same value as the field itself.
 
     CUDA.@allowscalar begin
-        ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
-        ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
-        ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
-        ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+        ℑu = interpolate.(nodes(u, reshape=true), Ref(u))
+        ℑv = interpolate.(nodes(v, reshape=true), Ref(v))
+        ℑw = interpolate.(nodes(w, reshape=true), Ref(w))
+        ℑc = interpolate.(nodes(c, reshape=true), Ref(c))
 
         @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
         @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
@@ -143,11 +143,13 @@ function run_field_interpolation_tests(grid)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
+    nodes = [(x, y, z) for (x, y, z) in zip(xs, ys, zs)]
+
     CUDA.@allowscalar begin
-        ℑu = interpolate.(Ref(u), xs, ys, zs)
-        ℑv = interpolate.(Ref(v), xs, ys, zs)
-        ℑw = interpolate.(Ref(w), xs, ys, zs)
-        ℑc = interpolate.(Ref(c), xs, ys, zs)
+        ℑu = interpolate.(nodes, Ref(u))
+        ℑv = interpolate.(nodes, Ref(v))
+        ℑw = interpolate.(nodes, Ref(w))
+        ℑc = interpolate.(nodes, Ref(c))
 
         F = f.(xs, ys, zs)
 
