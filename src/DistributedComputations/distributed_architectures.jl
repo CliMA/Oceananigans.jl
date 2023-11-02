@@ -34,8 +34,13 @@ Keyword arguments:
 if supplied as positional arguments `x` will be the first argument, 
 `y` the second and `z` the third
 
-`x`, `y` and `z` can be `Int`, `Equal`, `Fractional` or `Sizes` 
-(see below)
+`x`, `y` and `z` can be:
+    `x::Int`: allocate `x` processors to the first dimension
+    `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
+    `Fractional(ϵ1, ϵ2, ..., ϵN):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵi)`, 
+                                   and each process is then allocated `ϵi / W` of the domain.
+    `Sizes(ϵ1, ϵ2, ..., ϵN)`: divide the domain unequally. EThe total work is `W = sum(ϵi)`, 
+                              and each process is then allocated `ϵi`.
 
 Examples:
 ========
@@ -45,15 +50,11 @@ julia> using Oceananigans; using Oceananigans.DistributedComputations
 
 julia> Partition(1, 4)
 Domain partitioning with (1, 4, 1) ranks
-├── x-partitioning: none
-├── y-partitioning: 4
-└── z-partitioning: none
+└── y-partitioning: 4
 
 julia> Partition(x = Fractional(1, 2, 3, 4))
 Domain partitioning with (4, 1, 1) ranks
-├── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
-├── y-partitioning: none
-└── z-partitioning: none
+└── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
 
 ```
 """
@@ -63,24 +64,37 @@ Partition(x, y)    = Partition(validate_partition(x, y, 1)...)
 Partition(; x = 1, y = 1, z = 1) = Partition(validate_partition(x, y, z)...)
 
 Base.show(io::IO, p::Partition) =
-    print(io,
+    print(io, 
     "Domain partitioning with $(ranks(p)) ranks", "\n",
-    "├── x-partitioning: $(ranks(p.x) == 1 ? "none" : p.x)", "\n",
-    "├── y-partitioning: $(ranks(p.y) == 1 ? "none" : p.y)", "\n",
-    "└── z-partitioning: $(ranks(p.z) == 1 ? "none" : p.z)")
+    "$(ranks(p.x) > 1 ? spine_x(p) * " x-partitioning: $(p.x)\n" : "")", 
+    "$(ranks(p.y) > 1 ? spine_y(p) * " y-partitioning: $(p.y)\n" : "")", 
+    "$(ranks(p.z) > 1 ? "└── z-partitioning: $(p.z)\n" : "")")
 
-"""type representing equal domain partitioning (not supported for more than one direction)"""
+spine_x(p) = ifelse(ranks(p.y) > 1 || ranks(p.z) > 1, "├──", "└──")
+spine_y(p) = ifelse(ranks(p.z) > 1, "├──", "└──")
+ 
+"""
+    Equal()
+
+Return a type that partitions a direction equally among remaining processes.
+
+`Equal()` can be used for only one direction. Other directions must either be unspecified, or
+specifically defined by `Int`, `Fractional`, or `Sizes`.
+"""
 struct Equal end
 
-"""type representing fractional domain partioning where rank `1` holds `sizes[1]` parts of the domain"""
+"""type representing fractional domain partioning where worker `i` is allocates `sizes[i] / sum(sizes)` parts of the domain"""
 struct Fractional{S} 
     sizes :: S
 end
 
-"""type representing domain partioning where rank `1` holds `sizes[1]` grid cells"""
+"""type representing domain partioning where worker `i` holds `sizes[i]` parts of the domain"""
 struct Sizes{S} 
     sizes :: S
 end
+
+Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
+     Sizes(args...) = Sizes(tuple(args...))
 
 Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
@@ -95,9 +109,6 @@ ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
 Base.size(p::Partition) = ranks(p)
-
-Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
-     Sizes(args...) = Sizes(tuple(args...))
 
 validate_partition(x, y, z) = (x, y, z)
 validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
