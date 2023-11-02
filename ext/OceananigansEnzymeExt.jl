@@ -72,7 +72,7 @@ end
 # @inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 function EnzymeCore.EnzymeRules.augmented_primal(config,
-                                                 enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{<:Type{FT2}}},
+                                                 enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{Type{FT2}}},
                                                  ::Type{<:EnzymeCore.Annotation{RT}},
                                                  function_field_func,
                                                  grid;
@@ -143,7 +143,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 end
 
 function EnzymeCore.EnzymeRules.reverse(config,
-                                        enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{<:Type{FT2}}},
+                                        enzyme_func::Union{EnzymeCore.Const{<:Type{<:FunctionField}}, EnzymeCore.Const{Type{FT2}}},
                                         ::RT,
                                         tape,
                                         function_field_func,
@@ -152,10 +152,10 @@ function EnzymeCore.EnzymeRules.reverse(config,
                                         parameters = nothing) where {RT, FT2 <: FunctionField}
 
     dactives = if function_field_func isa Active
-        if Enzyme.Core.EnzymeRules.width(config) == 1
+        if EnzymeCore.EnzymeRules.width(config) == 1
             tape[]
         else
-            ntuple(Val(Enzyme.Core.EnzymeRules.width(config))) do i
+            ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
                 Base.@_inline_meta
                 tape[i][]
             end
@@ -173,33 +173,43 @@ end
 #####
 
 function EnzymeCore.EnzymeRules.augmented_primal(config,
-                                                 func::EnzymeCore.Const{typeof(Oceananigans.Utils.flattened_unique_values)},
+                                                 func::EnzymeCore.Const{typeof(Oceananigans.Models.flattened_unique_values)},
                                                  ::Type{<:EnzymeCore.Annotation{RT}},
                                                  a) where RT
 
-    primal = if EnzymeCore.EnzymeRules.needs_primal(config)
+    sprimal = if EnzymeCore.EnzymeRules.needs_primal(config) || EnzymeCore.EnzymeRules.needs_shadow(config)
         func.val(a.val)
     else
         nothing
     end
 
-    shadow = if Enzyme.Core.EnzymeRules.width(config) == 1
-        func.val(a.dval)
-    else
-        ntuple(Val(Enzyme.Core.EnzymeRules.width(config))) do i
-            Base.@_inline_meta
-            func.val(a.dval[i])
+    shadow = if EnzymeCore.EnzymeRules.needs_shadow(config)
+        if EnzymeCore.EnzymeRules.width(config) == 1
+            (typeof(a) <: Const) ? Enzyme.Compiler.make_zero(Core.Typeof(sprimal), IdDict(), sprimal)::RT : func.val(a.dval)
+        else
+            ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+                Base.@_inline_meta
+                (typeof(a) <: Const) ? Enzyme.Compiler.make_zero(Core.Typeof(sprimal), IdDict(), sprimal)::RT : func.val(a.dval[i])
+            end
         end
+    else
+        nothing
+    end
+
+    primal = if EnzymeCore.EnzymeRules.needs_primal(config)
+        sprimal
+    else
+        nothing
     end
 
     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
-    B = batch(Val(EnzymeCore.EnzymeRules.width(config)), RT)
+    B = EnzymeCore.EnzymeRules.needs_primal(config) ? batch(Val(EnzymeCore.EnzymeRules.width(config)), RT) : Nothing
 
-    return EnzymeCore.EnzymeRules.AugmentedReturn{P, B, Nothing}(primal, shadow, tape)
+    return EnzymeCore.EnzymeRules.AugmentedReturn{P, B, Nothing}(primal, shadow, nothing)
 end
 
 function EnzymeCore.EnzymeRules.reverse(config,
-                                        func::EnzymeCore.Const{typeof(Oceananigans.Utils.flattened_unique_values)},
+                                        func::EnzymeCore.Const{typeof(Oceananigans.Models.flattened_unique_values)},
                                          ::Type{<:EnzymeCore.Annotation{RT}},
                                          tape,
                                          a) where RT
