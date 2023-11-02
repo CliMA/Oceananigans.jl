@@ -125,7 +125,7 @@ Base.size(p::Partition) = ranks(p)
 # If a direction has only 1 rank, then it is not partitioned
 validate_partition(x) = ifelse(ranks(x) == 1, nothing, x)
 
-validate_partition(x, y, z) = validate_partition.(x, y, z)
+validate_partition(x, y, z) = map(validate_partition, (x, y, z))
 validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
 
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
