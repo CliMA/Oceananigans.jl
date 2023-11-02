@@ -2,7 +2,7 @@
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "e1b40ebb411bcca21bf3a679da4aa15cc0660357"
+project_hash = "72ed8b1b7715053c6d7b675f75dd867b9f153685"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -533,9 +533,9 @@ version = "2.28.2+0"
 
 [[deps.MicrosoftMPI_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "a7023883872e52bc29bcaac74f19adf39347d2d5"
+git-tree-sha1 = "b01beb91d20b0d1312a9471a36017b5b339d26de"
 uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
-version = "10.1.4+0"
+version = "10.1.4+1"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -761,9 +761,9 @@ version = "0.7.0"
 
 [[deps.Scratch]]
 deps = ["Dates"]
-git-tree-sha1 = "30449ee12237627992a99d5e30ae63e4d78cd24a"
+git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
-version = "1.2.0"
+version = "1.2.1"
 
 [[deps.SeawaterPolynomials]]
 git-tree-sha1 = "958ba75b90c7c8a117d041d33184134201cf8c0f"
