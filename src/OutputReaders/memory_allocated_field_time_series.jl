@@ -48,7 +48,7 @@ function iterations_from_file(file, index_range::UnitRange)
     return all_iterations[index_range]
 end
 
-time_indices(fts::InMemoryFieldTimeSeries) = time_indices(fts.backend.index_range, times)
+time_indices(fts::InMemoryFieldTimeSeries) = time_indices(fts.backend.index_range, fts.times)
 time_indices(::Colon, times) = UnitRange(1, length(times))
 time_indices(index_range, times) = index_range
 
