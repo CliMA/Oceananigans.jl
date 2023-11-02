@@ -61,7 +61,7 @@ Domain partitioning with (4, 1, 1) ranks
 Partition(x)    = Partition(validate_partition(x, nothing, nothing)...)
 Partition(x, y) = Partition(validate_partition(x, y, nothing)...)
 
-Partition(; x = 1, y = 1, z = 1) = Partition(validate_partition(x, y, z)...)
+Partition(; x = nothing, y = nothing, z = nothing) = Partition(validate_partition(x, y, z)...)
 
 Base.show(io::IO, p::Partition) =
     print(io, 
