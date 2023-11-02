@@ -60,4 +60,5 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFieldTimeSeries, path::String, name::String) = nothing
+fill_halo_regions!(fts::OnDiskFieldTimeSeries) = nothing
 

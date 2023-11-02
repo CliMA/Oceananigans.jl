@@ -16,6 +16,7 @@ using Oceananigans.Fields: show_location, interior_view_indices, data_summary, r
 
 using Oceananigans.Fields: boundary_conditions 
 
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
 

@@ -48,6 +48,7 @@ function iterations_from_file(file, index_range::UnitRange)
     return all_iterations[index_range]
 end
 
+time_indices(fts::InMemoryFieldTimeSeries) = time_indices(fts.backend.index_range, times)
 time_indices(::Colon, times) = UnitRange(1, length(times))
 time_indices(index_range, times) = index_range
 
@@ -63,7 +64,7 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
     close(file)
 
     times = fts.times[index_range]
-    indices = time_indices(index_range, times)
+    indices = time_indices(fts)
 
     for (n, time) in zip(indices, times)
         file_index = find_time_index(time, file_times)
@@ -78,5 +79,11 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
     end
 
     return nothing
+end
+
+function fill_halo_regions!(fts::InMemoryFieldTimeSeries)
+    ti = time_indices(fts)
+    fts_tuple = Tuple(fts[n] for n in ti)
+    return fill_halo_regions!(fts_tuple)
 end
 
