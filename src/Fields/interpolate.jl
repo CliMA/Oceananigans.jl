@@ -159,9 +159,9 @@ floats indicating a location between grid points.
 @inline fractional_indices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
 
 @inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
-    ii = fractional_x_index(x, locs, grid)
-    jj = fractional_y_index(y, locs, grid)
-    kk = fractional_z_index(z, locs, grid)
+    ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
+    jj = fractional_y_index(y, (ℓx, ℓy, ℓz), grid)
+    kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return (ii, jj, kk)
 end
 
