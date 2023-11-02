@@ -94,8 +94,8 @@ end
 """
     Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
-and each process is then allocated `nᵢ / W` of the domain.
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`, 
+and each process is then allocated `ϵᵢ / W` of the domain.
 """
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
 
