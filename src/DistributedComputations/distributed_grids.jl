@@ -147,7 +147,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
-                                                                LatitudeLongitude(),
+                                                                LatitudeLongitude(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 nλ, nφ, nz,
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,
@@ -157,7 +157,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                                                 Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                                 (nothing for i=1:12)..., FT(radius))
 
-    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
+    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid, Δλᶜᵃᵃ, Δφᵃᶜᵃ)
 end
 
 """
@@ -248,7 +248,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     precompute_metrics = metrics_precomputed(grid)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
-                                                                LatitudeLongitude(),
+                                                                LatitudeLongitude(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 Nλ, Nφ, Nz,
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,
@@ -258,7 +258,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
                                                                 Δzᵃᵃᶠ, Δzᵃᵃᶜ,
                                                                 (nothing for i=1:12)..., FT(radius))
                                                                 
-    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
+    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid, Δλᶜᵃᵃ, Δφᵃᶜᵃ)
 end
 
 # We _HAVE_ to dispatch individually for all grid types because

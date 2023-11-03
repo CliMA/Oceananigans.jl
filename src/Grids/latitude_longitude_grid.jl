@@ -1,18 +1,31 @@
 using KernelAbstractions: @kernel, @index
 
-""" the classification Type for a LatitudeLongitudeGrid """
-struct LatitudeLongitude end
+""" 
+    LatitudeLongitude
+
+the classification Type for a LatitudeLongitudeGrid. 
+It holds the degree-spacings of the grid which inform the regularity of the grid.
+
+If Δλᶠᵃᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
+If Δφᵃᶠᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
+"""
+struct LatitudeLongitude{LF, PF, LC, PC}
+    Δλᶠᵃᵃ :: LF
+    Δφᵃᶠᵃ :: PF
+    Δλᶜᵃᵃ :: LC
+    Δφᵃᶜᵃ :: PC
+end
 
 const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, Arch} = 
     OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FX, FY, FZ, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, Arch}
             
 const LLG = LatitudeLongitudeGrid
 #                   LatitudeLongitudeGrid{FT, TX, TY, TZ, FX (stretching in x), FY (stretching in y), FZ (stretching in z)}
-const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}}
-const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const XRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Number}}
+const YRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Any, <:Number}}
 const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}, <:Number}
-const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const HRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Number, <:Number}}
+const YNonRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Any, <:AbstractArray}}
 
 const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
 
@@ -138,7 +151,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), Nz, Hz, z,         :z,         architecture)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
-                                                                LatitudeLongitude(),
+                                                                LatitudeLongitude(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 Nλ, Nφ, Nz,
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,
@@ -168,7 +181,7 @@ function with_precomputed_metrics(grid)
     TX, TY, TZ = topology(grid)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture(grid),
-                                                    LatitudeLongitude(),
+                                                    grid.classification,
                                                     Nλ, Nφ, Nz,
                                                     Hλ, Hφ, Hz,
                                                     grid.Lx, grid.Ly, grid.Lz,
@@ -242,9 +255,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
-    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
-    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.classification.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.classification.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ,                longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -284,6 +297,27 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
                                      radius = old_grid.radius)
 
     return new_grid
+end
+
+function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
+    old_properties = (old_grid.λᶜᶜᵃ,  old_grid.λᶠᶜᵃ,  old_grid.λᶜᶠᵃ,  old_grid.λᶠᶠᵃ, 
+                      old_grid.φᶜᶜᵃ,  old_grid.φᶠᶜᵃ,  old_grid.φᶜᶠᵃ,  old_grid.φᶠᶠᵃ, 
+                      old_grid.zᵃᵃᶜ,  old_grid.zᵃᵃᶠ,  old_grid.Δzᵃᵃᶜ, old_grid.Δzᵃᵃᶠ, 
+                      old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, 
+                      old_grid.Δyᶜᶜᵃ, old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ, old_grid.Δyᶠᶠᵃ,                      
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
+
+    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
+
+    TX, TY, TZ = topology(old_grid)
+
+    return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
+                                             old_grid.classification,
+                                             old_grid.Nx, old_grid.Ny, old_grid.Nz,
+                                             old_grid.Hx, old_grid.Hy, old_grid.Hz,
+                                             old_grid.Lx, old_grid.Ly, old_grid.Lz,
+                                             new_properties...,
+                                             old_grid.radius)
 end
 
 #####
@@ -376,7 +410,7 @@ end
 
 function precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᶜᶜᵃ) - 1)
+    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.classification.Δφᵃᶜᵃ) - 1)
     precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ)
     
     return Δyᶠᶜ, Δyᶜᶠ
@@ -392,7 +426,7 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.Δφᶜᶜᵃ.offsets[1] + 1
+    j′ = j + grid.classification.Δφᵃᶜᵃ.offsets[1] + 1
 
     @inbounds begin
         Δyᶜᶠ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
@@ -424,7 +458,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = length(grid.φᶜᶜᵃ)
     else
         offsets     = (grid.λᶜᶜᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
-        metric_size = (length(grid.λᶜᶜᵃ), length(grid.φᶜᶜᵃ))
+        metric_size = (length(grid.λᶜᶜᵃ)   , length(grid.φᶜᶜᵃ))
     end
 
     for metric in grid_metrics
@@ -437,10 +471,10 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ = FT(0.0)
         Δyᶜᶠ = FT(0.0)
     else
-        parentC = zeros(FT, length(grid.φᶜᶜᵃ))
-        parentF = zeros(FT, length(grid.φᶜᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.φᶜᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.φᶜᶜᵃ.offsets[1])
+        parentC = zeros(FT, length(grid.classification.Δφᵃᶜᵃ))
+        parentF = zeros(FT, length(grid.classification.Δφᵃᶜᵃ))
+        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.classification.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.classification.Δφᵃᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
@@ -571,13 +605,13 @@ const C = Center
 ##### Grid spacings in λ, φ (in degrees)
 #####
 
-@inline λspacings(grid::LLG, ℓx::C; with_halos=false) = with_halos ? grid.Δλᶜᵃᵃ : view(grid.Δλᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
-@inline λspacings(grid::LLG, ℓx::F; with_halos=false) = with_halos ? grid.Δλᶠᵃᵃ : view(grid.Δλᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
+@inline λspacings(grid::LLG, ℓx::C; with_halos=false) = with_halos ? grid.classification.Δλᶜᵃᵃ : view(grid.classification.Δλᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
+@inline λspacings(grid::LLG, ℓx::F; with_halos=false) = with_halos ? grid.classification.Δλᶠᵃᵃ : view(grid.classification.Δλᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
 @inline λspacings(grid::XRegularLLG, ℓx::C; with_halos=false) = grid.λᶠᶠᵃ[2] - grid.λᶠᶠᵃ[1]
 @inline λspacings(grid::XRegularLLG, ℓx::F; with_halos=false) = grid.λᶜᶜᵃ[2] - grid.λᶜᶜᵃ[1]
 
-@inline φspacings(grid::LLG, ℓy::C; with_halos=false) = with_halos ? grid.Δφᵃᶜᵃ : view(grid.Δφᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline φspacings(grid::LLG, ℓy::F; with_halos=false) = with_halos ? grid.Δφᵃᶠᵃ : view(grid.Δφᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline φspacings(grid::LLG, ℓy::C; with_halos=false) = with_halos ? grid.classification.Δφᵃᶜᵃ : view(grid.classification.Δφᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline φspacings(grid::LLG, ℓy::F; with_halos=false) = with_halos ? grid.classification.Δφᵃᶠᵃ : view(grid.classification.Δφᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 @inline φspacings(grid::YRegularLLG, ℓy::C; with_halos=false) = grid.φᶠᶠᵃ[2] - grid.φᶠᶠᵃ[1]
 @inline φspacings(grid::YRegularLLG, ℓy::F; with_halos=false) = grid.φᶜᶜᵃ[2] - grid.φᶜᶜᵃ[1]
 
