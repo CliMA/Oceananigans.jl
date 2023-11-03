@@ -4,7 +4,7 @@ using KernelAbstractions: @kernel, @index
     LatitudeLongitude
 
 the classification Type for a LatitudeLongitudeGrid. 
-It holds the degree-spacings of the grid which inform the regularity of the grid.
+It holds the degree-spacings which inform the regularity of the grid.
 
 If Δλᶠᵃᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
 If Δφᵃᶠᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
