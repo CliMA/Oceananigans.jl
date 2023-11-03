@@ -58,12 +58,11 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     gravity    = model.free_surface.gravitational_acceleration
     wave_speed = sqrt(gravity * grid.Lz)                                 
     
-    CUDA.allowscalar(true)
-    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᶜᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
-    minimum_Δy = grid.radius * deg2rad(minimum(grid.Δφᵃᶜᵃ))
-    CUDA.allowscalar(false)
+    minimum_Δx = minimum_xspacing(grid)
+    minimum_Δy = minimum_yspacing(grid)
 
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
+    
     # Δt based on wave propagation time scale
     Δt = 0.2 * wave_time_scale
     Δt = all_reduce(min, Δt, architecture(grid))

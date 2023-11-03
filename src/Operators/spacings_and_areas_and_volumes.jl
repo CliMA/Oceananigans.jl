@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: Center, Face, LLGWithoutMetrics
 
 const RG   = RectilinearGrid
 const RGX  = XRegularRG
@@ -146,6 +146,14 @@ end
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
+
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶜᶜᵃ[j] - grid.φᶜᶜᵃ[j-1])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i])
+
 #####
 #####
 ##### Areas!!
@@ -180,6 +188,11 @@ end
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
+
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
 

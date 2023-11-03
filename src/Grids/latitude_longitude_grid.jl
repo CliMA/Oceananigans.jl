@@ -491,10 +491,10 @@ coordinates(::LatitudeLongitudeGrid) = (:λᶠᶠᵃ, :λᶜᶜᵃ, :φᶠᶠᵃ
 ηname(::LLG) = :φ
 rname(::LLG) = :z
 
-@inline λnode(i, grid::LLG, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
-@inline λnode(i, grid::LLG, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
-@inline φnode(j, grid::LLG, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
-@inline φnode(j, grid::LLG, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
+@inline λnode(i, grid::LLG, ::Center) = @inbounds grid.λᶜᶜᵃ[i]
+@inline λnode(i, grid::LLG, ::Face)   = @inbounds grid.λᶠᶠᵃ[i]
+@inline φnode(j, grid::LLG, ::Center) = @inbounds grid.φᶜᶜᵃ[j]
+@inline φnode(j, grid::LLG, ::Face)   = @inbounds grid.φᶠᶠᵃ[j]
 @inline znode(k, grid::LLG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::LLG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
 
