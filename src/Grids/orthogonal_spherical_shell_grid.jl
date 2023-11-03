@@ -59,7 +59,7 @@ struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch
                                              Δxᶜᶜᵃ :: FX,  Δxᶠᶜᵃ :: FX, Δxᶜᶠᵃ :: FX, Δxᶠᶠᵃ :: FX,
                                              Δyᶜᶜᵃ :: FY,  Δyᶜᶠᵃ :: FY, Δyᶠᶜᵃ :: FY, Δyᶠᶠᵃ :: FY, 
                                              Azᶜᶜᵃ :: FX,  Azᶠᶜᵃ :: FX, Azᶜᶠᵃ :: FX, Azᶠᶠᵃ :: FX,
-                                             radius :: FT) where {TX, TY, TZ, FT, C, X, Y, Z, FX, FY, FZ, M, MY, Arch} =
+                                             radius :: FT) where {TX, TY, TZ, FT, C, X, Y, Z, FX, FY, FZ, Arch} =
         new{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}(architecture,
                                                           classification,
                                                           Nx, Ny, Nz,
