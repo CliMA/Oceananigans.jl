@@ -337,7 +337,7 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.Δλᵃᶜᵃ.offsets[1]
+    i′ = i + grid.λᶜᶜᵃ.offsets[1]
     j′ = j + grid.φᶜᶜᵃ.offsets[1] + 1
 
     @inbounds begin
