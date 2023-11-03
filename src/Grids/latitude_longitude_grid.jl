@@ -174,10 +174,10 @@ function with_precomputed_metrics(grid)
                                                     grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                                                     grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
                                                     grid.zᵃᵃᶜ, grid.zᵃᵃᶠ,
-                                                    grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ,
-                                                    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, 
+                                                    grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
+                                                    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,  
                                                     Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ,
-                                                    Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
+                                                    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, grid.radius)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
@@ -284,14 +284,14 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     return new_grid
 end
-
 # TODO Change this!!
 function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
-    old_properties = (old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,  old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
-                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
-                      old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
+    old_properties = (old_grid.λᶜᶜᵃ,  old_grid.λᶠᶜᵃ,  old_grid.λᶜᶠᵃ,  old_grid.λᶠᶠᵃ, 
+                      old_grid.φᶜᶜᵃ,  old_grid.φᶠᶜᵃ,  old_grid.φᶜᶠᵃ,  old_grid.φᶠᶠᵃ, 
+                      old_grid.zᵃᵃᶜ,  old_grid.zᵃᵃᶠ,  old_grid.Δzᵃᵃᶜ, old_grid.Δzᵃᵃᶠ, 
+                      old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, 
+                      old_grid.Δyᶜᶜᵃ, old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ, old_grid.Δyᶠᶠᵃ,                      
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
 
     new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
 
