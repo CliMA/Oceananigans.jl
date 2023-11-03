@@ -8,9 +8,12 @@ using KernelAbstractions
 using StructArrays
 
 using Oceananigans.Grids
+using Oceananigans.ImmersedBoundaries
+
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
-using Oceananigans.ImmersedBoundaries
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
+using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location

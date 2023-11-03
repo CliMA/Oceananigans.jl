@@ -1,9 +1,6 @@
 using Oceananigans.Utils: instantiate 
 using Oceananigans.Models: total_velocities
 
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid
-
 #####
 ##### Boundary conditions for Lagrangian particles
 #####
