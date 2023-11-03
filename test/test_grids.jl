@@ -443,7 +443,7 @@ function test_basic_lat_lon_bounded_domain(FT)
 
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
-    
+
     @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
@@ -674,7 +674,7 @@ end
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
 
-    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSpherePanelGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -887,7 +887,7 @@ end
         end
 
         # Testing show function
-        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = ConformalCubedSpherePanelGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
             show(grid); println()
@@ -906,7 +906,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ[1:Nx, 1:Ny]) ≈ 4π * grid.radius^2 / 6
@@ -916,16 +916,16 @@ end
 
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
             end
         end

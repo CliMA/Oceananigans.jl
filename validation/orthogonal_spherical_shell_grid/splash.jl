@@ -1,12 +1,12 @@
 using Oceananigans
-using.Oceananigans.Grids: conformal_cubed_sphere_panel
+using.Oceananigans.Grids: ConformalCubedSpherePanelGrid
 using Oceananigans.Units
 
 using Printf, Rotations
 
 Nx, Ny, Nz = 64, 64, 2
 
-grid = conformal_cubed_sphere_panel(size = (Nx, Ny, Nz),
+grid = ConformalCubedSpherePanelGrid(size = (Nx, Ny, Nz),
                                     z = (-1000, 0),
                                     topology=(Bounded, Bounded, Bounded),
                                     rotation = RotY(π/2))

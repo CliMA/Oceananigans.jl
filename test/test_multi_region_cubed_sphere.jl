@@ -142,7 +142,7 @@ end
     cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
     for panel in 1:6
-        grid = conformal_cubed_sphere_panel(cs32_filepath; panel, Nz, z)
+        grid = ConformalCubedSpherePanelGrid(cs32_filepath; panel, Nz, z)
         @test grid isa OrthogonalSphericalShellGrid
     end
 
