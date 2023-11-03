@@ -16,8 +16,8 @@ const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distribut
 const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
     RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, FX, FY} = 
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, FX, FY, <:Distributed} where {FT, TX, TY, TZ, FZ, FX, FY}
 
 function local_size(p::Partition, topo, ranks, global_sz)
     # TODO: check correctness
@@ -143,7 +143,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                                                 λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
                                                                 φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
                                                                 zᵃᵃᶜ, zᵃᵃᶠ,
-                                                                Δzᵃᵃᶠ, Δzᵃᵃᶜ,
+                                                                Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                                 (nothing for i=1:12)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
