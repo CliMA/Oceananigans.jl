@@ -13,6 +13,8 @@ const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:A
 const HNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
 const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 
+const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
+
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
 """
@@ -142,7 +144,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                                                 λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
                                                                 φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
                                                                 zᵃᵃᶜ, zᵃᵃᶠ,
-                                                                Δλᶜᵃᵃ, Δλᶠᵃᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ,
+                                                                Δzᵃᵃᶠ, Δzᵃᵃᶜ,
                                                                 (nothing for i=1:12)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
@@ -172,8 +174,6 @@ function with_precomputed_metrics(grid)
                                                     grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                                                     grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
                                                     grid.zᵃᵃᶜ, grid.zᵃᵃᶠ,
-                                                    grid.Δλᶜᵃᵃ, grid.Δλᶠᵃᵃ, 
-                                                    grid.Δφᵃᶜᵃ, grid.Δφᵃᶠᵃ, 
                                                     grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, 
                                                     Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ,
@@ -287,8 +287,7 @@ end
 
 # TODO Change this!!
 function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
-    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
-                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
+    old_properties = (old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,  old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
                       old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
@@ -313,33 +312,22 @@ end
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.Δλᶠᶠᵃ[i])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.Δλᶜᶜᵃ[i])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.Δλᶠᶠᵃ[i])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.Δλᶜᶜᵃ[i])
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
-@inline Azᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-@inline Δxᶜᶠᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
-@inline Δxᶠᶠᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-@inline Δxᶜᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
-@inline Δyᶜᶠᵃ(i, j, k, grid::YRegularLLG) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
-@inline Δyᶠᶜᵃ(i, j, k, grid::YRegularLLG) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
-@inline Azᶠᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶜᶜᵃ[j] - grid.φᶜᶜᵃ[j-1])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i])
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
 #####
 ##### Utilities to precompute metrics 
 #####
 
-@inline metrics_precomputed(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, Nothing}) = false 
+@inline metrics_precomputed(::LLGWithoutMetrics)     = false 
 @inline metrics_precomputed(::LatitudeLongitudeGrid) = true
 
 #####
@@ -604,26 +592,26 @@ const C = Center
 
 @inline λspacings(grid::LLG, ℓx::C; with_halos=false) = with_halos ? grid.Δλᶜᵃᵃ : view(grid.Δλᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
 @inline λspacings(grid::LLG, ℓx::F; with_halos=false) = with_halos ? grid.Δλᶠᵃᵃ : view(grid.Δλᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
-@inline λspacings(grid::XRegularLLG, ℓx::C; with_halos=false) = grid.Δλᶜᵃᵃ
-@inline λspacings(grid::XRegularLLG, ℓx::F; with_halos=false) = grid.Δλᶠᵃᵃ
+@inline λspacings(grid::XRegularLLG, ℓx::C; with_halos=false) = grid.λᶠᶠᵃ[2] - grid.λᶠᶠᵃ[1]
+@inline λspacings(grid::XRegularLLG, ℓx::F; with_halos=false) = grid.λᶜᶜᵃ[2] - grid.λᶜᶜᵃ[1]
 
 @inline φspacings(grid::LLG, ℓy::C; with_halos=false) = with_halos ? grid.Δφᵃᶜᵃ : view(grid.Δφᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 @inline φspacings(grid::LLG, ℓy::F; with_halos=false) = with_halos ? grid.Δφᵃᶠᵃ : view(grid.Δφᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline φspacings(grid::YRegularLLG, ℓy::C; with_halos=false) = grid.Δφᵃᶜᵃ
-@inline φspacings(grid::YRegularLLG, ℓy::F; with_halos=false) = grid.Δφᵃᶠᵃ
+@inline φspacings(grid::YRegularLLG, ℓy::C; with_halos=false) = grid.φᶠᶠᵃ[2] - grid.φᶠᶠᵃ[1]
+@inline φspacings(grid::YRegularLLG, ℓy::F; with_halos=false) = grid.φᶜᶜᵃ[2] - grid.φᶜᶜᵃ[1]
 
 @inline λspacings(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λspacings(grid, ℓx; with_halos)
 @inline φspacings(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = φspacings(grid, ℓy; with_halos)
 
-@inline λspacing(i, grid::LLG, ::C) = @inbounds grid.Δλᶜᵃᵃ[i]
-@inline λspacing(i, grid::LLG, ::F) = @inbounds grid.Δλᶠᵃᵃ[i]
-@inline λspacing(i, grid::XRegularLLG, ::C) = grid.Δλᶜᵃᵃ
-@inline λspacing(i, grid::XRegularLLG, ::F) = grid.Δλᶠᵃᵃ
+@inline λspacing(i, grid::LLG, ::C) = @inbounds grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]
+@inline λspacing(i, grid::LLG, ::F) = @inbounds grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]
+@inline λspacing(i, grid::XRegularLLG, ::C) = grid.λᶠᶠᵃ[2] - grid.λᶠᶠᵃ[1]
+@inline λspacing(i, grid::XRegularLLG, ::F) = grid.λᶜᶜᵃ[2] - grid.λᶜᶜᵃ[1]
 
-@inline φspacing(j, grid::LLG, ::C) = @inbounds grid.Δφᵃᶜᵃ[j]
-@inline φspacing(j, grid::LLG, ::F) = @inbounds grid.Δφᵃᶠᵃ[j]
-@inline φspacing(j, grid::YRegularLLG, ::C) = grid.Δφᵃᶜᵃ
-@inline φspacing(j, grid::YRegularLLG, ::F) = grid.Δφᵃᶠᵃ
+@inline φspacing(j, grid::LLG, ::C) = @inbounds grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i]
+@inline φspacing(j, grid::LLG, ::F) = @inbounds grid.φᶜᶜᵃ[i]   - grid.φᶜᶜᵃ[i-1]
+@inline φspacing(j, grid::YRegularLLG, ::C) = grid.φᶠᶠᵃ[2] - grid.φᶠᶠᵃ[1]
+@inline φspacing(j, grid::YRegularLLG, ::F) = grid.φᶜᶜᵃ[2] - grid.φᶜᶜᵃ[1]
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
