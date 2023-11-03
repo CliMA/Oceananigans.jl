@@ -154,7 +154,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     end
 
     any(any.(isnan, λS)) &&
-        @warn "OrthogonalSphericalShellGrid contains a grid point at a pole whose longitude is undefined (NaN)."
+        @warn "ConformalCubedSpherePanelGrid contains a grid point at a pole whose longitude is undefined (NaN)."
 
     ## Grid metrics
 
