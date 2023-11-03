@@ -538,10 +538,6 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     return grid
 end
 
-# Convenience constructor
-OrthogonalSphericalShellGrid(c::ConformalCubedSpherePanel, arch, FT; kwargs...) = 
-    ConformalCubedSpherePanelGrid(arch, FT; ξ = c.ξ, η = c.η, rotation = c.rotation, kwargs...)
-
 """
     function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
