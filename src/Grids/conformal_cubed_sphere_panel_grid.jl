@@ -1,4 +1,4 @@
-""" the classification Type for the ConformalCubedSpherePanelGrid. It holds the native 'cartesian' coordinates and the rotation of the panel """
+""" the classification Type for a ConformalCubedSpherePanelGrid. It holds the native cartesian coordinates and the rotation of the panel """
 struct ConformalCubedSpherePanel{E, X, R}
     η :: E
     ξ :: X
