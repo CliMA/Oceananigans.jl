@@ -245,9 +245,6 @@ function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topo
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
     @assert -90 <= φ₁ <= φ₂ <= 90
-
-    (φ₁ == -90 || φ₂ == 90) &&
-        @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
     
     if !isnothing(topology)
         TX, TY, TZ = topology
