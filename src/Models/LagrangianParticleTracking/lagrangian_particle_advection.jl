@@ -128,7 +128,7 @@ end
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
 @inline x_metric(i, j, grid::RectilinearGrid) = 1
-@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
+@inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᶜᶜᵃ[j])) * FT(360 / 2π)
 
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)

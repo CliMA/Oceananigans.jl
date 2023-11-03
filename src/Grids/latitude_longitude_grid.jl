@@ -334,10 +334,10 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᶜᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.λᶜᶜᵃ), length(grid.φᶜᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶜᵃ) - 1 
+@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᶜᶜᵃ) - 1 
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
