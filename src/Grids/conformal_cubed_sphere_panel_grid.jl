@@ -524,6 +524,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
+    # Does this even make sense??
     Lx = convert(FT, 90)
     Ly = convert(FT, 90)
 
