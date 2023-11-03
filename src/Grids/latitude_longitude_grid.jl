@@ -6,8 +6,8 @@ using KernelAbstractions: @kernel, @index
 the classification Type for a LatitudeLongitudeGrid. 
 It holds the degree-spacings which inform the regularity of the grid.
 
-If Δλᶠᵃᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
-If Δφᵃᶠᵃ is a `Number` the λ direction has a constant spacing, otherwise the λ direction is stretched.
+If Δλᶠᵃᵃ is a `Number` the λ direction has a constant spacing, otherwise it is stretched.
+If Δφᵃᶠᵃ is a `Number` the φ direction has a constant spacing, otherwise it is stretched.
 """
 struct LatitudeLongitude{LF, PF, LC, PC}
     Δλᶠᵃᵃ :: LF
