@@ -9,14 +9,13 @@ dd = DataDep("cubed_sphere_32_grid",
 
 DataDeps.register(dd)
 
-
 # Trigger datadep download to avoid race condition in CI.
 # See: https://github.com/oxinabox/DataDeps.jl/issues/141
 datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new-regression-Float64/data_for_regression_tests/"
+path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
 
 dh = DataDep("regression_test_data",
     "Data for Regression tests",
