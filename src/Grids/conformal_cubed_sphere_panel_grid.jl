@@ -797,7 +797,6 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     radius)
 end
 
-
 function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
