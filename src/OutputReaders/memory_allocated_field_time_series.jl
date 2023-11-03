@@ -52,7 +52,7 @@ time_indices(fts::InMemoryFieldTimeSeries) = time_indices(fts.backend.index_rang
 time_indices(::Colon, times) = UnitRange(1, length(times))
 time_indices(index_range, times) = index_range
 
-find_time_index(time::AbstractFloat, file_times) = findfirst(t -> t ≈ time, file_times)
+find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, file_times)
 find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
