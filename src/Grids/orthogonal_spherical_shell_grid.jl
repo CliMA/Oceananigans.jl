@@ -455,7 +455,7 @@ julia> using Oceananigans
 
 julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
 
-julia> yspacings(grid, Center(), Center(), Center())
+julia> yspacings(grid, Center(), Center(), Center())    
 222389.85328911748
 
 ```

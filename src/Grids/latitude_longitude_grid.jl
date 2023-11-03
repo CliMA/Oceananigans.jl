@@ -315,7 +315,7 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.λᶜᶜᵃ), length(grid.φᶜᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.λᶜᶜᵃ) - 1, length(grid.φᶜᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
 @inline metric_worksize(grid::XRegularLLG)  = length(grid.φᶜᶜᵃ) - 1 
@@ -337,7 +337,7 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.λᶜᶜᵃ.offsets[1]
+    i′ = i + grid.λᶜᶜᵃ.offsets[1] + 1
     j′ = j + grid.φᶜᶜᵃ.offsets[1] + 1
 
     @inbounds begin
@@ -424,7 +424,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = length(grid.φᶜᶜᵃ)
     else
         offsets     = (grid.λᶜᶜᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
-        metric_size = (length(grid.λᶜᶜᵃ)   , length(grid.φᶜᶜᵃ))
+        metric_size = (length(grid.λᶜᶜᵃ), length(grid.φᶜᶜᵃ))
     end
 
     for metric in grid_metrics
