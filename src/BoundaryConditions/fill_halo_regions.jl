@@ -51,7 +51,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     arch = architecture(grid)
 
     fill_halos!, bcs  = permute_boundary_conditions(boundary_conditions)
-    number_of_tasks = length(fill_halos!)
+    number_of_tasks   = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
@@ -84,20 +84,23 @@ function permute_boundary_conditions(boundary_conditions)
     split_x_boundaries = split_boundary(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
     split_y_boundaries = split_boundary(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
 
-    fill_x_side_halo! = split_x_boundaries ? (fill_west_halo!,  fill_east_halo!)  : tuple(fill_west_and_east_halo!)
-    fill_y_side_halo! = split_y_boundaries ? (fill_south_halo!, fill_north_halo!) : tuple(fill_south_and_north_halo!)
-
     west_bc  = extract_west_bc(boundary_conditions)
     east_bc  = extract_east_bc(boundary_conditions)
     south_bc = extract_south_bc(boundary_conditions)
     north_bc = extract_north_bc(boundary_conditions)
+
+    # This causes an error, it's a list of splatted tuples of kernel objects (fill_west_and_east_halo!, fill_south_and_north_halo!, etc.)
+    # TODO: eliminate splat (...) operator, make this a type stable list
+    #=
+    fill_x_side_halo! = split_x_boundaries ? (fill_west_halo!,  fill_east_halo!)  : tuple(fill_west_and_east_halo!)
+    fill_y_side_halo! = split_y_boundaries ? (fill_south_halo!, fill_north_halo!) : tuple(fill_south_and_north_halo!)
 
     x_side_bcs = split_x_boundaries ? (west_bc, east_bc)   : tuple(west_bc)
     y_side_bcs = split_y_boundaries ? (south_bc, north_bc) : tuple(south_bc)
 
     x_sides = split_x_boundaries ? (:west, :east)   : tuple(:west_and_east)
     y_sides = split_y_boundaries ? (:south, :north) : tuple(:south_and_north)
-
+    
     fill_halos! = [
         fill_x_side_halo!...,
         fill_y_side_halo!...,
@@ -115,7 +118,30 @@ function permute_boundary_conditions(boundary_conditions)
         y_side_bcs...,
         extract_bottom_bc(boundary_conditions)
     ]
+    =#
 
+    if split_x_boundaries
+        if split_y_boundaries
+            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west, :east, :south, :north, :bottom_and_top]
+            bcs_array   = [west_bc, east_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+        else
+            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west, :east, :south_and_north, :bottom_and_top]
+            bcs_array   = [west_bc, east_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+        end
+    else
+        if split_y_boundaries
+            fill_halos! = [fill_west_and_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west_and_east, :south, :north, :bottom_and_top]
+            bcs_array   = [west_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
+        else
+            fill_halos! = [fill_west_and_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
+            sides       = [:west_and_east, :south_and_north, :bottom_and_top]
+            bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
+        end
+    end
+    
     perm = sortperm(bcs_array, lt=fill_first)
     fill_halos! = fill_halos![perm]
     sides = sides[perm]
