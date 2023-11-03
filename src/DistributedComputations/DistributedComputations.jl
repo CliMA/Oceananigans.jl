@@ -1,7 +1,8 @@
 module DistributedComputations
 
 export
-    Distributed, Partition, child_architecture, reconstruct_global_grid, 
+    Distributed, Partition, Equal, Fractional, 
+    child_architecture, reconstruct_global_grid, 
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 
