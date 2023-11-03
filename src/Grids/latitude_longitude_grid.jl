@@ -2,18 +2,18 @@ using KernelAbstractions: @kernel, @index
 
 struct LatitudeLongitude end
 
-const LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, FX, FY, Arch} = 
-    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FZ, FX, FY, Arch} where {FT, TX, TY, TZ, FZ, FX, FY, Arch}
+const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, Arch} = 
+    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FX, FY, FZ, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, Arch}
             
 const LLG = LatitudeLongitudeGrid
-#                   LatitudeLongitudeGrid{FT,    TX,     TY,    TZ,    FZ (stretching in z), FX (stretching in x), FY (stretching in y)}
-const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}}
-const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+#                   LatitudeLongitudeGrid{FT, TX, TY, TZ, FX (stretching in x), FY (stretching in y), FZ (stretching in z)}
+const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}}
+const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}, <:Number}
-const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
+const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
+const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
 
 regular_dimensions(::ZRegularLLG) = tuple(3)
 

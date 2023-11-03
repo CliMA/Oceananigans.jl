@@ -9,7 +9,7 @@ using Adapt: adapt_structure
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
                                     
-struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FZ, X, Y, Z, M, MY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     classification :: C
     Nx :: Int
@@ -34,18 +34,18 @@ struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FZ, X, Y, Z, M, MY, Arch}
     # Spacings
     Δzᵃᵃᶜ :: FZ
     Δzᵃᵃᶠ :: FZ
-    Δxᶜᶜᵃ :: M
-    Δxᶠᶜᵃ :: M
-    Δxᶜᶠᵃ :: M
-    Δxᶠᶠᵃ :: M
-    Δyᶜᶜᵃ :: MY
-    Δyᶜᶠᵃ :: MY
-    Δyᶠᶜᵃ :: MY
-    Δyᶠᶠᵃ :: MY
-    Azᶜᶜᵃ :: M
-    Azᶠᶜᵃ :: M
-    Azᶜᶠᵃ :: M
-    Azᶠᶠᵃ :: M
+    Δxᶜᶜᵃ :: FX
+    Δxᶠᶜᵃ :: FX
+    Δxᶜᶠᵃ :: FX
+    Δxᶠᶠᵃ :: FX
+    Δyᶜᶜᵃ :: FY
+    Δyᶜᶠᵃ :: FY
+    Δyᶠᶜᵃ :: FY
+    Δyᶠᶠᵃ :: FY
+    Azᶜᶜᵃ :: FX
+    Azᶠᶜᵃ :: FX
+    Azᶜᶠᵃ :: FX
+    Azᶠᶠᵃ :: FX
     radius :: FT
 
     OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
@@ -56,21 +56,21 @@ struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FZ, X, Y, Z, M, MY, Arch}
                                               λᶜᶜᵃ :: X,   λᶠᶜᵃ :: X,   λᶜᶠᵃ :: X,   λᶠᶠᵃ :: X,
                                               φᶜᶜᵃ :: Y,   φᶠᶜᵃ :: Y,   φᶜᶠᵃ :: Y,   φᶠᶠᵃ :: Y,  zᵃᵃᶜ :: Z,   zᵃᵃᶠ :: Z,
                                              Δzᵃᵃᶜ :: FZ, Δzᵃᵃᶠ :: FZ,
-                                             Δxᶜᶜᵃ :: M,  Δxᶠᶜᵃ :: M,  Δxᶜᶠᵃ :: M,  Δxᶠᶠᵃ :: M,
-                                             Δyᶜᶜᵃ :: MY, Δyᶜᶠᵃ :: MY, Δyᶠᶜᵃ :: MY, Δyᶠᶠᵃ :: MY,
-                                             Azᶜᶜᵃ :: M,  Azᶠᶜᵃ :: M,  Azᶜᶠᵃ :: M,  Azᶠᶠᵃ :: M,
+                                             Δxᶜᶜᵃ :: FX,  Δxᶠᶜᵃ :: FX, Δxᶜᶠᵃ :: FX, Δxᶠᶠᵃ :: FX,
+                                             Δyᶜᶜᵃ :: FY,  Δyᶜᶠᵃ :: FY, Δyᶠᶜᵃ :: FY, Δyᶠᶠᵃ :: FY, 
+                                             Azᶜᶜᵃ :: FX,  Azᶠᶜᵃ :: FX, Azᶜᶠᵃ :: FX, Azᶠᶠᵃ :: FX,
                                              radius :: FT) where {TX, TY, TZ, FT, C, X, Y, Z, FX, FY, FZ, M, MY, Arch} =
-        new{FT, C, TX, TY, TZ, FZ, X, Y, Z, M, MY, Arch}(architecture,
-                                                         classification,
-                                                         Nx, Ny, Nz,
-                                                         Hx, Hy, Hz,
-                                                         Lx, Ly, Lz,
-                                                         λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                                         φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-                                                         Δzᵃᵃᶜ, Δzᵃᵃᶠ,
-                                                         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                         Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
-                                                         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+        new{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}(architecture,
+                                                          classification,
+                                                          Nx, Ny, Nz,
+                                                          Hx, Hy, Hz,
+                                                          Lx, Ly, Lz,
+                                                          λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                                                          φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                                          Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                          Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                          Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 const OSSG = OrthogonalSphericalShellGrid

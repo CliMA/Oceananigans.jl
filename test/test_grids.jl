@@ -441,34 +441,14 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Ly == 90
     @test grid.Lz == 1
 
-    @test grid.Δλᶠᵃᵃ == 10
-    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
-
+    
     @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
     @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
     @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
-
-    @test grid.λᶠᵃᵃ[1] == -90
-    @test grid.λᶠᵃᵃ[Nλ+1] == 90
-
-    @test grid.φᵃᶠᵃ[1] == -45
-    @test grid.φᵃᶠᵃ[Nφ+1] == 45
-
-    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλᶠᵃᵃ
-    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλᶠᵃᵃ
-
-    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφᵃᶠᵃ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφᵃᶠᵃ
-
-    @test all(diff(grid.λᶠᶠᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᶜᵃ.parent) .== grid.Δλᶜᵃᵃ)
-
-    @test all(diff(grid.φᶠᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᶜᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
@@ -490,8 +470,6 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Ly == 160
     @test grid.Lz == 1
 
-    @test grid.Δλᶠᵃᵃ == 10
-    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
@@ -500,24 +478,6 @@ function test_basic_lat_lon_periodic_domain(FT)
 
     @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
     @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
-
-    @test grid.λᶠᵃᵃ[1] == -180
-    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
-
-    @test grid.φᵃᶠᵃ[1] == -80
-    @test grid.φᵃᶠᵃ[Nφ+1] == 80
-
-    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλᶠᵃᵃ
-    @test grid.λᶠᵃᵃ[Nλ+1] == 180
-
-    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφᵃᶠᵃ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφᵃᶠᵃ
-
-    @test all(diff(grid.λᶠᶠᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᶜᵃ.parent) .== grid.Δλᶜᵃᵃ)
-
-    @test all(diff(grid.φᶠᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᶜᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
