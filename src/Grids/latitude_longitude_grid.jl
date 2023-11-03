@@ -284,7 +284,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     return new_grid
 end
-# TODO Change this!!
+
 function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.λᶜᶜᵃ,  old_grid.λᶠᶜᵃ,  old_grid.λᶜᶠᵃ,  old_grid.λᶠᶠᵃ, 
                       old_grid.φᶜᶜᵃ,  old_grid.φᶠᶜᵃ,  old_grid.φᶜᶠᵃ,  old_grid.φᶠᶠᵃ, 
@@ -439,11 +439,11 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     arch = grid.architecture
     
     if grid isa XRegularLLG
-        offsets     = grid.φᵃᶜᵃ.offsets[1]
-        metric_size = length(grid.φᵃᶜᵃ)
+        offsets     = grid.φᶜᶜᵃ.offsets[1]
+        metric_size = length(grid.φᶜᶜᵃ)
     else
-        offsets     = (grid.Δλᶜᶜᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
-        metric_size = (length(grid.Δλᶜᶜᵃ)   , length(grid.φᶜᶜᵃ))
+        offsets     = (grid.λᶜᶜᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
+        metric_size = (length(grid.λᶜᶜᵃ)   , length(grid.φᶜᶜᵃ))
     end
 
     for metric in grid_metrics
@@ -456,10 +456,10 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ = FT(0.0)
         Δyᶜᶠ = FT(0.0)
     else
-        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        parentC = zeros(FT, length(grid.φᶜᶜᵃ))
+        parentF = zeros(FT, length(grid.φᶜᶜᵃ))
+        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.φᶜᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.φᶜᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
