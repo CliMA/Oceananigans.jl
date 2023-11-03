@@ -2,13 +2,14 @@ using KernelAbstractions: @kernel, @index
 
 struct LatitudeLongitude end
 
-const LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, M, MY, Arch} = 
-    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FZ, M, MY, Arch} where {FT, TX, TY, TZ, FZ, M, MY, Arch}
+const LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, FX, FY, Arch} = 
+    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FZ, FX, FY, Arch} where {FT, TX, TY, TZ, FZ, FX, FY, Arch}
             
 const LLG = LatitudeLongitudeGrid
+#                   LatitudeLongitudeGrid{FT,    TX,     TY,    TZ,    FZ (stretching in z), FX (stretching in x), FY (stretching in y)}
 const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}}
 const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:<:Number}
+const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
 const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}, <:Number}
 const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 
