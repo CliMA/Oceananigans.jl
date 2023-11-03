@@ -2,15 +2,14 @@ using KernelAbstractions: @kernel, @index
 
 struct LatitudeLongitude end
 
-const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, M, MY, R, FR, Arch} = 
-    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FX, FY, FZ, M, MY, R, FR, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, M, MY, R, FR, Arch}
+const LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, M, MY, Arch} = 
+    OrthogonalSphericalShellGrid{FT, <:LatitudeLongitude, TX, TY, TZ, FZ, M, MY, Arch} where {FT, TX, TY, TZ, FZ, M, MY, Arch}
             
 const LLG = LatitudeLongitudeGrid
-const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
-const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
-const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const HNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
+const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}}
+const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:<:Number}
+const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractArray{<:Any, 1}, <:Number}
 const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 
 const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
@@ -568,9 +567,9 @@ const C = Center
 @inline xspacings(grid::HRegularLLG, ℓx::F, ℓy::F;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
     view(grid.Δxᶠᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline yspacings(grid::YNonRegularLLG, ℓx::C, ℓy::F;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
+@inline yspacings(grid::LLG, ℓx::C, ℓy::F;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
     view(grid.Δyᶜᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline yspacings(grid::YNonRegularLLG, ℓx::F,   ℓy::C; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
+@inline yspacings(grid::LLG, ℓx::F,   ℓy::C; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
     view(grid.Δyᶠᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
 @inline yspacings(grid::YRegularLLG, ℓx, ℓy; with_halos=false) = yspacings(grid, ℓy; with_halos)
@@ -605,13 +604,8 @@ const C = Center
 
 @inline λspacing(i, grid::LLG, ::C) = @inbounds grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]
 @inline λspacing(i, grid::LLG, ::F) = @inbounds grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]
-@inline λspacing(i, grid::XRegularLLG, ::C) = grid.λᶠᶠᵃ[2] - grid.λᶠᶠᵃ[1]
-@inline λspacing(i, grid::XRegularLLG, ::F) = grid.λᶜᶜᵃ[2] - grid.λᶜᶜᵃ[1]
-
 @inline φspacing(j, grid::LLG, ::C) = @inbounds grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i]
 @inline φspacing(j, grid::LLG, ::F) = @inbounds grid.φᶜᶜᵃ[i]   - grid.φᶜᶜᵃ[i-1]
-@inline φspacing(j, grid::YRegularLLG, ::C) = grid.φᶠᶠᵃ[2] - grid.φᶠᶠᵃ[1]
-@inline φspacing(j, grid::YRegularLLG, ::F) = grid.φᶜᶜᵃ[2] - grid.φᶜᶜᵃ[1]
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
