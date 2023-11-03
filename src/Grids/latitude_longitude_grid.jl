@@ -1,5 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
+""" the classification Type for the LatitudeLongitudeGrid """
 struct LatitudeLongitude end
 
 const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, Arch} = 
