@@ -134,6 +134,11 @@ const OceananigansModels = Union{NonhydrostaticModel,
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
+
+    # Particle tracking models with prescribed velocities have no
+    # prognostic fields (there is no possibility to get a NaN)
+    isempty(model_fields) && return nothing
+
     first_name = first(keys(model_fields))
     field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
     nan_checker = NaNChecker(field_to_check_nans)
