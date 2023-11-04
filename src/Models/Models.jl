@@ -131,7 +131,7 @@ const OceananigansModels = Union{NonhydrostaticModel,
                                  HydrostaticFreeSurfaceModel,
                                  ShallowWaterModel} 
 
-# Check for NaNs in the first prognostic field (generalizes to prescribed velocitries).
+# Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
@@ -149,7 +149,7 @@ end
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
 
 # Particle tracking models with prescribed velocities (and no tracers) 
-# have no prognostic fields and no chance to producing a NaN)
+# have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 end # module
