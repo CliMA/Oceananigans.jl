@@ -524,10 +524,19 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    # Does this even make sense??
-    Lx = convert(FT, 90)
-    Ly = convert(FT, 90)
+    # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
+    Lx = if mod(Ny, 2) == 0
+        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nx, :], dims=1))) / radius
+    else
+        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nx, :], dims=1))) / radius
+    end
 
+    Ly = if mod(Nx, 2) == 0
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    elseif mod(Nx, 2) == 1
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    end
+    
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
                                                     Nξ, Nη, Nz, 
                                                     Hx, Hy, Hz, 
@@ -790,9 +799,19 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    Lx = convert(FT, 90)
-    Ly = convert(FT, 90)
+    # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
+    Lx = if mod(Ny, 2) == 0
+        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nx, :], dims=1))) / radius
+    else
+        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nx, :], dims=1))) / radius
+    end
 
+    Ly = if mod(Nx, 2) == 0
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    elseif mod(Nx, 2) == 1
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    end
+    
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
                                                      Nξ, Nη, Nz, 
                                                      Hx, Hy, Hz,

@@ -144,7 +144,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
                                                         grid.mapping,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
-                                                        grid.Lz,
+                                                        grid.Lx, grid.Ly, grid.Lz,
                                                         coordinate_data...,
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
@@ -200,12 +200,35 @@ function Base.summary(grid::OrthogonalSphericalShellGrid)
 end
 
 """
-    get_center_and_extents_of_shell(grid::OSSG)
+    get_extents_of_shell(grid::OSSG)
 
-Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)`
-and also the longitudinal and latitudinal extend of the shell `(extent_λ, extent_φ)`.
+Return the longitudinal and latitudinal extend of the shell `(extent_λ, extent_φ)`.
 """
-function get_center_and_extents_of_shell(grid::OSSG)
+function get_extents_of_shell(grid)
+    Nx, Ny, _ = size(grid)
+
+    # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
+    if mod(Ny, 2) == 0
+        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
+    elseif mod(Ny, 2) == 1
+        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
+    end
+
+    if mod(Nx, 2) == 0
+        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+    elseif mod(Nx, 2) == 1
+        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+    end
+
+    return (extent_λ, extent_φ)
+end
+
+"""
+    get_center_of_shell(grid::OSSG)
+
+Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)`.
+"""
+function get_center_of_shell(grid)
     Nx, Ny, _ = size(grid)
 
     # find the indices that correspond to the center of the shell
@@ -229,20 +252,7 @@ function get_center_and_extents_of_shell(grid::OSSG)
     λ_center = λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
     φ_center = φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
-    # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
-    if mod(Ny, 2) == 0
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
-    elseif mod(Ny, 2) == 1
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
-    end
-
-    if mod(Nx, 2) == 0
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
-    elseif mod(Nx, 2) == 1
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
-    end
-
-    return (λ_center, φ_center), (extent_λ, extent_φ)
+    return (λ_center, φ_center)
 end
 
 function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
@@ -255,7 +265,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
     z₁, z₂ = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
 
-    (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
+    (λ_center, φ_center) = get_center_of_shell(grid)
+    (extent_λ, extent_φ) = get_extents_of_shell(grid)
 
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
