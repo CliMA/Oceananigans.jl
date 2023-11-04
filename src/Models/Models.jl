@@ -180,7 +180,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
-# This is here so that `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
+# General seawater density calculation applicable to both `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
 include("seawater_density.jl")
 
 end # module
