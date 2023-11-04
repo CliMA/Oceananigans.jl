@@ -39,12 +39,12 @@ denoted by a triplet of superscripts. For example, an object `φ` whose cell is 
 (Center, Center, Face) is denoted `φᶜᶜᶠ`. `ᶜᶜᶠ` is Centered in `x`, `Centered` in `y`, and on
 reference cell interfaces in `z` (this is where the vertical velocity is located, for example).
 
-The operators in this file fall into three categories:
+The operators in this file fall into two categories:
 
-1. Operators needed for an algorithm valid on rectilinear grids with
-   at most a stretched vertical dimension and regular horizontal dimensions.
+1. Operators needed for an algorithm valid on rectilinear grids with regular or stretched
+   dimensions.
 2. Operators needed for an algorithm on a grid that is curvilinear in the horizontal
-   at rectilinear (possibly stretched) in the vertical.
+   at rectilinear in the vertical.
 """
 
 #####
