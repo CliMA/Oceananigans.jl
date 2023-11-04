@@ -523,15 +523,15 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
-    @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
-    @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δλᶠᵃᵃ
-    @test φspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δφᵃᶜᵃ
-    @test φspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δφᵃᶠᵃ
+    @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.mapping.Δλᶜᵃᵃ
+    @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.mapping.Δλᶠᵃᵃ
+    @test φspacings(grid_reg, Center(), with_halos=true) == grid_reg.mapping.Δφᵃᶜᵃ
+    @test φspacings(grid_reg, Face(),   with_halos=true) == grid_reg.mapping.Δφᵃᶠᵃ
 
-    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
-    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
+    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.mapping.Δλᶠᵃᵃ
+    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.mapping.Δφᵃᶠᵃ
 
-    Δλ = grid_reg.Δλᶠᵃᵃ
+    Δλ = grid_reg.mapping.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
 
     Δz = grid_reg.Δzᵃᵃᶜ
