@@ -135,15 +135,22 @@ const OceananigansModels = Union{NonhydrostaticModel,
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
-    # Particle tracking models with prescribed velocities have no
-    # prognostic fields (there is no possibility to get a NaN)
-    isempty(model_fields) && return nothing
+    if isempty(model_fields) 
+        @warn "This model has no prognostic fields!"
+        return nothing
+    end
 
     first_name = first(keys(model_fields))
     field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
     nan_checker = NaNChecker(field_to_check_nans)
     return nan_checker
 end
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
+
+# Particle tracking models with prescribed velocities (and no tracers) 
+# have no prognostic fields and no chance to produce a NaN)
+default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 end # module
 
