@@ -525,16 +525,16 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
-    Lx = if mod(Ny, 2) == 0
-        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nx, :], dims=1))) / radius
+    Lx = if mod(Nη, 2) == 0
+        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nξ, :], dims=1))) / radius
     else
-        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nx, :], dims=1))) / radius
+        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nξ, :], dims=1))) / radius
     end
 
-    Ly = if mod(Nx, 2) == 0
-        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
-    elseif mod(Nx, 2) == 1
-        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    Ly = if mod(Nξ, 2) == 0
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Nη], dims=2))) / radius
+    elseif mod(Nξ, 2) == 1
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Nη], dims=2))) / radius
     end
     
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
@@ -800,16 +800,16 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
-    Lx = if mod(Ny, 2) == 0
-        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nx, :], dims=1))) / radius
+    Lx = if mod(Nη, 2) == 0
+        maximum(rad2deg.(sum(Δxᶜᶠᵃ[1:Nξ, :], dims=1))) / radius
     else
-        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nx, :], dims=1))) / radius
+        maximum(rad2deg.(sum(Δxᶜᶜᵃ[1:Nξ, :], dims=1))) / radius
     end
 
-    Ly = if mod(Nx, 2) == 0
-        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
-    elseif mod(Nx, 2) == 1
-        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / radius
+    Ly = if mod(Nξ, 2) == 0
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Nη], dims=2))) / radius
+    elseif mod(Nξ, 2) == 1
+        maximum(rad2deg.(sum(Δyᶠᶜᵃ[:, 1:Nη], dims=2))) / radius
     end
     
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
