@@ -14,6 +14,10 @@ const LLGX = XRegularLLG
 const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
 
+const LLGNM  = LLGNoMetric
+const LLGYNM = XRegularLLGNoMetric
+const LLGXNM = YRegularLLGNoMetric
+
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
@@ -147,19 +151,19 @@ end
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ[j])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ[j])
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ[j])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ[j])
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
-@inline Δxᶜᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
-@inline Δxᶠᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
-@inline Δxᶜᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
-@inline Δyᶜᶠᵃ(i, j, k, grid::YRegularLLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ)
-@inline Δyᶠᶜᵃ(i, j, k, grid::YRegularLLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ)
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ)
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ)
 
 #####
 #####
@@ -196,15 +200,15 @@ end
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
-@inline Azᶠᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
