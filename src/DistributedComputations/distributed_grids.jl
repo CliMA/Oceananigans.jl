@@ -157,7 +157,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                                                 Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                                 (nothing for i=1:12)..., FT(radius))
 
-    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid, Δλᶜᵃᵃ, Δφᵃᶜᵃ)
+    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
 """
@@ -258,7 +258,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
                                                                 Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                                 (nothing for i=1:12)..., FT(radius))
                                                                 
-    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid, Δλᶜᵃᵃ, Δφᵃᶜᵃ)
+    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
 # We _HAVE_ to dispatch individually for all grid types because
