@@ -255,7 +255,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
                                                                 λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
                                                                 φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
                                                                 zᵃᵃᶜ, zᵃᵃᶠ,
-                                                                Δzᵃᵃᶠ, Δzᵃᵃᶜ,
+                                                                Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                                 (nothing for i=1:12)..., FT(radius))
                                                                 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid, Δλᶜᵃᵃ, Δφᵃᶜᵃ)
