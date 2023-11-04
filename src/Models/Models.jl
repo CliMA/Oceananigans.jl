@@ -136,7 +136,7 @@ function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
     if isempty(model_fields) 
-        @warn "The NaNChecker is disabled because this model does not evolve any prognostic variable."
+        @warn "The NaNChecker is disabled because this model does not evolve prognostic variables."
         return nothing
     end
 
