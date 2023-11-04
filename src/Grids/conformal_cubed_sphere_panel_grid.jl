@@ -1,12 +1,12 @@
-""" the classification Type for a ConformalCubedSpherePanelGrid. It holds the native cartesian coordinates and the rotation of the panel """
-struct ConformalCubedSpherePanel{E, X, R}
+""" the mapping Type for a ConformalCubedSpherePanelGrid. It holds the native cartesian coordinates and the rotation of the panel """
+struct ConformalCubedSphereMapping{E, X, R} <: AbstractOrthogonalMapping
     η :: E
     ξ :: X
     rotation :: R
 end
                         
 const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} = 
-            OrthogonalSphericalShellGrid{FT, <:ConformalCubedSpherePanel, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}
+            OrthogonalSphericalShellGrid{FT, <:ConformalCubedSphereMapping, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}
 
 """
     ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(),
@@ -528,7 +528,9 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
     Lx = convert(FT, 90)
     Ly = convert(FT, 90)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSpherePanel(ξ, η, rotation), Nξ, Nη, Nz, Hx, Hy, Hz, 
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
+                                                    Nξ, Nη, Nz, 
+                                                    Hx, Hy, Hz, 
                                                     Lx, Ly, Lz,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
@@ -788,7 +790,13 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSpherePanel(ξ, η, rotation), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+    Lx = convert(FT, 90)
+    Ly = convert(FT, 90)
+
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, ConformalCubedSphereMapping(ξ, η, rotation), 
+                                                     Nξ, Nη, Nz, 
+                                                     Hx, Hy, Hz,
+                                                     Lx, Ly, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,  Δzᵃᵃᶜ, Δzᵃᵃᶠ,
@@ -810,9 +818,9 @@ function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid)
                                              size, z, 
                                              topology = topo,
                                              radius = old_grid.radius,
-                                             rotation = old_grid.classification.rotation,
-                                             ξ = old_grid.classification.ξ,
-                                             η = old_grid.classification.η,
+                                             rotation = old_grid.mapping.rotation,
+                                             ξ = old_grid.mapping.ξ,
+                                             η = old_grid.mapping.η,
                                              halo = new_halo)
 
     return new_grid

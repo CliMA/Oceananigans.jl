@@ -5,7 +5,7 @@ using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elem
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed, LatitudeLongitude
+using Oceananigans.Grids: R_Earth, metrics_precomputed, LatitudeLongitudeMapping
 
 using Oceananigans.Fields
 
@@ -147,7 +147,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
-                                                                LatitudeLongitude(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
+                                                                LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 nλ, nφ, nz,
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,
@@ -248,7 +248,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     precompute_metrics = metrics_precomputed(grid)
 
     preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
-                                                                LatitudeLongitude(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
+                                                                LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 Nλ, Nφ, Nz,
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,

@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using CUDA
 
 using Oceananigans.Fields: ConstantField, ZeroField

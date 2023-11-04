@@ -9,9 +9,11 @@ using Adapt: adapt_structure
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
                   
+abstract type AbstractOrthogonalMapping end
+
 struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
-    classification :: C
+    mapping :: C
     Nx :: Int
     Ny :: Int
     Nz :: Int
@@ -48,8 +50,24 @@ struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch
     Azᶠᶠᵃ :: FX
     radius :: FT
 
+    """
+        OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
+                                                 mapping :: C,
+                                                 Nx, Ny, Nz,
+                                                 Hx, Hy, Hz,
+                                                 Lx :: FT, Ly :: FT, Lz :: FT,
+                                                  λᶜᶜᵃ :: X,   λᶠᶜᵃ :: X,   λᶜᶠᵃ :: X,   λᶠᶠᵃ :: X,
+                                                  φᶜᶜᵃ :: Y,   φᶠᶜᵃ :: Y,   φᶜᶠᵃ :: Y,   φᶠᶠᵃ :: Y,  zᵃᵃᶜ :: Z,   zᵃᵃᶠ :: Z,
+                                                 Δzᵃᵃᶜ :: FZ, Δzᵃᵃᶠ :: FZ,
+                                                 Δxᶜᶜᵃ :: FX,  Δxᶠᶜᵃ :: FX, Δxᶜᶠᵃ :: FX, Δxᶠᶠᵃ :: FX,
+                                                 Δyᶜᶜᵃ :: FY,  Δyᶜᶠᵃ :: FY, Δyᶠᶜᵃ :: FY, Δyᶠᶠᵃ :: FY, 
+                                                 Azᶜᶜᵃ :: FX,  Azᶠᶜᵃ :: FX, Azᶜᶠᵃ :: FX, Azᶠᶠᵃ :: FX,
+                                                 radius :: FT)
+    
+    An internal constructor for a generic `OrthogonalSphericalShellGrid`. 
+    """
     OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
-                                             classification :: C,
+                                             mapping :: C,
                                              Nx, Ny, Nz,
                                              Hx, Hy, Hz,
                                              Lx :: FT, Ly :: FT, Lz :: FT,
@@ -61,7 +79,7 @@ struct OrthogonalSphericalShellGrid{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch
                                              Azᶜᶜᵃ :: FX,  Azᶠᶜᵃ :: FX, Azᶜᶠᵃ :: FX, Azᶠᶠᵃ :: FX,
                                              radius :: FT) where {TX, TY, TZ, FT, C, X, Y, Z, FX, FY, FZ, Arch} =
         new{FT, C, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}(architecture,
-                                                          classification,
+                                                          mapping,
                                                           Nx, Ny, Nz,
                                                           Hx, Hy, Hz,
                                                           Lx, Ly, Lz,
@@ -77,7 +95,6 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
-# convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz,
                              λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
@@ -124,7 +141,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     TX, TY, TZ = topology(grid)
 
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
-                                                        grid.classification,
+                                                        grid.mapping,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         grid.Lz,
@@ -140,7 +157,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     TX, TY, TZ = topology(grid)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
-                                                    grid.classification,
+                                                    grid.mapping,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
                                                     grid.Lx, grid.Ly, grid.Lz,
