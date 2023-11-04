@@ -27,7 +27,9 @@ const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:A
 const HRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Number, <:Number}}
 const YNonRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Any, <:AbstractArray}}
 
-const LLGWithoutMetrics = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
+const LLGNoMetric = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
+const XRegularLLGNoMetric = LatitudeLongitudeGrid{<:Any, <:LatitudeLongitude{<:Number}, <:Any, <:Any, <:Nothing, <:Nothing}
+const YRegularLLGNoMetric = LatitudeLongitudeGrid{<:Any, <:LatitudeLongitude{<:Any, <:Number}, <:Any, <:Any, <:Nothing, <:Nothing}
 
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
@@ -324,29 +326,40 @@ end
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i])
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶜᶜᵃ[j] - grid.φᶜᶜᵃ[j-1])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius * deg2rad(grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i])
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i] - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGWithoutMetrics) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ[i])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ[j])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ[j])
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+
+@inline Δxᶠᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
+@inline Δxᶜᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
+@inline Δxᶠᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.classification.Δλᶠᵃᵃ)
+@inline Δxᶜᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.classification.Δλᶜᵃᵃ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::YRegularLLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶠᵃ)
+@inline Δyᶠᶜᵃ(i, j, k, grid::YRegularLLGNoMetric) = @inbounds grid.radius * deg2rad(grid.classification.Δφᵃᶜᵃ)
+@inline Azᶠᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶠᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::XRegularLLGNoMetric) = @inbounds grid.radius^2 * deg2rad(grid.classification.Δλᶜᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
 #####
 ##### Utilities to precompute metrics 
 #####
 
-@inline metrics_precomputed(::LLGWithoutMetrics)     = false 
+@inline metrics_precomputed(::LLGNoMetric)     = false 
 @inline metrics_precomputed(::LatitudeLongitudeGrid) = true
 
 #####
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.λᶜᶜᵃ) - 1, length(grid.φᶜᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.classification.Δλᶜᵃᵃ), length(grid.φᶜᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
 @inline metric_worksize(grid::XRegularLLG)  = length(grid.φᶜᶜᵃ) - 1 
@@ -368,7 +381,7 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.λᶜᶜᵃ.offsets[1] + 1
+    i′ = i + grid.classification.Δλᶜᵃᵃ.offsets[1]
     j′ = j + grid.φᶜᶜᵃ.offsets[1] + 1
 
     @inbounds begin
@@ -454,8 +467,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         offsets     = grid.φᶜᶜᵃ.offsets[1]
         metric_size = length(grid.φᶜᶜᵃ)
     else
-        offsets     = (grid.λᶜᶜᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
-        metric_size = (length(grid.λᶜᶜᵃ)   , length(grid.φᶜᶜᵃ))
+        offsets     = (grid.classification.Δλᶜᵃᵃ.offsets[1], grid.φᶜᶜᵃ.offsets[1])
+        metric_size = (length(grid.classification.Δλᶜᵃᵃ)   , length(grid.φᶜᶜᵃ))
     end
 
     for metric in grid_metrics
