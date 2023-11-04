@@ -149,7 +149,7 @@ end
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
 
 # Particle tracking models with prescribed velocities (and no tracers) 
-# have no prognostic fields and no chance to produce a NaN)
+# have no prognostic fields and no chance to producing a NaN)
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 end # module
