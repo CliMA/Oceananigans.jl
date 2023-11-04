@@ -21,11 +21,12 @@ bc_str(::Nothing) = "Nothing"
 #####
 
 Base.summary(bc::DFBC) = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
-Base.summary(bc::OBC) = string("OpenBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::FBC) = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::VBC) = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::GBC) = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(::PBC) = string("PeriodicBoundaryCondition")
+Base.summary(bc::OBC)  = string("OpenBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::FBC)  = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::VBC)  = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::GBC)  = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(::PBC)    = string("PeriodicBoundaryCondition")
+Base.summary(bc::DCBC) = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 
 show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 

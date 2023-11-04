@@ -2,59 +2,139 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
+
+import Base
 
 #####
 ##### Partitioning
 #####
 
-# Form 3-tuple
-regularize_size(sz::Tuple{<:Int, <:Int}, Rx, Ry) = (sz[1], sz[2], 1)
-
-# Infer whether x- or y-dimension is indicated
-function regularize_size(N::Int, Rx, Ry)
-    if Rx == 1
-        return (1, N, 1)
-    elseif Ry == 1
-        return (N, 1, 1)
-    else
-        throw(ArgumentError("We can't interpret the 1D size $N for 2D partitions!"))
-    end
+struct Partition{Sx, Sy, Sz}
+    x :: Sx
+    y :: Sy
+    z :: Sz
 end
 
-regularize_size(sz::Array{<:Int, 1}) = regularize_size(sz[1])
-regularize_size(sz::Array{<:Int, 2}) = regularize_size((sz[1], sz[2]))
-regularize_size(sz::Tuple{<:Int}) = regularize_size(sz[1])
+"""
+    Partition(; x = 1, y = 1, z = 1)
 
-# For 3D partitions:
-# regularize_size(sz::Tuple{<:Int, <:Int, <:Int}, Rx, Ry) = sz
+Return `Partition` representing the division of a domain in
+the `x` (first), `y` (second) and `z` (third) dimension
 
-struct Partition{S, Rx, Ry, Rz}
+Keyword arguments: 
+==================
+
+- `x`: partitioning of the first dimension 
+- `y`: partitioning of the second dimension
+- `z`: partitioning of the third dimension
+
+if supplied as positional arguments `x` will be the first argument, 
+`y` the second and `z` the third
+
+`x`, `y` and `z` can be:
+- `x::Int`: allocate `x` processors to the first dimension
+- `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
+- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`, 
+                                 and each process is then allocated `ϵᵢ / W` of the domain.
+- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`, 
+                            and each process is then allocated `nᵢ`.
+
+Examples:
+========
+
+```jldoctest
+julia> using Oceananigans; using Oceananigans.DistributedComputations
+
+julia> Partition(1, 4)
+Domain partitioning with (1, 4, 1) ranks
+└── y-partitioning: 4
+
+julia> Partition(x = Fractional(1, 2, 3, 4))
+Domain partitioning with (4, 1, 1) ranks
+└── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
+
+```
+"""
+Partition(x)    = Partition(validate_partition(x, nothing, nothing)...)
+Partition(x, y) = Partition(validate_partition(x, y, nothing)...)
+
+Partition(; x = nothing, y = nothing, z = nothing) = Partition(validate_partition(x, y, z)...)
+
+Base.show(io::IO, p::Partition) =
+    print(io, 
+    "Domain partitioning with $(ranks(p)) ranks", "\n",
+    "$(ranks(p.x) > 1 ? spine_x(p) * " x-partitioning: $(p.x)\n" : "")", 
+    "$(ranks(p.y) > 1 ? spine_y(p) * " y-partitioning: $(p.y)\n" : "")", 
+    "$(ranks(p.z) > 1 ? "└── z-partitioning: $(p.z)\n" : "")")
+
+spine_x(p) = ifelse(ranks(p.y) > 1 || ranks(p.z) > 1, "├──", "└──")
+spine_y(p) = ifelse(ranks(p.z) > 1, "├──", "└──")
+ 
+"""
+    Equal()
+
+Return a type that partitions a direction equally among remaining processes.
+
+`Equal()` can be used for only one direction. Other directions must either be unspecified, or
+specifically defined by `Int`, `Fractional`, or `Sizes`.
+"""
+struct Equal end
+
+struct Fractional{S} 
     sizes :: S
-    function Partition{Rx, Ry, Rz}() where {Rx, Ry, Rz}
-        new{Nothing, Rx, Ry, Rz}(nothing)
-    end
-    function Partition(sizes::S) where S
-        Rx = size(sizes, 1)
-        Ry = size(sizes, 2)
-        Rz = size(sizes, 3)
-        return new{S, Rx, Ry, Rz}(sizes)
-    end
+end
+
+struct Sizes{S} 
+    sizes :: S
 end
 
 """
-    Partition(Rx::Number, Ry::Number=1, Rz::Number=1)
+    Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
-Return `Partition` representing the division of a domain into
-`Rx` parts in `x` and `Ry` parts in `y` and `Rz` parts in `z`,
-where `x, y, z` are the first, second, and third dimension
-respectively.
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`, 
+and each process is then allocated `ϵᵢ / W` of the domain.
 """
-Partition(Rx::Number, Ry::Number=1, Rz::Number=1) = Partition{Rx, Ry, Rz}()
-Partition(lengths::Array{Int, 1}) = Partition(reshape(lengths, length(lengths), 1))
-Base.size(::Partition{<:Any, Rx, Ry, Rz}) where {Rx, Ry, Rz} = (Rx, Ry, Rz)
+Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
+
+"""
+    Sizes(n₁, n₂, ..., nₙ)
+
+Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
+and each process is then allocated `nᵢ`.
+"""
+Sizes(args...) = Sizes(tuple(args...))
+
+Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
+Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
+Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
+
+Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
+Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
+
+ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
+ranks(r::Nothing)    = 1 # a direction not partitioned fits in 1 rank
+ranks(r::Int)        = r
+ranks(r::Sizes)      = length(r.sizes)
+ranks(r::Fractional) = length(r.sizes)
+
+Base.size(p::Partition) = ranks(p)
+
+# If a direction has only 1 rank, then it is not partitioned
+validate_partition(x) = ifelse(ranks(x) == 1, nothing, x)
+
+validate_partition(x, y, z) = map(validate_partition, (x, y, z))
+validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
+
+validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
+validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
+
+function remaining_workers(r1, r2)
+    MPI.Initialized() || MPI.Init()    
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1) * ranks(r2))
+end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     child_architecture :: A
@@ -76,15 +156,15 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    communicator :: γ,
                    mpi_requests :: M,
                    mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                       new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
-                                                         partition,
-                                                         ranks,
-                                                         local_rank,
-                                                         local_index,
-                                                         connectivity,
-                                                         communicator,
-                                                         mpi_requests,
-                                                         mpi_tag)
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
+                                                     partition,
+                                                     ranks,
+                                                     local_rank,
+                                                     local_index,
+                                                     connectivity,
+                                                     communicator,
+                                                     mpi_requests,
+                                                     mpi_tag)
 end
 
 #####
@@ -108,8 +188,6 @@ Positional arguments
 
 Keyword arguments
 =================
-
-- `topology` (required): the topology we want the grid to have. It is used to establish connectivity.
                         
 - `synchronized_communication`: if true, always use synchronized communication through ranks
 
@@ -125,7 +203,6 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                     topology, 
                      communicator = MPI.COMM_WORLD,
                      devices = nothing, 
                      synchronized_communication = false,
@@ -143,13 +220,14 @@ function Distributed(child_architecture = CPU();
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
     if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
     
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    local_connectivity = RankConnectivity(local_index, ranks, topology)
+    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
+    local_connectivity = RankConnectivity(local_index, ranks) 
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
@@ -188,15 +266,16 @@ array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::DistributedGPU) = Distributed(CPU(),
-                                                     arch.partition, 
-                                                     arch.ranks, 
-                                                     arch.local_rank,
-                                                     arch.local_index,
-                                                     arch.connectivity,
-                                                     arch.communicator,
-                                                     arch.mpi_requests,
-                                                     arch.mpi_tag)
+cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+    Distributed{S}(CPU(),
+                   arch.partition, 
+                   arch.ranks, 
+                   arch.local_rank,
+                   arch.local_index,
+                   arch.connectivity,
+                   arch.communicator,
+                   arch.mpi_requests,
+                   arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -237,42 +316,32 @@ RankConnectivity(; east, west, north, south, southwest, southeast, northwest, no
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
-
-function increment_index(i, R, topo)
+function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R
-        if topo == Periodic || topo == FullyConnected || topo == RightConnected
-            return 1
-        else
-            return nothing
-        end
+        return 1
     else
         return i+1
     end
 end
 
-function decrement_index(i, R, topo)
+function decrement_index(i, R)
     R == 1 && return nothing
     if i-1 < 1
-        if topo == Periodic || topo == FullyConnected || topo == RightConnected
-            return R
-        else
-            return nothing
-        end
+        return R
     else
         return i-1
     end
 end
 
-function RankConnectivity(local_index, ranks, topology)
+function RankConnectivity(local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
-    TX, TY, TZ = topology
 
-    i_east  = increment_index(i, Rx, TX)
-    i_west  = decrement_index(i, Rx, TX)
-    j_north = increment_index(j, Ry, TY)
-    j_south = decrement_index(j, Ry, TY)
+    i_east  = increment_index(i, Rx)
+    i_west  = decrement_index(i, Rx)
+    j_north = increment_index(j, Ry)
+    j_south = decrement_index(j, Ry)
 
      east_rank = isnothing(i_east)  ? nothing : index2rank(i_east,  j, k, Rx, Ry, Rz)
      west_rank = isnothing(i_west)  ? nothing : index2rank(i_west,  j, k, Rx, Ry, Rz)
