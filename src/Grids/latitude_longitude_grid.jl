@@ -28,8 +28,8 @@ const HRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Nu
 const YNonRegularLLG = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Any, <:AbstractArray}}
 
 const LLGNoMetric = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
-const XRegularLLGNoMetric = LatitudeLongitudeGrid{<:Any, <:LatitudeLongitude{<:Number}, <:Any, <:Any, <:Nothing, <:Nothing}
-const YRegularLLGNoMetric = LatitudeLongitudeGrid{<:Any, <:LatitudeLongitude{<:Any, <:Number}, <:Any, <:Any, <:Nothing, <:Nothing}
+const XRegularLLGNoMetric = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Number}, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
+const YRegularLLGNoMetric = OrthogonalSphericalShellGrid{<:Any, <:LatitudeLongitude{<:Any, <:Number}, <:Any, <:Any, <:Any, <:Nothing, <:Nothing}
 
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
@@ -296,27 +296,6 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
                                      radius = old_grid.radius)
 
     return new_grid
-end
-
-function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
-    old_properties = (old_grid.λᶜᶜᵃ,  old_grid.λᶠᶜᵃ,  old_grid.λᶜᶠᵃ,  old_grid.λᶠᶠᵃ, 
-                      old_grid.φᶜᶜᵃ,  old_grid.φᶠᶜᵃ,  old_grid.φᶜᶠᵃ,  old_grid.φᶠᶠᵃ, 
-                      old_grid.zᵃᵃᶜ,  old_grid.zᵃᵃᶠ,  old_grid.Δzᵃᵃᶜ, old_grid.Δzᵃᵃᶠ, 
-                      old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, 
-                      old_grid.Δyᶜᶜᵃ, old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ, old_grid.Δyᶠᶠᵃ,                      
-                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
-
-    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
-
-    TX, TY, TZ = topology(old_grid)
-
-    return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
-                                             old_grid.classification,
-                                             old_grid.Nx, old_grid.Ny, old_grid.Nz,
-                                             old_grid.Hx, old_grid.Hy, old_grid.Hz,
-                                             old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                             new_properties...,
-                                             old_grid.radius)
 end
 
 #####
