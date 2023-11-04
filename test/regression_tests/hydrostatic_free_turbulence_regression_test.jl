@@ -1,5 +1,5 @@
 using Oceananigans.Fields: FunctionField
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, φspacings, λspacings
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
@@ -56,11 +56,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     # Time-scale for gravity wave propagation across the smallest grid cell
     # wave_speed is the hydrostatic (shallow water) gravity wave speed
     gravity    = model.free_surface.gravitational_acceleration
-    wave_speed = sqrt(gravity * grid.Lz)                                 
-    
-    minimum_Δx = minimum_xspacing(grid)
-    minimum_Δy = minimum_yspacing(grid)
+    wave_speed = sqrt(gravity * grid.Lz)                   
 
+    CUDA.allowscalar(true)
+    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᶜᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(λspacings(grid, Center())))
+    minimum_Δy = grid.radius * deg2rad(minimum(φspacings(grid, Center())))
+    CUDA.allowscalar(false)
+    
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
     
     # Δt based on wave propagation time scale
