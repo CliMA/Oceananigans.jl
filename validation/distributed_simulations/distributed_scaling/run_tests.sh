@@ -21,7 +21,7 @@
 #
 # 5) correct modules are loaded in job_script.sh
 #
-# 6) SBATCH variables are in job_script.sh are correct (check memory, time)
+# 6) SBATCH variables in the job_script.sh file are correct (check memory, time)
 #
 # 7) The system has at least max(RX) * max(RY) gpus
 #
