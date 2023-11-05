@@ -17,8 +17,8 @@ const SlabXFields = ParallelFields{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-di
 function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
     zgrid  = field_in.grid # We support only a 2D partition in X and Y
 
-    ygrid = TwinGrid(zgrid; free_dim = :y)
-    xgrid = TwinGrid(zgrid; free_dim = :x)
+    ygrid = TwinGrid(zgrid; free_dimension = :y)
+    xgrid = TwinGrid(zgrid; free_dimension = :x)
 
     Nx = size(xgrid)
     Ny = size(ygrid)
@@ -70,7 +70,7 @@ end
 ##### Twin transposed grid
 #####
 
-function TwinGrid(grid::DistributedGrid; free_dim = :y)
+function TwinGrid(grid::DistributedGrid; free_dimension = :y)
 
     arch = grid.architecture
     ri, rj, rk = arch.local_index
@@ -78,7 +78,7 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
     R = arch.ranks
 
     nx, ny, nz = n = size(grid)
-    Nx, Ny, Nz = map(sum, concatenate_local_sizes(n, arch))
+    Nx, Ny, Nz = global_size(arch, n)
 
     TX, TY, TZ = topology(grid)
 
@@ -99,7 +99,7 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
 
     FT = eltype(grid)
 
-    if free_dim == :y
+    if free_dimension == :y
         ranks = R[1], 1, R[2]
 
         nnx, nny, nnz = nx, Ny, nz ÷ ranks[3]
@@ -107,7 +107,7 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
         if (nnz * ranks[3] < Nz) && (rj == ranks[3])
             nnz = Nz - nnz * (ranks[3] - 1)
         end
-    elseif free_dim == :x
+    elseif free_dimension == :x
         ranks = 1, R[1], R[2]
 
         nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz ÷ ranks[3]
@@ -115,17 +115,16 @@ function TwinGrid(grid::DistributedGrid; free_dim = :y)
         if (nny * ranks[2] < Ny) && (ri == ranks[2])
             nny = Ny - nny * (ranks[2] - 1)
         end
-    elseif free_dims == :z
-        @warn "That is the standard grid!!!"
+    elseif free_dimension == :z
+        #TODO: a warning here?
         return grid
     end
 
-    new_arch = Distributed(child_arch; 
-                           ranks,
-                           topology = (TX, TY, TZ))
+    new_arch  = Distributed(child_arch; partition = Partition(ranks...))
+    global_sz = global_size(new_arch, (nnx, nny, nnz))
 
     return construct_grid(grid, new_arch, FT; 
-                          size = (nnx, nny, nnz), 
+                          size = global_sz, 
                         extent = (xG, yG, zG),
                       topology = (TX, TY, TZ))
 end
