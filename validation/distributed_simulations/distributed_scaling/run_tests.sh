@@ -9,7 +9,7 @@
 # 3) If the system is equipped with nsys profiler it is possible to enable a trace with PROFILE_TRACE=1 (in this file)
 #
 # 4) Oceananigans is instantiated with the correct MPI build:
-# 	(run these lines in a gpu node)
+# 	(run these lines in a gpu node substituting modules and paths)
 # 	$ module load my_cuda_module
 # 	$ module load my_cuda_aware_mpi_module
 # 	$ export JULIA_DEPOT_PATH="/path/to/depot"
