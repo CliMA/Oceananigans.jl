@@ -14,6 +14,8 @@ Nz = parse(Int, get(ENV, "NZ", "256"))
 
 grid_size = (Nx, Ny, Nz)
 
-include("distributed_les.jl")
+include("distributed_nonhydrostatic.jl")
+include("distributed_hydrostatic.jl")
 
-run_les_simulation!(grid_size, ranks)
+@info "Running Nonhydrostatic model with ranks $ranks"
+run_nonhydrostatic_simulation!(grid_size, ranks)

@@ -11,26 +11,23 @@ using Oceananigans.Units
 
 @inline function bᵢ(x, y, z, p) 
     b = - 1 / (p.Ly)^2 * y^2 + 1
- 
     return p.N² * z + p.Δb * b
 end
 
-function run_les_simulation!(grid_size, ranks; 
-                             topology  = (Periodic, Periodic, Bounded),
-                             output_name = "test_fields",
-                             timestepper = :QuasiAdamsBashforth2,
-                             CFL = 0.5)
+function run_nonhydrostatic_simulation!(grid_size, ranks; 
+                                        topology  = (Periodic, Periodic, Bounded),
+                                        output_name = nothing, 
+                                        timestepper = :QuasiAdamsBashforth2,
+                                        CFL = 0.5)
     
     N = grid_size .÷ ranks
     
     arch  = DistributedArch(GPU(); partition = Partition(ranks...))
     grid  = RectilinearGrid(arch; size = N, x = (0, 4096),
 			    		    y = (-2048, 2048),
-					    z = (-512, 0), topology, halo = (4, 4, 4))
+					        z = (-512, 0), topology,
+                            halo = (6, 6, 6))
 
-    # Buoyancy and boundary conditions
-    @info "Enforcing boundary conditions..."
-    
     N² = 4e-6
     Δb = 0.001
     Ly = 1024
@@ -50,7 +47,7 @@ function run_les_simulation!(grid_size, ranks;
     model = NonhydrostaticModel(; grid, 
                                   advection = WENO(order = 7), 
                                   coriolis = FPlane(f = -1e-5),
-				  tracers = :b, 
+				                  tracers = :b, 
                                   buoyancy = BuoyancyTracer(),
                                   boundary_conditions = (; b = b_bcs),
                                   timestepper)
