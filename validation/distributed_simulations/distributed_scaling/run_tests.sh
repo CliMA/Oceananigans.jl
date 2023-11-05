@@ -17,7 +17,7 @@
 #   $ $JULIA --check-bounds=no -e 'using Pkg; Pkg.add("MPIPreferences");'
 # 	$ $JULIA --project --check-bounds=no -e 'using MPIPreferences; MPIPreferences.use_system_binaries()'
 #   $ $JULIA --project --check-bounds=no -e 'using Pkg; Pkg.build("MPI")'
-#   $ $JULIA --project --check-bounds=no -e 'using Pkg; Pkg.instantiate("")'
+#   $ $JULIA --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 #
 # 5) correct modules are loaded in job_script.sh
 #
