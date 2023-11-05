@@ -37,4 +37,4 @@ if test $PROFILE_TRACE == 1; then
    NSYS="nsys profile --trace=nvtx,cuda,mpi --output=report_RX${RX}_RY${RY}_NX${NX}_NY${NY}"
 fi
 
-$NSYS srun --mpi=pmi2 ./launch.sh $JULIA --check-bounds=no --project distributed_les.jl 
+$NSYS srun --mpi=pmi2 ./launch.sh $JULIA --check-bounds=no --project distributed_nonhydrostatic_simulation.jl 
