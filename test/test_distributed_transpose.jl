@@ -12,7 +12,7 @@ using Oceananigans.DistributedComputations:
                 transpose_x_to_y!
 
 function test_transpose(grid_points, ranks, topo)
-    arch = Distributed(CPU(), ranks=ranks, topology=topo)
+    arch = Distributed(CPU(), partition=Partition(ranks...))
     grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     ϕ = CenterField(grid)
@@ -31,8 +31,6 @@ function test_transpose(grid_points, ranks, topo)
     # Check that the data is unchanged
     return all(interior(ϕ) .== interior(Φ.zfield))
 end
-
-
 
 @testset "Distributed Transpose" begin
     for topology in ((Periodic, Periodic, Periodic), 

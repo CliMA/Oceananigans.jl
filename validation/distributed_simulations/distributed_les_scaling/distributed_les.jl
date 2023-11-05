@@ -23,7 +23,7 @@ function run_les_simulation!(grid_size, ranks;
     
     N = grid_size .÷ ranks
     
-    arch  = DistributedArch(GPU(); ranks, topology)
+    arch  = DistributedArch(GPU(); partition = Partition(ranks...))
     grid  = RectilinearGrid(arch; size = N, x = (0, 4096),
 			    		    y = (-2048, 2048),
 					    z = (-512, 0), topology, halo = (4, 4, 4))
