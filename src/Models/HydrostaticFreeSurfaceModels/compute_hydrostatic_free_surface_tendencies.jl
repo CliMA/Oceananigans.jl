@@ -10,8 +10,8 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-import Oceananigans.DistributedComputations: complete_communication_and_compute_boundary!
-import Oceananigans.DistributedComputations: interior_tendency_kernel_parameters
+import Oceananigans.Models: complete_communication_and_compute_boundary!
+import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_interior_tuple
@@ -28,20 +28,22 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters;
+                                                             only_active_cells = use_only_active_interior_cells(model.grid))
+
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     compute_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                                           model.architecture,
-                                                           model.velocities,
-                                                           model.free_surface,
-                                                           model.tracers,
-                                                           model.clock,
-                                                           fields(model),
-                                                           model.closure,
-                                                           model.buoyancy)
+                                                         model.architecture,
+                                                         model.velocities,
+                                                         model.free_surface,
+                                                         model.tracers,
+                                                         model.clock,
+                                                         fields(model),
+                                                         model.closure,
+                                                         model.buoyancy)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
@@ -53,10 +55,8 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 end
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
 
 @inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
-@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, c::MEWS,          K) = compute_hydrostatic_free_surface_Ge!, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
 
 function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
@@ -68,18 +68,6 @@ function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple
         catke_closure = closures[catke_index]
         catke_diffusivity_fields = diffusivity_fields[catke_index]
         return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
-    end
-end
-
-function tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, closures::Tuple, diffusivity_fields::Tuple)
-    mews_index = findfirst(c -> c isa MEWS, closures)
-
-    if isnothing(mews_index)
-        return compute_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
-    else
-        mews_closure = closures[mews_index]
-        mews_diffusivity_fields = diffusivity_fields[mews_index]
-        return compute_hydrostatic_free_surface_Ge!, mews_closure, mews_diffusivity_fields 
     end
 end
 
@@ -102,7 +90,10 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model, Val(tracer_name), model.closure, model.diffusivity_fields)
+        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model,
+                                                                                 Val(tracer_name),
+                                                                                 model.closure,
+                                                                                 model.diffusivity_fields)
 
         args = tuple(Val(tracer_index),
                      Val(tracer_name),

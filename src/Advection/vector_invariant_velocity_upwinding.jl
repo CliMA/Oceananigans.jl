@@ -1,5 +1,3 @@
-const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:VelocityUpwinding}
-
 #####
 ##### Velocity upwinding is a Partial Upwinding where the upwind choice occurrs _inside_
 ##### the difference operator (i.e., velocity upwinding) instead of outside (i.e., derivative upwinding).
@@ -61,8 +59,8 @@ const VectorInvariantVelocityKEGradientUpwinding  = VectorInvariant{<:Any, <:Any
 @inline function upwinded_u²ᶜᶜᶜ(i, j, k, grid, scheme, u) 
     û = ℑxᶜᵃᵃ(i, j, k, grid, u)
 
-    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², u)
-    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², u)
+    Uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, half_ϕ², u)
+    Uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, half_ϕ², u)
 
     return ifelse(û > 0, Uᴸ, Uᴿ)
 end
@@ -70,8 +68,8 @@ end
 @inline function upwinded_v²ᶜᶜᶜ(i, j, k, grid, scheme, v) 
     v̂ = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
-    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², v)
-    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.ke_gradient_scheme, half_ϕ², v)
+    Vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, half_ϕ², v)
+    Vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, half_ϕ², v)
 
     return ifelse(v̂ > 0, Vᴸ, Vᴿ)
 end

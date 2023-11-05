@@ -202,3 +202,4 @@ function validate_global_grid(global_grid::RectilinearGrid)
 
     return nothing
 end
+

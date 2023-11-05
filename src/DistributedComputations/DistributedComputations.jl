@@ -1,7 +1,8 @@
 module DistributedComputations
 
 export
-    Distributed, child_architecture, reconstruct_global_grid, 
+    Distributed, Partition, Equal, Fractional, 
+    child_architecture, reconstruct_global_grid, 
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 
@@ -21,6 +22,5 @@ include("parallel_fields.jl")
 include("transpose_parallel_fields.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
-include("interleave_communication_and_computation.jl")
 
 end # module

@@ -25,7 +25,7 @@ include("dependencies_for_poisson_solvers.jl")
 
 # to initialize MPI.
 
-using Oceananigans.DistributedComputations: reconstruct_global_grid, DistributedGrid
+using Oceananigans.DistributedComputations: reconstruct_global_grid, DistributedGrid, Partition
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 
 function random_divergent_source_term(grid::DistributedGrid)
@@ -63,7 +63,7 @@ function random_divergent_source_term(grid::DistributedGrid)
 end
 
 function divergence_free_poisson_solution(grid_points, ranks, topo)
-    arch = Distributed(CPU(), ranks=ranks, topology=topo)
+    arch = Distributed(CPU(), partition=Partition(ranks...))
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
@@ -87,12 +87,12 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
 end
 
 function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo)
-    arch = Distributed(CPU(), ranks=ranks, topology=topo)
+    arch = Distributed(CPU(), partition=Partition(ranks...))
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, 
                                  y=(0, 2π), z = (0, 2π), x = collect(0:grid_points[1]))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, (Periodic, Periodic, Periodic))
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
