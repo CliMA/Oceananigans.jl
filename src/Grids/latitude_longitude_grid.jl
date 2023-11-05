@@ -440,7 +440,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
                     :Azᶠᶠ,
                     :Azᶜᶜ)
 
-    arch = grid.architecture
+    arch = architecture(grid)
     
     if grid isa XRegularLLG
         offsets     = grid.φᶜᶜᵃ.offsets[1]
@@ -452,8 +452,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
 
     for metric in grid_metrics
         parentM        = Symbol(metric, :_parent)
-        @eval $parentM = zeros($FT, $metric_size...)
-        @eval $metric  = OffsetArray(arch_array($arch, $parentM), $offsets...)
+        @eval $parentM = zeros($FT, $arch, $metric_size...)
+        @eval $metric  = OffsetArray($parentM, $offsets...)
     end
 
     if grid isa YRegularLLG
