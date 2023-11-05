@@ -25,7 +25,7 @@
 #
 # 7) The system has at least max(RX) * max(RY) gpus
 #
-# 8) Swith to the Strong scaling grid to test strong scaling (in this file)
+# 8) Switch to the Strong scaling grid to test strong scaling (in this file)
 #
 #
 # Finally -> $ ./run_tests.sh
