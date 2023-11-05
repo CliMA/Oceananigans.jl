@@ -21,6 +21,10 @@ module add spack
 # Number of threads in SLURM mode
 export JULIA_NUM_THREADS=${SLURM_CPUS_PER_TASK:=1}
 
+# Julia specific enviromental variables
+export JULIA_NVTX_CALLBACKS=gc
+export JULIA_CUDA_MEMORY_POOL=none
+
 cat > launch.sh << EoF_s
 #! /bin/sh
 export CUDA_VISIBLE_DEVICES=0,1,2,3
