@@ -1,7 +1,7 @@
 import FFTW 
 
 using CUDA: @allowscalar
-using Oceananigans.Grids: YZRegRectilinearGrid
+using Oceananigans.Grids: YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
@@ -140,7 +140,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     # Apply forward transforms to b = first(solver.storage).
     solver.plan.forward.z!(parent(storage.zfield), buffer.z)
-    transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield ()
+    transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
     solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
     solver.plan.forward.x!(parent(storage.xfield), buffer.x)
@@ -195,7 +195,7 @@ function validate_global_grid(global_grid::RectilinearGrid)
                              Please rotate the domain to obtain the required topology"))
     end
     
-    if !(global_grid isa YZRegRectilinearGrid) 
+    if !(global_grid isa YZRegularRG) 
         throw(ArgumentError("For performance reasons only stretching on the X direction is allowed with 
                              distributed grids. Please rotate the domain to have the stretching in X"))
     end
