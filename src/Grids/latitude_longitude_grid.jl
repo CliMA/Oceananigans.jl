@@ -577,7 +577,8 @@ const C = Center
 @inline yspacings(grid::LLG, ℓx::F,   ℓy::C; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
     view(grid.Δyᶠᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline yspacings(grid::YRegularLLG, ℓx, ℓy; with_halos=false) = yspacings(grid, ℓy; with_halos)
+@inline yspacings(grid::YRegularLLG, ℓx::C, ℓy::F; with_halos=false) = yspacings(grid, ℓy; with_halos)
+@inline yspacings(grid::YRegularLLG, ℓx::F, ℓy::C; with_halos=false) = yspacings(grid, ℓy; with_halos)
 @inline yspacings(grid, ℓy::C; kwargs...) = grid.Δyᶠᶜᵃ
 @inline yspacings(grid, ℓy::F; kwargs...) = grid.Δyᶜᶠᵃ
 
