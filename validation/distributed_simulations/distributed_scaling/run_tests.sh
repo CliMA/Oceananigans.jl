@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#####
+##### Disclaimer: this script can be used only on SLURM type systems.
+##### For PBS systems `job_script.sh` needs to be corrected to use the `qsub` syntax
+#####
+
 # Before running, make sure that:
 #
 # 1) The julia environmental variables (defined in this file) point to the right path
@@ -71,5 +76,8 @@ for RX in 1 2 4 8 16 32 64; do
 		# ====================================================== #
 
 		sbatch -N ${NNODES} --gres=gpu:${NTASKS} --ntasks-per-node=${NTASKS} job_script.sh
+
+		# Use qsub on PBS systems!!!
+		# qsub pbs_job_script.sh
     done
 done
