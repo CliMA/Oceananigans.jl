@@ -1,8 +1,8 @@
 #=
 Download the directory MITgcm_Output from  
 https://www.dropbox.com/scl/fo/qr024ly4t3eq38jsi0sdj/h?rlkey=zbq50ud1mtv8l05wxjarulpr3&dl=0
-and place it in the path validation/multi_region/. Then run this script from the main Oceananigans directory as
-include("validation/multi_region/cubed_sphere_vorticity_MITgcm.jl")
+and place it in the path validation/multi_region/. Then run this script from the same path as
+include("cubed_sphere_vorticity_MITgcm.jl")
 =#
 
 using Oceananigans, Printf
@@ -247,6 +247,7 @@ end
 nan = convert(eltype(grid), NaN)
 
 for region in 1:number_of_regions(grid)
+    #=
     u[region][1-Hx:0, :, :] .= nan
     u[region][Nx+2:Nx+Hx, :, :] .= nan
     u[region][:, 1-Hy:0, :] .= nan
@@ -255,6 +256,7 @@ for region in 1:number_of_regions(grid)
     v[region][Nx+1:Nx+Hx, :, :] .= nan
     v[region][:, 1-Hy:0, :] .= nan
     v[region][:, Ny+2:Ny+Hy, :] .= nan
+    =#
     ζ[region][1-Hx:0, :, :] .= nan
     ζ[region][Nx+2:Nx+Hx, :, :] .= nan
     ζ[region][:, 1-Hy:0, :] .= nan
@@ -557,6 +559,7 @@ YGs = zeros(Ny, Ny, 6)
 Us = zeros(Nx, Ny, 6)
 Vs = zeros(Nx, Ny, 6)
 momVort3s = zeros(Nx, Ny, 6)
+Az_ffcs = zeros(Nx, Ny, 6)
 
 panel_indices = [1, 2, 3, 4, 5, 6]
 
@@ -565,12 +568,14 @@ for (iter, pidx) in enumerate(panel_indices)
     YG = read_big_endian_coordinates("MITgcm_Output/2023-11-06/YG.00$(pidx).001.data")
     U = read_big_endian_coordinates("MITgcm_Output/2023-11-06/U.0000000000.00$(pidx).001.data")
     V = read_big_endian_coordinates("MITgcm_Output/2023-11-06/V.0000000000.00$(pidx).001.data")
+    Az_ffc = read_big_endian_coordinates("MITgcm_Output/2023-11-06/RAZ.00$(pidx).001.data")
     momKE, momVort3 = read_big_endian_diagnostic_data("MITgcm_Output/2023-11-06/momDiag.0000000000.00$(pidx).001.data")
     XGs[:, :, iter] = XG
     YGs[:, :, iter] = YG
     Us[:, :, iter] = U
     Vs[:, :, iter] = V
     momVort3s[:, :, iter] = momVort3
+    Az_ffcs[:, :, iter] = Az_ffc
 end
 
 XGs[YGs .== +90] .= grid[3].λᶠᶠᵃ[grid[3].φᶠᶠᵃ .== +90]
