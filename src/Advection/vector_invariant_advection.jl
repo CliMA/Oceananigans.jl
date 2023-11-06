@@ -178,15 +178,16 @@ nothing_to_default(user_value, default) = isnothing(user_value) ? default : user
                                    weno_kw...)
 
 """
-function WENOVectorInvariant(; upwinding = nothing,
-                               vorticity_stencil = VelocityStencil(),
-                               order = nothing,
-                               vorticity_order = nothing,
-                               vertical_order = nothing,
-                               divergence_order = nothing,
-                               kinetic_energy_gradient_order = nothing, 
-                               multi_dimensional_stencil = false,
-                               weno_kw...)
+function WENOVectorInvariant(FT::DataType = Float64; 
+                             upwinding = nothing,
+                             vorticity_stencil = VelocityStencil(),
+                             order = nothing,
+                             vorticity_order = nothing,
+                             vertical_order = nothing,
+                             divergence_order = nothing,
+                             kinetic_energy_gradient_order = nothing, 
+                             multi_dimensional_stencil = false,
+                             weno_kw...)
 
     if isnothing(order) # apply global defaults
         vorticity_order               = nothing_to_default(vorticity_order, default=9)
@@ -200,10 +201,10 @@ function WENOVectorInvariant(; upwinding = nothing,
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default=order)
     end
 
-    vorticity_scheme               = WENO(; order=vorticity_order, weno_kw...)
-    vertical_scheme                = WENO(; order=vertical_order, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(; order=kinetic_energy_gradient_order, weno_kw...)
-    divergence_scheme              = WENO(; order=divergence_order, weno_kw...)
+    vorticity_scheme               = WENO(FT; order=vorticity_order, weno_kw...)
+    vertical_scheme                = WENO(FT; order=vertical_order, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme=divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)

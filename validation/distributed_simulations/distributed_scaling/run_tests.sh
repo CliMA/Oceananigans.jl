@@ -45,21 +45,33 @@ export PROFILE_TRACE=0
 # Number of gpus per node
 export NGPUS_PER_NODE=4
 	
+export SIMULATION=nonhydrostatic
+
 for RX in 1 2 4 8 16 32 64; do
     for RY in 1 2 4 8 16 32 64; do
         
 		export RX
         export RY
 
-		# Grid size for Weak scaling tests
+		# Grid size for Weak scaling tests (Nonhydrostatic)
 		export NX=$((512 * RX))
 		export NY=$((512 * RY))
 		export NZ=256 
 
-		# Grid size for Strong scaling tests
+		# Grid size for Weak scaling tests (Hydrostatic)
+		# export NX=$((1440 * RX))
+		# export NY=$((600 * RY))
+		# export NZ=100 
+
+		# Grid size for Strong scaling tests (Nonhydrostatic)
 		# export NX=512
 		# export NY=512
 		# export NZ=256 
+
+		# Grid size for Strong scaling tests (Hydrostatic)
+		# export NX=1440
+		# export NY=600
+		# export NZ=100 
 
 		RANKS=$((RX * RY))
 

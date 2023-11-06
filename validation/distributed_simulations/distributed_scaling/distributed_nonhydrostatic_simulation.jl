@@ -6,7 +6,7 @@ using Statistics: mean
 using Printf
 using Oceananigans
 using Oceananigans.Utils: prettytime
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Grids: node
 using Oceananigans.Advection: cell_advection_timescale
 using Oceananigans.Units
@@ -22,7 +22,7 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
                                         timestepper = :QuasiAdamsBashforth2,
                                         CFL = 0.5)
         
-    arch  = DistributedArch(GPU(); partition = Partition(ranks...))
+    arch  = Distributed(GPU(); partition = Partition(ranks...))
     grid  = RectilinearGrid(arch; size = grid_size, x = (0, 4096),
 			    		    y = (-2048, 2048),
 					        z = (-512, 0), topology,
@@ -84,6 +84,8 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
     end
     
     run!(simulation)
+
+    return nothing
 end
 
 rx = parse(Int, get(ENV, "RX", "1"))
