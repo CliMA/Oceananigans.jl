@@ -21,11 +21,9 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
                                         output_name = nothing, 
                                         timestepper = :QuasiAdamsBashforth2,
                                         CFL = 0.5)
-    
-    N = grid_size .÷ ranks
-    
+        
     arch  = DistributedArch(GPU(); partition = Partition(ranks...))
-    grid  = RectilinearGrid(arch; size = N, x = (0, 4096),
+    grid  = RectilinearGrid(arch; size = grid_size, x = (0, 4096),
 			    		    y = (-2048, 2048),
 					        z = (-512, 0), topology,
                             halo = (6, 6, 6))
@@ -47,7 +45,7 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
     params = (; N², Δb, Ly, λ = 10days)
 
     model = NonhydrostaticModel(; grid, 
-                                  advection = WENO(order = 7), 
+                                  advection = WENO(order = 9), 
                                   coriolis = FPlane(f = -1e-5),
 				                  tracers = :b, 
                                   buoyancy = BuoyancyTracer(),
