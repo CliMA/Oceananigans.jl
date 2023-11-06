@@ -499,7 +499,7 @@ function panel_wise_visualization_MITgcm(x, y, field; hide_decorations = true, c
     
 end
 
-function read_big_endian_coordinates(filename)
+function read_big_endian_coordinates(filename; do_transpose = false)
     # Open the file in binary read mode
     open(filename, "r") do io
         # Calculate the number of Float64 values in the file
@@ -518,12 +518,16 @@ function read_big_endian_coordinates(filename)
 
         # Convert from big-endian to native endianness
         native_data = reshape( bswap.(data), 32, 32) 
-
+        
+        if do_transpose
+            native_data = native_data'
+        end
+        
         return native_data
     end
 end
 
-function read_big_endian_diagnostic_data(filename)
+function read_big_endian_diagnostic_data(filename; do_transpose = false)
     # Open the file in binary read mode
     open(filename, "r") do io
         # Calculate the number of Float64 values in the file
@@ -547,6 +551,11 @@ function read_big_endian_diagnostic_data(filename)
         momKE = reshape(native_data[1:32*32], 32, 32)
         momVort3 = reshape(native_data[32*32+1:end], 32, 32)
 
+        if do_transpose
+            momKE = momKE'
+            momVort3 = momVort3'
+        end
+        
         return momKE, momVort3
     end
 end
@@ -558,17 +567,26 @@ Us = zeros(Nx, Ny, 6)
 Vs = zeros(Nx, Ny, 6)
 momVort3s = zeros(Nx, Ny, 6)
 
-for pidx in 1:6
-    XG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/XG.00$(pidx).001.data")
-    YG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/YG.00$(pidx).001.data")
-    U = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/U.0000000000.00$(pidx).001.data")
-    V = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/V.0000000000.00$(pidx).001.data")
-    momKE, momVort3 = read_big_endian_diagnostic_data("validation/multi_region/MITgcm_Output/2023-11-01/momDiag.0000000000.00$(pidx).001.data")
-    XGs[:, :, pidx] = XG
-    YGs[:, :, pidx] = YG
-    Us[:, :, pidx] = U
-    Vs[:, :, pidx] = V
-    momVort3s[:, :, pidx] = momVort3
+panel_indices = [4, 5, 6, 1, 2, 3]
+do_transposes = [false, false, true, false, false, false]
+
+for (iter, pidx) in enumerate(panel_indices)
+    do_transpose = do_transposes[iter]
+    XG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/XG.00$(pidx).001.data"; do_transpose)
+    YG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/YG.00$(pidx).001.data"; do_transpose)
+    U = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/U.0000000000.00$(pidx).001.data"; do_transpose)
+    V = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/V.0000000000.00$(pidx).001.data"; do_transpose)
+    momKE, momVort3 = read_big_endian_diagnostic_data("validation/multi_region/MITgcm_Output/2023-11-01/momDiag.0000000000.00$(pidx).001.data"; do_transpose)
+    XGs[:, :, iter] = XG
+    YGs[:, :, iter] = YG
+    Us[:, :, iter] = U
+    Vs[:, :, iter] = V
+    momVort3s[:, :, iter] = momVort3
+end
+
+for region in 1:6
+    @show grid[region].λᶠᶠᵃ[1:32, 1:32] ≈ XGs[:, :, region]
+    @show grid[region].φᶠᶠᵃ[1:32, 1:32] ≈ YGs[:, :, region]
 end
 
 recompute_vorticity_corners_using_interior_points!(ζ)
