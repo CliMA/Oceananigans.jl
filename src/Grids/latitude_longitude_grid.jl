@@ -23,10 +23,10 @@ Adapt.adapt_structure(to, m::LatitudeLongitudeMapping) =
                              Adapt.adapt(to, m.Δφᵃᶜᵃ))
 
 on_architecture(arch, m::LatitudeLongitudeMapping) =
-    LatitudeLongitudeGrid(arch_array(arch, m.Δλᶠᵃᵃ), 
-                          arch_array(arch, m.Δφᵃᶠᵃ), 
-                          arch_array(arch, m.Δλᶜᵃᵃ), 
-                          arch_array(arch, m.Δφᵃᶜᵃ))
+    LatitudeLongitudeMapping(arch_array(arch, m.Δλᶠᵃᵃ), 
+                             arch_array(arch, m.Δφᵃᶠᵃ), 
+                             arch_array(arch, m.Δλᶜᵃᵃ), 
+                             arch_array(arch, m.Δφᵃᶜᵃ))
 
 const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, Arch} = 
     OrthogonalSphericalShellGrid{FT, <:LatitudeLongitudeMapping, TX, TY, TZ, FX, FY, FZ, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, Arch}
