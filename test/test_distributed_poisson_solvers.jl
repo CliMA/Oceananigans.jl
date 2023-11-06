@@ -92,7 +92,7 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo)
                                  y=(0, 2π), z = (0, 2π), x = collect(0:grid_points[1]))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, (Periodic, Periodic, Periodic))
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)

@@ -10,7 +10,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indice
     indices = validate_indices(indices, (LX, LY, LZ), grid)
     validate_field_data((LX, LY, LZ), data, grid, indices)
     validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
+    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity)
     buffers = FieldBoundaryBuffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
