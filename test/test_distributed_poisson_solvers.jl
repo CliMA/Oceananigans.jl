@@ -120,11 +120,11 @@ end
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))
         @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
-        @test divergence_free_poisson_solution((11, 44, 8), (4, 1, 1), topology)
-        @test divergence_free_poisson_solution(( 4, 44, 8), (4, 1, 1), topology)
-        @test divergence_free_poisson_solution((44, 11, 8), (1, 4, 1), topology)
-        @test divergence_free_poisson_solution((44,  4, 8), (1, 4, 1), topology)
-        @test divergence_free_poisson_solution((16, 11, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology)
+        @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology)
+        @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology)
         @test divergence_free_poisson_solution((22,  8, 8), (2, 2, 1), topology)
         @test divergence_free_poisson_solution(( 8, 22, 8), (2, 2, 1), topology)
 
