@@ -573,6 +573,9 @@ for (iter, pidx) in enumerate(panel_indices)
     momVort3s[:, :, iter] = momVort3
 end
 
+# at the poles, the longitudes are ill-defined;
+# we ensure both grids have the same values of longitude
+# at the poles before we compare them
 XGs[YGs .== +90] .= grid[3].λᶠᶠᵃ[grid[3].φᶠᶠᵃ .== +90]
 XGs[YGs .== -90] .= grid[6].λᶠᶠᵃ[grid[6].φᶠᶠᵃ .== -90]
 
