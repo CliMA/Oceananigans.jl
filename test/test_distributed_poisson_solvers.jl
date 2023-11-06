@@ -36,9 +36,9 @@ function random_divergent_source_term(grid::DistributedGrid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, arch.local_rank, arch.connectivity)
-    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, arch.local_rank, arch.connectivity)
-    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, arch.local_rank, arch.connectivity)
+    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, arch.local_rank, arch.connectivity, topology(grid))
+    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, arch.local_rank, arch.connectivity, topology(grid))
+    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, arch.local_rank, arch.connectivity, topology(grid))
 
     Ru = CenterField(grid, boundary_conditions=u_bcs)
     Rv = CenterField(grid, boundary_conditions=v_bcs)
@@ -67,7 +67,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
+    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity, topo)
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=p_bcs)
@@ -92,7 +92,7 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo)
                                  y=(0, 2π), z = (0, 2π), x = collect(0:grid_points[1]))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, topo)
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
