@@ -182,6 +182,7 @@ end
     @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
 end
 
+# TODO: bring up to speed the PCG to remove this error
 validate_global_grid(global_grid) = 
         throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
 
