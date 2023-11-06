@@ -11,7 +11,7 @@ HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
 Base.summary(hcr::HaloCommunicationRanks) = "HaloCommunicationRanks from rank $(hcr.from) to rank $(hcr.to)"
 
-function inject_halo_communication_boundary_conditions(field_bcs, local_rank, connectivity, topology)
+function inject_halo_communication_boundary_conditions(field_bcs, local_rank, connectivity)
     rank_east   = connectivity.east
     rank_west   = connectivity.west
     rank_north  = connectivity.north
