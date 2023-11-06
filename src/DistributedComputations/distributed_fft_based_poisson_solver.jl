@@ -185,6 +185,8 @@ end
 validate_global_grid(global_grid) = 
         throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
 
+# TODO: Allow stretching in z by rotating the underlying data in order to 
+# have just 4 transposes as opposed to 8    
 function validate_global_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
