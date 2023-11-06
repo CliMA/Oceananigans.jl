@@ -99,5 +99,5 @@ Nz = parse(Int, get(ENV, "NZ", "100"))
 
 grid_size = (Nx, Ny, Nz)
 
-@info "Running Nonhydrostatic model with ranks $ranks"
+@info "Running HydrostaticFreeSurface model with ranks $ranks and grid size $grid_size"
 run_hydrostatic_simulation!(grid_size, ranks)

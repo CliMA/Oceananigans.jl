@@ -2,8 +2,8 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=500GB
 #SBATCH --time 24:00:00
-#SBATCH -o output_RX${RX}_RY${RY}_NX${NX}_NY${NY}
-#SBATCH -e error_RX${RX}_RY${RY}_NX${NX}_NY${NY}
+#SBATCH -o output_${SIMULATION}_RX${RX}_RY${RY}_NX${NX}_NY${NY}
+#SBATCH -e error_${SIMULATION}_RX${RX}_RY${RY}_NX${NX}_NY${NY}
 
 ## modules setup
 # Upload modules: cuda and cuda-aware mpi
@@ -34,7 +34,13 @@ chmod +x launch.sh
 
 # Add an NSYS trace only if the system has it
 if test $PROFILE_TRACE == 1; then
-   NSYS="nsys profile --trace=nvtx,cuda,mpi --output=report_RX${RX}_RY${RY}_NX${NX}_NY${NY}"
+   NSYS="nsys profile --trace=nvtx,cuda,mpi --output=${SIMULATION}_RX${RX}_RY${RY}_NX${NX}_NY${NY}"
 fi
 
-$NSYS srun --mpi=pmi2 ./launch.sh $JULIA --check-bounds=no --project distributed_nonhydrostatic_simulation.jl 
+if test $SIMULATION = "hydrostatic"; then
+   RUNFILE=distributed_hydrostatic_simulation.jl 
+else
+   RUNFILE=distributed_nonhydrostatic_simulation.jl 
+fi
+
+$NSYS srun --mpi=pmi2 ./launch.sh $JULIA --check-bounds=no --project $RUNFILE

@@ -99,5 +99,5 @@ Nz = parse(Int, get(ENV, "NZ", "256"))
 
 grid_size = (Nx, Ny, Nz)
 
-@info "Running Nonhydrostatic model with ranks $ranks"
+@info "Running Nonhydrostatic model with ranks $ranks and grid size $grid_size"
 run_nonhydrostatic_simulation!(grid_size, ranks)

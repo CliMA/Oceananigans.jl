@@ -30,8 +30,9 @@
 #
 # 7) The system has at least max(RX) * max(RY) gpus
 #
-# 8) Switch to the Strong scaling grid to test strong scaling (in this file)
+# 8) Choose if testing the hydrostatic or nonhydrostatic model (SIMULATION variable in this file)
 #
+# 9) Choose if measuring the weak or strong scaling (SCALING variable in this file)
 #
 # Finally -> $ ./run_tests.sh
 
@@ -45,7 +46,10 @@ export PROFILE_TRACE=0
 # Number of gpus per node
 export NGPUS_PER_NODE=4
 	
+# Choice between nonhydrostatic and hydrostatic
 export SIMULATION=nonhydrostatic
+# Choice between strong and weak
+export SCALING=weak
 
 for RX in 1 2 4 8 16 32 64; do
     for RY in 1 2 4 8 16 32 64; do
@@ -53,26 +57,32 @@ for RX in 1 2 4 8 16 32 64; do
 		export RX
         export RY
 
-		# Grid size for Weak scaling tests (Nonhydrostatic)
-		export NX=$((512 * RX))
-		export NY=$((512 * RY))
-		export NZ=256 
-
-		# Grid size for Weak scaling tests (Hydrostatic)
-		# export NX=$((1440 * RX))
-		# export NY=$((600 * RY))
-		# export NZ=100 
-
-		# Grid size for Strong scaling tests (Nonhydrostatic)
-		# export NX=512
-		# export NY=512
-		# export NZ=256 
-
-		# Grid size for Strong scaling tests (Hydrostatic)
-		# export NX=1440
-		# export NY=600
-		# export NZ=100 
-
+		if test $SIMULATION = "hydrostatic"; then 
+			if test $SCALING = "weak"; then
+				# Grid size for Weak scaling tests (Hydrostatic)
+				export NX=$((1440 * RX))
+				export NY=$((600 * RY))
+				export NZ=100 
+			else
+				# Grid size for Strong scaling tests (Hydrostatic)
+				export NX=1440
+				export NY=600
+				export NZ=100 
+			fi
+		else
+			if test $SCALING = "weak"; then
+				# Grid size for Weak scaling tests (Nonhydrostatic)
+				export NX=$((512 * RX))
+				export NY=$((512 * RY))
+				export NZ=256 
+			else
+				# Grid size for Strong scaling tests (Nonhydrostatic)
+				export NX=512
+				export NY=512
+				export NZ=256 
+			fi
+		fi
+		
 		RANKS=$((RX * RY))
 
 		export NNODES=$((RANKS / NGPUS_PER_NODE))
