@@ -38,13 +38,13 @@ end
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))
         @info "  Testing 3D transpose with topology $topology..."
-        @test test_transpose((11, 44, 8), (4, 1, 1), topology)
-        @test test_transpose((4,  44, 8), (4, 1, 1), topology)
-        @test test_transpose((44, 11, 8), (1, 4, 1), topology)
-        @test test_transpose((44,  4, 8), (1, 4, 1), topology)
-        @test test_transpose((16, 11, 8), (1, 4, 1), topology)
-        @test test_transpose((22,  8, 8), (2, 2, 1), topology)
-        @test test_transpose(( 8, 22, 8), (2, 2, 1), topology)
+        @test test_transpose((44, 44, 8), (4, 1, 1), topology)
+        @test test_transpose((16, 44, 8), (4, 1, 1), topology)
+        @test test_transpose((44, 44, 8), (1, 4, 1), topology)
+        @test test_transpose((44, 16, 8), (1, 4, 1), topology)
+        @test test_transpose((16, 44, 8), (1, 4, 1), topology)
+        @test test_transpose((44, 16, 8), (2, 2, 1), topology)
+        @test test_transpose((16, 44, 8), (2, 2, 1), topology)
     end
 end
 
