@@ -130,7 +130,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
 
-# solve! requires that `b` in `A x = b` (the right hand side)
+# solve! requires that `b` in `A x = b` (the right hand side) 
+# is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     storage = solver.storage
