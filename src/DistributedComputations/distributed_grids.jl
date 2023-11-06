@@ -146,7 +146,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
-    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                                 LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 nλ, nφ, nz,
                                                                 Hλ, Hφ, Hz,
@@ -247,7 +247,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     precompute_metrics = metrics_precomputed(grid)
 
-    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture,
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(child_arch,
                                                                 LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
                                                                 Nλ, Nφ, Nz,
                                                                 Hλ, Hφ, Hz,
