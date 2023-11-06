@@ -1,6 +1,6 @@
 #=
 Download the directory MITgcm_Output from  
-https://www.dropbox.com/scl/fo/6muia50yo8bstoy869511/h?rlkey=b8pa2tj1f2iigoy64v4ofrg1j&dl=0
+https://www.dropbox.com/scl/fo/qr024ly4t3eq38jsi0sdj/h?rlkey=zbq50ud1mtv8l05wxjarulpr3&dl=0
 and place it in the path validation/multi_region/. Then run this script from the main Oceananigans directory as
 include("validation/multi_region/cubed_sphere_vorticity_MITgcm.jl")
 =#
@@ -567,16 +567,21 @@ Us = zeros(Nx, Ny, 6)
 Vs = zeros(Nx, Ny, 6)
 momVort3s = zeros(Nx, Ny, 6)
 
+#=
 panel_indices = [4, 5, 6, 1, 2, 3]
 do_transposes = [false, false, true, false, false, false]
+=#
+
+panel_indices = [1, 2, 3, 4, 5, 6]
+do_transposes = [false, false, false, false, false, false]
 
 for (iter, pidx) in enumerate(panel_indices)
     do_transpose = do_transposes[iter]
-    XG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/XG.00$(pidx).001.data"; do_transpose)
-    YG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/YG.00$(pidx).001.data"; do_transpose)
-    U = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/U.0000000000.00$(pidx).001.data"; do_transpose)
-    V = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-01/V.0000000000.00$(pidx).001.data"; do_transpose)
-    momKE, momVort3 = read_big_endian_diagnostic_data("validation/multi_region/MITgcm_Output/2023-11-01/momDiag.0000000000.00$(pidx).001.data"; do_transpose)
+    XG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-06/XG.00$(pidx).001.data"; do_transpose)
+    YG = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-06/YG.00$(pidx).001.data"; do_transpose)
+    U = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-06/U.0000000000.00$(pidx).001.data"; do_transpose)
+    V = read_big_endian_coordinates("validation/multi_region/MITgcm_Output/2023-11-06/V.0000000000.00$(pidx).001.data"; do_transpose)
+    momKE, momVort3 = read_big_endian_diagnostic_data("validation/multi_region/MITgcm_Output/2023-11-06/momDiag.0000000000.00$(pidx).001.data"; do_transpose)
     XGs[:, :, iter] = XG
     YGs[:, :, iter] = YG
     Us[:, :, iter] = U
