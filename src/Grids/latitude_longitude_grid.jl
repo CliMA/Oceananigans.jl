@@ -610,8 +610,8 @@ const C = Center
 
 @inline λspacing(i, grid::LLG, ::C) = @inbounds grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]
 @inline λspacing(i, grid::LLG, ::F) = @inbounds grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]
-@inline φspacing(j, grid::LLG, ::C) = @inbounds grid.φᶠᶠᵃ[i+1] - grid.φᶠᶠᵃ[i]
-@inline φspacing(j, grid::LLG, ::F) = @inbounds grid.φᶜᶜᵃ[i]   - grid.φᶜᶜᵃ[i-1]
+@inline φspacing(j, grid::LLG, ::C) = @inbounds grid.φᶠᶠᵃ[j+1] - grid.φᶠᶠᵃ[j]
+@inline φspacing(j, grid::LLG, ::F) = @inbounds grid.φᶜᶜᵃ[j]   - grid.φᶜᶜᵃ[j-1]
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
