@@ -185,21 +185,21 @@ end
 validate_global_grid(global_grid) = 
         throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
 
-# TODO: Allow stretching in z by rotating the underlying data in order to 
-# have just 4 transposes as opposed to 8    
 function validate_global_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ).
-                             For performance reasons, TZ Periodic requires also TY and TX to be Periodic,
+        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
+                             TZ Periodic requires also TY and TX to be Periodic,
                              while TY Periodic requires also TX to be Periodic. 
                              Please rotate the domain to obtain the required topology"))
     end
     
+    # TODO: Allow stretching in z by rotating the underlying data in order to 
+    # have just 4 transposes as opposed to 8    
     if !(global_grid isa YZRegularRG) 
-        throw(ArgumentError("For performance reasons only stretching on the X direction is allowed with 
-                             distributed grids. Please rotate the domain to have the stretching in X"))
+        throw(ArgumentError("Only stretching on the X direction is supported with distributed grids at the moment. 
+                             Please rotate the domain to have the stretching in X"))
     end
 
     return nothing
