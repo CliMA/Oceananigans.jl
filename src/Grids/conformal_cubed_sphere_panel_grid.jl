@@ -4,7 +4,17 @@ struct ConformalCubedSphereMapping{E, X, R} <: AbstractOrthogonalMapping
     ξ :: X
     rotation :: R
 end
-                        
+
+Adapt.adapt_structure(to, m::ConformalCubedSphereMapping) = 
+    ConformalCubedSphereMapping(Adapt.adapt(to, m.η),
+                                Adapt.adapt(to, m.ξ),
+                                Adapt.adapt(to, m.rotation))
+
+on_architecture(arch, m::ConformalCubedSphereMapping) = 
+    ConformalCubedSphereMapping(on_architecture(arch, m.η),
+                                on_architecture(arch, m.ξ),
+                                on_architecture(arch, m.rotation))
+                            
 const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} = 
             OrthogonalSphericalShellGrid{FT, <:ConformalCubedSphereMapping, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, X, Y, Z, Arch}
 

@@ -16,6 +16,18 @@ struct LatitudeLongitudeMapping{LF, PF, LC, PC} <: AbstractOrthogonalMapping
     Δφᵃᶜᵃ :: PC
 end
 
+Adapt.adapt_structure(to, m::LatitudeLongitudeMapping) = 
+    LatitudeLongitudeMapping(Adapt.adapt(to, m.Δλᶠᵃᵃ),
+                             Adapt.adapt(to, m.Δφᵃᶠᵃ),
+                             Adapt.adapt(to, m.Δλᶜᵃᵃ),
+                             Adapt.adapt(to, m.Δφᵃᶜᵃ))
+
+on_architecture(arch, m::LatitudeLongitudeMapping) =
+    LatitudeLongitudeGrid(arch_array(arch, m.Δλᶠᵃᵃ), 
+                          arch_array(arch, m.Δφᵃᶠᵃ), 
+                          arch_array(arch, m.Δλᶜᵃᵃ), 
+                          arch_array(arch, m.Δφᵃᶜᵃ))
+
 const LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, Arch} = 
     OrthogonalSphericalShellGrid{FT, <:LatitudeLongitudeMapping, TX, TY, TZ, FX, FY, FZ, Arch} where {FT, TX, TY, TZ, FX, FY, FZ, Arch}
             

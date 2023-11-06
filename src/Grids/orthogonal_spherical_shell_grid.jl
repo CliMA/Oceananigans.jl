@@ -141,7 +141,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     TX, TY, TZ = topology(grid)
 
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
-                                                        grid.mapping,
+                                                        on_architecture(arch, grid.mapping),
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         grid.Lx, grid.Ly, grid.Lz,
