@@ -3,15 +3,15 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.TurbulenceClosures: compute_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-
-import Oceananigans.TimeSteppers: update_state!
-import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
-
+using Oceananigans.Grids: halo_size
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
+using Oceananigans.TurbulenceClosures: compute_diffusivities!
+
+import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
+import Oceananigans.TimeSteppers: update_state!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -28,17 +28,134 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
+function fill_velocity_halos!(velocities)
+    u, v, _ = velocities
+    grid = u.grid
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    for passes in 1:3
+        fill_halo_regions!(u)
+        fill_halo_regions!(v)
+        @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
+    end
+
+    for region in [1, 3, 5]
+
+        region_south = mod(region + 4, 6) + 1
+        region_east = region + 1
+        region_north = mod(region + 2, 6)
+        region_west = mod(region + 4, 6)
+
+        # Northwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
+            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
+            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+            # Local x direction
+            u[region][1-Hx:0, Ny+1, k] .= reverse(-u[region_north][2:Hx+1, Ny, k])
+            v[region][1-Hx:0, Ny+1, k] .= -u[region_west][1, Ny-Hx+1:Ny, k]
+        end
+
+        # Northeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
+            v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
+            # Local x direction
+            # this is not correct -- we should not overwrite the above with these
+            # u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_north][1:Hx, 1, k]
+            # v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][1:Hy, 1, k]
+        end
+
+        # Southwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
+            v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
+            # Local x direction
+            u[region][1-Hx:0, 0, k] .= v[region_south][1, Ny-Hx+1:Ny, k]
+            v[region][1-Hx:0, 0, k] .= -u[region_south][2, Ny-Hx+1:Ny, k]
+        end
+
+        # Southeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
+            v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
+            # Local x direction
+            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
+            v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
+        end
+    end
+    
+    for region in [2, 4, 6]
+        region_south = mod(region + 3, 6) + 1
+        region_east = mod(region, 6) + 2
+        region_north = mod(region, 6) + 1
+        region_west = region - 1
+
+        # Northwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
+            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
+            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+            # Local x direction
+            u[region][1-Hx:0, Ny+1, k] .= reverse(-v[region_north][1, 2:Hx+1, k])
+            v[region][1-Hx:0, Ny+1, k] .= reverse(u[region_north][1, 1:Hx, k])
+        end
+
+        # Northeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
+            v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
+            # Local x direction
+            u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_east][1:Hx, 1, k]
+            v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_east][1:Hx, 1, k]
+        end
+        
+        # Southwest corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
+            v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
+            # Local x direction
+            u[region][1-Hx:0, 0, k] .= u[region_south][Nx-Hx+1:Nx, Ny, k]
+            v[region][1-Hx:0, 0, k] .= v[region_south][Nx-Hx+1:Nx, Ny, k]
+        end
+        
+        # Southeast corner
+        for k in -Hz+1:Nz+Hz
+            # Local y direction
+            u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
+            v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
+            # Local x direction
+            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
+            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
+            v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
+        end        
+    end
+
+    return nothing
+end
+
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
-    
+
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    second_pass_of_fill_halo_regions!(grid, model.velocities, model.clock, fields(model))
 
-    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
+    fill_velocity_halos!(model.velocities)
+    # second_pass_of_fill_halo_regions!(grid, model.velocities, model.clock, fields(model))
+    
+    # @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
