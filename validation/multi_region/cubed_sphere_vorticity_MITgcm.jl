@@ -559,6 +559,7 @@ YGs = zeros(Ny, Ny, 6)
 Us = zeros(Nx, Ny, 6)
 Vs = zeros(Nx, Ny, 6)
 momVort3s = zeros(Nx, Ny, 6)
+Az_cccs = zeros(Nx, Ny, 6)
 Az_ffcs = zeros(Nx, Ny, 6)
 
 panel_indices = [1, 2, 3, 4, 5, 6]
@@ -569,6 +570,7 @@ for (iter, pidx) in enumerate(panel_indices)
     U = read_big_endian_coordinates("MITgcm_Output/2023-11-06/U.0000000000.00$(pidx).001.data")
     V = read_big_endian_coordinates("MITgcm_Output/2023-11-06/V.0000000000.00$(pidx).001.data")
     Az_ffc = read_big_endian_coordinates("MITgcm_Output/2023-11-06/RAZ.00$(pidx).001.data")
+    Az_ccc = read_big_endian_coordinates("MITgcm_Output/2023-11-06/RAC.00$(pidx).001.data")
     momKE, momVort3 = read_big_endian_diagnostic_data("MITgcm_Output/2023-11-06/momDiag.0000000000.00$(pidx).001.data")
     XGs[:, :, iter] = XG
     YGs[:, :, iter] = YG
@@ -576,11 +578,11 @@ for (iter, pidx) in enumerate(panel_indices)
     Vs[:, :, iter] = V
     momVort3s[:, :, iter] = momVort3
     Az_ffcs[:, :, iter] = Az_ffc
+    Az_cccs[:, :, iter] = Az_ccc
 end
 
-# at the poles, the longitudes are ill-defined;
-# we ensure both grids have the same values of longitude
-# at the poles before we compare them
+# At the poles, the longitudes are ill-defined; so, we ensure both grids have the same values of longitude at the poles 
+# before we compare them.
 XGs[YGs .== +90] .= grid[3].λᶠᶠᵃ[grid[3].φᶠᶠᵃ .== +90]
 XGs[YGs .== -90] .= grid[6].λᶠᶠᵃ[grid[6].φᶠᶠᵃ .== -90]
 
@@ -687,4 +689,4 @@ save("meridional_velocity_difference.png", fig)
 
 # Plot the difference between the Oceananigansvorticity and the MITgcm vorticity.
 fig = panel_wise_visualization_MITgcm(XGs, YGs, momVort3s_difference, hide_decorations = false, colorrange = momVort3s_difference_color_range, colormap = :balance)
-save("vorticity_difference.png", fig)
+save("vorticity_difference.png", fig) 
