@@ -170,7 +170,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                                                 Hλ, Hφ, Hz,
                                                                 Lλ, Lφ, Lz,
                                                                 λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
-                                                                φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
+                                                                φᵃᶜᵃ, φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶠᵃ, 
                                                                 zᵃᵃᶜ, zᵃᵃᶠ,
                                                                 Δzᵃᵃᶜ, Δzᵃᵃᶠ, 
                                                                 (nothing for i=1:12)..., FT(radius))
