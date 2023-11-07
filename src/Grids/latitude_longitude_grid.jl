@@ -6,8 +6,8 @@ using KernelAbstractions: @kernel, @index
 the mapping Type for a LatitudeLongitudeGrid. 
 It holds the regularity of the grid (`X` and `Y`).
 
-If `XRegular == true` the λ direction has a constant spacing, otherwise it is stretched.
-If `YRegular == true` the φ direction has a constant spacing, otherwise it is stretched.
+If `XRegular == true` the spacing in the λ direction is constant, otherwise it's stretched.
+If `YRegular == true` the spacing in the φ direction is constant, otherwise it's stretched.
 """
 struct LatitudeLongitudeMapping{XRegular, YRegular} <: AbstractOrthogonalMapping end
 
