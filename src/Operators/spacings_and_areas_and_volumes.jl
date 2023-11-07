@@ -151,19 +151,19 @@ end
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  )
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  )
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.φᶜᶜᵃ[j]   - grid.φᶜᶜᵃ[j-1])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.φᶠᶠᵃ[j+1] - grid.φᶠᶠᵃ[j])
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.mapping.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.mapping.Δλᶜᵃᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.mapping.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.mapping.Δλᶜᵃᵃ[i])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.mapping.Δφᵃᶠᵃ[j])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius * deg2rad(grid.mapping.Δφᵃᶜᵃ[j])
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  )
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  )
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.φᶜᶜᵃ[j]   - grid.φᶜᶜᵃ[j-1])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.φᶠᶠᵃ[j+1] - grid.φᶠᶠᵃ[j]  )
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.mapping.Δλᶠᵃᵃ)
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.mapping.Δλᶜᵃᵃ)
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶠᶠᵃ[j]) * deg2rad(grid.mapping.Δλᶠᵃᵃ)
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius * hack_cosd(grid.φᶜᶜᵃ[j]) * deg2rad(grid.mapping.Δλᶜᵃᵃ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.mapping.Δφᵃᶠᵃ)
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGYNM) = @inbounds grid.radius * deg2rad(grid.mapping.Δφᵃᶜᵃ)
 
 #####
 #####
@@ -200,15 +200,15 @@ end
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶜᶜᵃ[i]   - grid.λᶜᶜᵃ[i-1]) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.λᶠᶠᵃ[i+1] - grid.λᶠᶠᵃ[i]  ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶠᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶜᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶠᵃᵃ) * (hack_sind(grid.φᶜᶜᵃ[j])   - hack_sind(grid.φᶜᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGXNM) = @inbounds grid.radius^2 * deg2rad(grid.mapping.Δλᶜᵃᵃ) * (hack_sind(grid.φᶠᶠᵃ[j+1]) - hack_sind(grid.φᶠᶠᵃ[j]))
 
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
