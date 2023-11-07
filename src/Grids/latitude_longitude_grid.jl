@@ -463,8 +463,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     else
         parentC = zeros(FT, length(grid.φᶜᶜᵃ))
         parentF = zeros(FT, length(grid.φᶜᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.φᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.φᵃᶜᵃ.offsets[1])
+        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.φᶜᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.φᶜᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
@@ -596,7 +596,7 @@ const C = Center
 ##### Grid spacings in λ, φ (in degrees)
 #####
 
-# TODO: Change this!
+# TODO: Change this (do we even want to support this?)
 @inline λspacings(grid::LLG, ℓx::C; with_halos=false) = with_halos ? grid.λᶜᶜᵃ : view(grid.λᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
 @inline λspacings(grid::LLG, ℓx::F; with_halos=false) = with_halos ? grid.λᶠᶠᵃ : view(grid.λᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx))
 @inline λspacings(grid::XRegularLLG, ℓx::C; with_halos=false) = grid.λᶠᶠᵃ[2] - grid.λᶠᶠᵃ[1]
