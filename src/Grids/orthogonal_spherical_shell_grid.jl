@@ -157,7 +157,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     TX, TY, TZ = topology(grid)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
-                                                    grid.mapping,
+                                                    adapt(to, grid.mapping),
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
                                                     grid.Lx, grid.Ly, grid.Lz,
