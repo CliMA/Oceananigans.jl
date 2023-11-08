@@ -83,6 +83,19 @@ end
 @inline (f::Relaxation{R, M, <:Number})(x, y, z, t, field) where {R, M} =
     f.rate * f.mask(x, y, z) * (f.target - field)
 
+# methods for grids with flat dimensions
+@inline (f::Relaxation)(x₁, x₂, t, field) =
+    f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)
+
+@inline (f::Relaxation{R, M, <:Number})(x₁, x₂, t, field) where {R, M} =
+    f.rate * f.mask(x₁, x₂) * (f.target - field)
+
+@inline (f::Relaxation)(x₁, t, field) =
+    f.rate * f.mask(x₁) * (f.target(x₁, t) - field)
+
+@inline (f::Relaxation{R, M, <:Number})(x₁, t, field) where {R, M} =
+    f.rate * f.mask(x₁) * (f.target - field)
+
 """Show the innards of a `Relaxation` in the REPL."""
 Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
     print(io, "Relaxation{$R, $M, $T}", "\n",
