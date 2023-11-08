@@ -9,6 +9,9 @@ import SeawaterPolynomials.ρ
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
 @inline ρ(i, j, k, grid, eos, T, S, Z) = @inbounds ρ(T[i, j, k], S[i, j, k], Z[i, j, k], eos)
 
+# Fallback to calculate potential density, i.e. density at a reference height
+@inline ρ(i, j, k, grid, eos, T, S, Z::Number) = @inbounds ρ(T[i, j, k], S[i, j, k], Z, eos)
+
 "Return a `KernelFunctionOperation` to compute the in-situ `seawater_density`."
 seawater_density(grid, eos, temperature, salinity, geopotential_height) =
     KernelFunctionOperation{Center, Center, Center}(ρ, grid, eos, temperature, salinity, geopotential_height)
