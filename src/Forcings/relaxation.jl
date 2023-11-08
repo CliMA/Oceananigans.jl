@@ -23,8 +23,8 @@ end
 """
     Relaxation(; rate, mask=onefunction, target=zerofunction)
 
-Returns a `Forcing` that restores a field to `target(x, y, z, t)`
-at the specified `rate`, in the region `mask(x, y, z)`.
+Returns a `Forcing` that restores a field to `target(X..., t)`
+at the specified `rate`, in the region `mask(X...)`.
 
 The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
 Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
