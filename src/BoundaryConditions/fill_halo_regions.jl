@@ -119,7 +119,7 @@ function permute_boundary_conditions(boundary_conditions)
         extract_bottom_bc(boundary_conditions)
     ]
     =#
-
+    
     if split_x_boundaries
         if split_y_boundaries
             fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
