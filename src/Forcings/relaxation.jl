@@ -84,12 +84,15 @@ end
     f.rate * f.mask(x, y, z) * (f.target - field)
 
 # methods for grids with flat dimensions
+# here xₙ is used as the corrdinate they represent depends on which dimension is flat
+# for example in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r)
 @inline (f::Relaxation)(x₁, x₂, t, field) =
     f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)
 
 @inline (f::Relaxation{R, M, <:Number})(x₁, x₂, t, field) where {R, M} =
     f.rate * f.mask(x₁, x₂) * (f.target - field)
 
+# and here x₁ can be ξ, η, or r
 @inline (f::Relaxation)(x₁, t, field) =
     f.rate * f.mask(x₁) * (f.target(x₁, t) - field)
 
