@@ -56,7 +56,7 @@ export
     BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift,
+    UniformStokesDrift, StokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -216,7 +216,7 @@ include("DistributedComputations/DistributedComputations.jl")
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
-include("StokesDrift.jl")
+include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
@@ -249,7 +249,7 @@ using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .BuoyancyModels
-using .StokesDrift
+using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers
 using .OutputReaders
