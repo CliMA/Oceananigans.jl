@@ -26,17 +26,17 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Face) = ("xF",)
-ydim(::Face) = ("yF",)
-zdim(::Face) = ("zF",)
+xdim(::Face) = tuple("xF")
+ydim(::Face) = tuple("yF")
+zdim(::Face) = tuple("zF")
 
-xdim(::Center) = ("xC",)
-ydim(::Center) = ("yC",)
-zdim(::Center) = ("zC",)
+xdim(::Center) = tuple("xC")
+ydim(::Center) = tuple("yC")
+zdim(::Center) = tuple("zC")
 
-xdim(::Nothing) = ()
-ydim(::Nothing) = ()
-zdim(::Nothing) = ()
+xdim(::Nothing) = tuple()
+ydim(::Nothing) = tuple()
+zdim(::Nothing) = tuple()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
