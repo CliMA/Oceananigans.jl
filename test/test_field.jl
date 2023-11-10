@@ -98,6 +98,9 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
+@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
+    interpolate((x, y, z), from_field, from_loc, from_grid)
+
 function run_field_interpolation_tests(grid)
     arch = architecture(grid)
     velocities = VelocityFields(grid)
@@ -128,13 +131,18 @@ function run_field_interpolation_tests(grid)
 
     CUDA.@allowscalar begin
         for f in (u, v, w, c)
-            x = xnodes(f)
-            y = ynodes(f)
-            z = znodes(f)
-            Nx, Ny, Nz = size(f)
-            X = [(x[i], y[j], z[k]) for i=1:Nx, j=1:Ny, k=1:Nz]
-            X = arch_array(arch, X)
-            ℑf = interpolate.(X, Ref(f))
+            # Nx, Ny, Nz = size(f)
+            # X = arch_array(arch, X)
+            # X = [(x[i], y[j], z[k]) for i=1:Nx, j=1:Ny, k=1:Nz]
+            #y = ynodes(f)
+            #z = znodes(f)
+            #
+            x, y, z = nodes(f, reshape=true)
+            x = arch_array(arch, x)
+            y = arch_array(arch, y)
+            z = arch_array(arch, z)
+            loc = Tuple(L() for L in location(f))
+            ℑf = interpolate.(x, y, z, Ref(f), Ref(loc), Ref(f.grid))
             @test all(isapprox.(ℑf, Array(interior(f)), atol=tolerance))
         end
 
