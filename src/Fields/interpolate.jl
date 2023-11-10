@@ -23,7 +23,7 @@ using a binary search. The input array `vec` has to be monotonically increasing.
 
 Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """
-@inline function index_binary_search(val, vec, N)
+@inline function index_binary_search(vec::AbstractVector, val::Number, N)
     low = 0
     high = N - 1
 
@@ -42,7 +42,7 @@ Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/1
 end
 
 @inline function fractional_index(val, vec, N)
-    i₁, i₂ = index_binary_search(val, vec, N)
+    i₁, i₂ = index_binary_search(vec, val, N)
 
     @inbounds x₁ = vec[i₁]
     @inbounds x₂ = vec[i₂]
