@@ -142,7 +142,7 @@ function run_field_interpolation_tests(grid)
             y = arch_array(arch, y)
             z = arch_array(arch, z)
             loc = Tuple(L() for L in location(f))
-            ℑf = interpolate.(x, y, z, Ref(f), Ref(loc), Ref(f.grid))
+            ℑf = interpolate_xyz.(x, y, z, Ref(f), Ref(loc), Ref(f.grid))
             @test all(isapprox.(ℑf, Array(interior(f)), atol=tolerance))
         end
 
