@@ -44,7 +44,10 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     i = Base.unsafe_trunc(Int, i)
     j = Base.unsafe_trunc(Int, j)
     k = Base.unsafe_trunc(Int, k)
-   
+    
+    # We didn't hit the boundaries
+    x⁺, y⁺, z⁺ = x, y, z
+    
     if immersed_cell(i, j, k, grid)
         # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
