@@ -1,5 +1,6 @@
 using Oceananigans.Utils: instantiate 
 using Oceananigans.Models: total_velocities
+using Oceananigans.Grids: AbstractGrid
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -133,7 +134,10 @@ end
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
+@inline x_metric(i, j, grid::ImmersedBoundaryGrid) = x_metric(i, j, grid.underlying_grid)
+@inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
+
+@kernel function _advect_particles!(particles, restitution, grid::AbstractGrid, Δt, velocities) 
     p = @index(Global)
 
     @inbounds begin
