@@ -81,34 +81,34 @@ function default_dimensions(output, grid, indices, with_halos)
 end
 
 const default_dimension_attributes_rectilinear = Dict(
-    "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-    "xF"          => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-    "yC"          => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-    "yF"          => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("longname" => "Time", "units" => "s"),
-    "particle_id" => Dict("longname" => "Particle ID")
+    "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+    "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+    "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+    "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("long_name" => "Time", "units" => "s"),
+    "particle_id" => Dict("long_name" => "Particle ID")
 )
 
 const default_dimension_attributes_curvilinear = Dict(
-    "xC"          => Dict("longname" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
-    "xF"          => Dict("longname" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
-    "yC"          => Dict("longname" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
-    "yF"          => Dict("longname" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
-    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("longname" => "Time", "units" => "s"),
-    "particle_id" => Dict("longname" => "Particle ID")
+    "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+    "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+    "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+    "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
+    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("long_name" => "Time", "units" => "s"),
+    "particle_id" => Dict("long_name" => "Particle ID")
 )
 
 const default_output_attributes = Dict(
-    "u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
-    "v" => Dict("longname" => "Velocity in the y-direction", "units" => "m/s"),
-    "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
-    "b" => Dict("longname" => "Buoyancy",                    "units" => "m/s²"),
-    "T" => Dict("longname" => "Conservative temperature",    "units" => "°C"),
-    "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
+    "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
+    "v" => Dict("long_name" => "Velocity in the y-direction", "units" => "m/s"),
+    "w" => Dict("long_name" => "Velocity in the z-direction", "units" => "m/s"),
+    "b" => Dict("long_name" => "Buoyancy",                    "units" => "m/s²"),
+    "T" => Dict("long_name" => "Conservative temperature",    "units" => "°C"),
+    "S" => Dict("long_name" => "Absolute salinity",           "units" => "g/kg")
 )
 
 add_schedule_metadata!(attributes, schedule) = nothing
@@ -307,9 +307,9 @@ outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
-    "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
-    "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-    "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+    "scalar"  => Dict("long_name" => "Some scalar", "units" => "bananas"),
+    "profile" => Dict("long_name" => "Some vertical profile", "units" => "watermelons"),
+    "slice"   => Dict("long_name" => "Some slice", "units" => "mushrooms")
 )
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
@@ -402,8 +402,8 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
-            Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
-            Dict("longname" => "Time", "units" => "seconds")
+            Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
+            Dict("long_name" => "Time", "units" => "seconds")
 
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
