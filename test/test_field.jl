@@ -131,15 +131,15 @@ function run_field_interpolation_tests(grid)
 
     for f in (u, v, w, c)
         x, y, z = nodes(f, reshape=true)
-        x = arch_array(arch, Array(x))
-        y = arch_array(arch, Array(y))
-        z = arch_array(arch, Array(z))
         loc = Tuple(L() for L in location(f))
-        ℑf = interpolate_xyz.(x, y, z, Ref(interior(f)), Ref(loc), Ref(f.grid))
-        @show typeof(ℑf)
-        ℑf = Array(ℑf)
-        f_interior = Array(interior(f))
-        @test all(isapprox.(ℑf, f_interior, atol=tolerance))
+
+        CUDA.@allowscalar begin
+            ℑf = interpolate_xyz.(x, y, z, Ref(interior(f)), Ref(loc), Ref(f.grid))
+        end
+
+        ℑf_cpu = Array(ℑf)
+        f_interior_cpu = Array(interior(f))
+        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
