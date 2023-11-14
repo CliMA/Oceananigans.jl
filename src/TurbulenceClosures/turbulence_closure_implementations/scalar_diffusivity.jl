@@ -1,12 +1,11 @@
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
-    ν :: N
+struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
+    ν :: V
     κ :: K
 
-    ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K} =
-        new{TD, F, N, K}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
 end
 
 """
@@ -106,7 +105,8 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
-                           parameters = nothing)
+                           parameters = nothing,
+                           required_halo_size = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
@@ -115,7 +115,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation)}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
 
 # Explicit default
@@ -164,18 +164,18 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 required_halo_size(closure::ScalarDiffusivity) = 1 
  
-function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
+function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F}(closure.ν, κ)
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
 # Note: we could compute ν and κ (if they are Field):
-# function calculate_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
+# function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
 #     compute!(viscosity(closure, diffusivities))
 #     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
 #     return nothing

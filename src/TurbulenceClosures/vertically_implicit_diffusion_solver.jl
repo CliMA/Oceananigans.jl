@@ -40,11 +40,10 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-# Tracers and horizontal velocities at cell centers in z
-
 const c = Center()
 const f = Face()
 
+# Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     closure_ij = getclosure(i, j, closure)
     κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)

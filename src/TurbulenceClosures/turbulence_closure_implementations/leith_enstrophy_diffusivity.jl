@@ -4,7 +4,7 @@ using Oceananigans.Fields: AbstractField
 ##### The turbulence closure proposed by Leith
 #####
 
-struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
+struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation, 2}
                   C :: FT
              C_Redi :: CR
                C_GM :: GM
@@ -66,13 +66,10 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
-@inline function abs²_∇h_ζ(i, j, k, grid, velocities)
-    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, velocities.v)
-    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, velocities.u)
-    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, velocities.u)
-    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, velocities.v)
-
-    return (vxx - uxy)^2 + (vxy - uyy)^2
+@inline function abs²_∇h_ζ(i, j, k, grid, u, v)
+    ζx = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ζ₃ᶠᶠᶜ, u, v)
+    ζy = ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶜᶜ, ζ₃ᶠᶠᶜ, u, v)
+    return ζx^2 + ζy^2
 end
 
 const ArrayOrField = Union{AbstractArray, AbstractField}
@@ -81,24 +78,28 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = @inbounds ψ[i, j, k]^2
 
 @inline function abs²_∇h_wz(i, j, k, grid, w)
-    wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᶜᶜ, ∂zᶜᶜᶜ, w)
-    wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᶜᶠᶜ, ∂zᶜᶜᶜ, w)
-    return wxz² + wyz²
+    wxz = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂zᶜᶜᶜ, w)
+    wyz = ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, ∂zᶜᶜᶜ, w)
+    return wxz^2 + wyz^2
 end
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT =
-    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(   abs²_∇h_ζ(i, j, k, grid, velocities)
-                                                      + abs²_∇h_wz(i, j, k, grid, velocities.w))
+@kernel function _compute_leith_viscosity!(νₑ, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT 
+    i, j, k = @index(Global, NTuple)
+    u, v, w = velocities
+    prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3 
+    dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, u, v) + abs²_∇h_wz(i, j, k, grid, w))
+    
+    @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
+end
 
-function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
+function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, :xyz,
-            calculate_nonlinear_viscosity!,
+    launch!(arch, grid, parameters, _compute_leith_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing

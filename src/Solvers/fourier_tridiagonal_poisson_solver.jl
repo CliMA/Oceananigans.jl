@@ -1,8 +1,8 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimensions
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T} 
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
@@ -50,13 +50,13 @@ end
 end 
 
 
-stretched_direction(::YZRegRectilinearGrid) = XDirection()
-stretched_direction(::XZRegRectilinearGrid) = YDirection()
-stretched_direction(::XYRegRectilinearGrid) = ZDirection()
+stretched_direction(::YZRegularRG) = XDirection()
+stretched_direction(::XZRegularRG) = YDirection()
+stretched_direction(::XYRegularRG) = ZDirection()
 
-Δξᶠ(i, grid::YZRegRectilinearGrid) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid::XZRegRectilinearGrid) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid::XYRegRectilinearGrid) = Δzᵃᵃᶠ(1, 1, k, grid)
+Δξᶠ(i, grid::YZRegularRG) = Δxᶠᵃᵃ(i, 1, 1, grid)
+Δξᶠ(j, grid::XZRegularRG) = Δyᵃᶠᵃ(1, j, 1, grid)
+Δξᶠ(k, grid::XYRegularRG) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
@@ -88,11 +88,11 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Compute diagonal coefficients for each grid point
     diagonal = arch_array(arch, zeros(size(grid)...))
-    launch_config = if grid isa YZRegRectilinearGrid
+    launch_config = if grid isa YZRegularRG
                         :yz
-                    elseif grid isa XZRegRectilinearGrid
+                    elseif grid isa XZRegularRG
                         :xz
-                    elseif grid isa XYRegRectilinearGrid
+                    elseif grid isa XYRegularRG
                         :xy
                     end
 
@@ -155,17 +155,18 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
 end
 
 
-@kernel function multiply_by_stretched_spacing!(a, grid::YZRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::YZRegularRG)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_stretched_spacing!(a, grid::XZRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::XZRegularRG)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
 end
 
-@kernel function multiply_by_stretched_spacing!(a, grid::XYRegRectilinearGrid)
+@kernel function multiply_by_stretched_spacing!(a, grid::XYRegularRG)
     i, j, k = @index(Global, NTuple)
     a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
+

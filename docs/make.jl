@@ -173,17 +173,19 @@ format = Documenter.HTML(collapselevel = 1,
                          prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
+                         size_threshold = 819200,
                          assets = String["assets/citations.css"])
 
-makedocs(bib, sitename = "Oceananigans.jl",
-              authors = "Climate Modeling Alliance and contributors",
-              format = format,
-              pages = pages,
-              modules = [Oceananigans],
-              doctest = true, # set to false to speed things up
-              strict = true,
-              clean = true,
-              checkdocs = :exports) # set to :none to speed things up
+makedocs(sitename = "Oceananigans.jl",
+         authors = "Climate Modeling Alliance and contributors",
+         format = format,
+         pages = pages,
+         plugins = [bib],
+         modules = [Oceananigans],
+         warnonly = [:cross_references],
+         doctest = true, # set to false to speed things up
+         clean = true,
+         checkdocs = :exports) # set to :none to speed things up
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 

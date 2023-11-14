@@ -7,7 +7,7 @@ using Distances
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Grids: prettysummary, coordinate_summary
+using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -17,6 +17,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
     Hx :: Int
     Hy :: Int
     Hz :: Int
+    Lz :: FT
     λᶜᶜᵃ :: A
     λᶠᶜᵃ :: A
     λᶜᶠᵃ :: A
@@ -47,6 +48,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
     OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                              Nx, Ny, Nz,
                                              Hx, Hy, Hz,
+                                                Lz :: FT,
                                               λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
                                               φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
                                              Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
@@ -57,6 +59,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
         new{FT, TX, TY, TZ, A, R, FR, C, Arch}(architecture,
                                             Nx, Ny, Nz,
                                             Hx, Hy, Hz,
+                                            Lz,
                                             λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                                             φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
@@ -69,11 +72,11 @@ const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
 # convenience constructor for OSSG without any conformal_mapping properties
-OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz,
+OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                              λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) =
-    OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz,
+    OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                                  λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                                  Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, nothing)
@@ -91,8 +94,8 @@ OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz,
                                  rotation = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been 
-mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, take values
-in the range ``[-1, 1]``.
+conformally mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default,
+both take values in the range ``[-1, 1]``.
 
 The mapping from the face of the cube to the sphere is done via the [CubedSphere.jl](https://github.com/CliMA/CubedSphere.jl)
 package.
@@ -115,30 +118,43 @@ Keyword arguments
     2. one-dimensional array specifying the cell interface locations, or
     3. a single-argument function that takes an index and returns cell interface location.
 
-- `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
+- `radius`: The radius of the sphere the grid lives on. By default this is equal to the radius of Earth.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior. The default is 1 halo cells in every direction.
 
-- `rotation`: Rotation of the spherical shell grid about some axis that passes through the center
-              of the sphere. If `nothing` is provided (default), then the spherical shell includes
-              the North Pole of the sphere in its center.
+- `rotation :: Rotation`: Rotation of the conformal cubed sphere panel about some axis that passes
+                          through the center of the sphere. If `nothing` is provided (default), then
+                          the panel includes the North Pole of the sphere in its center. For example,
+                          to construct a grid that includes tha South Pole we can pass either
+                          `rotation = RotX(π)` or `rotation = RotY(π)`.
 
 Examples
 ========
 
-* A default grid with `Float64` type:
+* The default conformal cubed sphere panel grid with `Float64` type:
 
 ```jldoctest
-julia> using Oceananigans
-
-julia> using Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.Grids
 
 julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+```
+
+* The conformal cubed sphere panel that includes the South Pole with `Float32` type:
+
+```jldoctest
+julia> using Oceananigans, Oceananigans.Grids, Rotations
+
+julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
+36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
+├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
+├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
+├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664956, max(Δφ)=2.7412
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
 """
@@ -173,11 +189,13 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     ηᵃᶠᵃ = ynodes(ξη_grid, Face())
     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
-    ## The vertical coordinates can come out of the regular rectilinear grid!
+    ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
     Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
     Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
+    Lz    = ξη_grid.Lz
+
 
     ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
 
@@ -216,19 +234,20 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     # Horizontal distances
 
     #=
-    Distances Δx and Δy are computed via the haversine formula, e.g., Δx = Δσ * radius, where
-    Δσ is the central angle that corresponds to the end points of distance Δx.
+    Distances Δx and Δy are computed via the haversine formula provided by Distances.jl
+    package. For example, Δx = Δσ * radius, where Δσ is the central angle that corresponds
+    to the end points of distance Δx.
 
-    For cells near the boundary of the OrthogonalSphericalShellGrid one of the points
+    For cells near the boundary of the conformal cubed sphere panel, one of the points
     defining, e.g., Δx might lie outside the grid! For example, the central angle
-    Δσxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
+    Δxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
 
-        Δσxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
+        Δxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
 
     Notice that, e.g., point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
-    In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
+    In those cases, we employ symmetry arguments and compute, e.g, Δxᶠᶜᵃ[1, j] via
 
-        Δσxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
+        Δxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
     =#
 
 
@@ -241,14 +260,14 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         #Δxᶜᶜᵃ
 
         for i in 1:Nξ, j in 1:Nη
-            Δxᶜᶜᵃ[i, j] =  haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
+            Δxᶜᶜᵃ[i, j] = haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
         end
 
 
         # Δxᶠᶜᵃ
 
         for j in 1:Nη, i in 2:Nξ
-            Δxᶠᶜᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
+            Δxᶠᶜᵃ[i, j] = haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
         end
 
         for j in 1:Nη
@@ -262,17 +281,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         end
 
 
-        # Δσxᶜᶠᵃ
+        # Δxᶜᶠᵃ
 
         for j in 1:Nη+1, i in 1:Nξ
-            Δxᶜᶠᵃ[i, j] =  haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+            Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσxᶠᶠᵃ
+        # Δxᶠᶠᵃ
 
         for j in 1:Nη+1, i in 2:Nξ
-            Δxᶠᶠᵃ[i, j] =   haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
+            Δxᶠᶠᵃ[i, j] = haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
         end
 
         for j in 1:Nη+1
@@ -292,17 +311,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     Δyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
     @inbounds begin
-        # Δσyᶜᶜᵃ
+        # Δyᶜᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ
-            Δyᶜᶜᵃ[i, j] =  haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
+            Δyᶜᶜᵃ[i, j] = haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσyᶜᶠᵃ
+        # Δyᶜᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ
-            Δyᶜᶠᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+            Δyᶜᶠᵃ[i, j] = haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
         end
 
         for i in 1:Nξ
@@ -316,17 +335,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
         end
 
 
-        # Δσyᶠᶜᵃ
+        # Δyᶠᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ+1
-            Δyᶠᶜᵃ[i, j] =  haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+            Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
         end
 
 
-        # Δσyᶠᶠᵃ
+        # Δyᶠᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ+1
-            Δyᶠᶠᵃ[i, j] =  haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+            Δyᶠᶠᵃ[i, j] = haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
         end
 
         for i in 1:Nξ+1
@@ -348,7 +367,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
         Az = spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-    For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid some of the 
+    For quadrilaterals near the boundary of the conformal cubed sphere panel, some of the
     vertices lie outside the grid! For example, the area Azᶠᶜᵃ[1, j] corresponds to a
     quadrilateral with vertices:
 
@@ -537,10 +556,9 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     # In all computations above we used (Bounded, Bounded, topology[3]) for ξ-η grid.
     # This was done to ensure that we had information for the faces at the boundary of
-    # the shell.
+    # the grid.
     #
-    # Here we take care the coordinate and metric arrays given the `topology`
-    # prescribed.
+    # Now we take care the coordinate and metric arrays given the `topology` prescribed.
 
     warnings = false
 
@@ -573,17 +591,171 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
     coordinate_arrays = map(a -> arch_array(architecture, a), coordinate_arrays)
 
-    metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                     Δzᵃᵃᶜ, Δzᵃᵃᶠ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+    metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                     Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                     Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    conformal_mapping = (; ξ, η)
+    conformal_mapping = (; ξ, η, rotation)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
                                                     conformal_mapping)
+
+    fill_metric_halo_regions!(grid)
+
+    return grid
+end
+
+"""
+    function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+
+Fill the `x`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
+and topology `tx`, `ty`.
+"""
+function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::BoundedTopology, ty, Nx, Ny, Hx, Hy)
+    # = N+1 for ::BoundedTopology or N otherwise
+    Nx⁺ = length(ℓx, tx, Nx)
+    Ny⁺ = length(ℓy, ty, Ny)
+
+    @inbounds begin
+        for j in 1:Ny⁺
+            # fill west halos
+            for i in 0:-1:-Hx+1
+                metric[i, j] = metric[i+1, j]
+            end
+            # fill east halos
+            for i in Nx⁺+1:Nx⁺+Hx
+                metric[i, j] = metric[i-1, j]
+            end
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, ty, Nx, Ny, Hx, Hy)
+    # = N+1 for ::BoundedTopology or N otherwise
+    Nx⁺ = length(ℓx, tx, Nx)
+    Ny⁺ = length(ℓy, ty, Ny)
+
+    @inbounds begin
+        for j in 1:Ny⁺
+            # fill west halos
+            for i in 0:-1:-Hx+1
+                metric[i, j] = metric[Nx+i, j]
+            end
+            # fill east halos
+            for i in Nx⁺+1:Nx⁺+Hx
+                metric[i, j] = metric[i-Nx, j]
+            end
+        end
+    end
+
+    return nothing
+end
+
+"""
+    function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+
+Fill the `y`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
+and topology `tx`, `ty`.
+"""
+function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology, Nx, Ny, Hx, Hy)
+    # = N+1 for ::BoundedTopology or N otherwise
+    Nx⁺ = length(ℓx, tx, Nx)
+    Ny⁺ = length(ℓy, ty, Ny)
+
+    @inbounds begin
+        for i in 1:Nx⁺
+            # fill south halos
+            for j in 0:-1:-Hy+1
+                metric[i, j] = metric[i, j+1]
+            end
+            # fill north halos
+            for j in Ny⁺+1:Ny⁺+Hy
+                metric[i, j] = metric[i, j-1]
+            end
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopology, Nx, Ny, Hx, Hy)
+    # = N+1 for ::BoundedTopology or N otherwise
+    Nx⁺ = length(ℓx, tx, Nx)
+    Ny⁺ = length(ℓy, ty, Ny)
+
+    @inbounds begin
+        for i in 1:Nx⁺
+            # fill south halos
+            for j in 0:-1:-Hy+1
+                metric[i, j] = metric[i, Ny+j]
+            end
+            # fill north halos
+            for j in Ny⁺+1:Ny⁺+Hy
+                metric[i, j] = metric[i, j-Ny]
+            end
+        end
+    end
+
+    return nothing
+end
+
+"""
+    fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+
+Fill the corner halo regions of the `metric`  that lives on locations `ℓx`, `ℓy`,
+and with halo size `Hx`, `Hy`. We choose to fill with the average of the neighboring
+metric in the halo regions. Thus this requires that the metric in the `x`- and `y`-halo
+regions have already been filled.
+"""
+function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+    # = N+1 for ::BoundedTopology or N otherwise
+    Nx⁺ = length(ℓx, tx, Nx)
+    Ny⁺ = length(ℓy, ty, Ny)
+
+    @inbounds begin
+        for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
+            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
+        end
+        for j in Ny⁺+1:Ny⁺+Hy, i in 0:-1:-Hx+1
+            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
+        end
+        for j in 0:-1:-Hy+1, i in Nx⁺+1:Nx⁺+Hx
+            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
+        end
+        for j in Ny⁺+1:Ny⁺+Hy, i in Nx⁺+1:Nx⁺+Hx
+            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
+        end
+    end
+
+    return nothing
+end
+
+function fill_metric_halo_regions!(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    TX, TY, _ = topology(grid)
+
+    metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
+                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
+
+    LXs = (Center, Face, Center, Face, Center, Center, Face, Face, Center, Face, Center, Face)
+    LYs = (Center, Center, Face, Face, Center, Face, Center, Face, Center, Center, Face, Face)
+
+    for (metric, LX, LY) in zip(metric_arrays, LXs, LYs)
+        fill_metric_halo_regions_x!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
+        fill_metric_halo_regions_y!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
+        fill_metric_halo_corner_regions!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
+    end
+
+    return nothing
 end
 
 function lat_lon_to_cartesian(lat, lon, radius)
@@ -639,6 +811,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
     Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
     Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
+    Lz    = ξη_grid.Lz
 
     ## Read everything else from the file
 
@@ -650,8 +823,8 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     H = halo
 
     loc_cc = (Center, Center)
-    loc_cf = (Center, Face)
     loc_fc = (Face,   Center)
+    loc_cf = (Center, Face)
     loc_ff = (Face,   Face)
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
@@ -688,7 +861,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
 
     conformal_mapping = (; ξ, η)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
@@ -738,6 +911,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
+                                                        grid.Lz,
                                                         coordinate_data...,
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
@@ -753,6 +927,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
+                                                    grid.Lz,
                                                     adapt(to, grid.λᶜᶜᵃ),
                                                     adapt(to, grid.λᶠᶜᵃ),
                                                     adapt(to, grid.λᶜᶠᵃ),
@@ -897,8 +1072,8 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    ξ = (old_grid.ξₗ, old_grid.ξᵣ)
-    η = (old_grid.ηₗ, old_grid.ηᵣ)
+    ξ = old_grid.conformal_mapping.ξ
+    η = old_grid.conformal_mapping.η
 
     z = cpu_face_constructor_z(old_grid)
 
@@ -961,18 +1136,6 @@ end
 @inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
 
-@inline node(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                                 φnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                                 znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy, ℓz) = (φnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid::OSSG, ℓx, ℓy::Nothing, ℓz) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid::OSSG, ℓx, ℓy, ℓz::Nothing) = (λnode(i, j, k, grid, ℓx, ℓy, ℓz), φnode(i, j, k, grid, ℓx, ℓy, ℓz))
-
-@inline node(i, j, k, grid::OSSG, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(λnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(φnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline node(i, j, k, grid::OSSG, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
-
 @inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
 @inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
 @inline λnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]
@@ -996,6 +1159,14 @@ end
 @inline xnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
 @inline ynode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
 
+# Definitions for node
+@inline ξnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
+@inline ηnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
+@inline rnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
+
+ξname(::OSSG) = :λ
+ηname(::OSSG) = :φ
+rname(::OSSG) = :z
 
 #####
 ##### Grid spacings in x, y, z (in meters)

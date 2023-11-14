@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, offset_compute_index, indices
+using Oceananigans.Fields: AbstractField, indices
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
