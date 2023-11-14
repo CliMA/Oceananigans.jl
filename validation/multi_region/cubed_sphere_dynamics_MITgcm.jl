@@ -1,0 +1,247 @@
+#=
+Download the directory MITgcm_Output from  
+https://www.dropbox.com/scl/fo/qr024ly4t3eq38jsi0sdj/h?rlkey=zbq50ud1mtv8l05wxjarulpr3&dl=0
+and place it in the path validation/multi_region/. Then run this script from the same path as
+include("cubed_sphere_dynamics_MITgcm.jl")
+=#
+
+using Oceananigans, Printf
+
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Grids: φnode, λnode, halo_size, total_size
+using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.Operators
+using Oceananigans.Utils: Iterate
+using CairoMakie
+
+ρ₀ = 1000
+
+Nx = 32
+Ny = 32
+Nz = 1
+
+Lz = 10^5
+R  = 6370e3            # sphere's radius
+U  = 38.60328935834681 # velocity scale
+
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
+                                  z = (-Lz, 0),
+                                  radius = R,
+                                  horizontal_direction_halo = 2,
+                                  partition = CubedSpherePartition(; R = 1))
+
+Hx, Hy, Hz = halo_size(grid)
+
+# Solid body rotation
+Ω_prime = 38.60328935834681/R
+π_MITgcm = 3.14159265358979323844
+Ω = 2π_MITgcm/86400
+
+ψᵣ(λ, φ, z) = -R^2*Ω_prime/(2Ω)*2Ω*sind(φ)
+
+#=
+for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
+             uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
+             vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
+             ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
+=#
+ψ = Field{Face, Face, Center}(grid)
+
+# Note that set! fills only interior points; to compute u and v we need information in the halo regions.
+set!(ψ, ψᵣ)
+
+#=
+Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not correspond 
+to an interior point! We need to manually fill the Face-Face halo points of the two cornersn that do not have a 
+corresponding interior point.
+=#
+
+for region in [1, 3, 5]
+    i = 1
+    j = Ny+1
+    for k in 1:Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for region in [2, 4, 6]
+    i = Nx+1
+    j = 1
+    for k in 1:Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for passes in 1:3
+    fill_halo_regions!(ψ)
+end
+
+u = XFaceField(grid)
+v = YFaceField(grid)
+
+for region in 1:number_of_regions(grid)
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
+        v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
+    end
+end
+
+# Now, compute the vorticity.
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
+
+ζ = Field{Face, Face, Center}(grid)
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+offset = -1 .* halo_size(grid)
+@apply_regionally begin
+    params = KernelParameters(total_size(ζ[1]), offset)
+    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
+
+gravitational_acceleration = 9.81
+
+model = HydrostaticFreeSurfaceModel(; grid,
+                                    momentum_advection = VectorInvariant(),
+                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration),
+                                    buoyancy = nothing)
+
+# Initial conditions
+
+fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / (4ρ₀ * gravitational_acceleration * (Ω^2))
+
+for region in 1:number_of_regions(grid)
+    model.velocities.u[region] .= u[region]
+    model.velocities.v[region] .= v[region]
+    
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in (Nz+1,)
+        φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
+        f = 2 * Ω * sind(φ)
+        model.free_surface.η[region][i, j, k] = fac * f^2
+    end
+end
+
+function panel_wise_visualization(field, k=1; hide_decorations = true, colorrange = (-1, 1), colormap = :balance)
+
+    fig = Figure(resolution = (2450, 1400))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
+
+    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
+    hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[3, 2], hm_1)
+
+    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
+    hm_2 = heatmap!(ax_2, parent(getregion(field, 2).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[3, 4], hm_2)
+
+    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
+    hm_3 = heatmap!(ax_3, parent(getregion(field, 3).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[2, 4], hm_3)
+
+    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
+    hm_4 = heatmap!(ax_4, parent(getregion(field, 4).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[2, 6], hm_4)
+
+    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
+    hm_5 = heatmap!(ax_5, parent(getregion(field, 5).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[1, 6], hm_5)
+
+    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
+    hm_6 = heatmap!(ax_6, parent(getregion(field, 6).data[:, :, k]); colorrange, colormap)
+    Colorbar(fig[1, 8], hm_6)
+
+    if hide_decorations
+        hidedecorations!(ax_1)
+        hidedecorations!(ax_2)
+        hidedecorations!(ax_3)
+        hidedecorations!(ax_4)
+        hidedecorations!(ax_5)
+        hidedecorations!(ax_6)
+    end
+
+    return fig
+end
+
+Δt = 1200
+stop_time = 86400*30
+simulation = Simulation(model; Δt, stop_time)
+
+# Print a progress message
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.u),
+                                prettytime(sim.run_wall_time))
+
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+
+u_fields = Field[]
+save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
+
+v_fields = Field[]
+save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
+
+ζ = Field{Face, Face, Center}(grid)
+
+vorticity_fields = Field[]
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+@apply_regionally begin
+    params = KernelParameters(total_size(ζ[1]), offset)
+    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
+ζ_initial = deepcopy(ζ) 
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
+
+function save_vorticity(sim)
+    Hx, Hy, Hz = halo_size(grid)
+
+    fill_velocity_halos!(sim.model.velocities)
+
+    u, v, _ = sim.model.velocities
+    
+    offset = -1 .* halo_size(grid)
+    @apply_regionally begin
+        params = KernelParameters(total_size(ζ[1]), offset)
+        launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+    end
+
+    push!(vorticity_fields, deepcopy(ζ))
+end
+
+save_fields_iteration_c = 72
+simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
+
+run!(simulation)
+
+# Plot the vorticity.
+
+for region in 1:number_of_regions(grid)
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        ζ[region][i, j, k] -= ζ_initial[region][i, j, k]
+    end
+end
+
+fig = panel_wise_visualization(ζ, colorrange = (-0.75e-6, 0.75e-6))
+save("vorticity_change.png", fig)
+
+fig = panel_wise_visualization(ζ_initial, colorrange = (-1.25e-6, 1.25e-6))
+save("vorticity_initial.png", fig)
