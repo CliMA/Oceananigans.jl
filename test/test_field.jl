@@ -129,17 +129,17 @@ function run_field_interpolation_tests(grid)
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
 
-    CUDA.@allowscalar begin
-        for f in (u, v, w, c)
-            x, y, z = nodes(f, reshape=true)
-            x = arch_array(arch, Array(x))
-            y = arch_array(arch, Array(y))
-            z = arch_array(arch, Array(z))
-            loc = Tuple(L() for L in location(f))
-            ℑf = interpolate_xyz.(x, y, z, Ref(interior(f)), Ref(loc), Ref(f.grid))
-            ℑf = Array(ℑf)
-            @test all(isapprox.(ℑf, Array(interior(f)), atol=tolerance))
-        end
+    for f in (u, v, w, c)
+        x, y, z = nodes(f, reshape=true)
+        x = arch_array(arch, Array(x))
+        y = arch_array(arch, Array(y))
+        z = arch_array(arch, Array(z))
+        loc = Tuple(L() for L in location(f))
+        ℑf = interpolate_xyz.(x, y, z, Ref(interior(f)), Ref(loc), Ref(f.grid))
+        @show typeof(ℑf)
+        ℑf = Array(ℑf)
+        f_interior = Array(interior(f))
+        @test all(isapprox.(ℑf, f_interior, atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
@@ -397,12 +397,14 @@ end
 
         for arch in archs, FT in float_types
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
-            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
 
-            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
+            # Choose points z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
+            stretched_grid = RectilinearGrid(arch,
+                                             size = (4, 5, 7),
+                                             halo = (1, 1, 1),
                                              x = [0.0, 0.26, 0.49, 0.78, 1.0],
                                              y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
-                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7])
     
             grids = [reg_grid, stretched_grid]
 
