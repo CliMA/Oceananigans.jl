@@ -1,7 +1,8 @@
-module Distributed
+module DistributedComputations
 
 export
-    DistributedArch, child_architecture, reconstruct_global_grid, 
+    Distributed, Partition, Equal, Fractional, 
+    child_architecture, reconstruct_global_grid, 
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 
@@ -10,8 +11,7 @@ using MPI
 using Oceananigans.Utils
 using Oceananigans.Grids
 
-include("distributed_utils.jl")
-include("multi_architectures.jl")
+include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_kernel_launching.jl")

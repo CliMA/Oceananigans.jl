@@ -61,7 +61,7 @@ Private = false
 ## Distributed
 
 ```@autodocs
-Modules = [Oceananigans.Distributed]
+Modules = [Oceananigans.DistributedComputations]
 Private = false
 ```
 

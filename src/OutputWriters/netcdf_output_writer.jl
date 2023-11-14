@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractRectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -430,7 +430,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, type, 0.0, verbose)
 end
 
-get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
+get_default_dimension_attributes(grid::RectilinearGrid) =
     default_dimension_attributes_rectilinear
 
 get_default_dimension_attributes(grid::AbstractCurvilinearGrid) =

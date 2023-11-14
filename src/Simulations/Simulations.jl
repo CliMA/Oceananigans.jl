@@ -6,7 +6,6 @@ export run!
 export Callback
 export iteration
 export stopwatch
-export erroring_NaNChecker!
 
 using Oceananigans.Models
 using Oceananigans.Diagnostics
@@ -23,7 +22,6 @@ import Base: show
 
 include("callback.jl")
 include("time_step_wizard.jl")
-include("nan_checker.jl")
 include("simulation.jl")
 include("run.jl")
 

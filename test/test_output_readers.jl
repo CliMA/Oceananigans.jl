@@ -1,5 +1,8 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Utils: Time
+using Oceananigans.Fields: indices
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -223,6 +226,46 @@ end
 
                 @test val1 ≈ val2 atol=4ε
             end
+        end
+    end
+
+    @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
+        @info "  Testing set!(FieldTimeSeries{OnDisk})..."
+
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+        c = CenterField(grid)
+
+        filepath = "testfile.jld2"
+        f = FieldTimeSeries(location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
+
+        for i in 1:10
+            set!(c, i)
+            set!(f, c, i)
+        end
+
+        g = FieldTimeSeries(filepath, "c")
+
+        @test location(g) == (Center, Center, Center)
+        @test indices(g) == (:, :, :)
+        @test g.grid == grid
+
+        @test g[1, 1, 1, 1] == 1
+        @test g[1, 1, 1, 10] == 10
+        @test g[1, 1, 1, Time(1.6)] == 1.6
+
+        t = g[Time(3.8)]
+
+        @test t[1, 1, 1] == 3.8
+    end
+
+    @testset "Test chunked abstraction" begin  
+        @info "  Testing Chunked abstraction..."      
+        filepath = "testfile.jld2"
+        f = FieldTimeSeries(filepath, "c")
+        f_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(; chunk_size = 2))
+
+        for t in eachindex(f.times)
+            f_chunked[t] == f[t]
         end
     end
 

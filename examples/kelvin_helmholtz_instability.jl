@@ -30,9 +30,9 @@ grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
 #
 # and the width of the stratification layer, ``h``.
 
-shear_flow(x, y, z, t) = tanh(z)
+shear_flow(x, z, t) = tanh(z)
 
-stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
+stratification(x, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
 U = BackgroundField(shear_flow)
 
@@ -51,15 +51,15 @@ Ri, h = B.parameters
 fig = Figure(resolution = (850, 450))
  
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
-lines!(ax, shear_flow.(0, 0, zC, 0), zC; linewidth = 3)
+lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
 ax = Axis(fig[1, 2], xlabel = "B(z)")
-lines!(ax, [stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
+lines!(ax, [stratification(0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
 
 ax = Axis(fig[1, 3], xlabel = "Ri(z)")
 lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, color = :black) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # In unstable flows it is often useful to determine the dominant spatial structure of the
@@ -202,7 +202,7 @@ function grow_instability!(simulation, energy)
 
     return growth_rate
 end
-nothing # hide
+nothing #hide
 
 # Finally, we write a function that rescales the state. The rescaling is done via computing the
 # kinetic energy and then rescaling all flow fields so that the kinetic energy assumes a targetted value.
@@ -237,7 +237,7 @@ Check if the growth rate has converged. If the array `σ` has at least 2 element
 relative difference between ``σ[end]`` and ``σ[end-1]``.
 """
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
-nothing # hide
+nothing #hide
 
 # and the main function that performs the power method iteration.
 
@@ -272,7 +272,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
     return σ, power_method_data
 end
-nothing # hide
+nothing #hide
 
 # # Eigenplotting
 #
@@ -293,7 +293,7 @@ xb, yb, zb = nodes(b)
 using Random, Statistics
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
-noise(x, y, z) = randn()
+noise(x, z) = randn()
 set!(model, u=noise, w=noise, b=noise)
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
