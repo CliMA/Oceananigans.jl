@@ -74,37 +74,31 @@ const c = Center()
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time)
                                                                            - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time))
 
-struct StokesDrift{P, UX, VX, WX, UY, VY, WY, UZ, VZ, WZ, UT, VT, WT}
-    ∂x_uˢ :: UX
+struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂x_vˢ :: VX
     ∂x_wˢ :: WX
     ∂y_uˢ :: UY
-    ∂y_vˢ :: VY
     ∂y_wˢ :: WY
     ∂z_uˢ :: UZ
     ∂z_vˢ :: VZ
-    ∂z_wˢ :: WZ
     ∂t_uˢ :: UT
     ∂t_vˢ :: VT
     ∂t_wˢ :: WT
     parameters :: P
 end
 
-function StokesDrift(; ∂x_uˢ = addzero,
-                       ∂x_vˢ = addzero,
+function StokesDrift(; ∂x_vˢ = addzero,
                        ∂x_wˢ = addzero,
                        ∂y_uˢ = addzero,
-                       ∂y_vˢ = addzero,
                        ∂y_wˢ = addzero,
                        ∂z_uˢ = addzero,
                        ∂z_vˢ = addzero,
-                       ∂z_wˢ = addzero,
                        ∂t_uˢ = addzero,
                        ∂t_vˢ = addzero,
                        ∂t_wˢ = addzero,
                        parameters = nothing)
 
-    return StokesDrift(∂x_uˢ, ∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_vˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂z_wˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
+    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
 end
 
 const SD = StokesDrift
