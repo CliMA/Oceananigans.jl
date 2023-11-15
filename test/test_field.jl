@@ -134,7 +134,7 @@ function run_field_interpolation_tests(grid)
         loc = Tuple(L() for L in location(f))
 
         CUDA.@allowscalar begin
-            ℑf = interpolate_xyz.(x, y, z, Ref(interior(f)), Ref(loc), Ref(f.grid))
+            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
         end
 
         ℑf_cpu = Array(ℑf)
