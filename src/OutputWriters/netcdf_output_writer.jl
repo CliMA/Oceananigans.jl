@@ -26,17 +26,17 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Face) = ("xF",)
-ydim(::Face) = ("yF",)
-zdim(::Face) = ("zF",)
+xdim(::Face) = tuple("xF")
+ydim(::Face) = tuple("yF")
+zdim(::Face) = tuple("zF")
 
-xdim(::Center) = ("xC",)
-ydim(::Center) = ("yC",)
-zdim(::Center) = ("zC",)
+xdim(::Center) = tuple("xC")
+ydim(::Center) = tuple("yC")
+zdim(::Center) = tuple("zC")
 
-xdim(::Nothing) = ()
-ydim(::Nothing) = ()
-zdim(::Nothing) = ()
+xdim(::Nothing) = tuple()
+ydim(::Nothing) = tuple()
+zdim(::Nothing) = tuple()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
@@ -80,7 +80,7 @@ function default_dimensions(output, grid, indices, with_halos)
     return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
-const default_dimension_attributes_rectilinear = Dict(
+const default_rectilinear_dimension_attributes = Dict(
     "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
     "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
     "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
@@ -91,7 +91,7 @@ const default_dimension_attributes_rectilinear = Dict(
     "particle_id" => Dict("long_name" => "Particle ID")
 )
 
-const default_dimension_attributes_curvilinear = Dict(
+const default_curvilinear_dimension_attributes = Dict(
     "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
     "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
     "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
@@ -430,11 +430,11 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
 end
 
-get_default_dimension_attributes(grid::RectilinearGrid) =
-    default_dimension_attributes_rectilinear
+get_default_dimension_attributes(::RectilinearGrid) =
+    default_rectilinear_dimension_attributes
 
-get_default_dimension_attributes(grid::AbstractCurvilinearGrid) =
-    default_dimension_attributes_curvilinear
+get_default_dimension_attributes(::AbstractCurvilinearGrid) =
+    default_curvilinear_dimension_attributes
 
 get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
     get_default_dimension_attributes(grid.underlying_grid)
