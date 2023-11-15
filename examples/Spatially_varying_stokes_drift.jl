@@ -79,9 +79,9 @@ stokes_jet_edge_width = 40
 
 uˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * 0.5 * (
     (1 + cos(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width)) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + (1 + cos(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width)) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) )
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) )
     + (sign(y - stokes_jet_center + stokes_jet_central_width / 2)  -  sign(y - stokes_jet_center - stokes_jet_central_width / 2)) ) *
     0.5 * ( 1 + 0.1 * cos(2 * pi * (x - grid.Lx/2) / grid.Lx ) )
 
@@ -90,33 +90,33 @@ uˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * 0.5 * (
 
 ∂z_uˢ(x, y, z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale) * 0.5 * (
     (1 + cos(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width)) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + (1 + cos(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width)) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) )
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) )
     + (sign(y - stokes_jet_center + stokes_jet_central_width / 2)  -  sign(y - stokes_jet_center - stokes_jet_central_width / 2)) ) *
     0.5 * ( 1 + 0.1 * cos(2 * pi * (x - grid.Lx/2) / grid.Lx ) )
 
-∂y_uˢ(x, y, z, t) = - pi / stokes_jet_width * Uˢ * exp(z / vertical_scale) * 0.5 * (
+∂y_uˢ(x, y, z, t) = - pi / stokes_jet_edge_width * Uˢ * exp(z / vertical_scale) * 0.5 * (
     sin(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + sin(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * ( 1 + 0.1 * cos(2 * pi * (x - grid.Lx/2) / grid.Lx ) )
 
 ∂x_uˢ(x, y, z, t) = - 2 * pi / grid.Lx * Uˢ * exp(z / vertical_scale) * 0.5 * (
     sin(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + sin(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * 0.1 * sin(2 * pi * (x - grid.Lx/2) / grid.Lx )
 
 # Now diagnose the w component of Stokes drift using incompressibility and the surface boundary condition `wˢ(z=0)=0`
 
 wˢ(x, y, z, t) = 2 * pi / grid.Lx *vertical_scale * Uˢ * ( exp(z / vertical_scale) - 1 ) * 0.5 * (
     sin(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + sin(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * 0.1 * sin(2 * pi * (x - grid.Lx/2) / grid.Lx )
 
 
@@ -124,34 +124,24 @@ wˢ(x, y, z, t) = 2 * pi / grid.Lx *vertical_scale * Uˢ * ( exp(z / vertical_sc
 
 ∂z_wˢ(x, y, z, t) = 2 * pi / grid.Lx * Uˢ * exp(z / vertical_scale) * 0.5 * (
     sin(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + sin(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * 0.1 * sin(2 * pi * (x - grid.Lx/2) / grid.Lx )
 
 ∂y_wˢ(x, y, z, t) = 2 * pi^2 / (grid.Lx * stokes_jet_edge_width) * vertical_scale * Uˢ * ( exp(z / vertical_scale) - 1 ) * 0.5 * (
     cos(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + cos(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * 0.1 * sin(2 * pi * (x - grid.Lx/2) / grid.Lx )
 
 ∂x_wˢ(x, y, z, t) = - 4 * pi^2 / (grid.Lx)^2 *vertical_scale * Uˢ * ( exp(z / vertical_scale) - 1 ) * 0.5 * (
     sin(pi * (y - stokes_jet_center + stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
+    0.5 * (sign(y - stokes_jet_center + stokes_jet_central_width / 2 + stokes_jet_edge_width)  -  sign(y - stokes_jet_center +stokes_jet_central_width / 2) )
     + sin(pi * (y - stokes_jet_center - stokes_jet_central_width / 2) / stokes_jet_edge_width) * 
-    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_width) ) ) *
+    0.5 * (sign(y - stokes_jet_center - stokes_jet_central_width / 2) - sign(y - stokes_jet_center - stokes_jet_central_width / 2 - stokes_jet_edge_width) ) ) *
     0.5 * 0.1 * cos(2 * pi * (x - grid.Lx/2) / grid.Lx )
-
-#∂z_uˢ(x, y, z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale) * exp( - (y - stokes_jet_center)^2 / (2 * stokes_jet_width^2) )
-
-#∂y_uˢ(x, y, z, t) = - (y - stokes_jet_center) / (2 * stokes_jet_width^2) * Uˢ * exp(z / vertical_scale) * exp( - (y - stokes_jet_center)^2 / (2 * stokes_jet_width^2) )
-
-#∂z_uˢ(x, y, z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale) * (1 + cos(pi * (y - stokes_jet_center) / stokes_jet_width)) *
-# 0.5 * (sign(y - stokes_jet_center + stokes_jet_width)  -  sign(y - stokes_jet_center - stokes_jet_width) )
-
-#∂y_uˢ(x, y, z, t) = - pi / stokes_jet_width * Uˢ * exp(z / vertical_scale) * sin(pi * (y - stokes_jet_center) / stokes_jet_width) *
-# 0.5 * (sign(y - stokes_jet_center + stokes_jet_width)  -  sign(y - stokes_jet_center - stokes_jet_width) )
 
 #
 # !!! info "The Craik-Leibovich equations in Oceananigans"
@@ -245,7 +235,7 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
 # ## Setting up the simulation
 
-simulation = Simulation(model, Δt=45.0, stop_time=12hours)
+simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
@@ -515,7 +505,7 @@ hm_wyz = heatmap!(ax_wyz, yw, zw, wyzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
-Colorbar(fig[3, 3], hm_wxz; label = "m s⁻¹")
+Colorbar(fig[3, 3], hm_wyz; label = "m s⁻¹")
 
 ax_uyz = heatmap!(ax_uyz, yu, zu, uyzₙ;
                   colorrange = ulims,
