@@ -98,13 +98,6 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
-@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
-    interpolate((x, y, z), from_field, from_loc, from_grid)
-
-# Choose a trilinear function so trilinear interpolation can return values that
-# are exactly correct.
-@inline func(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
-
 function run_field_interpolation_tests(grid)
     arch = architecture(grid)
     velocities = VelocityFields(grid)
@@ -112,58 +105,73 @@ function run_field_interpolation_tests(grid)
 
     (u, v, w), c = velocities, tracers.c
 
+    # Choose a trilinear function so trilinear interpolation can return values that
+    # are exactly correct.
+    f(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
+
     # Maximum expected rounding error is the unit in last place of the maximum value
-    # of func over the domain of the grid.
+    # of f over the domain of the grid.
 
     # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
     xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
-    f_max = CUDA.@allowscalar maximum(func.(xf, yf, zf))
+    f_max = CUDA.@allowscalar maximum(f.(xf, yf, zf))
     ε_max = eps(f_max)
     tolerance = 10 * ε_max
 
-    set!(u, func)
-    set!(v, func)
-    set!(w, func)
-    set!(c, func)
+    set!(u, f)
+    set!(v, f)
+    set!(w, f)
+    set!(c, f)
 
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
 
-    for f in (u, v, w, c)
-        x, y, z = nodes(f, reshape=true)
-        loc = Tuple(L() for L in location(f))
-
-        CUDA.@allowscalar begin
-            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
+    CUDA.@allowscalar begin
+        for f in (u, v, w, c)
+            x = xnodes(f)
+            y = ynodes(f)
+            z = znodes(f)
+            Nx, Ny, Nz = size(f)
+            X = [(x[i], y[j], z[k]) for i=1:Nx, j=1:Ny, k=1:Nz]
+            X = arch_array(arch, X)
+            ℑf = interpolate.(X, Ref(f))
+            @test all(isapprox.(ℑf, Array(interior(f)), atol=tolerance))
         end
 
-        ℑf_cpu = Array(ℑf)
-        f_interior_cpu = Array(interior(f))
-        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
+        #=
+        ℑu = interpolate.(nodes(u, reshape=true), Ref(u))
+        ℑv = interpolate.(nodes(v, reshape=true), Ref(v))
+        ℑw = interpolate.(nodes(w, reshape=true), Ref(w))
+        ℑc = interpolate.(nodes(c, reshape=true), Ref(c))
+
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
+        =#
     end
 
     # Check that interpolating between grid points works as expected.
 
-    xs = Array(reshape([0.3, 0.55, 0.73], (3, 1, 1)))
-    ys = Array(reshape([-π/6, 0, 1+1e-7], (1, 3, 1)))
-    zs = Array(reshape([-1.3, 1.23, 2.1], (1, 1, 3)))
+    xs = reshape([0.3, 0.55, 0.73], (3, 1, 1))
+    ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
+    zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
     X = [(xs[i], ys[j], zs[k]) for i=1:3, j=1:3, k=1:3]
     X = arch_array(arch, X)
 
-    xs = arch_array(arch, xs)
-    ys = arch_array(arch, ys)
-    zs = arch_array(arch, zs)
-
     CUDA.@allowscalar begin
-        for f in (u, v, w, c)
-            loc = Tuple(L() for L in location(f))
-            ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
-            F = func.(xs, ys, zs)
-            F = Array(F)
-            ℑf = Array(ℑf)
-            @test all(isapprox.(ℑf, F, atol=tolerance))
-        end
+        ℑu = interpolate.(X, Ref(u))
+        ℑv = interpolate.(X, Ref(v))
+        ℑw = interpolate.(X, Ref(w))
+        ℑc = interpolate.(X, Ref(c))
+
+        F = f.(xs, ys, zs)
+
+        @test all(isapprox.(ℑu, F, atol=tolerance))
+        @test all(isapprox.(ℑv, F, atol=tolerance))
+        @test all(isapprox.(ℑw, F, atol=tolerance))
+        @test all(isapprox.(ℑc, F, atol=tolerance))
     end
 
     return nothing
@@ -397,14 +405,12 @@ end
 
         for arch in archs, FT in float_types
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
+            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
 
-            # Choose points z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
-            stretched_grid = RectilinearGrid(arch,
-                                             size = (4, 5, 7),
-                                             halo = (1, 1, 1),
+            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
                                              x = [0.0, 0.26, 0.49, 0.78, 1.0],
                                              y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
-                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7])
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
     
             grids = [reg_grid, stretched_grid]
 

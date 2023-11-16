@@ -21,7 +21,7 @@ end
 
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 
-compute_time_index(index_range, n) = n - index_range[1] + 1
+compute_time_index(index_range, n) = n - fts.backend.index_range[1] + 1
 compute_time_index(::Colon, n) = n
 
 # If `n` is not in memory, getindex automatically sets the data in memory to have the `n`

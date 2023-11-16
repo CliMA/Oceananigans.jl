@@ -5,7 +5,7 @@ export FieldTimeSeries, FieldDataset
 
 abstract type AbstractDataBackend end
 
-mutable struct InMemory{I} <: AbstractDataBackend 
+struct InMemory{I} <: AbstractDataBackend 
     index_range :: I
 end
 

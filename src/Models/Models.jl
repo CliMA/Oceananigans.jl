@@ -162,25 +162,13 @@ end
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
-
-    if isempty(model_fields) 
-        return nothing
-    end
-
     first_name = first(keys(model_fields))
     field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
     nan_checker = NaNChecker(field_to_check_nans)
     return nan_checker
 end
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
-
-# Particle tracking models with prescribed velocities (and no tracers) 
-# have no prognostic fields and no chance to producing a NaN.
-default_nan_checker(::OnlyParticleTrackingModel) = nothing
-
-# Implementation of a `seawater_density` `KernelFunctionOperation
-# applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
+# This is here so that `NonhydrostaticModel` and  `HydrsostaticFreeSurfaceModel`
 include("seawater_density.jl")
 
 end # module
