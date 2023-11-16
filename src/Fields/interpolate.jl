@@ -311,8 +311,8 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     from_arch = architecture(from_field)
     to_arch = architecture(to_field)
-    if !isnothing(from_arch) && to_arch == from_arch
-        msg = "Cannot interpolate! because from_field is on $from_arch while to_field is on $to_field."
+    if !isnothing(from_arch) && to_arch != from_arch
+        msg = "Cannot interpolate! because from_field is on $from_arch while to_field is on $to_arch."
         throw(ArgumentError(msg))
     end
 
