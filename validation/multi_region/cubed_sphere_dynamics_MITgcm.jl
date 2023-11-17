@@ -15,13 +15,15 @@ using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
 using CairoMakie
 
-ρ₀ = 1000
+include("cubed_sphere_visualization.jl")
+
+g = 9.81
 
 Nx = 32
 Ny = 32
 Nz = 1
 
-Lz = 10^5
+Lz = 1
 R  = 6370e3            # sphere's radius
 U  = 38.60328935834681 # velocity scale
 
@@ -34,11 +36,11 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 Hx, Hy, Hz = halo_size(grid)
 
 # Solid body rotation
-Ω_prime = 38.60328935834681/R
+Ω_prime = U/R
 π_MITgcm = 3.14159265358979323844
 Ω = 2π_MITgcm/86400
 
-ψᵣ(λ, φ, z) = -R^2*Ω_prime/(2Ω)*2Ω*sind(φ)
+ψᵣ(λ, φ, z) = -R^2*Ω_prime/(2Ω)*2Ω*sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
 
 #=
 for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
@@ -108,74 +110,28 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-gravitational_acceleration = 9.81
-
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
-                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration),
+                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
                                     buoyancy = nothing)
 
 # Initial conditions
 
-fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / (4ρ₀ * gravitational_acceleration * (Ω^2))
-
+fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / (4g * Ω^2)
+ 
 for region in 1:number_of_regions(grid)
     model.velocities.u[region] .= u[region]
     model.velocities.v[region] .= v[region]
     
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in (Nz+1,)
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
         f = 2 * Ω * sind(φ)
         model.free_surface.η[region][i, j, k] = fac * f^2
     end
 end
 
-function panel_wise_visualization(field, k=1; hide_decorations = true, colorrange = (-1, 1), colormap = :balance)
-
-    fig = Figure(resolution = (2450, 1400))
-
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-                   xlabel = "Local x direction", ylabel = "Local y direction")
-
-    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[3, 2], hm_1)
-
-    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
-    hm_2 = heatmap!(ax_2, parent(getregion(field, 2).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[3, 4], hm_2)
-
-    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
-    hm_3 = heatmap!(ax_3, parent(getregion(field, 3).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[2, 4], hm_3)
-
-    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
-    hm_4 = heatmap!(ax_4, parent(getregion(field, 4).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[2, 6], hm_4)
-
-    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
-    hm_5 = heatmap!(ax_5, parent(getregion(field, 5).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[1, 6], hm_5)
-
-    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
-    hm_6 = heatmap!(ax_6, parent(getregion(field, 6).data[:, :, k]); colorrange, colormap)
-    Colorbar(fig[1, 8], hm_6)
-
-    if hide_decorations
-        hidedecorations!(ax_1)
-        hidedecorations!(ax_2)
-        hidedecorations!(ax_3)
-        hidedecorations!(ax_4)
-        hidedecorations!(ax_5)
-        hidedecorations!(ax_6)
-    end
-
-    return fig
-end
-
 Δt = 1200
-stop_time = 86400*30
+stop_time = 86400 # 1 day
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -194,7 +150,8 @@ save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
 ζ = Field{Face, Face, Center}(grid)
 
-vorticity_fields = Field[]
+ζ_fields = Field[]
+Δζ_fields = Field[]
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
     i, j, k = @index(Global, NTuple)
@@ -205,7 +162,7 @@ end
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
-ζ_initial = deepcopy(ζ) 
+ζ₀ = deepcopy(ζ) 
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 
@@ -222,10 +179,19 @@ function save_vorticity(sim)
         launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
     end
 
-    push!(vorticity_fields, deepcopy(ζ))
+    push!(ζ_fields, deepcopy(ζ))
+    
+    Δζ_field = deepcopy(ζ)
+    for region in 1:number_of_regions(grid)
+        for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+            Δζ_field[region][i, j, k] -= ζ₀[region][i, j, k]
+        end
+    end
+    
+    push!(Δζ_fields, Δζ_field)
 end
 
-save_fields_iteration_c = 72
+save_fields_iteration_interval = 3
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
@@ -234,14 +200,20 @@ run!(simulation)
 
 # Plot the vorticity.
 
-for region in 1:number_of_regions(grid)
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
-        ζ[region][i, j, k] -= ζ_initial[region][i, j, k]
-    end
-end
+fig = panel_wise_visualization(grid, ζ₀)
+save("ζ₀.png", fig)
 
-fig = panel_wise_visualization(ζ, colorrange = (-0.75e-6, 0.75e-6))
-save("vorticity_change.png", fig)
+#=
+fig = panel_wise_visualization(grid, Δζ_fields[end])
+save("Δζ.png", fig)
 
-fig = panel_wise_visualization(ζ_initial, colorrange = (-1.25e-6, 1.25e-6))
-save("vorticity_initial.png", fig)
+fig = panel_wise_visualization(grid, ζ₀)
+save("ζ₀.png", fig)
+
+start_index = 1
+use_symmetric_colorrange = true
+animation_time = 10 # seconds
+framerate = floor(Int, size(Δζ_fields)[1]/animation_time)
+
+create_panel_wise_visualization_animation(grid, Δζ_fields, start_index, use_symmetric_colorrange, framerate, "Δζ")
+=#
