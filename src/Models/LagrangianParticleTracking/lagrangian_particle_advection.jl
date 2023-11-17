@@ -78,9 +78,9 @@ Inputs are the particle properties `particles` and the particle index `p`
 
 Returns zero by default and has to be extended to obtained the desired effect
 """
-@inline particle_advective_forcing_u(particles, p) = 0
-@inline particle_advective_forcing_v(particles, p) = 0
-@inline particle_advective_forcing_w(particles, p) = 0
+@inline particle_forcing_u(particles, p) = 0
+@inline particle_forcing_v(particles, p) = 0
+@inline particle_forcing_w(particles, p) = 0
 
 """
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
