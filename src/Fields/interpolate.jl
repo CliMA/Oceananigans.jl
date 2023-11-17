@@ -307,10 +307,12 @@ end
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
 """
 function interpolate!(to_field::Field, from_field::AbstractField)
-    to_grid = to_field.grid
+    from_grid = from_field.grid
+    to_grid   = to_field.grid
 
-    from_arch = architecture(from_field)
-    to_arch = architecture(to_field)
+    from_arch = architecture(from_grid)
+    to_arch   = architecture(to_grid)
+
     if !isnothing(from_arch) && to_arch != from_arch
         msg = "Cannot interpolate! because from_field is on $from_arch while to_field is on $to_arch."
         throw(ArgumentError(msg))
