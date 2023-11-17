@@ -116,3 +116,33 @@ end
 (wizard::TimeStepWizard)(simulation) =
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
+const TimeStepWizardCallback = Callback{<:Any, TimeStepWizard}
+
+# TODO: when Models are imported after simulations, move this to Models
+#
+# Another solution is to somehow help users understand what the CFL is and
+# how to use trial-and-error and experience to figure out what it needs
+# to be for their particular case.
+validated_advective_cfl(model, CFL) = nothing
+
+function initialize!(cb::TimeStepWizardCallback, sim)
+    wizard = cb.func
+    validate_advective_cfl(sim.model, wizard.cfl)
+    return nothing
+end
+
+using Oceananigans.Models: OceananigansModels, timestepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+
+validate_advective_cfl(model::OceananigansModels, CFL) = validate_advective_cfl(timestepper(model), CFL)
+
+function validate_advective_cfl(::QuasiAdamsBashforth2TimeStepper, CFL)
+    CFL > 1 && @warn("Problems?")
+    return nothing
+end
+
+function validate_advective_cfl(::RungeKutta3TimeStepper, CFL)
+    CFL > 1 && @warn("Problems?")
+    return nothing
+end
+
