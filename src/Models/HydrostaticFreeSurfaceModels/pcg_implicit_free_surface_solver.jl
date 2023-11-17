@@ -5,6 +5,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
+using Oceananigans.Fields: replace_horizontal_vector_halos!
+
 import Oceananigans.Solvers: solve!, precondition!, auxiliary_actions!
 import Oceananigans.Architectures: architecture
 
@@ -56,7 +58,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     
     for _ in 1:3
         fill_halo_regions!(vertically_integrated_lateral_areas)
-        @apply_regionally replace_horizontal_vector_halos((; u, v, w = nothing), grid, signed = false)
+        @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid, signed = false)
     end
 
     # Set some defaults
