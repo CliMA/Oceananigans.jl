@@ -132,7 +132,14 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     # Compute right hand side of implicit free surface equation
     @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
-    fill_halo_regions!(∫ᶻQ)
+    
+    u = ∫ᶻQ.u
+    v = ∫ᶻQ.v
+
+    for _ in 1:3
+        fill_halo_regions!(∫ᶻQ)
+        @apply_regionally replace_horizontal_vector_halos!((; u, v, w=nothing), model.grid)
+    end
     
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
