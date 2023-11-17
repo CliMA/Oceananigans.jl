@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 
 using Oceananigans.Fields: ReducedField, has_velocities
-using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
+using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 
 """
@@ -163,6 +163,12 @@ function run_field_interpolation_tests(grid)
             F = Array(F)
             ℑf = Array(ℑf)
             @test all(isapprox.(ℑf, F, atol=tolerance))
+
+            f_copy = deepcopy(f)
+            fill!(f_copy, 0)
+            interpolate!(f_copy, f)
+
+            @test all(interior(f_copy) .≈ interior(f))
         end
     end
 
