@@ -293,7 +293,7 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     return interpolate(to_node, from_field, from_loc, from_field.grid)
 end
 
-@kernel function _interpolate!!(to_field, to_grid, to_location,
+@kernel function _interpolate!(to_field, to_grid, to_location,
                                 from_field, from_grid, from_location)
 
     i, j, k = @index(Global, NTuple)
