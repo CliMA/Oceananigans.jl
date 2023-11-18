@@ -14,6 +14,7 @@ using Enzyme.EnzymeCore: Active, Const, Duplicated
 
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
+@inline EnzymeCore.EnzymeRules.inactive_type(v::Type{Oceananigans.Utils.KernelParameters}) = true
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
 @inline batch(::Val{N}, ::Type{T}) where {T, N} = NTuple{N, T}
