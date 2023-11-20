@@ -74,13 +74,13 @@ a particle-specific advecting velocity such as
 - electromagnetic forces for charged particles
 - swimming for biological particles
 - diffusing velocity for brownian motion
-Inputs are the particle properties `particles` and the particle index `p`
+Inputs are the fluid velocity, particle properties `particles`, and the particle index `p`
 
-Returns zero by default and has to be extended to obtained the desired effect
+Returns the fluid velocity by default (for non-buoyant, non-drifting particles). Has to be extended to obtain the desired effect
 """
-@inline particle_forcing_u(particles, p) = 0
-@inline particle_forcing_v(particles, p) = 0
-@inline particle_forcing_w(particles, p) = 0
+@inline particle_u_velocity(u_fluid, particles, p) = u_fluid
+@inline particle_v_velocity(v_fluid, particles, p) = v_fluid
+@inline particle_w_velocity(w_fluid, particles, p) = w_fluid
 
 """
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
@@ -100,10 +100,14 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position + advecting velocity
-    u = interpolate(X, velocities.u, (f, c, c), grid) + particle_forcing_u(particles, p)
-    v = interpolate(X, velocities.v, (c, f, c), grid) + particle_forcing_v(particles, p)
-    w = interpolate(X, velocities.w, (c, c, f), grid) + particle_forcing_w(particles, p)
+    u_fluid = interpolate(X, velocities.u, (f, c, c), grid) 
+    v_fluid = interpolate(X, velocities.v, (c, f, c), grid) 
+    w_fluid = interpolate(X, velocities.w, (c, c, f), grid)
 
+    u = particle_u_velocity(u_fluid, particles, p)
+    v = particle_v_velocity(v_fluid, particles, p)
+    w = particle_w_velocity(w_fluid, particles, p)
+    
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
