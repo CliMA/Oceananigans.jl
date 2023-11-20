@@ -244,19 +244,22 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     return compute!(time_interpolated_field)
 end
 
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
+# Linear time interpolation, used by FieldTimeSeries and GPUAdaptedFieldTimeSeries
+@inline function interpolating_get_index(fts, i, j, k, time_index)
     Ntimes = length(fts.times)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
     # fractional index
-    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    fts_interpolated = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
+    n = @inbounds (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    interpolated_fts = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
 
     # Don't interpolate if n = 0.
-    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), fts_interpolated)
+    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), interpolated_fts)
 end
+
+@inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
+    interpolating_get_index(fts, i, j, k, time_index)
 
 """
     Field(location, path, name, iter;
