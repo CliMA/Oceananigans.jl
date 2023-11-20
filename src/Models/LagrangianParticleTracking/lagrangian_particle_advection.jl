@@ -67,7 +67,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
-    particle_u_velocity(particles, p)
+    particle_u_velocity(u_fluid, particles, p, Δt)
 
 a particle-specific advecting velocity such as 
 - sinking or rising for buoyant particles
@@ -78,9 +78,9 @@ Inputs are the fluid velocity, particle properties `particles`, and the particle
 
 Returns the fluid velocity by default (for non-buoyant, non-drifting particles). Has to be extended to obtain the desired effect
 """
-@inline particle_u_velocity(u_fluid, particles, p) = u_fluid
-@inline particle_v_velocity(v_fluid, particles, p) = v_fluid
-@inline particle_w_velocity(w_fluid, particles, p) = w_fluid
+@inline particle_u_velocity(u_fluid, particles, p, Δt) = u_fluid
+@inline particle_v_velocity(v_fluid, particles, p, Δt) = v_fluid
+@inline particle_w_velocity(w_fluid, particles, p, Δt) = w_fluid
 
 """
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
@@ -105,9 +105,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     w_fluid = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Particle velocity
-    u = particle_u_velocity(u_fluid, particles, p)
-    v = particle_v_velocity(v_fluid, particles, p)
-    w = particle_w_velocity(w_fluid, particles, p)
+    u = particle_u_velocity(u_fluid, particles, p, Δt)
+    v = particle_v_velocity(v_fluid, particles, p, Δt)
+    w = particle_w_velocity(w_fluid, particles, p, Δt)
     
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
