@@ -238,18 +238,16 @@ function with_precomputed_metrics(grid)
 end
 
 function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-    Nλ, Nφ, Nz = N = size
+    N = size
     
-    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    λ₁, λ₂ = get_domain_extent(longitude, N[1])
     @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
 
-    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    φ₁, φ₂ = get_domain_extent(latitude, N[2])
     @assert -90 <= φ₁ <= φ₂ <= 90
     
     if !isnothing(topology)
         TX, TY, TZ = topology
-        Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-        Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
         Lλ = λ₂ - λ₁
 
@@ -262,6 +260,7 @@ function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topo
         precompute_metrics = false
     end
 
+    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
     longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)

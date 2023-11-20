@@ -90,7 +90,6 @@ end
 bat = file_bathymetry["bathymetry"]
 boundary = Int.(bat .> 0)
 bat[ bat .> 0 ] .= 0 
-bat = -bat
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
@@ -159,7 +158,7 @@ using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
-νh = 0e+1
+νh = 1e+1
 
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -171,7 +170,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 
 model = ShallowWaterModel(grid = grid,
                           gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO(vector_invariant = VorticityStencil()),
+                          momentum_advection = VectorInvariant(),
                           mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
@@ -182,7 +181,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
+h_init = - deepcopy(bat) .+ 10 # we should add a positive value to avoid a vanishing layer
 set!(model, h=h_init)
 fill_halo_regions!(model.solution.h)
 

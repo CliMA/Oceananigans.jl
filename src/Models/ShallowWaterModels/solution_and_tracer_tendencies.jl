@@ -4,6 +4,7 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
+# bathymetry (hB) is assumed to be a negative value equal to - depth.
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
 
 @inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * ℑxᶠᶜᶜ(i, j, k, grid, h) * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
@@ -36,7 +37,6 @@ Compute the tendency for the x-directional transport, uh
     return ( - div_mom_u(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
-             - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
@@ -65,7 +65,6 @@ Compute the tendency for the y-directional transport, vh.
     return ( - div_mom_v(i, j, k, grid, advection, solution, formulation)
              - y_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
-             - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
