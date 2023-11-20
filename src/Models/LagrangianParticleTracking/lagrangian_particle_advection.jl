@@ -99,11 +99,12 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     current_particle_indices = (i, j, k)
 
-    # Interpolate velocity to particle position + advecting velocity
+    # Interpolate velocity to particle position
     u_fluid = interpolate(X, velocities.u, (f, c, c), grid) 
     v_fluid = interpolate(X, velocities.v, (c, f, c), grid) 
     w_fluid = interpolate(X, velocities.w, (c, c, f), grid)
 
+    # Particle velocity
     u = particle_u_velocity(u_fluid, particles, p)
     v = particle_v_velocity(v_fluid, particles, p)
     w = particle_w_velocity(w_fluid, particles, p)
