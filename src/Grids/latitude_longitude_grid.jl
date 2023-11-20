@@ -241,7 +241,6 @@ function with_precomputed_metrics(grid)
 end
 
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
-    Nλ, Nφ, Nz = N = size
 
     if !isnothing(topology)
         TX, TY, TZ = validate_topology(topology)
