@@ -119,6 +119,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz
+    Hλ, Hφ, Hz = halo
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
