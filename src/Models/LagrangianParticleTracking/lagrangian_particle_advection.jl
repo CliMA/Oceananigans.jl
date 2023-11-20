@@ -67,7 +67,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
-    particle_forcing_u(particles, p)
+    particle_u_velocity(particles, p)
 
 a particle-specific advecting velocity such as 
 - sinking or rising for buoyant particles
