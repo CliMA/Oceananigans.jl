@@ -248,7 +248,6 @@ end
 @inline function interpolating_get_index(fts, i, j, k, time_index)
     Ntimes = length(fts.times)
     time = time_index.time
-    @show time 
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
     # fractional index
