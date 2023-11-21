@@ -71,8 +71,10 @@ function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple
     end
 end
 
-top_tracer_boundary_conditions(grid, tracers) =
-    NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+@inline function top_tracer_boundary_conditions(grid, tracers)
+    names = propertynames(tracers)
+    NamedTuple{(names...,)}(((c => tracers[c].boundary_conditions.top for c in names)...,))
+end
 
 """ Store previous value of the source term and compute current source term. """
 function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
