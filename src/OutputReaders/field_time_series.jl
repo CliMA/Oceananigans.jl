@@ -8,19 +8,19 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Units: Time
-
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search,
-                           indices_summary
+                           indices_summary, boundary_conditions 
 
-using Oceananigans.Fields: boundary_conditions 
+using Oceananigans.Units: Time
+using Oceananigans.Utils: launch!
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 using Dates: AbstractTime
+using KernelAbstractions: @kernel, @index
 
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
@@ -248,6 +248,7 @@ end
 @inline function interpolating_get_index(fts, i, j, k, time_index)
     Ntimes = length(fts.times)
     time = time_index.time
+    @show time 
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
     # fractional index
@@ -260,6 +261,49 @@ end
 
 @inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_get_index(fts, i, j, k, time_index)
+
+function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
+
+    # TODO: support time-interpolation too.
+    # This requires extending the low-level Field interpolation utilities
+    # to support time-indexing.
+    target_fts.times == source_fts.times ||
+        throw(ArgumentError("Cannot interpolate two FieldTimeSeries with different times."))
+
+    times = target_fts.times
+    Nt = length(times)
+
+    target_grid = target_fts.grid
+    source_grid = source_fts.grid
+
+    @assert architecture(target_grid) == architecture(source_grid)
+    arch = architecture(target_grid)
+
+    # Make locations
+    source_location = Tuple(L() for L in location(source_fts))
+    target_location = Tuple(L() for L in location(target_fts))
+
+    launch!(arch, target_grid, size(target_fts),
+            _interpolate_field_time_series!,
+            target_fts.data, target_grid, target_location,
+            source_fts.data, source_grid, source_location)
+
+    fill_halo_regions!(target_fts)
+
+    return nothing
+end
+
+@kernel function _interpolate_field_time_series!(target_fts, target_grid, target_location,
+                                                 source_fts, source_grid, source_location)
+
+    # 4D index, cool!
+    i, j, k, n = @index(Global, NTuple)
+
+    source_field = view(source_fts, :, :, :, n)
+    target_node = node(i, j, k, target_grid, target_location...)
+
+    @inbounds target_fts[i, j, k, n] = interpolate(target_node, source_field, source_location, source_grid)
+end
 
 """
     Field(location, path, name, iter;
