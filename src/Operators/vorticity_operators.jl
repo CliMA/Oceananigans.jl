@@ -38,8 +38,8 @@ end
                                            on_north_west_corner(i, j, grid) |
                                            on_north_east_corner(i, j, grid)
 
+#=
 @inline Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v) =   Δy_qᶜᶠᶜ(i, j, k, grid, v)   - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
-
 
 @inline function Γᶠᶠᶜ_se(i, j, k, grid, u, v; debug = false)
     if debug
@@ -61,7 +61,6 @@ end
 
 @inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v; debug = false)
     on_sw_or_nw = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
-
     if debug
         @show i, j, δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v)
         @show i, j, - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
@@ -71,3 +70,4 @@ end
            ifelse(on_north_east_corner(i, j, grid), Γᶠᶠᶜ_ne(i, j, k, grid, u, v),
                   δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u))))
 end
+=#
