@@ -144,10 +144,10 @@ function specify_colorrange(grid, φ, use_symmetric_colorrange = true)
     Ny = grid.Ny
     Nz = grid.Nz
     
-    φ_array = zeros(Nx, Ny, Nz)
+    φ_array = zeros(Nx, Ny, Nz, 6)
     
     for region in 1:6
-        φ_array[:, :, :] = φ[region].data[1:Nx, 1:Ny, 1:Nz]
+        φ_array[:, :, :, region] = φ[region].data[1:Nx, 1:Ny, 1:Nz]
     end
     
     φ_maximum = maximum(φ_array)
@@ -236,7 +236,7 @@ function panel_wise_visualization_MITgcm(x, y, field, use_symmetric_colorrange)
     
 end
 
-function panel_wise_visualization_parent_field(grid, field, k = 1, use_symmetric_colorrange = true)
+function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_colorrange = true)
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
@@ -460,8 +460,8 @@ function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, start
 
 end
 
-function create_panel_wise_visualization_animation_parent_field(grid, φ_series, start_index, use_symmetric_colorrange, 
-                                                                framerate, filename, k=1)
+function create_panel_wise_visualization_animation_with_halos(grid, φ_series, start_index, use_symmetric_colorrange, 
+                                                              framerate, filename, k=1)
 
     n = Observable(start_index) # the current index
 
