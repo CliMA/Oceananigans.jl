@@ -93,6 +93,9 @@ for region in 1:number_of_regions(grid)
     end
 end
 
+u₀ = deepcopy(u)
+v₀ = deepcopy(v)
+
 # Now, compute the vorticity.
 using Oceananigans.Utils
 using KernelAbstractions: @kernel, @index
@@ -148,6 +151,9 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
+fill_velocity_halos!(simulation.model.velocities)
+
 ζ = Field{Face, Face, Center}(grid)
 
 ζ_fields = Field[]
@@ -163,8 +169,6 @@ end
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 ζ₀ = deepcopy(ζ) 
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
@@ -196,9 +200,26 @@ simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_i
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
-run!(simulation)
+# run!(simulation)
 
-# Plot the vorticity.
+# Plot the initial velocity field.
+
+fig = panel_wise_visualization_with_halos(grid, u₀)
+save("u₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u₀)
+save("u₀.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v₀)
+save("v₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v₀)
+save("v₀.png", fig)
+
+# Plot the initial vorticity field.
+
+fig = panel_wise_visualization_with_halos(grid, ζ₀)
+save("ζ₀_with_halos.png", fig)
 
 fig = panel_wise_visualization(grid, ζ₀)
 save("ζ₀.png", fig)
