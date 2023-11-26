@@ -170,4 +170,5 @@ end
     @inbounds u[i, j, k] += convert(FT, Δt) * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻, grid) = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻, grid)                 = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻, grid::ActiveCellsIBG) = nothing

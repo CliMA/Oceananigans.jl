@@ -45,7 +45,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid;
                 only_active_cells = only_active_interior_cells)
