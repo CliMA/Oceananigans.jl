@@ -38,6 +38,7 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
         surface_map  = arch_array(architecture(ibg), surface_map)
     else
         interior_map = nothing
+        surface_map  = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
