@@ -298,6 +298,10 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
     config2 = EnzymeCore.EnzymeRules.Config{#=needsprimal=#false, #=needsshadow=#false, #=width=#EnzymeCore.EnzymeRules.width(config), EnzymeCore.EnzymeRules.overwritten(config)[5:end]}()
 
     EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
+    ntuple(Val(length(kernel_args))) do _
+      Base.@_inline_meta
+      nothing
+    end
   else
     ntuple(Val(length(kernel_args))) do _
       Base.@_inline_meta
