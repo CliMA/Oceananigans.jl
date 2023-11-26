@@ -7,7 +7,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
+using Oceananigans.ImmersedBoundaries: active_linear_index_to_surface_tuple, ActiveCellsIBG, ActiveSurfaceIBG
 
 # constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
@@ -141,8 +142,20 @@ using Printf
                                                                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                timestepper)
     i, j = @index(Global, NTuple)
-    k_top = grid.Nz+1
+    free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+end
 
+@kernel function split_explicit_free_surface_evolution_kernel!(grid::ActiveSurfaceIBG, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                                                               η̅, U̅, V̅, averaging_weight,
+                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                               timestepper)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+end
+
+@inline function free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+    k_top = grid.Nz+1
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
@@ -151,6 +164,8 @@ using Printf
         η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
                                 div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))                        
     end
+
+    return nothing
 end
 
 @kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
@@ -158,6 +173,31 @@ end
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                       timestepper)
     i, j = @index(Global, NTuple)
+
+    velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                               η̅, U̅, V̅, averaging_weight,
+                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                               timestepper )
+end
+
+
+@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid::ActiveSurfaceIBG, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                                                      η̅, U̅, V̅, averaging_weight,
+                                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                                      timestepper)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_surface_tuple(idx, grid)
+
+    velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                               η̅, U̅, V̅, averaging_weight,
+                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                               timestepper )
+end
+
+@inline function velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                            η̅, U̅, V̅, averaging_weight,
+                                            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                            timestepper )
     k_top = grid.Nz+1
     
     TX, TY, _ = topology(grid)
@@ -195,8 +235,10 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, we
             η̅, U̅, V̅, averaging_weight, 
             Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper)
 
-    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...)
-    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...)
+    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...; 
+            only_active_cells = use_only_active_surface_cells(grid))
+    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...; 
+            only_active_cells = use_only_active_surface_cells(grid))
 
     return nothing
 end
@@ -216,9 +258,26 @@ end
     end
 end
 
+# Barotropic Model Kernels
+# u_Δz = u * Δz
+@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveSurfaceIBG, u, v)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_surface_tuple(idx, grid)
+
+    # hand unroll first loop
+    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
+
+    @unroll for k in 2:grid.Nz
+        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+    end
+end
+
 # may need to do Val(Nk) since it may not be known at compile
 compute_barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v)
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
+            only_active_cells = use_only_active_surface_cells(grid))
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
@@ -243,8 +302,17 @@ function initialize_free_surface_state!(free_surface_state, η)
     return nothing
 end
 
-@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
     i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
+        v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
+    end
+end
+
+@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid::ActiveCellsIBG)
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
         v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
@@ -264,7 +332,8 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid; 
+            only_active_cells = use_only_active_interior_cells(grid))
 
     return nothing
 end
@@ -362,6 +431,21 @@ end
     end	
 end
 
+# Calculate RHS for the barotopic time step. 
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveSurfaceIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_surface_tuple(idx, grid)
+
+    # hand unroll first loop 	
+    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+
+    @unroll for k in 2:grid.Nz	
+        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+    end	
+end
+
 @inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 @inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
@@ -388,6 +472,8 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 end
 
 setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
-    launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-
+    launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; only_active_cells = use_only_active_surface_cells(grid))
+            
 wait_free_surface_communication!(free_surface, arch) = nothing
+
