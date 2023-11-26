@@ -125,7 +125,8 @@ function ab2_step!(model, Δt, χ)
 
         step_field_kernel!(field, Δt, χ,
                            model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i])
+                           model.timestepper.G⁻[i],
+                           model.grid)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
