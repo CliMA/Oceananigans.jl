@@ -223,12 +223,12 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  grid,
                                                  workspec,
                                                  kernel!,
-                                                 kernel_args...;
+                                                 kernel_args::Vararg{Any,N};
                                                  include_right_boundaries = false,
                                                  reduced_dimensions = (),
                                                  location = nothing,
                                                  only_active_cells = nothing,
-                                                 kwargs...)
+                                                 kwargs...) where N
 
 
     workgroup, worksize = Oceananigans.Utils.work_layout(grid.val, workspec.val;
@@ -271,6 +271,8 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
     return EnzymeCore.EnzymeRules.AugmentedReturn{Nothing, Nothing, Any}(nothing, nothing, tape)
 end
 
+@inline arg_elem_type(::Type{T}, ::Val{i}) where {T<:Tuple, i} = eltype(T.parameters[i])
+
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1},
                                                 func::EnzymeCore.Const{typeof(Oceananigans.Utils.launch!)},
                                                  ::Type{EnzymeCore.Const{Nothing}},
@@ -279,29 +281,19 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
                                                  grid,
                                                  workspec,
                                                  kernel!,
-                                                 kernel_args...;
+                                                 kernel_args::Vararg{Any,N};
                                                  include_right_boundaries = false,
                                                  reduced_dimensions = (),
                                                  location = nothing,
                                                  only_active_cells = nothing,
-                                                 kwargs...)
+                                                 kwargs...) where N
 
   subrets = if tape !== nothing
     duploop, subtape = tape
-
     config2 = EnzymeCore.EnzymeRules.Config{#=needsprimal=#false, #=needsshadow=#false, #=width=#EnzymeCore.EnzymeRules.width(config), EnzymeCore.EnzymeRules.overwritten(config)[5:end]}()
-
-    tup = EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
-    ntuple(Val(length(kernel_args))) do i
-      Base.@_inline_meta
-      if kernel_args[i] isa Active
-        tup[i]::eltype(typeof(kernel_args[i]))
-      else
-        nothing
-      end
-    end
+    EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
   else
-    ntuple(Val(length(kernel_args))) do i
+    res2 = ntuple(Val(N)) do i
       Base.@_inline_meta
       if kernel_args[i] isa Active
         EnzymeCore.make_zero(kernel_args[i].val)
@@ -311,7 +303,16 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
     end
   end
 
-  return (nothing, nothing, nothing, nothing, subrets...)
+  subrets2 =  ntuple(Val(N)) do i
+      Base.@_inline_meta
+      if kernel_args[i] isa Active
+        subrets[i]::arg_elem_type(typeof(kernel_args), Val(i))
+      else
+        nothing
+      end
+    end
+
+  return (nothing, nothing, nothing, nothing, subrets2...)
 
 end
 
