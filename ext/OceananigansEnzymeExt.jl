@@ -96,18 +96,12 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
     config_width = EnzymeCore.EnzymeRules.width(config)
 
     dactives = if function_field_is_active
-        runtime_func_type = Core.Typeof(function_field_func.val)
-
         if config_width == 1
-            Ref(Enzyme.Compiler.make_zero(runtime_func_type,
-                                          IdDict(),
-                                          function_field_func.val))
+            Ref(EnzymeCore.make_zero(function_field_func.val))
         else
             ntuple(Val(config_width)) do i
                 Base.@_inline_meta
-                Ref(Enzyme.Compiler.make_zero(runtime_func_type,
-                                              IdDict(),
-                                              function_field_func.val))
+                Ref(EnzymeCore.make_zero(function_field_func.val))
             end
         end
     else
@@ -186,11 +180,11 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 
     shadow = if EnzymeCore.EnzymeRules.needs_shadow(config)
         if EnzymeCore.EnzymeRules.width(config) == 1
-            (typeof(a) <: Const) ? Enzyme.Compiler.make_zero(Core.Typeof(sprimal), IdDict(), sprimal)::RT : func.val(a.dval)
+            (typeof(a) <: Const) ? EnzymeCore.make_zero(sprimal)::RT : func.val(a.dval)
         else
             ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
                 Base.@_inline_meta
-                (typeof(a) <: Const) ? Enzyme.Compiler.make_zero(Core.Typeof(sprimal), IdDict(), sprimal)::RT : func.val(a.dval[i])
+                (typeof(a) <: Const) ? EnzymeCore.make_zero(sprimal)::RT : func.val(a.dval[i])
             end
         end
     else
@@ -297,15 +291,23 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
 
     config2 = EnzymeCore.EnzymeRules.Config{#=needsprimal=#false, #=needsshadow=#false, #=width=#EnzymeCore.EnzymeRules.width(config), EnzymeCore.EnzymeRules.overwritten(config)[5:end]}()
 
-    EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
-    ntuple(Val(length(kernel_args))) do _
+    tup = EnzymeCore.EnzymeRules.reverse(config2, duploop, EnzymeCore.Const{Nothing}, subtape, kernel_args...)
+    ntuple(Val(length(kernel_args))) do i
       Base.@_inline_meta
-      nothing
+      if kernel_args[i] isa Active
+        tup[i]::eltype(typeof(kernel_args[i]))
+      else
+        nothing
+      end
     end
   else
-    ntuple(Val(length(kernel_args))) do _
+    ntuple(Val(length(kernel_args))) do i
       Base.@_inline_meta
-      nothing
+      if kernel_args[i] isa Active
+        EnzymeCore.make_zero(kernel_args[i].val)
+      else
+        nothing
+      end
     end
   end
 
