@@ -111,9 +111,9 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme = EnstrophyConserving(), 
                            vorticity_stencil = VelocityStencil(),
                            vertical_scheme = EnergyConserving(),
-                           kinetic_energy_gradient_scheme = vertical_scheme,
                            divergence_scheme = vertical_scheme,
-                           upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
+                           kinetic_energy_gradient_scheme = divergence_scheme,
+                           upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                            multi_dimensional_stencil = false)
 
     N = required_halo_size(vorticity_scheme)
@@ -132,7 +132,6 @@ end
 const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
 
 #                                                 VectorInvariant{N,     FT,    M,     Z (vorticity scheme)
-const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
 const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:Any, <:EnergyConserving}
 const VectorInvariantEnstrophyConserving        = VectorInvariant{<:Any, <:Any, <:Any, <:EnstrophyConserving}
 const VectorInvariantUpwindVorticity            = VectorInvariant{<:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
@@ -145,10 +144,10 @@ const VectorInvariantKEGradientEnergyConserving = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantKineticEnergyUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 
 
-#                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,    V,                                     K,     D,     U (upwinding)
-const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:CrossAndSelfUpwinding}
-const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:OnlySelfUpwinding}
-const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:VelocityUpwinding}
+#                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,     V,     K,     D,                                     U (upwinding)
+const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
+const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
+const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:VelocityUpwinding}
 
 Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
