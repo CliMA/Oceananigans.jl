@@ -39,6 +39,7 @@ end
 function set!(u::DistributedField, v::Union{Array, CuArray})
     gsize = global_size(architecture(u), size(u))
 
+    @show gsize size(v) size(u)
     if size(v) == size(u)
         f = arch_array(architecture(u), v)
         u .= f
