@@ -4,6 +4,7 @@ using Oceananigans.TimeSteppers:  store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells
 
 using Oceananigans.Utils: launch!
 
@@ -27,7 +28,7 @@ function store_free_surface_tendency!(::ExplicitFreeSurface, model)
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model::HydrostaticFreeSurfaceModel)
+function store_tendencies!(model::HydrostaticFreeSurfaceModel; only_active_cells = use_only_active_interior_cells(model.grid))
     prognostic_field_names = keys(prognostic_fields(model))
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
 
@@ -37,7 +38,8 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
                 store_field_tendencies!,
                 model.timestepper.G⁻[field_name],
                 model.grid,
-                model.timestepper.Gⁿ[field_name])
+                model.timestepper.Gⁿ[field_name];
+                only_active_cells)
 
     end
 

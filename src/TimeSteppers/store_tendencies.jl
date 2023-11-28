@@ -17,7 +17,7 @@ end
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model; only_active_cells = only_active_interior_cells(model.grid))
+function store_tendencies!(model; only_active_cells = use_only_active_interior_cells(model.grid))
     model_fields = prognostic_fields(model)
 
     for field_name in keys(model_fields)
