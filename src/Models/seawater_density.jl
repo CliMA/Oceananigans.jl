@@ -76,7 +76,7 @@ BoussinesqEquationOfState{Float64}:
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: BoussinesqEquationOfState{Float64}
+└── equation_of_state: BoussinesqEquationOfState{Float64}
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
