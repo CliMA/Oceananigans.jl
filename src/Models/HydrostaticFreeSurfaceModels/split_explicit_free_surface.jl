@@ -73,8 +73,8 @@ Keyword Arguments
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
-                             SplitExplicitSettings(; gravitational_acceleration, kwargs...))
-
+                             SplitExplicitSettings(FT; gravitational_acceleration, kwargs...))
+                             
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
@@ -175,7 +175,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -187,9 +187,7 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦
     "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
     Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
-    kernel_size :: 𝒦
-    "index offsets for halo calculations"
-    kernel_offsets :: 𝒪
+    kernel_parameters :: 𝒦
 end
 
 """
@@ -217,10 +215,9 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
-    kernel_size    = :xy
-    kernel_offsets = (0, 0)
-
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    kernel_parameters = :xy
+    
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
 """
@@ -251,7 +248,7 @@ end
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotopic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
-    Δt_barotopic     :: B
+    Δt_barotropic    :: B
     averaging_kernel :: F
 end
 
@@ -273,9 +270,9 @@ function FixedTimeStepSize(FT::DataType = Float64;
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
-    Δt_barotopic = FT(cfl * Δs / wave_speed)
+    Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
-    return FixedTimeStepSize(Δt_barotopic, averaging_kernel)
+    return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
@@ -294,7 +291,7 @@ end
 end
 
 function SplitExplicitSettings(FT::DataType=Float64;
-                               substeps = 200, 
+                               substeps = nothing, 
                                cfl      = nothing,
                                grid     = nothing,
                                fixed_Δt = nothing,
@@ -348,7 +345,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 function reset!(sefs::SplitExplicitFreeSurface)
     for name in propertynames(sefs.state)
         var = getproperty(sefs.state, name)
-        fill!(var, 0.0)
+        fill!(var, 0)
     end
 
     fill!(sefs.auxiliary.Gᵁ, 0)

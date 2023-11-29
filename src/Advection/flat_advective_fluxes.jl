@@ -3,7 +3,7 @@
 ##### Flat Topologies
 #####
 
-using Oceananigans.Operators: XFlatGrid, YFlatGrid, ZFlatGrid
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 for SchemeType in [:CenteredScheme, :UpwindScheme]
     @eval begin

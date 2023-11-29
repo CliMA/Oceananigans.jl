@@ -151,7 +151,7 @@ for region in 1:length(grid); println("panel ", region, ": ", getregion(grid.con
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
                                   z,
-                                  horizontal_direction_halo = 1,
+                                  horizontal_direction_halo = 3,
                                   z_halo = horizontal_direction_halo,
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
@@ -210,82 +210,53 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            region_grids,
                                                                                            devices)
 
-    # the following fills the coordinate and metric halos using halo-filling algorithms
-    ccacoords = (:λᶜᶜᵃ, :φᶜᶜᵃ)
-    fcacoords = (:λᶠᶜᵃ, :φᶠᶜᵃ)
-    cfacoords = (:λᶜᶠᵃ, :φᶜᶠᵃ)
+    # TODO: Use fill_halo_regions! for the Face-Face-Any fields.
+    #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
+    #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
 
-    for (ccacoord, fcacoord, cfacoord) in zip(ccacoords, fcacoords, cfacoords)
+    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
+    LXs₁    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
+    LYs₁    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
+
+    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
+    # LXs₁    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
+    # LYs₁    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
+
+    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
+    LXs₂    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
+    LYs₂    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
+
+    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
+    # LXs₂    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
+    # LYs₂    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
+
+    for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
         expr = quote
-            $(Symbol(ccacoord)) = Field{Center, Center, Nothing}($(grid))
-            $(Symbol(fcacoord)) = Field{Face,   Center, Nothing}($(grid))
-            $(Symbol(cfacoord)) = Field{Center, Face,   Nothing}($(grid))
+            $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
+            $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
-                for region in 1:6
-                    getregion($(Symbol(ccacoord)), region).data .= getregion($(grid), region).$(Symbol(ccacoord))
-                    getregion($(Symbol(fcacoord)), region).data .= getregion($(grid), region).$(Symbol(fcacoord))
-                    getregion($(Symbol(cfacoord)), region).data .= getregion($(grid), region).$(Symbol(cfacoord))
+                for region in 1:number_of_regions($(grid))
+                    getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
+                    getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
                 end
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:3
-                    fill_halo_regions!($(Symbol(ccacoord)))
-                    fill_halo_regions!($(Symbol(fcacoord)))
-                    fill_halo_regions!($(Symbol(cfacoord)))
+                for _ in 1:2
+                    fill_halo_regions!($(Symbol(field₁)))
+                    fill_halo_regions!($(Symbol(field₂)))
 
-                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcacoord)),
-                                                                            v = $(Symbol(cfacoord)),
-                                                                            w = nothing), $(grid), signed=false)
-                end
-            end
-            CUDA.@allowscalar begin
-                for region in 1:6
-                    getregion($(grid), region).$(Symbol(ccacoord)) .= getregion($(Symbol(ccacoord)), region).data
-                    getregion($(grid), region).$(Symbol(fcacoord)) .= getregion($(Symbol(fcacoord)), region).data
-                    getregion($(grid), region).$(Symbol(cfacoord)) .= getregion($(Symbol(cfacoord)), region).data
-                end
-            end
-        end
-        eval(expr)
-    end
-
-    ccametrics = (:Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ)
-    fcametrics = (:Δxᶠᶜᵃ, :Δyᶠᶜᵃ, :Azᶠᶜᵃ)
-    cfametrics = (:Δyᶜᶠᵃ, :Δxᶜᶠᵃ, :Azᶜᶠᵃ)
-
-    for (ccametric, fcametric, cfametric) in zip(ccametrics, fcametrics, cfametrics)
-        expr = quote
-            $(Symbol(ccametric)) = Field{Center, Center, Nothing}($(grid))
-            $(Symbol(fcametric)) = Field{Face,   Center, Nothing}($(grid))
-            $(Symbol(cfametric)) = Field{Center, Face,   Nothing}($(grid))
-
-            CUDA.@allowscalar begin
-                for region in 1:6
-                    getregion($(Symbol(ccametric)), region).data .= getregion($(grid), region).$(Symbol(ccametric))
-                    getregion($(Symbol(fcametric)), region).data .= getregion($(grid), region).$(Symbol(fcametric))
-                    getregion($(Symbol(cfametric)), region).data .= getregion($(grid), region).$(Symbol(cfametric))
-                end
-            end
-
-            if $(horizontal_topology) == FullyConnected
-                for _ in 1:3
-                    fill_halo_regions!($(Symbol(ccametric)))
-                    fill_halo_regions!($(Symbol(fcametric)))
-                    fill_halo_regions!($(Symbol(cfametric)))
-
-                    @apply_regionally replace_horizontal_velocity_halos!((; u = $(Symbol(fcametric)),
-                                                                            v = $(Symbol(cfametric)),
-                                                                            w = nothing), $(grid), signed=false)
+                    @apply_regionally replace_horizontal_vector_halos!((; u = $(Symbol(field₁)),
+                                                                          v = $(Symbol(field₂)),
+                                                                          w = nothing), $(grid), signed=false)
                 end
             end
 
             CUDA.@allowscalar begin
-                for region in 1:6
-                    getregion($(grid), region).$(Symbol(ccametric)) .= getregion($(Symbol(ccametric)), region).data
-                    getregion($(grid), region).$(Symbol(fcametric)) .= getregion($(Symbol(fcametric)), region).data
-                    getregion($(grid), region).$(Symbol(cfametric)) .= getregion($(Symbol(cfametric)), region).data
+                for region in 1:number_of_regions($(grid))
+                    getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
+                    getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
                 end
             end
         end # quote
@@ -293,7 +264,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    " Halo filling for Face-Face coordinates , hardcoded for the default cubed-sphere connectivity. "
+    " Halo filling for Face-Face coordinates, hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_coordinates!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
@@ -465,11 +436,11 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
 end
 
-function with_halo(new_halo, csg::ConformalCubedSphereGrid) 
+function with_halo(new_halo, csg::ConformalCubedSphereGrid)
     region_rotation = []
 
-    for r in 1:length(csg.partition)
-        push!(region_rotation, rotation_from_panel_index(panel_index(r, csg.partition)))
+    for region in 1:length(csg.partition)
+        push!(region_rotation, csg[region].conformal_mapping.rotation)
     end
 
     apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
@@ -482,5 +453,7 @@ function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT,
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
+
+radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"

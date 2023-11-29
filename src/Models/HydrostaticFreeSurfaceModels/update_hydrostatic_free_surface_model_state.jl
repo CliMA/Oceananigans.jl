@@ -3,12 +3,15 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.TurbulenceClosures: calculate_diffusivities!
+using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
-using Oceananigans.Fields: replace_horizontal_velocity_halos!
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
+using Oceananigans.Fields: replace_horizontal_vector_halos!
 
 import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
+
+using Oceananigans.Models: update_model_field_time_series!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -22,27 +25,30 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
+         update_state!(model, model.grid, callbacks; compute_tendencies)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
-
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-
-    @apply_regionally replace_horizontal_velocity_halos!(model.velocities, model.grid)
-    @apply_regionally compute_w_diffusivities_pressure!(model)
-
-    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-    fill_halo_regions!(model.pressure.pHY′)
-
-    for callback in callbacks
-        callback.callsite isa UpdateStateCallsite && callback(model)
-    end
-
-    update_biogeochemical_state!(model.biogeochemistry, model)
     
+    # Update possible FieldTimeSeries used in the model
+    @apply_regionally update_model_field_time_series!(model, model.clock)
+
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+
+    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
+    @apply_regionally compute_auxiliaries!(model)
+
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
+
+    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
+    
+    update_biogeochemical_state!(model.biogeochemistry, model)
+
+    compute_tendencies && 
+        @apply_regionally compute_tendencies!(model, callbacks)
+
     return nothing
 end
 
@@ -61,9 +67,20 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_w_diffusivities_pressure!(model) 
-    compute_w_from_continuity!(model)
-    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
+                                                                  p_parameters = tuple(p_kernel_parameters(model.grid)),
+                                                                  κ_parameters = tuple(:xyz)) 
+    
+    grid = model.grid
+    closure = model.closure
+    diffusivity = model.diffusivity_fields
+
+    for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
+        compute_w_from_continuity!(model; parameters = wpar)
+        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
+        update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
+                                    grid, model.buoyancy, model.tracers; 
+                                    parameters = ppar)
+    end
     return nothing
 end

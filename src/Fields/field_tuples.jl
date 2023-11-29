@@ -76,12 +76,17 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     return nothing
 end
 
-tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
-    fill_halo_regions!(data.(fields),
-                       boundary_conditions.(fields),
-                       default_indices(3),         # We cannot group windowed fields together, the indices must be (:, :, :)!
-                       instantiated_location.(fields),
-                       grid, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
+
+    # We cannot group windowed fields together, the indices must be (:, :, :)!
+    indices = default_indices(3)        
+
+    return fill_halo_regions!(map(data, fields),
+                              map(boundary_conditions, fields),
+                              indices,
+                              map(instantiated_location, fields),
+                              grid, args...; kwargs...)
+end
 
 #####
 ##### Tracer names

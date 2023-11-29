@@ -20,6 +20,7 @@ using OffsetArrays
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: Reference, Iterate, getnamewrapper
+using Oceananigans.Grids: AbstractUnderlyingGrid
 
 using KernelAbstractions: @kernel, @index
 
@@ -34,7 +35,7 @@ import Oceananigans.Utils:
                 _getregion,
                 sync_all_devices!
 
-abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
+abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
