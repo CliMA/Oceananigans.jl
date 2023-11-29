@@ -1,73 +1,40 @@
-"""
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
-
-The circulation around a `Face`-`Face`-`Center` cell that is associated with horizontal
-velocities ``u`` and ``v``.
-"""
+""" Vertical circulation associated with horizontal velocities u, v. """
 @inline Γᶠᶠᶜ(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
 
 """
-    ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+     ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
-The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
-"""
+ The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
+ """
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
+
+@inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
+    scaling = ifelse(on_corner(i, j, grid), convert(FT, 4/3), 1)
+    return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
+end
+
+# Corner
+@inline on_corner(i, j, grid) = on_south_west_corner(i, j, grid) | on_south_east_corner(i, j, grid) | on_north_west_corner(i, j, grid) | on_north_east_corner(i, j, grid)
+
+# South-west, south-east, north-west, north-east corners
+@inline on_south_west_corner(i, j, grid) = (i == 1 && j == 1)
+@inline on_south_east_corner(i, j, grid) = (i == grid.Nx+1 && j == 1)
+@inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1 && j == grid.Ny+1)
+@inline on_north_west_corner(i, j, grid) = (i == 1 && j == grid.Ny+1)
 
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
 ##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
 #####
 
-@inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
-    scaling = ifelse(on_horizontal_corner(i, j, grid), convert(FT, 1), 1)
-    #=
-    scaling = ifelse(on_horizontal_corner(i, j, grid), convert(FT, 4/3), 1)
-    =#
-    return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
-end
+"""
+     Γᶠᶠᶜ(i, j, k, grid, u, v)
 
-# Corners
-@inline on_south_west_corner(i, j, grid) = (i == 1) & (j == 1)
-@inline on_south_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == 1)
-@inline on_north_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == grid.Ny+1)
-@inline on_north_west_corner(i, j, grid) = (i == 1) & (j == grid.Ny+1)
-
-""" Return true if `i`, `j` indices correspond to a horizontal corner of the `grid`. """
-@inline on_horizontal_corner(i, j, grid) = on_south_west_corner(i, j, grid) |
-                                           on_south_east_corner(i, j, grid) |
-                                           on_north_west_corner(i, j, grid) |
-                                           on_north_east_corner(i, j, grid)
-
-#=
-@inline Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v) =   Δy_qᶜᶠᶜ(i, j, k, grid, v)   - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
-
-@inline function Γᶠᶠᶜ_se(i, j, k, grid, u, v; debug = false)
-    if debug
-        @show - Δy_qᶜᶠᶜ(i-1, j, k, grid, v)
-        @show - Δx_qᶠᶜᶜ(i, j, k, grid, u)
-        @show + Δy_qᶜᶠᶜ(i, j, k, grid, v)
-    end
-    return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δy_qᶜᶠᶜ(i, j, k, grid, v)
-end
-
-@inline function Γᶠᶠᶜ_ne(i, j, k, grid, u, v; debug = false)
-    if debug
-        @show - Δy_qᶜᶠᶜ(i-1, j, k, grid, v)
-        @show - Δx_qᶠᶜᶜ(i, j, k, grid, u)
-        @show + Δy_qᶜᶠᶜ(i, j, k, grid, v)
-    end
-    return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
-end
-
-@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v; debug = false)
-    on_sw_or_nw = on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid)
-    if debug
-        @show i, j, δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v)
-        @show i, j, - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
-    end
-    return ifelse(on_sw_or_nw, Γᶠᶠᶜ_sw_or_nw(i, j, k, grid, u, v),
-           ifelse(on_south_east_corner(i, j, grid), Γᶠᶠᶜ_se(i, j, k, grid, u, v),
-           ifelse(on_north_east_corner(i, j, grid), Γᶠᶠᶜ_ne(i, j, k, grid, u, v),
-                  δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u))))
-end
-=#
+ The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+ """
+@inline Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v) = 
+    ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
+           Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u), 
+           ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
+                  - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u), 
+                  δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
