@@ -19,8 +19,8 @@ include("cubed_sphere_visualization.jl")
 
 g = 9.81
 
-Nx = 32
-Ny = 32
+Nx = 16
+Ny = 16
 Nz = 1
 
 Lz = 1
@@ -93,9 +93,6 @@ for region in 1:number_of_regions(grid)
     end
 end
 
-u₀ = deepcopy(u)
-v₀ = deepcopy(v)
-
 # Now, compute the vorticity.
 using Oceananigans.Utils
 using KernelAbstractions: @kernel, @index
@@ -105,6 +102,18 @@ using KernelAbstractions: @kernel, @index
 @kernel function _compute_vorticity!(ζ, grid, u, v)
     i, j, k = @index(Global, NTuple)
     @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+    #=
+    Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos. 
+    Additionally, the vorticity values along the boundaries are significantly higher compared to those within the 
+    domain's interior.  These issues likely contribute to the instability in the solution. 
+    By replacing the line
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+    with
+    @inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
+    we observe that all points are populated with finite values, effectively eliminating the appearance of NANs. 
+    Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing 
+    erroneous results.
+    =#
 end
 
 offset = -1 .* halo_size(grid)
@@ -168,6 +177,9 @@ end
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
+
+u₀ = deepcopy(simulation.model.velocities.u)
+v₀ = deepcopy(simulation.model.velocities.v)
 ζ₀ = deepcopy(ζ) 
 
 function save_vorticity(sim)
