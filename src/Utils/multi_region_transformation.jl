@@ -99,7 +99,7 @@ end
 @inline isregional(::MultiRegionObject) = true
 
 @inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
+@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
 for func in [:isregional, :devices, :switch_device!]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
@@ -180,8 +180,10 @@ end
     end 
 end
 
+@inline sync_device!(::Nothing)  = nothing
+@inline sync_device!(::CPU)      = nothing
+@inline sync_device!(::GPU)      = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
-@inline sync_device!(dev)        = nothing
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the 

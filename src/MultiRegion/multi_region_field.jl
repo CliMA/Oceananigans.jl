@@ -4,18 +4,20 @@ using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
+using Base: @propagate_inbounds
+
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
-import Oceananigans.Simulations: hasnan
+import Oceananigans.Models: hasnan
 
 import Base: fill!, axes
 
 # Field and FunctionField (both fields with "grids attached")
-const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
-const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrid} where {LX, LY, LZ}
-const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
+const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrids} where {LX, LY, LZ}
+const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrids} where {LX, LY, LZ, C, P, F}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
@@ -119,6 +121,7 @@ set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
 set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
  
 # Disambiguation (same as computed_field.jl:64)
@@ -146,7 +149,7 @@ FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              mrg::MultiRegionGrid,
+                                              mrg::MultiRegionGrids,
                                               field_name::Symbol,
                                               prognostic_field_name=nothing)
 
@@ -180,7 +183,7 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
 end
 
 function Base.show(io::IO, field::MultiRegionField)
-    bcs = field.boundary_conditions
+    bcs = getregion(field, 1).boundary_conditions
 
     prefix =
         string("$(summary(field))\n",
@@ -198,3 +201,7 @@ end
 
 xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
 ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = ynodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
+
+# Convenience
+@propagate_inbounds Base.getindex(mrf::MultiRegionField, r::Int) = getregion(mrf, r)
+@propagate_inbounds Base.lastindex(mrf::MultiRegionField) = lastindex(mrf.grid)
