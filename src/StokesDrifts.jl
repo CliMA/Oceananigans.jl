@@ -44,8 +44,11 @@ end
 """
     UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing)
 
-Construct a set of functions of `(z, t)` that describes the Stokes drift field beneath
-a _horizontally-uniform_ surface gravity wave field.
+Construct a set of functions of `(z, t)` for a Stokes drift velocity field
+corresponding to a horizontally-uniform surface gravity wave field.
+
+To resolve the evolution of the Lagrangian-mean momentum, we require vertical-derivatives
+and time-derivatives of the horizontal components of the Stokes drift, `uˢ` and `vˢ`.
 """
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
@@ -87,6 +90,35 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     parameters :: P
 end
 
+"""
+    StokesDrift(; ∂z_uˢ=addzero, ∂y_uˢ=addzero, ∂t_uˢ=addzero, 
+                  ∂z_vˢ=addzero, ∂x_vˢ=addzero, ∂t_vˢ=addzero, 
+                  ∂x_wˢ=addzero, ∂y_wˢ=addzero, ∂t_wˢ=addzero, parameters=nothing)
+
+Construct a set of functions of space and time for a Stokes drift velocity field
+corresponding to a surface gravity wave field with an envelope that (potentially) varies
+in the horizontal directions.
+
+To resolve the evolution of the Lagrangian-mean momentum, we require all the components
+of the "psuedovorticity",
+
+```math
+∇ × uˢ = x̂ (∂y_wˢ - ∂z_vˢ) + ŷ (∂z_uˢ - ∂x_wˢ) + ẑ (∂x_vˢ - ∂y_uˢ)
+```
+
+as well as time-derivatives of uˢ, vˢ, and wˢ.
+
+Note that each function (e.g. ∂z_uˢ) is a function of horizontal coordinates and time.
+Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
+are omitted.
+
+For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`),
+then `∂z_uˢ` (for example) should be callable via `∂z_uˢ(x, z, t)`.
+When `!isnothing(parameters)`, then in this case `∂z_uˢ` should be callable via `∂z_uˢ(x, z, t, parameters)`.
+
+Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`,
+`∂z_uˢ` should be callable via `∂z_uˢ(x, y, z, t)`.
+"""
 function StokesDrift(; ∂x_vˢ = addzero,
                        ∂x_wˢ = addzero,
                        ∂y_uˢ = addzero,
