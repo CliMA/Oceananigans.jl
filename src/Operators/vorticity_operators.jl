@@ -37,4 +37,4 @@ end
            Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u), 
            ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
                   - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u), 
-                  δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
+                  δxᶠᶜᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶜᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)))
