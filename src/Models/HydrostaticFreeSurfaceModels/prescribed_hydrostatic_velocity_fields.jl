@@ -5,6 +5,7 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField, flatten_tuple
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
+using Oceananigans.Utils: Time
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
@@ -106,6 +107,13 @@ hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = 
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+
+retrieve_velocity(vel::PrescribedVelocityFields, clock) = PrescribedVelocityFields(u = retrieve_velocity(vel.u, clock), 
+                                                                                   v = retrieve_velocity(vel.v, clock),
+                                                                                   w = retrieve_velocity(vel.w, clock))
+
+retrieve_velocity(u, clock) = u
+retrieve_velocity(u::FieldTimeSeries, clock) = u[Time(clock.time)]
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
