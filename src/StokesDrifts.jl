@@ -178,14 +178,14 @@ end
 
 @inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::SDnoP, U, time)
     uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
-    vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.w)
+    vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, c, c, f)
     ∂x_wˢ = sw.∂x_wˢ(X..., time, pt...)
     ∂z_uˢ = sw.∂z_uˢ(X..., time, pt...)
     ∂y_wˢ = sw.∂y_wˢ(X..., time, pt...)
-    ∂z_vˢ = sw.∂y_wˢ(X..., time, pt...)
+    ∂z_vˢ = sw.∂z_vˢ(X..., time, pt...)
 
     return vᶜᶜᶠ * (∂y_wˢ - ∂z_vˢ) - uᶜᶜᶠ * (∂z_uˢ - ∂x_wˢ)
 end
