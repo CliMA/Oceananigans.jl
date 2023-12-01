@@ -13,15 +13,15 @@ const δ = 1kilometer
 const cᵍ = c / 2
 const Uˢ = ϵ^2 * c
 
-@inline A(ξ) = exp(- ξ^2 / 2δ^2)
+@inline A(ξ) = exp(- ξ^2 / (2 * δ^2) )
 @inline A′(ξ) = - ξ / δ^2 * A(ξ)
 @inline A′′(ξ) = (ξ^2 / δ^2 - 1) * A(ξ) / δ^2
 
 # Write the Stokes drift as
 #
-# uˢ(x, z, t) = A(x, t) * ûˢ(z)
+# uˢ(x, z, t) = A(x - cᵍ * t) * ûˢ(z)
 #
-# which implies
+# which describes a wave packet propogating with speed cᵍ. This implies
 
 @inline    ûˢ(z)       = Uˢ * exp(2k * z)
 @inline    uˢ(x, z, t) =         A(x - cᵍ * t) * ûˢ(z)
