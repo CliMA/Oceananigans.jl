@@ -126,9 +126,9 @@ function active_cells_surface_map(ibg)
     return smaller_indices
 end
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid::ActiveSurfaceIBG, p, args, tridiagonal_direction::ZDirection)
-    Nz = size(grid, 3)    
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_surface_tuple(idx, grid)
-    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-end
+# @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid::ActiveSurfaceIBG, p, args, tridiagonal_direction::ZDirection)
+#     Nz = size(grid, 3)    
+#     idx = @index(Global, Linear)
+#     i, j = active_linear_index_to_surface_tuple(idx, grid)
+#     solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+# end

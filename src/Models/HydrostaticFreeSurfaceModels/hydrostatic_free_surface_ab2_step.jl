@@ -58,8 +58,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.diffusivity_fields,
                        nothing,
                        model.clock, 
-                       Δt;
-                       only_active_cells = only_active_surface_cells)
+                       Δt)
     end
 
     return nothing
@@ -95,8 +94,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
-                       Δt;
-                       only_active_cells = only_active_surface_cells)
+                       Δt)
     end
 
     return nothing
