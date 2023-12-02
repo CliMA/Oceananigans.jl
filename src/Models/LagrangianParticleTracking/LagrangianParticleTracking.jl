@@ -35,15 +35,17 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.y, true) * ", "),
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
-struct LagrangianParticles{P, R, T, D, Π} <: AbstractLagrangianParticles
-        properties :: P
-       restitution :: R
-    tracked_fields :: T
-          dynamics :: D
-        parameters :: Π
+struct LagrangianParticles{P, R, T, D, Π, F} <: AbstractLagrangianParticles
+              properties :: P
+             restitution :: R
+          tracked_fields :: T
+                dynamics :: D
+              parameters :: Π
+       advective_forcing :: F
 end
 
 @inline no_dynamics(args...) = nothing
+@inline no_advective_forcing(args...) = nothing
 
 """
     LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
@@ -54,7 +56,7 @@ Construct some `LagrangianParticles` that can be passed to a model. The particle
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
 """
-function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
+function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing, advective_forcing=no_advective_forcing)
     size(x) == size(y) == size(z) ||
         throw(ArgumentError("x, y, z must all have the same size!"))
 
@@ -63,7 +65,7 @@ function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, p
 
     particles = StructArray{Particle}((x, y, z))
 
-    return LagrangianParticles(particles; restitution, dynamics, parameters)
+    return LagrangianParticles(particles; restitution, dynamics, parameters, advective_forcing)
 end
 
 """
@@ -83,7 +85,8 @@ function LagrangianParticles(particles::StructArray;
                              restitution = 1.0,
                              tracked_fields::NamedTuple=NamedTuple(),
                              dynamics = no_dynamics,
-                             parameters = nothing)
+                             parameters = nothing,
+                             advective_forcing=no_advective_forcing)
 
     for (field_name, tracked_field) in pairs(tracked_fields)
         field_name in propertynames(particles) ||
@@ -91,7 +94,7 @@ function LagrangianParticles(particles::StructArray;
                                 "You might have to define your own particle type."))
     end
 
-    return LagrangianParticles(particles, restitution, tracked_fields, dynamics, parameters)
+    return LagrangianParticles(particles, restitution, tracked_fields, dynamics, parameters, advective_forcing)
 end
 
 size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
@@ -113,6 +116,16 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
         "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, "\n",
         "├── ", length(fields), " tracked fields: ", propertynames(fields), "\n",
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
+end
+
+struct ParticleAdvectiveForcing{U, V, W}
+    u :: U
+    v :: V
+    w :: W
+end
+
+function ParticleAdvectiveForcing(; u=no_advective_forcing, v=no_advective_forcing, w=no_advective_forcing)
+    return ParticleAdvectiveForcing(u, v, w)
 end
 
 include("update_lagrangian_particle_properties.jl")

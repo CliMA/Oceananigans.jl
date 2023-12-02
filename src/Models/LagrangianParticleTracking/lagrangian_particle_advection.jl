@@ -78,9 +78,9 @@ Inputs are the fluid velocity, particle properties `particles`, and the particle
 
 Returns the fluid velocity by default (for non-buoyant, non-drifting particles). Has to be extended to obtain the desired effect
 """
-@inline particle_u_velocity(u_fluid, particles, p, Δt) = u_fluid
-@inline particle_v_velocity(v_fluid, particles, p, Δt) = v_fluid
-@inline particle_w_velocity(w_fluid, particles, p, Δt) = w_fluid
+@inline particle_u_velocity(u_fluid, u_advective_forcing, particles, model, p, Δt) = u_fluid + u_advective_forcing(particles, model, Δt)
+@inline particle_v_velocity(v_fluid, v_advective_forcing, particles, model, p, Δt) = v_fluid + v_advective_forcing(particles, model, Δt)
+@inline particle_w_velocity(w_fluid, w_advective_forcing, particles, model, p, Δt) = w_fluid + w_advective_forcing(particles, model, Δt)
 
 """
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
@@ -88,7 +88,7 @@ Returns the fluid velocity by default (for non-buoyant, non-drifting particles).
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), p, particles, restitution, grid, Δt, velocities)
+@inline function advect_particle((x, y, z), p, particles, model, restitution, grid, Δt, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices
@@ -105,9 +105,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     w_fluid = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Particle velocity
-    u = particle_u_velocity(u_fluid, particles, p, Δt)
-    v = particle_v_velocity(v_fluid, particles, p, Δt)
-    w = particle_w_velocity(w_fluid, particles, p, Δt)
+    u = particle_u_velocity(u_fluid, advective_forcing.u, particles, model, p, Δt)
+    v = particle_v_velocity(v_fluid, advective_forcing.v, particles, model, p, Δt)
+    w = particle_w_velocity(w_fluid, advective_forcing.w, particles, model, p, Δt)
     
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
@@ -158,7 +158,7 @@ end
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
+@kernel function _advect_particles!(particles, model, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
     p = @index(Global)
 
     @inbounds begin
@@ -167,7 +167,7 @@ end
         z = particles.z[p]
     end
 
-    x⁺, y⁺, z⁺ = advect_particle((x, y, z), p, particles, restitution, grid, Δt, velocities) 
+    x⁺, y⁺, z⁺ = advect_particle((x, y, z), p, particles, model, restitution, grid, Δt, velocities) 
 
     @inbounds begin
         particles.x[p] = x⁺ 
@@ -183,7 +183,7 @@ function advect_lagrangian_particles!(particles, model, Δt)
     worksize = length(particles)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
+    advect_particles_kernel!(particles.properties, model, particles.restitution, model.grid, Δt, total_velocities(model))
 
     return nothing
 end
