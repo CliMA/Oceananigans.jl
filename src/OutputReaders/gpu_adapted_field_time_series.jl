@@ -35,10 +35,19 @@ const YZGPUFTS = GPUAdaptedFieldTimeSeries{Nothing, <:Any, <:Any}
 @propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
 
 # Only `getindex` for GPUAdaptedFieldTimeSeries, no need to `setindex`
-Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = @inbounds fts.data[i, j, k, n]
+Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, n::Int) = fts.data[i, j, k, n]
 
 # Extend Linear time interpolation for GPUAdaptedFieldTimeSeries
-@inline Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
-    interpolating_get_index(fts, i, j, k, time_index)
+function Base.getindex(fts::GPUAdaptedFieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
+    Ntimes = length(fts.times)
+    time = time_index.time
+    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
+    # fractional index
+    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    fts_interpolated = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
+
+    # Don't interpolate if n = 0.
+    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), fts_interpolated)
+end
 

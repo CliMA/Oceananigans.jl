@@ -88,7 +88,7 @@ Returns the fluid velocity by default (for non-buoyant, non-drifting particles).
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), p, particles, model, restitution, grid, Δt, velocities)
+@inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices

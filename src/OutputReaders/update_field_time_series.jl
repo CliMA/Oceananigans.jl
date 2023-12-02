@@ -3,7 +3,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: AbstractField
 
 # Termination (move all here when we switch the code up)
-extract_field_timeseries(f::FieldTimeSeries)   = f
+extract_field_timeseries(f::FieldTimeSeries) = f
 
 const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
 const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
@@ -12,22 +12,22 @@ const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
 @inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
 
+set!(::TotallyInMemoryFieldTimeSeries, index_range) = nothing
+
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
 # and load the new data
 function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
-    if fts.backend.index_range == 1:length(fts.times)
-        return nothing
-    end
-
-    fts.backend.index_range .= index_range
+    # TODO: only load new data by comparing current and new index range?
+    fts.backend.index_range = index_range
     set!(fts, fts.path, fts.name)
-
     return nothing
 end
 
 # fallback
 update_field_time_series!(::Nothing, time) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Int64) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Time) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)

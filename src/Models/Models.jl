@@ -34,7 +34,7 @@ using Oceananigans.OutputReaders: update_field_time_series!, extract_field_times
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
-architecture(model::AbstractModel) = model.architecture
+architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 timestepper(model::AbstractModel) = model.timestepper

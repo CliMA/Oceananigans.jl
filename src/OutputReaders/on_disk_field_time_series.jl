@@ -16,31 +16,15 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
     loc = (LX, LY, LZ)
     field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
+    return Field(loc, fts.grid;
+                 indices = fts.indices,
+                 boundary_conditions = fts.boundary_conditions,
+                 data = field_data)
 end
 
 #####
 ##### set!
 #####
-
-# When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
-function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
-    path = time_series.path
-    name = time_series.name
-    jldopen(path, "a+") do file
-        initialize_file!(file, name, time_series)
-        maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])
-        maybe_write_property!(file, "timeseries/$(name)/$(index)", parent(f))
-    end
-end
-
-function initialize_file!(file, name, time_series)
-    maybe_write_property!(file, "serialized/grid", time_series.grid)
-    maybe_write_property!(file, "timeseries/$(name)/serialized/location", location(time_series))
-    maybe_write_property!(file, "timeseries/$(name)/serialized/indices", indices(time_series))
-    maybe_write_property!(file, "timeseries/$(name)/serialized/boundary_conditions", boundary_conditions(time_series))
-    return nothing
-end
 
 # Write property only if it does not already exist
 function maybe_write_property!(file, property, data)
@@ -51,4 +35,30 @@ function maybe_write_property!(file, property, data)
     end
 end
 
-set!(time_series::OnDiskFieldTimeSeries, path::String, name::String) = nothing
+"""
+    set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int)
+
+Write the data in `parent(field)` to the file at `fts.path`,
+under `fts.name` and at index `fts.times[time_index]`.
+"""
+function set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int)
+    path = fts.path
+    name = fts.name
+    jldopen(path, "a+") do file
+        initialize_file!(file, name, fts)
+        maybe_write_property!(file, "timeseries/t/$time_index", fts.times[time_index])
+        maybe_write_property!(file, "timeseries/$name/$time_index", parent(field))
+    end
+end
+
+function initialize_file!(file, name, fts)
+    maybe_write_property!(file, "serialized/grid", fts.grid)
+    maybe_write_property!(file, "timeseries/$name/serialized/location", location(fts))
+    maybe_write_property!(file, "timeseries/$name/serialized/indices", indices(fts))
+    maybe_write_property!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(fts))
+    return nothing
+end
+
+set!(fts::OnDiskFieldTimeSeries, path::String, name::String) = nothing
+fill_halo_regions!(fts::OnDiskFieldTimeSeries) = nothing
+

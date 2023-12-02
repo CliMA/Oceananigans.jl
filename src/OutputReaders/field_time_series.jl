@@ -8,17 +8,19 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Units: Time
-
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search,
+                           indices_summary, boundary_conditions 
 
-using Oceananigans.Fields: boundary_conditions 
+using Oceananigans.Units: Time
+using Oceananigans.Utils: launch!
 
-import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 using Dates: AbstractTime
+using KernelAbstractions: @kernel, @index
 
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
@@ -32,19 +34,21 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
-                                      backend::K,
-                                          bcs::B,
-                                      indices::I, 
-                                        times::χ,
+                                         backend::K,
+                                         bcs::B,
+                                         indices::I, 
+                                         times::χ,
                                          path::P,
                                          name::N) where {LX, LY, LZ, K, D, G, B, χ, I, P, N}
         T = eltype(data)
-        return new{LX, LY, LZ, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs, indices, times, path, name)
+        return new{LX, LY, LZ, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
+                                                          indices, times, path, name)
     end
 end
 
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 
+const TotallyInMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory{Colon}}
 const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory}
 const OnDiskFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:OnDisk}
 
@@ -66,12 +70,34 @@ function FieldTimeSeries(loc, grid, times;
     LX, LY, LZ = loc
     Nt   = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    backend = regularize_backend(backend, data)
 
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times, path, name)
+    if backend isa OnDisk
+        isnothing(name) && isnothing(name) &&
+            error(ArgumentError("Must provide the keyword arguments `path` and `name` when `backend=OnDisk()`."))
+
+        isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
+        isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
+    end
+
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
+                                       indices, times, path, name)
 end
 
-FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} = FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
+"""
+    FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} =
+
+Construct a `FieldTimeSeries` on `grid` and at `times`.
+
+Keyword arguments
+=================
+
+- indices: spatial indices
+- backend: backend, `InMemory(indices=Colon())` or `OnDisk()`
+- path: path to data for `backend = OnDisk()`
+- name: name of field for `backend = OnDisk()`
+"""
+FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} =
+    FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
 
 """
     FieldTimeSeries(path, name;
@@ -98,7 +124,8 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 """
-FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) = FieldTimeSeries(path, name, backend; kw...)
+FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) =
+    FieldTimeSeries(path, name, backend; kw...)
 
 function FieldTimeSeries(path::String, name::String, backend::AbstractDataBackend;
                          architecture = nothing,
@@ -184,9 +211,9 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    backend = regularize_backend(backend, data)
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices, times, path, name)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
+                                              indices, times, path, name)
 
     set!(time_series, path, name)
 
@@ -207,28 +234,75 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
         return fts[n₁]
     end
     
-    # fractional index
+    # Calculate fractional index
     @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    return compute!(Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n)))
+
+    # Make a Field representing a linear interpolation in time
+    time_interpolated_field = Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n))
+
+    # Compute the field and return it
+    return compute!(time_interpolated_field)
 end
 
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time)
+# Linear time interpolation, used by FieldTimeSeries and GPUAdaptedFieldTimeSeries
+@inline function interpolating_get_index(fts, i, j, k, time_index)
     Ntimes = length(fts.times)
     time = time_index.time
     n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
 
     # fractional index
-    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    fts_interpolated = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
+    n = @inbounds (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    interpolated_fts = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
 
     # Don't interpolate if n = 0.
-    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), fts_interpolated)
+    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), interpolated_fts)
 end
 
-#####
-##### set!
-#####
+@inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
+    interpolating_get_index(fts, i, j, k, time_index)
+
+function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
+
+    # TODO: support time-interpolation too.
+    # This requires extending the low-level Field interpolation utilities
+    # to support time-indexing.
+    target_fts.times == source_fts.times ||
+        throw(ArgumentError("Cannot interpolate two FieldTimeSeries with different times."))
+
+    times = target_fts.times
+    Nt = length(times)
+
+    target_grid = target_fts.grid
+    source_grid = source_fts.grid
+
+    @assert architecture(target_grid) == architecture(source_grid)
+    arch = architecture(target_grid)
+
+    # Make locations
+    source_location = Tuple(L() for L in location(source_fts))
+    target_location = Tuple(L() for L in location(target_fts))
+
+    launch!(arch, target_grid, size(target_fts),
+            _interpolate_field_time_series!,
+            target_fts.data, target_grid, target_location,
+            source_fts.data, source_grid, source_location)
+
+    fill_halo_regions!(target_fts)
+
+    return nothing
+end
+
+@kernel function _interpolate_field_time_series!(target_fts, target_grid, target_location,
+                                                 source_fts, source_grid, source_location)
+
+    # 4D index, cool!
+    i, j, k, n = @index(Global, NTuple)
+
+    source_field = view(source_fts, :, :, :, n)
+    target_node = node(i, j, k, target_grid, target_location...)
+
+    @inbounds target_fts[i, j, k, n] = interpolate(target_node, source_field, source_location, source_grid)
+end
 
 """
     Field(location, path, name, iter;
@@ -264,6 +338,10 @@ function Field(location, path::String, name::String, iter;
     
     return Field(location, grid; boundary_conditions, indices, data)
 end
+
+#####
+##### set!
+#####
 
 function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
@@ -377,23 +455,67 @@ backend_str(::Type{OnDisk})   = "OnDisk"
 
 function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     arch = architecture(fts)
+    B = string(typeof(fts.backend).name.wrapper)
+    sz_str = string(join(size(fts), "×"))
+
+    path = fts.path
+    name = fts.name
     A = typeof(arch)
-    return string("$(join(size(fts), "×")) FieldTimeSeries{$(fts.backend)} located at ", show_location(fts), " on ", A)
+
+    if isnothing(path)
+        suffix = " on $A"
+    else
+        suffix = " of $name at $path"
+    end
+
+    return string("$sz_str FieldTimeSeries{$B} located at ", show_location(fts), suffix)
 end
 
 function Base.show(io::IO, fts::FieldTimeSeries)
-    prefix = string(summary(fts), "\n",
-                   "├── grid: ", summary(fts.grid), "\n",
-                   "├── indices: ", fts.indices, "\n")
+    prefix = string(summary(fts), '\n',
+                   "├── grid: ", summary(fts.grid), '\n',
+                   "├── indices: ", indices_summary(fts), '\n')
 
     suffix = field_time_series_suffix(fts)
 
     return print(io, prefix, suffix)
 end
 
-field_time_series_suffix(fts::InMemoryFieldTimeSeries) =
-    string("    └── time indices: ", fts.backend.index_range, "\n",
-           "    └── ", data_summary(fts.data), "\n")
+function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
+    ii = fts.backend.index_range
+
+    if ii isa Colon
+        backend_str = "├── backend: InMemory(:)"
+    else
+        N = length(ii)
+        if N < 6
+            index_range_str = string(ii)
+        else
+            index_range_str = string("[", ii[1],
+                                     ", ", ii[2],
+                                     ", ", ii[3],
+                                     "  …  ",
+                                     ii[end-2], ", ",
+                                     ii[end-1], ", ",
+                                     ii[end], "]")
+                                     
+        end
+
+        backend_str = string("├── backend: InMemory(", index_range_str, ")", '\n')
+    end
+
+    path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
+    name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name)
+
+    return string(backend_str, '\n',
+                  path_str,
+                  name_str,
+                  "└── data: ", summary(fts.data), '\n',
+                  "    └── ", data_summary(fts.data))
+end
 
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
-    string("└── data: ", summary(fts.backend))
+    string("├── backend: ", summary(fts.backend), '\n',
+           "├── path: ", fts.path, '\n',
+           "└── name: ", fts.name)
+
