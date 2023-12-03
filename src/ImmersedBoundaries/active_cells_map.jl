@@ -13,7 +13,7 @@ import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
 const ActiveCellsIBG            = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Union{<:AbstractArray, <:NamedTuple}}
 const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:DistributedGrid, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
+const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple}
 
 struct InteriorMap end
 struct SurfaceMap end
@@ -40,10 +40,10 @@ active_map(::Val{:north}) = NorthMap()
 @inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)          = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
 
 @inline active_cells_work_layout(group, size, ::InteriorMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
-@inline active_cells_work_layout(group, size, ::WestMap,  grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.west),  256), length(grid.interior_active_cells.west)
-@inline active_cells_work_layout(group, size, ::EastMap,  grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.east),  256), length(grid.interior_active_cells.east)
-@inline active_cells_work_layout(group, size, ::SouthMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.south), 256), length(grid.interior_active_cells.south)
-@inline active_cells_work_layout(group, size, ::NorthMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.north), 256), length(grid.interior_active_cells.north)
+@inline active_cells_work_layout(group, size, ::WestMap,  grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.west),     256), length(grid.interior_active_cells.west)
+@inline active_cells_work_layout(group, size, ::EastMap,  grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
+@inline active_cells_work_layout(group, size, ::SouthMap, grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
+@inline active_cells_work_layout(group, size, ::NorthMap, grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
 
 @inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ActiveCellsIBG)            = Base.map(Int, grid.interior_active_cells[idx])
 @inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
@@ -74,6 +74,9 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
                                             interior_map,
                                             surface_map)
 end
+
+with_halo(halo, ibg::ActiveCellsIBG) =
+    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map = true)
 
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)
 @inline active_column(i, j, k, grid, column) = column[i, j, k] != 0
