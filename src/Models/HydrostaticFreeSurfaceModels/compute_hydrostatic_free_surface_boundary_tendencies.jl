@@ -31,7 +31,6 @@ end
 function compute_boundary_tendency_contributions!(grid, arch, model) 
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
-
     return nothing
 end
 
@@ -39,10 +38,12 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
     maps = grid.interior_active_cells
     
     for (name, map) in zip(keys(maps), maps)
-        if name != :interior && !isempy(map)
-            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; only_active_cells = active_map(Val(name)))
+        if name != :interior && !isnothing(map)
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); only_active_cells = active_map(Val(name)))
         end
     end
+
+    return nothing
 end
 
 # w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1

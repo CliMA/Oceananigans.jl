@@ -6,6 +6,7 @@ using Statistics
 using Oceananigans.BoundaryConditions
 using Oceananigans.DistributedComputations    
 using Random
+using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, use_only_active_interior_cells
 
 # Run with 
 #
@@ -13,10 +14,14 @@ using Random
 #   mpiexec -n 4 julia --project distributed_hydrostatic_turbulence.jl
 # ```
 
-function run_simulation(nx, ny, arch, topo)
-    grid = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
+function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
+    grid = RectilinearGrid(arch; topology, size = (Nx, Ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
+    
     bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
+
+    @show grid isa ActiveCellsIBG
+    @show use_only_active_interior_cells(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
@@ -60,17 +65,13 @@ function run_simulation(nx, ny, arch, topo)
     MPI.Barrier(arch.communicator)
 end
 
-topo = (Periodic, Periodic, Bounded)
+Nx = 128
+Ny = 128
 
-# Use non-uniform partitioning in x, y.
-# TODO: Explain what local_index is.
-nx = [90, 128-90][arch.local_index[1]]
-ny = [56, 128-56][arch.local_index[2]]
-@show arch.local_index
-arch = Distributed(CPU(), topology = topo, ranks=(2, 2, 1)) 
+arch = Distributed(CPU(), partition = Partition(2, 2)) 
 
 # Run the simulation
-run_simulation(nx, ny, arch, topo)
+run_simulation(Nx, Ny, arch)
 
 # Visualize the plane
 # Produce a video for variable `var`

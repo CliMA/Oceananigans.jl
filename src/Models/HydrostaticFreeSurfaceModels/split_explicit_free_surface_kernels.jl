@@ -6,9 +6,9 @@ using Oceananigans.AbstractOperations: Δz
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, SurfaceMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
-using Oceananigans.ImmersedBoundaries: active_linear_index_to_surface_tuple, ActiveCellsIBG, ActiveSurfaceIBG
+using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveSurfaceIBG
 
 # constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
@@ -150,7 +150,7 @@ end
                                                                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                timestepper)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
     free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
 end
 
@@ -186,7 +186,7 @@ end
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                       timestepper)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
 
     velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
                                η̅, U̅, V̅, averaging_weight,
@@ -262,7 +262,7 @@ end
 # u_Δz = u * Δz
 @kernel function _barotropic_mode_kernel!(U, V, grid::ActiveSurfaceIBG, u, v)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
 
     # hand unroll first loop
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
@@ -424,7 +424,7 @@ end
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveSurfaceIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_surface_tuple(idx, grid)
+    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
 
     # hand unroll first loop 	
     @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
