@@ -180,7 +180,7 @@ function separate_active_indices!(indices, ibg)
     west  = Rx > 1 ? findall(idx -> idx[1] <= Hx,    indices) : nothing
     east  = Rx > 1 ? findall(idx -> idx[1] >= Nx-Hx, indices) : nothing
     south = Ry > 1 ? findall(idx -> idx[2] <= Hy,    indices) : nothing
-    north = Ry > 1 ? findall(idx -> idx[2] <= Ny-Hy, indices) : nothing
+    north = Ry > 1 ? findall(idx -> idx[2] >= Ny-Hy, indices) : nothing
 
     interior  = findall(idx -> !(idx ∈ west) && !(idx ∈ east) && !(idx ∈ south) && !(idx ∈ north), indices) 
 
