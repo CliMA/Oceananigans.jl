@@ -177,22 +177,22 @@ function separate_active_indices!(indices, ibg)
     Hx, Hy, _ = halo_size(ibg)
     Nx, Ny, _ = size(ibg)
     Rx, Ry, _ = arch.ranks
-    west  = Rx > 1 ? findall(idx -> idx[1] <= Hx,    indices) : []
-    east  = Rx > 1 ? findall(idx -> idx[1] >= Nx-Hx, indices) : []
-    south = Ry > 1 ? findall(idx -> idx[2] <= Hy,    indices) : []
-    north = Ry > 1 ? findall(idx -> idx[2] >= Ny-Hy, indices) : []
+    west  = Rx > 1 ? findall(idx -> Int(idx[1]) <= Hx,    indices) : Int[]
+    east  = Rx > 1 ? findall(idx -> Int(idx[1]) >= Nx-Hx, indices) : Int[]
+    south = Ry > 1 ? findall(idx -> Int(idx[2]) <= Hy,    indices) : Int[]
+    north = Ry > 1 ? findall(idx -> Int(idx[2]) >= Ny-Hy, indices) : Int[]
+
+    west  = arch_array(architecture(ibg), indices[west])
+    east  = arch_array(architecture(ibg), indices[east])
+    south = arch_array(architecture(ibg), indices[south])
+    north = arch_array(architecture(ibg), indices[north])
 
     interior = findall(idx -> !(idx ∈ west) && 
                               !(idx ∈ east) && 
                               !(idx ∈ south) && 
                               !(idx ∈ north), indices) 
 
-    interior  = arch_array(architecture(ibg), interior)
-
-    west  = arch_array(architecture(ibg), west)
-    east  = arch_array(architecture(ibg), east)
-    south = arch_array(architecture(ibg), south)
-    north = arch_array(architecture(ibg), north)
+    interior  = arch_array(architecture(ibg), indices[interior])
 
     return (; interior, west, east, south, north)
 end
