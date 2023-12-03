@@ -43,9 +43,9 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     set!(c, mask)
 
     u, v, _ = model.velocities
-    ζ = VerticalVorticityField(model)
+    # ζ = VerticalVorticityField(model)
     η = model.free_surface.η
-    outputs = merge(model.velocities, model.tracers, (; ζ, η))
+    outputs = merge(model.velocities, model.tracers)
 
     progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
     simulation = Simulation(model, Δt=0.02, stop_time=100.0)
@@ -110,7 +110,6 @@ try
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         visualize_simulation("u")
         visualize_simulation("v")
-        visualize_simulation("ζ")
         visualize_simulation("c")
     end
 catch err

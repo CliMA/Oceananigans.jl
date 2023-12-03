@@ -222,7 +222,7 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
@@ -234,7 +234,7 @@ end
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
@@ -250,7 +250,7 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
@@ -262,7 +262,7 @@ end
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end

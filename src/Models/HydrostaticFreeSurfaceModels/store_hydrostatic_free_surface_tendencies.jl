@@ -28,7 +28,7 @@ function store_free_surface_tendency!(::ExplicitFreeSurface, model)
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model::HydrostaticFreeSurfaceModel; only_active_cells = use_only_active_interior_cells(model.grid))
+function store_tendencies!(model::HydrostaticFreeSurfaceModel)
     prognostic_field_names = keys(prognostic_fields(model))
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
 
@@ -37,9 +37,7 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel; only_active_cells
         launch!(model.architecture, model.grid, :xyz,
                 store_field_tendencies!,
                 model.timestepper.G⁻[field_name],
-                model.grid,
-                model.timestepper.Gⁿ[field_name];
-                only_active_cells)
+                model.timestepper.Gⁿ[field_name])
 
     end
 
