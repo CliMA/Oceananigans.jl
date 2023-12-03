@@ -28,13 +28,10 @@ active_map(::Val{:east})  = EastMap()
 active_map(::Val{:south}) = SouthMap()
 active_map(::Val{:north}) = NorthMap()
 
-@inline use_only_active_surface_cells(::AbstractGrid)     = nothing
-@inline use_only_active_interior_cells(::ActiveCellsIBG)  = InteriorMap()
-@inline use_only_active_surface_cells(::ActiveSurfaceIBG) = SurfaceMap()
-@inline use_only_active_west_cells(::DistributedActiveCellsIBG)  = WestMap()
-@inline use_only_active_east_cells(::DistributedActiveCellsIBG)  = EastMap()
-@inline use_only_active_south_cells(::DistributedActiveCellsIBG) = SouthMap()
-@inline use_only_active_nouth_cells(::DistributedActiveCellsIBG) = NorthMap()
+@inline use_only_active_surface_cells(::AbstractGrid)               = nothing
+@inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
+@inline use_only_active_surface_cells(::ActiveSurfaceIBG)           = SurfaceMap()
+@inline use_only_active_interior_cells(::DistributedActiveCellsIBG) = InteriorMap()
 
 @inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)            = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
 @inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)          = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
@@ -159,7 +156,7 @@ end
 
 # In case of a `DistributedGrid` we want to have different maps depending on the 
 # partitioning of the domain
-function active_cells_interior_map(ibg::ImmersedBoundaryGrid{<:DistributedGrid})
+function active_cells_interior_map(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
     active_cells_field = compute_interior_active_cells(ibg)
     
     N = maximum(size(ibg))
