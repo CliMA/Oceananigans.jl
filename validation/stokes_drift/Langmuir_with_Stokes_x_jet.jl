@@ -41,9 +41,9 @@ stokes_jet_edge_width = 40
 # To run this example on the GPU, include `GPU()` in the
 # constructor for `RectilinearGrid` above.
 #
-# The Stokes drift profile is
+# The Stokes drift profile at the core of the jet is
 # 
-# ``uˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * exp( - (y - stokes_jet_center)^2 / (2 * stokes_jet_width^2) )``
+# ``uˢ(x, y, z, t) = Uˢ * exp(z / vertical_scale) * exp( - (y - stokes_jet_center)^2 / (2 * stokes_jet_width^2) ) * 0.5 * ( 1 + 0.1 * cos(2 * pi * (x - grid.Lx/2) / grid.Lx ) )``
 
 # Create a Stokes drift field that is a cosine function within a subregion of the domain.
 # This function peaks at `y = stokes_jet_center` with a  value of `2*Uˢ`, reaches zero at a distance of 
@@ -209,7 +209,7 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
 # ## Setting up the simulation
 
-simulation = Simulation(model, Δt=45.0, stop_time=4hours)
+simulation = Simulation(model, Δt=45.0, stop_time=30minutes)
 
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
@@ -490,7 +490,7 @@ fig
 
 frames = 1:length(times)
 
-record(fig, "Stokes_drift_jet.mp4", frames, framerate=8) do i
+record(fig, "Stokes_drift_x_jet.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide
