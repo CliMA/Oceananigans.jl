@@ -7,23 +7,51 @@ import Oceananigans.Utils: active_cells_work_layout,
                            use_only_active_interior_cells
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
+using Oceananigans.DistributedComputations: DistributedGrid
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
-const ActiveCellsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const ActiveSurfaceIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const ActiveCellsIBG            = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Union{<:AbstractArray, <:NamedTuple}}
+const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:DistributedGrid, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 struct InteriorMap end
 struct SurfaceMap end
 
+struct WestMap  end
+struct EastMap  end
+struct SouthMap end
+struct NorthMap end
+
+active_map(::Val{:west})  = WestMap()
+active_map(::Val{:east})  = EastMap()
+active_map(::Val{:south}) = SouthMap()
+active_map(::Val{:north}) = NorthMap()
+
 @inline use_only_active_surface_cells(::AbstractGrid)     = nothing
 @inline use_only_active_interior_cells(::ActiveCellsIBG)  = InteriorMap()
 @inline use_only_active_surface_cells(::ActiveSurfaceIBG) = SurfaceMap()
+@inline use_only_active_west_cells(::DistributedActiveCellsIBG)  = WestMap()
+@inline use_only_active_east_cells(::DistributedActiveCellsIBG)  = EastMap()
+@inline use_only_active_south_cells(::DistributedActiveCellsIBG) = SouthMap()
+@inline use_only_active_nouth_cells(::DistributedActiveCellsIBG) = NorthMap()
 
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)   = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG) = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)            = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
+@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)          = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
 
-@inline active_linear_index_to_interior_tuple(idx, grid::ActiveCellsIBG)   = Base.map(Int, grid.interior_active_cells[idx])
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
+@inline active_cells_work_layout(group, size, ::WestMap,  grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.west),  256), length(grid.interior_active_cells.west)
+@inline active_cells_work_layout(group, size, ::EastMap,  grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.east),  256), length(grid.interior_active_cells.east)
+@inline active_cells_work_layout(group, size, ::SouthMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.south), 256), length(grid.interior_active_cells.south)
+@inline active_cells_work_layout(group, size, ::NorthMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.north), 256), length(grid.interior_active_cells.north)
+
+@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ActiveCellsIBG)            = Base.map(Int, grid.interior_active_cells[idx])
+@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
+@inline active_linear_index_to_tuple(idx, ::WestMap,     grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.west[idx])
+@inline active_linear_index_to_tuple(idx, ::EastMap,     grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
+@inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
+@inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
+
 @inline  active_linear_index_to_surface_tuple(idx, grid::ActiveSurfaceIBG) = Base.map(Int, grid.surface_active_cells[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
@@ -34,7 +62,6 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
         interior_map = active_cells_interior_map(ibg)
-        interior_map = arch_array(architecture(ibg), interior_map)
         surface_map  = active_cells_surface_map(ibg)
         surface_map  = arch_array(architecture(ibg), surface_map)
     else
@@ -82,6 +109,7 @@ function active_cells_interior_map(ibg)
     # Cannot findall on the entire field because we incur on OOM errors
     active_indices = IndicesType[]
     active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
+    active_indices = arch_array(architecture(ibg), active_indices)
 
     return active_indices
 end
@@ -126,9 +154,42 @@ function active_cells_surface_map(ibg)
     return smaller_indices
 end
 
-# @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid::ActiveSurfaceIBG, p, args, tridiagonal_direction::ZDirection)
-#     Nz = size(grid, 3)    
-#     idx = @index(Global, Linear)
-#     i, j = active_linear_index_to_surface_tuple(idx, grid)
-#     solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-# end
+# In case of a `DistributedGrid` we want to have different maps depending on the 
+# partitioning of the domain
+function active_cells_interior_map(ibg::ImmersedBoundaryGrid{<:DistributedGrid})
+    active_cells_field = compute_interior_active_cells(ibg)
+    
+    N = maximum(size(ibg))
+    IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
+   
+    IndicesType = Tuple{IntType, IntType, IntType}
+
+    # Cannot findall on the entire field because we incur on OOM errors
+    active_indices = IndicesType[]
+    active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
+    active_indices = separate_active_indices!(active_indices, ibg)
+
+    return active_indices
+end
+
+function separate_active_indices!(indices, ibg)
+    arch = architecture(ibg)
+    Hx, Hy, _ = halo_size(ibg)
+    Nx, Ny, _ = size(ibg)
+    Rx, Ry, _ = arch.ranks
+    west  = Rx > 1 ? findall(idx -> idx[1] <= Hx,    indices) : nothing
+    east  = Rx > 1 ? findall(idx -> idx[1] >= Nx-Hx, indices) : nothing
+    south = Ry > 1 ? findall(idx -> idx[2] <= Hy,    indices) : nothing
+    north = Ry > 1 ? findall(idx -> idx[2] <= Ny-Hy, indices) : nothing
+
+    interior  = findall(idx -> !(idx ∈ west) && !(idx ∈ east) && !(idx ∈ south) && !(idx ∈ north), indices) 
+
+    interior  = arch_array(architecture(ibg), interior)
+
+    west  = west  isa Nothing ? nothing : arch_array(architecture(ibg), west)
+    east  = east  isa Nothing ? nothing : arch_array(architecture(ibg), east)
+    south = south isa Nothing ? nothing : arch_array(architecture(ibg), south)
+    north = north isa Nothing ? nothing : arch_array(architecture(ibg), north)
+
+    return (; interior, west, east, south, north)
+end

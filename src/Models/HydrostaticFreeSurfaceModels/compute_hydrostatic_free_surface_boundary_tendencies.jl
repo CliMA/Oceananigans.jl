@@ -8,6 +8,8 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
 
 import Oceananigans.Models: compute_boundary_tendencies!
 
+using Oceananigans.ImmersedBoundaries: active_map, DistributedActiveCellsIBG
+
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
@@ -21,10 +23,26 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
-    kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    compute_boundary_tendency_contributions!(grid, arch, model)
 
     return nothing
+end
+
+function compute_boundary_tendency_contributions!(grid, arch, model) 
+    kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
+    compute_hydrostatic_free_surface_tendency_contributions!(grid, model, kernel_parameters)
+
+    return nothing
+end
+
+function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
+    maps = grid.interior_active_cells
+    
+    for (name, map) in zip(keys(maps), maps)
+        if name != :interior && !isnothing(map)
+            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; only_active_cells = active_map(Val(name)))
+        end
+    end
 end
 
 # w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1

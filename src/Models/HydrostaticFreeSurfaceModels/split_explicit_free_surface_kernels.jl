@@ -310,15 +310,6 @@ end
     end
 end
 
-@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid::ActiveCellsIBG)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
-    @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
-        v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
-    end
-end
-
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs       = free_surface.state
@@ -332,8 +323,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid; 
-            only_active_cells = use_only_active_interior_cells(grid))
+            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
 
     return nothing
 end

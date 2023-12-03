@@ -37,17 +37,13 @@ end
 
 function ab2_step_velocities!(velocities, model, Δt, χ)
 
-    only_active_interior_cells = use_only_active_interior_cells(model.grid)
-    only_active_surface_cells  = use_only_active_surface_cells(model.grid)
-
     for (i, name) in enumerate((:u, :v))
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid;
-                only_active_cells = only_active_interior_cells)
+                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid)
 
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
@@ -74,9 +70,6 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
-    only_active_interior_cells = use_only_active_interior_cells(model.grid)
-    only_active_surface_cells  = use_only_active_surface_cells(model.grid)
-
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
@@ -85,8 +78,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         closure = model.closure
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻, model.grid;
-                only_active_cells = only_active_interior_cells)
+                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻, model.grid)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
