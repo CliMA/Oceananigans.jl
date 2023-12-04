@@ -39,16 +39,16 @@ Base.show(io::IO, p::Particle) = print(io, "Particle at (",
                                        @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
 struct LagrangianParticles{P, R, T, D, Π, F} <: AbstractLagrangianParticles
-              properties :: P
-             restitution :: R
-          tracked_fields :: T
-                dynamics :: D
-              parameters :: Π
-       advective_forcing :: F
+           properties :: P
+          restitution :: R
+       tracked_fields :: T
+             dynamics :: D
+           parameters :: Π
+    advective_forcing :: F
 end
 
 @inline no_dynamics(args...) = nothing
-@inline no_advective_forcing(args...) = nothing
+# @inline no_advective_forcing(args...) = nothing
 
 """
     LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing)
@@ -59,7 +59,7 @@ Construct some `LagrangianParticles` that can be passed to a model. The particle
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
 """
-function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing, advective_forcing=no_advective_forcing)
+function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, parameters=nothing, advective_forcing=ParticleAdvectiveForcing())
     size(x) == size(y) == size(z) ||
         throw(ArgumentError("x, y, z must all have the same size!"))
 
@@ -89,7 +89,7 @@ function LagrangianParticles(particles::StructArray;
                              tracked_fields::NamedTuple=NamedTuple(),
                              dynamics = no_dynamics,
                              parameters = nothing,
-                             advective_forcing=no_advective_forcing)
+                             advective_forcing=ParticleAdvectiveForcing())
 
     for (field_name, tracked_field) in pairs(tracked_fields)
         field_name in propertynames(particles) ||
@@ -130,18 +130,10 @@ end
 @inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
 @inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
 
-struct ParticleAdvectiveForcing{U, V, W}
-    u :: U
-    v :: V
-    w :: W
-end
-
-function ParticleAdvectiveForcing(; u=no_advective_forcing, v=no_advective_forcing, w=no_advective_forcing)
-    return ParticleAdvectiveForcing(u, v, w)
-end
-
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")
+include("particle_discrete_forcing.jl")
+include("particle_advective_forcing.jl")
 
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
