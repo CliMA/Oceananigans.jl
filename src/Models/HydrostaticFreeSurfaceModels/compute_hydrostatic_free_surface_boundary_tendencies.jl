@@ -56,8 +56,8 @@ function boundary_w_kernel_parameters(grid, arch)
              
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    Oxᴸ = (-Hx, -1)
-    Oyᴸ = (-1, -Hy)
+    Oxᴸ = (-Hx+1, -1)
+    Oyᴸ = (-1, -Hy+1)
     Oxᴿ = (Nx-1, -1)
     Oyᴿ = (-1, Ny-1)
 
