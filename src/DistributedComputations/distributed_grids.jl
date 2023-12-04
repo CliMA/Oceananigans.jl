@@ -126,9 +126,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
-    λl = partition(longitude, nλ,   arch, 1)
-    φl = partition(latitude,  nφ,   arch, 2)
-    zl = partition(z,         nz+1, arch, 3)
+    λl = partition(longitude, nλ, arch, 1)
+    φl = partition(latitude,  nφ, arch, 2)
+    zl = partition(z,         nz, arch, 3)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 

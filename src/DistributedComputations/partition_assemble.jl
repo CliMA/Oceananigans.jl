@@ -41,7 +41,12 @@ end
 function partition(c::AbstractVector, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     r  = arch.local_index[idx]
-    return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+    # Allow for Face values
+    if r == arch.ranks[idx]
+        return c[1 + sum(nl[1:r-1]) : end]
+    else
+        return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+    end
 end
 
 function partition(c::Tuple, n, arch, idx)
