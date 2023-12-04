@@ -130,6 +130,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
     φl = partition(latitude,  nφ, arch, 2)
     zl = partition(z,         nz, arch, 3)
 
+    @show Base.size(zl), Base.size(z)
+
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
