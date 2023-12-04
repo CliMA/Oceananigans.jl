@@ -13,6 +13,7 @@ get_face_node(coord::Function, i) = coord(i)
 get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
+
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
@@ -33,6 +34,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     # Ensure correct type for F and derived quantities
     interior_face_nodes = zeros(FT, N+1)
+
+    @show typeof(node_generator), size(node_generator), coordinate_name
 
     # Use the user-supplied "generator" to build the interior nodes
     for idx = 1:N+1
