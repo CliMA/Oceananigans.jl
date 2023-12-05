@@ -192,30 +192,6 @@ end
     end
 end
 
-function split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτ, substep_index)
-    # unpack state quantities, parameters and forcing terms 
-    U, V             = state.U,    state.V
-    Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
-    Vᵐ⁻¹, Vᵐ⁻²       = state.Vᵐ⁻¹, state.Vᵐ⁻²
-    ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
-    η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
-    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
-
-    timestepper      = settings.timestepper
-    averaging_weight = weights[substep_index]
-    
-    parameters = auxiliary.kernel_parameters
-
-    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
-    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, 
-            grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-            η̅, U̅, V̅, averaging_weight,
-            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-            timestepper)
-
-    return nothing
-end
-
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 @kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
@@ -384,8 +360,26 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
     Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
 
+    # unpack state quantities, parameters and forcing terms 
+    U, V             = state.U,    state.V
+    Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
+    Vᵐ⁻¹, Vᵐ⁻²       = state.Vᵐ⁻¹, state.Vᵐ⁻²
+    ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
+    η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+
+    timestepper      = settings.timestepper
+    
+    parameters = auxiliary.kernel_parameters
+
     @unroll_split_explicit_loop for substep in 1:Nsubsteps
-        split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτᴮ, substep)
+        averaging_weight = weights[substep]
+        launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+        launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, 
+                grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                η̅, U̅, V̅, averaging_weight,
+                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                timestepper)    
     end
 
     return nothing
