@@ -138,8 +138,6 @@ using Oceananigans.DistributedComputations: Distributed
 using Printf
 
 @kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                               η̅, U̅, V̅, averaging_weight,
-                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                timestepper)
     i, j = @index(Global, NTuple)
     free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
@@ -208,12 +206,12 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, we
     
     parameters = auxiliary.kernel_parameters
 
-    args = (grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-            η̅, U̅, V̅, averaging_weight, 
-            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper)
-
-    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...;)
-    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...;)
+    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, 
+            grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+            η̅, U̅, V̅, averaging_weight,
+            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+            timestepper)
 
     return nothing
 end
@@ -359,6 +357,17 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), 
                                                                                         substeps, substepping.averaging_kernel)
 
+macro unroll_split_explicit_loop(exp)
+    lim2 = eval(exp.args[1].args[2].args[3])
+    iterator = exp.args[1].args[1]
+    loop = quote
+        Base.Cartesian.@nexprs $lim2 $iterator -> $(exp.args[2])
+    end
+    return quote
+        $(esc(loop))
+    end
+end
+
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
 
@@ -375,7 +384,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
     Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
 
-    for substep in 1:Nsubsteps
+    @unroll_split_explicit_loop for substep in 1:Nsubsteps
         split_explicit_free_surface_substep!(η, state, auxiliary, settings, weights, arch, grid, g, Δτᴮ, substep)
     end
 
