@@ -12,7 +12,7 @@ using Oceananigans.DistributedComputations: DistributedGrid
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
 const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple}
+const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
 const ArrayActiveCellsIBG       = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 const NamedTupleActiveCellsIBG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 const ActiveCellsIBG            = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
@@ -37,21 +37,21 @@ active_map(::Val{:north}) = NorthMap()
 @inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
 @inline use_only_active_interior_cells(::DistributedActiveCellsIBG) = InteriorMap()
 
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)            = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)          = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ArrayActiveCellsIBG)      = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)
+@inline active_cells_work_layout(group, size, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
+@inline active_cells_work_layout(group, size, ::WestMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.west),     256), length(grid.interior_active_cells.west)
+@inline active_cells_work_layout(group, size, ::EastMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
+@inline active_cells_work_layout(group, size, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
+@inline active_cells_work_layout(group, size, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
 
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::DistributedActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
-@inline active_cells_work_layout(group, size, ::WestMap,  grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.west),     256), length(grid.interior_active_cells.west)
-@inline active_cells_work_layout(group, size, ::EastMap,  grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
-@inline active_cells_work_layout(group, size, ::SouthMap, grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
-@inline active_cells_work_layout(group, size, ::NorthMap, grid::DistributedActiveCellsIBG)    = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
+@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ArrayActiveCellsIBG)      = Base.map(Int, grid.interior_active_cells[idx])
+@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
+@inline active_linear_index_to_tuple(idx, ::WestMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.west[idx])
+@inline active_linear_index_to_tuple(idx, ::EastMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
+@inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
+@inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
 
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ActiveCellsIBG)            = Base.map(Int, grid.interior_active_cells[idx])
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
-@inline active_linear_index_to_tuple(idx, ::WestMap,     grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.west[idx])
-@inline active_linear_index_to_tuple(idx, ::EastMap,     grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
-@inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
-@inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::DistributedActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
+@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG) = min(length(grid.surface_active_cells),  256), length(grid.surface_active_cells)
 
 @inline active_linear_index_to_tuple(idx, ::SurfaceMap, grid::ActiveSurfaceIBG) = Base.map(Int, grid.surface_active_cells[idx])
 
