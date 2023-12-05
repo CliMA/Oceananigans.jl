@@ -156,25 +156,22 @@ function active_cells_interior_map(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     Nx, Ny, Nz = size(ibg)
     Hx, Hy, _  = halo_size(ibg)
     
-    Sx  = (Hx, Ny, Nz)
-    Sy  = (Nx, Hy, Nz)
+    x_boundary = (Hx, Ny, Nz)
+    y_boundary = (Nx, Hy, Nz)
          
-    Oᴸ  = (0,  0,  0)
-    Oxᴿ = (Nx-Hx, 0,     0)
-    Oyᴿ = (0,     Ny-Hy, 0)
-
-    sizes = (Sx, Sy, Sx,  Sy)
-    offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
+    left_offsets    = (0,  0,  0)
+    right_x_offsets = (Nx-Hx, 0,     0)
+    right_y_offsets = (0,     Ny-Hy, 0)
 
     include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
     include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west  = include_west  ? active_interior_indices(ibg; parameters = KernelParameters(Sx, Oᴸ))  : nothing
-    east  = include_east  ? active_interior_indices(ibg; parameters = KernelParameters(Sx, Oxᴿ)) : nothing
-    south = include_south ? active_interior_indices(ibg; parameters = KernelParameters(Sy, Oᴸ))  : nothing
-    north = include_north ? active_interior_indices(ibg; parameters = KernelParameters(Sy, Oyᴿ)) : nothing
+    west  = include_west  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
+    east  = include_east  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
+    south = include_south ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
+    north = include_north ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
     
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
