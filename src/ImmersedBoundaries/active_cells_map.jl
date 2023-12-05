@@ -4,9 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Utils: active_cells_work_layout, 
-                           use_only_active_interior_cells,
-                           use_only_active_surface_cells
+import Oceananigans.Utils: active_cells_work_layout
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
 using Oceananigans.DistributedComputations: DistributedGrid
