@@ -106,7 +106,6 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 end
 
 @inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
-@inline use_only_active_interior_cells(grid) = nothing
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)

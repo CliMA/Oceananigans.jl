@@ -5,7 +5,8 @@ using Oceananigans.Grids: AbstractGrid
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Utils: active_cells_work_layout, 
-                           use_only_active_interior_cells
+                           use_only_active_interior_cells,
+                           use_only_active_surface_cells
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
 using Oceananigans.DistributedComputations: DistributedGrid
@@ -31,8 +32,10 @@ active_map(::Val{:south}) = SouthMap()
 active_map(::Val{:north}) = NorthMap()
 
 @inline use_only_active_surface_cells(::AbstractGrid)               = nothing
-@inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
 @inline use_only_active_surface_cells(::ActiveSurfaceIBG)           = SurfaceMap()
+
+@inline use_only_active_interior_cells(::AbstractGrid)              = nothing
+@inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
 @inline use_only_active_interior_cells(::DistributedActiveCellsIBG) = InteriorMap()
 
 @inline active_cells_work_layout(group, size, ::InteriorMap, grid::ActiveCellsIBG)            = min(length(grid.interior_active_cells), 256), length(grid.interior_active_cells)

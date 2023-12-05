@@ -181,6 +181,9 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
         
+    @show grid isa ActiveCellsIBG
+    @show only_active_cells
+
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
@@ -223,13 +226,11 @@ end
 
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
-    @show "I am inside the non-active kernel"
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
-    @show "I am inside the active kernel"
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
