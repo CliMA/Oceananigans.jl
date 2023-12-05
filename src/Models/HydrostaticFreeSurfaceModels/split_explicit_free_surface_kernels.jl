@@ -145,15 +145,6 @@ using Printf
     free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
 end
 
-@kernel function split_explicit_free_surface_evolution_kernel!(grid::ActiveSurfaceIBG, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                               η̅, U̅, V̅, averaging_weight,
-                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                               timestepper)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
-    free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
-end
-
 @inline function free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
     k_top = grid.Nz+1
     TX, TY, _ = topology(grid)
@@ -173,20 +164,6 @@ end
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                       timestepper)
     i, j = @index(Global, NTuple)
-
-    velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                               η̅, U̅, V̅, averaging_weight,
-                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                               timestepper )
-end
-
-
-@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid::ActiveSurfaceIBG, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                                                                      η̅, U̅, V̅, averaging_weight,
-                                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                                      timestepper)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
 
     velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
                                η̅, U̅, V̅, averaging_weight,
@@ -235,10 +212,8 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, we
             η̅, U̅, V̅, averaging_weight, 
             Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper)
 
-    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...; 
-            only_active_cells = use_only_active_surface_cells(grid))
-    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...; 
-            only_active_cells = use_only_active_surface_cells(grid))
+    launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!,        args...;)
+    launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, args...;)
 
     return nothing
 end
