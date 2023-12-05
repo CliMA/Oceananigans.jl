@@ -35,8 +35,6 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     # Ensure correct type for F and derived quantities
     interior_face_nodes = zeros(FT, N+1)
 
-    @show typeof(node_generator), size(node_generator), coordinate_name
-
     # Use the user-supplied "generator" to build the interior nodes
     for idx = 1:N+1
         interior_face_nodes[idx] = get_face_node(node_generator, idx)

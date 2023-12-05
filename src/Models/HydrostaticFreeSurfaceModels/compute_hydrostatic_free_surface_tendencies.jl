@@ -180,10 +180,6 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-        
-    @show grid isa ActiveCellsIBG
-    @show only_active_cells
-    @show size(grid.interior_active_cells.interior)
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
