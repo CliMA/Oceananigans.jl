@@ -13,8 +13,9 @@ import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
 const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple}
-const SerialActiveCellsIBG      = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const ActiveCellsIBG            = Union{DistributedActiveCellsIBG, SerialActiveCellsIBG}
+const ArrayActiveCellsIBG       = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const NamedTupleActiveCellsIBG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
+const ActiveCellsIBG            = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
 
 struct InteriorMap end
 struct SurfaceMap end
