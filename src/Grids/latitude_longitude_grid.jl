@@ -264,9 +264,6 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
     φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
 
-    φ₁ == -90 && @warn("LatitudeLongitudeGrid will contain a singularity at the south pole.")
-    φ₂ == +90 && @warn("LatitudeLongitudeGrid will contain a singularity at the north pole.")
-        
     if TX == Flat || TY == Flat 
         precompute_metrics = false
     end
