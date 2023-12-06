@@ -137,13 +137,12 @@ end
 using Oceananigans.DistributedComputations: Distributed
 using Printf
 
-@kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                               timestepper)
+@kernel function _split_explicit_free_surface!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
     i, j = @index(Global, NTuple)
-    free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+    free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
 end
 
-@inline function free_surface_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+@inline function free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
     k_top = grid.Nz+1
     TX, TY, _ = topology(grid)
 
@@ -157,22 +156,22 @@ end
     return nothing
 end
 
-@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                                                                      η̅, U̅, V̅, averaging_weight,
-                                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                                      timestepper)
+@kernel function _split_explicit_barotropic_velocity!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                                      η̅, U̅, V̅, averaging_weight,
+                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                      timestepper)
     i, j = @index(Global, NTuple)
 
-    velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                               η̅, U̅, V̅, averaging_weight,
-                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                               timestepper )
+    velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                        η̅, U̅, V̅, averaging_weight,
+                        Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                        timestepper )
 end
 
-@inline function velocity_evolution_kernel!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                                            η̅, U̅, V̅, averaging_weight,
-                                            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                            timestepper )
+@inline function velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                     η̅, U̅, V̅, averaging_weight,
+                                     Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                     timestepper )
     k_top = grid.Nz+1
     
     TX, TY, _ = topology(grid)
@@ -251,7 +250,7 @@ function initialize_free_surface_state!(free_surface_state, η)
     return nothing
 end
 
-@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
+@kernel function _barotropic_split_explicit_corrector!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
@@ -271,7 +270,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     compute_barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
-    launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
+    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
             u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
 
     return nothing
@@ -344,6 +343,54 @@ macro unroll_split_explicit_loop(exp)
     end
 end
 
+const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
+const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
+
+# For a fixed number of substeps it is possible to 
+function iterate_split_explicit!(free_surface::FixedSubstepsSplitExplicit{N}, grid, Δt) where N
+    arch = architecture(grid)
+
+    η         = free_surface.η
+    state     = free_surface.state
+    auxiliary = free_surface.auxiliary
+    settings  = free_surface.settings
+    g         = free_surface.gravitational_acceleration
+
+    weights = settings.substepping.averaging_weights
+    fractional_Δt = settings.substepping.fractional_step_size
+
+    Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
+    
+    # unpack state quantities, parameters and forcing terms 
+    U, V             = state.U,    state.V
+    Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
+    Vᵐ⁻¹, Vᵐ⁻²       = state.Vᵐ⁻¹, state.Vᵐ⁻²
+    ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
+    η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+
+    timestepper = settings.timestepper
+    parameters  = auxiliary.kernel_parameters
+    
+    @unroll for substep in 1:N
+        Base.@_inline_meta
+
+        averaging_weight = weights[substep]
+
+        launch!(arch, grid, parameters, _split_explicit_free_surface!, 
+                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                timestepper)
+
+        launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, 
+                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                η̅, U̅, V̅, averaging_weight,
+                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                timestepper)
+    end
+
+    return nothing
+end
+
 function iterate_split_explicit!(free_surface, grid, Δt)
     arch = architecture(grid)
 
@@ -359,7 +406,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     Nsubsteps = length(weights)
 
     Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
-
+    
     # unpack state quantities, parameters and forcing terms 
     U, V             = state.U,    state.V
     Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
@@ -371,15 +418,20 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     timestepper      = settings.timestepper
     
     parameters = auxiliary.kernel_parameters
+    
+    @unroll for substep in 1:Nsubsteps
 
-    @unroll_split_explicit_loop for substep in 1:Nsubsteps
         averaging_weight = weights[substep]
-        launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+
+        launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, 
+                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                timestepper)
+
         launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, 
-                grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
                 η̅, U̅, V̅, averaging_weight,
                 Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                timestepper)    
+                timestepper)
     end
 
     return nothing
