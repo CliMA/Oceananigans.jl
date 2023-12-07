@@ -228,9 +228,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    λG = Rx == 1 ? longitude : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
-    φG = Ry == 1 ? latitude  : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z         : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
+    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
+    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
 
     child_arch = child_architecture(arch)
 
