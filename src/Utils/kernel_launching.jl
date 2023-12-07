@@ -7,7 +7,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 
 using Oceananigans.Grids: AbstractGrid
-
+using NVTX
 import Base
 
 struct KernelParameters{S, O} end
