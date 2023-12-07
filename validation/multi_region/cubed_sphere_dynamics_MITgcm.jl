@@ -51,14 +51,15 @@ for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
 ψ = Field{Face, Face, Center}(grid)
 
 # Note that set! fills only interior points; to compute u and v we need information in the halo regions.
-set!(ψ, ψᵣ)
+# set!(ψ, ψᵣ)
 
 #=
 Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not correspond 
-to an interior point! We need to manually fill the Face-Face halo points of the two cornersn that do not have a 
+to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not have a 
 corresponding interior point.
 =#
 
+#=
 for region in [1, 3, 5]
     i = 1
     j = Ny+1
@@ -82,12 +83,21 @@ end
 for passes in 1:3
     fill_halo_regions!(ψ)
 end
+=#
+
+for region in 1:number_of_regions(grid)
+    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
 
 u = XFaceField(grid)
 v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+    for j in 1-Hy:grid.Ny+Hy-1, i in 1-Hx:grid.Nx+Hx-1, k in 1:grid.Nz
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
     end
@@ -132,14 +142,24 @@ model = HydrostaticFreeSurfaceModel(; grid,
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / (4g * Ω^2)
  
 for region in 1:number_of_regions(grid)
+    #=
+    The following operations only set the interior values of the model velocities.
     model.velocities.u[region] .= u[region]
     model.velocities.v[region] .= v[region]
+    =#
     
+    for j in 1-Hy:grid.Ny+Hy-1, i in 1-Hx:grid.Nx+Hx-1, k in 1:grid.Nz
+        model.velocities.u[region][i,j,k] = u[region][i, j, k]
+        model.velocities.v[region][i,j,k] = v[region][i, j, k]
+    end
+    
+    #=
     for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
         f = 2 * Ω * sind(φ)
         model.free_surface.η[region][i, j, k] = fac * f^2
     end
+    =#
 end
 
 Δt = 1200
@@ -160,8 +180,10 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
+#=
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 fill_velocity_halos!(simulation.model.velocities)
+=#
 
 ζ = Field{Face, Face, Center}(grid)
 
@@ -182,6 +204,7 @@ u₀ = deepcopy(simulation.model.velocities.u)
 v₀ = deepcopy(simulation.model.velocities.v)
 ζ₀ = deepcopy(ζ) 
 
+#=
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -212,7 +235,8 @@ simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_i
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
-# run!(simulation)
+run!(simulation)
+=#
 
 # Plot the initial velocity field.
 

@@ -28,7 +28,7 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
-operation_corner_points = "average" # Choose operation_corner_points to be "average", "CCW", "CW".
+operation_corner_points = "average" # Choose operation_corner_points to be "average", "CCW", or "CW".
 
 function fill_velocity_halos!(velocities)
     u, v, _ = velocities
