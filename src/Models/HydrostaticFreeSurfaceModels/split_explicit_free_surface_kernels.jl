@@ -372,20 +372,21 @@ function iterate_split_explicit!(free_surface::FixedSubstepsSplitExplicit{N}, gr
     timestepper = settings.timestepper
     parameters  = auxiliary.kernel_parameters
     
+    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+
     @unroll for substep in 1:N
         Base.@_inline_meta
 
         averaging_weight = weights[substep]
 
-        launch!(arch, grid, parameters, _split_explicit_free_surface!, 
-                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                timestepper)
+        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                             U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
 
-        launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, 
-                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                η̅, U̅, V̅, averaging_weight,
-                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                timestepper)
+        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                    η̅, U̅, V̅, averaging_weight,
+                                    Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                    timestepper)
     end
 
     return nothing
@@ -419,19 +420,21 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     
     parameters = auxiliary.kernel_parameters
     
-    @unroll for substep in 1:Nsubsteps
+    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+
+    @unroll for substep in 1:N
+        Base.@_inline_meta
 
         averaging_weight = weights[substep]
 
-        launch!(arch, grid, parameters, split_explicit_free_surface_evolution_kernel!, 
-                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                timestepper)
-
-        launch!(arch, grid, parameters, split_explicit_barotropic_velocity_evolution_kernel!, 
-                grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
-                η̅, U̅, V̅, averaging_weight,
-                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                timestepper)
+        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                             U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+                             
+        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²,
+                                    η̅, U̅, V̅, averaging_weight,
+                                    Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                    timestepper)
     end
 
     return nothing

@@ -120,43 +120,49 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    NVTX.@range "work layout" begin
-        workgroup, worksize = work_layout(grid, workspec;
-                                        include_right_boundaries,
-                                        reduced_dimensions,
-                                        location)
-    end
 
-    NVTX.@range "offsets" begin
-        offset = offsets(workspec)
-    end
+    loop! = configured_kernel(arch, grid, workspec, kernel!;
+                              include_right_boundaries,
+                              reduced_dimensions,
+                              location,
+                              only_active_cells,
+                              kwargs...)
+                             
+    loop!(kernel_args...)
+    
+    return nothing
+end
 
-    NVTX.@range "active cells layout" begin
-        if !isnothing(only_active_cells) 
-            workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
-            offset = nothing
-        end
+function configured_kernel(arch, grid, workspec, kernel!;
+                           include_right_boundaries = false,
+                           reduced_dimensions = (),
+                           location = nothing,
+                           only_active_cells = nothing,
+                           kwargs...)
+
+    workgroup, worksize = work_layout(grid, workspec;
+                                    include_right_boundaries,
+                                    reduced_dimensions,
+                                    location)
+
+    offset = offsets(workspec)
+
+    if !isnothing(only_active_cells) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
+        offset = nothing
     end
 
     if worksize == 0
         return nothing
     end
     
-    NVTX.@range "configuring kernel" begin
-        # We can only launch offset kernels with Static sizes!!!!
-        loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
-                                    kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
-    end
+    # We can only launch offset kernels with Static sizes!!!!
+    loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
+                                kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
 
-    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
-
-    NVTX.@range "actual kernel" begin
-        loop!(kernel_args...)
-    end
-
-    return nothing
+    return loop!
 end
-
+        
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
