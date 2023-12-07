@@ -139,7 +139,6 @@ is identical to the default,
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
@@ -159,7 +158,7 @@ SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 1.3
 └── equation_of_state: LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078)
 
-julia> model = NonhydrostaticModel(; grid, buoyancy=buoyancy, tracers=(:T, :S))
+julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
