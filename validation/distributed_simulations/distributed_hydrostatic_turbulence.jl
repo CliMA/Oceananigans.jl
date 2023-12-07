@@ -6,6 +6,7 @@ using Statistics
 using Oceananigans.BoundaryConditions
 using Oceananigans.DistributedComputations    
 using Random
+using JLD2
 using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, use_only_active_interior_cells
 
 # Run with 
@@ -15,13 +16,10 @@ using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, use_only_active_interior_
 # ```
 
 function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
-    grid = RectilinearGrid(arch; topology, size = (Nx, Ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
+    grid = RectilinearGrid(arch; topology, size = (Nx, Ny, 10), extent=(4π, 4π, 0.5), halo=(8, 8, 8))
     
     bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
-
-    @show grid isa ActiveCellsIBG
-    @show use_only_active_interior_cells(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
@@ -65,8 +63,8 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     MPI.Barrier(arch.communicator)
 end
 
-Nx = 128
-Ny = 128
+Nx = 32
+Ny = 32
 
 arch = Distributed(CPU(), partition = Partition(2, 2)) 
 
