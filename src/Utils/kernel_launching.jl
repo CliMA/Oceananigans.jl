@@ -120,29 +120,39 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, workspec;
-                                      include_right_boundaries,
-                                      reduced_dimensions,
-                                      location)
+    NVTX.@range "work layout" begin
+        workgroup, worksize = work_layout(grid, workspec;
+                                        include_right_boundaries,
+                                        reduced_dimensions,
+                                        location)
+    end
 
-    offset = offsets(workspec)
+    NVTX.@range "offsets" begin
+        offset = offsets(workspec)
+    end
 
-    if !isnothing(only_active_cells) 
-        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
-        offset = nothing
+    NVTX.@range "active cells layout" begin
+        if !isnothing(only_active_cells) 
+            workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
+            offset = nothing
+        end
     end
 
     if worksize == 0
         return nothing
     end
     
-    # We can only launch offset kernels with Static sizes!!!!
-    loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
-                                kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
+    NVTX.@range "configuring kernel" begin
+        # We can only launch offset kernels with Static sizes!!!!
+        loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
+                                    kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
+    end
 
     @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
 
-    loop!(kernel_args...)
+    NVTX.@range "actual kernel" begin
+        loop!(kernel_args...)
+    end
 
     return nothing
 end
