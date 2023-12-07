@@ -126,9 +126,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
-    λl = Rx == 1 ? λ : partition_coordinate(longitude, nλ, arch, 1)
-    φl = Ry == 1 ? φ : partition_coordinate(latitude,  nφ, arch, 2)
-    zl = Rz == 1 ? z : partition_coordinate(z,         nz, arch, 3)
+    λl = Rx == 1 ? longitude : partition_coordinate(longitude, nλ, arch, 1)
+    φl = Ry == 1 ? latitude  : partition_coordinate(latitude,  nφ, arch, 2)
+    zl = Rz == 1 ? z         : partition_coordinate(z,         nz, arch, 3)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -228,9 +228,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
-    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    λG = Rx == 1 ? longitude : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
+    φG = Ry == 1 ? latitude  : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
+    zG = Rz == 1 ? z         : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
 
     child_arch = child_architecture(arch)
 
