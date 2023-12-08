@@ -127,7 +127,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                               location,
                               only_active_cells,
                               kwargs...)
-                             
+    
     loop!(kernel_args...)
     
     return nothing

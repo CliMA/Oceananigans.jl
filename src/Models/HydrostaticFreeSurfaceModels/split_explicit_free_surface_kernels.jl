@@ -420,8 +420,8 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     
     parameters = auxiliary.kernel_parameters
     
-    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_free_surface!)
+    barotropic_velocity_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_barotropic_velocity!)
 
     @unroll for substep in 1:N
         Base.@_inline_meta
