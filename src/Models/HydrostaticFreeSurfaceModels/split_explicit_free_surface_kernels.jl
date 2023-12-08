@@ -177,17 +177,17 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
-        advance_previous_velocity!(i, j, 1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
-        advance_previous_velocity!(i, j, 1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
+        advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
+        advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
+        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
+        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
                           
         # time-averaging
-        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
+        U̅[i, j, k_top-1] += averaging_weight * U[i, j, k_top-1]
+        V̅[i, j, k_top-1] += averaging_weight * V[i, j, k_top-1]
     end
 end
 
@@ -195,14 +195,15 @@ end
 # u_Δz = u * Δz
 @kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)	
+    k_top = grid.Nz+1
 
     # hand unroll first loop
-    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
+    @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+        @inbounds U[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 end
 
@@ -211,18 +212,18 @@ end
 @kernel function _barotropic_mode_kernel!(U, V, grid::ActiveSurfaceIBG, u, v)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
+    k_top = grid.Nz+1
 
     # hand unroll first loop
-    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
+    @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+        @inbounds U[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 end
 
-# may need to do Val(Nk) since it may not be known at compile
 compute_barotropic_mode!(U, V, grid, u, v) = 
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
             only_active_cells = use_only_active_surface_cells(grid))
@@ -252,9 +253,11 @@ end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
     i, j, k = @index(Global, NTuple)
+    k_top = grid.Nz+1
+
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
-        v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ[i, j, k_top-1] 
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ[i, j, k_top-1]
     end
 end
 
@@ -332,17 +335,6 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), 
                                                                                         substeps, substepping.averaging_kernel)
 
-macro unroll_split_explicit_loop(exp)
-    lim2 = eval(exp.args[1].args[2].args[3])
-    iterator = exp.args[1].args[1]
-    loop = quote
-        Base.Cartesian.@nexprs $lim2 $iterator -> $(exp.args[2])
-    end
-    return quote
-        $(esc(loop))
-    end
-end
-
 const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
 const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
 
@@ -372,8 +364,8 @@ function iterate_split_explicit!(free_surface::FixedSubstepsSplitExplicit{N}, gr
     timestepper = settings.timestepper
     parameters  = auxiliary.kernel_parameters
     
-    free_surface_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_free_surface!)
-    barotropic_velocity_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_barotropic_velocity!)
+    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
     @unroll for substep in 1:N
         Base.@_inline_meta
@@ -420,8 +412,8 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     
     parameters = auxiliary.kernel_parameters
     
-    free_surface_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_free_surface!)
-    barotropic_velocity_kernel! = configured_kernel(arch, grid, :xy, _split_explicit_barotropic_velocity!)
+    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
     @unroll for substep in 1:N
         Base.@_inline_meta
@@ -443,14 +435,15 @@ end
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)	
+    k_top = grid.Nz+1
 
     # hand unroll first loop 	
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
 
     @unroll for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
     end	
 end
 
@@ -458,14 +451,15 @@ end
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveSurfaceIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, SurfaceMap(), grid)
+    k_top = grid.Nz+1
 
     # hand unroll first loop 	
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
 
     @unroll for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
     end	
 end
 

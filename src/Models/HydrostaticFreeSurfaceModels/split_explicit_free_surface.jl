@@ -135,17 +135,17 @@ function SplitExplicitState(grid::AbstractGrid)
     ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
           
-    U    = Field((Face, Center, Nothing), grid)
-    V    = Field((Center, Face, Nothing), grid)
+    U    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    V    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
 
-    Uᵐ⁻¹ = Field((Face, Center, Nothing), grid)
-    Vᵐ⁻¹ = Field((Center, Face, Nothing), grid)
+    Uᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Vᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
           
-    Uᵐ⁻² = Field((Face, Center, Nothing), grid)
-    Vᵐ⁻² = Field((Center, Face, Nothing), grid)
+    Uᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Vᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)))
           
-    U̅    = Field((Face, Center, Nothing), grid)
-    V̅    = Field((Center, Face, Nothing), grid)
+    U̅    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    V̅    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
@@ -183,21 +183,21 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Gⱽ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
 
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
+    Hᶠᶜ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Hᶜᶠ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Hᶜᶜ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    sum!(Hᶠᶜ, dz)
+    Hᶠᶜ .= sum(dz; dims = 3)
    
     dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶠ, dz)
+    Hᶜᶠ .= sum(dz; dims = 3)
 
     dz = GridMetricOperation((Center, Center, Center), Δz, grid)
-    sum!(Hᶜᶜ, dz)
+    Hᶜᶜ .= sum(dz; dims = 3)
 
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
