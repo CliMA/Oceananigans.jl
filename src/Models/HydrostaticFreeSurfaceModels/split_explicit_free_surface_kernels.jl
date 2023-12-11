@@ -272,7 +272,6 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # !!!! reusing U and V for this storage since last timestep doesn't matter
     compute_barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
-
     launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
             u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
 
