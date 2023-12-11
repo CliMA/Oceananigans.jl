@@ -136,3 +136,7 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 
 @inline Δzᶠᶠᶠ(i, j, k, grid::ZStarCoordinateGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.star_value)
 @inline Δzᶠᶠᶜ(i, j, k, grid::ZStarCoordinateGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.star_value)
+
+import Oceananigans.Architectures: arch_array
+
+arch_array(arch, coord::ZStarCoordinate) = ZStarCoordinate(arch_array(arch, coord.reference), coord.scaling, coord.star_value)
