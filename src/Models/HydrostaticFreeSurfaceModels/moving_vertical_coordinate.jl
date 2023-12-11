@@ -139,4 +139,5 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 
 import Oceananigans.Architectures: arch_array
 
-arch_array(arch, coord::ZStarCoordinate) = ZStarCoordinate(arch_array(arch, coord.reference), coord.scaling, coord.star_value)
+arch_array(arch, coord::ZStarCoordinate) = 
+    ZStarCoordinate(arch_array(arch, coord.reference), coord.scaling, coord.star_value)
