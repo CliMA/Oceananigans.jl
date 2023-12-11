@@ -92,31 +92,31 @@ A type containing the state fields for the split-explicit free surface.
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
+Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     "The free surface at time `m`. (`ReducedField` over ``z``)"
-    ηᵐ   :: 𝒞𝒞
+    ηᵐ   :: ACC
     "The free surface at time `m-1`. (`ReducedField` over ``z``)"
-    ηᵐ⁻¹ :: 𝒞𝒞
+    ηᵐ⁻¹ :: ACC
     "The free surface at time `m-2`. (`ReducedField` over ``z``)"
-    ηᵐ⁻² :: 𝒞𝒞
+    ηᵐ⁻² :: ACC
     "The barotropic zonal velocity at time `m`. (`ReducedField` over ``z``)"
-    U    :: ℱ𝒞
+    U    :: FC
     "The barotropic zonal velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Uᵐ⁻¹ :: ℱ𝒞
+    Uᵐ⁻¹ :: AFC
     "The barotropic zonal velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Uᵐ⁻² :: ℱ𝒞
+    Uᵐ⁻² :: AFC
     "The barotropic meridional velocity at time `m`. (`ReducedField` over ``z``)"
-    V    :: 𝒞ℱ
+    V    :: CF
     "The barotropic meridional velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Vᵐ⁻¹ :: 𝒞ℱ
+    Vᵐ⁻¹ :: ACF
     "The barotropic meridional velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Vᵐ⁻² :: 𝒞ℱ
+    Vᵐ⁻² :: ACF
     "The time-filtered free surface. (`ReducedField` over ``z``)"
-    η̅    :: 𝒞𝒞
+    η̅    :: CC
     "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
-    U̅    :: ℱ𝒞
+    U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    V̅    :: 𝒞ℱ
+    V̅    :: FC
 end
 
 """
