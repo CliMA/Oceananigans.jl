@@ -1,4 +1,4 @@
-struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -19,8 +19,8 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
-    Δzᵃᵃᶜ :: FZ
+    Δzᵃᵃᶠ :: FZF 
+    Δzᵃᵃᶜ :: FZC
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
 
@@ -32,17 +32,17 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
                                           xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
                                          Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                           yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                         Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                         Δzᵃᵃᶠ :: FZF, Δzᵃᵃᶜ :: FZC,
                                           zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
                                                                           TX, TY, TZ,
                                                                           FX, VX, FY,
-                                                                          VY, FZ, VZ}
+                                                                          VY, FZF, FZC, VZ}
                                                                                            
-        return new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                                 Hx, Hy, Hz, Lx, Ly, Lz, 
-                                                                 Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                                 Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                                 Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+        return new{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
+                                                                       Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                                                       Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
     end
 end
 

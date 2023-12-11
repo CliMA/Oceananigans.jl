@@ -82,7 +82,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model, callbacks)
+    model.clock.iteration == 0 && update_state!(model, Δt, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -110,7 +110,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model, callbacks)
+    update_state!(model, Δt, callbacks)
     step_lagrangian_particles!(model, first_stage_Δt)
 
     #
@@ -128,7 +128,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model, callbacks)
+    update_state!(model, Δt, callbacks)
     step_lagrangian_particles!(model, second_stage_Δt)
 
     #
@@ -145,7 +145,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    update_state!(model, callbacks)
+    update_state!(model, Δt, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing

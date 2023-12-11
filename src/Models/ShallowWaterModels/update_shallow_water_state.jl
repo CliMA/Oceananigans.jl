@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: update_state!
 Fill halo regions for `model.solution` and `model.tracers`.
 If `callbacks` are provided (in an array), they are called in the end.
 """
-function update_state!(model::ShallowWaterModel, callbacks=[])
+function update_state!(model::ShallowWaterModel, Δt, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, model.solution)

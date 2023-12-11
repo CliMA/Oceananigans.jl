@@ -21,16 +21,16 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+update_state!(model::HydrostaticFreeSurfaceModel, Δt, callbacks=[]) = update_state!(model, model.grid, Δt, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
-    @apply_regionally compute_w_diffusivities_pressure!(model)
+    @apply_regionally compute_w_diffusivities_pressure!(model, Δt)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
@@ -41,7 +41,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
-    
+    update_vertical_coordinate!(model, model.grid)
+
     return nothing
 end
 
@@ -60,8 +61,8 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_w_diffusivities_pressure!(model) 
-    compute_w_from_continuity!(model)
+function compute_w_diffusivities_pressure!(model, Δt) 
+    compute_w_from_continuity!(model, Δt)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
     return nothing

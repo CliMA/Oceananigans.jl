@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
-struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -21,8 +21,8 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
     Δφᵃᶜᵃ :: FY
     φᵃᶠᵃ  :: VY
     φᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
-    Δzᵃᵃᶜ :: FZ
+    Δzᵃᵃᶠ :: FZF 
+    Δzᵃᵃᶜ :: FZC
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
     # Precomputed metrics M <: Nothing means metrics will be computed on the fly
@@ -47,7 +47,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
                                                 λᶠᵃᵃ :: VX,  λᶜᵃᵃ :: VX,
                                                Δφᵃᶠᵃ :: FY, Δφᵃᶜᵃ :: FY,
                                                 φᵃᶠᵃ :: VY,  φᵃᶜᵃ :: VY,
-                                               Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                               Δzᵃᵃᶠ :: FZF, Δzᵃᵃᶜ :: FZC,
                                                 zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ,
                                                Δxᶠᶜ::M, Δxᶜᶠ::M,
                                                Δxᶠᶠ::M, Δxᶜᶜ::M,
@@ -55,11 +55,11 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
                                                Azᶠᶜ::M, Azᶜᶠ::M, Azᶠᶠ::M, Azᶜᶜ::M,
                                                radius::FT) where {Arch, FT,
                                                                   TX, TY, TZ,
-                                                                  FX, FY, FZ,
+                                                                  FX, FY, FZF, FZC,
                                                                   VX, VY, VZ,
                                                                   M, MY}
 
-        return new{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
+        return new{FT, TX, TY, TZ, M, MY, FX, FY, FZF, FZC, VX, VY, VZ, Arch}(architecture,
                                                                         Nλ, Nφ, Nz,
                                                                         Hλ, Hφ, Hz,
                                                                         Lλ, Lφ, Lz,
