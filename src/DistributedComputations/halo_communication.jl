@@ -207,10 +207,14 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
         offset = fill_halo_offset(size, fill_halos!, indices)
     end
 
-    requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    NVTX.@range "actual fill_halos!" begin
+        requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    end
 
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
-
+    NVTX.@range "pool_request" begin
+        pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+    end
+    
     return nothing
 end
 
