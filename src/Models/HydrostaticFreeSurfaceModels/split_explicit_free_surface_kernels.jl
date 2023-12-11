@@ -161,7 +161,6 @@ end
                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                       timestepper)
     i, j = @index(Global, NTuple)
-
     velocity_evolution!(i, j, grid, Δτ, η, U, V, 
                         η̅, U̅, V̅, averaging_weight,
                         Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
