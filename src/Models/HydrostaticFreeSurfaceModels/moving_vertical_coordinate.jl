@@ -32,7 +32,7 @@ MovingCoordinateGrid(grid, coord) = grid
 
 function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStarCoordinate)
     underlying_grid = MovingCoordinateGrid(grid.underlying_grid, ZStarCoordinate())
-    active_cells_map = !isnothing(grid.active_cells_map)
+    active_cells_map = !isnothing(grid.interior_active_cells)
 
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
 end
