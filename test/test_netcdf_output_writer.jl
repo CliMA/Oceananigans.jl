@@ -372,9 +372,9 @@ function test_netcdf_function_output(arch)
     dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
 
     output_attributes = (
-        scalar = (longname="Some scalar", units="bananas"),
-        profile = (longname="Some vertical profile", units="watermelons"),
-        slice = (longname="Some slice", units="mushrooms")
+        scalar = (long_name="Some scalar", units="bananas"),
+        profile = (long_name="Some vertical profile", units="watermelons"),
+        slice = (long_name="Some slice", units="mushrooms")
     )
 
     global_attributes = (location="Bay of Fundy", onions=7)
@@ -441,12 +441,12 @@ function test_netcdf_function_output(arch)
     @test ds["time"][:] == [n*Δt for n in 0:iters]
 
     @test length(ds["scalar"]) == iters+1
-    @test ds["scalar"].attrib["longname"] == "Some scalar"
+    @test ds["scalar"].attrib["long_name"] == "Some scalar"
     @test ds["scalar"].attrib["units"] == "bananas"
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
     @test dimnames(ds["scalar"]) == ("time",)
 
-    @test ds["profile"].attrib["longname"] == "Some vertical profile"
+    @test ds["profile"].attrib["long_name"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
     @test size(ds["profile"]) == (N, iters+1)
     @test dimnames(ds["profile"]) == ("zC", "time")
@@ -455,7 +455,7 @@ function test_netcdf_function_output(arch)
         @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
     end
 
-    @test ds["slice"].attrib["longname"] == "Some slice"
+    @test ds["slice"].attrib["long_name"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
     @test size(ds["slice"]) == (N, N, iters+1)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
