@@ -82,7 +82,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model, Δt, callbacks)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²

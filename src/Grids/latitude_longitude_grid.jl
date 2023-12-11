@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
-struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
