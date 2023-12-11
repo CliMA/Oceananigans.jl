@@ -1,12 +1,19 @@
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans
+using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.Utils: getnamewrapper
+using Adapt 
 
-const RigidLidModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
+struct ZCoordinate end
 
 struct ZStarCoordinate{R, S, Z}
     reference :: R
       scaling :: S
    star_value :: Z
 end
+
+ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, coord::ZStarCoordinate) = 
     ZStarCoordinate(Adapt.adapt(to, coord.reference),
@@ -16,15 +23,28 @@ Adapt.adapt_structure(to, coord::ZStarCoordinate) =
 const ZStarCoordinateRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
 const ZStarCoordinateLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
 
-const ZStarCoordinateGrid = Union{ZStarCoordinateRG, ZStarCoordinateLLG}
+const ZStarCoordinateUnderlyingGrid = Union{ZStarCoordinateRG, ZStarCoordinateLLG}
+const ZStarCoordinateImmersedGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarCoordinateUnderlyingGrid}
 
-function MovingCoordinateGrid(grid::AbstractGrid{FT, TX, TY, TZ}, ::ZStarCoordinate) where {FT, TX, TY, TZ}
+const ZStarCoordinateGrid = Union{ZStarCoordinateUnderlyingGrid, ZStarCoordinateImmersedGrid}
+
+MovingCoordinateGrid(grid, coord) = grid
+
+function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStarCoordinate)
+    underlying_grid = MovingCoordinateGrid(grid.underlying_grid, ZStarCoordinate())
+    active_cells_map = !isnothing(grid.active_cells_map)
+
+    return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
+end
+
+function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStarCoordinate) where {FT, TX, TY, TZ}
+    # Memory layout for Dz spacings is local in z
     ΔzF =  ZFaceField(grid)
     ΔzC = CenterField(grid)
     scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
 
-    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, ΔzF, scaling)
-    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, ΔzC, scaling)
+    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, scaling, ΔzF)
+    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, scaling, ΔzC)
 
     args = []
     for prop in propertynames(grid)
@@ -43,12 +63,9 @@ function MovingCoordinateGrid(grid::AbstractGrid{FT, TX, TY, TZ}, ::ZStarCoordin
 end
 
 # Fallback
-update_vertical_coordinate!(model, grid) = nothing
+update_vertical_coordinate!(model, grid; kwargs...) = nothing
 
-# Do not update if rigid lid!!
-update_vertical_coordinate!(::RigidLidModel, ::ZStarCoordinateGrid) = nothing
-
-function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid)
+function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameters = tuple(:xyz))
     η = model.free_surface.η
     
     # Scaling 
@@ -62,28 +79,41 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid)
     Δz₀ᵃᵃᶠ = grid.Δzᵃᵃᶠ.reference
     Δz₀ᵃᵃᶜ = grid.Δzᵃᵃᶜ.reference
 
-    launch!(architecture(grid), grid, _update_scaling!, :xy, 
-            scaling, η, grid.Lz, grid.Nz)
+    # Update the scaling on the whole grid (from -H to N+H)
+    launch!(architecture(grid), grid, horizontal_parameters(grid), _update_scaling!,
+            scaling, η, grid)
 
-    # Update vertical coordinate
-    launch!(architecture(grid), grid, _update_z_star!, :xyz, 
-            Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, scaling)
+    # Update vertical coordinate with available parameters 
+    for params in parameters
+        launch!(architecture(grid), grid, params, _update_z_star!, 
+                Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, scaling, grid.Nz)
+    end
 
     return nothing
 end
 
-@kernel function update_scaling!(scaling, η, grid.Lz, grid.Nz)
-    i, j = @index(Global, NTuple)
-    @inbounds scaling[i, j, Nz+1] = (Lz + η[i, j, Nz+1]) / Lz
+function horizontal_parameters(grid)
+    halos = halo_size(grid)[1:2]
+    total_size = size(grid)[1:2] .+ 2 .* halos
+    return KernelParameters(total_size, .- halos)
 end
 
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, scaling)
+@kernel function _update_scaling!(scaling, η, grid)
+    i, j = @index(Global, NTuple)
+    bottom = bottom_height(grid, i, j)
+    @inbounds scaling[i, j, grid.Nz+1] = (bottom + η[i, j, grid.Nz+1]) / bottom
+end
+
+bottom_height(grid, i, j) = grid.Lz
+bottom_height(grid::ImmersedBoundaryGrid, i, j) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
+
+@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, scaling, Nz)
     i, j, k = @index(Global, NTuple)
     @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀[k]
     @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀[k]
 end
 
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, scaling)
+@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, scaling, Nz)
     i, j, k = @index(Global, NTuple)
     @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀
     @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀
@@ -91,6 +121,8 @@ end
 
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
 
+# Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
+# TODO: make z-direction local in memory by not using Fields
 @inline Δzᶜᶜᶠ(i, j, k, grid::ZStarCoordinateGrid) = @inbounds grid.Δzᵃᵃᶠ.star_value[i, j, k]
 @inline Δzᶜᶜᶜ(i, j, k, grid::ZStarCoordinateGrid) = @inbounds grid.Δzᵃᵃᶜ.star_value[i, j, k]
 

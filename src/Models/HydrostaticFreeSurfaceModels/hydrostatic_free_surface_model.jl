@@ -65,6 +65,7 @@ end
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
+                               vertical_coordinate = ZCoordinate(),
                                   auxiliary_fields = NamedTuple(),
     )
 
@@ -91,6 +92,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `vertical_coordinate`: choice between the default `ZCoordinate` and the free-surface following `ZStarCoordinate`
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -109,11 +111,15 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
+                               vertical_coordinate = ZCoordinate(),
                                   auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+
+    # Introduce z-star coordinates if needed
+    grid = MovingCoordinateGrid(grid, vertical_coordinate)
 
     arch = architecture(grid)
 

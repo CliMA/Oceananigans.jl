@@ -36,7 +36,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: Ab
                                           zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
                                                                           TX, TY, TZ,
                                                                           FX, VX, FY,
-                                                                          VY, FZ, VZ}
+                                                                          VY, FZF, FZC, VZ}
                                                                                            
         return new{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
                                                                        Hx, Hy, Hz, Lx, Ly, Lz, 
