@@ -98,10 +98,7 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
-function run_field_interpolation_tests(FT, arch)
-
-    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
-
+function run_field_interpolation_tests(grid)
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)
 
@@ -109,11 +106,16 @@ function run_field_interpolation_tests(FT, arch)
 
     # Choose a trilinear function so trilinear interpolation can return values that
     # are exactly correct.
-    f(x, y, z) = exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z
+    f(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
 
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid.
-    ε_max = (f.(nodes(grid, (Face(), Face(), Face()), reshape=true)...) |> maximum |> eps) * 10
+
+    # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
+    xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
+    f_max = CUDA.@allowscalar maximum(f.(xf, yf, zf))
+    ε_max = eps(f_max)
+    tolerance = 10 * ε_max
 
     set!(u, f)
     set!(v, f)
@@ -129,10 +131,10 @@ function run_field_interpolation_tests(FT, arch)
         ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
         ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-        @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
-        @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
-        @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
@@ -149,10 +151,10 @@ function run_field_interpolation_tests(FT, arch)
 
         F = f.(xs, ys, zs)
 
-        @test all(isapprox.(ℑu, F, atol=ε_max))
-        @test all(isapprox.(ℑv, F, atol=ε_max))
-        @test all(isapprox.(ℑw, F, atol=ε_max))
-        @test all(isapprox.(ℑc, F, atol=ε_max))
+        @test all(isapprox.(ℑu, F, atol=tolerance))
+        @test all(isapprox.(ℑv, F, atol=tolerance))
+        @test all(isapprox.(ℑw, F, atol=tolerance))
+        @test all(isapprox.(ℑc, F, atol=tolerance))
     end
 
     return nothing
@@ -336,6 +338,40 @@ end
             @test CUDA.@allowscalar v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
             @test CUDA.@allowscalar w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
             @test CUDA.@allowscalar c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
+
+            # Test for Field-to-Field setting on same architecture, and cross architecture.
+            # The behavior depends on halo size: if the halos of two fields are the same, we can
+            # (easily) copy halo data over.
+            # Otherwise, we take the easy way out (for now) and only copy interior data.
+            big_halo = (3, 3, 3)
+            small_halo = (1, 1, 1)
+            domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
+            sz = (1, 1, 1)
+
+            grid = RectilinearGrid(arch, FT; halo=big_halo, size=sz, domain...)
+            a = CenterField(grid)
+            b = CenterField(grid)
+            parent(a) .= 1
+            set!(b, a)
+            @test parent(b) == parent(a)
+
+            grid_with_smaller_halo = RectilinearGrid(arch, FT; halo=small_halo, size=sz, domain...)
+            c = CenterField(grid_with_smaller_halo)
+            set!(c, a)
+            @test interior(c) == interior(a)
+
+            # Cross-architecture setting should have similar behavior
+            if arch isa GPU
+                cpu_grid = RectilinearGrid(CPU(), FT; halo=big_halo, size=sz, domain...)
+                d = CenterField(cpu_grid)
+                set!(d, a)
+                @test parent(d) == Array(parent(a))
+
+                cpu_grid_with_smaller_halo = RectilinearGrid(CPU(), FT; halo=small_halo, size=sz, domain...)
+                e = CenterField(cpu_grid_with_smaller_halo)
+                set!(e, a)
+                @test Array(interior(e)) == Array(interior((a)))
+            end
         end
     end
 
@@ -351,7 +387,19 @@ end
         @info "  Testing field interpolation..."
 
         for arch in archs, FT in float_types
-            run_field_interpolation_tests(FT, arch)
+            reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
+            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
+
+            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
+                                             x = [0.0, 0.26, 0.49, 0.78, 1.0],
+                                             y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
+    
+            grids = [reg_grid, stretched_grid]
+
+            for grid in grids
+                run_field_interpolation_tests(grid)
+            end
         end
     end
 

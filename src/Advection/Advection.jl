@@ -20,9 +20,9 @@ export
     Centered, CenteredSecondOrder, CenteredFourthOrder,
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant,
-    EnergyConservingScheme,
-    EnstrophyConservingScheme
+    VectorInvariant, WENOVectorInvariant,
+    EnergyConserving,
+    EnstrophyConserving
 
 using DocStringExtensions
 
@@ -32,7 +32,7 @@ using OffsetArrays
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo, return_metrics
+using Oceananigans.Grids: with_halo, coordinates
 using Oceananigans.Architectures: arch_array, architecture, CPU
 
 using Oceananigans.Operators
@@ -44,12 +44,21 @@ abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 
-@inline boundary_buffer(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size(scheme::AbstractAdvectionScheme{B}) where B = B
+# `advection_buffers` specifies the list of buffers for which advection schemes
+# are constructed via metaprogramming. (The `advection_buffer` is the width of
+# the halo region required for an advection scheme on a non-immersed-boundary grid.)
+# An upper limit of `advection_buffer = 6` means we can build advection schemes up to
+# `Centered(order=12`) and `UpwindBiased(order=11)`. The list can be extended in order to
+# compile schemes with higher orders; for example `advection_buffers = [1, 2, 3, 4, 5, 6, 8]`
+# will compile schemes for `advection_buffer=8` and thus `Centered(order=16)` and `UpwindBiased(order=15)`.
+# Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
+const advection_buffers = [1, 2, 3, 4, 5, 6]
+
+@inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
+@inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
-include("flat_advective_fluxes.jl")
 
 include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")
@@ -57,10 +66,15 @@ include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
-
+include("multi_dimensional_reconstruction.jl")
+include("vector_invariant_upwinding.jl")
 include("vector_invariant_advection.jl")
-include("topologically_conditional_interpolation.jl")
+include("vector_invariant_cross_upwinding.jl")
+include("vector_invariant_self_upwinding.jl")
+include("vector_invariant_velocity_upwinding.jl")
 
+include("flat_advective_fluxes.jl")
+include("topologically_conditional_interpolation.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")

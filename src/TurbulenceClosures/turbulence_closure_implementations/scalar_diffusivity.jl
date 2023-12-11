@@ -1,20 +1,21 @@
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
-    ν :: N
+struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
+    ν :: V
     κ :: K
 
-    function ScalarDiffusivity{TD, F}(ν::N, κ::K) where {TD, F, N, K}
-        return new{TD, F, N, K}(ν, κ)
-    end
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
 end
 
 """
-    ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
-                      formulation=ThreeDimensionalFormulation(), FT=Float64];
-                      ν=0, κ=0,
-                      discrete_form = false) 
+    ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
+                      formulation = ThreeDimensionalFormulation(), FT = Float64;
+                      ν = 0,
+                      κ = 0,
+                      discrete_form = false,
+                      loc = (nothing, nothing, nothing),
+                      parameters = nothing)
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -48,7 +49,12 @@ When prescribing the viscosities or diffusivities as functions, depending on the
   - `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
     a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-  - `discrete_form = true`: functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+  - `discrete_form = true`: 
+    - with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
+    - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
+  - `parameters`: `NamedTuple` with parameters used by the functions that compute viscosity and/or diffusivity; default: `nothing`.
+
 
 Examples
 ========
@@ -79,11 +85,19 @@ julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
        end
 κ (generic function with 1 method)
 
-julia> ScalarDiffusivity(κ = κ)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=κ (generic function with 1 method))
-
 julia> ScalarDiffusivity(κ = κ, discrete_form = true)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
+```
+
+```jldoctest ScalarDiffusivity
+julia> @inline function another_κ(i, j, k, grid, p)
+           z = znode(i, j, k, grid)
+           return 2000 * exp(z / p.depth_scale)
+       end
+another_κ (generic function with 1 method)
+
+julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(another_κ)})
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
@@ -91,7 +105,8 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
-                           parameters = nothing)
+                           parameters = nothing,
+                           required_halo_size = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
@@ -100,7 +115,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation)}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
 
 # Explicit default
@@ -149,18 +164,18 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 
 required_halo_size(closure::ScalarDiffusivity) = 1 
  
-function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
+function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, F}(closure.ν, κ)
+    return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
 # Note: we could compute ν and κ (if they are Field):
-# function calculate_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
+# function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
 #     compute!(viscosity(closure, diffusivities))
 #     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
 #     return nothing

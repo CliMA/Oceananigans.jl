@@ -69,7 +69,7 @@ ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # ## Buoyancy that depends on temperature and salinity
@@ -120,7 +120,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 # For salinity, `S`, we impose an evaporative flux of the form
 
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
-nothing # hide
+nothing #hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
@@ -242,7 +242,7 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
 xw, yw, zw = nodes(time_series.w)
 xT, yT, zT = nodes(time_series.T)
 
-# We start the animation at ``t = 10minutes`` since things are pretty boring till then:
+# We start the animation at ``t = 10`` minutes since things are pretty boring till then:
 
 times = time_series.w.times
 intro = searchsortedfirst(times, 10minutes)
@@ -291,7 +291,7 @@ Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And now record a movie.
@@ -301,8 +301,6 @@ frames = intro:length(times)
 @info "Making a motion picture of ocean wind mixing and convection..."
 
 record(fig, filename * ".mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide

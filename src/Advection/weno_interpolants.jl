@@ -16,10 +16,54 @@
 # where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
 #
 
+""" 
+`AbstractSmoothnessStencil`s specifies the polynomials used for diagnosing stencils' smoothness for weno weights 
+calculation in the `VectorInvariant` advection formulation. 
+
+Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
+```julia
+_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function
+```
+
+For scalar reconstructions 
+```julia
+_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField
+```
+the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
+
+Options:
+========
+
+- `DefaultStencil`: uses the same polynomials used for reconstruction
+- `VelocityStencil`: is valid _only_ for vorticity reconstruction and diagnoses the smoothness based on 
+                     `(Face, Face, Center)` polynomial interpolations of `u` and `v`
+- `FunctionStencil`: allows using a custom function as smoothness indicator. 
+The custom function should share arguments with the reconstructed function. 
+
+Example:
+========
+
+```julia
+@inline   smoothness_function(i, j, k, grid, args...) = custom_smoothness_function(i, j, k, grid, args...)
+@inline reconstruced_function(i, j, k, grid, args...) = custom_reconstruction_function(i, j, k, grid, args...)
+
+smoothness_stencil = FunctionStencil(smoothness_function)    
+```
+"""
 abstract type AbstractSmoothnessStencil end
 
+"""`DefaultStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
+struct DefaultStencil <:AbstractSmoothnessStencil end
+
+"""`VelocityStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct VelocityStencil <:AbstractSmoothnessStencil end
-struct DefaultStencil  <:AbstractSmoothnessStencil end
+
+"""`FunctionStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
+struct FunctionStencil{F} <:AbstractSmoothnessStencil 
+    func :: F
+end
+
+Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
@@ -142,7 +186,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds 0.5*(β₁[$stencil] + β₂[$stencil]))
+        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
     end
 
     return :($(elem...),)
@@ -225,7 +269,6 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
                 uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
                 vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-            
                 βᵤ = beta_loop(scheme, uₛ, $biased_β)
                 βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
@@ -281,16 +324,16 @@ julia> calc_weno_stencil(2, :right, :x)
             c = n - buffer - 1
             if func 
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ(i + $c, j, k, args...)) :
-                                    dir == :y ?
-                                    :(@inbounds ψ(i, j + $c, k, args...)) :
-                                    :(@inbounds ψ(i, j, k + $c, args...))
+                                      :(@inbounds ψ(i + $c, j, k, args...)) :
+                                      dir == :y ?
+                                      :(@inbounds ψ(i, j + $c, k, args...)) :
+                                      :(@inbounds ψ(i, j, k + $c, args...))
             else    
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ[i + $c, j, k]) :
-                                    dir == :y ?
-                                    :(@inbounds ψ[i, j + $c, k]) :
-                                    :(@inbounds ψ[i, j, k + $c])
+                                      :(@inbounds ψ[i + $c, j, k]) :
+                                      dir == :y ?
+                                      :(@inbounds ψ[i, j + $c, k]) :
+                                      :(@inbounds ψ[i, j, k + $c])
             end                
         end
         stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
@@ -374,11 +417,23 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
 
             @inline function $interpolate_func(i, j, k, grid, 
                                                scheme::WENO{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::VelocityStencil, args...) where {N, FT, XT, YT, ZT}
+                                               ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                    w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
+                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, u, v, args...)
+                    w = $weno_weights((i, j, k), scheme, Val($val), VI, u, v)
+                    return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
+                end
+            end
+
+            @inline function $interpolate_func(i, j, k, grid, 
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
+                                               ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+
+                @inbounds begin
+                    ψₜ = $stencil(i, j, k, scheme, ψ,       grid, args...)
+                    ψₛ = $stencil(i, j, k, scheme, VI.func, grid, args...)
+                    w = $weno_weights(ψₛ, scheme, Val($val), VI, args...)
                     return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
                 end
             end

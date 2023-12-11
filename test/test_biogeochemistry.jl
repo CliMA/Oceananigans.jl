@@ -90,9 +90,7 @@ end
 ##### Test a `bgc` model in a `model` with `arch`
 #####
 
-function test_biogeochemistry!(arch, MinimalBiogeochemistryType, ModelType)
-    grid = RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2))
-
+function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
     Iᴾᴬᴿ = CenterField(grid)
 
     u = ZeroField()
@@ -108,7 +106,11 @@ function test_biogeochemistry!(arch, MinimalBiogeochemistryType, ModelType)
                                                  Iᴾᴬᴿ, 
                                                  drift_velocities)
 
-    model = ModelType(; grid, biogeochemistry)
+    if ModelType == HydrostaticFreeSurfaceModel && grid isa OrthogonalSphericalShellGrid
+        model = ModelType(; grid, biogeochemistry, momentum_advection = VectorInvariant())
+    else
+        model = ModelType(; grid, biogeochemistry)
+    end
     set!(model, P = 1)
 
     @test :P in keys(model.tracers)
@@ -127,12 +129,16 @@ end
 
 @testset "Biogeochemistry" begin
     @info "Testing biogeochemistry setup..."
-    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry)
-        for model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
-            for arch in archs
-                @info "Testing $bgc in $model on $arch..."
-                test_biogeochemistry!(arch, bgc, model)
-            end
+    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry), 
+        model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
+        arch in archs,
+        grid in (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)), 
+                 LatitudeLongitudeGrid(arch; size = (5, 5, 5), longitude = (-180, 180), latitude = (-85, 85), z = (-2, 0)),
+                 conformal_cubed_sphere_panel(arch; size = (3, 3, 3), z = (-2, 0)))
+
+        if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
+            @info "Testing $bgc in $model on $grid..."
+            test_biogeochemistry(grid, bgc, model)
         end
     end
 end

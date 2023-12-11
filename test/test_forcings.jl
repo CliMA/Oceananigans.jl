@@ -118,20 +118,39 @@ end
 function advective_and_multiple_forcing(arch)
     grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
 
-    constant_slip = AdvectiveForcing(UpwindBiasedFifthOrder(), w=1)
-
+    constant_slip = AdvectiveForcing(w=1)
+    zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
-    velocity_field_slip = AdvectiveForcing(CenteredSecondOrder(), w=slip_velocity)
-    simple_forcing(x, y, z, t) = 1
+    set!(slip_velocity, 1)
+    velocity_field_slip = AdvectiveForcing(w=slip_velocity)
+    zero_forcing(x, y, z, t) = 0
+    one_forcing(x, y, z, t) = 1
 
-    model = NonhydrostaticModel(; grid, tracers=(:a, :b), forcing=(a=constant_slip, b=(simple_forcing, velocity_field_slip)))
+    model = NonhydrostaticModel(; grid,
+                                tracers = (:a, :b, :c),
+                                forcing = (a = constant_slip,
+                                           b = (zero_forcing, velocity_field_slip),
+                                           c = (one_forcing, zero_slip)))
+
+    a₀ = rand(size(grid)...)
+    b₀ = rand(size(grid)...)
+    set!(model, a=a₀, b=b₀, c=0)
+
+    # Time-step without an error?
     time_step!(model, 1, euler=true)
 
-    return true
-end
+    a₁ = Array(interior(model.tracers.a))
+    b₁ = Array(interior(model.tracers.b))
+    c₁ = Array(interior(model.tracers.c))
 
+    a_changed = a₁ ≠ a₀
+    b_changed = b₁ ≠ b₀
+    c_correct = all(c₁ .== model.clock.time)
+
+    return a_changed & b_changed & c_correct
+end
 
 @testset "Forcings" begin
     @info "Testing forcings..."

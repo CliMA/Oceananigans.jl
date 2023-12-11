@@ -185,7 +185,7 @@ SeawaterBuoyancy{Float64}:
 ### Idealized nonlinear equations of state
 
 Instead of a linear equation of state, six idealized (second-order) nonlinear equations of state
-as described by [Roquet15Idealized](@cite) may be used. These equations of state are provided
+as described by [Roquet15Idealized](@citet) may be used. These equations of state are provided
 via the [SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
 
 ```jldoctest buoyancy
@@ -208,7 +208,7 @@ SeawaterBuoyancy{Float64}:
 ### TEOS-10 equation of state
 
 A high-accuracy 55-term polynomial approximation to the TEOS-10 equation of state suitable for use in
-Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
+Boussinesq models as described by [Roquet15TEOS](@citet) is implemented in the
 [SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package and may be used.
 
 ```jldoctest buoyancy
@@ -226,7 +226,7 @@ To simulate gravitational accelerations that don't align with the vertical (`z`)
 we wrap the buoyancy model in
 `Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
 
-```jldoctest buoyancy; filter = r".*@ Oceananigans.BuoyancyModels.*"
+```jldoctest buoyancy
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
@@ -234,10 +234,6 @@ julia> g̃ = (0, sind(θ), cosd(θ));
 julia> model = NonhydrostaticModel(; grid, 
                                    buoyancy=Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃), 
                                    tracers=:b)
-┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
-│ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper

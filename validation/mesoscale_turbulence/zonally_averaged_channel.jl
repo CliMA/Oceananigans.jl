@@ -469,4 +469,4 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
              legend = :none)
 end
 
-mp4(anim, filename*".mp4", fps = 8) # hide
+mp4(anim, filename*".mp4", fps = 8) #hide

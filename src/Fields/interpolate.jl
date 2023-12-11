@@ -1,6 +1,10 @@
-using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid
-using Oceananigans.Grids: XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-using Oceananigans.Grids: xnodes, ynodes, znodes, topology
+using Oceananigans.Grids: topology, node,
+                          xspacings, yspacings, zspacings, λspacings, φspacings,
+                          XFlatGrid, YFlatGrid, ZFlatGrid,
+                          XRegularRG, YRegularRG, ZRegularRG,
+                          XRegularLLG, YRegularLLG, ZRegularLLG,
+                          ZRegOrthogonalSphericalShellGrid,
+                          RectilinearGrid, LatitudeLongitudeGrid
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -10,8 +14,8 @@ using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 
 Return indices `low, high` of `vec`tor for which 
 
-```
-vec[low] <= val && vec[high] >= val
+```julia
+vec[low] ≤ val && vec[high] ≥ val
 ```
 
 using a binary search. The input array `vec` has to be monotonically increasing.
@@ -36,63 +40,98 @@ Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/1
     return (low + 1, high + 1)
 end
 
-@inline function fractional_index(array_size::Int, val::FT, vec) where {FT}
+@inline function fractional_index(array_size::Int, val::FT, vec) where FT
     y₁, y₂ = index_binary_search(vec, val, array_size)
 
-    @inbounds x₂ = vec[y₂]
     @inbounds x₁ = vec[y₁]
+    @inbounds x₂ = vec[y₂]
 
     if y₁ == y₂
-        return FT(y₁)
+        return convert(FT, y₁)
     else
-        return FT((y₂ - y₁) / (x₂ - x₁) * (val - x₁) + y₁)
+        return convert(FT, (y₂ - y₁) / (x₂ - x₁) * (val - x₁) + y₁)
     end
 end
 
-####
-#### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-#### Use other methods if a more accurate interpolation is required
-####
+#####
+##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
+##### Use other methods if a more accurate interpolation is required
+#####
 
-@inline fractional_x_index(x::FT, ::Nothing, grid) where FT = one(FT)
-@inline fractional_y_index(y::FT, ::Nothing, grid) where FT = one(FT)
-@inline fractional_z_index(z::FT, ::Nothing, grid) where FT = one(FT)
+@inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
 
-@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 1)(), size(grid, 1)), x, xnodes(grid, Center()))
-@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 2)(), size(grid, 2)), y, ynodes(grid, Center()))
-@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center(), topology(grid, 3)(), size(grid, 3)), z, znodes(grid, Center()))
+@inline function fractional_x_index(x::FT, locs, grid::XRegularRG) where FT
+    x₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
+    Δx = xspacings(grid, locs...)
+    return convert(FT, (x - x₀) / Δx)
+end
 
-@inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face(), topology(grid, 1)(), size(grid, 1)), x, xnodes(grid, Face())) - 1
-@inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face(), topology(grid, 2)(), size(grid, 2)), y, ynodes(grid, Face())) - 1
-@inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face(), topology(grid, 3)(), size(grid, 3)), z, znodes(grid, Face())) - 1
+@inline function fractional_x_index(λ::FT, locs, grid::XRegularLLG) where FT
+    λ₀ = @inbounds node(1, 1, 1, grid, locs...)[1]
+    Δλ = λspacings(grid, locs...)
+    return convert(FT, (λ - λ₀) / Δλ)
+end
 
-@inline fractional_x_index(x::FT, ::Face,   grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
-@inline fractional_x_index(x::FT, ::Center, grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)
-@inline fractional_y_index(y::FT, ::Face,   grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ)
-@inline fractional_y_index(y::FT, ::Center, grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ)
+@inline function fractional_x_index(x, locs, grid)
+    loc = @inbounds locs[1]
+     Tx = topology(grid, 1)()
+      L = length(loc, Tx, grid.Nx)
+     xn = @inbounds nodes(grid, locs)[1]
+    return fractional_index(L, x, xn) - 1
+end
 
-@inline fractional_x_index(λ::FT, ::Face,   grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶠᵃᵃ[1]) / grid.Δλᶠᵃᵃ)
-@inline fractional_x_index(λ::FT, ::Center, grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶜᵃᵃ[1]) / grid.Δλᶜᵃᵃ)
-@inline fractional_y_index(φ::FT, ::Face,   grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶠᵃ[1]) / grid.Δφᵃᶠᵃ)
-@inline fractional_y_index(φ::FT, ::Center, grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶜᵃ[1]) / grid.Δφᵃᶜᵃ)
+@inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
-const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
+@inline function fractional_y_index(y::FT, locs, grid::YRegularRG) where FT
+    y₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
+    Δy = yspacings(grid, locs...)
+    return convert(FT, (y - y₀) / Δy)
+end
 
-@inline fractional_z_index(z, ::Face,   grid::ZReg) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
-@inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
+@inline function fractional_y_index(φ::FT, locs, grid::YRegularLLG) where FT
+    φ₀ = @inbounds node(1, 1, 1, grid, locs...)[2]
+    Δφ = φspacings(grid, locs...)
+    return convert(FT, (φ - φ₀) / Δφ)
+end
+
+@inline function fractional_y_index(y, locs, grid)
+    loc = @inbounds locs[2]
+     Ty = topology(grid, 2)()
+      L = length(loc, Ty, grid.Ny)
+     yn = nodes(grid, locs)[2]
+    return fractional_index(L, y, yn) - 1
+end
+
+@inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
+
+ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
+
+@inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
+    z₀ = @inbounds node(1, 1, 1, grid, locs...)[3]
+    Δz = zspacings(grid, locs...)
+    return convert(FT, (z - z₀) / Δz)
+end
+
+@inline function fractional_z_index(z, locs, grid)
+    loc = @inbounds locs[3]
+     Tz = topology(grid, 3)()
+      L = length(loc, Tz, grid.Nz)
+     zn = znodes(grid, loc)
+    return fractional_index(L, z, zn) - 1
+end
 
 """
     fractional_indices(x, y, z, loc, grid)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid located at `loc`
-where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
-grid points.
+Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
+located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
+floats indicating a location between grid points.
 """
-@inline function fractional_indices(x, y, z, loc, grid)
-    i = fractional_x_index(x, loc[1], grid)
-    j = fractional_y_index(y, loc[2], grid)
-    k = fractional_z_index(z, loc[3], grid)
-    
+@inline function fractional_indices(x, y, z, locs, grid)
+    i = fractional_x_index(x, locs, grid)
+    j = fractional_y_index(y, locs, grid)
+    k = fractional_z_index(z, locs, grid)
+
     return (i, j, k)
 end
 
@@ -143,7 +182,6 @@ the field is specified with `(LX, LY, LZ)` and the field is defined on `grid`.
 
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
-
 @inline function interpolate(field, LX, LY, LZ, grid, x, y, z)
     i, j, k = fractional_indices(x, y, z, (LX, LY, LZ), grid)
 

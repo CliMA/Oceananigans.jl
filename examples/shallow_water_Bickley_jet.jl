@@ -28,14 +28,13 @@ using Oceananigans.Models: ShallowWaterModel
 
 # ## Two-dimensional domain 
 #
-# The shallow water model is a two-dimensional model and thus the number of vertical
-# points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
+# The shallow water model is two-dimensional and uses grids that are `Flat`
+# in the vertical direction. We use length scales non-dimensionalized by the width
+# of the Bickley jet.
 
-Lx, Ly, Lz = 2π, 20, 10
-Nx, Ny = 128, 128
-
-grid = RectilinearGrid(size = (Nx, Ny),
-                       x = (0, Lx), y = (-Ly/2, Ly/2),
+grid = RectilinearGrid(size = (48, 128),
+                       x = (0, 2π),
+                       y = (-10, 10),
                        topology = (Periodic, Bounded, Flat))
 
 # ## Building a `ShallowWaterModel`
@@ -59,13 +58,14 @@ model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
 # geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum 
 # free-surface deformation of ``Δη``,
 
-U = 1 # Maximum jet velocity
+U = 1  # Maximum jet velocity
+H = 10 # Reference depth
 f = coriolis.f
 g = gravitational_acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
-h̄(x, y, z) = Lz - Δη * tanh(y)
-ū(x, y, z) = U * sech(y)^2
+h̄(x, y) = H - Δη * tanh(y)
+ū(x, y) = U * sech(y)^2
 
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
 # for the parameters we consider here, the growth rate for the most unstable mode that fits 
@@ -73,20 +73,20 @@ ū(x, y, z) = U * sech(y)^2
 
 # The vorticity of the background state is
 
-ω̄(x, y, z) = 2 * U * sech(y)^2 * tanh(y)
+ω̄(x, y) = 2 * U * sech(y)^2 * tanh(y)
 
 # The initial conditions include a small-amplitude perturbation that decays away from the 
 # center of the jet.
 
 small_amplitude = 1e-4
  
- uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
-uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
+ uⁱ(x, y) = ū(x, y) + small_amplitude * exp(-y^2) * randn()
+uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 # We first set a "clean" initial condition without noise for the purpose of discretely
 # calculating the initial 'mean' vorticity,
 
-ū̄h(x, y, z) = ū(x, y, z) * h̄(x, y, z)
+ū̄h(x, y) = ū(x, y) * h̄(x, y)
 
 set!(model, uh = ū̄h, h = h̄)
 
@@ -116,10 +116,10 @@ set!(model, uh = uhⁱ)
 # ## Running a `Simulation`
 #
 # We pick the time-step so that we make sure we resolve the surface gravity waves, which 
-# propagate with speed of the order ``\sqrt{g L_z}``. That is, with `Δt = 1e-2` we ensure 
-# that `` \sqrt{g L_z} Δt / Δx,  \sqrt{g L_z} Δt / Δy < 0.7``.
+# propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure 
+# that `` \sqrt{g H} Δt / Δx,  \sqrt{g H} Δt / Δy < 0.7``.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 100)
 
 # ## Prepare output files
 #
@@ -136,7 +136,7 @@ perturbation_norm(args...) = norm(v)
 fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
                                                         filename = fields_filename,
-                                                        schedule = TimeInterval(1),
+                                                        schedule = TimeInterval(2),
                                                         overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
@@ -158,23 +158,19 @@ run!(simulation)
 # Load required packages to read output and plot.
 
 using NCDatasets, Printf, CairoMakie
-nothing # hide
+nothing #hide
 
 # Define the coordinates for plotting.
 
 x, y = xnodes(ω), ynodes(ω)
-nothing # hide
+nothing #hide
 
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
 
 fig = Figure(resolution = (1200, 660))
 
-axis_kwargs = (xlabel = "x",
-               ylabel = "y",
-               aspect = AxisAspect(1),
-               limits = ((0, Lx), (-Ly/2, Ly/2)))
-
+axis_kwargs = (xlabel = "x", ylabel = "y")
 ax_ω  = Axis(fig[2, 1]; title = "Total vorticity, ω", axis_kwargs...)
 ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwargs...)
 
@@ -195,7 +191,7 @@ Colorbar(fig[2, 4], hm_ω′)
 title = @lift @sprintf("t = %.1f", times[$n])
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -203,8 +199,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
@@ -223,14 +217,14 @@ ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 norm_v = ds2["perturbation_norm"][:]
 
 close(ds2)
-nothing # hide
+nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
 
 using Polynomials: fit
 
-I = 6000:7000
+I = 5000:6000
 
 degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
@@ -260,7 +254,7 @@ lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visua
 
 axislegend(position = :rb)
 
-current_figure() # hide
+current_figure() #hide
 
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.

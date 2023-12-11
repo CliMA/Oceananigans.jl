@@ -65,7 +65,7 @@ lines(zspacings(grid, Center()), znodes(grid, Center()),
 
 scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
-current_figure() # hide
+current_figure() #hide
 
 # ## Tilting the domain
 #
@@ -84,12 +84,12 @@ ĝ = [sind(θ), 0, cosd(θ)]
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
-# where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
+# where we have used a constant Coriolis parameter ``$f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
 
-@inline constant_stratification(x, y, z, t, p) = p.N² * (x * p.ĝ[1] + z * p.ĝ[3])
+@inline constant_stratification(x, z, t, p) = p.N² * (x * p.ĝ[1] + z * p.ĝ[3])
 
 # is _not_ periodic in ``x``. Thus we cannot explicitly model a constant stratification
 # on an ``x``-periodic grid such as the one used here. Instead, we simulate periodic
@@ -112,8 +112,8 @@ z₀ = 0.1 # m (roughness length)
 z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
-@inline drag_u(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
-@inline drag_v(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
+@inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
+@inline drag_v(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
 
 drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
 drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
@@ -125,7 +125,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
+# and a constant viscosity and diffusivity. Here we use a smallish value
+# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
 closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
@@ -139,7 +140,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
 # Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
 # turbulence:
 
-noise(x, y, z) = 1e-3 * randn() * exp(-(10z)^2/grid.Lz^2)
+noise(x, z) = 1e-3 * randn() * exp(-(10z)^2 / grid.Lz^2)
 set!(model, u=noise, w=noise)
 
 # ## Create and run a simulation
@@ -232,7 +233,7 @@ times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -240,8 +241,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide

@@ -42,8 +42,8 @@ coriolis = FPlane(f=0.2)
 ## Background fields are functions of `x, y, z, t`, and optional parameters.
 ## Here we have one parameter, the buoyancy frequency
 
-N = 1 ## buoyancy frequency
-B_func(x, y, z, t, N) = N^2 * z
+N = 1       # buoyancy frequency [s⁻¹]
+B_func(x, z, t, N) = N^2 * z
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
@@ -66,7 +66,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
-# p(x, y, z, t) = a(x, z) \, \cos(kx + mz - ω t) \, .
+# p(x, z, t) = a(x, z) \, \cos(k x + m z - ω t) \, .
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
@@ -74,7 +74,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
 # the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
 
-## Non-dimensional internal wave parameters
+# Non-dimensional internal wave parameters
 m = 16      # vertical wavenumber
 k = 8       # horizontal wavenumber
 f = coriolis.f
@@ -83,7 +83,7 @@ f = coriolis.f
 ω² = (N^2 * k^2 + f^2 * m^2) / (k^2 + m^2)
 
 ω = sqrt(ω²)
-nothing # hide
+nothing #hide
 
 # We define a Gaussian envelope for the wave packet so that we can
 # observe wave propagation.
@@ -92,9 +92,9 @@ nothing # hide
 gaussian_amplitude = 1e-9
 gaussian_width = grid.Lx / 15
 
-## A Gaussian envelope centered at ``(x, z) = (0, 0)``.
+## A Gaussian envelope centered at `(x, z) = (0, 0)`
 a(x, z) = gaussian_amplitude * exp( -( x^2 + z^2 ) / 2gaussian_width^2 )
-nothing # hide
+nothing #hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
 # In order that our initial condition excites an inertia-gravity wave, we
@@ -103,10 +103,10 @@ nothing # hide
 # These relations are sometimes called the "polarization
 # relations". At ``t=0``, the polarization relations yield
 
-u₀(x, y, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k*x + m*z)
-v₀(x, y, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k*x + m*z)
-w₀(x, y, z) = a(x, z) * m * ω   / (ω^2 - N^2) * cos(k*x + m*z)
-b₀(x, y, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k*x + m*z)
+u₀(x, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k * x + m * z)
+v₀(x, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k * x + m * z)
+w₀(x, z) = a(x, z) * m * ω   / (ω^2 - N^2) * cos(k * x + m * z)
+b₀(x, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k * x + m * z)
 
 set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -158,7 +158,7 @@ x, y, z = nodes(w_timeseries)
 w = @lift interior(w_timeseries[$n], :, 1, :)
 w_lim = 1e-8
 
-contourf!(ax, x, z, w; 
+contourf!(ax, x, z, w;
           levels = range(-w_lim, stop=w_lim, length=10),
           colormap = :balance,
           colorrange = (-w_lim, w_lim),
@@ -176,8 +176,6 @@ frames = 1:length(w_timeseries.times)
 @info "Animating a propagating internal wave..."
 
 record(fig, "internal_wave.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide
