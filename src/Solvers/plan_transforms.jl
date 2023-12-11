@@ -11,7 +11,7 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid, regular_dimensions, stretched_dimensions
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, regular_dimensions, stretched_dimensions
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
@@ -75,7 +75,7 @@ backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2
 backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
 
 " Used by FFTBasedPoissonSolver "
-function plan_transforms(grid::RegRectilinearGrid, storage, planner_flag)
+function plan_transforms(grid::XYZRegularRG, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
@@ -147,7 +147,7 @@ end
 
 
 """ Used by FourierTridiagonalPoissonSolver. """
-function plan_transforms(grid::Union{XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid}, storage, planner_flag)
+function plan_transforms(grid::Union{XYRegularRG, XZRegularRG, YZRegularRG}, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
 

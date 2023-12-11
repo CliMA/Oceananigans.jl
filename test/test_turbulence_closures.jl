@@ -108,6 +108,20 @@ function time_step_with_variable_isotropic_diffusivity(arch)
     return true
 end
 
+function time_step_with_field_isotropic_diffusivity(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+
+    ν = CenterField(grid)
+    κ = CenterField(grid)
+
+    closure = ScalarDiffusivity(; ν, κ)
+
+    model = NonhydrostaticModel(; grid, closure)
+
+    time_step!(model, 1, euler=true)
+    return true
+end
+
 function time_step_with_variable_anisotropic_diffusivity(arch)
     clov = VerticalScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                      κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
@@ -249,6 +263,7 @@ end
         @info "  Testing time-stepping with presribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
+            @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
         end

@@ -27,7 +27,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
     agents:
-      slurm_mem: 80G
+      slurm_mem: 120G
       slurm_gpus: 1
       slurm_cpus_per_task: 8
     env:
@@ -43,6 +43,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🐲 gpu distributed unit tests"
@@ -52,6 +53,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
 
@@ -62,6 +64,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🤺 cpu distributed hydrostatic model tests"
@@ -71,6 +74,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🕺 gpu distributed hydrostatic model tests"
@@ -80,6 +84,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     

@@ -43,7 +43,7 @@ function interior_tendency_kernel_parameters(grid, arch)
     Sy = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
     Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    Oy = Ry == 1 || Tx == RightConnected ? 0 : Hy
+    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
     return KernelParameters((Sx, Sy, Nz), (Ox, Oy, 0))
 end

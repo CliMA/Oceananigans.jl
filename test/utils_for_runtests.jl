@@ -6,7 +6,7 @@ using Test
 using Printf
 using Test
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
-using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture
+using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
 using MPI
 
 import Oceananigans.Fields: interior
@@ -18,11 +18,12 @@ function test_architectures()
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 4, y = 4)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return tuple(Distributed(child_arch; partition = Partition(4)))
-               # TODO: add support for Y partitioning and 2D partitioning 
-               # Should work but tests are failing for some reason
-               # Distributed(child_arch; partition = Partition(1, 4)))
-               # Distributed(child_arch; partition = Partition(2, 2)))
+        return (Distributed(child_arch; partition = Partition(4)),
+                Distributed(child_arch; partition = Partition(1, 4)),
+                Distributed(child_arch; partition = Partition(2, 2)),
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
     else
         return tuple(child_arch)
     end
