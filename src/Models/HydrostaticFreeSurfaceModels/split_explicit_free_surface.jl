@@ -120,7 +120,7 @@ Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
 end
 
 """
-    SplitExplicitState(grid)
+    SplitExplicitState(grid, timestepper)
 
 Return the split-explicit state for `grid`.
 

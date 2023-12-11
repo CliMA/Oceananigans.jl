@@ -75,7 +75,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
 
         return SplitExplicitFreeSurface(η,
-                                        SplitExplicitState(new_grid),
+                                        SplitExplicitState(new_grid, settings.timestepper),
                                         SplitExplicitAuxiliaryFields(new_grid),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)
