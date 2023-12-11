@@ -137,51 +137,54 @@ end
 using Oceananigans.DistributedComputations: Distributed
 using Printf
 
-@kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
+@kernel function _split_explicit_free_surface!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
     i, j = @index(Global, NTuple)
-    free_surface_evolution!(i, j, grid, Δτ, η, U, V, timestepper)
+    free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
 end
 
-@inline function free_surface_evolution!(i, j, grid, Δτ, η, U, V, timestepper)
+@inline function free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
     k_top = grid.Nz+1
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
         advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
-        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, 0, 0) +
-                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, 0, 0))                        
+        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))                        
     end
 
     return nothing
 end
 
-@kernel function _split_explicit_barotropic_velocity!(grid, Δτ, η, U, V,
+@kernel function _split_explicit_barotropic_velocity!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                                                      U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                                       η̅, U̅, V̅, averaging_weight,
                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                       timestepper)
     i, j = @index(Global, NTuple)
-    velocity_evolution!(i, j, grid, Δτ, η, U, V, 
+    velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                        U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                         η̅, U̅, V̅, averaging_weight,
                         Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                         timestepper)
 end
 
-@inline function velocity_evolution!(i, j, grid, Δτ, η, U, V, 
+@inline function velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                                     U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                      η̅, U̅, V̅, averaging_weight,
                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                     timestepper )
+                                     timestepper)
     k_top = grid.Nz+1
     
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
-        # advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
-        # advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
+        advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
+        advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
-        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ[i, j, k_top-1] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, 0, 0, 0) + Gᵁ[i, j, k_top-1])
-        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ[i, j, k_top-1] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, 0, 0, 0) + Gⱽ[i, j, k_top-1])
+        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ[i, j, k_top-1] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
+        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ[i, j, k_top-1] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
                           
         # time-averaging
         η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
@@ -370,9 +373,10 @@ function iterate_split_explicit!(free_surface::FixedSubstepsSplitExplicit{N}, gr
 
         averaging_weight = weights[substep]
 
-        free_surface_kernel!(grid, Δτᴮ, η, U, V, timestepper)
+        free_surface_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
                              
-        barotropic_velocity_kernel!(grid, Δτᴮ, η, U, V,
+        barotropic_velocity_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                                    U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                     η̅, U̅, V̅, averaging_weight,
                                     Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                     timestepper)
@@ -417,9 +421,10 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
         averaging_weight = weights[substep]
 
-        free_surface_kernel!(grid, Δτᴮ, η, U, V, timestepper)
+        free_surface_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
                              
-        barotropic_velocity_kernel!(grid, Δτᴮ, η, U, V,
+        barotropic_velocity_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                                    U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                     η̅, U̅, V̅, averaging_weight,
                                     Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                     timestepper)

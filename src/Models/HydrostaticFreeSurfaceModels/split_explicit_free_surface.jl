@@ -79,7 +79,7 @@ SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
+    return SplitExplicitFreeSurface(η, SplitExplicitState(grid, free_surface.settings.timestepper),
                                     SplitExplicitAuxiliaryFields(grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)
@@ -128,24 +128,23 @@ Note that `η̅` is solely used for setting the `η` at the next substep iterati
 acts as a filter for `η`. Values with superscripts `m-1` and `m-2` correspond to previous stored
 time steps to allow using a higher-order time stepping scheme, e.g., `AdamsBashforth3Scheme`.
 """
-function SplitExplicitState(grid::AbstractGrid)
+function SplitExplicitState(grid::AbstractGrid, timestepper)
     η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
-    ηᵐ   = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-    ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-    ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    ηᵐ   = auxiliary_free_surface_field(grid, timestepper)
+    ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
+    ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
           
     U    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
     V    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
 
-    Uᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    Vᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(grid, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(grid, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_velocity_field(grid, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_velocity_field(grid, timestepper)
           
-    Uᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    Vᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-          
-    U̅    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    V̅    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    U̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    V̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
@@ -220,6 +219,13 @@ end
 
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
+
+
+auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
+
+auxiliary_barotropic_velocity_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_velocity_field(grid, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT 
