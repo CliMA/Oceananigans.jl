@@ -22,6 +22,8 @@ import Oceananigans.BoundaryConditions:
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
+using NVTX
+
 #####
 ##### MPI tags for halo communication BCs
 #####
@@ -104,7 +106,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     number_of_tasks = length(fill_halos!)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
+        NVTX.@range "fill_halo_event" begin
+            fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
+        end
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -187,15 +191,21 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
 
     buffer_side = communication_side(Val(fill_halos!))
 
-    if !only_local_halos # Then we need to fill the `send` buffers
-        fill_send_buffers!(c, buffers, grid, Val(buffer_side))
+    NVTX.@range "fill_send_halo" begin
+        if !only_local_halos # Then we need to fill the `send` buffers
+            fill_send_buffers!(c, buffers, grid, Val(buffer_side))
+        end
     end
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
     # south and north boundaries and bottom and top boundaries
-    size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
-    offset = fill_halo_offset(size, fill_halos!, indices)
+    NVTX.@range "fill_halo_size" begin
+        size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
+    end
+    NVTX.@range "fill_halo_offsets" begin
+        offset = fill_halo_offset(size, fill_halos!, indices)
+    end
 
     requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
