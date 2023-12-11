@@ -89,9 +89,8 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameter
                 Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, scaling, grid.Nz)
     end
 
-    fill_halo_regions!(Δzᵃᵃᶠ; only_local_halos = true)
-    fill_halo_regions!(Δzᵃᵃᶜ; only_local_halos = true)
-
+    fill_halo_regions!((Δzᵃᵃᶠ, Δzᵃᵃᶜ); only_local_halos = true)
+    
     return nothing
 end
 
