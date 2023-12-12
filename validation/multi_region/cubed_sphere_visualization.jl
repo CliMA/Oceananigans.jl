@@ -138,16 +138,22 @@ function specify_colorrange_MITgcm(φ, use_symmetric_colorrange = true)
 
 end
 
-function specify_colorrange(grid, φ, use_symmetric_colorrange = true)
+function specify_colorrange(grid, φ, use_symmetric_colorrange = true, ssh = false)
 
     Nx = grid.Nx
     Ny = grid.Ny
     Nz = grid.Nz
     
-    φ_array = zeros(Nx, Ny, Nz, 6)
+    if ssh
+        φ_array = zeros(Nx, Ny, 1, 6)
+        φ_array_vertical_dimension_limits = Nz+1:Nz+1
+    else
+        φ_array = zeros(Nx, Ny, Nz, 6)
+        φ_array_vertical_dimension_limits = 1:Nz
+    end
     
     for region in 1:6
-        φ_array[:, :, :, region] = φ[region].data[1:Nx, 1:Ny, 1:Nz]
+        φ_array[:, :, :, region] = φ[region].data[1:Nx, 1:Ny, φ_array_vertical_dimension_limits]
     end
     
     φ_maximum = maximum(φ_array)
@@ -164,18 +170,26 @@ function specify_colorrange(grid, φ, use_symmetric_colorrange = true)
 
 end
 
-function specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange = true)
+function specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange = true, ssh = false)
 
     Nx = grid.Nx
     Ny = grid.Ny
     Nz = grid.Nz
     
     n = size(φ_series)[1]
-    φ_series_array = zeros(Nx, Ny, Nz, n)
+    
+    if ssh
+        φ_series_array = zeros(Nx, Ny, 1, 6, n)
+        φ_series_array_vertical_dimension_limits = Nz+1:Nz+1
+    else
+        φ_series_array = zeros(Nx, Ny, Nz, 6, n)
+        φ_series_array_vertical_dimension_limits = 1:Nz
+    end
     
     for i in 1:n
         for region in 1:6
-            φ_series_array[:, :, :, i] = φ_series[i][region].data[1:Nx, 1:Ny, 1:Nz]
+            φ_series_array[:, :, :, region, i] = φ_series[i][region].data[1:Nx, 1:Ny, 
+                                                                          φ_series_array_vertical_dimension_limits]
         end
     end
     
@@ -236,14 +250,14 @@ function panel_wise_visualization_MITgcm(x, y, field, use_symmetric_colorrange)
     
 end
 
-function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_colorrange = true)
+function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_colorrange = true, ssh = false)
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange)
+    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -277,7 +291,7 @@ function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_c
     return fig
 end
 
-function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange = true)
+function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange = true, ssh = false)
     fig = Figure(resolution = (2450, 1400))
     
     Nx = grid.Nx
@@ -287,7 +301,7 @@ function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange =
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange)
+    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -295,7 +309,7 @@ function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange =
     end
     
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, getregion(field, 1).data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[1:Nx, 1:Ny, k]); colorrange, colormap)
     Colorbar(fig[3, 2], hm_1)
 
     ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
@@ -461,11 +475,11 @@ function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, start
 end
 
 function create_panel_wise_visualization_animation_with_halos(grid, φ_series, start_index, use_symmetric_colorrange, 
-                                                              framerate, filename, k=1)
+                                                              framerate, filename, k=1, ssh = false)
 
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange(grid, φ_series, use_symmetric_colorrange)
+    colorrange = specify_colorrange(grid, φ_series, use_symmetric_colorrange, ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -475,8 +489,8 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, s
     # Create the initial visualization.
     fig = Figure(resolution = (2450, 1400))
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-    xlabel = "Local x direction", ylabel = "Local y direction")
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(φ_series[start_index][1].data[:, :, k]); colorrange, colormap)
@@ -533,15 +547,15 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, s
 
 end
 
-function create_panel_wise_visualization_animation(grid, φ_series, start_index, use_symmetric_colorrange, 
-                                                   framerate, filename, k=1)
+function create_panel_wise_visualization_animation(grid, φ_series, start_index, use_symmetric_colorrange, framerate, 
+                                                   filename, k=1)
     
     Nx = grid.Nx
     Ny = grid.Ny
     
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange)
+    colorrange = specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange, ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -551,8 +565,8 @@ function create_panel_wise_visualization_animation(grid, φ_series, start_index,
     # Create the initial visualization.
     fig = Figure(resolution = (2450, 1400))
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-    xlabel = "Local x direction", ylabel = "Local y direction")
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, φ_series[start_index][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)

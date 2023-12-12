@@ -124,30 +124,49 @@ using KernelAbstractions: @kernel, @index
 @kernel function _compute_vorticity!(ζ, grid, u, v)
     i, j, k = @index(Global, NTuple)
     @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-    #=
-    Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos. 
-    Additionally, the vorticity values along the boundaries are significantly higher compared to those within the 
-    domain's interior.  These issues likely contribute to the instability in the solution. 
-    By replacing the line
-    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-    with
-    @inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
-    we observe that all points are populated with finite values, effectively eliminating the appearance of NANs. 
-    Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing 
-    erroneous results.
-    =#
 end
 
+#=
+Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos. 
+Additionally, the vorticity values along the boundaries are significantly higher compared to those within the domain's 
+interior. These issues likely contribute to the instability in the solution. By replacing the line
+@inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+with
+@inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
+we observe that all points are populated with finite values, effectively eliminating the appearance of NANs. 
+Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing 
+erroneous results.
+=#
+
 offset = -1 .* halo_size(grid)
+
 @apply_regionally begin
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-fig = panel_wise_visualization(grid, ζ)
-save("ζ₀.png", fig)
+# Plot the initial velocity field before model definition.
 
-#=
+fig = panel_wise_visualization_with_halos(grid, u)
+save("u₀₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u)
+save("u₀₀.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v)
+save("v₀₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v)
+save("v₀₀.png", fig)
+
+# Plot the initial vorticity field before model definition.
+
+fig = panel_wise_visualization_with_halos(grid, ζ)
+save("ζ₀₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, ζ)
+save("ζ₀₀.png", fig)
+
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
@@ -164,18 +183,20 @@ for region in 1:number_of_regions(grid)
     model.velocities.v[region] .= v[region]
     =#
     
-    for j in 1-Hy:grid.Ny+Hy-1, i in 1-Hx:grid.Nx+Hx-1, k in 1:grid.Nz
+    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
         model.velocities.u[region][i,j,k] = u[region][i, j, k]
         model.velocities.v[region][i,j,k] = v[region][i, j, k]
     end
     
-    #=
     for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
         f = 2 * Ω * sind(φ)
         model.free_surface.η[region][i, j, k] = fac * f^2
     end
-    =#
+end
+
+for passes in 1:3
+    fill_halo_regions!(model.free_surface.η)
 end
 
 Δt = 1200
@@ -206,11 +227,6 @@ fill_velocity_halos!(simulation.model.velocities)
 ζ_fields = Field[]
 Δζ_fields = Field[]
 
-@kernel function _compute_vorticity!(ζ, grid, u, v)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-end
-
 @apply_regionally begin
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
@@ -219,6 +235,36 @@ end
 u₀ = deepcopy(simulation.model.velocities.u)
 v₀ = deepcopy(simulation.model.velocities.v)
 ζ₀ = deepcopy(ζ) 
+
+# Plot the initial velocity field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, u₀)
+save("u₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u₀)
+save("u₀.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v₀)
+save("v₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v₀)
+save("v₀.png", fig)
+
+# Plot the initial surface elevation field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, simulation.model.free_surface.η, grid.Nz+1, true, true)
+save("η₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, simulation.model.free_surface.η, grid.Nz+1, true, true)
+save("η₀.png", fig)
+
+# Plot the initial vorticity field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, ζ₀)
+save("ζ₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, ζ₀)
+save("ζ₀.png", fig)
 
 #=
 function save_vorticity(sim)
@@ -252,29 +298,6 @@ simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_i
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
-=#
-
-# Plot the initial velocity field.
-
-fig = panel_wise_visualization_with_halos(grid, u₀)
-save("u₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, u₀)
-save("u₀.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, v₀)
-save("v₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, v₀)
-save("v₀.png", fig)
-
-# Plot the initial vorticity field.
-
-fig = panel_wise_visualization_with_halos(grid, ζ₀)
-save("ζ₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ζ₀)
-save("ζ₀.png", fig)
 =#
 
 #=
