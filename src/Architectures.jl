@@ -10,7 +10,7 @@ using Adapt
 using OffsetArrays
 using NVTX
 
-NVTX.@annotate "cudaconvert function" function KernelAbstractions.argconvert(k::KernelAbstractions.Kernel{CUDAl.CUDABackend}, arg) 
+NVTX.@annotate "cudaconvert function" function KernelAbstractions.argconvert(k::KernelAbstractions.Kernel{CUDA.CUDABackend}, arg) 
     CUDA.cudaconvert(arg)
 end
 
