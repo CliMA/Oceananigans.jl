@@ -36,9 +36,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
-    NVTX.@range "fill_halo_regions!" begin
-        fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    end
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
     
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)

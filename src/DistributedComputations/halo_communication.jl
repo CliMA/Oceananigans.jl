@@ -106,9 +106,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     number_of_tasks = length(fill_halos!)
 
     for task = 1:number_of_tasks
-        NVTX.@range "fill_halo_event" begin
-            fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
-        end
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -191,29 +189,19 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
 
     buffer_side = communication_side(Val(fill_halos!))
 
-    NVTX.@range "fill_send_halo" begin
-        if !only_local_halos # Then we need to fill the `send` buffers
-            fill_send_buffers!(c, buffers, grid, Val(buffer_side))
-        end
+    if !only_local_halos # Then we need to fill the `send` buffers
+        fill_send_buffers!(c, buffers, grid, Val(buffer_side))
     end
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
     # south and north boundaries and bottom and top boundaries
-    NVTX.@range "fill_halo_size" begin
-        size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
-    end
-    NVTX.@range "fill_halo_offsets" begin
-        offset = fill_halo_offset(size, fill_halos!, indices)
-    end
+    size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
+    offset = fill_halo_offset(size, fill_halos!, indices)
 
-    NVTX.@range "actual fill_halos!" begin
-        requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
-    end
+    requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
-    NVTX.@range "pool_request" begin
-        pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
-    end
+    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     
     return nothing
 end
