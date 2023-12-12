@@ -11,6 +11,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
 using CairoMakie
@@ -102,7 +103,7 @@ u = XFaceField(grid)
 v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
-    for j in 1-Hy:grid.Ny+Hy-1, i in 1-Hx:grid.Nx+Hx-1, k in 1:grid.Nz
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
         #=
@@ -111,6 +112,8 @@ for region in 1:number_of_regions(grid)
         =#
     end
 end
+
+fill_velocity_halos!((; u, v, w = nothing))
 
 # Now, compute the vorticity.
 using Oceananigans.Utils
@@ -141,6 +144,10 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
+fig = panel_wise_visualization(grid, ζ)
+save("ζ₀.png", fig)
+
+#=
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
@@ -268,6 +275,7 @@ save("ζ₀_with_halos.png", fig)
 
 fig = panel_wise_visualization(grid, ζ₀)
 save("ζ₀.png", fig)
+=#
 
 #=
 fig = panel_wise_visualization(grid, Δζ_fields[end])
