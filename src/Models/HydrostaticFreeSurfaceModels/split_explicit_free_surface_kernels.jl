@@ -230,12 +230,23 @@ compute_barotropic_mode!(U, V, grid, u, v) =
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
             only_active_cells = use_only_active_surface_cells(grid))
 
-function initialize_free_surface_state!(free_surface_state, η)
-    state = free_surface_state
+function initialize_free_surface_state!(state, η, timestepper)
 
     parent(state.U) .= parent(state.U̅)
     parent(state.V) .= parent(state.V̅)
 
+    initialize_auxiliary_state!(state, η, timestepper)
+
+    fill!(state.η̅, 0)
+    fill!(state.U̅, 0)
+    fill!(state.V̅, 0)
+
+    return nothing
+end
+
+initialize_auxiliary_state!(state, η, ::ForwardBackwardScheme) = nothing
+
+function initialize_auxiliary_state!(state, η, timestepper)
     parent(state.Uᵐ⁻¹) .= parent(state.U̅)
     parent(state.Vᵐ⁻¹) .= parent(state.V̅)
 
@@ -245,10 +256,6 @@ function initialize_free_surface_state!(free_surface_state, η)
     parent(state.ηᵐ)   .= parent(η)
     parent(state.ηᵐ⁻¹) .= parent(η)
     parent(state.ηᵐ⁻²) .= parent(η)
-
-    fill!(state.η̅, 0)
-    fill!(state.U̅, 0)
-    fill!(state.V̅, 0)
 
     return nothing
 end
@@ -302,7 +309,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     @apply_regionally begin 
-        initialize_free_surface_state!(free_surface.state, free_surface.η)
+        initialize_free_surface_state!(free_surface.state, free_surface.η, free_surface.settings.timestepper)
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δt)
         # Reset eta for the next timestep
@@ -373,9 +380,9 @@ function iterate_split_explicit!(free_surface::FixedSubstepsSplitExplicit{N}, gr
 
         averaging_weight = weights[substep]
 
-        free_surface_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
                              
-        barotropic_velocity_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                     U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                     η̅, U̅, V̅, averaging_weight,
                                     Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
@@ -421,9 +428,9 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
         averaging_weight = weights[substep]
 
-        free_surface_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
                              
-        barotropic_velocity_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                     U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
                                     η̅, U̅, V̅, averaging_weight,
                                     Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
