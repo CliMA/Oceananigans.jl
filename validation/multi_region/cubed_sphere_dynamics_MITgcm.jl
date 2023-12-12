@@ -145,27 +145,31 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-# Plot the initial velocity field before model definition.
+plot_initial_condition_before_model_definition = false
 
-fig = panel_wise_visualization_with_halos(grid, u)
-save("u₀₀_with_halos.png", fig)
+if plot_initial_condition_before_model_definition
+    # Plot the initial velocity field before model definition.
 
-fig = panel_wise_visualization(grid, u)
-save("u₀₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, u)
+    save("u₀₀_with_halos.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, v)
-save("v₀₀_with_halos.png", fig)
+    fig = panel_wise_visualization(grid, u)
+    save("u₀₀.png", fig)
 
-fig = panel_wise_visualization(grid, v)
-save("v₀₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, v)
+    save("v₀₀_with_halos.png", fig)
 
-# Plot the initial vorticity field before model definition.
+    fig = panel_wise_visualization(grid, v)
+    save("v₀₀.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, ζ)
-save("ζ₀₀_with_halos.png", fig)
+    # Plot the initial vorticity field before model definition.
 
-fig = panel_wise_visualization(grid, ζ)
-save("ζ₀₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, ζ)
+    save("ζ₀₀_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, ζ)
+    save("ζ₀₀.png", fig)
+end
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
@@ -266,7 +270,6 @@ save("ζ₀_with_halos.png", fig)
 fig = panel_wise_visualization(grid, ζ₀)
 save("ζ₀.png", fig)
 
-#=
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -275,6 +278,7 @@ function save_vorticity(sim)
     u, v, _ = sim.model.velocities
     
     offset = -1 .* halo_size(grid)
+    
     @apply_regionally begin
         params = KernelParameters(total_size(ζ[1]), offset)
         launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
@@ -298,7 +302,6 @@ simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_i
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
-=#
 
 #=
 fig = panel_wise_visualization(grid, Δζ_fields[end])
