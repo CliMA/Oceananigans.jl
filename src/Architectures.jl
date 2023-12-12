@@ -14,6 +14,14 @@ NVTX.@annotate "cudaconvert function" function KernelAbstractions.argconvert(k::
     CUDA.cudaconvert(arg)
 end
 
+import CUDA: cudaconvert
+
+NVTX.@annotate "cudaconvert function" function CUDA.cudaconvert(arg) 
+    NVTX.@range "inside convert function" begin
+        Adapt.adapt(CUDA.KernelAdaptor(), arg)
+    end
+end
+
 """
     AbstractArchitecture
 
