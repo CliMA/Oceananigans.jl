@@ -477,8 +477,6 @@ end
 # Setting up the RHS for the barotropic step (tendencies of the barotopic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
-
-    free_surface_grid = free_surface.η.grid
     
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
@@ -488,7 +486,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     
     auxiliary = free_surface.auxiliary
 
-    @apply_regionally setup_split_explicit_tendency!(auxiliary, free_surface_grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    @apply_regionally setup_split_explicit_tendency!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
     fill_halo_regions!(fields_to_fill; async = true)
