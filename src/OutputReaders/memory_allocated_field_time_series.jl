@@ -81,9 +81,16 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
     return nothing
 end
 
+const MAX_FTS_TUPLE_SIZE = 10
+
 function fill_halo_regions!(fts::InMemoryFieldTimeSeries)
-    ti = time_indices(fts)
-    fts_tuple = Tuple(fts[n] for n in ti)
-    return fill_halo_regions!(fts_tuple)
+    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
+
+    for indices in partitioned_indices
+        fts_tuple = Tuple(fts[n] for n in indices)
+        fill_halo_regions!(fts_tuple)
+    end
+
+    return nothing
 end
 
