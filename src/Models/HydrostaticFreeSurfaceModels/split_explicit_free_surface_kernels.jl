@@ -410,7 +410,7 @@ end
 
 convert_args(::CPU, arg) = args
 convert_args(::GPU, arg) = cudaconvert(arg)
-convert_args(::GPU, arg::Tuple) = map(cudaconvert, args)
+convert_args(::GPU, arg::Tuple) = map(cudaconvert, arg)
 
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
