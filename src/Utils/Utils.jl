@@ -42,4 +42,46 @@ include("multi_region_transformation.jl")
 include("coordinate_transformations.jl")
 include("sum_of_arrays.jl")
 
+
+#####
+##### Add Dynamic kernels to KA
+#####
+
+using KernelAbstractions
+using CUDA: CUDABackend, @cuda
+
+const KA = KernelAbstractions
+
+(obj::KA.Kernel)(args...; ndrange=nothing, workgroupsize=nothing, dynamic_launch=false) = 
+        obj(args...; ndrange, workgroupsize)
+
+function (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=nothing, dynamic_launch=false)
+    backend = KA.backend(obj)
+
+    ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, ndrange, workgroupsize)
+    # this might not be the final context, since we may tune the workgroupsize
+    ctx = KA.mkcontext(obj, ndrange, iterspace)
+
+    maxthreads = prod(KA.get(KA.workgroupsize(obj)))
+
+    kernel = if dynamic_launch
+        @cuda launch=false dynamic=true obj.f(ctx, args...)
+    else
+        @cuda launch=false always_inline=backend.always_inline maxthreads=maxthreads obj.f(ctx, args...)
+    end
+
+    blocks = length(KA.blocks(iterspace))
+    threads = length(KA.workitems(iterspace))
+
+    if blocks == 0
+        return nothing
+    end
+
+    # Launch kernel
+    kernel(ctx, args...; threads, blocks)
+
+    return nothing
+end
+
+
 end # module
