@@ -279,3 +279,37 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
+#####
+##### Add Dynamic kernels to KA
+#####
+
+using KernelAbstractions
+using CUDA: CUDABackend
+
+const KA = KernelAbstractions
+
+function (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=nothing, dynamic_launch=false)
+    backend = KA.backend(obj)
+
+    ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, ndrange, workgroupsize)
+    # this might not be the final context, since we may tune the workgroupsize
+    ctx = KA.mkcontext(obj, ndrange, iterspace)
+
+    maxthreads = prod(KA.get(KA.workgroupsize(obj)))
+
+    kernel = @cuda launch=false always_inline=backend.always_inline maxthreads=maxthreads dynamic=dynamic_launch obj.f(ctx, args...)
+
+    blocks = length(KA.blocks(iterspace))
+    threads = length(KA.workitems(iterspace))
+
+    if blocks == 0
+        return nothing
+    end
+
+    # Launch kernel
+    kernel(ctx, args...; threads, blocks)
+
+    return nothing
+end
+
+
