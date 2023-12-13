@@ -235,7 +235,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     end
     
     # Calculate fractional index
-    @inbounds n = (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
+    n = @inbounds (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
 
     # Make a Field representing a linear interpolation in time
     time_interpolated_field = Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n))
