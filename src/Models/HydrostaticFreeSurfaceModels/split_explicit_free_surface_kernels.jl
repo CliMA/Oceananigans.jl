@@ -413,7 +413,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
             timestepper, 
             free_surface_kernel!,
             barotropic_velocity_kernel!, 
-            Val(N))
+            Val(Nsubsteps))
 
     return nothing
 end
