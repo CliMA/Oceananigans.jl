@@ -84,9 +84,11 @@ end
 const MAX_FTS_TUPLE_SIZE = 10
 
 function fill_halo_regions!(fts::InMemoryFieldTimeSeries)
-    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
+    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE) |> collect
+    Ni = length(partitioned_indices)
 
-    for indices in partitioned_indices
+    asyncmap(1:Ni) do i
+        indices = partitioned_indices[i]
         fts_tuple = Tuple(fts[n] for n in indices)
         fill_halo_regions!(fts_tuple)
     end
