@@ -115,7 +115,7 @@ end
 
 simulation_serial = run_solid_body_rotation(Nx=Nx, Ny=Ny, architecture=GPU()) # 104 ms
 simulation_paral1 = run_solid_body_rotation(Nx=mult1*Nx, Ny=Ny, dev = (0, 1), architecture=GPU()) # 85 ms
-simulation_paral2 = run_solid_body_rotation(Nx=mult2*Nx, Ny=Ny, dev = (0, 1, 2), architecture=GPU())  # 80 ms
+simulation_paral2 = run_solid_body_rotation(Nx=mult2*Nx, Ny=Ny, dev = (0, 1, 2, 3), architecture=GPU())  # 80 ms
 
 using BenchmarkTools
 
