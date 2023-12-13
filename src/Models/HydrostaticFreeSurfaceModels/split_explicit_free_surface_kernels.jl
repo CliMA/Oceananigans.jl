@@ -395,7 +395,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
         converted_η_args = convert_args(arch, η_args)
         converted_U_args = convert_args(arch, U_args)
             
-        @unroll for substep in 1:N
+        @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
 
             averaging_weight = weights[substep]
