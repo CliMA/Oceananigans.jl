@@ -5,6 +5,7 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
+using CUDA: cudaconvert
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, SurfaceMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
@@ -156,10 +157,9 @@ end
     return nothing
 end
 
-@kernel function _split_explicit_barotropic_velocity!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                                      η̅, U̅, V̅, averaging_weight,
-                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                      η̅, U̅, V̅, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                       timestepper)
     i, j = @index(Global, NTuple)
     velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
@@ -377,20 +377,27 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
-    @unroll for substep in 1:N
-        Base.@_inline_meta
+    η_args = (grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+              U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+              timestepper)
 
-        averaging_weight = weights[substep]
+    U_args = (grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+              U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
+              η̅, U̅, V̅, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+              timestepper)
 
-        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-                             U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                             timestepper)
-                                
-        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-                                    U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                    η̅, U̅, V̅, averaging_weight,
-                                    Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                    timestepper)
+    GC.@preserve η_args U_args begin
+        converted_η_args = map(cudaconvert, η_args)
+        converted_U_args = map(cudaconvert, U_args)
+            
+        @unroll for substep in 1:N
+            Base.@_inline_meta
+
+            averaging_weight = weights[substep]
+
+            free_surface_kernel!(converted_η_args...)
+            barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
+        end
     end
 
     return nothing
