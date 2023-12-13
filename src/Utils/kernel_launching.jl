@@ -300,7 +300,11 @@ function (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=n
 
     maxthreads = prod(KA.get(KA.workgroupsize(obj)))
 
-    kernel = @cuda launch=false always_inline=backend.always_inline maxthreads=maxthreads dynamic=dynamic_launch obj.f(ctx, args...)
+    kernel = if dynamic_launch
+        @cuda launch=false always_inline=backend.always_inline maxthreads=maxthreads dynamic=true obj.f(ctx, args...)
+    else
+        @cuda launch=false always_inline=backend.always_inline maxthreads=maxthreads obj.f(ctx, args...)
+    end
 
     blocks = length(KA.blocks(iterspace))
     threads = length(KA.workitems(iterspace))
