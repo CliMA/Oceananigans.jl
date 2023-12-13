@@ -387,8 +387,13 @@ function iterate_split_explicit!(free_surface, grid, Δt)
               timestepper)
 
     GC.@preserve η_args U_args begin
-        converted_η_args = map(cudaconvert, η_args)
-        converted_U_args = map(cudaconvert, U_args)
+
+        # Since we need to perform ~50 time-steps which means
+        # launching ~100 very small kernels, we are limited by
+        # latency of argument conversion to GPU-compatible values
+        # To alleviate that penalty we convert first and then we substep!
+        converted_η_args = convert_args(arch, η_args)
+        converted_U_args = convert_args(arch, U_args)
             
         @unroll for substep in 1:N
             Base.@_inline_meta
@@ -402,6 +407,10 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
     return nothing
 end
+
+convert_args(::CPU, arg) = args
+convert_args(::GPU, arg) = cudaconvert(arg)
+convert_args(::GPU, arg::Tuple) = map(cudaconvert, args)
 
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
