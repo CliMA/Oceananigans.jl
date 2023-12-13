@@ -193,34 +193,6 @@ end
     end
 end
 
-@kernel function _iterate_split_explicit!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-                                          U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                          η̅, U̅, V̅, weights,
-                                          Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                          timestepper, 
-                                          free_surface_kernel!,
-                                          barotropic_velocity_kernel!, 
-                                          ::Val{N}) where N
-
-    @unroll for substep in 1:N
-        Base.@_inline_meta
-
-        averaging_weight = weights[substep]
-
-        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-                             U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                             timestepper; 
-                             dynamic_launch=true)
-                                
-        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-                                    U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                    η̅, U̅, V̅, averaging_weight,
-                                    Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                    timestepper; 
-                                    dynamic_launch=true)
-    end
-end
-
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 @kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
@@ -405,15 +377,21 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
-    launch!(arch, grid, 1, _iterate_split_explicit!, 
-            grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
-            U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-            η̅, U̅, V̅, weights,
-            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-            timestepper, 
-            free_surface_kernel!,
-            barotropic_velocity_kernel!, 
-            Val(Nsubsteps))
+    @unroll for substep in 1:N
+        Base.@_inline_meta
+
+        averaging_weight = weights[substep]
+
+        free_surface_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                             U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                             timestepper)
+                                
+        barotropic_velocity_kernel!(grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
+                                    U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
+                                    η̅, U̅, V̅, averaging_weight,
+                                    Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                    timestepper)
+    end
 
     return nothing
 end
