@@ -3,8 +3,8 @@ using Oceananigans.Grids
 
 using Oceananigans.Coriolis:
     HydrostaticSphericalCoriolis,
-    VectorInvariantEnergyConserving,
-    VectorInvariantEnstrophyConserving
+    EnergyConserving,
+    EnstrophyConserving
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -40,7 +40,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    Nx = 90,
                                    Ny = 30,
                                    dev = nothing, 
-                                   coriolis_scheme = VectorInvariantEnstrophyConserving())
+                                   coriolis_scheme = EnstrophyConserving())
 
     # A spherical domain
     grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, Nz),
@@ -63,23 +63,20 @@ function run_solid_body_rotation(; architecture = CPU(),
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
 
-    closure = (HorizontalScalarDiffusivity(ν=1, κ=1), VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1, ν=1))
-
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         tracers = (:T, :b),
                                         tracer_advection = WENO(),
-                                        buoyancy = BuoyancyTracer(),                                        
-                                        closure = closure)
+                                        buoyancy = BuoyancyTracer())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
     Ω = model.coriolis.rotation_rate
 
     uᵢ(λ, φ, z) = solid_body_rotation(φ)
-    ηᵢ(λ, φ)    = solid_body_geostrophic_height(φ, R, Ω, g)
+    ηᵢ(λ, φ, z) = solid_body_geostrophic_height(φ, R, Ω, g)
 
     # Tracer patch for visualization
     Gaussian(λ, φ, L) = exp(-(λ^2 + φ^2) / 2L^2)
@@ -123,7 +120,6 @@ simulation_paral2 = run_solid_body_rotation(Nx=mult2*Nx, Ny=Ny, dev = (0, 1, 2),
 using BenchmarkTools
 
 CUDA.device!(0)
-
 
 time_step!(simulation_serial.model, 1)
 trial_serial = @benchmark begin
