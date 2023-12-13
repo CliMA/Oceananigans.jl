@@ -284,9 +284,12 @@ end
 #####
 
 using KernelAbstractions
-using CUDA: CUDABackend
+using CUDA: CUDABackend, @cuda
 
 const KA = KernelAbstractions
+
+(obj::KA.Kernel)(args...; ndrange=nothing, workgroupsize=nothing, dynamic_launch=false) = 
+        obj(args...; ndrange, workgroupsize)
 
 function (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=nothing, dynamic_launch=false)
     backend = KA.backend(obj)
