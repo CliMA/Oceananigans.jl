@@ -10,6 +10,7 @@ using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, SurfaceMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveSurfaceIBG
+using Oceananigans.DistributedComputations: child_architecture
 
 # constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
