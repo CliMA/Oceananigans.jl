@@ -41,4 +41,4 @@ a default tuple value for each tracer if not included in `initial_tuple`.
 end
 
 # If the initial tuple is 'nothing', return nothing.
-# with_tracers(tracer_names, ::Nothing, args...; kwargs...) = nothing
+with_tracers(tracer_names, ::Nothing, args...; kwargs...) = nothing
