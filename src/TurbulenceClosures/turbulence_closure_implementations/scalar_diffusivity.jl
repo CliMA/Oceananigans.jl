@@ -1,3 +1,4 @@
+import Adapt: adapt_structure
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
@@ -197,3 +198,6 @@ function Base.summary(closure::ScalarDiffusivity)
 end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
+
+adapt_structure(to, closure::ScalarDiffusivity) = ScalarDiffusivity(adapt(closure.ν),
+                                                                    adapt(closure.κ))
