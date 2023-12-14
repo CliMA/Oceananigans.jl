@@ -310,9 +310,21 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     @apply_regionally begin 
-        initialize_free_surface_state!(free_surface.state, free_surface.η, free_surface.settings.timestepper)
+        settings = free_surface.settings 
+
+        initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
+        
+        Nsubsteps  = calculate_substeps(settings.substepping, Δt)
+        
+        # barotropic time step as fraction of baroclinic step and averaging weights
+        fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) 
+        Nsubsteps = length(weights)
+
+        # barotropic time step in seconds
+        Δτᴮ = fractional_Δt * Δt  
+        
         # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, Δt)
+        iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
         # Reset eta for the next timestep
         set!(free_surface.η, free_surface.state.η̅)
     end
@@ -347,7 +359,7 @@ const MINIMUM_SUBSTEPS = 5
 const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
 const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
 
-function iterate_split_explicit!(free_surface, grid, Δt)
+function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η         = free_surface.η
@@ -355,13 +367,6 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     auxiliary = free_surface.auxiliary
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
-
-    Nsubsteps  = calculate_substeps(settings.substepping, Δt)
-    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-    
-    Nsubsteps = length(weights)
-
-    Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
     
     # unpack state quantities, parameters and forcing terms 
     U, V             = state.U,    state.V
