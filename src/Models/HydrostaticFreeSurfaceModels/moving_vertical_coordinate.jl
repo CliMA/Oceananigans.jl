@@ -75,7 +75,7 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
     
     # Scaling 
     scaling = grid.Δzᵃᵃᶠ.scaling
-    ∂t_scaling = grid.Δzᵃᵃᶠ.previous_scaling
+    ∂t_scaling = grid.Δzᵃᵃᶠ.∂t_scaling
 
     # Moving coordinates
     Δzᵃᵃᶠ  = grid.Δzᵃᵃᶠ.star_value
@@ -150,11 +150,14 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 import Oceananigans.Architectures: arch_array
 
 arch_array(arch, coord::ZStarCoordinate) = 
-    ZStarCoordinate(arch_array(arch, coord.reference), coord.scaling, coord.star_value)
+    ZStarCoordinate(arch_array(arch, coord.reference), coord.star_value, coord.scaling, coord.∂t_scaling)
 
 # Adding the slope to the momentum-RHS
 @inline free_surface_slope_x(i, j, k, grid, args...) = nothing
 @inline free_surface_slope_y(i, j, k, grid, args...) = nothing
+
+@inline free_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline free_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
 @inline η_times_zᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + grid.zᵃᵃᶜ[k] / bottom(i, j, grid))
 

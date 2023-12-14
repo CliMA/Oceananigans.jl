@@ -12,12 +12,12 @@ Compute the vertical velocity ``w`` by integrating the continuity equation from 
 w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 ```
 """
-compute_w_from_continuity!(model, Δt; kwargs...) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid, Δt; kwargs...)
+compute_w_from_continuity!(model; kwargs...) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
 
-compute_w_from_continuity!(velocities, arch, grid, Δt; parameters = w_kernel_parameters(grid)) = 
-    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid, Δt)
+compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) = 
+    launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
-@kernel function _compute_w_from_continuity!(U, grid, Δt)
+@kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
     U.w[i, j, 1] = 0
@@ -26,7 +26,7 @@ compute_w_from_continuity!(velocities, arch, grid, Δt; parameters = w_kernel_pa
     end
 end
 
-@kernel function _compute_w_from_continuity!(U, grid::ZStarCoordinateGrid, Δt)
+@kernel function _compute_w_from_continuity!(U, grid::ZStarCoordinateGrid)
     i, j = @index(Global, NTuple)
 
     U.w[i, j, 1] = 0

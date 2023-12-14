@@ -76,7 +76,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     diffusivity = model.diffusivity_fields
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
-        compute_w_from_continuity!(model, Δt; parameters = wpar)
+        compute_w_from_continuity!(model; parameters = wpar)
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
                                     grid, model.buoyancy, model.tracers; 
