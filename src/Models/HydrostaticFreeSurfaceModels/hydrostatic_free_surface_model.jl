@@ -118,8 +118,8 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    # Introduce z-star coordinates if needed
-    grid = MovingCoordinateGrid(grid, vertical_coordinate)
+    # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
+    grid = !isnothing(free_surface) ? MovingCoordinateGrid(grid, vertical_coordinate) : grid
 
     arch = architecture(grid)
 
@@ -198,7 +198,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
-    update_state!(model)
+    update_state!(model, 1.0)
 
     return model
 end

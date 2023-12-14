@@ -188,7 +188,7 @@ function initialize!(sim::Simulation)
     model = sim.model
     clock = model.clock
 
-    update_state!(model)
+    update_state!(model, 1.0)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]

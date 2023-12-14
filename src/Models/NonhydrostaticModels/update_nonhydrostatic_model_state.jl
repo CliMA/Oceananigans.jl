@@ -10,13 +10,13 @@ using Oceananigans.Models: update_model_field_time_series!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::NonhydrostaticModel, callbacks=[])
+    update_state!(model::NonhydrostaticModel, Δt, callbacks=[])
 
 Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
+function update_state!(model::NonhydrostaticModel, Δt, callbacks=[]; compute_tendencies = true)
     
     # Mask immersed tracers
     foreach(model.tracers) do tracer

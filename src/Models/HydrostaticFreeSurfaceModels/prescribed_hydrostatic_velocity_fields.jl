@@ -121,8 +121,8 @@ function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwarg
     model.timestepper.previous_Δt = Δt
     tick!(model.clock, Δt)
     step_lagrangian_particles!(model, Δt)
-    update_state!(model, callbacks)
+    update_state!(model, Δt, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) = 
+update_state!(model::OnlyParticleTrackingModel, Δt, callbacks) = 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]

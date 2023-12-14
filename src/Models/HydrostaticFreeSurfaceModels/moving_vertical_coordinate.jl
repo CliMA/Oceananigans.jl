@@ -1,5 +1,7 @@
 using Oceananigans
 using Oceananigans.Grids
+using Oceananigans.Operators
+using Oceananigans.BuoyancyModels: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils: getnamewrapper
@@ -8,15 +10,17 @@ using Adapt
 struct ZCoordinate end
 
 struct ZStarCoordinate{R, S, Z}
-    reference :: R
-      scaling :: S
-   star_value :: Z
+       reference :: R
+previous_scaling :: S
+         scaling :: S
+      star_value :: Z
 end
 
-ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing)
+ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, coord::ZStarCoordinate) = 
     ZStarCoordinate(Adapt.adapt(to, coord.reference),
+                    Adapt.adapt(to, coord.scaling),
                     Adapt.adapt(to, coord.scaling),
                     Adapt.adapt(to, coord.star_value))
 
@@ -42,9 +46,10 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
     ΔzF =  ZFaceField(grid)
     ΔzC = CenterField(grid)
     scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
+    previous_scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
 
-    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, scaling, ΔzF)
-    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, scaling, ΔzC)
+    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, previous_scaling, scaling, ΔzF)
+    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, previous_scaling, scaling, ΔzC)
 
     args = []
     for prop in propertynames(grid)
@@ -70,6 +75,7 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameter
     
     # Scaling 
     scaling = grid.Δzᵃᵃᶠ.scaling
+    previous_scaling = grid.Δzᵃᵃᶠ.previous_scaling
 
     # Moving coordinates
     Δzᵃᵃᶠ  = grid.Δzᵃᵃᶠ.star_value
@@ -81,7 +87,7 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameter
 
     # Update the scaling on the whole grid (from -H to N+H)
     launch!(architecture(grid), grid, horizontal_parameters(grid), _update_scaling!,
-            scaling, η, grid)
+            previous_scaling, scaling, η, grid)
 
     # Update vertical coordinate with available parameters 
     for params in parameters
@@ -102,12 +108,13 @@ end
 
 @kernel function _update_scaling!(scaling, η, grid)
     i, j = @index(Global, NTuple)
-    bottom = bottom_height(grid, i, j)
+    bottom = bottom_height(i, j, grid)
+    @inbounds previous_scaling[i, j, grid.Nz+1] = scaling[i, j, grid.Nz+1]
     @inbounds scaling[i, j, grid.Nz+1] = (bottom + η[i, j, grid.Nz+1]) / bottom
 end
 
-bottom_height(grid, i, j) = grid.Lz
-bottom_height(grid::ImmersedBoundaryGrid, i, j) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
+bottom_height(i, j, grid) = grid.Lz
+bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
 
 @kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, scaling, Nz)
     i, j, k = @index(Global, NTuple)
@@ -141,3 +148,18 @@ import Oceananigans.Architectures: arch_array
 
 arch_array(arch, coord::ZStarCoordinate) = 
     ZStarCoordinate(arch_array(arch, coord.reference), coord.scaling, coord.star_value)
+
+# Adding the slope to the momentum-RHS
+@inline free_surface_slope_x(i, j, k, grid, args...) = nothing
+@inline free_surface_slope_y(i, j, k, grid, args...) = nothing
+
+@inline η_times_zᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + grid.zᵃᵃᶜ[k] / bottom(i, j, grid))
+
+@inline η_slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_times_zᶜᶜᶜ, free_surface.η)
+@inline η_slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_times_zᶜᶜᶜ, free_surface.η)
+
+@inline free_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
+    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy, model_fields) * η_slope_xᶠᶜᶜ(i, j, k, grid, free_surface)
+
+@inline free_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
+    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy, model_fields) * η_slope_yᶜᶠᶜ(i, j, k, grid, free_surface)

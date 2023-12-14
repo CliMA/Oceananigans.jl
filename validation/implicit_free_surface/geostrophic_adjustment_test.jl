@@ -47,7 +47,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     L = grid.Lx / 40 # gaussian width
     x₀ = grid.Lx / 4 # gaussian center
 
-    vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    vᵍ(x) = -U * (x - x₀) / L * gaussian(x - x₀, L)
 
     g = model.free_surface.gravitational_acceleration
     η = model.free_surface.η
@@ -56,7 +56,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
-    ηⁱ(x, y, z) = 2 * ηᵍ(x)
+    ηⁱ(x) = 2 * ηᵍ(x)
 
     set!(model, v = vᵍ)
     set!(model.free_surface.η, ηⁱ)
