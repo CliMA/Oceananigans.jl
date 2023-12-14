@@ -119,7 +119,5 @@ end
 @inline convert_args(::GPU, arg) = CUDA.cudaconvert(arg)
 @inline convert_args(::GPU, arg::Tuple) = map(CUDA.cudaconvert, arg)
 
-@inline convert_args(arch::Distributed, arg) = convert_args(child_architecture(arch), arg)
-
 
 end # module
