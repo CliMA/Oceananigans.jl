@@ -113,4 +113,13 @@ end
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing
 
+# Convert arguments to GPU-compatible types
+
+@inline convert_args(::CPU, arg) = args
+@inline convert_args(::GPU, arg) = CUDA.cudaconvert(arg)
+@inline convert_args(::GPU, arg::Tuple) = map(CUDA.cudaconvert, arg)
+
+@inline convert_args(arch::Distributed, arg) = convert_args(child_architecture(arch), arg)
+
+
 end # module

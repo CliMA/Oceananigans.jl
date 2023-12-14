@@ -5,7 +5,7 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
-using CUDA: cudaconvert
+using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, SurfaceMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
@@ -413,12 +413,6 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 
     return nothing
 end
-
-convert_args(::CPU, arg) = args
-convert_args(::GPU, arg) = cudaconvert(arg)
-convert_args(::GPU, arg::Tuple) = map(cudaconvert, arg)
-
-convert_args(arch::Distributed, arg) = convert_args(child_architecture(arch), arg)
 
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
