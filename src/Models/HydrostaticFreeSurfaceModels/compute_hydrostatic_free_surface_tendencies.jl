@@ -73,7 +73,10 @@ end
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
-    NamedTuple{(names...,)}(((c => tracers[c].boundary_conditions.top for c in names)...,))
+    values = Tuple(tracers[c].boundary_conditions.top for c in names)
+
+    # Some shenanigans for type stability?
+    return NamedTuple{tuple(names...)}(tuple(values...))
 end
 
 """ Store previous value of the source term and compute current source term. """
