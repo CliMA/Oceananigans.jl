@@ -505,7 +505,7 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
     end
 
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
-    name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name)
+    name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name, '\n')
 
     return string(backend_str, '\n',
                   path_str,
