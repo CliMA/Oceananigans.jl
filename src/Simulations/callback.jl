@@ -74,18 +74,28 @@ function unique_callback_name(::GenericName, existing_names)
 end
 
 """
-    add_callback!(simulation, callback, name=GenericName())
+    add_callback!(simulation, callback::Callback; name = GenericName())
+                  
+    add_callback!(simulation, func; schedule=IterationInterval(1), name = GenericName())
 
-Add `callback` to `simulation.callbacks` under `name`. The default
+Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
 `GenericName()` generates a name of the form `:callbackN`, where `N`
 is big enough for the name to be unique.
 
 If `name` is supplied, it may be modified if `simulation.callbacks[name]`
 already exists.
+
+The `callback` (which contains a schedule) can also be supplied directly.
 """
-function add_callback!(simulation, callback, name=GenericName())
+function add_callback!(simulation, callback::Callback; name = GenericName())
     name = unique_callback_name(name, keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
+end
+
+function add_callback!(simulation, func; schedule = IterationInterval(1),
+                                             name = GenericName())
+    callback = Callback(func, schedule)
+    return add_callback!(simulation, callback; name)
 end
 
