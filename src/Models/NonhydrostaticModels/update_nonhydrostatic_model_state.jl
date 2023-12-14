@@ -45,7 +45,7 @@ function update_state!(model::NonhydrostaticModel, Δt, callbacks=[]; compute_te
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, callbacks)
+        @apply_regionally compute_tendencies!(model, Δt, callbacks)
 
     return nothing
 end

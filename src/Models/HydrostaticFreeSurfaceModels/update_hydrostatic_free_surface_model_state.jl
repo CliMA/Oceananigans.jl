@@ -38,7 +38,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
 
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
-    @apply_regionally compute_auxiliaries!(model, Δt)
+    @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
@@ -47,7 +47,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, callbacks)
+        @apply_regionally compute_tendencies!(model, Δt, callbacks)
 
     return nothing
 end
@@ -67,9 +67,9 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_parameters = tuple(w_kernel_parameters(model.grid)),
-                                                                      p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                      κ_parameters = tuple(:xyz)) 
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
+                                                                  p_parameters = tuple(p_kernel_parameters(model.grid)),
+                                                                  κ_parameters = tuple(:xyz)) 
     
     grid = model.grid
     closure = model.closure

@@ -33,7 +33,7 @@ end
     @unroll for k in 2:grid.Nz+1
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] 
                                  - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) 
-                                 - (grid.Δzᵃᵃᶠ.previous_scaling[i, j, grid.Nz+1] - grid.Δzᵃᵃᶠ.previous_scaling[i, j, grid.Nz+1]) / Δt
+                                 - grid.Δzᵃᵃᶠ.∂t_scaling[i, j, grid.Nz+1]
     end
 end
 

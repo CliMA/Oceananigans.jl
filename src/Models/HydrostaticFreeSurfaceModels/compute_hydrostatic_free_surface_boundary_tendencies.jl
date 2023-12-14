@@ -9,7 +9,7 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
 import Oceananigans.Models: compute_boundary_tendencies!
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
+function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel, Δt)
     grid = model.grid
     arch = architecture(grid)
 
@@ -18,7 +18,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
     # We need new values for `w`, `p` and `κ`    
-    update_vertical_coordinate!(model, model.grid; parameters = κ_parameters)
+    update_vertical_coordinate!(model, model.grid, Δt; parameters = κ_parameters)
     compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side

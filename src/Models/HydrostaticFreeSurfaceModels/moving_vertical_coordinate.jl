@@ -10,10 +10,10 @@ using Adapt
 struct ZCoordinate end
 
 struct ZStarCoordinate{R, S, Z}
-       reference :: R
-previous_scaling :: S
-         scaling :: S
-      star_value :: Z
+  reference :: R 
+ star_value :: Z
+    scaling :: S
+ ∂t_scaling :: S
 end
 
 ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing, nothing)
@@ -46,10 +46,10 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
     ΔzF =  ZFaceField(grid)
     ΔzC = CenterField(grid)
     scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
-    previous_scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
+    ∂t_scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
 
-    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, previous_scaling, scaling, ΔzF)
-    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, previous_scaling, scaling, ΔzC)
+    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, ΔzF, scaling, ∂t_scaling)
+    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, ΔzC, scaling, ∂t_scaling)
 
     args = []
     for prop in propertynames(grid)
@@ -70,12 +70,12 @@ end
 # Fallback
 update_vertical_coordinate!(model, grid; kwargs...) = nothing
 
-function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameters = tuple(:xyz))
+function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; parameters = tuple(:xyz))
     η = model.free_surface.η
     
     # Scaling 
     scaling = grid.Δzᵃᵃᶠ.scaling
-    previous_scaling = grid.Δzᵃᵃᶠ.previous_scaling
+    ∂t_scaling = grid.Δzᵃᵃᶠ.previous_scaling
 
     # Moving coordinates
     Δzᵃᵃᶠ  = grid.Δzᵃᵃᶠ.star_value
@@ -87,7 +87,7 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid; parameter
 
     # Update the scaling on the whole grid (from -H to N+H)
     launch!(architecture(grid), grid, horizontal_parameters(grid), _update_scaling!,
-            previous_scaling, scaling, η, grid)
+            scaling, ∂t_scaling, η, grid, Δt)
 
     # Update vertical coordinate with available parameters 
     for params in parameters
@@ -106,11 +106,14 @@ function horizontal_parameters(grid)
     return KernelParameters(total_size, .- halos)
 end
 
-@kernel function _update_scaling!(scaling, η, grid)
+@kernel function _update_scaling!(scaling, ∂t_scaling, η, grid, Δt)
     i, j = @index(Global, NTuple)
     bottom = bottom_height(i, j, grid)
-    @inbounds previous_scaling[i, j, grid.Nz+1] = scaling[i, j, grid.Nz+1]
-    @inbounds scaling[i, j, grid.Nz+1] = (bottom + η[i, j, grid.Nz+1]) / bottom
+    @inbounds begin
+        h = (bottom + η[i, j, grid.Nz+1]) / bottom
+        ∂t_scaling[i, j, grid.Nz+1] = (h - scaling[i, j, grid.Nz+1]) / Δt 
+        scaling[i, j, grid.Nz+1] = h
+    end
 end
 
 bottom_height(i, j, grid) = grid.Lz
