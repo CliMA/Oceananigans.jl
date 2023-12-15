@@ -6,6 +6,11 @@ import Oceananigans.Operators:
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
 
+import Oceananigans.Operators: 
+    δxCᶠᵃᵃ, δyCᵃᶠᵃ, 
+    δxUᶜᵃᵃ, δyVᵃᶜᵃ,
+    ∂xCᶠᶜᶠ, ∂yCᶜᶠᶠ
+
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
 # nodes involved in the difference is `immersed_inactive_node`.
@@ -71,3 +76,16 @@ for (d, ξ) in enumerate((:x, :y, :z))
        end
     end
 end
+
+# Topology-Aware Immersed Boundary Operators (Velocities are `0` on `peripheral_node`s and tracers should ensure no-flux on `inactive_node`s)
+
+@inline conditional_U_fcc(i, j, k, grid, ibg::IBG, U★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), U★(i, j, k, grid, args...))
+@inline conditional_V_cfc(i, j, k, grid, ibg::IBG, V★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), V★(i, j, k, grid, args...))
+
+@inline conditional_∂xᶠᶜᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᶠᶜᶠ_c(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yᶜᶠᶠ_c(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᶜᶠᶠ_c(i, j, k, ibg.underlying_grid, args...))
+
+@inline δxUᶜᵃᵃ(i, j, k, ibg::IBG, U★::Function, args...) = δxUᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_U_fcc,  ibg, U★, args...)
+@inline δyVᵃᶜᵃ(i, j, k, ibg::IBG, V★::Function, args...) = δyVᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_V_cfc,  ibg, V★, args...)
+@inline ∂xCᶠᶜᶠ(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂xᶠᶜᶠ_c(i, j, k, ibg, c★, args...)
+@inline ∂yCᶜᶠᶠ(i, j, k, ibg::IBG, c★::Function, args...) = conditional_∂yᶜᶠᶠ_c(i, j, k, ibg, c★, args...)        
