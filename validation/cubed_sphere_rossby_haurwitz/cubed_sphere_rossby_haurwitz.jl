@@ -6,8 +6,13 @@ using JLD2
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
 
+include("cubed_sphere_visualization.jl")
+
+#=
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
+=#
 
 Logging.global_logger(OceananigansLogger())
 
@@ -62,9 +67,9 @@ DataDeps.register(dd32)
 DataDeps.register(dd96)
 
 function diagnose_velocities_from_streamfunction(ψ, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
-    uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)
-    vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid)
+    ψᶠᶠᶜ = Field{Face, Face, Center}(grid) 
+    uᶠᶜᶜ = Field{Face, Center, Center}(grid)
+    vᶜᶠᶜ = Field{Center, Face, Center}(grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
@@ -102,7 +107,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
                       grid = grid,
         momentum_advection = VectorInvariant(),
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
-                  coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
+                  coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme()),
                    closure = nothing,
                    tracers = nothing,
                   buoyancy = nothing
@@ -120,7 +125,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     Ω = model.coriolis.rotation_rate
 
     A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2 )
-    B(θ) = 2 * K * (Ω + ω) * ((n+1) * (n+2))^(-1) * cos(θ)^(n) * ( n^2 + 2*n + 2 - (n+1)^2 * cos(θ)^2) # why not  (n+1)^2 sin(θ)^2 + 1
+    B(θ) = 2 * K * (Ω + ω) * ((n+1) * (n+2))^(-1) * cos(θ)^(n) * ( n^2 + 2*n + 2 - (n+1)^2 * cos(θ)^2) # Why not (n+1)^2 sin(θ)^2 + 1?
     C(θ)  = 1/4 * K^2 * cos(θ)^(2 * n) * ( (n+1) * cos(θ)^2 - (n+2))
 
     ψ(θ, ϕ) = -R^2 * ω * sin(θ)^2 + R^2 * K * cos(θ)^n * sin(θ) * cos(n*ϕ)
@@ -137,17 +142,49 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     rescale¹(λ) = (λ + 180)/ 360 * 2π # λ to θ
     rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 
-    # arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
+    # Arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
+    #=
     uᵢ(λ, ϕ, z) = u(rescale²(ϕ), rescale¹(λ))
     vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
+    =#
     ηᵢ(λ, ϕ)    = h(rescale²(ϕ), rescale¹(λ))
 
-    # set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
+    #=
+    set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
+    =#
 
     ψ₀(λ, φ) = ψ(rescale²(φ), rescale¹(λ))
 
     u₀, v₀, _ = diagnose_velocities_from_streamfunction(ψ₀, grid)
+    
+    fill_horizontal_velocity_halos!(u₀, v₀, CPU())
+    
+    plot_initial_condition_before_model_definition = true
 
+    if plot_initial_condition_before_model_definition
+        # Plot the initial velocity field before model definition.
+
+        fig = panel_wise_visualization_with_halos(grid, u₀)
+        save("u₀₀_with_halos.png", fig)
+
+        fig = panel_wise_visualization(grid, u₀)
+        save("u₀₀.png", fig)
+
+        fig = panel_wise_visualization_with_halos(grid, v₀)
+        save("v₀₀_with_halos.png", fig)
+
+        fig = panel_wise_visualization(grid, v₀)
+        save("v₀₀.png", fig)
+    end
+    
+    jldopen("old_code.jld2", "w") do file
+        for face in 1:6
+            file["u/" * string(face)] = u₀.data[face]
+            file["v/" * string(face)] = v₀.data[face]
+        end
+    end
+
+    #=
     Oceananigans.set!(model, u=u₀, v=v₀, η=ηᵢ)
 
     ## Simulation setup
@@ -203,9 +240,13 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     run!(simulation)
 
     return simulation
+    =# 
+    
 end
 
+cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
 
+#=
 include("animate_on_map_projection.jl")
 
 function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
@@ -220,4 +261,6 @@ function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed
     animate_rossby_haurwitz(projections=projections)
 
     return simulation
+    
 end
+=#
