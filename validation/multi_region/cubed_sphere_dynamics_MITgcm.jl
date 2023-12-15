@@ -20,8 +20,12 @@ include("cubed_sphere_visualization.jl")
 
 g = 9.81
 
+#=
 Nx = 16
 Ny = 16
+=#
+Nx = 5 
+Ny = 5 
 Nz = 1
 
 Lz = 1
@@ -104,8 +108,12 @@ v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        u[region][i, j, k] = 1
+        v[region][i, j, k] = 2 
+        #=
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
+        =#
         #=
         u[region][i, j, k] = grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] = grid[region].Δxᶜᶠᵃ[i, j]
@@ -270,6 +278,7 @@ save("ζ₀_with_halos.png", fig)
 fig = panel_wise_visualization(grid, ζ₀)
 save("ζ₀.png", fig)
 
+#=
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -302,6 +311,7 @@ simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_i
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
+=#
 
 #=
 fig = panel_wise_visualization(grid, Δζ_fields[end])
