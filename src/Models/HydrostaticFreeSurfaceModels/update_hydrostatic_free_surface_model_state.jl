@@ -28,7 +28,7 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
-operation_corner_points = "average" # Choose operation_corner_points to be "average", "CCW", or "CW".
+operation_corner_points = "CCW" # Choose operation_corner_points to be "average", "CCW", or "CW".
 
 function fill_velocity_halos!(velocities)
     u, v, _ = velocities
@@ -56,7 +56,9 @@ function fill_velocity_halos!(velocities)
             # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
             u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
             v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+            if Hy > 1
+                v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
+            end
             # Local x direction
             # (a) Proceed from [1-Hx, Ny] to [0, Ny].
             # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
@@ -136,7 +138,9 @@ function fill_velocity_halos!(velocities)
             # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
             # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
             u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
+            if Hx > 1
+                u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
+            end
             v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
             # Corner point operation
             u_CCW = v[region_east][1, 1, k]
@@ -165,7 +169,9 @@ function fill_velocity_halos!(velocities)
             # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
             u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
             v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+            if Hy > 1
+                v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
+            end
             # Local x direction
             # (a) Proceed from [1-Hx, Ny] to [0, Ny].
             # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
@@ -245,7 +251,9 @@ function fill_velocity_halos!(velocities)
             # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
             # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
             u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
+            if Hx > 1 
+                u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
+            end
             v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
             # Corner point operation
             u_CCW = -v[region_south][Nx, 1, k]
