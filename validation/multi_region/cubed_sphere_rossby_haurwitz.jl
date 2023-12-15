@@ -17,7 +17,7 @@ include("cubed_sphere_visualization.jl")
 R = 6371e3
 H = 8000
 
-Nx, Ny, Nz = 32, 32, 1
+Nx, Ny, Nz = 5, 5, 1
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   z = (-H, 0),
                                   radius = R,
@@ -26,6 +26,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 
 ## Model setup
 
+#=
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = VectorInvariant(),
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = 100),
@@ -33,10 +34,12 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     closure = nothing,
                                     tracers = nothing,
                                     buoyancy = nothing)
+=#
 
 ## Rossby-Haurwitz initial condition from Williamson et al. (§3.6, 1992)
 ## # Here: θ ∈ [-π/2, π/2] is latitude and ϕ ∈ [0, 2π) is longitude.
 
+#=
 K = 7.848e-6
 ω = 0
 n = 4
@@ -44,7 +47,7 @@ n = 4
 g = model.free_surface.gravitational_acceleration
 Ω = model.coriolis.rotation_rate
 
-A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2 )
+A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2)
 B(θ) = 2 * K * (Ω + ω) * ((n+1) * (n+2))^(-1) * cos(θ)^(n) * ( n^2 + 2*n + 2 - (n+1)^2 * cos(θ)^2) # Why not (n+1)^2 sin(θ)^2 + 1?
 C(θ)  = 1/4 * K^2 * cos(θ)^(2 * n) * ( (n+1) * cos(θ)^2 - (n+2))
 
@@ -101,14 +104,27 @@ end
 for passes in 1:3
     fill_halo_regions!(ψ)
 end
+=#
 
 u = XFaceField(grid)
 v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        #=
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
+        =#
+        #=
+        u[region][i, j, k] = i + Nx * (j - 1)
+        v[region][i, j, k] = -100 - u[region][i, j, k]
+        =#
+        #=
+        u[region][i, j, k] = 100*region + (i + Nx * (j - 1))
+        v[region][i, j, k] = -u[region][i, j, k]
+        =#
+        u[region][i, j, k] = Nx*Ny*(region - 1) + (i + Nx * (j - 1))
+        v[region][i, j, k] = -u[region][i, j, k]
     end
 end
 
