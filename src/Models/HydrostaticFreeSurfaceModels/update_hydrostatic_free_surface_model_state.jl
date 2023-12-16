@@ -28,7 +28,7 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
-operation_corner_points = "CCW" # Choose operation_corner_points to be "average", "CCW", or "CW".
+operation_corner_points = "default" # Choose operation_corner_points to be "default", "average", "CCW", or "CW".
 
 function fill_velocity_halos!(velocities)
     u, v, _ = velocities
@@ -68,12 +68,12 @@ function fill_velocity_halos!(velocities)
             u_CCW = -u[region_west][2, Ny, k]
             u_CW = -u[region_north][2, Ny, k]
             u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
                                     operation_corner_points == "CW" ? u_CW : nothing
             v_CCW = -u[region][1, Ny, k] 
             v_CW = -u[region_west][1, Ny, k]
             v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
                                     operation_corner_points == "CW" ? v_CW : nothing
         end
 
@@ -94,12 +94,12 @@ function fill_velocity_halos!(velocities)
             u_CW = -v[region_north][1, 1, k]
             u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
                                        operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points == "CW" ? u_CW : nothing
+                                       operation_corner_points in ["default", "CW"] ? u_CW : nothing
             v_CCW = v[region_north][1, 1, k]
             v_CW = u[region_east][1, Ny, k]
             v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
                                        operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points == "CW" ? v_CW : nothing
+                                       operation_corner_points in ["default", "CW"] ? v_CW : nothing
         end
 
         # Southwest corner region
@@ -119,12 +119,12 @@ function fill_velocity_halos!(velocities)
             u_CW = u[region_west][Nx, Ny, k]
             u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
                                  operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points == "CW" ? u_CW : nothing
+                                 operation_corner_points in ["default", "CW"] ? u_CW : nothing
             v_CCW = -u[region_south][2, Ny, k]
             v_CW = v[region_west][Nx, Ny, k]
             v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
                                  operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points == "CW" ? v_CW : nothing
+                                 operation_corner_points in ["default", "CW"] ? v_CW : nothing
         end
 
         # Southeast corner region
@@ -146,12 +146,12 @@ function fill_velocity_halos!(velocities)
             u_CCW = v[region_east][1, 1, k]
             u_CW = -v[region][Nx, 1, k]
             u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
                                     operation_corner_points == "CW" ? u_CW : nothing
             v_CCW = -u[region_east][2, 1, k]
             v_CW = u[region_south][Nx, Ny, k]
             v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
                                     operation_corner_points == "CW" ? v_CW : nothing
         end
     end
@@ -181,12 +181,12 @@ function fill_velocity_halos!(velocities)
             u_CCW = v[region_west][Nx, Ny, k]
             u_CW = -v[region_north][1, 2, k]
             u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
                                     operation_corner_points == "CW" ? u_CW : nothing
             v_CCW = -u[region][1, Ny, k]
             v_CW = u[region_north][1, 1, k]
             v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
                                     operation_corner_points == "CW" ? v_CW : nothing    
         end
 
@@ -207,12 +207,12 @@ function fill_velocity_halos!(velocities)
             u_CW = u[region_east][1, 1, k]
             u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
                                        operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points == "CW" ? u_CW : nothing
+                                       operation_corner_points in ["default", "CW"] ? u_CW : nothing
             v_CCW = -u[region_east][1, 1, k]
             v_CW = v[region_east][1, 1, k]
             v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
                                        operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points == "CW" ? v_CW : nothing
+                                       operation_corner_points in ["default", "CW"] ? v_CW : nothing
         end
         
         # Southwest corner region
@@ -232,12 +232,12 @@ function fill_velocity_halos!(velocities)
             u_CW = -v[region_west][Nx, 2, k]
             u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
                                  operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points == "CW" ? u_CW : nothing
+                                 operation_corner_points in ["default", "CW"] ? u_CW : nothing
             v_CCW = v[region_south][Nx, Ny, k]
             v_CW = u[region_west][Nx, 1, k]
             v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
                                  operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points == "CW" ? v_CW : nothing
+                                 operation_corner_points in ["default", "CW"] ? v_CW : nothing
         end
         
         # Southeast corner region
@@ -259,12 +259,12 @@ function fill_velocity_halos!(velocities)
             u_CCW = -v[region_south][Nx, 1, k]
             u_CW = -v[region][Nx, 1, k]
             u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
                                     operation_corner_points == "CW" ? u_CW : nothing
             v_CCW = -v[region_east][Nx, 2, k]
             v_CW = -v[region_south][Nx, 2, k]
             v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
+                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
                                     operation_corner_points == "CW" ? v_CW : nothing
         end        
     end

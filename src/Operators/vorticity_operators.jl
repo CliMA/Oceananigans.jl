@@ -48,7 +48,7 @@ function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
     elseif on_south_west_corner(i, j, grid) || on_north_west_corner(i, j, grid)
         Γ = Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
     elseif on_south_east_corner(i, j, grid) || on_north_east_corner(i, j, grid)
-        Γ = - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+        Γ = - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u) - Δx_qᶠᶜᶜ(i, j, k, grid, u)
     else
         Γ = δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
     end
