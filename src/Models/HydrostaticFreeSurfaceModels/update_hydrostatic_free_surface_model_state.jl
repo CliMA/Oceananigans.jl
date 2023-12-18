@@ -32,9 +32,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
-    # Remove moving boundary from tracers
-    @apply_regionally update_thickness_weighted_tracers!(model.tracers, grid) 
-
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
@@ -92,3 +89,4 @@ end
 const RigidLidModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 
 update_vertical_coordinate!(::RigidLidModel, ::ZStarCoordinateGrid; kwargs...) = nothing
+update_tracer_thickness!(tracers, grid) = nothing

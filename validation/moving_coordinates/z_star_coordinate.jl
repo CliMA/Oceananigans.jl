@@ -7,20 +7,20 @@ using Printf
 grid = RectilinearGrid(size = (300, 20), 
                           x = (0, 100kilometers), 
                           z = (-10, 0), 
-                   topology = (Periodic, Flat, Bounded))
+                   topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                         vertical_coordinate = ZStarCoordinate(),
                          momentum_advection = WENO(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
-                                    tracers = :b,
-                               free_surface = SplitExplicitFreeSurface(; cfl = 0.5, grid))
+                                    tracers = :b) 
+                               #free_surface = SplitExplicitFreeSurface(; cfl = 0.5, grid))
 
-ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
-bᵢ(x, z) = 1e-6 * z + ηᵢ(x, z) * 1e-8
+# ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
+bᵢ(x, z) = x > 50kilometers ? 0 : 1
 
-set!(model, η = ηᵢ, b = bᵢ)
+set!(model, b = bᵢ)
 
 gravity_wave_speed   = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
 barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
@@ -29,10 +29,10 @@ barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 10000Δt)
+simulation = Simulation(model; Δt, stop_time = 10000Δt, stop_iteration = 10)
 
 field_outputs = if model.grid isa ZStarCoordinateGrid
-  merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.star_value))
+  merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.Δ))
 else
   merge(model.velocities, model.tracers)
 end
@@ -50,7 +50,7 @@ function progress(sim)
     msg1 = @sprintf("extrema w: %.2e %.2e ", maximum(w), minimum(w))
     msg2 = @sprintf("extrema u: %.2e %.2e ", maximum(u), minimum(u))
     if sim.model.grid isa ZStarCoordinateGrid
-      Δz = sim.model.grid.Δzᵃᵃᶠ.star_value
+      Δz = sim.model.grid.Δzᵃᵃᶠ.Δ
       msg3 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
       @info msg0 * msg1 * msg2 * msg3
     else
@@ -60,14 +60,28 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
-
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_change = 1.1), IterationInterval(10))
 run!(simulation)
 
 # Check conservation
-b = FieldTimeSeries("zstar_model.jld2", "b")
+if model.grid isa ZStarCoordinateGrid
+  b  = FieldTimeSeries("zstar_model.jld2", "b")
+  dz = FieldTimeSeries("zstar_model.jld2", "ΔzF")
 
-drift = []
-for t in 1:length(b.times)
-  push!(drift, sum(b[t] - b[1]))
+  init  = sum(b[1] * dz[1]) / sum(dz[1]) 
+  drift = []
+  for t in 1:length(b.times)
+
+    push!(drift, sum(b[t] * dz[t]) / sum(dz[t]) - init)  
+  end
+else
+  b  = FieldTimeSeries("zstar_model.jld2", "b")
+
+  init  = sum(b[1]) / prod(size(b[1]))
+  drift = []
+  for t in 1:length(b.times)
+
+    push!(drift, sum(b[t]) / prod(size(b[1])) - init)  
+  end
 end
