@@ -88,7 +88,7 @@ Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note
 a slightly different notation from Press et al. is used for indexing the off-diagonal
 elements; see [`BatchedTridiagonalSolver`](@ref).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; only_active_cells = nothing)
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
     launch_config = if solver.tridiagonal_direction isa XDirection
                         :yz
@@ -108,8 +108,7 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; only_active_
             solver.grid,
             solver.parameters,
             Tuple(args),
-            solver.tridiagonal_direction;
-            only_active_cells)
+            solver.tridiagonal_direction)
 
     return nothing
 end
