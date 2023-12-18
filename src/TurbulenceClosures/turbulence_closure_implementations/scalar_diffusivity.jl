@@ -2,7 +2,7 @@ import Adapt: adapt_structure
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
-struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
+mutable struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
 
