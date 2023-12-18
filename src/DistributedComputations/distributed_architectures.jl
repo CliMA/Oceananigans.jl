@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
+import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture, convert_args
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -264,6 +264,7 @@ arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
 zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
 array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
+convert_args(arch::Distributed, arg)  = convert_args(child_architecture(arch), arg)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
