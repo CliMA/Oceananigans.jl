@@ -123,7 +123,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function
 splitexplicit_free_surface = SplitExplicitFreeSurface(substeps = 10, 
                                                       averaging_weighting_function = averaging_shape_function,
                                                       timestepper = AdamsBashforth3Scheme())
-explicit_free_surface      = ExplicitFreeSurface()
+explicit_free_surface = ExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 topology_types = [topology_types[2]]

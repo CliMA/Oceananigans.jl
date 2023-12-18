@@ -6,9 +6,20 @@ using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils: getnamewrapper
 using Adapt 
+using Printf
 
+""" geopotential-following vertical coordinate """
 struct ZCoordinate end
 
+"""
+    ZStarCoordinate{R, S, Z} 
+
+a _free surface following_ vertical coordinate system.
+The fixed coordinate is stored in `reference`, while `star_value`
+contains the actual free-surface-following z-coordinate
+the `scaling` and `∂t_scaling` fields are the vertical derivative of
+the vertical coordinate and it's time derivative
+"""
 struct ZStarCoordinate{R, S, Z}
   reference :: R 
  star_value :: Z
@@ -18,11 +29,16 @@ end
 
 ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing, nothing)
 
+import Oceananigans.Grids: coordinate_summary
+
+coordinate_summary(Δ::ZStarCoordinate, name) = 
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.reference))
+
 Adapt.adapt_structure(to, coord::ZStarCoordinate) = 
     ZStarCoordinate(Adapt.adapt(to, coord.reference),
+                    Adapt.adapt(to, coord.star_value),
                     Adapt.adapt(to, coord.scaling),
-                    Adapt.adapt(to, coord.scaling),
-                    Adapt.adapt(to, coord.star_value))
+                    Adapt.adapt(to, coord.scaling))
 
 const ZStarCoordinateRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
 const ZStarCoordinateLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
@@ -41,12 +57,23 @@ function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStarCoordinate)
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
 end
 
+# Replacing the z-coordinate with a moving vertical coordinate, defined by its reference spacing,
+# the actual vertical spacing and a scaling
 function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStarCoordinate) where {FT, TX, TY, TZ}
     # Memory layout for Dz spacings is local in z
     ΔzF =  ZFaceField(grid)
     ΔzC = CenterField(grid)
-    scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
-    ∂t_scaling = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
+    scaling = ZFaceField(grid, indices = (:, :, grid.Nz+1))
+    ∂t_scaling = ZFaceField(grid, indices = (:, :, grid.Nz+1))
+
+    # Initial "at-rest" conditions
+    launch!(architecture(grid), grid, :xy, _update_scaling!,
+            scaling, ∂t_scaling, ZeroField(grid), grid, 1)
+    
+    launch!(architecture(grid), grid, :xy,_update_z_star!, 
+        ΔzF, ΔzC, grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, scaling, Val(grid.Nz))
+
+    fill_halo_regions!((ΔzF, ΔzC, scaling, ∂t_scaling); only_local_halos = true)
 
     Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, ΔzF, scaling, ∂t_scaling)
     Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, ΔzC, scaling, ∂t_scaling)
@@ -68,7 +95,7 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
 end
 
 # Fallback
-update_vertical_coordinate!(model, grid; kwargs...) = nothing
+update_vertical_coordinate!(model, grid, Δt; kwargs...) = nothing
 
 function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; parameters = tuple(:xyz))
     η = model.free_surface.η
@@ -85,25 +112,38 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
     Δz₀ᵃᵃᶠ = grid.Δzᵃᵃᶠ.reference
     Δz₀ᵃᵃᶜ = grid.Δzᵃᵃᶜ.reference
 
-    # Update the scaling on the whole grid (from -H to N+H)
-    launch!(architecture(grid), grid, horizontal_parameters(grid), _update_scaling!,
-            scaling, ∂t_scaling, η, grid, Δt)
-
     # Update vertical coordinate with available parameters 
     for params in parameters
-        launch!(architecture(grid), grid, params, _update_z_star!, 
-                Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, scaling, grid.Nz)
+        # Update the scaling on the whole grid (from -H to N+H)
+        launch!(architecture(grid), grid, horizontal_parameters(params), _update_scaling!,
+                scaling, ∂t_scaling, η, grid, Δt)
+    
+        launch!(architecture(grid), grid, horizontal_parameters(params), _update_z_star!, 
+                Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, scaling, Val(grid.Nz))
     end
 
-    fill_halo_regions!((Δzᵃᵃᶠ, Δzᵃᵃᶜ); only_local_halos = true)
+    fill_halo_regions!((Δzᵃᵃᶠ, Δzᵃᵃᶜ, scaling, ∂t_scaling); only_local_halos = true)
     
     return nothing
 end
 
-function horizontal_parameters(grid)
-    halos = halo_size(grid)[1:2]
-    total_size = size(grid)[1:2] .+ 2 .* halos
-    return KernelParameters(total_size, .- halos)
+horizontal_parameters(::Symbol) = :xy
+horizontal_parameters(::KernelParameters{W, O}) where {W, O} = KernelParameters(W[1:2], O[1:2])
+
+update_thickness_weighted_tracers!(tracers, grid) = nothing
+
+function update_thickness_weighted_tracers!(tracers, grid::ZStarCoordinateGrid) 
+    arch = architecture(grid)
+    for tracer in tracers
+        launch!(arch, grid, :xyz, _update_tracers!, tracer, grid)
+    end
+
+    return nothing
+end
+
+@kernel function _update_tracers!(tracer, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds tracer[i, j, k] /= grid.Δzᵃᵃᶠ.scaling[i, j, grid.Nz+1]
 end
 
 @kernel function _update_scaling!(scaling, ∂t_scaling, η, grid, Δt)
@@ -119,16 +159,20 @@ end
 bottom_height(i, j, grid) = grid.Lz
 bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
 
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, scaling, Nz)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀[k]
-    @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀[k]
+@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, scaling, ::Val{Nz}) where Nz
+    i, j = @index(Global, NTuple)
+    @unroll for k in 1:Nz+1
+        @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀[k]
+        @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀[k]
+    end
 end
 
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, scaling, Nz)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀
-    @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀
+@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, scaling, ::Val{Nz}) where Nz
+    i, j = @index(Global, NTuple)
+    @unroll for k in 1:Nz+1
+        @inbounds ΔzF[i, j, k] = scaling[i, j, Nz+1] * ΔzF₀
+        @inbounds ΔzC[i, j, k] = scaling[i, j, Nz+1] * ΔzC₀
+    end
 end
 
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
@@ -153,8 +197,8 @@ arch_array(arch, coord::ZStarCoordinate) =
     ZStarCoordinate(arch_array(arch, coord.reference), coord.star_value, coord.scaling, coord.∂t_scaling)
 
 # Adding the slope to the momentum-RHS
-@inline free_surface_slope_x(i, j, k, grid, args...) = nothing
-@inline free_surface_slope_y(i, j, k, grid, args...) = nothing
+@inline free_surface_slope_x(i, j, k, grid, args...) = zero(grid)
+@inline free_surface_slope_y(i, j, k, grid, args...) = zero(grid)
 
 @inline free_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 @inline free_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)

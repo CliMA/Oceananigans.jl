@@ -31,7 +31,10 @@ update_state!(model::HydrostaticFreeSurfaceModel, Δt, callbacks=[]; compute_ten
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
-    
+
+    # Remove moving boundary from tracers
+    @apply_regionally update_thickness_weighted_tracers!(model.tracers, grid) 
+
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
