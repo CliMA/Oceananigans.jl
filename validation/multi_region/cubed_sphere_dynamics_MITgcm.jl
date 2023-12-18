@@ -20,12 +20,12 @@ include("cubed_sphere_visualization.jl")
 
 g = 9.81
 
+Nx = 8
+Ny = 8
 #=
-Nx = 16
-Ny = 16
-=#
 Nx = 5 
 Ny = 5 
+=#
 Nz = 1
 
 Lz = 1
@@ -35,10 +35,28 @@ U  = 38.60328935834681 # velocity scale
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   z = (-Lz, 0),
                                   radius = R,
-                                  horizontal_direction_halo = 2,
+                                  horizontal_direction_halo = 1,
                                   partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
+
+grid_Δxᶠᶜᵃ = Field{Face, Center, Center}(grid)
+grid_Δyᶜᶠᵃ = Field{Center, Face, Center}(grid)
+grid_Azᶠᶠᵃ = Field{Face, Face, Center}(grid)
+
+# Fix the grid metric grid[region].Δxᶠᶜᵃ[Nx+1,0,:] for region in [1, 3, 5].
+for region in [1, 3, 5]
+    region_east = region + 1
+    grid[region].Δxᶠᶜᵃ[Nx+1,1-Hy:0] = reverse(grid[region_east].Δyᶜᶠᵃ[1:Hy,1])
+end
+
+for region in 1:6
+    for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
+        grid_Δxᶠᶜᵃ[region][i, j, k] = grid[region].Δxᶠᶜᵃ[i, j]
+        grid_Δyᶜᶠᵃ[region][i, j, k] = grid[region].Δyᶜᶠᵃ[i, j]
+        grid_Azᶠᶠᵃ[region][i, j, k] = Azᶠᶠᶜ(i, j, k, grid[region])
+    end
+end
 
 # Solid body rotation
 Ω_prime = U/R
@@ -108,16 +126,12 @@ v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        #=
         u[region][i, j, k] = 1
         v[region][i, j, k] = 2 
-        #=
+        =#
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
-        =#
-        #=
-        u[region][i, j, k] = grid[region].Δyᶠᶜᵃ[i, j]
-        v[region][i, j, k] = grid[region].Δxᶜᶠᵃ[i, j]
-        =#
     end
 end
 
@@ -152,6 +166,26 @@ offset = -1 .* halo_size(grid)
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
+
+# Plot the grid metrics.
+
+fig = panel_wise_visualization_with_halos(grid, grid_Δxᶠᶜᵃ)
+save("grid_Δxᶠᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Δxᶠᶜᵃ)
+save("grid_Δxᶠᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Δyᶜᶠᵃ)
+save("grid_Δyᶜᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Δyᶜᶠᵃ)
+save("grid_Δyᶜᶠᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶠᵃ)
+save("grid_Azᶠᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Azᶠᶠᵃ)
+save("grid_Azᶠᶠᵃ.png", fig)
 
 plot_initial_condition_before_model_definition = false
 
