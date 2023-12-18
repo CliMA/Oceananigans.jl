@@ -10,16 +10,17 @@ grid = RectilinearGrid(size = (300, 20),
                    topology = (Periodic, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-                        vertical_coordinate = ZCoordinate(),
+                        vertical_coordinate = ZStarCoordinate(),
                          momentum_advection = WENO(),
                            tracer_advection = WENO(),
-                                   buoyancy = nothing,
-                                    tracers = (),
+                                   buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; cfl = 0.5, grid))
 
 ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
+bᵢ(x, z) = 1e-6 * z + ηᵢ(x, z) * 1e-8
 
-set!(model, η = ηᵢ)
+set!(model, η = ηᵢ, b = bᵢ)
 
 gravity_wave_speed   = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
 barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
@@ -31,20 +32,15 @@ barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 simulation = Simulation(model; Δt, stop_time = 10000Δt)
 
 field_outputs = if model.grid isa ZStarCoordinateGrid
-  merge(model.velocities, (; ΔzF = model.grid.Δzᵃᵃᶠ.star_value))
+  merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.star_value))
 else
-  model.velocities
+  merge(model.velocities, model.tracers)
 end
-
-# simulation.output_writers[:free_surface] = JLD2OutputWriter(model, model.free_surface.η, 
-#                                                             overwrite_existing = true,
-#                                                             schedule = IterationInterval(100),
-#                                                             filename = "free_surface") 
 
 simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outputs, 
                                                                overwrite_existing = true,
                                                                schedule = IterationInterval(100),
-                                                               filename = "other_variables") 
+                                                               filename = "zstar_model") 
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
@@ -67,3 +63,11 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 run!(simulation)
+
+# Check conservation
+b = FieldTimeSeries("zstar_model.jld2", "b")
+
+drift = []
+for t in 1:length(b.times)
+  push!(drift, sum(b[t] - b[1]))
+end
