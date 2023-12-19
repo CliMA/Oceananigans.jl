@@ -362,7 +362,6 @@ end
                                     operation=:endpoint, 
                                     index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
 
-
                 switch_device!(grid, 2)
 
                 # Trivial halo checks with no off-set in index

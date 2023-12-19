@@ -44,10 +44,16 @@ grid_Δxᶠᶜᵃ = Field{Face, Center, Center}(grid)
 grid_Δyᶜᶠᵃ = Field{Center, Face, Center}(grid)
 grid_Azᶠᶠᵃ = Field{Face, Face, Center}(grid)
 
-# Fix the grid metric grid[region].Δxᶠᶜᵃ[Nx+1,0,:] for region in [1, 3, 5].
+# Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
 for region in [1, 3, 5]
     region_east = region + 1
     grid[region].Δxᶠᶜᵃ[Nx+1,1-Hy:0] = reverse(grid[region_east].Δyᶜᶠᵃ[1:Hy,1])
+end
+
+# Fix the grid metric Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] for even panels.
+for region in [2, 4, 6]
+    region_west = region - 1
+    grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
 end
 
 for region in 1:6
