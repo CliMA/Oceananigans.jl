@@ -42,7 +42,7 @@ EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
 OceananigansEnzymeCoreExt = "EnzymeCore"
 
 [compat]
-Adapt = "3"
+Adapt = "3, 4"
 CUDA = "4.1.1, 5"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
