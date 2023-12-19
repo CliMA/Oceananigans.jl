@@ -76,9 +76,9 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
     # Memory layout for Dz spacings is local in z
     ΔzF  =  ZFaceField(grid)
     ΔzC  = CenterField(grid)
-    s⁻   = ZFaceField(grid, indices = (:, :, grid.Nz+1))
-    sⁿ   = ZFaceField(grid, indices = (:, :, grid.Nz+1))
-    ∂t_s = ZFaceField(grid, indices = (:, :, grid.Nz+1))
+    s⁻   =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
+    sⁿ   =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
+    ∂t_s =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
 
     # Initial "at-rest" conditions
     launch!(architecture(grid), grid, :xy, _update_scaling!,
@@ -129,9 +129,8 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
 
     # Update vertical coordinate with available parameters 
     for params in parameters
-        launch!(architecture(grid), grid, horizontal_parameters(params), _update_scaling!,
-                sⁿ, s⁻, ∂t_s, η, grid, Δt)
-    
+        update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, model.free_surface, grid, Δt)
+
         launch!(architecture(grid), grid, horizontal_parameters(params), _update_z_star!, 
                 Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, sⁿ, Val(grid.Nz))
     end
@@ -143,6 +142,10 @@ end
 
 horizontal_parameters(::Symbol) = :xy
 horizontal_parameters(::KernelParameters{W, O}) where {W, O} = KernelParameters(W[1:2], O[1:2])
+
+update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, fs, grid, Δt) = 
+    launch!(architecture(grid), grid, horizontal_parameters(params), _update_scaling!,
+            sⁿ, s⁻, ∂t_s, fs.η, grid, Δt)
 
 @kernel function _update_scaling!(sⁿ, s⁻, ∂t_s, η, grid, Δt)
     i, j = @index(Global, NTuple)
@@ -198,20 +201,6 @@ import Oceananigans.Operators: Vᶜᶜᶠ, Vᶜᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, V
 
 @inline Δzᶠᶠᶠ(i, j, k, grid::ZStarCoordinateGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.Δ)
 @inline Δzᶠᶠᶜ(i, j, k, grid::ZStarCoordinateGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
-
-# Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
-# TODO: make z-direction local in memory by not using Fields
-@inline Vᶜᶜᶠ(i, j, k, grid::ZStarCoordinateGrid) = Azᶜᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.Δ★
-@inline Vᶜᶜᶜ(i, j, k, grid::ZStarCoordinateGrid) = Azᶜᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.Δ★
-
-@inline Vᶜᶠᶠ(i, j, k, grid::ZStarCoordinateGrid) = Azᶜᶠᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.Δ★
-@inline Vᶜᶠᶜ(i, j, k, grid::ZStarCoordinateGrid) = Azᶜᶠᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.Δ★
-
-@inline Vᶠᶜᶠ(i, j, k, grid::ZStarCoordinateGrid) = Azᶠᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.Δ★
-@inline Vᶠᶜᶜ(i, j, k, grid::ZStarCoordinateGrid) = Azᶠᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.Δ★
-
-@inline Vᶠᶠᶠ(i, j, k, grid::ZStarCoordinateGrid) = Azᶠᶠᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.Δ★
-@inline Vᶠᶠᶜ(i, j, k, grid::ZStarCoordinateGrid) = Azᶠᶠᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.Δ★
 
 # Adding the slope to the momentum-RHS
 @inline free_surface_slope_x(i, j, k, grid, args...) = zero(grid)

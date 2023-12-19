@@ -14,8 +14,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
-                                    tracers = :b) 
-                               #free_surface = SplitExplicitFreeSurface(; cfl = 0.5, grid))
+                                    tracers = :b,
+                               free_surface = SplitExplicitFreeSurface(; substeps = 30))
 
 # ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
 bᵢ(x, z) = x > 50kilometers ? 0 : 1
@@ -29,7 +29,7 @@ barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 10000Δt, stop_iteration = 10)
+simulation = Simulation(model; Δt, stop_time = 10000Δt) #, stop_iteration = 10)
 
 field_outputs = if model.grid isa ZStarCoordinateGrid
   merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.Δ))

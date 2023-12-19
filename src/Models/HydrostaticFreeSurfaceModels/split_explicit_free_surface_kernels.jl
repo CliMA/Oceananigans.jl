@@ -391,3 +391,22 @@ setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
 wait_free_surface_communication!(free_surface, arch) = nothing
+
+update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, fs::SplitExplicitFreeSurface, grid, Δt) = 
+    launch!(architecture(grid), grid, horizontal_parameters(params), _update_split_explicit_scaling!,
+            sⁿ, s⁻, ∂t_s, fs.η, fs.state.U̅, fs.state.V̅, grid, Δt)
+
+@kernel function _update_split_explicit_scaling!(sⁿ, s⁻, ∂t_s, η, U̅, V̅, grid, Δt)
+    i, j = @index(Global, NTuple)
+    bottom = bottom_height(i, j, grid)
+    @inbounds begin
+        h = (bottom + η[i, j, grid.Nz+1]) / bottom
+
+        # update current and previous scaling
+        s⁻[i, j, grid.Nz+1] = sⁿ[i, j, grid.Nz+1]
+        sⁿ[i, j, grid.Nz+1] = h
+
+        # Scaling derivative
+        ∂t_s[i, j, grid.Nz+1] = - div_xyᶜᶜᶜ(i, j, 1, grid, U̅, V̅) / bottom
+    end
+end
