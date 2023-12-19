@@ -24,6 +24,20 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   horizontal_direction_halo = 1,
                                   partition = CubedSpherePartition(; R = 1))
 
+Hx, Hy, Hz = halo_size(grid)
+
+# Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
+for region in [1, 3, 5]
+    region_east = region + 1
+    grid[region].Δxᶠᶜᵃ[Nx+1,1-Hy:0] = reverse(grid[region_east].Δyᶜᶠᵃ[1:Hy,1])
+end
+
+# Fix the grid metric Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] for even panels.
+for region in [2, 4, 6]
+    region_west = region - 1
+    grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
+end
+
 ## Model setup
 
 #=
