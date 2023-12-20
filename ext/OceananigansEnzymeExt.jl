@@ -19,7 +19,7 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) =
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
 @inline batch(::Val{N}, ::Type{T}) where {T, N} = NTuple{N, T}
-
+#=
 function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  func::EnzymeCore.Const{Type{Field}},
                                                  ::Type{<:EnzymeCore.Annotation{RT}},
@@ -66,7 +66,7 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
                                         T::EnzymeCore.Const{<:DataType}; kw...) where RT
     return (nothing, nothing, nothing)
 end
-
+=#
 #####
 ##### FunctionField
 #####
