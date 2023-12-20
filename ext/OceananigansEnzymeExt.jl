@@ -3,6 +3,7 @@ module OceananigansEnzymeExt
 using Oceananigans
 using Oceananigans.Fields: FunctionField
 using Oceananigans.Utils: contiguousrange
+#Oceananigans.Models.HydrostaticFreeSurfaceModels.top_tracer_boundary_conditions
 
 using KernelAbstractions
 
@@ -415,5 +416,41 @@ function EnzymeCore.EnzymeRules.reverse(config,
 end
 
 =#
+
+#####
+##### top_tracer_boundary_conditions
+#####
+
+function EnzymeCore.EnzymeRules.augmented_primal(config,
+                                                 func::EnzymeCore.Const{typeof(Oceananigans.Models.HydrostaticFreeSurfaceModels.top_tracer_boundary_conditions)},
+                                                 ::RT, grid,
+                                                 tracers) where RT
+
+    primal = if EnzymeCore.EnzymeRules.needs_primal(config)
+        func.val(grid.val, tracers.val)
+    else
+        nothing
+    end
+
+    shadow = if EnzymeCore.EnzymeRules.width(config) == 1
+    	func.val(grid.val, tracers.dval)
+    else
+    	ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+    		Base.@_inline_meta
+        	func.val(grid.val, tracers.dval)
+    	end
+    end
+
+    P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
+    B = batch(Val(EnzymeCore.EnzymeRules.width(config)), RT)
+    return EnzymeCore.EnzymeRules.AugmentedReturn{P, B, Nothing}(primal, shadow, nothing)
+end
+
+function EnzymeCore.EnzymeRules.reverse(config,
+                                        func::EnzymeCore.Const{typeof(Oceananigans.Models.HydrostaticFreeSurfaceModels.top_tracer_boundary_conditions)},
+                                        ::RT, grid,
+                                        tracers) where RT
+    return (nothing, nothing)
+end
 
 end
