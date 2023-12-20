@@ -7,12 +7,11 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
-
-include("cubed_sphere_visualization.jl")
-
 #=
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 =#
+
+include("cubed_sphere_visualization.jl")
 
 Logging.global_logger(OceananigansLogger())
 
@@ -82,31 +81,31 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
             ψᶠᶠᶜ_face[i, j, 1] = ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j])
         end
 
-        #=
         for i in 1:Nx+1, j in 1:Ny
             uᶠᶜᶜ_face[i, j, 1] = (ψᶠᶠᶜ_face[i, j, 1] - ψᶠᶠᶜ_face[i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
         end
-        =#
-
+        
+        #=
         for i in 1:Nx, j in 1:Ny
             #=
             uᶠᶜᶜ_face[i, j, 1] = i + Nx * (j - 1)
             =#
             uᶠᶜᶜ_face[i, j, 1] = Nx * Ny * (f - 1) + (i + Nx * (j - 1))
         end
+        =#
 
-        #=
         for i in 1:Nx, j in 1:Ny+1
             vᶜᶠᶜ_face[i, j, 1] = (ψᶠᶠᶜ_face[i+1, j, 1] - ψᶠᶠᶜ_face[i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
         end
-        =#
         
+        #=
         for i in 1:Nx, j in 1:Ny
             #=
             vᶜᶠᶜ_face[i, j, 1] = -(i + Nx * (j-1) + 100)
             =#
             vᶜᶠᶜ_face[i, j, 1] = -(Nx * Ny * (f - 1) + (i + Nx * (j - 1)))
         end        
+        =#
         
     end
 
@@ -115,13 +114,15 @@ end
 
 ## Grid setup
 
+#=
 Nx, Ny, Nz = 5, 5, 1
+=#
+Nx, Ny, Nz = 32, 32, 1
 H = 8kilometers
 grid = ConformalCubedSphereGrid(face_size = (Nx, Ny, Nz), z = (-H, 0))
 
 ## Model setup
 
-#=
 model = HydrostaticFreeSurfaceModel(
                     grid = grid,
     momentum_advection = VectorInvariant(),
@@ -131,12 +132,10 @@ model = HydrostaticFreeSurfaceModel(
                 tracers = nothing,
                 buoyancy = nothing
 )
-=#
 
 ## Rossby-Haurwitz initial condition from Williamson et al. (§3.6, 1992)
 ## # Here: θ ∈ [-π/2, π/2] is latitude and ϕ ∈ [0, 2π) is longitude.
 
-#=
 R = grid.faces[1].radius
 K = 7.848e-6
 ω = 0
@@ -173,12 +172,11 @@ vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
 #=
 set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
 =#
-=#
 
-#=
 ψ₀(λ, φ) = ψ(rescale²(φ), rescale¹(λ))
-=#
+#=
 ψ₀(λ, φ) = 1
+=#
 
 u₀, v₀, _ = diagnose_velocities_from_streamfunction(ψ₀, grid)
 
@@ -263,5 +261,4 @@ JLD2OutputWriter(model, output_fields,
     overwrite_existing = true)
 
 run!(simulation)
-
 =#
