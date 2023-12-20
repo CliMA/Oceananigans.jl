@@ -79,7 +79,7 @@ h_function(θ, ϕ) = H + R^2/g * (A(θ) + B(θ) * cos(n * ϕ) + C(θ) * cos(2n *
 # Previously: θ ∈ [-π/2, π/2] is latitude and ϕ ∈ [0, 2π) is longitude
 # Oceananigans: ϕ ∈ [-90, 90] and λ ∈ [-180, 180]
 
-rescale¹(λ) = (λ + 180)/ 360 * 2π # λ to θ
+rescale¹(λ) = (λ + 180) / 360 * 2π # λ to θ
 rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 
 # Arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ

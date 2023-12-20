@@ -9,7 +9,7 @@
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 
 @inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
-    scaling = ifelse(on_corner(i, j, grid), convert(FT, 4/3), 1)
+    scaling = ifelse(on_corner(i, j, grid), convert(FT, 1), 1)
     return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 end
 
