@@ -10,6 +10,7 @@ using Oceananigans.Utils: Iterate
 #=
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 =#
+using DataDeps
 using JLD2
 using CairoMakie
 
@@ -20,15 +21,32 @@ include("cubed_sphere_visualization.jl")
 R = 6371e3
 H = 8000
 
-#=
-Nx, Ny, Nz = 5, 5, 1
-=#
-Nx, Ny, Nz = 32, 32, 1
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                  z = (-H, 0),
-                                  radius = R,
-                                  horizontal_direction_halo = 1,
-                                  partition = CubedSpherePartition(; R = 1))
+load_cs32_grid = false
+
+if load_cs32_grid
+    dd32 = DataDep("cubed_sphere_32_grid",
+                   "Conformal cubed sphere grid with 32×32 grid points on each face",
+                   "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+                   "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538")
+    DataDeps.register(dd32)
+    grid_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+    grid = ConformalCubedSphereGrid(grid_filepath; 
+                                    Nz = 1,
+                                    z = (-H, 0),
+                                    panel_halo = (1, 1, 1),
+                                    radius = R)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+else
+    #=
+    Nx, Ny, Nz = 5, 5, 1
+    =#
+    Nx, Ny, Nz = 32, 32, 1
+    grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
+                                      z = (-H, 0),
+                                      radius = R,
+                                      horizontal_direction_halo = 1,
+                                      partition = CubedSpherePartition(; R = 1))
+end
 
 Hx, Hy, Hz = halo_size(grid)
 
@@ -343,9 +361,7 @@ simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_i
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
-#=
 run!(simulation)
-=#
 
 #=
 fig = panel_wise_visualization_with_halos(grid, Δζ_fields[end])

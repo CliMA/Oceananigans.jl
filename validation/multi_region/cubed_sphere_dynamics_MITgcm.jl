@@ -14,29 +14,43 @@ using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
+using DataDeps
 using CairoMakie
 
 include("cubed_sphere_visualization.jl")
 
 g = 9.81
 
-Nx = 8
-Ny = 8
-#=
-Nx = 5 
-Ny = 5 
-=#
-Nz = 1
-
 Lz = 1
 R  = 6370e3            # sphere's radius
 U  = 38.60328935834681 # velocity scale
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                  z = (-Lz, 0),
-                                  radius = R,
-                                  horizontal_direction_halo = 1,
-                                  partition = CubedSpherePartition(; R = 1))
+load_cs32_grid = false
+
+if load_cs32_grid
+    dd32 = DataDep("cubed_sphere_32_grid",
+                   "Conformal cubed sphere grid with 32×32 grid points on each face",
+                   "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+                   "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538")
+    DataDeps.register(dd32)
+    grid_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+    grid = ConformalCubedSphereGrid(grid_filepath; 
+                                    Nz = 1,
+                                    z = (-Lz, 0),
+                                    panel_halo = (1, 1, 1),
+                                    radius = R)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+else
+    #=
+    Nx, Ny, Nz = 5, 5, 1
+    =#
+    Nx, Ny, Nz = 8, 8, 1
+    grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
+                                      z = (-Lz, 0),
+                                      radius = R,
+                                      horizontal_direction_halo = 1,
+                                      partition = CubedSpherePartition(; R = 1))
+end
 
 Hx, Hy, Hz = halo_size(grid)
 
