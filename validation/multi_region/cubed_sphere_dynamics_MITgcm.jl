@@ -1,6 +1,6 @@
 #=
-Download the directory MITgcm_Output from  
-https://www.dropbox.com/scl/fo/qr024ly4t3eq38jsi0sdj/h?rlkey=zbq50ud1mtv8l05wxjarulpr3&dl=0
+Download the old_code_metrics.jld2 file from
+https://www.dropbox.com/scl/fo/r2e7uceqsmdkyhqi8v01i/h?rlkey=sdzqitnllnoht0dxtpon6hdhj&dl=0
 and place it in the path validation/multi_region/. Then run this script from the same path as
 include("cubed_sphere_dynamics_MITgcm.jl")
 =#
@@ -15,6 +15,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
 using DataDeps
+using JLD2
 using CairoMakie
 
 include("cubed_sphere_visualization.jl")
@@ -44,7 +45,7 @@ else
     #=
     Nx, Ny, Nz = 5, 5, 1
     =#
-    Nx, Ny, Nz = 8, 8, 1
+    Nx, Ny, Nz = 32, 32, 1
     grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                       z = (-Lz, 0),
                                       radius = R,
@@ -231,6 +232,59 @@ if plot_initial_condition_before_model_definition
 
     fig = panel_wise_visualization(grid, ζ)
     save("ζ₀₀.png", fig)
+end
+
+jldopen("new_code_metrics.jld2", "w") do file
+    for region in 1:6
+        file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
+        file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
+        file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ       
+    end
+end
+
+compare_old_and_new_code_metrics = true
+
+if compare_old_and_new_code_metrics
+
+    old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+
+    old_file = jldopen("old_code_metrics.jld2")
+    for region in 1:6
+        old_Δxᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
+        old_Δyᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
+        old_Azᶠᶠᵃ_parent[:, :, region] = parent(old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy])
+    end
+    overwrite_grid_metrics_from_old_code = false
+    if overwrite_grid_metrics_from_old_code
+        for region in 1:6
+            grid[region].Δxᶠᶜᵃ = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+            grid[region].Δyᶜᶠᵃ = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+            grid[region].Azᶠᶠᵃ = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
+        end
+    end
+    close(old_file)
+    
+    new_file = jldopen("new_code_metrics.jld2")
+    for region in 1:6
+        new_Δxᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δxᶠᶜᵃ/" * string(region)][:, :, 1])
+        new_Δyᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δyᶜᶠᵃ/" * string(region)][:, :, 1])
+        new_Azᶠᶠᵃ_parent[:, :, region] = parent(new_file["Azᶠᶠᵃ/" * string(region)][:, :, 1])
+    end
+    close(new_file)
+    
+    Δxᶠᶜᵃ_difference = new_Δxᶠᶜᵃ_parent - old_Δxᶠᶜᵃ_parent
+    Δyᶜᶠᵃ_difference = new_Δyᶜᶠᵃ_parent - old_Δyᶜᶠᵃ_parent
+    Azᶠᶠᵃ_difference = new_Azᶠᶠᵃ_parent - old_Azᶠᶠᵃ_parent
+    
+    Δxᶠᶜᵃ_relative_difference = Δxᶠᶜᵃ_difference ./ old_Δxᶠᶜᵃ_parent
+    Δyᶜᶠᵃ_relative_difference = Δyᶜᶠᵃ_difference ./ old_Δyᶜᶠᵃ_parent
+    Azᶠᶠᵃ_relative_difference = Azᶠᶠᵃ_difference ./ old_Azᶠᶠᵃ_parent
+    
 end
 
 model = HydrostaticFreeSurfaceModel(; grid,

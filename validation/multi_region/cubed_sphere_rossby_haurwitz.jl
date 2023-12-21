@@ -1,3 +1,10 @@
+#=
+Download the old_code_metrics.jld2 file from
+https://www.dropbox.com/scl/fo/r2e7uceqsmdkyhqi8v01i/h?rlkey=sdzqitnllnoht0dxtpon6hdhj&dl=0
+and place it in the path validation/multi_region/. Then run this script from the same path as
+include("cubed_sphere_rossby_haurwitz.jl")
+=#
+
 using Oceananigans, Printf
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -210,10 +217,63 @@ if plot_initial_condition_before_model_definition
     save("ζ₀₀.png", fig)
 end
 
+jldopen("new_code_metrics.jld2", "w") do file
+    for region in 1:6
+        file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
+        file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
+        file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ       
+    end
+end
+
+compare_old_and_new_code_metrics = true
+
+if compare_old_and_new_code_metrics
+
+    old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+
+    old_file = jldopen("old_code_metrics.jld2")
+    for region in 1:6
+        old_Δxᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
+        old_Δyᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
+        old_Azᶠᶠᵃ_parent[:, :, region] = parent(old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy])
+    end
+    overwrite_grid_metrics_from_old_code = false
+    if overwrite_grid_metrics_from_old_code
+        for region in 1:6
+            grid[region].Δxᶠᶜᵃ = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+            grid[region].Δyᶜᶠᵃ = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+            grid[region].Azᶠᶠᵃ = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
+        end
+    end
+    close(old_file)
+    
+    new_file = jldopen("new_code_metrics.jld2")
+    for region in 1:6
+        new_Δxᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δxᶠᶜᵃ/" * string(region)][:, :, 1])
+        new_Δyᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δyᶜᶠᵃ/" * string(region)][:, :, 1])
+        new_Azᶠᶠᵃ_parent[:, :, region] = parent(new_file["Azᶠᶠᵃ/" * string(region)][:, :, 1])
+    end
+    close(new_file)
+    
+    Δxᶠᶜᵃ_difference = new_Δxᶠᶜᵃ_parent - old_Δxᶠᶜᵃ_parent
+    Δyᶜᶠᵃ_difference = new_Δyᶜᶠᵃ_parent - old_Δyᶜᶠᵃ_parent
+    Azᶠᶠᵃ_difference = new_Azᶠᶠᵃ_parent - old_Azᶠᶠᵃ_parent
+    
+    Δxᶠᶜᵃ_relative_difference = Δxᶠᶜᵃ_difference ./ old_Δxᶠᶜᵃ_parent
+    Δyᶜᶠᵃ_relative_difference = Δyᶜᶠᵃ_difference ./ old_Δyᶜᶠᵃ_parent
+    Azᶠᶠᵃ_relative_difference = Azᶠᶠᵃ_difference ./ old_Azᶠᶠᵃ_parent
+    
+end
+
 jldopen("new_code.jld2", "w") do file
-    for face in 1:6
-        file["u/" * string(face)] = u.data[face]
-        file["v/" * string(face)] = v.data[face]
+    for region in 1:6
+        file["u/" * string(region)] = u.data[region]
+        file["v/" * string(region)] = v.data[region]
     end
 end
 
@@ -260,8 +320,6 @@ end
 #=
 cfl = CFL(Δt, accurate_cell_advection_timescale)
 =#
-
-cfl = 0.5
 
 simulation = Simulation(model; Δt, stop_time)
 
@@ -330,6 +388,7 @@ save("ζ₀_with_halos.png", fig)
 fig = panel_wise_visualization(grid, ζᵢ)
 save("ζ₀.png", fig)
 
+#=
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -362,6 +421,7 @@ simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_i
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
+=#
 
 #=
 fig = panel_wise_visualization_with_halos(grid, Δζ_fields[end])
