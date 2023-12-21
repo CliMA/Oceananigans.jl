@@ -13,8 +13,8 @@ grid = RectilinearGrid(size = (300, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                         vertical_coordinate = ZStar(),
-                         momentum_advection = WENOVectorInvariant(),
-                           tracer_advection = WENO(order = 9),
+                         momentum_advection = VectorInvariant(),
+                           tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 30))
@@ -47,16 +47,20 @@ simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outp
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
+    v  = sim.model.velocities.v
+    η  = sim.model.free_surface.η
+    b  = sim.model.tracers.b
     
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ", maximum(w), minimum(w))
     msg2 = @sprintf("extrema u: %.2e %.2e ", maximum(u), minimum(u))
+    msg3 = @sprintf("extrema b: %.2e %.2e ", maximum(b), minimum(b))
     if sim.model.grid isa ZStarCoordinateGrid
       Δz = sim.model.grid.Δzᵃᵃᶠ.Δ
-      msg3 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
-      @info msg0 * msg1 * msg2 * msg3
+      msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
+      @info msg0 * msg1 * msg2 * msg3 * msg4
     else
-      @info msg0 * msg1 * msg2
+      @info msg0 * msg1 * msg2 * msg3
     end
 
     return nothing

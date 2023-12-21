@@ -88,13 +88,15 @@ function GeneralizedCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ},
     ∂t_s = Field{Center, Center, Nothing}(grid)
 
     # Initial "at-rest" conditions
-    launch!(architecture(grid), grid, :xy, _update_scaling!,
-            sⁿ, s⁻, ∂t_s, ZeroField(grid), grid, 1)
+    set!(sⁿ, 1)
+    set!(s⁻, 1)
+    
+    fill_halo_regions!((s⁻, sⁿ))
     
     launch!(architecture(grid), grid, :xy,_update_z_star!, 
         ΔzF, ΔzC, grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, sⁿ, Val(grid.Nz))
 
-    fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
+    fill_halo_regions!((ΔzF, ΔzC))
 
     Δzᵃᵃᶠ = GeneralizedVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_s)
     Δzᵃᵃᶜ = GeneralizedVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_s)
@@ -119,7 +121,6 @@ end
 update_vertical_coordinate!(model, grid, Δt; kwargs...) = nothing
 
 function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; parameters = tuple(:xyz))
-    η = model.free_surface.η
     
     # Scaling 
     s⁻ = grid.Δzᵃᵃᶠ.s⁻
@@ -251,4 +252,4 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
 
 import Oceananigans.Advection: metric_term
 
-metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, k] * Vᶜᶜᶜ(i, j, k, grid)
+metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, k] / grid.Δzᵃᵃᶜ.sⁿ[i, j, k]

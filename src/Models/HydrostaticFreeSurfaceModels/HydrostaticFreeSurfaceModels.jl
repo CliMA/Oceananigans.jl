@@ -30,7 +30,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
 FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
-include("moving_vertical_coordinate.jl")
+include("generalized_vertical_coordinate.jl")
 include("compute_w_from_continuity.jl")
 include("rigid_lid.jl")
 
