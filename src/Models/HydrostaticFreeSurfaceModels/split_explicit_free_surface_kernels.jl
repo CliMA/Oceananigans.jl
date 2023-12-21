@@ -394,9 +394,9 @@ wait_free_surface_communication!(free_surface, arch) = nothing
 
 update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, fs::SplitExplicitFreeSurface, grid, Δt) = 
     launch!(architecture(grid), grid, horizontal_parameters(params), _update_split_explicit_scaling!,
-            sⁿ, s⁻, ∂t_s, fs.η, fs.state.U̅, fs.state.V̅, grid, Δt)
+            sⁿ, s⁻, ∂t_s, fs.η, fs.state.U̅, fs.state.V̅, grid)
 
-@kernel function _update_split_explicit_scaling!(sⁿ, s⁻, ∂t_s, η, U̅, V̅, grid, Δt)
+@kernel function _update_split_explicit_scaling!(sⁿ, s⁻, ∂t_s, η, U̅, V̅, grid)
     i, j = @index(Global, NTuple)
     bottom = bottom_height(i, j, grid)
     @inbounds begin

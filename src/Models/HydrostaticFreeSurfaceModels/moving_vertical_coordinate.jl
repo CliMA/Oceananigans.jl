@@ -8,49 +8,55 @@ using Oceananigans.Utils: getnamewrapper
 using Adapt 
 using Printf
 
-""" geopotential-following vertical coordinate """
-struct ZCoordinate end
 
 """
-    ZStarCoordinate{R, S, Z} 
+    MovingVerticalCoordinate{R, S, Z} 
 
-a _free surface following_ vertical coordinate system.
-The fixed coordinate is stored in `reference`, while `star_value`
-contains the actual free-surface-following z-coordinate
-the `scaling` and `∂t_scaling` fields are the vertical derivative of
-the vertical coordinate and it's time derivative
+spacings for a generalized vertical coordinate system.
+The fixed coordinate is stored in `Δr`, while `Δ` contains the moving z-coordinate.
+The `s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate
+at timestep `n-1` and `n` and it's time derivative.
+`denomination` contains the 
 """
-struct ZStarCoordinate{R, S, Z}
-    Δ★ :: R # Reference _non moving_ coordinate
-     Δ :: Z # moving vertical coordinate
-    s⁻ :: S # scaling term = ∂Δ★(Δ) at the start of the time step
-    sⁿ :: S # scaling term = ∂Δ★(Δ) at the end of the time step
-  ∂t_s :: S # Time derivative of the vertical coordinate scaling
+struct MovingVerticalCoordinate{D, R, Z, S}
+  denomination :: D # The type of moving coordinate
+            Δr :: R # Reference _non moving_ vertical coordinate
+             Δ :: Z # moving vertical coordinate
+            s⁻ :: S # scaling term = ∂Δ/∂Δr at the start of the time step
+            sⁿ :: S # scaling term = ∂Δ/∂Δr at the end of the time step
+          ∂t_s :: S # Time derivative of the vertical coordinate scaling
 end
 
-ZStarCoordinate() = ZStarCoordinate(nothing, nothing, nothing, nothing, nothing)
+""" a _free-surface following_ vertical coordinate """
+struct ZStar end
+
+""" geopotential-following vertical coordinate """
+struct Z end
 
 import Oceananigans.Grids: coordinate_summary
+
+const ZStarCoordinate = MovingVerticalCoordinate{<:ZStar}
 
 coordinate_summary(Δ::ZStarCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δz★))
 
-Adapt.adapt_structure(to, coord::ZStarCoordinate) = 
-    ZStarCoordinate(Adapt.adapt(to, coord.Δ★),
-                    Adapt.adapt(to, coord.Δ),
-                    Adapt.adapt(to, coord.s⁻),
-                    Adapt.adapt(to, coord.sⁿ),
-                    Adapt.adapt(to, coord.∂t_s))
+Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) = 
+    MovingVerticalCoordinate(nothing, 
+                             Adapt.adapt(to, coord.Δr),
+                             Adapt.adapt(to, coord.Δ),
+                             Adapt.adapt(to, coord.s⁻),
+                             Adapt.adapt(to, coord.sⁿ),
+                             Adapt.adapt(to, coord.∂t_s))
 
 import Oceananigans.Architectures: arch_array
 
-arch_array(arch, coord::ZStarCoordinate) = 
-    ZStarCoordinate(arch_array(arch, coord.Δ★), 
-                    coord.Δ,
-                    coord.s⁻,
-                    coord.sⁿ,
-                    coord.∂t_s)
-                    
+arch_array(arch, coord::MovingVerticalCoordinate) = 
+    MovingVerticalCoordinate(coord.denomination,
+                             arch_array(arch, coord.Δr), 
+                             coord.Δ,
+                             coord.s⁻,
+                             coord.sⁿ,
+                             coord.∂t_s)
 
 const ZStarCoordinateRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
 const ZStarCoordinateLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
@@ -62,7 +68,7 @@ const ZStarCoordinateGrid = Union{ZStarCoordinateUnderlyingGrid, ZStarCoordinate
 
 MovingCoordinateGrid(grid, coord) = grid
 
-function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStarCoordinate)
+function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStar)
     underlying_grid = MovingCoordinateGrid(grid.underlying_grid, ZStarCoordinate())
     active_cells_map = !isnothing(grid.interior_active_cells)
 
@@ -71,7 +77,7 @@ end
 
 # Replacing the z-coordinate with a moving vertical coordinate, defined by its reference spacing,
 # the actual vertical spacing and a scaling
-function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStarCoordinate) where {FT, TX, TY, TZ}
+function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
     # Memory layout for Dz spacings is local in z
     ΔzF  =  ZFaceField(grid)
@@ -89,8 +95,8 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
 
     fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
 
-    Δzᵃᵃᶠ = ZStarCoordinate(grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_s)
-    Δzᵃᵃᶜ = ZStarCoordinate(grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_s)
+    Δzᵃᵃᶠ = MovingVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_s)
+    Δzᵃᵃᶜ = MovingVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_s)
 
     args = []
     for prop in propertynames(grid)
