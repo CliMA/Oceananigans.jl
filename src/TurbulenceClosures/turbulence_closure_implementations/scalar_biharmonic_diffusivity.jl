@@ -103,5 +103,6 @@ end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
 
-adapt_structure(to, closure::ScalarBiharmonicDiffusivity) = ScalarBiharmonicDiffusivity(adapt(closure.ν),
-                                                                                        adapt(closure.κ))
+Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity) =
+    ScalarBiharmonicDiffusivity(Adapt.adapt(to, closure.ν), Adapt.adapt(to, closure.κ))
+                                                                                              
