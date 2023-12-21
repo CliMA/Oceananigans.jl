@@ -29,7 +29,7 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 end
 
 metric_term(i, j, k, grid) = zero(grid)
-metric_term(i, j, k, grid::MovingCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] / grid.Δzᵃᵃᶜ.sⁿ[i, j, grid.Nz+1]
+metric_term(i, j, k, grid::MovingCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1]
 
 #####
 ##### Size and offsets for the w kernel

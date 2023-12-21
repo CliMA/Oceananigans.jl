@@ -8,12 +8,13 @@ using Printf
 grid = RectilinearGrid(size = (300, 20), 
                           x = (0, 100kilometers), 
                           z = (-10, 0), 
+                       halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-                        vertical_coordinate = Z(),
-                         momentum_advection = VectorInvariant(),
-                           tracer_advection = WENO(),
+                        vertical_coordinate = ZStar(),
+                         momentum_advection = WENOVectorInvariant(),
+                           tracer_advection = WENO(order = 9),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 30))

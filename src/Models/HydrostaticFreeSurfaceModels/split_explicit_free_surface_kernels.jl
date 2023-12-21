@@ -407,6 +407,6 @@ update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, fs::SplitExplicitFreeSurf
         sⁿ[i, j, grid.Nz+1] = h
 
         # ∂(H + η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_s[i, j, grid.Nz+1] = - div_xyᶜᶜᶜ(i, j, 1, grid, U̅, V̅) / bottom
+        ∂t_s[i, j, grid.Nz+1] = - div_xyᶜᶜᶜ(i, j, 1, grid, U̅, V̅) / bottom / h
     end
 end
