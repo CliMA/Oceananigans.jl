@@ -8,7 +8,6 @@ using Oceananigans.Utils: getnamewrapper
 using Adapt 
 using Printf
 
-
 """
     MovingVerticalCoordinate{R, S, Z} 
 
@@ -27,7 +26,6 @@ struct MovingVerticalCoordinate{D, R, Z, S}
           ∂t_s :: S # Time derivative of the vertical coordinate scaling
 end
 
-import Oceananigans.Grids: coordinate_summary
 
 Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) = 
     MovingVerticalCoordinate(nothing, 
@@ -63,8 +61,8 @@ struct Z end
 
 const ZStarCoordinate = MovingVerticalCoordinate{<:ZStar}
 
-coordinate_summary(Δ::ZStarCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δz★))
+Grids.coordinate_summary(Δ::ZStarCoordinate, name) = 
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
 
 const ZStarCoordinateGrid = MovingCoordinateGrid{<:ZStar}
 

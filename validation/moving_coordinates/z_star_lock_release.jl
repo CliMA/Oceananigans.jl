@@ -11,8 +11,8 @@ grid = RectilinearGrid(size = (300, 20),
                    topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-                        vertical_coordinate = ZStar(),
-                         momentum_advection = WENOVectorInvariant(),
+                        vertical_coordinate = Z(),
+                         momentum_advection = VectorInvariant(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
