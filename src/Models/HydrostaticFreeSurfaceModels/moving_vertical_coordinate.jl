@@ -9,18 +9,18 @@ using Adapt
 using Printf
 
 """
-    MovingVerticalCoordinate{R, S, Z} 
+    GeneralizedVerticalCoordinate{R, S, Z} 
 
 spacings for a generalized vertical coordinate system.
-The fixed coordinate is stored in `Δr`, while `Δ` contains the moving z-coordinate.
-The `s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate
+The reference coordinate is stored in `Δr`, while `Δ` contains the z-coordinate.
+The `s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
 at timestep `n-1` and `n` and it's time derivative.
 `denomination` contains the "type" of generalized vertical coordinate, for example:
 - Zstar: free-surface following
 - sigma: terrain following
 """
-struct MovingVerticalCoordinate{D, R, Z, S}
-  denomination :: D # The type of moving coordinate
+struct GeneralizedVerticalCoordinate{D, R, Z, S}
+  denomination :: D # The type of generalized coordinate
             Δr :: R # Reference _non moving_ vertical coordinate (one-dimensional)
              Δ :: Z # moving vertical coordinate (three-dimensional)
             s⁻ :: S # scaling term = ∂Δ/∂Δr at the start of the time step
@@ -28,8 +28,8 @@ struct MovingVerticalCoordinate{D, R, Z, S}
           ∂t_s :: S # Time derivative of the vertical coordinate scaling divided by the sⁿ
 end
 
-Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) = 
-    MovingVerticalCoordinate(nothing, 
+Adapt.adapt_structure(to, coord::GeneralizedVerticalCoordinate) = 
+    GeneralizedVerticalCoordinate(nothing, 
                              Adapt.adapt(to, coord.Δr),
                              Adapt.adapt(to, coord.Δ),
                              Adapt.adapt(to, coord.s⁻),
@@ -38,29 +38,29 @@ Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) =
 
 import Oceananigans.Architectures: arch_array
 
-arch_array(arch, coord::MovingVerticalCoordinate) = 
-    MovingVerticalCoordinate(coord.denomination,
+arch_array(arch, coord::GeneralizedVerticalCoordinate) = 
+    GeneralizedVerticalCoordinate(coord.denomination,
                              arch_array(arch, coord.Δr), 
                              coord.Δ,
                              coord.s⁻,
                              coord.sⁿ,
                              coord.∂t_s)
 
-const MovingCoordinateRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MovingVerticalCoordinate{D}} where D
-const MovingCoordinateLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MovingVerticalCoordinate{D}} where D
+const MovingCoordinateRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
+const MovingCoordinateLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
 
 const MovingCoordinateUnderlyingGrid{D} = Union{MovingCoordinateRG{D}, MovingCoordinateLLG{D}} where D
 const MovingCoordinateImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MovingCoordinateUnderlyingGrid{D}} where D
 
 const MovingCoordinateGrid{D} = Union{MovingCoordinateUnderlyingGrid{D}, MovingCoordinateImmersedGrid{D}} where D
 
-""" a _free-surface following_ vertical coordinate """
+""" free-surface following vertical coordinate """
 struct ZStar end
 
-""" geopotential-following vertical coordinate """
+""" geopotential following vertical coordinate """
 struct Z end
 
-const ZStarCoordinate = MovingVerticalCoordinate{<:ZStar}
+const ZStarCoordinate = GeneralizedVerticalCoordinate{<:ZStar}
 
 Grids.coordinate_summary(Δ::ZStarCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
@@ -96,8 +96,8 @@ function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZS
 
     fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
 
-    Δzᵃᵃᶠ = MovingVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_s)
-    Δzᵃᵃᶜ = MovingVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_s)
+    Δzᵃᵃᶠ = GeneralizedVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_s)
+    Δzᵃᵃᶜ = GeneralizedVerticalCoordinate(ZStar(), grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_s)
 
     args = []
     for prop in propertynames(grid)
