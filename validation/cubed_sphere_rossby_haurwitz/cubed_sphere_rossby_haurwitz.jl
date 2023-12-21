@@ -114,13 +114,33 @@ end
 
 ## Grid setup
 
-#=
-Nx, Ny, Nz = 5, 5, 1
-=#
-Nx, Ny, Nz = 32, 32, 1
 H = 8kilometers
-grid = ConformalCubedSphereGrid(face_size = (Nx, Ny, Nz), z = (-H, 0))
 
+load_cs32_grid = true
+
+if load_cs32_grid
+    grid_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+    grid = ConformalCubedSphereGrid(grid_filepath; 
+                                    Nz = 1,
+                                    z = (-H, 0))
+    Nx, Ny, Nz = grid.faces[1].Nx, grid.faces[1].Ny, grid.faces[1].Nz
+else
+    #=
+    Nx, Ny, Nz = 5, 5, 1
+    =#
+    Nx, Ny, Nz = 32, 32, 1
+    grid = ConformalCubedSphereGrid(face_size = (Nx, Ny, Nz), z = (-H, 0))
+end
+
+jldopen("old_code_metrics.jld2", "w") do file
+    for face in 1:6
+        file["Δxᶠᶜᵃ/" * string(face)] = grid.faces[face].Δxᶠᶜᵃ
+        file["Δyᶜᶠᵃ/" * string(face)] = grid.faces[face].Δyᶜᶠᵃ
+        file["Azᶠᶠᵃ/" * string(face)] = grid.faces[face].Azᶠᶠᵃ
+    end
+end
+
+#=
 ## Model setup
 
 model = HydrostaticFreeSurfaceModel(
@@ -206,6 +226,7 @@ jldopen("old_code.jld2", "w") do file
         file["v/" * string(face)] = v₀.data[face]
     end
 end
+=#
 
 #=
 Oceananigans.set!(model, u=u₀, v=v₀, η=ηᵢ)
