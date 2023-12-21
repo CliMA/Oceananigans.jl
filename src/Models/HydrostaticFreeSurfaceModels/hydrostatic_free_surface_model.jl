@@ -65,7 +65,7 @@ end
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                               vertical_coordinate = ZCoordinate(),
+                               vertical_coordinate = Z(),
                                   auxiliary_fields = NamedTuple(),
     )
 
@@ -111,7 +111,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                               vertical_coordinate = ZCoordinate(),
+                               vertical_coordinate = Z(),
                                   auxiliary_fields = NamedTuple()
     )
 
@@ -120,7 +120,6 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
     grid = !isnothing(free_surface) ? MovingCoordinateGrid(grid, vertical_coordinate) : grid
-
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
