@@ -24,12 +24,9 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     @unroll for k in 2:grid.Nz+1
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * 
                                 ( div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) +
-                                  metric_term(i, j, k-1, grid) )
+                                  metric_term(i, j, k-1, grid) / Vᶜᶜᶜ(i, j, k, grid) )
     end
 end
-
-metric_term(i, j, k, grid) = zero(grid)
-metric_term(i, j, k, grid::MovingCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1]
 
 #####
 ##### Size and offsets for the w kernel

@@ -15,17 +15,20 @@
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
 
+# Metric term for moving grids
+metric_term(i, j, k, grid) = zero(grid)
+
 @inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 
     δU_stencil   = scheme.upwinding.δU_stencil    
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_metric, u, v) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
     δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
     δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
 
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
+    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * (δvˢ + ℑxᶠᵃᵃ(i, j, k, grid, metric_term))
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
@@ -34,11 +37,11 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_metric, u, v)
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
     δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
     δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
 
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
+    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * (δuˢ + ℑyᵃᶠᵃ(i, j, k, grid, metric_term))
 end
 
 #####

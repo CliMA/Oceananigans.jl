@@ -19,13 +19,12 @@ at timestep `n-1` and `n` and it's time derivative.
 """
 struct MovingVerticalCoordinate{D, R, Z, S}
   denomination :: D # The type of moving coordinate
-            Δr :: R # Reference _non moving_ vertical coordinate
-             Δ :: Z # moving vertical coordinate
+            Δr :: R # Reference _non moving_ vertical coordinate (one-dimensional)
+             Δ :: Z # moving vertical coordinate (three-dimensional)
             s⁻ :: S # scaling term = ∂Δ/∂Δr at the start of the time step
             sⁿ :: S # scaling term = ∂Δ/∂Δr at the end of the time step
-          ∂t_s :: S # Time derivative of the vertical coordinate scaling divided by the scaling
+          ∂t_s :: S # Time derivative of the vertical coordinate scaling divided by the sⁿ
 end
-
 
 Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) = 
     MovingVerticalCoordinate(nothing, 
@@ -253,10 +252,6 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
 # When performing divergence upwinding we must include the 
 # metric term
 
-import Oceananigans.Advection: δx_U_plus_metric, δy_V_plus_metric
+import Oceananigans.Advection: metric_term
 
-@inline δx_U_plus_metric(i, j, k, grid::ZStarCoordinateGrid, u, v) = 
-    @inbounds δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)
-
-@inline δy_V_plus_metric(i, j, k, grid::ZStarCoordinateGrid, u, v) = 
-    @inbounds δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)
+metric_term(i, j, k, grid::MovingCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)
