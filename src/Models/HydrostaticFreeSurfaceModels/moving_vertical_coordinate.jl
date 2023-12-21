@@ -240,8 +240,7 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 
     @inbounds begin
         ∂t_θ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
-        sθ   = s⁻[i, j, Nz+1] * θ[i, j, k] + convert(FT, Δt) * ∂t_θ
-        θ[i, j, k] = sθ / sⁿ[i, j, Nz+1]
+        θ[i, j, k] = s⁻[i, j, Nz+1] * θ[i, j, k] / sⁿ[i, j, Nz+1] + convert(FT, Δt) * ∂t_θ
     end
 end
 

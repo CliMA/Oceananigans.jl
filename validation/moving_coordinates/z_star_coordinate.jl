@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
+using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, Z, ZStarCoordinateGrid
 using Printf
 
@@ -11,7 +12,7 @@ grid = RectilinearGrid(size = (300, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                         vertical_coordinate = ZStar(),
-                         momentum_advection = WENO(),
+                         momentum_advection = WENOVectorInvariant(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,

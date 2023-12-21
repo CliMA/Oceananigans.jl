@@ -205,7 +205,7 @@ function ShallowWaterModel(;
                               timestepper,
                               formulation)
 
-    update_state!(model, 1.0)
+    update_state!(model, 1)
 
     return model
 end

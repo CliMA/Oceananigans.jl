@@ -167,10 +167,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 ##### Convenience for WENO Vector Invariant
 #####
 
-#                           VectorInvariant{N,     FT,    M,     Z (vorticity scheme),      ZS,    V (vertical scheme),      K (kinetic energy gradient scheme)
-const WENOVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:WENO, <:Any, <:WENO, <:WENO}
-
-nothing_to_default(user_value, default) = isnothing(user_value) ? default : user_value
+nothing_to_default(user_value; default = nothing) = isnothing(user_value) ? default : user_value
 
 """
     function WENOVectorInvariant(; upwinding = nothing,
