@@ -188,10 +188,6 @@ end
     end
 end
 
-@inline scaling(i, j, k, grid) = one(grid)
-@inline scaling(i, j, k, grid::ZStarCoordinateGrid) = grid.Δzᵃᵃᶠ.sⁿ[i, j, grid.Nz+1]
-
-
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
 
 # Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
