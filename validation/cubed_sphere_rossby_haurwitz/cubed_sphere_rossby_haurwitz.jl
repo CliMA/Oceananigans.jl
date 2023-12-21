@@ -140,7 +140,6 @@ jldopen("old_code_metrics.jld2", "w") do file
     end
 end
 
-#=
 ## Model setup
 
 model = HydrostaticFreeSurfaceModel(
@@ -187,7 +186,7 @@ rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 uᵢ(λ, ϕ, z) = u(rescale²(ϕ), rescale¹(λ))
 vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
 =#
-ηᵢ(λ, ϕ)    = h(rescale²(ϕ), rescale¹(λ))
+ηᵢ(λ, ϕ, z) = h(rescale²(ϕ), rescale¹(λ))
 
 #=
 set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
@@ -226,10 +225,9 @@ jldopen("old_code.jld2", "w") do file
         file["v/" * string(face)] = v₀.data[face]
     end
 end
-=#
 
 #=
-Oceananigans.set!(model, u=u₀, v=v₀, η=ηᵢ)
+set!(model, u=u₀, v=v₀, η=ηᵢ)
 
 ## Simulation setup
 
@@ -252,26 +250,15 @@ if !isnothing(model.closure)
     @info "Diffusive CFL = $diffusive_cfl"
 end
 
-cfl = CFL(Δt, accurate_cell_advection_timescale)
+simulation = Simulation(model; Δt, stop_time)
 
-simulation = Simulation(model,
-                    Δt = Δt,
-                stop_time = stop_time,
-    iteration_interval = 20,
-                progress = Progress(time_ns()),
-            parameters = (; cfl)
-)
+# Print a progress message
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.u),
+                                prettytime(sim.run_wall_time))
 
-if check_fields
-    fields_to_check = (
-        u = model.velocities.u,
-        v = model.velocities.v,
-        η = model.free_surface.η
-    )
-
-    simulation.diagnostics[:state_checker] =
-        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
-end
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
