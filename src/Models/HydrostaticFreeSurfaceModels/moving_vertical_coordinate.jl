@@ -46,13 +46,13 @@ arch_array(arch, coord::GeneralizedVerticalCoordinate) =
                              coord.sⁿ,
                              coord.∂t_s)
 
-const MovingCoordinateRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
-const MovingCoordinateLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
+const GeneralizedCoordinateRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
+const GeneralizedCoordinateLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalCoordinate{D}} where D
 
-const MovingCoordinateUnderlyingGrid{D} = Union{MovingCoordinateRG{D}, MovingCoordinateLLG{D}} where D
-const MovingCoordinateImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MovingCoordinateUnderlyingGrid{D}} where D
+const GeneralizedCoordinateUnderlyingGrid{D} = Union{GeneralizedCoordinateRG{D}, GeneralizedCoordinateLLG{D}} where D
+const GeneralizedCoordinateImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedCoordinateUnderlyingGrid{D}} where D
 
-const MovingCoordinateGrid{D} = Union{MovingCoordinateUnderlyingGrid{D}, MovingCoordinateImmersedGrid{D}} where D
+const GeneralizedCoordinateGrid{D} = Union{GeneralizedCoordinateUnderlyingGrid{D}, GeneralizedCoordinateImmersedGrid{D}} where D
 
 """ free-surface following vertical coordinate """
 struct ZStar end
@@ -65,12 +65,12 @@ const ZStarCoordinate = GeneralizedVerticalCoordinate{<:ZStar}
 Grids.coordinate_summary(Δ::ZStarCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
 
-const ZStarCoordinateGrid = MovingCoordinateGrid{<:ZStar}
+const ZStarCoordinateGrid = GeneralizedCoordinateGrid{<:ZStar}
 
-MovingCoordinateGrid(grid, coord) = grid
+GeneralizedCoordinateGrid(grid, coord) = grid
 
-function MovingCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStar)
-    underlying_grid = MovingCoordinateGrid(grid.underlying_grid, ZStarCoordinate())
+function GeneralizedCoordinateGrid(grid::ImmersedBoundaryGrid, ::ZStar)
+    underlying_grid = GeneralizedCoordinateGrid(grid.underlying_grid, ZStarCoordinate())
     active_cells_map = !isnothing(grid.interior_active_cells)
 
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
@@ -78,7 +78,7 @@ end
 
 # Replacing the z-coordinate with a moving vertical coordinate, defined by its reference spacing,
 # the actual vertical spacing and a scaling
-function MovingCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
+function GeneralizedCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
     # Memory layout for Dz spacings is local in z
     ΔzF  =  ZFaceField(grid)
@@ -252,4 +252,4 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
 
 import Oceananigans.Advection: metric_term
 
-metric_term(i, j, k, grid::MovingCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)
+metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)

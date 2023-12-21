@@ -119,7 +119,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
-    grid = !isnothing(free_surface) ? MovingCoordinateGrid(grid, vertical_coordinate) : grid
+    grid = !isnothing(free_surface) ? GeneralizedCoordinateGrid(grid, vertical_coordinate) : grid
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
