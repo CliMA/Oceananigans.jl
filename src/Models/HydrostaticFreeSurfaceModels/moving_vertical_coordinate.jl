@@ -27,18 +27,7 @@ struct MovingVerticalCoordinate{D, R, Z, S}
           ∂t_s :: S # Time derivative of the vertical coordinate scaling
 end
 
-""" a _free-surface following_ vertical coordinate """
-struct ZStar end
-
-""" geopotential-following vertical coordinate """
-struct Z end
-
 import Oceananigans.Grids: coordinate_summary
-
-const ZStarCoordinate = MovingVerticalCoordinate{<:ZStar}
-
-coordinate_summary(Δ::ZStarCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δz★))
 
 Adapt.adapt_structure(to, coord::MovingVerticalCoordinate) = 
     MovingVerticalCoordinate(nothing, 
@@ -58,13 +47,26 @@ arch_array(arch, coord::MovingVerticalCoordinate) =
                              coord.sⁿ,
                              coord.∂t_s)
 
-const ZStarCoordinateRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
-const ZStarCoordinateLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarCoordinate}
+const MovingCoordinateRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MovingVerticalCoordinate{D}} where D
+const MovingCoordinateLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MovingVerticalCoordinate{D}} where D
 
-const ZStarCoordinateUnderlyingGrid = Union{ZStarCoordinateRG, ZStarCoordinateLLG}
-const ZStarCoordinateImmersedGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarCoordinateUnderlyingGrid}
+const MovingCoordinateUnderlyingGrid{D} = Union{MovingCoordinateRG{D}, MovingCoordinateLLG{D}} where D
+const MovingCoordinateImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MovingCoordinateUnderlyingGrid{D}} where D
 
-const ZStarCoordinateGrid = Union{ZStarCoordinateUnderlyingGrid, ZStarCoordinateImmersedGrid}
+const MovingCoordinateGrid{D} = Union{MovingCoordinateUnderlyingGrid{D}, MovingCoordinateImmersedGrid{D}} where D
+
+""" a _free-surface following_ vertical coordinate """
+struct ZStar end
+
+""" geopotential-following vertical coordinate """
+struct Z end
+
+const ZStarCoordinate = MovingVerticalCoordinate{<:ZStar}
+
+coordinate_summary(Δ::ZStarCoordinate, name) = 
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δz★))
+
+const ZStarCoordinateGrid = MovingCoordinateGrid{<:ZStar}
 
 MovingCoordinateGrid(grid, coord) = grid
 
@@ -126,22 +128,22 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
     ∂t_s = grid.Δzᵃᵃᶠ.∂t_s
 
     # Moving coordinates
-    Δzᵃᵃᶠ  = grid.Δzᵃᵃᶠ.Δ
-    Δzᵃᵃᶜ  = grid.Δzᵃᵃᶜ.Δ
+    ΔzF  = grid.Δzᵃᵃᶠ.Δ
+    ΔzC  = grid.Δzᵃᵃᶜ.Δ
 
     # Reference coordinates
-    Δz₀ᵃᵃᶠ = grid.Δzᵃᵃᶠ.Δ★
-    Δz₀ᵃᵃᶜ = grid.Δzᵃᵃᶜ.Δ★
+    Δz₀F = grid.Δzᵃᵃᶠ.Δr
+    Δz₀C = grid.Δzᵃᵃᶜ.Δr
 
     # Update vertical coordinate with available parameters 
     for params in parameters
         update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, model.free_surface, grid, Δt)
 
         launch!(architecture(grid), grid, horizontal_parameters(params), _update_z_star!, 
-                Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δz₀ᵃᵃᶠ, Δz₀ᵃᵃᶜ, sⁿ, Val(grid.Nz))
+                ΔzF, ΔzC, Δz₀F, Δz₀C, sⁿ, Val(grid.Nz))
     end
 
-    fill_halo_regions!((Δzᵃᵃᶠ, Δzᵃᵃᶜ, s⁻, sⁿ, ∂t_s); only_local_halos = true)
+    fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
     
     return nothing
 end
@@ -192,7 +194,6 @@ end
 
 
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
-import Oceananigans.Operators: Vᶜᶜᶠ, Vᶜᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶠᶠᶠ, Vᶠᶠᶜ
 
 # Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
 # TODO: make z-direction local in memory by not using Fields
@@ -209,21 +210,21 @@ import Oceananigans.Operators: Vᶜᶜᶠ, Vᶜᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, V
 @inline Δzᶠᶠᶜ(i, j, k, grid::ZStarCoordinateGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
 
 # Adding the slope to the momentum-RHS
-@inline free_surface_slope_x(i, j, k, grid, args...) = zero(grid)
-@inline free_surface_slope_y(i, j, k, grid, args...) = zero(grid)
+@inline horizontal_surface_slope_x(i, j, k, grid, args...) = zero(grid)
+@inline horizontal_surface_slope_y(i, j, k, grid, args...) = zero(grid)
 
-@inline free_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
-@inline free_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline horizontal_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline horizontal_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
 @inline η_times_zᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + grid.zᵃᵃᶜ[k] / bottom_height(i, j, grid))
 
 @inline η_slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_times_zᶜᶜᶜ, free_surface.η)
 @inline η_slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_times_zᶜᶜᶜ, free_surface.η)
 
-@inline free_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
+@inline horizontal_surface_slope_x(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * η_slope_xᶠᶜᶜ(i, j, k, grid, free_surface)
 
-@inline free_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
+@inline horizontal_surface_slope_y(i, j, k, grid::ZStarCoordinateGrid, free_surface, buoyancy, model_fields) = 
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * η_slope_yᶜᶠᶜ(i, j, k, grid, free_surface)
 
 #####
@@ -239,7 +240,7 @@ import Oceananigans.Operators: Vᶜᶜᶠ, Vᶜᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, V
 
     @inbounds begin
         ∂t_θ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
-        sθ   = sⁿ[i, j, Nz+1] * θ[i, j, k] + convert(FT, Δt) * ∂t_θ
+        sθ   = s⁻[i, j, Nz+1] * θ[i, j, k] + convert(FT, Δt) * ∂t_θ
         θ[i, j, k] = sθ / sⁿ[i, j, Nz+1]
     end
 end
