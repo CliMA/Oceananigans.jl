@@ -15,7 +15,9 @@ spacings for a generalized vertical coordinate system.
 The fixed coordinate is stored in `Δr`, while `Δ` contains the moving z-coordinate.
 The `s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate
 at timestep `n-1` and `n` and it's time derivative.
-`denomination` contains the 
+`denomination` contains the "type" of generalized vertical coordinate, for example:
+- Zstar: free-surface following
+- sigma: terrain following
 """
 struct MovingVerticalCoordinate{D, R, Z, S}
   denomination :: D # The type of moving coordinate
