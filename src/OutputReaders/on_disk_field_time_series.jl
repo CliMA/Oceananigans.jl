@@ -42,6 +42,8 @@ Write the data in `parent(field)` to the file at `fts.path`,
 under `fts.name` and at index `fts.times[time_index]`.
 """
 function set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int)
+    fts.grid == field.grid || error("The grids attached to the Field and \
+                                    FieldTimeSeries appear to be different.")
     path = fts.path
     name = fts.name
     jldopen(path, "a+") do file
