@@ -83,9 +83,9 @@ function GeneralizedCoordinateGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ},
     # Memory layout for Dz spacings is local in z
     ΔzF  =  ZFaceField(grid)
     ΔzC  = CenterField(grid)
-    s⁻   =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
-    sⁿ   =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
-    ∂t_s =  ZFaceField(grid, indices = (:, :, grid.Nz+1))
+    s⁻   = Field{Center, Center, Nothing}(grid)
+    sⁿ   = Field{Center, Center, Nothing}(grid)
+    ∂t_s = Field{Center, Center, Nothing}(grid)
 
     # Initial "at-rest" conditions
     launch!(architecture(grid), grid, :xy, _update_scaling!,
@@ -131,15 +131,15 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
     ΔzC  = grid.Δzᵃᵃᶜ.Δ
 
     # Reference coordinates
-    Δz₀F = grid.Δzᵃᵃᶠ.Δr
-    Δz₀C = grid.Δzᵃᵃᶜ.Δr
+    ΔzF₀ = grid.Δzᵃᵃᶠ.Δr
+    ΔzC₀ = grid.Δzᵃᵃᶜ.Δr
 
     # Update vertical coordinate with available parameters 
     for params in parameters
-        update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, model.free_surface, grid, Δt)
+        update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, model.free_surface, grid, Δt)
 
         launch!(architecture(grid), grid, horizontal_parameters(params), _update_z_star!, 
-                ΔzF, ΔzC, Δz₀F, Δz₀C, sⁿ, Val(grid.Nz))
+                ΔzF, ΔzC, ΔzF₀, ΔzC₀, sⁿ, Val(grid.Nz))
     end
 
     fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
@@ -150,22 +150,22 @@ end
 horizontal_parameters(::Symbol) = :xy
 horizontal_parameters(::KernelParameters{W, O}) where {W, O} = KernelParameters(W[1:2], O[1:2])
 
-update_coordinate_scaling!(sⁿ, s⁻, ∂t_s, params, fs, grid, Δt) = 
-    launch!(architecture(grid), grid, horizontal_parameters(params), _update_scaling!,
+update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, fs, grid, Δt) = 
+    launch!(architecture(grid), grid, horizontal_parameters(params), _update_zstar_scaling!,
             sⁿ, s⁻, ∂t_s, fs.η, grid, Δt)
 
-@kernel function _update_scaling!(sⁿ, s⁻, ∂t_s, η, grid, Δt)
+@kernel function _update_zstar_scaling!(sⁿ, s⁻, ∂t_s, η, grid, Δt)
     i, j = @index(Global, NTuple)
     bottom = bottom_height(i, j, grid)
     @inbounds begin
         h = (bottom + η[i, j, grid.Nz+1]) / bottom
 
         # update current and previous scaling
-        s⁻[i, j, grid.Nz+1] = sⁿ[i, j, grid.Nz+1]
-        sⁿ[i, j, grid.Nz+1] = h
+        s⁻[i, j, 1] = sⁿ[i, j, 1]
+        sⁿ[i, j, 1] = h
 
         # Scaling derivative
-        ∂t_s[i, j, grid.Nz+1] = (h - s⁻[i, j, grid.Nz+1]) / Δt  / h
+        ∂t_s[i, j, 1] = (h - s⁻[i, j, 1]) / Δt  / h
     end
 end
 
@@ -175,16 +175,16 @@ bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boun
 @kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, sⁿ, ::Val{Nz}) where Nz
     i, j = @index(Global, NTuple)
     @unroll for k in 1:Nz+1
-        @inbounds ΔzF[i, j, k] = sⁿ[i, j, Nz+1] * ΔzF₀[k]
-        @inbounds ΔzC[i, j, k] = sⁿ[i, j, Nz+1] * ΔzC₀[k]
+        @inbounds ΔzF[i, j, k] = sⁿ[i, j, 1] * ΔzF₀[k]
+        @inbounds ΔzC[i, j, k] = sⁿ[i, j, 1] * ΔzC₀[k]
     end
 end
 
 @kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, sⁿ, ::Val{Nz}) where Nz
     i, j = @index(Global, NTuple)
     @unroll for k in 1:Nz+1
-        @inbounds ΔzF[i, j, k] = sⁿ[i, j, Nz+1] * ΔzF₀
-        @inbounds ΔzC[i, j, k] = sⁿ[i, j, Nz+1] * ΔzC₀
+        @inbounds ΔzF[i, j, k] = sⁿ[i, j, 1] * ΔzF₀
+        @inbounds ΔzC[i, j, k] = sⁿ[i, j, 1] * ΔzC₀
     end
 end
 
@@ -226,7 +226,7 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 ##### In the Z-star coordinate framework the prognostic field is sθ!  
 #####
 
-@kernel function ab2_step_tracer_zstar!(θ, sⁿ, s⁻, Nz, Δt, χ, Gⁿ, G⁻)
+@kernel function ab2_step_tracer_zstar!(θ, sⁿ, s⁻, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
@@ -235,7 +235,7 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
 
     @inbounds begin
         ∂t_θ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
-        θ[i, j, k] = s⁻[i, j, Nz+1] * θ[i, j, k] / sⁿ[i, j, Nz+1] + convert(FT, Δt) * ∂t_θ
+        θ[i, j, k] = s⁻[i, j, 1] * θ[i, j, k] / sⁿ[i, j, 1] + convert(FT, Δt) * ∂t_θ
     end
 end
 
@@ -244,7 +244,6 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
             tracer_field, 
             grid.Δzᵃᵃᶠ.sⁿ, 
             grid.Δzᵃᵃᶠ.s⁻, 
-            grid.Nz,
             Δt, χ, Gⁿ, G⁻)
 
 # When performing divergence upwinding we must include the 
@@ -252,4 +251,4 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
 
 import Oceananigans.Advection: metric_term
 
-metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, grid.Nz+1] * Vᶜᶜᶜ(i, j, k, grid)
+metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, k] * Vᶜᶜᶜ(i, j, k, grid)
