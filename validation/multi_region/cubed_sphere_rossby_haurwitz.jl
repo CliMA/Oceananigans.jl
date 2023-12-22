@@ -245,9 +245,9 @@ if compare_old_and_new_code_metrics
     overwrite_grid_metrics_from_old_code = false
     if overwrite_grid_metrics_from_old_code
         for region in 1:6
-            grid[region].Δxᶠᶜᵃ = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-            grid[region].Δyᶜᶠᵃ = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-            grid[region].Azᶠᶠᵃ = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
+            grid[region].Δxᶠᶜᵃ[:,:] = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+            grid[region].Δyᶜᶠᵃ[:,:] = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+            grid[region].Azᶠᶠᵃ[:,:] = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
         end
     end
     close(old_file)
