@@ -15,23 +15,33 @@ model = HydrostaticFreeSurfaceModel(; grid,
                         vertical_coordinate = ZStar(),
                          momentum_advection = VectorInvariant(),
                            tracer_advection = WENO(),
+                                    closure = HorizontalScalarDiffusivity(ν = 10),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 30))
 
-# ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
-bᵢ(x, z) = x > 50kilometers ? 0 : 1
+g = model.free_surface.gravitational_acceleration
 
-set!(model, b = bᵢ)
+ηᵢ(x, z) = exp(-(x - 50kilometers)^2 / (10kilometers)^2)
+bᵢ(x, z) = 1e-6 * z
 
-gravity_wave_speed   = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
+set!(model, b = bᵢ, η = ηᵢ)
+
+uᵢ = XFaceField(grid)
+for i in 1:size(u, 1)
+  uᵢ[i, :, :] = - g * ∂xᶠᶜᶜ(i, 1, grid.Nz+1, grid, model.free_surface.η)
+end
+
+set!(model, u = uᵢ)
+
+gravity_wave_speed   = sqrt(g * grid.Lz)
 barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 Δt = 0.5 * barotropic_time_step
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 10000Δt) #, stop_iteration = 10)
+simulation = Simulation(model; Δt, stop_time = 1days) #, stop_iteration = 10)
 
 field_outputs = if model.grid isa ZStarCoordinateGrid
   merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.Δ))

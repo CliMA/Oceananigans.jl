@@ -119,7 +119,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
-    if !(vertical_cordinate isa Z) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
+    if !(vertical_coordinate isa Z) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
       throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
     end
 

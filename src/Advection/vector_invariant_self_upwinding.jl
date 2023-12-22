@@ -16,7 +16,9 @@
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
 
 # Metric term for moving grids
-metric_term(i, j, k, grid) = zero(grid)
+∂t_∂s_grid(i, j, k, grid) = zero(grid)
+
+@inline V_times_∂t_∂s_grid(i, j, k, grid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 @inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 
@@ -28,7 +30,7 @@ metric_term(i, j, k, grid) = zero(grid)
     δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
     δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
 
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * (δvˢ + ℑxᶠᵃᵃ(i, j, k, grid, metric_term))
+    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * (δvˢ + ℑxᶠᵃᵃ(i, j, k, grid, V_times_∂t_∂s_grid))
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
@@ -41,7 +43,7 @@ end
     δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
     δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
 
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * (δuˢ + ℑyᵃᶠᵃ(i, j, k, grid, metric_term))
+    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * (δuˢ + ℑyᵃᶠᵃ(i, j, k, grid, V_times_∂t_∂s_grid))
 end
 
 #####

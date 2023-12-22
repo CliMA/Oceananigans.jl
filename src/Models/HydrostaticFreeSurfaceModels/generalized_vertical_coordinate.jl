@@ -120,7 +120,7 @@ end
 # Fallback
 update_vertical_coordinate!(model, grid, Δt; kwargs...) = nothing
 
-function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; parameters = tuple(:xyz))
+function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; parameters = tuple(:xy))
     
     # Scaling 
     s⁻ = grid.Δzᵃᵃᶠ.s⁻
@@ -136,23 +136,20 @@ function update_vertical_coordinate!(model, grid::ZStarCoordinateGrid, Δt; para
     ΔzC₀ = grid.Δzᵃᵃᶜ.Δr
 
     # Update vertical coordinate with available parameters 
+    # No need to fill the halo as the scaling is updated _IN_ the halos
+    # as well
     for params in parameters
         update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, model.free_surface, grid, Δt)
 
-        launch!(architecture(grid), grid, horizontal_parameters(params), _update_z_star!, 
+        launch!(architecture(grid), grid, params, _update_z_star!, 
                 ΔzF, ΔzC, ΔzF₀, ΔzC₀, sⁿ, Val(grid.Nz))
     end
-
-    fill_halo_regions!((ΔzF, ΔzC, s⁻, sⁿ, ∂t_s); only_local_halos = true)
     
     return nothing
 end
 
-horizontal_parameters(::Symbol) = :xy
-horizontal_parameters(::KernelParameters{W, O}) where {W, O} = KernelParameters(W[1:2], O[1:2])
-
 update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, fs, grid, Δt) = 
-    launch!(architecture(grid), grid, horizontal_parameters(params), _update_zstar_scaling!,
+    launch!(architecture(grid), grid, params, _update_zstar_scaling!,
             sⁿ, s⁻, ∂t_s, fs.η, grid, Δt)
 
 @kernel function _update_zstar_scaling!(sⁿ, s⁻, ∂t_s, η, grid, Δt)
@@ -235,8 +232,8 @@ import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜ�
     oh_point_five  = convert(FT, 0.5)
 
     @inbounds begin
-        ∂t_θ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
-        θ[i, j, k] = s⁻[i, j, 1] * θ[i, j, k] / sⁿ[i, j, 1] + convert(FT, Δt) * ∂t_θ
+        ∂t_sθ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
+        θ[i, j, k] = s⁻[i, j, 1] * θ[i, j, k] / sⁿ[i, j, 1] + convert(FT, Δt) * ∂t_sθ
     end
 end
 
@@ -250,6 +247,6 @@ ab2_step_tracer_field!(tracer_field, grid::ZStarCoordinateGrid, Δt, χ, Gⁿ, G
 # When performing divergence upwinding we must include the 
 # metric term
 
-import Oceananigans.Advection: metric_term
+import Oceananigans.Advection: ∂t_∂s_grid
 
-metric_term(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, k] / grid.Δzᵃᵃᶜ.sⁿ[i, j, k]
+∂t_∂s_grid(i, j, k, grid::GeneralizedCoordinateGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, k] 

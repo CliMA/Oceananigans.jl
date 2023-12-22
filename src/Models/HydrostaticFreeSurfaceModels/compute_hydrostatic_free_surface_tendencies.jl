@@ -25,8 +25,6 @@ contribution from non-hydrostatic pressure.
 function compute_tendencies!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
 
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
-
-    update_vertical_coordinate!(model, model.grid, Δt; parameters = kernel_parameters)
     
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
