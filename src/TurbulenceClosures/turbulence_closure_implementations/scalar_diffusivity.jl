@@ -5,7 +5,6 @@ using Oceananigans.Utils: prettysummary
 struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-
     ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
 end
 
@@ -204,6 +203,9 @@ end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 
-Adapt.adapt_structure(to, closure::ScalarDiffusivity) =
-    ScalarDiffusivity(Adapt.adapt(to, closure.ν), Adapt.adapt(to, closure.κ))
+function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+    ν = Adapt.adapt(to, closure.ν)
+    κ = Adapt.adapt(to, closure.κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ)
+end
                                                                           
