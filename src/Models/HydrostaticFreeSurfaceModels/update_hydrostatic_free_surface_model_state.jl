@@ -76,7 +76,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
     diffusivity = model.diffusivity_fields
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
-        update_vertical_coordinate!(model, grid, Δt; parameters = wpar)
+        update_vertical_spacing!(model, grid, Δt; parameters = wpar)
         compute_w_from_continuity!(model; parameters = wpar)
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
@@ -89,5 +89,5 @@ end
 # Do not update if rigid lid!!
 const RigidLidModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 
-update_vertical_coordinate!(::RigidLidModel, ::ZStarCoordinateGrid; kwargs...) = nothing
+update_vertical_spacing!(::RigidLidModel, ::ZStarSpacingGrid; kwargs...) = nothing
 update_tracer_thickness!(tracers, grid) = nothing

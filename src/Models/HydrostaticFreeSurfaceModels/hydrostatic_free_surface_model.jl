@@ -92,7 +92,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
-  - `vertical_coordinate`: choice between the default `ZCoordinate` and the free-surface following `ZStarCoordinate`
+  - `vertical_coordinate`: choice between the default `ZCoordinate` and the free-surface following `ZStarSpacing`
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -123,7 +123,7 @@ function HydrostaticFreeSurfaceModel(; grid,
       throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
     end
 
-    grid = !isnothing(free_surface) ? GeneralizedCoordinateGrid(grid, vertical_coordinate) : grid
+    grid = !isnothing(free_surface) ? GeneralizedSpacingGrid(grid, vertical_coordinate) : grid
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)

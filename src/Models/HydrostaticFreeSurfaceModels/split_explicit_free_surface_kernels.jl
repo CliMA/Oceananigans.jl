@@ -392,11 +392,11 @@ setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
 
 wait_free_surface_communication!(free_surface, arch) = nothing
 
-update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, fs::SplitExplicitFreeSurface, grid, Δt) = 
+update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, params, fs::SplitExplicitFreeSurface, grid, Δt) = 
     launch!(architecture(grid), grid, params, _update_zstar_split_explicit_scaling!,
-            sⁿ, s⁻, ∂t_s, fs.η, fs.state.U̅, fs.state.V̅, grid)
+            sⁿ, s⁻, ∂t_∂s, fs.η, fs.state.U̅, fs.state.V̅, grid)
 
-@kernel function _update_zstar_split_explicit_scaling!(sⁿ, s⁻, ∂t_s, η, U̅, V̅, grid)
+@kernel function _update_zstar_split_explicit_scaling!(sⁿ, s⁻, ∂t_∂s, η, U̅, V̅, grid)
     i, j = @index(Global, NTuple)
     bottom = bottom_height(i, j, grid)
     @inbounds begin
@@ -407,6 +407,6 @@ update_zstar_scaling!(sⁿ, s⁻, ∂t_s, params, fs::SplitExplicitFreeSurface, 
         sⁿ[i, j, 1] = h
 
         # ∂(H + η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_s[i, j, 1] = - div_xyᶜᶜᶜ(i, j, 1, grid, U̅, V̅) / bottom / h
+        ∂t_∂s[i, j, 1] = - div_xyᶜᶜᶜ(i, j, 1, grid, U̅, V̅) / bottom / h
     end
 end
