@@ -135,7 +135,12 @@ end
 jldopen("old_code_metrics.jld2", "w") do file
     for face in 1:6
         file["Δxᶠᶜᵃ/" * string(face)] = grid.faces[face].Δxᶠᶜᵃ
+        file["Δxᶜᶠᵃ/" * string(face)] = grid.faces[face].Δxᶜᶠᵃ
+        file["Δyᶠᶜᵃ/" * string(face)] = grid.faces[face].Δyᶠᶜᵃ
         file["Δyᶜᶠᵃ/" * string(face)] = grid.faces[face].Δyᶜᶠᵃ
+        file["Azᶜᶜᵃ/" * string(face)] = grid.faces[face].Azᶜᶜᵃ
+        file["Azᶠᶜᵃ/" * string(face)] = grid.faces[face].Azᶠᶜᵃ
+        file["Azᶜᶠᵃ/" * string(face)] = grid.faces[face].Azᶜᶠᵃ
         file["Azᶠᶠᵃ/" * string(face)] = grid.faces[face].Azᶠᶠᵃ
     end
 end
