@@ -1,6 +1,6 @@
 #=
 Download the old_code_metrics.jld2 file from
-https://www.dropbox.com/scl/fo/r2e7uceqsmdkyhqi8v01i/h?rlkey=sdzqitnllnoht0dxtpon6hdhj&dl=0
+https://www.dropbox.com/scl/fo/qu7nfr94wqc6ym6izpfqw/h?rlkey=zd4o5134u64ibyxggy64tiygt&dl=0
 and place it in the path validation/multi_region/. Then run this script from the same path as
 include("cubed_sphere_dynamics_MITgcm.jl")
 =#
@@ -237,7 +237,12 @@ end
 jldopen("new_code_metrics.jld2", "w") do file
     for region in 1:6
         file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
+        file["Δxᶜᶠᵃ/" * string(region)] = grid[region].Δxᶜᶠᵃ
+        file["Δyᶠᶜᵃ/" * string(region)] = grid[region].Δyᶠᶜᵃ
         file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
+        file["Azᶜᶜᵃ/" * string(region)] = grid[region].Azᶜᶜᵃ
+        file["Azᶠᶜᵃ/" * string(region)] = grid[region].Azᶠᶜᵃ
+        file["Azᶜᶠᵃ/" * string(region)] = grid[region].Azᶜᶠᵃ
         file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ       
     end
 end
@@ -247,23 +252,44 @@ compare_old_and_new_code_metrics = true
 if compare_old_and_new_code_metrics
 
     old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Azᶜᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Azᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_Azᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    
     new_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     new_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Azᶜᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Azᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_Azᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     new_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
 
     old_file = jldopen("old_code_metrics.jld2")
     for region in 1:6
         old_Δxᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
+        old_Δxᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
+        old_Δyᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
         old_Δyᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
+        old_Azᶜᶜᵃ_parent[:, :, region] = parent(old_file["Azᶜᶜᵃ/" * string(region)][:, :])
+        old_Azᶠᶜᵃ_parent[:, :, region] = parent(old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
+        old_Azᶜᶠᵃ_parent[:, :, region] = parent(old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
         old_Azᶠᶠᵃ_parent[:, :, region] = parent(old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy])
     end
-    overwrite_grid_metrics_from_old_code = false
+    overwrite_grid_metrics_from_old_code = true
     if overwrite_grid_metrics_from_old_code
         for region in 1:6
             grid[region].Δxᶠᶜᵃ[:,:] = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+            grid[region].Δxᶜᶠᵃ[:,:] = old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+            grid[region].Δyᶠᶜᵃ[:,:] = old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
             grid[region].Δyᶜᶠᵃ[:,:] = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+            grid[region].Azᶜᶜᵃ[:,:] = old_file["Azᶜᶜᵃ/" * string(region)][:, :]
+            grid[region].Azᶠᶜᵃ[:,:] = old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+            grid[region].Azᶜᶠᵃ[:,:] = old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
             grid[region].Azᶠᶠᵃ[:,:] = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
         end
     end
@@ -272,17 +298,32 @@ if compare_old_and_new_code_metrics
     new_file = jldopen("new_code_metrics.jld2")
     for region in 1:6
         new_Δxᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δxᶠᶜᵃ/" * string(region)][:, :, 1])
+        new_Δxᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δxᶜᶠᵃ/" * string(region)][:, :, 1])
+        new_Δyᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δyᶠᶜᵃ/" * string(region)][:, :, 1])
         new_Δyᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δyᶜᶠᵃ/" * string(region)][:, :, 1])
+        new_Azᶜᶜᵃ_parent[:, :, region] = parent(new_file["Azᶜᶜᵃ/" * string(region)][:, :, 1])
+        new_Azᶠᶜᵃ_parent[:, :, region] = parent(new_file["Azᶠᶜᵃ/" * string(region)][:, :, 1])
+        new_Azᶜᶠᵃ_parent[:, :, region] = parent(new_file["Azᶜᶠᵃ/" * string(region)][:, :, 1])
         new_Azᶠᶠᵃ_parent[:, :, region] = parent(new_file["Azᶠᶠᵃ/" * string(region)][:, :, 1])
     end
     close(new_file)
     
     Δxᶠᶜᵃ_difference = new_Δxᶠᶜᵃ_parent - old_Δxᶠᶜᵃ_parent
+    Δxᶜᶠᵃ_difference = new_Δxᶜᶠᵃ_parent - old_Δxᶜᶠᵃ_parent
+    Δyᶠᶜᵃ_difference = new_Δyᶠᶜᵃ_parent - old_Δyᶠᶜᵃ_parent
     Δyᶜᶠᵃ_difference = new_Δyᶜᶠᵃ_parent - old_Δyᶜᶠᵃ_parent
+    Azᶜᶜᵃ_difference = new_Azᶜᶜᵃ_parent - old_Azᶜᶜᵃ_parent
+    Azᶠᶜᵃ_difference = new_Azᶠᶜᵃ_parent - old_Azᶠᶜᵃ_parent
+    Azᶜᶠᵃ_difference = new_Azᶜᶠᵃ_parent - old_Azᶜᶠᵃ_parent
     Azᶠᶠᵃ_difference = new_Azᶠᶠᵃ_parent - old_Azᶠᶠᵃ_parent
     
     Δxᶠᶜᵃ_relative_difference = Δxᶠᶜᵃ_difference ./ old_Δxᶠᶜᵃ_parent
+    Δxᶜᶠᵃ_relative_difference = Δxᶜᶠᵃ_difference ./ old_Δxᶜᶠᵃ_parent
+    Δyᶠᶜᵃ_relative_difference = Δyᶠᶜᵃ_difference ./ old_Δyᶠᶜᵃ_parent
     Δyᶜᶠᵃ_relative_difference = Δyᶜᶠᵃ_difference ./ old_Δyᶜᶠᵃ_parent
+    Azᶜᶜᵃ_relative_difference = Azᶜᶜᵃ_difference ./ old_Azᶜᶜᵃ_parent
+    Azᶠᶜᵃ_relative_difference = Azᶠᶜᵃ_difference ./ old_Azᶠᶜᵃ_parent
+    Azᶜᶠᵃ_relative_difference = Azᶜᶠᵃ_difference ./ old_Azᶜᶠᵃ_parent
     Azᶠᶠᵃ_relative_difference = Azᶠᶠᵃ_difference ./ old_Azᶠᶠᵃ_parent
     
 end
@@ -386,7 +427,6 @@ save("ζ₀_with_halos.png", fig)
 fig = panel_wise_visualization(grid, ζ₀)
 save("ζ₀.png", fig)
 
-#=
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -419,7 +459,6 @@ simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_i
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
-=#
 
 #=
 fig = panel_wise_visualization(grid, Δζ_fields[end])
