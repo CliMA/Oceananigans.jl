@@ -1,22 +1,20 @@
 using Adapt
 
-@inline no_advective_forcing(args...) = nothing
-
-struct ParticleAdvectiveForcing{U, V, W}
+struct ParticleVelocities{U, V, W}
     u :: U
     v :: V
     w :: W
 end
 
-function ParticleAdvectiveForcing(; u=no_advective_forcing, v=no_advective_forcing, w=no_advective_forcing)
-    return ParticleAdvectiveForcing(u, v, w)
+function ParticleVelocities(; u=ParticleDiscreteForcing(), v=ParticleDiscreteForcing(), w=ParticleDiscreteForcing())
+    return ParticleVelocities(u, v, w)
 end
 
 # @inline (af::ParticleAdvectiveForcing)(i, j, k, grid, clock, model_fields) = 0
 
-Base.summary(::ParticleAdvectiveForcing) = string("ParticleAdvectiveForcing")
+Base.summary(::ParticleVelocities) = string("ParticleVelocities")
 
-function Base.show(io::IO, af::ParticleAdvectiveForcing)
+function Base.show(io::IO, af::ParticleVelocities)
     
     print(io, summary(af), ":", "\n")
 
@@ -25,8 +23,8 @@ function Base.show(io::IO, af::ParticleAdvectiveForcing)
               "└── w: ", prettysummary(af.w))
 end
 
-Adapt.adapt_structure(to, af::ParticleAdvectiveForcing) =
-    ParticleAdvectiveForcing(adapt(to, af.u), adapt(to, af.v), adapt(to, af.w))
+Adapt.adapt_structure(to, af::ParticleVelocities) =
+    ParticleVelocities(adapt(to, af.u), adapt(to, af.v), adapt(to, af.w))
 
 # # fallback
 # @inline with_advective_forcing(forcing, total_velocities) = total_velocities

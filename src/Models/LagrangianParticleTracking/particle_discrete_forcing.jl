@@ -43,13 +43,16 @@ can place constraints on `typeof(parameters)`.
 """
 ParticleDiscreteForcing(func; parameters=nothing) = ParticleDiscreteForcing(func, parameters)
 
-@inline function (forcing::ParticleDiscreteForcing{P, F})(i, j, k, particles, p, grid, clock, Δt, model_fields) where {P, F<:Function}
+@inline no_discrete_forcing(x, y, z, fluid_velocity, args...) = fluid_velocity
+ParticleDiscreteForcing() = ParticleDiscreteForcing(no_discrete_forcing)
+
+@inline function (forcing::ParticleDiscreteForcing{P, F})(x, y, z, fluid_velocity, particles, p, grid, clock, Δt, model_fields) where {P, F<:Function}
     parameters = forcing.parameters
-    return forcing.func(i, j, k, particles, p, grid, clock, Δt, model_fields, parameters)
+    return forcing.func(x, y, z, fluid_velocity, particles, p, grid, clock, Δt, model_fields, parameters)
 end
 
-@inline (forcing::ParticleDiscreteForcing{<:Nothing, F})(i, j, k, particles, p, grid, clock, Δt, model_fields) where F<:Function =
-    forcing.func(i, j, k, particles, p, grid, clock, Δt, model_fields)
+@inline (forcing::ParticleDiscreteForcing{<:Nothing, F})(x, y, z, fluid_velocity, particles, p, grid, clock, Δt, model_fields) where F<:Function =
+    forcing.func(x, y, z, fluid_velocity, particles, p, grid, clock, Δt, model_fields)
 
 """Show the innards of a `ParticleDiscreteForcing` in the REPL."""
 Base.show(io::IO, forcing::ParticleDiscreteForcing{P}) where P =
