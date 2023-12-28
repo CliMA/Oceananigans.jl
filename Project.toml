@@ -43,7 +43,7 @@ OceananigansEnzymeCoreExt = "EnzymeCore"
 
 [compat]
 Adapt = "3"
-CUDA = "4, 5"
+CUDA = "4.1.1, 5"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
 Dates = "1.9"
