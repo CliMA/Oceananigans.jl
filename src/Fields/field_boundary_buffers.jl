@@ -38,10 +38,10 @@ function FieldBoundaryBuffers(grid, data, boundary_conditions)
     north = create_buffer_y(architecture(grid), grid, data, Hy, boundary_conditions.north)
 
     if hasproperty(arch, :connectivity)
-        sw = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.southwest)
-        se = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.southeast)
-        nw = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.northwest)
-        ne = create_buffer_corner(arch, grid, data, Hx, Hy, arch.connectivity.northeast)
+        sw = create_buffer_corner(arch, grid, data, Hx, Hy, west, south)
+        se = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
+        nw = create_buffer_corner(arch, grid, data, Hx, Hy, west, north)
+        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, north)
     else
         sw = nothing
         se = nothing
@@ -55,9 +55,13 @@ end
 create_buffer_x(arch, grid, data, H, bc) = nothing
 create_buffer_y(arch, grid, data, H, bc) = nothing
 
-create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing) = nothing
+# Corner buffers are filled only if the corner is connected. which means that either edges are
+# connected and rank is not a nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
+create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
-function create_buffer_corner(arch, grid, data, Hx, Hy, side)
+function create_buffer_corner(arch, grid, data, Hx, Hy, edge1, edge2)
     return (send = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
             recv = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
 end
@@ -128,6 +132,25 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
     return nothing
 end
 
+#####
+##### Single sided fill_send_buffers!
+#####
+
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+    _fill_west_send_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+    _fill_east_send_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+    _fill_south_send_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+    _fill_north_send_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+
+#####
+##### Double sided fill_send_buffers!
+#####
+
 function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
@@ -179,6 +202,25 @@ function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
 
    return nothing
 end
+
+#####
+##### Single sided recv_from_buffers!
+#####
+
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+    _recv_from_west_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+    _recv_from_east_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+    _recv_from_south_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+    _recv_from_north_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+
+#####
+##### Double sided recv_from_buffers!
+#####
 
 function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
@@ -254,5 +296,5 @@ _recv_from_southeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2H
 _recv_from_northwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# Switch around halos for cubed sphere by exhanging buffer informations
+# Switch around halos for cubed sphere by exchanging buffer informations
 replace_horizontal_vector_halos!(vel, grid::AbstractGrid; signed=true) = nothing

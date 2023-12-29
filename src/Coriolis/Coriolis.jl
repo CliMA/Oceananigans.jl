@@ -2,7 +2,7 @@ module Coriolis
 
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
-    HydrostaticSphericalCoriolis, ActiveCellEnstrophyConservingScheme,
+    HydrostaticSphericalCoriolis, ActiveCellEnstrophyConserving,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf

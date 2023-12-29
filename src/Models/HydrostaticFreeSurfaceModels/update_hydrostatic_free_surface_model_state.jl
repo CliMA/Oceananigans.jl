@@ -11,6 +11,8 @@ using Oceananigans.Fields: replace_horizontal_vector_halos!
 import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 
+using Oceananigans.Models: update_model_field_time_series!
+
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
@@ -29,6 +31,9 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
+    
+    # Update possible FieldTimeSeries used in the model
+    @apply_regionally update_model_field_time_series!(model, model.clock)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
 

@@ -10,29 +10,24 @@ using Random
 # Run with 
 #
 # ```julia 
-#   mpiexec -n 4 julia --project mpi_hydrostatic_turbulence.jl
+#   mpiexec -n 4 julia --project distributed_hydrostatic_turbulence.jl
 # ```
 
 function run_simulation(nx, ny, arch, topo)
-
-    grid  = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
-
+    grid = RectilinearGrid(arch; topology=topo, size=(nx, ny, 1), extent=(4π, 4π, 0.5), halo=(7, 7, 7))
     bottom(x, y) = (x > π && x < 3π/2 && y > π/2 && y < 3π/2) ? 1.0 : - grid.Lz - 1.0
-
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-
-    free_surface = SplitExplicitFreeSurface(; substeps = 10)
-
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                         momentum_advection = VectorInvariant(vorticity_scheme = WENO(order = 9)),
-                         tracer_advection = WENO(),
-                         buoyancy = nothing,
-                         coriolis = FPlane(f = 1),
-                         tracers = :c)
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                        momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
+                                        free_surface = SplitExplicitFreeSurface(substeps=10),
+                                        tracer_advection = WENO(),
+                                        buoyancy = nothing,
+                                        coriolis = FPlane(f = 1),
+                                        tracers = :c)
 
     # Scale seed with rank to avoid symmetry
+    local_rank = MPI.Comm_rank(arch.communicator)
     Random.seed!(1234 * (local_rank + 1))
 
     set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
@@ -61,27 +56,18 @@ function run_simulation(nx, ny, arch, topo)
                          overwrite_existing=true)
 
     run!(simulation)
-    MPI.Barrier(MPI.COMM_WORLD)
-end
 
-MPI.Init()
+    MPI.Barrier(arch.communicator)
+end
 
 topo = (Periodic, Periodic, Bounded)
 
-Nranks = MPI.Comm_size(MPI.COMM_WORLD)
-Rx = 4
-Ry = 1
-
-@assert Nranks == 4
-
-# Enable overlapped communication!
-arch  = Distributed(CPU(), ranks = (Rx, Ry, 1), 
-                        topology=topo, 
-                        enable_overlapped_computation = true)
-
-# Example of non-uniform partitioning
+# Use non-uniform partitioning in x, y.
+# TODO: Explain what local_index is.
 nx = [90, 128-90][arch.local_index[1]]
 ny = [56, 128-56][arch.local_index[2]]
+@show arch.local_index
+arch = Distributed(CPU(), topology = topo, ranks=(2, 2, 1)) 
 
 # Run the simulation
 run_simulation(nx, ny, arch, topo)
@@ -130,6 +116,5 @@ catch err
     @info err
 end
 
+MPI.Barrier(arch.communicator)
 
-MPI.Barrier(MPI.COMM_WORLD)
-MPI.Finalize()
