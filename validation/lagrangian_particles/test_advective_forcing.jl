@@ -16,7 +16,7 @@ using KernelAbstractions
 
 Random.seed!(123)
 
-grid = RectilinearGrid(Oceananigans.CPU(), Float64,
+grid = RectilinearGrid(Oceananigans.GPU(), Float64,
                        size = (4, 4, 4),
                        halo = (5, 5, 5),
                        x = (0, 1),
@@ -46,45 +46,48 @@ end
 
 n_particles = 3
 
-# x₀ = CuArray(zeros(n_particles))
-# y₀ = CuArray(rand(n_particles))
-# z₀ = CuArray(-0.1 * rand(n_particles))
+x₀ = CuArray(zeros(n_particles))
+y₀ = CuArray(rand(n_particles))
+z₀ = CuArray(-0.1 * rand(n_particles))
 
-# u₀ = CuArray(zeros(n_particles))
-# v₀ = CuArray(zeros(n_particles))
-# w₀ = CuArray(-0.1 * rand(n_particles))
+u₀ = CuArray(zeros(n_particles))
+v₀ = CuArray(zeros(n_particles))
+w₀ = CuArray(zeros(n_particles))
+
+u₀_particle = deepcopy(u₀)
+v₀_particle = deepcopy(v₀)
+w₀_particle = CuArray(-1e-5 * rand(n_particles))
+
+age = CuArray(zeros(n_particles))
+radius = CuArray(ones(n_particles))
+
+# x₀ = zeros(n_particles)
+# y₀ = rand(n_particles)
+# z₀ = -0.1 * rand(n_particles)
+
+# u₀ = zeros(n_particles)
+# v₀ = zeros(n_particles)
+# w₀ = -1e-5 * rand(n_particles)
 
 # u₀_particle = deepcopy(u₀)
 # v₀_particle = deepcopy(v₀)
 # w₀_particle = deepcopy(w₀)
 
-# age = CuArray(zeros(n_particles))
-# radius = CuArray(ones(n_particles))
-
-x₀ = zeros(n_particles)
-y₀ = rand(n_particles)
-z₀ = -0.1 * rand(n_particles)
-
-u₀ = zeros(n_particles)
-v₀ = zeros(n_particles)
-w₀ = -1e-5 * rand(n_particles)
-
-u₀_particle = deepcopy(u₀)
-v₀_particle = deepcopy(v₀)
-w₀_particle = deepcopy(w₀)
-
-age = zeros(n_particles)
-radius = ones(n_particles)
+# age = zeros(n_particles)
+# radius = ones(n_particles)
 
 particles = StructArray{LagrangianPOC}((x₀, y₀, z₀, u₀, v₀, w₀, u₀_particle, v₀_particle, w₀_particle, age, radius))
 
 @inline function w_sinking(x, y, z, w_fluid, particles, p, grid, clock, Δt, model_fields)
+    return particles[p].w_particle
+end
+
+@inline function sinking_dynamics(x, y, z, w_fluid, particles, p, grid, clock, Δt, model_fields)
     w₀ = particles[p].w_particle
     w = w₀ + 1 / (2 * 24 * 60^2) * (w_fluid - w₀) * Δt
-
-    # particles[p].w = w
     return w
 end
+
 w_forcing  = ParticleDiscreteForcing(w_sinking)
 sinking = ParticleVelocities(w=w_forcing)
 
@@ -99,9 +102,9 @@ sinking = ParticleVelocities(w=w_forcing)
         v_fluid = particles.v[p]
         w_fluid = particles.w[p]
 
-        particles.u_particle[p] = advective_velocity.u(x, y, z, u_fluid, particles, p, grid, clock, Δt, model_fields)
-        particles.v_particle[p] = advective_velocity.v(x, y, z, v_fluid, particles, p, grid, clock, Δt, model_fields)
-        particles.w_particle[p] = advective_velocity.w(x, y, z, w_fluid, particles, p, grid, clock, Δt, model_fields)
+        particles.u_particle[p] = u_fluid
+        particles.v_particle[p] = v_fluid
+        particles.w_particle[p] = sinking_dynamics(x, y, z, w_fluid, particles, p, grid, clock, Δt, model_fields)
     end
 end
 
@@ -111,18 +114,6 @@ function update_lagrangian_particle_velocities!(particles, model, Δt)
     workgroup = min(length(particles), 256)
     worksize = length(particles)
     model_fields = merge(model.velocities, model.tracers, model.auxiliary_fields)
-
-    # # Update particle "properties"
-    # for (name, field) in pairs(particles.tracked_fields)
-    #     compute!(field)
-    #     particle_property = getproperty(particles.properties, name)
-    #     ℓx, ℓy, ℓz = map(instantiate, location(field))
-
-    #     update_field_property_kernel! = update_property!(device(arch), workgroup, worksize)
-
-    #     update_field_property_kernel!(particle_property, particles.properties, model.grid,
-    #                                   datatuple(field), ℓx, ℓy, ℓz)
-    # end
 
     update_particle_velocities_kernel! = update_particle_velocities!(device(arch), workgroup, worksize)
     update_particle_velocities_kernel!(particles.properties, particles.advective_velocity, model.grid, model.clock, Δt, model_fields)
