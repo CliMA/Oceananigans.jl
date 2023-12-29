@@ -84,7 +84,7 @@ ĝ = [sind(θ), 0, cosd(θ)]
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
-# where we have used a constant Coriolis parameter ``$f = 10^{-4} \, \rm{s}^{-1}``.
+# where we have used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
@@ -98,7 +98,7 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5))
 
-# where ``N² = 10⁻⁵ \rm{s}⁻¹`` is the background buoyancy gradient.
+# where ``N^2 = 10^{-5} \rm{s}^{-2}`` is the background buoyancy gradient.
 
 # ## Bottom drag
 #
@@ -137,7 +137,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs),
                             background_fields = (; b=B_field))
 
-# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
+# Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
 # turbulence:
 
 noise(x, z) = 1e-3 * randn() * exp(-(10z)^2 / grid.Lz^2)
@@ -148,16 +148,16 @@ set!(model, u=noise, w=noise)
 # We are now ready to create the simulation. We begin by setting the initial time step
 # conservatively, based on the smallest grid size of our domain and set-up a 
 
-using Oceananigans.Units
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1day)
 
-simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
-
-# We use `TimeStepWizard` to adapt our time-step and print a progress message,
+# We use a `TimeStepWizard` to adapt our time-step,
 
 using Printf
 
 wizard = TimeStepWizard(max_change=1.1, cfl=0.7)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
+
+# and also a add another callback to print a progress message,
 
 start_time = time_ns() # so we can print the total elapsed wall time
 
