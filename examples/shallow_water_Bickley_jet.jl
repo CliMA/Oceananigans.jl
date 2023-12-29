@@ -50,8 +50,6 @@ model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO())
 
-# Use `architecture = GPU()` to run this problem on a GPU.
-
 # ## Background state and perturbation
 #
 # The background velocity ``ū`` and free-surface ``η̄`` correspond to a
