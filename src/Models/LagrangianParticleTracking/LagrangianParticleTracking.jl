@@ -141,11 +141,11 @@ function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
     update_lagrangian_particle_properties!(particles, model, Δt)
 
-    # Advect particles
-    advect_lagrangian_particles!(particles, model, Δt)
-
     # Compute dynamics
     particles.dynamics(particles, model, Δt)
+    
+    # Advect particles
+    advect_lagrangian_particles!(particles, model, Δt)
 end
 
 end # module
