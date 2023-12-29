@@ -1,11 +1,11 @@
-import Adapt: adapt_structure
+import Adapt
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    @inline ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
 end
 
 """
@@ -24,37 +24,42 @@ Otherwise `κ` must be a `NamedTuple` with values for every tracer individually.
 Arguments
 =========
 
-* `time_discretization`: either `ExplicitTimeDiscretization()` (default) or `VerticallyImplicitTimeDiscretization()`.
-
-* `formulation`:
-  - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
-  - `VerticalFormulation()` for diffusivity applied in the vertical direction,
-  - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
-
-* `FT`: the float datatype (default: `Float64`)
+    * `time_discretization`: either `ExplicitTimeDiscretization()` (default)
+      or `VerticallyImplicitTimeDiscretization()`.
+    
+    * `formulation`:
+      - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+      - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+      - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+    
+    * `FT`: the float datatype (default: `Float64`)
 
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
+    * `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
+    
+    * `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+           `NamedTuple` of diffusivities with entries for each tracer.
+    
+    * `discrete_form`: `Boolean`; default: `False`.
 
-* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
-       `NamedTuple` of diffusivities with entries for each tracer.
+When prescribing the viscosities or diffusivities as functions, depending on the
+value of keyword argument `discrete_form`, the constructor expects:
 
-* `discrete_form`: `Boolean`; default: `False`.
+    * `discrete_form = false` (default): functions of the grid's native coordinates
+      and time, e.g., `(x, y, z, t)` for a `RectilinearGrid` or
+      `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+      
+    * `discrete_form = true`: 
+        - with `loc = (nothing, nothing, nothing)` (default):
+          functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
+          and `ℓz` either `Face()` or `Center()`.
+        - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
+          and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
 
-When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
-`discrete_form`, the constructor expects:
-
-  - `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
-    a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
-
-  - `discrete_form = true`: 
-    - with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`.
-    - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
-
-  - `parameters`: `NamedTuple` with parameters used by the functions that compute viscosity and/or diffusivity; default: `nothing`.
-
+    * `parameters`: `NamedTuple` with parameters used by the functions
+      that compute viscosity and/or diffusivity; default: `nothing`.
 
 Examples
 ========
@@ -100,18 +105,17 @@ julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, C
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(another_κ)})
 ```
 """
-@inline function ScalarDiffusivity(time_discretization::TD = ExplicitTimeDiscretization(),
-                                   formulation::F = ThreeDimensionalFormulation(),
-                                   ::Type{FT} = Float64;
-                                   ν = 0,
-                                   κ = 0,
-                                   discrete_form = false,
-                                   loc = (nothing, nothing, nothing),
-                                   parameters = nothing,
-                                   required_halo_size::Val{_required_halo_size} = Val(1)) where {FT, TD, F, _required_halo_size}
+function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                           formulation=ThreeDimensionalFormulation(), FT=Float64;
+                           ν=0, κ=0,
+                           discrete_form = false,
+                           loc = (nothing, nothing, nothing),
+                           parameters = nothing,
+                           required_halo_size = 1)
 
-    if formulation isa HorizontalFormulation && time_discretization isa VerticallyImplicitTimeDiscretization
-        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
+    if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
+        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
+                            `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
@@ -199,5 +203,9 @@ end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
 
-adapt_structure(to, closure::ScalarDiffusivity) = ScalarDiffusivity(adapt(closure.ν),
-                                                                    adapt(closure.κ))
+function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+    ν = Adapt.adapt(to, closure.ν)
+    κ = Adapt.adapt(to, closure.κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ)
+end
+                                                                          
