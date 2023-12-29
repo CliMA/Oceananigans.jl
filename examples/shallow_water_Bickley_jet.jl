@@ -40,7 +40,7 @@ grid = RectilinearGrid(size = (48, 128),
 # ## Building a `ShallowWaterModel`
 #
 # We build a `ShallowWaterModel` with the `WENO` advection scheme,
-# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis and
+# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis, and
 # gravitational acceleration
 
 gravitational_acceleration = 1
