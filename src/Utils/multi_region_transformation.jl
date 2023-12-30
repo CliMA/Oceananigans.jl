@@ -192,10 +192,11 @@ end
 """
     @apply_regionally expr
     
-Use `@apply_regionally` to distribute locally the function calls in `expr`ession
-when the functions do not return anything.
+Distributes locally the function calls in `expr`ession
 
-In case the function in `expr` returns something, then use [`construct_regionally`](@ref).
+It calls [`apply_regionally!`](@ref) when the functions do not return anything.
+
+In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
 """
 macro apply_regionally(expr)
     if expr.head == :call
