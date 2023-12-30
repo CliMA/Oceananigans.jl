@@ -69,5 +69,4 @@ end
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
-Base.show(io::IO, buoyancy::Buoyancy) =
-    print(io, sprint(show, buoyancy.model), "\nwith `gravity_unit_vector`: (", @sprintf("gx = %.3f, gy = %.3f, gz = %.3f", buoyancy.gravity_unit_vector[1], buoyancy.gravity_unit_vector[2], buoyancy.gravity_unit_vector[3]),")")
+Base.show(io::IO, buoyancy::Buoyancy) = print(io, sprint(show, buoyancy.model), "\nwith `gravity_unit_vector` = ", summary(buoyancy.gravity_unit_vector))
