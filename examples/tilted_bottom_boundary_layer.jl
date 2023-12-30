@@ -81,7 +81,6 @@ ĝ = [sind(θ), 0, cosd(θ)]
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
-#-
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
