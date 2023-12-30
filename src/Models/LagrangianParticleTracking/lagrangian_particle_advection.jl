@@ -14,8 +14,8 @@ end
 
 @inline function bounce_right(x, xᴸ, xᴿ, Cʳ)
     xᵢ = xᴸ + Cʳ * (xᴸ - x)
-    # Limit the particle to the right boundary when it leaves from there
-    return ifelse(xᵢ < xᴿ, xᵢ, xᴿ)
+    # Keep the particle from bouncing so far right it leaves the domain
+    return ifelse(xᵢ > xᴿ, xᴿ, xᵢ)
 end
 
 """
