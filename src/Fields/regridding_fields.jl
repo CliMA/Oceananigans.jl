@@ -3,7 +3,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind
+using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
 
 using Base: ForwardOrdering
 
@@ -199,8 +199,8 @@ end
     @inbounds @unroll for j = 1:target_grid.Ny
         target_field[i, j, k] = 0
 
-        y₋ = node(i, j,   k, target_grid, c, f, c)[2]
-        y₊ = node(i, j+1, k, target_grid, c, f, c)[2]
+        y₋ = ηnode(i, j,   k, target_grid, c, f, c)
+        y₊ = ηnode(i, j+1, k, target_grid, c, f, c)
 
         # Integrate source field from y₋ to y₊
         j₋_src = searchsortedfirst(source_y_faces, y₋, 1, Ny_source+1, fo)
@@ -219,8 +219,8 @@ end
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
-            yj₋_src = node(i_src, j₋_src, k_src, source_grid, c, f, c)[2]
-            yj₊_src = node(i_src, j₊_src, k_src, source_grid, c, f, c)[2]
+            yj₋_src = ηnode(i_src, j₋_src, k_src, source_grid, c, f, c)
+            yj₊_src = ηnode(i_src, j₊_src, k_src, source_grid, c, f, c)
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
@@ -228,9 +228,9 @@ end
             if j₋_src > 1
                 j_left = j₋_src - 1
 
-                x₁ = node(i_src,  j_left, k_src, source_grid, f, c, c)[1]
-                x₂ = node(i⁺_src, j_left, k_src, source_grid, f, c, c)[1]
-                Az_left = fractional_horizontal_area(source_grid, x₁, x₂, y₋, yj₋_src)
+                ξ₁ = ξnode(i_src,  j_left, k_src, source_grid, f, c, c)
+                ξ₂ = ξnode(i⁺_src, j_left, k_src, source_grid, f, c, c)
+                Az_left = fractional_horizontal_area(source_grid, ξ₁, ξ₂, y₋, yj₋_src)
 
                 target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
             end
@@ -239,9 +239,9 @@ end
             if j₊_src < source_grid.Ny+1
                 j_right = j₊_src
 
-                x₁ = node(i_src,  j_right, k_src, source_grid, f, c, c)[1]
-                x₂ = node(i⁺_src, j_right, k_src, source_grid, f, c, c)[1]
-                Az_right = fractional_horizontal_area(source_grid, x₁, x₂, yj₊_src, y₊)
+                ξ₁ = ξnode(i_src,  j_right, k_src, source_grid, f, c, c)
+                ξ₂ = ξnode(i⁺_src, j_right, k_src, source_grid, f, c, c)
+                Az_right = fractional_horizontal_area(source_grid, ξ₁, ξ₂, yj₊_src, y₊)
 
                 target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
             end
@@ -266,15 +266,15 @@ end
     @inbounds @unroll for i = 1:target_grid.Nx
         target_field[i, j, k] = 0
 
-        # Integrate source field from x₋ to x₊
-        x₋ = node(i,   j, k, target_grid, f, c, c)[1]
-        x₊ = node(i+1, j, k, target_grid, f, c, c)[1]
+        # Integrate source field from ξ₋ to ξ₊
+        ξ₋ = ξnode(i,   j, k, target_grid, f, c, c)
+        ξ₊ = ξnode(i+1, j, k, target_grid, f, c, c)
 
         # The first face on the source grid that appears inside the target cell
-        i₋_src = searchsortedfirst(source_x_faces, x₋, 1, Nx_source+1, fo)
+        i₋_src = searchsortedfirst(source_x_faces, ξ₋, 1, Nx_source+1, fo)
 
         # The last face on the source grid that appears inside the target cell
-        i₊_src = searchsortedfirst(source_x_faces, x₊, 1, Nx_source+1, fo) - 1
+        i₊_src = searchsortedfirst(source_x_faces, ξ₊, 1, Nx_source+1, fo) - 1
 
         if i₊_src < i₋_src
             # If the "last" face on the source grid is equal to or left
@@ -294,8 +294,8 @@ end
     
             # Next, we add contributions from the "fractional" source cells on the right
             # and left of the target cell.
-            xi₋_src = node(i₋_src, j_src, k_src, source_grid, f, c, c)[1]
-            xi₊_src = node(i₊_src, j_src, k_src, source_grid, f, c, c)[1]
+            ξi₋_src = ξnode(i₋_src, j_src, k_src, source_grid, f, c, c)
+            ξi₊_src = ξnode(i₊_src, j_src, k_src, source_grid, f, c, c)
     
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
@@ -303,20 +303,21 @@ end
             if i₋_src > 1
                 i_left = i₋_src - 1
                 
-                y₁ = node(i_left, j_src,  k_src, source_grid, c, f, c)[2]
-                y₂ = node(i_left, j⁺_src, k_src, source_grid, c, f, c)[2] 
-                Az_left = fractional_horizontal_area(source_grid, x₋, xi₋_src, y₁, y₂)
+                η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
+                η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
+                Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
 
                 target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
             end
-    
+
+                
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
 
-                y₁ = node(i_right, j_src,  k_src, source_grid, c, f, c)[2]
-                y₂ = node(i_right, j⁺_src, k_src, source_grid, c, f, c)[2]
-                Az_right = fractional_horizontal_area(source_grid, xi₊_src, x₊, y₁, y₂)
+                η₁ = ηnode(i_right, j_src,  k_src, source_grid, c, f, c)
+                η₂ = ηnode(i_right, j⁺_src, k_src, source_grid, c, f, c)
+                Az_right = fractional_horizontal_area(source_grid, ξi₊_src, ξ₊, η₁, η₂)
 
                 target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
             end

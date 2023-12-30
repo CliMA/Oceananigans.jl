@@ -9,10 +9,9 @@ dd = DataDep("cubed_sphere_32_grid",
 
 DataDeps.register(dd)
 
-
 # Trigger datadep download to avoid race condition in CI.
 # See: https://github.com/oxinabox/DataDeps.jl/issues/141
-datadep"cubed_sphere_32_grid"
+datadep"cubed_sphere_32_grid" 
 
 # Downloading the regression fields
 
@@ -22,8 +21,10 @@ dh = DataDep("regression_test_data",
     "Data for Regression tests",
     [path * "hydrostatic_free_turbulence_regression_Periodic_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Periodic_ExplicitFreeSurface.jld2",
+     path * "hydrostatic_free_turbulence_regression_Periodic_SplitExplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_ExplicitFreeSurface.jld2",
+     path * "hydrostatic_free_turbulence_regression_Bounded_SplitExplicitFreeSurface.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10000.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10010.jld2",
      path * "ocean_large_eddy_simulation_SmagorinskyLilly_iteration10000.jld2",
