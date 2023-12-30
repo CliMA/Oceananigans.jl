@@ -52,8 +52,7 @@ z_faces(k) = - Lz * (ζ(k) * Σ(k) - 1)
 grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
                        size = (Nx, Nz),
                        x = (0, Lx),
-                       z = z_faces,
-                       halo = (3, 3))
+                       z = z_faces)
 
 # Let's make sure the grid spacing is both finer and near-uniform at the bottom,
 
@@ -82,9 +81,10 @@ ĝ = [sind(θ), 0, cosd(θ)]
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
+#-
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
-# where we have used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
+# where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
@@ -102,14 +102,15 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5
 
 # ## Bottom drag
 #
-# We impose bottom drag that follows Monin-Obukhov theory.
+# We impose bottom drag that follows Monin--Obukhov theory.
 # We include the background flow in the drag calculation,
 # which is the only effect the background flow enters the problem,
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
-κ = 0.4 # von Karman constant
-z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
+κ = 0.4  # von Karman constant
+
+z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
@@ -146,18 +147,18 @@ set!(model, u=noise, w=noise)
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
-# conservatively, based on the smallest grid size of our domain and set-up a 
+# conservatively, based on the smallest grid size of our domain.
 
 simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1day)
 
 # We use a `TimeStepWizard` to adapt our time-step,
 
-using Printf
-
 wizard = TimeStepWizard(max_change=1.1, cfl=0.7)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
 
-# and also a add another callback to print a progress message,
+# and also we add another callback to print a progress message,
+
+using Printf
 
 start_time = time_ns() # so we can print the total elapsed wall time
 
@@ -209,8 +210,8 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(resolution = (800, 600))
 
-axis_kwargs = (xlabel = "Across-slope distance (x)",
-               ylabel = "Slope-normal\ndistance (z)",
+axis_kwargs = (xlabel = "Across-slope distance (m)",
+               ylabel = "Slope-normal\ndistance (m)",
                limits = ((0, Lx), (0, Lz)),
                )
 
