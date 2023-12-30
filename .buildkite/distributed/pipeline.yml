@@ -43,6 +43,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🐲 gpu distributed unit tests"
@@ -63,6 +64,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🤺 cpu distributed hydrostatic model tests"
@@ -72,6 +74,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_ntasks: 4
 
   - label: "🕺 gpu distributed hydrostatic model tests"
