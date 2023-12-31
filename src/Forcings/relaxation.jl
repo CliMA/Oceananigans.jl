@@ -23,8 +23,8 @@ end
 """
     Relaxation(; rate, mask=onefunction, target=zerofunction)
 
-Returns a `Forcing` that restores a field to `target(x, y, z, t)`
-at the specified `rate`, in the region `mask(x, y, z)`.
+Returns a `Forcing` that restores a field to `target(X..., t)`
+at the specified `rate`, in the region `mask(X...)`.
 
 The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
 Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
@@ -82,6 +82,23 @@ end
 
 @inline (f::Relaxation{R, M, <:Number})(x, y, z, t, field) where {R, M} =
     f.rate * f.mask(x, y, z) * (f.target - field)
+
+# Methods for grids with Flat dimensions:
+# Here, the meaning of the coordinate xₙ depends on which dimension is Flat:
+# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where 
+# ξ, η, and r are the first, second, and third coordinates respectively.
+@inline (f::Relaxation)(x₁, x₂, t, field) =
+    f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)
+
+@inline (f::Relaxation{R, M, <:Number})(x₁, x₂, t, field) where {R, M} =
+    f.rate * f.mask(x₁, x₂) * (f.target - field)
+
+# Below, the coordinate x₁ can be ξ, η, or r (see above)
+@inline (f::Relaxation)(x₁, t, field) =
+    f.rate * f.mask(x₁) * (f.target(x₁, t) - field)
+
+@inline (f::Relaxation{R, M, <:Number})(x₁, t, field) where {R, M} =
+    f.rate * f.mask(x₁) * (f.target - field)
 
 """Show the innards of a `Relaxation` in the REPL."""
 Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
