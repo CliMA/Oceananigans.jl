@@ -52,7 +52,7 @@ particles = StructArray{LagrangianPOC}((x₀, y₀, z₀, buoyancy₀, b₀))
         b_particle = particles[p].buoyancy
 
     end
-    return 1e-4 * (b_particle - b_fluid)
+    return 1e-4 * (b_particle - b_fluid) + w_fluid
 end
 
 w_forcing  = ParticleDiscreteForcing(w_buoyant)
