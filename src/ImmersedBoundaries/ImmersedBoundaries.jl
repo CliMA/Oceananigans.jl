@@ -49,6 +49,7 @@ import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_
 
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
+                           ξnode, ηnode, rnode,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            inactive_cell
 
@@ -241,23 +242,17 @@ const f = Face()
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline λnode(i, ibg::IBG, ℓx; kwargs...) = λnode(i, ibg.underlying_grid, ℓx; kwargs...)
-@inline φnode(j, ibg::IBG, ℓy; kwargs...) = φnode(j, ibg.underlying_grid, ℓy; kwargs...)
-@inline xnode(i, ibg::IBG, ℓx; kwargs...) = xnode(i, ibg.underlying_grid, ℓx; kwargs...)
-@inline ynode(j, ibg::IBG, ℓy; kwargs...) = ynode(j, ibg.underlying_grid, ℓy; kwargs...)
-@inline λnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = λnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
-@inline φnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = φnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
-@inline xnode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = xnode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
-@inline ynode(i, j, ibg::IBG, ℓx, ℓy; kwargs...) = ynode(i, j, ibg.underlying_grid, ℓx, ℓy; kwargs...)
-@inline znode(k, ibg::IBG, ℓz; kwargs...) = znode(k, ibg.underlying_grid, ℓz; kwargs...)
+@inline λnode(i, j, k, ibg::IBG, ℓ...) = λnode(i, j, k, ibg.underlying_grid, ℓ...)
+@inline φnode(i, j, k, ibg::IBG, ℓ...) = φnode(i, j, k, ibg.underlying_grid, ℓ...)
+@inline xnode(i, j, k, ibg::IBG, ℓ...) = xnode(i, j, k, ibg.underlying_grid, ℓ...)
+@inline ynode(i, j, k, ibg::IBG, ℓ...) = ynode(i, j, k, ibg.underlying_grid, ℓ...)
+@inline znode(i, j, k, ibg::IBG, ℓ...) = znode(i, j, k, ibg.underlying_grid, ℓ...)
 
-@inline λnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = λnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
-@inline φnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = φnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
-@inline xnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = xnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
-@inline ynode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = ynode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
-@inline znode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = znode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
+@inline ξnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ξnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline ηnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ηnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline rnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = rnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
-node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 nodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = nodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 nodes(ibg::IBG, (ℓx, ℓy, ℓz); kwargs...) = nodes(ibg, ℓx, ℓy, ℓz; kwargs...)

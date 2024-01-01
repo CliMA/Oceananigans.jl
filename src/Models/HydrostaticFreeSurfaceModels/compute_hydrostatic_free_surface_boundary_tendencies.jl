@@ -1,4 +1,5 @@
 import Oceananigans.Models: compute_boundary_tendencies!
+using Oceananigans.Grids: halo_size
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
@@ -31,17 +32,18 @@ function boundary_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny)
-    Sy  = (Nx, Hy)
+    Sx  = (Hx, Ny+2) 
+    Sy  = (Nx+2, Hy)
              
-    Oxᴸ = (-Hx+1, 0)
-    Oyᴸ = (0, -Hy+1)
-    Oxᴿ = (Nx-1,  0)
-    Oyᴿ = (0,  Ny-1)
+    # Offsets in tangential direction are == -1 to
+    # cover the required corners
+    Oxᴸ = (-Hx, -1)
+    Oyᴸ = (-1, -Hy)
+    Oxᴿ = (Nx-1, -1)
+    Oyᴿ = (-1, Ny-1)
 
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
-
