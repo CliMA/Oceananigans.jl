@@ -75,7 +75,6 @@ end
 
 """
     add_callback!(simulation, callback::Callback; name = GenericName())
-                  
     add_callback!(simulation, func; schedule=IterationInterval(1), name = GenericName())
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
