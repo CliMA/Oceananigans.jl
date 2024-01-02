@@ -220,9 +220,7 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
 # We subtract off any residual mean velocity to avoid exciting domain-scale
 # inertial oscillations. We use a `sum` over the entire `parent` arrays or data
-# to ensure this operation is efficient on the GPU (set `architecture = GPU()`
-# in `NonhydrostaticModel` constructor to run this problem on the GPU if one
-# is available).
+# to ensure this operation is efficient on the GPU.
 
 ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
@@ -292,8 +290,8 @@ u, v, w = model.velocities # unpack velocity `Field`s
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
-                                                        filename = "eady_turbulence.jld2",
-                                                         overwrite_existing = true)
+                                                      filename = "eady_turbulence.jld2",
+                                                      overwrite_existing = true)
 nothing #hide
 
 # All that's left is to press the big red button:
