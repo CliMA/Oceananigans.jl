@@ -99,9 +99,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     Nx, Ny, Nz = size(grid)
 
     # Find index of the "rightmost" cell interface
-    iᴿ = length(f, tx, Nx)
-    jᴿ = length(f, ty, Ny)
-    kᴿ = length(f, tz, Nz)
+    iᴿ = length(f, tx, Nx) + ifelse(tx == Periodic(), 1, 0)
+    jᴿ = length(f, ty, Ny) + ifelse(ty == Periodic(), 1, 0)
+    kᴿ = length(f, tz, Nz) + ifelse(tz == Periodic(), 1, 0)
 
     xᴸ = xnode(1, j, k, grid, f, f, f)
     yᴸ = ynode(i, 1, k, grid, f, f, f)
