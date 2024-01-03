@@ -141,6 +141,8 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     # Enforce boundary conditions for particles.
     Cʳ = restitution
 
+    @info "xᴸ $xᴸ, xᴿ $xᴿ"
+
     @info "before $x⁺, $y⁺, $z⁺"
 
     x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
