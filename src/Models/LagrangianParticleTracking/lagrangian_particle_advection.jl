@@ -141,16 +141,10 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     # Enforce boundary conditions for particles.
     Cʳ = restitution
 
-    @info "xᴸ $xᴸ, xᴿ $xᴿ"
-
-    @info "before $x⁺, $y⁺, $z⁺"
-
     x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
     y⁺ = enforce_boundary_conditions(ty, y⁺, yᴸ, yᴿ, Cʳ)
     z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
 
-    @info "after $x⁺, $y⁺, $z⁺"
-    
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
         x⁺, y⁺, z⁺ = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
