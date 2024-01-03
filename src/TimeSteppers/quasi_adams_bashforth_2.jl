@@ -90,6 +90,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
     
+    step_lagrangian_particles!(model, Δt)
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
 
@@ -97,7 +98,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     tick!(model.clock, Δt)
     update_state!(model, callbacks; compute_tendencies)
-    step_lagrangian_particles!(model, Δt)
     
     return nothing
 end
