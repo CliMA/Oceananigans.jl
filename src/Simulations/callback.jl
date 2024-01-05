@@ -29,8 +29,12 @@ with optional `parameters`. `schedule = IterationInterval(1)` by default.
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 """
-Callback(func, schedule=IterationInterval(1); parameters=nothing, callsite = TimeStepCallsite()) =
-    Callback(func, schedule, parameters, callsite)
+function Callback(func, schedule=IterationInterval(1);
+                  parameters = nothing,
+                  callsite = TimeStepCallsite())
+
+    return Callback(func, schedule, parameters, callsite)
+end
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
 Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule),
@@ -74,8 +78,9 @@ function unique_callback_name(::GenericName, existing_names)
 end
 
 """
-    add_callback!(simulation, callback::Callback; name = GenericName())
-    add_callback!(simulation, func; schedule=IterationInterval(1), name = GenericName())
+    add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
+
+    add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
 `GenericName()` generates a name of the form `:callbackN`, where `N`
@@ -92,9 +97,10 @@ function add_callback!(simulation, callback::Callback; name = GenericName())
     return nothing
 end
 
-function add_callback!(simulation, func; schedule = IterationInterval(1),
-                                             name = GenericName())
-    callback = Callback(func, schedule)
+function add_callback!(simulation, func, schedule = IterationInterval(1);
+                       name = GenericName(), callback_kw...)
+
+    callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)
 end
 
