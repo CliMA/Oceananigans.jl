@@ -117,14 +117,14 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    conjure_time_step_wizard!(simulation; interval=5, wizard_kw...)
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
 
-Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`
-using the schedule `IterationInterval(interval)`.
+Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
+called on `schedule` which is `IterationInterval(5)` by default.
 """
-function conjure_time_step_wizard!(simulation; interval=5, wizard_kw...)
+function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
     wizard = TimeStepWizard(; wizard_kw...)
-    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(interval))
+    simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
     return nothing
 end
 
