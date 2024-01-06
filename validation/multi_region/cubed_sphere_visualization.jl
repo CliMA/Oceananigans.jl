@@ -2,6 +2,30 @@ using LinearAlgebra
 using Oceananigans.MultiRegion: getregion
 using CairoMakie
 
+function read_big_endian_coordinates(filename, nInterior = 32, nHalo = 1)
+    # Open the file in binary read mode
+    open(filename, "r") do io
+        # Calculate the number of Float64 values in the file
+        n = filesize(io) ÷ sizeof(Float64)
+
+        # Ensure n = (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
+        if n != (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
+            error("File size does not match the expected size for one (nInterior + 2 * nHalo) x (nInterior + 2 * nHalo) field")
+        end
+
+        # Initialize an array to hold the data
+        data = Vector{Float64}(undef, n)
+
+        # Read the data into the array
+        read!(io, data)
+
+        # Convert from big-endian to native endianness
+        native_data = reshape(bswap.(data), (nInterior + 2 * nHalo), (nInterior + 2 * nHalo))
+
+        return native_data
+    end
+end
+
 function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, labels, title, file_name, resolution, 
                                           linewidth, linecolor, marker, markersize, labelsizes, ticklabelsizes, 
                                           labelpaddings, aspect, titlesize, titlegap)
