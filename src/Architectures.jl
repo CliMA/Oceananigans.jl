@@ -115,9 +115,9 @@ end
 
 # Convert arguments to GPU-compatible types
 
-@inline convert_args(::CPU, arg) = args
-@inline convert_args(::GPU, arg) = CUDA.cudaconvert(arg)
-@inline convert_args(::GPU, arg::Tuple) = map(CUDA.cudaconvert, arg)
+@inline convert_args(::CPU, args) = args
+@inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
+@inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 
 end # module
