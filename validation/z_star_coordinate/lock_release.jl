@@ -15,7 +15,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
             generalized_vertical_coordinate = ZStar(),
                          momentum_advection = WENOVectorInvariant(),
                            tracer_advection = WENO(),
-                                    # closure = HorizontalScalarDiffusivity(ν = 10),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 30))
