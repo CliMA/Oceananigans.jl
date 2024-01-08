@@ -31,8 +31,8 @@ FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, 
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
 # Generalized vertical coordinate functionality
-include("generalized_vertical_coordinate.jl")
-include("z_star_vertical_coordinate.jl")
+include("generalized_vertical_spacing.jl")
+include("z_star_vertical_spacing.jl")
 include("compute_w_from_continuity.jl")
 
 # Rigid-lid

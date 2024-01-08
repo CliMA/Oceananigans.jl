@@ -27,10 +27,11 @@
 
     @inbounds û = u[i, j, k]
     δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
+    ∂ts =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, V_times_∂t_∂s_grid)
     δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
     δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
 
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * (δvˢ + ℑxᶠᵃᵃ(i, j, k, grid, V_times_∂t_∂s_grid))
+    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * (δvˢ + ∂ts)
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
@@ -40,10 +41,11 @@ end
 
     @inbounds v̂ = v[i, j, k]
     δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
+    ∂ts =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, V_times_∂t_∂s_grid)
     δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
     δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
 
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * (δuˢ + ℑyᵃᶠᵃ(i, j, k, grid, V_times_∂t_∂s_grid))
+    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * (δuˢ + ∂ts)
 end
 
 #####

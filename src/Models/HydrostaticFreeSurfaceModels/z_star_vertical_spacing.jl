@@ -105,7 +105,7 @@ update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, params, fs, grid, Δt) =
         sⁿ[i, j, 1] = h
 
         # Scaling derivative
-        ∂t_∂s[i, j, 1] = (h - s⁻[i, j, 1]) / Δt  / h
+        ∂t_∂s[i, j, 1] = (h - s⁻[i, j, 1]) / Δt
     end
 end
 
@@ -136,6 +136,9 @@ end
 
 @inline slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η)
 @inline slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η)
+
+@inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * slope_xᶠᶜᶜ(i, j, k, grid, free_surface)

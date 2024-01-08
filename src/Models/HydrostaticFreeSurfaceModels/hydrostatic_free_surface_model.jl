@@ -96,34 +96,34 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, 0, 1),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                          coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                               vertical_coordinate = Z(),
-                                  auxiliary_fields = NamedTuple()
+                                      clock = Clock{eltype(grid)}(0, 0, 1),
+                         momentum_advection = CenteredSecondOrder(),
+                           tracer_advection = CenteredSecondOrder(),
+                                   buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                   coriolis = nothing,
+                               free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
+                        forcing::NamedTuple = NamedTuple(),
+                                    closure = nothing,
+            boundary_conditions::NamedTuple = NamedTuple(),
+                                    tracers = (:T, :S),
+              particles::ParticlesOrNothing = nothing,
+      biogeochemistry::AbstractBGCOrNothing = nothing,
+                                 velocities = nothing,
+                                   pressure = nothing,
+                         diffusivity_fields = nothing,
+            generalized_vertical_coordinate = nothing,
+                           auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
-    if !(vertical_coordinate isa Z) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
-      throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
-    end
+    # if !isnothing(generalized_vertical_coordinate) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
+    #   throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
+    # end
 
-    grid = !isnothing(free_surface) ? GeneralizedSpacingGrid(grid, vertical_coordinate) : grid
+    grid = !isnothing(free_surface) ? GeneralizedSpacingGrid(grid, generalized_vertical_coordinate) : grid
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)

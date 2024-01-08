@@ -10,44 +10,41 @@ using Printf
 
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
 import Oceananigans.Advection: ∂t_∂s_grid
+import Oceananigans.Architectures: arch_array
 
 """
-    GeneralizedVerticalSpacing{R, S, Z} 
+    GeneralizedVerticalSpacing{D, R, S, Z} 
 
-spacings for a generalized vertical coordinate system.
-The reference coordinate is stored in `Δr`, while `Δ` contains the z-coordinate.
-The `s⁻`, `sⁿ` and `∂t_∂s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
+spacings for a generalized vertical coordinate system. The reference (non-moving) spacings are stored in `Δr`. 
+`Δ` contains the spacings associated with the moving coordinate system.
+`s⁻`, `sⁿ` and `∂t_∂s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
 at timestep `n-1` and `n` and it's time derivative.
-`denomination` contains the "type" of generalized vertical coordinate, for example:
-- Zstar: free-surface following
-- sigma: terrain following
+`denomination` contains the "type" of generalized vertical coordinate (the only one implemented is `ZStar`)
 """
-struct GeneralizedVerticalSpacing{D, R, Z, S}
-  denomination :: D # The type of generalized coordinate
-            Δr :: R # Reference _non moving_ vertical coordinate (one-dimensional)
-             Δ :: Z # moving vertical coordinate (three-dimensional)
-            s⁻ :: S # scaling term = ∂Δ/∂Δr at the start of the time step
-            sⁿ :: S # scaling term = ∂Δ/∂Δr at the end of the time step
-         ∂t_∂s :: S # Time derivative of the vertical coordinate scaling divided by the sⁿ
+struct GeneralizedVerticalSpacing{D, R, Z, S, SN, ST}
+  denomination :: D  # The type of generalized coordinate
+            Δr :: R  # Reference _non moving_ vertical coordinate (one-dimensional)
+             Δ :: Z  # moving vertical coordinate (three-dimensional)
+            s⁻ :: S  # scaling term = ∂Δ/∂Δr at the start of the time step
+            sⁿ :: SN # scaling term = ∂Δ/∂Δr at the end of the time step
+         ∂t_∂s :: ST # Time derivative of the vertical coordinate scaling 
 end
 
 Adapt.adapt_structure(to, coord::GeneralizedVerticalSpacing) = 
-    GeneralizedVerticalSpacing(nothing, 
-                             Adapt.adapt(to, coord.Δr),
-                             Adapt.adapt(to, coord.Δ),
-                             Adapt.adapt(to, coord.s⁻),
-                             Adapt.adapt(to, coord.sⁿ),
-                             Adapt.adapt(to, coord.∂t_∂s))
-
-import Oceananigans.Architectures: arch_array
+    GeneralizedVerticalSpacing(coord.denomination, 
+                               Adapt.adapt(to, coord.Δr),
+                               Adapt.adapt(to, coord.Δ),
+                               Adapt.adapt(to, coord.s⁻),
+                               Adapt.adapt(to, coord.sⁿ),
+                               Adapt.adapt(to, coord.∂t_∂s))
 
 arch_array(arch, coord::GeneralizedVerticalSpacing) = 
     GeneralizedVerticalSpacing(coord.denomination,
-                             arch_array(arch, coord.Δr), 
-                             coord.Δ,
-                             coord.s⁻,
-                             coord.sⁿ,
-                             coord.∂t_∂s)
+                               arch_array(arch, coord.Δr), 
+                               coord.Δ,
+                               coord.s⁻,
+                               coord.sⁿ,
+                               coord.∂t_∂s)
 
 const GeneralizedSpacingRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D
 const GeneralizedSpacingLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D
@@ -56,9 +53,6 @@ const GeneralizedSpacingUnderlyingGrid{D} = Union{GeneralizedSpacingRG{D}, Gener
 const GeneralizedSpacingImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid{D}} where D
 
 const GeneralizedSpacingGrid{D} = Union{GeneralizedSpacingUnderlyingGrid{D}, GeneralizedSpacingImmersedGrid{D}} where D
-
-""" geopotential following vertical coordinate """
-struct Z end
 
 #####
 ##### General implementation
@@ -85,6 +79,24 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δzᶠᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.Δ)
 @inline Δzᶠᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
 
+@inline Δz_reference(i, j, k, Δz::Number) = Δz
+@inline Δz_reference(i, j, k, Δz::AbstractVector) = Δz[k]
+
+@inline Δz_reference(i, j, k, Δz::GeneralizedVerticalSpacing{<:Any, <:Number}) = Δz.Δr
+@inline Δz_reference(i, j, k, Δz::GeneralizedVerticalSpacing) = Δz.Δr[k]
+
+@inline Δzᶜᶜᶠ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶠ)
+@inline Δzᶜᶜᶜ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶜ)
+
+@inline Δzᶜᶠᶠ_reference(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
+@inline Δzᶜᶠᶜ_reference(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+
+@inline Δzᶠᶜᶠ_reference(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
+@inline Δzᶠᶜᶜ_reference(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+
+@inline Δzᶠᶠᶠ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
+@inline Δzᶠᶠᶜ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+
 ##### 
 ##### Vertical velocity of the Δ-surfaces to be included in the continuity equation
 #####
@@ -97,9 +109,6 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 
 @inline grid_slope_contribution_x(i, j, k, grid, args...) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid, args...) = zero(grid)
-
-@inline grid_slope_contribution_x(i, j, k, grid::GeneralizedSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::GeneralizedSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
 #####
 ##### Handling tracer update in generalized vertical coordinates (we update sθ)
