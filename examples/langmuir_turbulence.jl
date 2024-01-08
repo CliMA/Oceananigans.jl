@@ -167,9 +167,7 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
