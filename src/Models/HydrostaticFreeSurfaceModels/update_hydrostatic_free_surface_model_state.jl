@@ -83,11 +83,6 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
                                     grid, model.buoyancy, model.tracers; 
                                     parameters = ppar)
     end
+
     return nothing
 end
-
-# Do not update if rigid lid!!
-const RigidLidModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-
-update_vertical_spacing!(::RigidLidModel, ::ZStarSpacingGrid; kwargs...) = nothing
-update_tracer_thickness!(tracers, grid) = nothing
