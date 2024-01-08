@@ -90,10 +90,10 @@ export
     PrescribedVelocityFields,
 
     # Time stepping
-    Clock, TimeStepWizard, time_step!,
+    Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, iteration, stopwatch,
+    Simulation, run!, Callback, add_callback!, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
