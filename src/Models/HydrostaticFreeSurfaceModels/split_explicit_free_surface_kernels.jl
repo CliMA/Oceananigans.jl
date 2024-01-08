@@ -308,23 +308,24 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Wait for previous set up
     wait_free_surface_communication!(free_surface, architecture(free_surface_grid))
 
+    # Calculate the substepping parameterers
+    settings = free_surface.settings 
+    Nsubsteps = calculate_substeps(settings.substepping, Δt)
+    
+    # barotropic time step as fraction of baroclinic step and averaging weights
+    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) 
+    Nsubsteps = length(weights)
+
+    # barotropic time step in seconds
+    Δτᴮ = fractional_Δt * Δt  
+    
     # reset free surface averages
     @apply_regionally begin 
-        settings = free_surface.settings 
-
         initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
-        
-        Nsubsteps  = calculate_substeps(settings.substepping, Δt)
-        
-        # barotropic time step as fraction of baroclinic step and averaging weights
-        fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) 
-        Nsubsteps = length(weights)
-
-        # barotropic time step in seconds
-        Δτᴮ = fractional_Δt * Δt  
         
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
+        
         # Reset eta for the next timestep
         set!(free_surface.η, free_surface.state.η̅)
     end
