@@ -30,16 +30,12 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     s⁻    = Field{Center, Center, Nothing}(grid)
     sⁿ    = Field{Center, Center, Nothing}(grid)
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
-
+    
     # Initial "at-rest" conditions
-    set!(sⁿ, 1)
-    set!(s⁻, 1)
-    
-    fill_halo_regions!((s⁻, sⁿ))
-    
-    launch!(architecture(grid), grid, :xy,_update_z_star!, 
-        ΔzF, ΔzC, grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, sⁿ, Val(grid.Nz))
+    launch!(architecture(grid), grid, :xy, _update_zstar!, 
+            sⁿ, s⁻, ΔzF, ΔzC, ZeroField(grid), grid, Val(grid.Nz))
 
+    fill_halo_regions!((s⁻, sⁿ))
     fill_halo_regions!((ΔzF, ΔzC))
 
     Δzᵃᵃᶠ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_∂s)
@@ -76,25 +72,18 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     ΔzF  = grid.Δzᵃᵃᶠ.Δ
     ΔzC  = grid.Δzᵃᵃᶜ.Δ
 
-    # Reference (non moving) spacing
-    ΔzF₀ = grid.Δzᵃᵃᶠ.Δr
-    ΔzC₀ = grid.Δzᵃᵃᶜ.Δr
-
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, parameters, model.free_surface, grid, Δt)
-
-    launch!(architecture(grid), grid, parameters, _update_z_star!, 
-            ΔzF, ΔzC, ΔzF₀, ΔzC₀, sⁿ, Val(grid.Nz))
+    launch!(architecture(grid), grid, parameters, _update_zstar!, sⁿ, s⁻, ΔzF, ΔzC, 
+                         model.free_surface.η, grid, Val(grid.Nz))
     
+    # Update scaling time derivative
+    update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, model.free_surface)
+
     return nothing
 end
 
-update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, params, fs, grid, Δt) = 
-    launch!(architecture(grid), grid, params, _update_zstar_scaling!,
-            sⁿ, s⁻, ∂t_∂s, fs.η, grid, Δt)
-
-@kernel function _update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, η, grid, Δt)
+@kernel function _update_zstar!(sⁿ, s⁻, ΔzF, ΔzC, η, grid, ::Val{Nz}) where Nz
     i, j = @index(Global, NTuple)
     bottom = bottom_height(i, j, grid)
     @inbounds begin
@@ -103,29 +92,20 @@ update_zstar_scaling!(sⁿ, s⁻, ∂t_∂s, params, fs, grid, Δt) =
         # update current and previous scaling
         s⁻[i, j, 1] = sⁿ[i, j, 1]
         sⁿ[i, j, 1] = h
-
-        # Scaling derivative
-        ∂t_∂s[i, j, 1] = (h - s⁻[i, j, 1]) / Δt
+       
+        @unroll for k in 1:Nz+1
+            ΔzF[i, j, k] = h * Δzᶜᶜᶠ_reference(i, j, k, grid)
+            ΔzC[i, j, k] = h * Δzᶜᶜᶜ_reference(i, j, k, grid)
+        end
     end
 end
 
-bottom_height(i, j, grid) = grid.Lz
-bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
+update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, fs) = 
+    launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, ∂t_∂s, sⁿ, s⁻, Δt)
 
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀, ΔzC₀, sⁿ, ::Val{Nz}) where Nz
+@kernel function _update_∂t_∂s!(∂t_∂s, sⁿ, s⁻, Δt)
     i, j = @index(Global, NTuple)
-    @unroll for k in 1:Nz+1
-        @inbounds ΔzF[i, j, k] = sⁿ[i, j, 1] * ΔzF₀[k]
-        @inbounds ΔzC[i, j, k] = sⁿ[i, j, 1] * ΔzC₀[k]
-    end
-end
-
-@kernel function _update_z_star!(ΔzF, ΔzC, ΔzF₀::Number, ΔzC₀::Number, sⁿ, ::Val{Nz}) where Nz
-    i, j = @index(Global, NTuple)
-    @unroll for k in 1:Nz+1
-        @inbounds ΔzF[i, j, k] = sⁿ[i, j, 1] * ΔzF₀
-        @inbounds ΔzC[i, j, k] = sⁿ[i, j, 1] * ΔzC₀
-    end
+    ∂t_∂s[i, j, 1] = (sⁿ[i, j, 1] - s⁻[i, j, 1]) /  Δt
 end
 
 #####

@@ -23,7 +23,7 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     U.w[i, j, 1] = 0
     @unroll for k in 2:grid.Nz+1
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * 
-                                ( div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) +
+                                (  div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) +
                                   ∂t_∂s_grid(i, j, k-1, grid) )
     end
 end

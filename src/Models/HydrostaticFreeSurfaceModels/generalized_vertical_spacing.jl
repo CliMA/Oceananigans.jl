@@ -97,6 +97,13 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δzᶠᶠᶠ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
 @inline Δzᶠᶠᶜ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
 
+#####
+##### Utility
+#####
+
+bottom_height(i, j, grid) = grid.Lz
+bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
+
 ##### 
 ##### Vertical velocity of the Δ-surfaces to be included in the continuity equation
 #####
