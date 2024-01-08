@@ -71,12 +71,14 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
                                                                       p_parameters = tuple(p_kernel_parameters(model.grid)),
                                                                       κ_parameters = tuple(:xyz)) 
     
-    grid = model.grid
-    closure = model.closure
+    grid        = model.grid
+    closure     = model.closure
+    tracers     = model.tracers
     diffusivity = model.diffusivity_fields
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
         update_vertical_spacing!(model, grid, Δt; parameters = wpar)
+        scale_tracers!(tracers, grid; parameters = wpar)
         compute_w_from_continuity!(model; parameters = wpar)
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
@@ -86,3 +88,5 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
 
     return nothing
 end
+
+scale_tracers!(tracers, grid; kwargs...) = nothing

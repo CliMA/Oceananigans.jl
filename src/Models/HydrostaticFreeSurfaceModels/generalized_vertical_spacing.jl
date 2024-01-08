@@ -118,7 +118,8 @@ bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boun
 @inline grid_slope_contribution_y(i, j, k, grid, args...) = zero(grid)
 
 #####
-##### Handling tracer update in generalized vertical coordinates (we update sθ)
+##### Tracer update in generalized vertical coordinates 
+##### We advance sθ but store θ once sⁿ⁺¹ is known
 #####
 
 @kernel function _ab2_step_tracer_generalized_spacing!(θ, sⁿ, s⁻, Δt, χ, Gⁿ, G⁻)
@@ -129,8 +130,10 @@ bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boun
     oh_point_five  = convert(FT, 0.5)
 
     @inbounds begin
-        ∂t_∂sθ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
-        θ[i, j, k] = s⁻[i, j, k] * θ[i, j, k] / sⁿ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
+        ∂t_∂sθ = (one_point_five + χ) * sⁿ[i, j, k] * Gⁿ[i, j, k] - (oh_point_five + χ) * s⁻[i, j, k] * G⁻[i, j, k]
+        
+        # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `scale_tracers!`
+        θ[i, j, k] = sⁿ[i, j, k] * θ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
     end
 end
 
@@ -140,3 +143,25 @@ ab2_step_tracer_field!(tracer_field, grid::GeneralizedSpacingGrid, Δt, χ, Gⁿ
             grid.Δzᵃᵃᶠ.sⁿ, 
             grid.Δzᵃᵃᶠ.s⁻, 
             Δt, χ, Gⁿ, G⁻)
+
+const EmptyTuples = Union{NamedTuple{(),Tuple{}}, Tuple{}}
+
+scale_tracers!(::EmptyTuples, ::GeneralizedSpacingGrid; kwargs...) = nothing
+
+tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
+tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
+
+function scale_tracers!(tracers, grid::GeneralizedSpacingGrid; parameters = :xy) 
+    parameters = tracer_scaling_parameters(parameters, tracers, grid)
+    launch!(architecture(grid), grid, parameters, _scale_tracers, tracers, grid.Δzᵃᵃᶠ.sⁿ, 
+            Val(grid.Hz), Val(grid.Nz))
+    return nothing
+end
+    
+@kernel function _scale_tracers(tracers, sⁿ, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
+    i, j, n = @index(Global, NTuple)
+
+    @unroll for k in -Hz+1:Nz+Hz
+        tracers[n][i, j, k] /= sⁿ[i, j, k]
+    end
+end
