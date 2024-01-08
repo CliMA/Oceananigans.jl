@@ -207,7 +207,7 @@ end
     return uᶜᶠᶜ * (∂x_vˢ - ∂y_uˢ) - wᶜᶠᶜ * (∂y_wˢ - ∂z_vˢ)
 end
 
-@inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::SDnoP, U, time)
+@inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
     uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
     vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
 
