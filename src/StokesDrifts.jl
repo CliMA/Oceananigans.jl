@@ -44,11 +44,42 @@ end
 """
     UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing)
 
-Construct a set of functions of `(z, t)` for a Stokes drift velocity field
-corresponding to a horizontally-uniform surface gravity wave field.
+Construct a set of functions for a Stokes drift velocity field
+corresponding to a horizontally-uniform surface gravity wave field, with optional `parameters`.
+
+If `parameters=nothing`, then the functions `∂z_uˢ`, `∂z_vˢ`, `∂t_uˢ`, `∂t_vˢ` must be callable
+with signature `(z, t)`. If `!isnothing(parameters)`, then functions must be callable with
+the signature `(z, t, parameters)`.
 
 To resolve the evolution of the Lagrangian-mean momentum, we require vertical-derivatives
 and time-derivatives of the horizontal components of the Stokes drift, `uˢ` and `vˢ`.
+
+Example
+=======
+
+Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
+`uˢ(z=0) = 0.1` and decay scale `h = 20 m`:
+
+```jldoctest
+using Oceananigans
+
+@inline uniform_stokes_shear(z, t) = 0.005 * exp(z / 20)
+
+stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear)
+```
+
+Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
+`uˢ₀ = 0.1` and decay scale `h = 20 m`, using parameters:
+
+```jldoctest
+using Oceananigans
+
+@inline uniform_stokes_shear(z, t, p) = p.uˢ₀ * exp(z / p.h)
+
+stokes_drift_parameters = (uˢ₀ = 0.005, h = 20)
+stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
+```
+
 """
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
