@@ -71,7 +71,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_change = 1.1), IterationInterval(10))
 run!(simulation)
 
-# Check conservation
+# Check tracer conservation
 if model.grid isa ZStarSpacingGrid
   b  = FieldTimeSeries("zstar_model.jld2", "b")
   dz = FieldTimeSeries("zstar_model.jld2", "ΔzF")

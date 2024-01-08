@@ -24,7 +24,7 @@ end
 # the actual vertical spacing and a scaling
 function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
-    # Memory layout for Dz spacings is local in z
+    # Memory layout for Δz spacings should be local in z instead of x
     ΔzF   =  ZFaceField(grid)
     ΔzC   = CenterField(grid)
     s⁻    = Field{Center, Center, Nothing}(grid)
