@@ -67,6 +67,7 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 
 # Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
 # TODO: make z-direction local in memory by not using Fields
+# TODO: make it work with partial cells 
 
 @inline Δzᶜᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶠ.Δ[i, j, k]
 @inline Δzᶜᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.Δ[i, j, k]

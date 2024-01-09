@@ -17,7 +17,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
-                               free_surface = SplitExplicitFreeSurface(; substeps = 30))
+                               free_surface = SplitExplicitFreeSurface(; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
 
