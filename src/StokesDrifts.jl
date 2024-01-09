@@ -70,8 +70,8 @@ the signature `(z, t, parameters)`.
 To resolve the evolution of the Lagrangian-mean momentum, we require vertical-derivatives
 and time-derivatives of the horizontal components of the Stokes drift, `uˢ` and `vˢ`.
 
-Example
-=======
+Examples
+========
 
 Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
 `uˢ(z=0) = 0.005` and decay scale `h = 20`:
@@ -98,14 +98,14 @@ Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
 ```jldoctest
 using Oceananigans
 
-@inline uniform_stokes_shear(z, t, p) = p.uˢ₀ * exp(z / p.h)
+@inline uniform_stokes_shear(z, t, p) = p.uˢ * exp(z / p.h)
 
-stokes_drift_parameters = (uˢ₀ = 0.005, h = 20)
+stokes_drift_parameters = (uˢ = 0.005, h = 20)
 stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
 
 # output
 
-UniformStokesDrift with parameters (uˢ₀=0.005, h=20):
+UniformStokesDrift with parameters (uˢ=0.005, h=20):
 ├── ∂z_uˢ: uniform_stokes_shear
 ├── ∂z_vˢ: zerofunction
 ├── ∂t_uˢ: zerofunction
@@ -165,7 +165,7 @@ To resolve the evolution of the Lagrangian-mean momentum, we require all the com
 of the "psuedovorticity",
 
 ```math
-∇ × uˢ = x̂ (∂_y wˢ - ∂_z vˢ) + ŷ (∂_z uˢ - ∂_x wˢ) + ẑ (∂_x vˢ - ∂_y uˢ)
+𝛁 × 𝐮ˢ = ̂𝐱 (∂_y wˢ - ∂_z vˢ) + ̂𝐲 (∂_z uˢ - ∂_x wˢ) + ̂𝐳 (∂_x vˢ - ∂_y uˢ)
 ```
 
 as well as time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
