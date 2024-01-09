@@ -137,7 +137,7 @@ of the "psuedovorticity",
 ∇ × uˢ = x̂ (∂y_wˢ - ∂z_vˢ) + ŷ (∂z_uˢ - ∂x_wˢ) + ẑ (∂x_vˢ - ∂y_uˢ)
 ```
 
-as well as time-derivatives of uˢ, vˢ, and wˢ.
+as well as time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
 Note that each function (e.g. ∂z_uˢ) is a function of horizontal coordinates and time.
 Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
