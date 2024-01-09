@@ -58,7 +58,7 @@ end
 @inline zerofunction(args...) = 0
 
 """
-    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing)
+    UniformStokesDrift(; ∂z_uˢ=zerofunction, ∂z_vˢ=zerofunction, ∂t_uˢ=zerofunction, ∂t_vˢ=zerofunction, parameters=nothing)
 
 Construct a set of functions for a Stokes drift velocity field
 corresponding to a horizontally-uniform surface gravity wave field, with optional `parameters`.
@@ -74,7 +74,7 @@ Example
 =======
 
 Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
-`uˢ(z=0) = 0.005 m s⁻¹` and decay scale `h = 20 m`:
+`uˢ(z=0) = 0.005` and decay scale `h = 20`:
 
 ```jldoctest
 using Oceananigans
@@ -87,13 +87,13 @@ stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear)
 
 UniformStokesDrift{Nothing}:
 ├── ∂z_uˢ: uniform_stokes_shear
-├── ∂z_vˢ: addzero
-├── ∂t_uˢ: addzero
-└── ∂t_vˢ: addzero
+├── ∂z_vˢ: zerofunction
+├── ∂t_uˢ: zerofunction
+└── ∂t_vˢ: zerofunction
 ```
 
 Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
-`uˢ = 0.005 m s⁻¹` and decay scale `h = 20 m`, using parameters:
+`uˢ = 0.005` and decay scale `h = 20`, using parameters:
 
 ```jldoctest
 using Oceananigans
@@ -107,13 +107,12 @@ stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear, parameters=stok
 
 UniformStokesDrift with parameters (uˢ₀=0.005, h=20):
 ├── ∂z_uˢ: uniform_stokes_shear
-├── ∂z_vˢ: addzero
-├── ∂t_uˢ: addzero
-└── ∂t_vˢ: addzero
-=======
+├── ∂z_vˢ: zerofunction
+├── ∂t_uˢ: zerofunction
+└── ∂t_vˢ: zerofunction
 ```
 """
-UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing) =
+UniformStokesDrift(; ∂z_uˢ=zerofunction, ∂z_vˢ=zerofunction, ∂t_uˢ=zerofunction, ∂t_vˢ=zerofunction, parameters=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
 const USD = UniformStokesDrift
@@ -154,9 +153,9 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
 end
 
 """
-    StokesDrift(; ∂z_uˢ=addzero, ∂y_uˢ=addzero, ∂t_uˢ=addzero, 
-                  ∂z_vˢ=addzero, ∂x_vˢ=addzero, ∂t_vˢ=addzero, 
-                  ∂x_wˢ=addzero, ∂y_wˢ=addzero, ∂t_wˢ=addzero, parameters=nothing)
+    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction, 
+                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction, 
+                  ∂x_wˢ=zerofunction, ∂y_wˢ=zerofunction, ∂t_wˢ=zerofunction, parameters=nothing)
 
 Construct a set of functions of space and time for a Stokes drift velocity field
 corresponding to a surface gravity wave field with an envelope that (potentially) varies
@@ -182,15 +181,15 @@ When `!isnothing(parameters)`, then in this case `∂z_uˢ` should be callable v
 Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`,
 `∂z_uˢ` should be callable via `∂z_uˢ(x, y, z, t)`.
 """
-function StokesDrift(; ∂x_vˢ = addzero,
-                       ∂x_wˢ = addzero,
-                       ∂y_uˢ = addzero,
-                       ∂y_wˢ = addzero,
-                       ∂z_uˢ = addzero,
-                       ∂z_vˢ = addzero,
-                       ∂t_uˢ = addzero,
-                       ∂t_vˢ = addzero,
-                       ∂t_wˢ = addzero,
+function StokesDrift(; ∂x_vˢ = zerofunction,
+                       ∂x_wˢ = zerofunction,
+                       ∂y_uˢ = zerofunction,
+                       ∂y_wˢ = zerofunction,
+                       ∂z_uˢ = zerofunction,
+                       ∂z_vˢ = zerofunction,
+                       ∂t_uˢ = zerofunction,
+                       ∂t_vˢ = zerofunction,
+                       ∂t_wˢ = zerofunction,
                        parameters = nothing)
 
     return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
