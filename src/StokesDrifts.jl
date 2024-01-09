@@ -74,7 +74,7 @@ Example
 =======
 
 Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
-`uˢ(z=0) = 0.005 m s⁻¹` and decay scale `h = 20 m`:
+`uˢ(z=0) = 0.005` and decay scale `h = 20`:
 
 ```jldoctest
 using Oceananigans
@@ -93,7 +93,7 @@ UniformStokesDrift{Nothing}:
 ```
 
 Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
-`uˢ = 0.005 m s⁻¹` and decay scale `h = 20 m`, using parameters:
+`uˢ = 0.005` and decay scale `h = 20`, using parameters:
 
 ```jldoctest
 using Oceananigans
