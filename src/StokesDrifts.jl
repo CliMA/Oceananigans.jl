@@ -139,7 +139,7 @@ of the "psuedovorticity",
 
 as well as time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
-Note that each function (e.g. ∂z_uˢ) is a function of horizontal coordinates and time.
+Note that each function (e.g., `∂z_uˢ`) is a function of horizontal coordinates and time.
 Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
 are omitted.
 
