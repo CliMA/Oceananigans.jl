@@ -246,11 +246,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 # ∂ₜₜ(η) = Δη
                 η_exact = cos(ω * T) * (Array(η.data.parent)[2:Nx+1, 2:Ny+1] .- 1) .+ 1
 
-                U₀(x, y) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
+                U₀(x, y, z) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
                 set!(U, U₀)
                 U_exact = -(sin(ω * T) * 1 / ω) .* Array(U.data.parent)[2:Nx+1, 2:Ny+1] .+ gu_c * T
 
-                V₀(x, y) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
+                V₀(x, y, z) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
                 set!(V, V₀)
                 V_exact = -(sin(ω * T) * 1 / ω) .* Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T
 
