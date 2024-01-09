@@ -373,6 +373,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
                                     buoyancy = nothing)
 
+model.timestepper.χ = -0.5
+
 # Initial conditions
 
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / (4g * Ω^2)
