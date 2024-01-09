@@ -42,9 +42,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
 
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
-                U₀(x, y) = 0
+                U₀(x, y, z) = 0
                 set!(U, U₀)
-                V₀(x, y) = 0
+                V₀(x, y, z) = 0
                 set!(V, V₀)
 
                 η̅ .= 0
@@ -85,9 +85,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 # set!(η, f(x,y))
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
-                U₀(x, y) = 0
+                U₀(x, y, z) = 0
                 set!(U, U₀)
-                V₀(x, y) = 0
+                V₀(x, y, z) = 0
                 set!(V, V₀)
 
                 η̅ .= 0
@@ -140,9 +140,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 V_avg = 3
                 η₀(x, y, z) = η_avg
                 set!(η, η₀)
-                U₀(x, y) = U_avg
+                U₀(x, y, z) = U_avg
                 set!(U, U₀)
-                V₀(x, y) = V_avg
+                V₀(x, y, z) = V_avg
                 set!(V, V₀)
 
                 η̅ .= 0
