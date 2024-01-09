@@ -141,12 +141,12 @@ To resolve the evolution of the Lagrangian-mean momentum, we require all the com
 of the "psuedovorticity",
 
 ```math
-∇ × uˢ = x̂ (∂y_wˢ - ∂z_vˢ) + ŷ (∂z_uˢ - ∂x_wˢ) + ẑ (∂x_vˢ - ∂y_uˢ)
+∇ × uˢ = x̂ (∂_y wˢ - ∂_z vˢ) + ŷ (∂_z uˢ - ∂_x wˢ) + ẑ (∂_x vˢ - ∂_y uˢ)
 ```
 
-as well as time-derivatives of uˢ, vˢ, and wˢ.
+as well as time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
-Note that each function (e.g. ∂z_uˢ) is a function of horizontal coordinates and time.
+Note that each function (e.g., `∂z_uˢ`) is a function of horizontal coordinates and time.
 Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
 are omitted.
 
