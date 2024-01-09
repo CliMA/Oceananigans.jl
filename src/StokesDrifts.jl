@@ -152,6 +152,8 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     parameters :: P
 end
 
+Base.summary(::StokesDrift{Nothing}) = "StokesDrift{Nothing}"
+
 function Base.summary(sd::StokesDrift)
     p_str = prettysummary(sd.parameters)
     return "StokesDrift with parameters $p_str"
@@ -271,4 +273,3 @@ end
 end
 
 end # module
-
