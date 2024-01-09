@@ -152,6 +152,24 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     parameters :: P
 end
 
+function Base.summary(sd::StokesDrift)
+    p_str = prettysummary(sd.parameters)
+    return "StokesDrift with parameters $p_str"
+end
+
+function Base.show(io::IO, sd::StokesDrift)
+    print(io, summary(sd), ':', '\n')
+    print(io, "├── ∂x_vˢ: ", prettysummary(sd.∂x_vˢ, false), '\n')
+    print(io, "├── ∂x_wˢ: ", prettysummary(sd.∂x_wˢ, false), '\n')
+    print(io, "├── ∂y_uˢ: ", prettysummary(sd.∂y_uˢ, false), '\n')
+    print(io, "├── ∂y_wˢ: ", prettysummary(sd.∂y_wˢ, false), '\n')
+    print(io, "├── ∂z_uˢ: ", prettysummary(sd.∂z_uˢ, false), '\n')
+    print(io, "├── ∂z_vˢ: ", prettysummary(sd.∂z_vˢ, false), '\n')
+    print(io, "├── ∂t_uˢ: ", prettysummary(sd.∂t_uˢ, false), '\n')
+    print(io, "├── ∂t_vˢ: ", prettysummary(sd.∂t_vˢ, false), '\n')
+    print(io, "└── ∂t_wˢ: ", prettysummary(sd.∂t_wˢ, false))
+end
+
 """
     StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction, 
                   ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction, 
