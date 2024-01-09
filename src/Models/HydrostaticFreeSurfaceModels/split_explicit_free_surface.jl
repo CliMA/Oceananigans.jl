@@ -130,7 +130,7 @@ Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
     U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    V̅    :: FC
+    V̅    :: CF
 end
 
 """
@@ -149,16 +149,16 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
           
-    U    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    V    = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    U    = XFaceField(grid, indices = (:, :, size(grid, 3)))
+    V    = YFaceField(grid, indices = (:, :, size(grid, 3)))
 
-    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(grid, timestepper)
-    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(grid, timestepper)
-    Uᵐ⁻² = auxiliary_barotropic_velocity_field(grid, timestepper)
-    Vᵐ⁻² = auxiliary_barotropic_velocity_field(grid, timestepper)
+    Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
           
-    U̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    V̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    U̅ = XFaceField(grid, indices = (:, :, size(grid, 3)))
+    V̅ = YFaceField(grid, indices = (:, :, size(grid, 3)))
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
@@ -196,12 +196,12 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    Gⱽ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Gᵁ = XFaceField(grid, indices = (:, :, size(grid, 3)))
+    Gⱽ = YFaceField(grid, indices = (:, :, size(grid, 3)))
 
-    Hᶠᶜ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    Hᶜᶠ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-    Hᶜᶜ = ZFaceField(grid, indices = (:, :, size(grid, 3)))
+    Hᶠᶜ =  XFaceField(grid, indices = (:, :, size(grid, 3)))
+    Hᶜᶠ =  YFaceField(grid, indices = (:, :, size(grid, 3)))
+    Hᶜᶜ = CenterField(grid, indices = (:, :, size(grid, 3)))
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
     Hᶠᶜ .= sum(dz; dims = 3)
@@ -238,8 +238,10 @@ struct ForwardBackwardScheme end
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
 
-auxiliary_barotropic_velocity_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_velocity_field(grid, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT 
