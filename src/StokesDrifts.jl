@@ -10,10 +10,11 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
-using Oceananigans.Grids: AbstractGrid, node
-
 using Oceananigans.Fields
 using Oceananigans.Operators
+
+using Oceananigans.Grids: AbstractGrid, node
+using Oceananigans.Utils: prettysummary
 
 #####
 ##### Functions for "no surface waves"
@@ -39,7 +40,22 @@ struct UniformStokesDrift{P, UZ, VZ, UT, VT}
     parameters :: P
 end
 
-@inline addzero(args...) = 0
+Base.summary(::UniformStokesDrift{Nothing}) = "UniformStokesDrift{Nothing}"
+
+function Base.summary(usd::UniformStokesDrift)
+    p_str = prettysummary(usd.parameters)
+    return "UniformStokesDrift with parameters $p_str"
+end
+
+function Base.show(io::IO, usd::UniformStokesDrift)
+    print(io, summary(usd), ':', '\n')
+    print(io, "├── ∂z_uˢ: ", prettysummary(usd.∂z_uˢ, false), '\n')
+    print(io, "├── ∂z_vˢ: ", prettysummary(usd.∂z_vˢ, false), '\n')
+    print(io, "├── ∂t_uˢ: ", prettysummary(usd.∂t_uˢ, false), '\n')
+    print(io, "└── ∂t_vˢ: ", prettysummary(usd.∂t_vˢ, false))
+end
+
+@inline zerofunction(args...) = 0
 
 """
     UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing)
@@ -65,7 +81,15 @@ using Oceananigans
 
 @inline uniform_stokes_shear(z, t) = 0.005 * exp(z / 20)
 
-stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear)
+stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear)
+
+# output
+
+UniformStokesDrift{Nothing}:
+├── ∂z_uˢ: uniform_stokes_shear
+├── ∂z_vˢ: addzero
+├── ∂t_uˢ: addzero
+└── ∂t_vˢ: addzero
 ```
 
 Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
@@ -77,9 +101,16 @@ using Oceananigans
 @inline uniform_stokes_shear(z, t, p) = p.uˢ₀ * exp(z / p.h)
 
 stokes_drift_parameters = (uˢ₀ = 0.005, h = 20)
-stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
-```
+stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
 
+# output
+
+UniformStokesDrift with parameters (uˢ₀=0.005, h=20):
+├── ∂z_uˢ: uniform_stokes_shear
+├── ∂z_vˢ: addzero
+├── ∂t_uˢ: addzero
+└── ∂t_vˢ: addzero
+```
 """
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero, parameters=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
