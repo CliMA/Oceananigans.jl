@@ -58,7 +58,7 @@ const μ = 1.0 - δ - γ - ϵ
 
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{Bounded},  U★::Function, args...) = ifelse(i == grid.Nx, - U★(i, j, k, grid, args...),
                                                                           ifelse(i == 1, U★(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...)))
-@inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Bounded},  V★::Function, args...) = ifelse(j == grid.Ny, - V★(i, j, k, grid, args...), 
+@inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Bounded},  V★::Function, args...) = ifelse(j == grid.Ny, - V★(i, j, k, grid, args...),
                                                                           ifelse(j == 1, V★(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, V★, args...)))
 
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{LeftConnected},  U★::Function, args...) = ifelse(i == grid.Nx, - U★(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...))
@@ -148,7 +148,7 @@ using Printf
         advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
         η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))                        
+                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 end
 
@@ -157,8 +157,8 @@ end
                                                                       Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
                                                                       timestepper)
     i, j = @index(Global, NTuple)
-    k_top = grid.Nz+1
-    
+    k_top = grid.Nz + 1
+
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
@@ -168,7 +168,7 @@ end
         # ∂τ(U) = - ∇η + G
         U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
         V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
-                          
+
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
@@ -187,7 +187,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, we
 
     timestepper      = settings.timestepper
     averaging_weight = weights[substep_index]
-    
+
     parameters = auxiliary.kernel_parameters
 
     args = (grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
@@ -243,6 +243,7 @@ end
 
 @kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
     i, j, k = @index(Global, NTuple)
+
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
         v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
@@ -272,7 +273,7 @@ Explicitly step forward η in substeps.
 """
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ)
-    
+
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
@@ -320,7 +321,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), 
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
 
 function iterate_split_explicit!(free_surface, grid, Δt)
@@ -334,7 +335,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 
     Nsubsteps  = calculate_substeps(settings.substepping, Δt)
     fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-    
+
     Nsubsteps = length(weights)
 
     Δτᴮ = fractional_Δt * Δt  # barotropic time step in seconds
@@ -359,27 +360,24 @@ end
     end	
 end
 
-@inline function ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT
-    return @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
-end
+@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
-@inline function ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT
-    return @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
-end
-
+@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
 # Setting up the RHS for the barotropic step (tendencies of the barotopic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 
     free_surface_grid = free_surface.η.grid
-    
+
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
-    
+
     auxiliary = free_surface.auxiliary
 
     @apply_regionally setup_split_explicit_tendency!(auxiliary, free_surface_grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)

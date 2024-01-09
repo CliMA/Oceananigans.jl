@@ -100,8 +100,7 @@ simulation = Simulation(model, Δt=20minutes, stop_time=20days)
 
 # We add a `TimeStepWizard` callback to adapt the simulation's time-step,
 
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+conjure_time_step_wizard!(simulation, IterationInterval(20), cfl=0.2, max_Δt=20minutes)
 
 # Also, we add a callback to print a message about how the simulation is going,
 
@@ -123,7 +122,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
+add_callback!(simulation, print_progress, IterationInterval(100))
 
 # ## Diagnostics/Output
 #
