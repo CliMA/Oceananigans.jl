@@ -65,7 +65,11 @@ using Oceananigans
 
 @inline uniform_stokes_shear(z, t) = 0.005 * exp(z / 20)
 
-stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear)
+stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear)
+
+# output
+
+UniformStokesDrift{Nothing, typeof(uniform_stokes_shear), typeof(Oceananigans.StokesDrifts.addzero), typeof(Oceananigans.StokesDrifts.addzero), typeof(Oceananigans.StokesDrifts.addzero)}(uniform_stokes_shear, Oceananigans.StokesDrifts.addzero, Oceananigans.StokesDrifts.addzero, Oceananigans.StokesDrifts.addzero, nothing)
 ```
 
 Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
@@ -77,7 +81,10 @@ using Oceananigans
 @inline uniform_stokes_shear(z, t, p) = p.uˢ₀ * exp(z / p.h)
 
 stokes_drift_parameters = (uˢ₀ = 0.005, h = 20)
-stokes_drift = UniformStokes(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
+stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
+
+# output
+UniformStokesDrift{Nothing, typeof(uniform_stokes_shear), typeof(Oceananigans.StokesDrifts.addzero), typeof(Oceananigans.StokesDrifts.addzero), typeof(Oceananigans.StokesDrifts.addzero)}(uniform_stokes_shear, Oceananigans.StokesDrifts.addzero, Oceananigans.StokesDrifts.addzero, Oceananigans.StokesDrifts.addzero, nothing)
 ```
 
 """
