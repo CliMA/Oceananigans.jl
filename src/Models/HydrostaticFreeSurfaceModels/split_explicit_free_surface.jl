@@ -68,7 +68,7 @@ Keyword Arguments
                       is chosen.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
+  - `ForwardBackwardScheme()` (default): `ηᵐ⁺¹ = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 

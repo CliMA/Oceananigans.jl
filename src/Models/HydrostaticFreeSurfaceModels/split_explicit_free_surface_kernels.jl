@@ -6,7 +6,7 @@ using Oceananigans.AbstractOperations: Δz
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
-using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
+using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, SurfaceMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveSurfaceIBG
@@ -139,8 +139,13 @@ end
 end
 
 # Column height for the split explicit solver
-@inline column_heightᶜᶜ(i, j, k, grid)                       = grid.Lz
-@inline column_heightᶜᶜ(i, j, k, grid::ImmersedBoundaryGrid) = min(grid.Lz, @inbounds grid.immersed_boundary.bottom_height[i, j, 1])
+@inline column_heightᶜᶜ(i, j, k, grid) = grid.Lz
+
+# Column height for an GridFitted bottom immersed boundary
+@inline function column_heightᶜᶜ(i, j, k, grid::GFBIBG) 
+    bottom = grid.immersed_boundary.bottom_height[i, j, 1]
+    return ifelse(bottom < 0, - bottom, grid.Lz - bottom) 
+end
 
 @inline column_heightᶠᶜ(i, j, grid) = ℑxᶠᵃᵃ(i, j, 1, grid, column_heightᶜᶜ)
 @inline column_heightᶜᶠ(i, j, grid) = ℑyᵃᶠᵃ(i, j, 1, grid, column_heightᶜᶜ)
