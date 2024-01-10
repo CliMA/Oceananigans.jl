@@ -208,10 +208,10 @@ Exponentially decaying Stokes drift corresponding to a surface Stokes drift that
 varies in sinusoidally in `x` and `t`, i.e.,
 
 ```
-uˢ(x, z, t) = vˢ(x, z, t) = 0.01 * cos(k * x) * cos(t) * exp(z / h)
+uˢ(x, z, t) = vˢ(x, z, t) = Uˢ * cos(k * x) * cos(t) * exp(z / h)
 ```
 
-with zonal wavenumber `k = 2π / 1e2` and decay scale `h = 20`:
+with `Uˢ = 0.01`, zonal wavenumber `k = 2π / 1e2`, and decay scale `h = 20`.
 
 ```jldoctest
 using Oceananigans
