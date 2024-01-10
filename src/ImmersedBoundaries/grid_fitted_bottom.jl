@@ -72,8 +72,10 @@ Computes ib.bottom_height and wraps in an array.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    launch!(architecture(grid), grid, :xy, _limit_bottom_heigth!, bottom_field, grid.Lz)
-
+    
+    # Make sure that `abs(bottom_height) <= grid.Lz` to constrain the bottom
+    @apply_regionally launch!(architecture(grid), grid, :xy, _limit_bottom_height!, bottom_field, grid.Lz)
+    
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)
@@ -81,7 +83,7 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 end
 
 # Make sure that `abs(bottom_height) <= grid.Lz` to constrain the bottom
-@kernel function _limit_bottom_heigth!(bottom_field, Lz)
+@kernel function _limit_bottom_height!(bottom_field, Lz)
     i, j = @index(Global, NTuple)
     if abs(bottom_field[i, j, 1]) > Lz
         bottom_field[i, j, 1] = sign(bottom_field[i, j, 1]) * Lz

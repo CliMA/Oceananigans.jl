@@ -6,8 +6,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Nz = size(grid, 3)
+
+    Gᵁ = XFaceField(grid; indices = (:, :, Nz))
+    Gⱽ = YFaceField(grid; indices = (:, :, Nz))
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)

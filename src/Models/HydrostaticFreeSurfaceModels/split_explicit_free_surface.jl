@@ -92,7 +92,8 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
         @warn "Using $(eltype(settings)) settings for the SplitExplicitFreeSurface on a $(eltype(grid)) grid"
     end
 
-    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    Nz = size(grid, 3)
+    η  = ZFaceField(grid, indices = (:, :, Nz+1))
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid, settings.timestepper), SplitExplicitAuxiliaryFields(grid),
@@ -143,22 +144,25 @@ acts as a filter for `η`. Values with superscripts `m-1` and `m-2` correspond t
 time steps to allow using a higher-order time stepping scheme, e.g., `AdamsBashforth3Scheme`.
 """
 function SplitExplicitState(grid::AbstractGrid, timestepper)
-    η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    
+    Nz = size(grid, 3)
+    
+    η̅ = ZFaceField(grid, indices = (:, :, Nz+1))
 
     ηᵐ   = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
           
-    U    = XFaceField(grid, indices = (:, :, size(grid, 3)))
-    V    = YFaceField(grid, indices = (:, :, size(grid, 3)))
+    U    = XFaceField(grid, indices = (:, :, Nz))
+    V    = YFaceField(grid, indices = (:, :, Nz))
 
     Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
     Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
     Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
     Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
           
-    U̅ = XFaceField(grid, indices = (:, :, size(grid, 3)))
-    V̅ = YFaceField(grid, indices = (:, :, size(grid, 3)))
+    U̅ = XFaceField(grid, indices = (:, :, Nz))
+    V̅ = YFaceField(grid, indices = (:, :, Nz))
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
@@ -190,8 +194,10 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = XFaceField(grid, indices = (:, :, size(grid, 3)))
-    Gⱽ = YFaceField(grid, indices = (:, :, size(grid, 3)))
+    Nz = size(grid, 3)
+
+    Gᵁ = XFaceField(grid, indices = (:, :, Nz))
+    Gⱽ = YFaceField(grid, indices = (:, :, Nz))
 
     kernel_parameters = :xy
     

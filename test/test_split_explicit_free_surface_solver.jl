@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings, split_explicit_free_surface_substep!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings, iterate_split_explicit!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kernel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calculate_adaptive_settings
@@ -12,51 +12,35 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
         for arch in archs
             topology = (Periodic, Periodic, Bounded)
 
-            Nx, Ny, Nz = 128, 64, 16
-            Lx = Ly = Lz = 2π
+            Nx, Ny, Nz = 128, 1, 1
+            Lx = Ly = 2π
+            Lz = 1 / Oceananigans.BuoyancyModels.g_Earth
 
             grid = RectilinearGrid(arch, FT;
                                    topology, size = (Nx, Ny, Nz),
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo=(1, 1, 1))
 
-            settings = SplitExplicitSettings(; substeps = 200, averaging_kernel = constant_averaging_kernel)
+            settings = SplitExplicitSettings(eltype(grid); substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = SplitExplicitFreeSurface(grid; settings)
 
             sefs.η .= 0
 
             @testset " One timestep test " begin
                 state = sefs.state
-                auxiliary = sefs.auxiliary
                 U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
-                Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
-                Hᶠᶜ, Hᶜᶠ = sefs.auxiliary.Hᶠᶜ, sefs.auxiliary.Hᶜᶠ
-                g = sefs.gravitational_acceleration
 
-                Hᶠᶜ .= 1 / g
-                Hᶜᶠ .= 1 / g
                 η = sefs.η
-                velocity_weight = 0.0
-                free_surface_weight = 0.0
                 Δτ = 1.0
 
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
-                U₀(x, y, z) = 0
-                set!(U, U₀)
-                V₀(x, y, z) = 0
-                set!(V, V₀)
-
-                η̅ .= 0
-                U̅ .= 0
-                V̅ .= 0
-                Gᵁ .= 0
-                Gⱽ .= 0
-
-                Nsubsteps  = calculate_substeps(settings.substepping, 1)
+            
+                Nsubsteps = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ, 1)
+                iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
+
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
 
@@ -68,19 +52,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 auxiliary = sefs.auxiliary
                 U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
                 Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
-                g = sefs.gravitational_acceleration
-                sefs.auxiliary.Hᶠᶜ .= 1 / g
-                sefs.auxiliary.Hᶜᶠ .= 1 / g
                 η = sefs.η
-                velocity_weight = 0.0
-                free_surface_weight = 0.0
 
-                T = 2π
-                Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
+                T  = 2π
+                Δτ = 2π / maximum([Nx, Ny]) * 5e-1 # the last factor is essentially the order of accuracy
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                settings = SplitExplicitSettings(; substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(eltype(grid); substeps = Nt, averaging_kernel = constant_averaging_kernel)
 
                 # set!(η, f(x,y))
                 η₀(x, y, z) = sin(x)
@@ -90,22 +69,17 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 V₀(x, y, z) = 0
                 set!(V, V₀)
 
-                η̅ .= 0
-                U̅ .= 0
-                V̅ .= 0
+                η̅  .= 0
+                U̅  .= 0
+                V̅  .= 0
                 Gᵁ .= 0
                 Gⱽ .= 0
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+
+                iterate_split_explicit!(sefs, grid, Δτ, weights, Val(Nsubsteps)) 
     
-                for i in 1:Nt
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, weights, arch, grid, g, Δτ, i)
-                end
-
-                # + correction for exact time
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, weights, arch, grid, g, Δτ_end, 1)
-
                 U_computed = Array(parent(U))[2:Nx+1, 2:Ny+1]
                 η_computed = Array(parent(η))[2:Nx+1, 2:Ny+1]
                 set!(η, η₀)
@@ -126,13 +100,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
 
                 g = sefs.gravitational_acceleration
-                sefs.auxiliary.Hᶠᶜ .= 1 / g
-                sefs.auxiliary.Hᶜᶠ .= 1 / g
                 η = sefs.η
-                velocity_weight = 0.0
-                free_surface_weight = 0.0
 
-                Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
+                Δτ = 2π / maximum([Nx, Ny]) * 5e-1 # the last factor is essentially the order of accuracy
 
                 # set!(η, f(x, y))
                 η_avg = 1
@@ -155,9 +125,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
     
-                for i in 1:Nsubsteps
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ, i)
-                end
+                iterate_split_explicit!(sefs, grid, Δτ, weights, Val(Nsubsteps)) 
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 V_computed = Array(V.data.parent)[2:Nx+1, 2:Ny+1]
@@ -197,8 +165,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
                 η = sefs.η
                 g = sefs.gravitational_acceleration
-                sefs.auxiliary.Hᶠᶜ .= 1 / g # to make life easy
-                sefs.auxiliary.Hᶜᶠ .= 1 / g # to make life easy
 
                 # set!(η, f(x,y)) k² = ω²
                 gu_c = 1
@@ -221,12 +187,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-    
-                for i in 1:Nt
-                    split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ, i)
-                end
-                # + correction for exact time
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, weights, arch, grid, g, Δτ_end, Nt + 1)
+
+                iterate_split_explicit!(sefs, grid, Δτ, weights, Val(Nsubsteps)) 
 
                 η_mean_after = mean(Array(interior(η)))
 
