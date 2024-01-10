@@ -72,7 +72,7 @@ model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoya
 model.forcing.T
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω), Tuple{Int64, Float64, Float64, Float64}}} at (Center, Center, Center)
+ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, k::Float64, ω::Float64}} at (Center, Center, Center)
 ├── func: T_forcing_func (generic function with 1 method)
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()

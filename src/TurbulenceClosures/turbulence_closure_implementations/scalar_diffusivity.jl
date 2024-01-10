@@ -1,6 +1,7 @@
+using Oceananigans.Utils: prettysummary
+
 import Adapt
 import Oceananigans.Grids: required_halo_size
-using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
@@ -67,7 +68,7 @@ Examples
 ```jldoctest ScalarDiffusivity
 julia> using Oceananigans
 
-julia> ScalarDiffusivity(ν = 1000, κ=2000)
+julia> ScalarDiffusivity(ν=1000, κ=2000)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
 ```
 
@@ -77,7 +78,7 @@ julia> const depth_scale = 100;
 julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
 ν (generic function with 1 method)
 
-julia> ScalarDiffusivity(ν = ν)
+julia> ScalarDiffusivity(ν=ν)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
 ```
 
@@ -90,7 +91,7 @@ julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
        end
 κ (generic function with 1 method)
 
-julia> ScalarDiffusivity(κ = κ, discrete_form = true)
+julia> ScalarDiffusivity(κ=κ, discrete_form=true)
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
 ```
 
@@ -101,8 +102,8 @@ julia> @inline function another_κ(i, j, k, grid, p)
        end
 another_κ (generic function with 1 method)
 
-julia> ScalarDiffusivity(κ = another_κ, discrete_form = true, loc = (Center, Center, Face), parameters = (; depth_scale = 120.0))
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, NamedTuple{(:depth_scale,), Tuple{Float64}}, typeof(another_κ)})
+julia> ScalarDiffusivity(κ=another_κ, discrete_form=true, loc=(Center, Center, Face), parameters=(; depth_scale = 120.0))
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, @NamedTuple{depth_scale::Float64}, typeof(another_κ)})
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
@@ -208,4 +209,3 @@ function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:An
     κ = Adapt.adapt(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
-                                                                          
