@@ -182,7 +182,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gᵁ .= gu_c
                 Gⱽ .= gv_c
 
-                settings = SplitExplicitSettings(substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(eltype(grid); substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
