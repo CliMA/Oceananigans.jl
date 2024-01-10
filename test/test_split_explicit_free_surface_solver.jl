@@ -105,7 +105,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 g = sefs.gravitational_acceleration
                 η = sefs.η
 
-                Δτ = 2π / maximum([Nx, Ny]) * 5e-1 # the last factor is essentially the order of accuracy
+                Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
 
                 # set!(η, f(x, y))
                 η_avg = 1
@@ -127,7 +127,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-    
+                
                 iterate_split_explicit!(sefs, grid, Δτ, weights, Val(Nsubsteps)) 
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
