@@ -439,6 +439,32 @@ u₀ = deepcopy(simulation.model.velocities.u)
 v₀ = deepcopy(simulation.model.velocities.v)
 ζ₀ = deepcopy(ζ) 
 
+# Plot the relative difference of the grid metrics with halos.
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶠᶜᵃ_relative_difference)
+save("Δxᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶜᶠᵃ_relative_difference)
+save("Δxᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶠᶜᵃ_relative_difference)
+save("Δyᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶜᶠᵃ_relative_difference)
+save("Δyᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶜᵃ_relative_difference)
+save("Azᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶜᵃ_relative_difference)
+save("Azᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶠᵃ_relative_difference)
+save("Azᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶠᵃ_relative_difference)
+save("Azᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
 # Plot the initial velocity field after model definition.
 
 fig = panel_wise_visualization_with_halos(grid, u₀)

@@ -274,6 +274,47 @@ function panel_wise_visualization_MITgcm(x, y, field, use_symmetric_colorrange)
     
 end
 
+function panel_wise_visualization_of_grid_metrics_with_halos(metric, use_symmetric_colorrange = true)
+    fig = Figure(resolution = (2450, 1400))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
+
+    colorrange = specify_colorrange_MITgcm(metric, use_symmetric_colorrange)
+    if use_symmetric_colorrange
+        colormap = :balance
+    else
+        colormap = :amp
+    end
+
+    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
+    hm_1 = heatmap!(ax_1, metric[:, :, 1]; colorrange, colormap)
+    Colorbar(fig[3, 2], hm_1)
+
+    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
+    hm_2 = heatmap!(ax_2, metric[:, :, 2]; colorrange, colormap)
+    Colorbar(fig[3, 4], hm_2)
+
+    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
+    hm_3 = heatmap!(ax_3, metric[:, :, 3]; colorrange, colormap)
+    Colorbar(fig[2, 4], hm_3)
+
+    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
+    hm_4 = heatmap!(ax_4, metric[:, :, 4]; colorrange, colormap)
+    Colorbar(fig[2, 6], hm_4)
+
+    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
+    hm_5 = heatmap!(ax_5, metric[:, :, 5]; colorrange, colormap)
+    Colorbar(fig[1, 6], hm_5)
+
+    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
+    hm_6 = heatmap!(ax_6, metric[:, :, 6]; colorrange, colormap)
+    Colorbar(fig[1, 8], hm_6)
+
+    return fig
+end
+
 function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_colorrange = true, ssh = false)
     fig = Figure(resolution = (2450, 1400))
 
