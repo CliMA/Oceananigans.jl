@@ -206,7 +206,7 @@ Example
 
 Exponentially decaying Stokes drift corresponding to a surface Stokes drift that
 varies in sinusoidally in `x`, i.e., `uˢ(z=0) = vˢ(z=0) = 0.01 * cos(k * x)`, with
-zonal wavenumber `k = 2π / 1e4` and decay scale `h = 20`:
+zonal wavenumber `k = 2π / 1e2` and decay scale `h = 20`:
 
 ```jldoctest
 using Oceananigans
@@ -217,12 +217,12 @@ using Oceananigans
 @inline ∂z_uˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
 @inline ∂z_vˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
 
-stokes_drift_parameters = (uˢ = 0.01, h = 20, k = 2π * 1e-4)
+stokes_drift_parameters = (uˢ = 0.01, h = 20, k = 2π * 1e-2)
 stokes_drift = StokesDrift(; ∂x_vˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters=stokes_drift_parameters)
 
 # output
 
-StokesDrift with parameters (uˢ=0.01, h=20, k=0.000628319):
+StokesDrift with parameters (uˢ=0.01, h=20, k=0.0628319):
 ├── ∂x_vˢ: ∂x_vˢ
 ├── ∂x_wˢ: zerofunction
 ├── ∂y_uˢ: zerofunction
