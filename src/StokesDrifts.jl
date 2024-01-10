@@ -200,6 +200,39 @@ When `!isnothing(parameters)`, then in this case `∂z_uˢ` should be callable v
 
 Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`,
 `∂z_uˢ` should be callable via `∂z_uˢ(x, y, z, t)`.
+
+Example
+=======
+
+Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
+`uˢ(z=0) = vˢ(z=0) = 0.01 * cos(k * x)`, with zonal wavenumber `k = 2π / 1e4` and
+decay scale `h = 20`:
+
+```jldoctest
+using Oceananigans
+
+@inline ∂t_uˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
+@inline ∂t_vˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
+@inline ∂x_vˢ(x, y, z, t, p) = - p.uˢ * exp(z / p.h) * p.k * sin(p.k * x) * sin(t)
+@inline ∂z_uˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
+@inline ∂z_vˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
+
+stokes_drift_parameters = (uˢ = 0.01, h = 20, k = 2π * 1e-4)
+stokes_drift = StokesDrift(; ∂x_vˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters=stokes_drift_parameters)
+
+# output
+
+StokesDrift with parameters (uˢ=0.01, h=20, k=0.000628319):
+├── ∂x_vˢ: ∂x_vˢ
+├── ∂x_wˢ: zerofunction
+├── ∂y_uˢ: zerofunction
+├── ∂y_wˢ: zerofunction
+├── ∂z_uˢ: ∂z_uˢ
+├── ∂z_vˢ: ∂z_vˢ
+├── ∂t_uˢ: ∂t_uˢ
+├── ∂t_vˢ: ∂t_vˢ
+└── ∂t_wˢ: zerofunction
+```
 """
 function StokesDrift(; ∂x_vˢ = zerofunction,
                        ∂x_wˢ = zerofunction,
