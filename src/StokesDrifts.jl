@@ -211,11 +211,11 @@ zonal wavenumber `k = 2π / 1e4` and decay scale `h = 20`:
 ```jldoctest
 using Oceananigans
 
-@inline ∂t_uˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
-@inline ∂t_vˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
+@inline ∂t_uˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
+@inline ∂t_vˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
 @inline ∂x_vˢ(x, y, z, t, p) = - p.uˢ * exp(z / p.h) * p.k * sin(p.k * x) * sin(t)
-@inline ∂z_uˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
-@inline ∂z_vˢ(x, y, z, t, p) = p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
+@inline ∂z_uˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
+@inline ∂z_vˢ(x, y, z, t, p) =   p.uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
 
 stokes_drift_parameters = (uˢ = 0.01, h = 20, k = 2π * 1e-4)
 stokes_drift = StokesDrift(; ∂x_vˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters=stokes_drift_parameters)
