@@ -55,11 +55,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 η = sefs.η
 
                 T  = 2π
-                Δτ = 2π / maximum([Nx, Ny]) * 5e-1 # the last factor is essentially the order of accuracy
+                Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
                 settings = SplitExplicitSettings(eltype(grid); substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                sefs = sefs(settings)
 
                 # set!(η, f(x,y))
                 η₀(x, y, z) = sin(x)
@@ -75,20 +76,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gᵁ .= 0
                 Gⱽ .= 0
 
-                Nsubsteps  = calculate_substeps(settings.substepping, 1)
-                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+                weights = settings.substepping.averaging_weights
                 
                 for i in 1:Nt
                     iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
                 end
                 iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1)) 
     
-                U_computed = Array(parent(U))[2:Nx+1, 2:Ny+1]
-                η_computed = Array(parent(η))[2:Nx+1, 2:Ny+1]
+                U_computed = Array(deepcopy(interior(U)))
+                η_computed = Array(deepcopy(interior(η)))
                 set!(η, η₀)
                 set!(U, U₀)
-                U_exact = Array(parent(U))[2:Nx+1, 2:Ny+1]
-                η_exact = Array(parent(η))[2:Nx+1, 2:Ny+1]
+                U_exact = Array(deepcopy(interior(U)))
+                η_exact = Array(deepcopy(interior(η)))
 
                 @test maximum(abs.(U_computed - U_exact)) < 1e-3
                 @show maximum(abs.(η_computed))
