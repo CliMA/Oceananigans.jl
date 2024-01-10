@@ -216,8 +216,8 @@ with `Uˢ = 0.01`, zonal wavenumber `k = 2π / 1e2`, and decay scale `h = 20`.
 ```jldoctest
 using Oceananigans
 
-@inline ∂t_uˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
-@inline ∂t_vˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) * cos(p.k * x) * cos(t)
+@inline ∂t_uˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * cos(p.k * x) * sin(t)
+@inline ∂t_vˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * cos(p.k * x) * sin(t)
 @inline ∂x_vˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * p.k * sin(p.k * x) * sin(t)
 @inline ∂z_uˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
 @inline ∂z_vˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
