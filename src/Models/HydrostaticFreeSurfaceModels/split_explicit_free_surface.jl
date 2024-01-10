@@ -88,10 +88,6 @@ end
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
 
-    if eltype(settings) != eltype(grid)
-        @warn "Using $(eltype(settings)) settings for the SplitExplicitFreeSurface on a $(eltype(grid)) grid"
-    end
-
     Nz = size(grid, 3)
     η  = ZFaceField(grid, indices = (:, :, Nz+1))
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)

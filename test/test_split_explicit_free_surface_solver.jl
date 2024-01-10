@@ -12,7 +12,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
         for arch in archs
             topology = (Periodic, Periodic, Bounded)
 
-            Nx, Ny, Nz = 128, 1, 1
+            Nx, Ny, Nz = 128, 64, 1
             Lx = Ly = 2π
             Lz = 1 / Oceananigans.BuoyancyModels.g_Earth
 
@@ -184,11 +184,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
 
                 settings = SplitExplicitSettings(eltype(grid); substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
-                
-                Nsubsteps  = calculate_substeps(settings.substepping, 1)
-                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
-                iterate_split_explicit!(sefs, grid, Δτ,     weights, Val(Nt)) 
+                weights = settings.substepping.averaging_weights
+                for i in 1:Nt
+                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
+                end
                 iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1)) 
 
                 η_mean_after = mean(Array(interior(η)))
@@ -196,30 +196,30 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 tolerance = 10eps(FT)
                 @test abs(η_mean_after - η_mean_before) < tolerance
 
-                η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
-                U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
-                V_computed = Array(V.data.parent)[2:Nx+1, 2:Ny+1]
+                η_computed = Array(deepcopy(interior(η, :, 1, 1)))
+                U_computed = Array(deepcopy(interior(U, :, 1, 1)))
+                V_computed = Array(deepcopy(interior(V, :, 1, 1)))
 
-                η̅_computed = Array(η̅.data.parent)[2:Nx+1, 2:Ny+1]
-                U̅_computed = Array(U̅.data.parent)[2:Nx+1, 2:Ny+1]
-                V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
+                η̅_computed = Array(deepcopy(interior(η̅, :, 1, 1)))
+                U̅_computed = Array(deepcopy(interior(U̅, :, 1, 1)))
+                V̅_computed = Array(deepcopy(interior(V̅, :, 1, 1)))
 
                 set!(η, η₀)
 
                 # ∂ₜₜ(η) = Δη
-                η_exact = cos(ω * T) * (Array(η.data.parent)[2:Nx+1, 2:Ny+1] .- 1) .+ 1
+                η_exact = cos(ω * T) * (Array(interior(η, :, 1, 1)) .- 1) .+ 1
 
                 U₀(x, y, z) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
                 set!(U, U₀)
-                U_exact = -(sin(ω * T) * 1 / ω) .* Array(U.data.parent)[2:Nx+1, 2:Ny+1] .+ gu_c * T
+                U_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(U, :, 1, 1)) .+ gu_c * T
 
                 V₀(x, y, z) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
                 set!(V, V₀)
-                V_exact = -(sin(ω * T) * 1 / ω) .* Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T
+                V_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(V, :, 1, 1)) .+ gv_c * T
 
-                η̅_exact = (sin(ω * T) / ω - sin(ω * 0) / ω) / T * (Array(η.data.parent)[2:Nx+1, 2:Ny+1] .- 1) .+ 1
-                U̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(U.data.parent)[2:Nx+1, 2:Ny+1] .+ gu_c * T / 2
-                V̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T / 2
+                η̅_exact = (sin(ω * T) / ω - sin(ω * 0) / ω) / T * (Array(interior(η, :, 1, 1)) .- 1) .+ 1
+                U̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(interior(U, :, 1, 1)) .+ gu_c * T / 2
+                V̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(interior(V, :, 1, 1)) .+ gv_c * T / 2
 
                 tolerance = 1e-2
 
