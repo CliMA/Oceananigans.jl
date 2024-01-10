@@ -204,9 +204,9 @@ Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parame
 Example
 =======
 
-Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
-`uˢ(z=0) = vˢ(z=0) = 0.01 * cos(k * x)`, with zonal wavenumber `k = 2π / 1e4` and
-decay scale `h = 20`:
+Exponentially decaying Stokes drift corresponding to a surface Stokes drift that
+varies in sinusoidally in `x`, i.e., `uˢ(z=0) = vˢ(z=0) = 0.01 * cos(k * x)`, with
+zonal wavenumber `k = 2π / 1e4` and decay scale `h = 20`:
 
 ```jldoctest
 using Oceananigans
