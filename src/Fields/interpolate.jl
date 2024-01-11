@@ -69,7 +69,7 @@ end
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
-    λ₀ = @inbounds λnode(1, 1, 1, grid, locs...)
+    λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = λspacings(grid, locs...)
     FT = eltype(grid)
     return convert(FT, (λ - λ₀) / Δλ)
