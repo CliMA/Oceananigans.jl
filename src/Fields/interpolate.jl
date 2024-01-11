@@ -94,8 +94,8 @@ end
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
-    y₀ = @inbounds ynode(1, 1, 1, grid, locs...)
-    Δy = @inbounds yspacings(grid, locs...)
+    y₀ = ynode(1, 1, 1, grid, locs...)
+    Δy = yspacings(grid, locs...)
     FT = eltype(grid)
     return convert(FT, (y - y₀) / Δy)
 end
