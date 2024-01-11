@@ -128,8 +128,8 @@ end
 ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
-    z₀ = @inbounds znode(1, 1, 1, grid, locs...)
-    Δz = @inbounds zspacings(grid, locs...)
+    z₀ = znode(1, 1, 1, grid, locs...)
+    Δz = zspacings(grid, locs...)
     return convert(FT, (z - z₀) / Δz)
 end
 
