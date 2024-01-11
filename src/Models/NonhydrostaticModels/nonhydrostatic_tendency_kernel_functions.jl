@@ -2,7 +2,7 @@ using Oceananigans.Advection
 using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.StokesDrift
+using Oceananigans.StokesDrifts
 
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
