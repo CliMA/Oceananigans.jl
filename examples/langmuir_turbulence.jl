@@ -140,7 +140,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # for buoyancy and velocity initial conditions,
 
 Ξ(z) = randn() * exp(z / 4)
-nothing # hide
+nothing #hide
 
 # Our initial condition for buoyancy consists of a surface mixed layer 33 m deep,
 # a deep linear stratification, plus noise,
@@ -167,9 +167,7 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
@@ -259,7 +257,7 @@ time_series = (;
 times = time_series.w.times
 xw, yw, zw = nodes(time_series.w)
 xu, yu, zu = nodes(time_series.u)
-nothing # hide
+nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
@@ -354,7 +352,7 @@ ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
 
 Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And, finally, we record a movie.

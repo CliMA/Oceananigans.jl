@@ -99,7 +99,7 @@ end
 @inline isregional(::MultiRegionObject) = true
 
 @inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
+@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
 for func in [:isregional, :devices, :switch_device!]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
@@ -180,8 +180,10 @@ end
     end 
 end
 
+@inline sync_device!(::Nothing)  = nothing
+@inline sync_device!(::CPU)      = nothing
+@inline sync_device!(::GPU)      = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
-@inline sync_device!(dev)        = nothing
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the 
@@ -190,9 +192,11 @@ end
 """
     @apply_regionally expr
     
-Use `@apply_regionally` to distribute locally the function calls.
-Call `compute_regionally` in case of a returning value and `apply_regionally!` 
-in case of no return.
+Distributes locally the function calls in `expr`ession
+
+It calls [`apply_regionally!`](@ref) when the functions do not return anything.
+
+In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
 """
 macro apply_regionally(expr)
     if expr.head == :call
@@ -207,7 +211,7 @@ macro apply_regionally(expr)
     elseif expr.head == :(=)
         ret = expr.args[1]
         Nret = 1
-        if expr.args[1] isa Expr 
+        if expr.args[1] isa Expr
             Nret = length(expr.args[1].args)
         end
         exp = expr.args[2]
@@ -233,7 +237,7 @@ macro apply_regionally(expr)
                 Nret = 1
                 if arg.args[1] isa Expr 
                     Nret = length(arg.args[1].args)
-                end        
+                end
                 exp = arg.args[2]
                 func = exp.args[1]
                 args = exp.args[2:end]

@@ -19,12 +19,12 @@ using Oceananigans.Units
 using Oceananigans.Operators
 using Printf
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
-using Oceananigans.Advection: VelocityStencil, VorticityStencil, EnstrophyConservingScheme
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, EnstrophyConserving
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 # using GLMakie
 
 #  λ for latitude and ϕ for latitude is
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
 # include("visualization.jl")
@@ -36,7 +36,7 @@ using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 function run_rossby_haurwitz(; architecture = CPU(),
                                Nx = 90,        
                                Ny = 30,
-                               coriolis_scheme = EnstrophyConservingScheme(),
+                               coriolis_scheme = EnstrophyConserving(),
                                advection_scheme = VectorInvariant(),
                                prefix = "vector_invariant")
     

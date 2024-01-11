@@ -69,7 +69,7 @@ ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # ## Buoyancy that depends on temperature and salinity
@@ -120,7 +120,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 # For salinity, `S`, we impose an evaporative flux of the form
 
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
-nothing # hide
+nothing #hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
@@ -198,7 +198,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+add_callback!(simulation, progress_message, IterationInterval(20))
 
 # We then set up the simulation:
 
@@ -291,7 +291,7 @@ Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And now record a movie.

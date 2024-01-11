@@ -89,7 +89,7 @@ fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
 
 Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # ## Simulation
@@ -100,8 +100,7 @@ simulation = Simulation(model, Δt=20minutes, stop_time=20days)
 
 # We add a `TimeStepWizard` callback to adapt the simulation's time-step,
 
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+conjure_time_step_wizard!(simulation, IterationInterval(20), cfl=0.2, max_Δt=20minutes)
 
 # Also, we add a callback to print a message about how the simulation is going,
 
@@ -123,7 +122,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
+add_callback!(simulation, print_progress, IterationInterval(100))
 
 # ## Diagnostics/Output
 #
@@ -217,7 +216,7 @@ x_xy = x
 y_xy = y
 z_xy_top = z[end] * ones(grid.Nx, grid.Ny)
 z_xy_bottom = z[1] * ones(grid.Nx, grid.Ny)
-nothing # hide
+nothing #hide
 
 # Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
 # zonal average flow is located.
@@ -282,7 +281,7 @@ rowgap!(fig.layout, 1, Relative(-0.2))
 colgap!(fig.layout, 1, Relative(-0.1))
 
 save("baroclinic_adjustment_3d.png", fig)
-nothing # hide
+nothing #hide
 
 # ![](baroclinic_adjustment_3d.png)
 
@@ -345,7 +344,7 @@ contour!(axu, yb, zb, B; levels=15, color=:black)
 hm = heatmap!(axv, yv, zb, V; colorrange=(-1e-1, 1e-1), colormap=:balance)
 Colorbar(fig[2, 4], hm, label="Zonally-averaged V(y, z) (m s⁻¹)")
 contour!(axv, yb, zb, B; levels=15, color=:black)
-nothing # hide
+nothing #hide
 
 # Finally, we're ready to record the movie.
 
@@ -354,7 +353,7 @@ frames = 1:length(times)
 record(fig, filename * ".mp4", frames, framerate=8) do i
     n[] = i
 end
-nothing # hide
+nothing #hide
 
 # ![](baroclinic_adjustment.mp4)
 

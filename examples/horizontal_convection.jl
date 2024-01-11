@@ -50,7 +50,7 @@ grid = RectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
+@inline bˢ(x, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
 
@@ -82,7 +82,7 @@ Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
 κ = ν * Pr                     # Laplacian diffusivity
-nothing # hide
+nothing #hide
 
 # ## Model instantiation
 #
@@ -139,7 +139,7 @@ s = @at (Center, Center, Center) sqrt(u^2 + w^2)
 
 ## y-component of vorticity
 ζ = ∂z(u) - ∂x(w)
-nothing # hide
+nothing #hide
 
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
 # to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
@@ -156,7 +156,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       filename = saved_output_filename,
                                                       with_halos = true,
                                                       overwrite_existing = true)
-nothing # hide
+nothing #hide
 
 # Ready to press the big red button:
 
@@ -188,7 +188,7 @@ times = b_timeseries.times
 ## Coordinate arrays
 xc, yc, zc = nodes(b_timeseries[1])
 xζ, yζ, zζ = nodes(ζ_timeseries[1])
-nothing # hide
+nothing #hide
 
 χ_timeseries = deepcopy(b_timeseries)
 
@@ -298,8 +298,12 @@ nothing #hide
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# where $b_s(x)$ is the surface boundary condition. The diffusive solution implies 
-# ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
+#
+# where ``b_s(x)`` is the surface boundary condition. The diffusive solution implies
+#
+# ```math
+# \langle \chi_{\rm diff} \rangle = \frac{\kappa b_*^2 \pi}{L_x H} \tanh(2 \pi Η / L_x) .
+# ```
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -308,7 +312,7 @@ nothing #hide
 # scalar):
 
 χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
-nothing # hide
+nothing #hide
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,
@@ -316,7 +320,7 @@ nothing # hide
 t = b_timeseries.times
 
 kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
-nothing # hide
+nothing #hide
 
 # Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
 # and plot. We make use of `Integral` to compute the volume integral of fields over our domain.
@@ -340,5 +344,5 @@ lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 ax_Nu = Axis(fig[2, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
 
-current_figure() # hide
+current_figure() #hide
 fig

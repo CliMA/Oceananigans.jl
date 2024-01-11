@@ -1,5 +1,5 @@
 using Oceananigans: TurbulenceClosures
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Grids: prettysummary, architecture
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -89,6 +89,7 @@ function TimeStepWizard(FT=Float64;
 end
 
 using Oceananigans.Grids: topology
+using Oceananigans.DistributedComputations: all_reduce
 
 """
      new_time_step(old_Δt, wizard, model)
@@ -107,10 +108,23 @@ function new_time_step(old_Δt, wizard, model)
     new_Δt = min(wizard.max_change * old_Δt, new_Δt)
     new_Δt = max(wizard.min_change * old_Δt, new_Δt)
     new_Δt = clamp(new_Δt, wizard.min_Δt, wizard.max_Δt)
+    new_Δt = all_reduce(min, new_Δt, architecture(model.grid))
 
     return new_Δt
 end
 
 (wizard::TimeStepWizard)(simulation) =
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
+
+"""
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
+
+Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
+called on `schedule` which is `IterationInterval(5)` by default.
+"""
+function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
+    wizard = TimeStepWizard(; wizard_kw...)
+    simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
+    return nothing
+end
 

@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \boldsymbol{v ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \boldsymbol{v \cdot \nabla} P - κ ∇²P = [μ₀ \exp(z / λ) - m] \, P \, ,
 # ```
 #
 # where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
@@ -54,7 +54,7 @@ grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Pe
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
+buoyancy_flux(x, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
@@ -73,10 +73,10 @@ times = range(0, 12hours, length=100)
 fig = Figure(resolution = (800, 300))
 ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)")
 
-flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
+flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 lines!(ax, times ./ hour, flux_time_series)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # The buoyancy flux effectively shuts off after 6 hours of simulation time.
@@ -105,8 +105,8 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
-nothing # hide
+growing_and_grazing(x, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
+nothing #hide
 
 # with parameters
 
@@ -147,7 +147,7 @@ mixed_layer_depth = 32 # m
 
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
-initial_buoyancy(x, y, z) = stratification(z) + noise(z)
+initial_buoyancy(x, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
@@ -161,9 +161,7 @@ simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=2minutes)
 
 # We also add a callback that prints the progress of the simulation,
 
@@ -172,7 +170,7 @@ using Printf
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+add_callback!(simulation, progress, IterationInterval(100))
 
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
@@ -213,14 +211,14 @@ P_timeseries = FieldTimeSeries(filepath, "P")
 avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
 
 times = w_timeseries.times
-buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
-nothing # hide
+buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
+nothing #hide
 
 # and then we construct the ``x, z`` grid,
 
 xw, yw, zw = nodes(w_timeseries)
 xp, yp, zp = nodes(P_timeseries)
-nothing # hide
+nothing #hide
 
 # Finally, we animate plankton mixing and blooming,
 
@@ -264,7 +262,7 @@ b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
 lines!(ax_avg_P, avg_Pₙ, zp)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And, finally, we record a movie.

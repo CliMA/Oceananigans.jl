@@ -40,7 +40,7 @@ grid = RectilinearGrid(size = (48, 128),
 # ## Building a `ShallowWaterModel`
 #
 # We build a `ShallowWaterModel` with the `WENO` advection scheme,
-# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis and
+# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis, and
 # gravitational acceleration
 
 gravitational_acceleration = 1
@@ -49,8 +49,6 @@ coriolis = FPlane(f=1)
 model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO())
-
-# Use `architecture = GPU()` to run this problem on a GPU.
 
 # ## Background state and perturbation
 #
@@ -64,8 +62,8 @@ f = coriolis.f
 g = gravitational_acceleration
 Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
-h̄(x, y, z) = H - Δη * tanh(y)
-ū(x, y, z) = U * sech(y)^2
+h̄(x, y) = H - Δη * tanh(y)
+ū(x, y) = U * sech(y)^2
 
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
 # for the parameters we consider here, the growth rate for the most unstable mode that fits 
@@ -73,20 +71,20 @@ ū(x, y, z) = U * sech(y)^2
 
 # The vorticity of the background state is
 
-ω̄(x, y, z) = 2 * U * sech(y)^2 * tanh(y)
+ω̄(x, y) = 2 * U * sech(y)^2 * tanh(y)
 
 # The initial conditions include a small-amplitude perturbation that decays away from the 
 # center of the jet.
 
 small_amplitude = 1e-4
  
- uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
-uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
+ uⁱ(x, y) = ū(x, y) + small_amplitude * exp(-y^2) * randn()
+uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 # We first set a "clean" initial condition without noise for the purpose of discretely
 # calculating the initial 'mean' vorticity,
 
-ū̄h(x, y, z) = ū(x, y, z) * h̄(x, y, z)
+ū̄h(x, y) = ū(x, y) * h̄(x, y)
 
 set!(model, uh = ū̄h, h = h̄)
 
@@ -158,12 +156,12 @@ run!(simulation)
 # Load required packages to read output and plot.
 
 using NCDatasets, Printf, CairoMakie
-nothing # hide
+nothing #hide
 
 # Define the coordinates for plotting.
 
 x, y = xnodes(ω), ynodes(ω)
-nothing # hide
+nothing #hide
 
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
@@ -191,7 +189,7 @@ Colorbar(fig[2, 4], hm_ω′)
 title = @lift @sprintf("t = %.1f", times[$n])
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -217,7 +215,7 @@ ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 norm_v = ds2["perturbation_norm"][:]
 
 close(ds2)
-nothing # hide
+nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
@@ -254,7 +252,7 @@ lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visua
 
 axislegend(position = :rb)
 
-current_figure() # hide
+current_figure() #hide
 
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.
