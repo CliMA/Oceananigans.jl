@@ -204,39 +204,64 @@ Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parame
 Example
 =======
 
-Exponentially decaying Stokes drift corresponding to a surface Stokes drift that
-varies in sinusoidally in `x` and `t`, i.e.,
+A wavepacket moving with the group velocity. We write the Stokes drift as:
 
-```
-uˢ(x, z, t) = vˢ(x, z, t) = Uˢ * cos(k * x) * cos(t) * exp(z / h)
+```math
+uˢ(x, y, z, t) = A(x - cᵍ t, y) * ûˢ(z)
 ```
 
-with `Uˢ = 0.01`, zonal wavenumber `k = 2π / 1e2`, and decay scale `h = 20`.
+with ``A(ξ, η) = \exp[- (ξ^2 + η^2) / 2δ^2]``. If ``uˢ`` represents the solenoidal component
+of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore ``wˢ = - (∂_ξ A / 2k) ûˢ``.
+```
+
 
 ```jldoctest
 using Oceananigans
+using Oceananigans.Units
 
-@inline ∂t_uˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * cos(p.k * x) * sin(t)
-@inline ∂t_vˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * cos(p.k * x) * sin(t)
-@inline ∂x_vˢ(x, y, z, t, p) = - p.Uˢ * exp(z / p.h) * p.k * sin(p.k * x) * sin(t)
-@inline ∂z_uˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
-@inline ∂z_vˢ(x, y, z, t, p) =   p.Uˢ * exp(z / p.h) / p.h * cos(p.k * x) * sin(t)
+ϵ = 0.1
+λ = 100meters
+g = 9.81
 
-stokes_drift_parameters = (Uˢ = 0.01, h = 20, k = 2π * 1e-2)
-stokes_drift = StokesDrift(; ∂x_vˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters=stokes_drift_parameters)
+const k = 2π / λ
+
+c = sqrt(g / k)
+
+const δ = 400kilometer
+const cᵍ = c / 2
+const Uˢ = ϵ^2 * c
+
+@inline A(ξ, η) = exp(- (ξ^2 + η^2) / 2δ^2)
+
+@inline ∂ξ_A(ξ, η) = - ξ / δ^2 * A(ξ, η)
+@inline ∂η_A(ξ, η) = - η / δ^2 * A(ξ, η)
+@inline ∂η_∂ξ_A(ξ, η) = - η * ξ / δ^4 * A(ξ, η)
+@inline ∂²ξ_A(ξ, η) = (ξ^2 / δ^2 - 1) * A(ξ, η) / δ^2
+
+@inline ûˢ(z) = Uˢ * exp(2k * z)
+@inline uˢ(x, y, z, t) = A(x - cᵍ * t, y) * ûˢ(z)
+
+@inline ∂z_uˢ(x, y, z, t) = 2k * A(x - cᵍ * t, y) * ûˢ(z)
+@inline ∂y_uˢ(x, y, z, t) = ∂η_A(x - cᵍ * t, y) * ûˢ(z)
+@inline ∂t_uˢ(x, y, z, t) = - cᵍ * ∂ξ_A(x - cᵍ * t, y) * ûˢ(z)
+@inline ∂x_wˢ(x, y, z, t) = - 1 / 2k * ∂²ξ_A(x - cᵍ * t, y) * ûˢ(z)
+@inline ∂y_wˢ(x, y, z, t) = - 1 / 2k * ∂η_∂ξ_A(x - cᵍ * t, y) * ûˢ(z)
+@inline ∂t_wˢ(x, y, z, t) = + cᵍ / 2k * ∂²ξ_A(x - cᵍ * t, y) * ûˢ(z)
+
+stokes_drift = StokesDrift(; ∂z_uˢ, ∂t_uˢ, ∂y_uˢ, ∂t_wˢ, ∂x_wˢ, ∂y_wˢ)
 
 # output
 
-StokesDrift with parameters (Uˢ=0.01, h=20, k=0.0628319):
-├── ∂x_vˢ: ∂x_vˢ
-├── ∂x_wˢ: zerofunction
-├── ∂y_uˢ: zerofunction
-├── ∂y_wˢ: zerofunction
+StokesDrift{Nothing}:
+├── ∂x_vˢ: zerofunction
+├── ∂x_wˢ: ∂x_wˢ
+├── ∂y_uˢ: ∂y_uˢ
+├── ∂y_wˢ: ∂y_wˢ
 ├── ∂z_uˢ: ∂z_uˢ
-├── ∂z_vˢ: ∂z_vˢ
+├── ∂z_vˢ: zerofunction
 ├── ∂t_uˢ: ∂t_uˢ
-├── ∂t_vˢ: ∂t_vˢ
-└── ∂t_wˢ: zerofunction
+├── ∂t_vˢ: zerofunction
+└── ∂t_wˢ: ∂t_wˢ
 ```
 """
 function StokesDrift(; ∂x_vˢ = zerofunction,
