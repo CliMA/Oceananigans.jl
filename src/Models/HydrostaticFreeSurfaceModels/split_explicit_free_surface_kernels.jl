@@ -203,7 +203,7 @@ end
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 @kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
-    i, j  = @index(Global, NTuple)	
+    i, j  = @index(Global, NTuple)
 
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
     @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
@@ -245,7 +245,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
+        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j]
         v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
     end
 end
@@ -349,7 +349,7 @@ end
 
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    i, j  = @index(Global, NTuple)	
+    i, j  = @index(Global, NTuple)
 
     @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
     @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
