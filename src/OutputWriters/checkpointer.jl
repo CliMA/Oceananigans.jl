@@ -57,9 +57,11 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list must contain
-                `[:grid, :architecture, :timestepper, :particles]`.
+                `[:grid, :architecture, :timestepper, :particles]`, except when using a
+                 `ShallowWaterModel`, in which case `:particles` is not required.
                 Default: [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure,
-                          :velocities, :tracers, :timestepper, :particles]
+                          :velocities, :tracers, :timestepper, :particles], except when using a
+                          `ShallowWaterModel`, in which case `:particles` is not added.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -71,9 +73,9 @@ function Checkpointer(model; schedule,
                                     :buoyancy, :closure, :timestepper, :particles])
 
     # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :timestepper, :particles)
+    # This list is created by required_properties
 
-    for rp in required_properties
+    for rp in required_properties(model)
         if rp ∉ properties
             @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
             push!(properties, rp)
@@ -94,6 +96,10 @@ function Checkpointer(model; schedule,
 
     return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
 end
+
+@inline required_properties(model) = (:grid, :architecture, :timestepper, :particles)
+
+@inline required_properties(model::ShallowWaterModel) = (:grid, :architecture, :timestepper)
 
 #####
 ##### Checkpointer utils
@@ -221,15 +227,24 @@ function set!(model, filepath::AbstractString)
 
         set_time_stepper!(model.timestepper, file, model_fields)
 
-        if !isnothing(model.particles)
-            copyto!(model.particles.properties, file["particles"])
-        end
+        set_particles!(model, file)
 
         checkpointed_clock = file["clock"]
 
         # Update model clock
         model.clock.iteration = checkpointed_clock.iteration
         model.clock.time = checkpointed_clock.time
+    end
+
+    return nothing
+end
+
+set_particles!(::ShallowWaterModel, file) = nothing
+
+function set_particles!(model::Union{HydrostaticFreeSurfaceModel, NonhydrostaticModel}, file)
+
+    if !isnothing(model.particles)
+            copyto!(model.particles.properties, file["particles"])
     end
 
     return nothing
