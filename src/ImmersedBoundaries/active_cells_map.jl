@@ -181,7 +181,7 @@ function active_cells_interior_map(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    interior = active_interior_indices(ibg; parameters =  KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    interior = active_interior_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
     return (; interior, west, east, south, north)
 end

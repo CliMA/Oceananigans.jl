@@ -128,7 +128,8 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                               only_active_cells,
                               kwargs...)
     
-    loop!(kernel_args...)
+    
+    !isnothing(loop!) && loop!(kernel_args...)
     
     return nothing
 end
@@ -144,6 +145,7 @@ function configured_kernel(arch, grid, workspec, kernel!;
                                     include_right_boundaries,
                                     reduced_dimensions,
                                     location)
+
 
     offset = offsets(workspec)
 
