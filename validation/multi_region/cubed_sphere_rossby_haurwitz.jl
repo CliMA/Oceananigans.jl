@@ -495,7 +495,10 @@ function save_vorticity(sim)
     push!(Δζ_fields, Δζ_field)
 end
 
-save_fields_iteration_interval = 3
+animation_time = 15 # seconds
+framerate = 5
+n_frames = animation_time * framerate
+save_fields_iteration_interval = floor(Int, stop_time/(Δt * n_frames))
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
@@ -503,6 +506,24 @@ simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterv
 run!(simulation)
 
 #=
+fig = panel_wise_visualization_with_halos(grid, u_fields[end])
+save("u_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u_fields[end])
+save("u.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v_fields[end])
+save("v_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v_fields[end])
+save("v.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, ζ_fields[end])
+save("ζ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, ζ_fields[end])
+save("ζ.png", fig)
+
 fig = panel_wise_visualization_with_halos(grid, Δζ_fields[end])
 save("Δζ_with_halos.png", fig)
 
@@ -511,8 +532,9 @@ save("Δζ.png", fig)
 
 start_index = 1
 use_symmetric_colorrange = true
-animation_time = 10 # seconds
-framerate = floor(Int, size(Δζ_fields)[1]/animation_time)
 
+create_panel_wise_visualization_animation(grid, u_fields, start_index, use_symmetric_colorrange, framerate, "u")
+create_panel_wise_visualization_animation(grid, v_fields, start_index, use_symmetric_colorrange, framerate, "v")
+create_panel_wise_visualization_animation(grid, ζ_fields, start_index, use_symmetric_colorrange, framerate, "ζ")
 create_panel_wise_visualization_animation(grid, Δζ_fields, start_index, use_symmetric_colorrange, framerate, "Δζ")
 =#
