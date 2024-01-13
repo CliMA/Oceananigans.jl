@@ -1,7 +1,7 @@
 # # Barotropic gyre
 
 using Oceananigans.Grids
-using Oceananigans.Utils: prettytime, hours, day, days, years
+using Oceananigans.Utils: prettytime, hours, day, days
 
 using Statistics
 using JLD2
@@ -40,9 +40,9 @@ function visualize_barotropic_gyre(filepath)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
-    xu, yu, zu = geographic2cartesian(xnodes(Face,   grid), ynodes(Center, grid))
-    xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
-    xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
+    xu, yu, zu = geographic2cartesian(xnodes(grid,   Face(), Center()), ynodes(grid,   Face(), Center()))
+    xv, yv, zv = geographic2cartesian(xnodes(grid, Center(),   Face()), ynodes(grid, Center(),   Face()))
+    xc, yc, zc = geographic2cartesian(xnodes(grid, Center(), Center()), ynodes(grid, Center(), Center()))
 
     iter = Observable(0)
 
@@ -50,16 +50,22 @@ function visualize_barotropic_gyre(filepath)
 
     u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
     v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
+    #=
     η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
+    =#
 
     fig = Figure(resolution = (2160, 1080))
 
     x = (xu, xv, xc)
     y = (yu, yv, yc)
     z = (zu, zv, zc)
-
+    
+    #=
     statenames = ["u", "v", "η"]
     for (n, var) in enumerate([u, v, η])
+    =#
+    statenames = ["u", "v"]
+    for (n, var) in enumerate([u, v])
         ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
         wireframe!(ax, Sphere(Point3f(0), 0.99f0), show_axis=false)
         surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])

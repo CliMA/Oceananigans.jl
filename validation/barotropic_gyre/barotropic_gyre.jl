@@ -14,7 +14,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface
 
 
-using Oceananigans.Utils: prettytime, hours, day, days, years
+using Oceananigans.Utils: prettytime, hours, day, days
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
@@ -38,8 +38,10 @@ underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 ## grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry) )
 grid = underlying_grid
 
+#=
 free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-# free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
+=#
+free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving())
 
@@ -87,6 +89,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = nothing,
                                     buoyancy = nothing)
 
+model.timestepper.χ = -0.5
+
 g = model.free_surface.gravitational_acceleration
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
@@ -115,11 +119,11 @@ end
 
 simulation = Simulation(model,
                         Δt = 3600,
-                        stop_time = 1years)
+                        stop_time = 365*86400)
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
+output_fields = model.velocities # merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
@@ -134,6 +138,6 @@ run!(simulation)
 ##### Animation!
 #####
 
-include("visualize_barotropic_gyre.jl")
-
-# visualize_barotropic_gyre(simulation.output_writers[:fields])
+#=
+include("visualize_barotropic_gyre.jl") # visualize_barotropic_gyre(simulation.output_writers[:fields])
+=#
