@@ -613,7 +613,7 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, s
 end
 
 function create_panel_wise_visualization_animation(grid, φ_series, start_index, use_symmetric_colorrange, framerate, 
-                                                   filename, k=1)
+                                                   filename, k=1, ssh = false)
     
     Nx = grid.Nx
     Ny = grid.Ny
