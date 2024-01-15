@@ -37,15 +37,8 @@ grid = RectilinearGrid(arch; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y
 
 model = NonhydrostaticModel(; grid, advection=WENO(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
 
-# This doesn't work?
-# ϵ(x, y, z) = 2rand() - 1 # ∈ (-1, 1)
-# set!(model, u=ϵ, v=ϵ)
-
-uᵢ = rand(size(grid)...)
-vᵢ = rand(size(grid)...)
-uᵢ .-= mean(uᵢ)
-vᵢ .-= mean(vᵢ)
-set!(model, u=uᵢ, v=vᵢ)
+ϵ(x, y) = 2rand() - 1 # ∈ (-1, 1)
+set!(model, u=ϵ, v=ϵ)
 
 u, v, w = model.velocities
 e_op = @at (Center, Center, Center) 1/2 * (u^2 + v^2)
@@ -54,7 +47,7 @@ e = Field(e_op)
 compute!(e)
 compute!(ζ)
 
-simulation = Simulation(model, Δt=0.01, stop_iteration=1000)
+simulation = Simulation(model, Δt=0.01, stop_iteration=500)
 
 function progress_message(sim)
     comm = sim.model.grid.architecture.communicator
