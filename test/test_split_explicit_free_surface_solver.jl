@@ -59,7 +59,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                settings = SplitExplicitSettings(eltype(grid); substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(; substeps = Nt, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
                 # set!(η, f(x,y))
@@ -96,6 +96,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
+            settings = SplitExplicitSettings(eltype(grid); substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(grid; settings)
+
+            sefs.η .= 0
+
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.state
                 auxiliary = sefs.auxiliary
@@ -105,24 +110,22 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 g = sefs.gravitational_acceleration
                 η = sefs.η
 
-                Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
+                Δτ = 2π / maximum([Nx, Ny]) * 1e-2 # the last factor is essentially the order of accuracy
 
                 # set!(η, f(x, y))
                 η_avg = 1
                 U_avg = 2
                 V_avg = 3
-                η₀(x, y, z) = η_avg
-                set!(η, η₀)
-                U₀(x, y, z) = U_avg
-                set!(U, U₀)
-                V₀(x, y, z) = V_avg
-                set!(V, V₀)
+                fill!(η, η_avg)
+                fill!(U, U_avg)
+                fill!(V, V_avg)
 
-                η̅ .= 0
-                U̅ .= 0
-                V̅ .= 0
-                Gᵁ .= 0
-                Gⱽ .= 0
+                fill!(η̅ , 0)
+                fill!(U̅ , 0)
+                fill!(V̅ , 0)
+                fill!(Gᵁ, 0)
+                fill!(Gⱽ, 0)
+
                 settings = sefs.settings
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
@@ -132,13 +135,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                     iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
                 end
 
-                U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
-                V_computed = Array(V.data.parent)[2:Nx+1, 2:Ny+1]
-                η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
+                U_computed = Array(deepcopy(interior(U)))
+                V_computed = Array(deepcopy(interior(V)))
+                η_computed = Array(deepcopy(interior(η)))
 
-                U̅_computed = Array(U̅.data.parent)[2:Nx+1, 2:Ny+1]
-                V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
-                η̅_computed = Array(η̅.data.parent)[2:Nx+1, 2:Ny+1]
+                U̅_computed = Array(deepcopy(interior(U̅)))
+                V̅_computed = Array(deepcopy(interior(V̅)))
+                η̅_computed = Array(deepcopy(interior(η̅)))
 
                 tolerance = 100eps(FT)
 
