@@ -70,7 +70,7 @@ function progress_message(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
 outputs = merge(model.velocities, (; e, ζ))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
