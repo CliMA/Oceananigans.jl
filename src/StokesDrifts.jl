@@ -211,7 +211,8 @@ uˢ(x, y, z, t) = A(x - cᵍ t, y) * ûˢ(z)
 ```
 
 with ``A(ξ, η) = \exp[- (ξ^2 + η^2) / 2δ^2]``. If ``uˢ`` represents the solenoidal component
-of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore ``wˢ = - (∂_ξ A / 2k) ûˢ``.
+of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore ``wˢ = - (∂_ξ A / 2k) ûˢ``
+under the assumption that ``wˢ`` tends to zero at large depths.
 ```
 
 
