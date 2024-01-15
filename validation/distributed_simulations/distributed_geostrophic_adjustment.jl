@@ -80,7 +80,7 @@ end
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
 
-outputs = merge(model.velocities, model.free_surface)
+outputs = merge(model.velocities, model.free_surface.η)
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = IterationInterval(1),
                                                       filename = "geostrophic_adjustment_rank$rank",
