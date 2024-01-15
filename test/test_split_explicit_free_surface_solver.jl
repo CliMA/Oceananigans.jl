@@ -128,7 +128,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
                 
-                iterate_split_explicit!(sefs, grid, Δτ, weights, Val(Nsubsteps)) 
+                for step in 1:Nsubsteps
+                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
+                end
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 V_computed = Array(V.data.parent)[2:Nx+1, 2:Ny+1]
