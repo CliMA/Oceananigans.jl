@@ -95,7 +95,7 @@ wn = @lift interior(wt[$n], :, 1, :)
 xu, yu, zu = nodes(ut)
 xw, yw, zw = nodes(wt)
 
-fig = Figure(resolution=(800, 300))
+fig = Figure(size=(800, 300))
 
 axu = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)")
 axw = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)")

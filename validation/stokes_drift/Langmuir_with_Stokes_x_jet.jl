@@ -318,7 +318,7 @@ wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
 wyz_title = @lift string("w(y, z, t) at x=0 m and t = ", prettytime(times[$n]))
 uyz_title = @lift string("u(y, z, t) at x=0 m and t = ", prettytime(times[$n]))
 
-fig = Figure(resolution = (1.2*850, 1.2*1100))
+fig = Figure(size=(1.2*850, 1.2*1100))
 
 ax_x_stokes = Axis(fig[2, 4];
             xlabel = "x (m)",

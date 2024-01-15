@@ -80,7 +80,7 @@ sₙ = @lift interior(s_timeseries[$n], :, :, grid.Nz)
 
 s_lim = maximum(abs, interior(s_timeseries))
 
-fig = Figure(resolution = (800, 800))
+fig = Figure(size=(800, 800))
 
 ax_u = Axis(fig[1, 1])
 ax_v = Axis(fig[1, 3])

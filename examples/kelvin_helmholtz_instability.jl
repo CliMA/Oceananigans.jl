@@ -48,7 +48,7 @@ zC = znodes(grid, Center())
 
 Ri, h = B.parameters
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size=(850, 450))
  
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
 lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
@@ -307,7 +307,7 @@ growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturba
 
 n = Observable(1)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -415,7 +415,7 @@ n = Observable(1)
 ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
 bₙ = @lift interior(b_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -474,7 +474,7 @@ n = Observable(1)
 Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
 Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
