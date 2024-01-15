@@ -161,9 +161,7 @@ simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=2minutes)
 
 # We also add a callback that prints the progress of the simulation,
 
@@ -172,7 +170,7 @@ using Printf
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+add_callback!(simulation, progress, IterationInterval(100))
 
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,

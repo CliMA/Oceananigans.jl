@@ -64,7 +64,7 @@ const μ = 1.0 - δ - γ - ϵ
 
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{Bounded},  U★::Function, args...) = ifelse(i == grid.Nx, - U★(i, j, k, grid, args...),
                                                                           ifelse(i == 1, U★(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...)))
-@inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Bounded},  V★::Function, args...) = ifelse(j == grid.Ny, - V★(i, j, k, grid, args...), 
+@inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Bounded},  V★::Function, args...) = ifelse(j == grid.Ny, - V★(i, j, k, grid, args...),
                                                                           ifelse(j == 1, V★(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, V★, args...)))
 
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{LeftConnected},  U★::Function, args...) = ifelse(i == grid.Nx, - U★(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...))
@@ -164,7 +164,7 @@ end
         advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
         η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))                        
+                                div_yᶜᶜᶠ_V(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 
     return nothing
@@ -304,7 +304,7 @@ Explicitly step forward η in substeps.
 """
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ)
-    
+
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
@@ -365,7 +365,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), 
+@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
 
 const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
@@ -457,8 +457,11 @@ end
     end	
 end
 
-@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
-@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT = ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+
+@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
 # Setting up the RHS for the barotropic step (tendencies of the barotopic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
@@ -469,7 +472,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
-    
+
     auxiliary = free_surface.auxiliary
 
     @apply_regionally setup_split_explicit_tendency!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)

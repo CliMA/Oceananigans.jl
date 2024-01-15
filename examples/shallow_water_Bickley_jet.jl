@@ -40,7 +40,7 @@ grid = RectilinearGrid(size = (48, 128),
 # ## Building a `ShallowWaterModel`
 #
 # We build a `ShallowWaterModel` with the `WENO` advection scheme,
-# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis and
+# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis, and
 # gravitational acceleration
 
 gravitational_acceleration = 1
@@ -49,8 +49,6 @@ coriolis = FPlane(f=1)
 model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO())
-
-# Use `architecture = GPU()` to run this problem on a GPU.
 
 # ## Background state and perturbation
 #
