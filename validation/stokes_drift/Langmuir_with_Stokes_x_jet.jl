@@ -322,33 +322,33 @@ wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
 wyz_title = @lift string("w(y, z, t) at x=0 m and t = ", prettytime(times[$n]))
 uyz_title = @lift string("u(y, z, t) at x=0 m and t = ", prettytime(times[$n]))
 
-fig = Figure(resolution = (1.2*850, 1.2*1100))
+fig = Figure(size = (1020, 1320))
 
 ax_x_stokes = Axis(fig[2, 4];
-            xlabel = "x (m)",
-            ylabel = string("uˢ(y=", stokes_jet_center + 0.5* (stokes_jet_central_width + stokes_jet_edge_width), "m, z=-2m) terms ([m] s⁻¹)"))
+                   xlabel = "x (m)",
+                   ylabel = string("uˢ(y=", stokes_jet_center + 0.5* (stokes_jet_central_width + stokes_jet_edge_width), "m, z=-2m) terms ([m] s⁻¹)"))
 
 ax_y_stokesu = Axis(fig[1, 1];
-            xlabel = string("uˢ(x=", 3*grid.Lx/8, "m, z=-2m) terms ([m] s⁻¹)"),
-            ylabel = "y (m)")
+                    xlabel = string("uˢ(x=", 3*grid.Lx/8, "m, z=-2m) terms ([m] s⁻¹)"),
+                    ylabel = "y (m)")
 
 ax_xy_stokesu = Axis(fig[1, 2];
-            xlabel = "x (m)",
-            ylabel = "y (m)",
-            aspect = AxisAspect(1),
-            limits = ((0, grid.Lx), (0, grid.Ly)),
-            title = "uˢ(z=-2m)")
+                     xlabel = "x (m)",
+                     ylabel = "y (m)",
+                     aspect = AxisAspect(1),
+                     limits = ((0, grid.Lx), (0, grid.Ly)),
+                     title = "uˢ(z=-2m)")
 
 ax_xy_stokesw = Axis(fig[1, 4];
-            xlabel = "x (m)",
-            ylabel = "y (m)",
-            aspect = AxisAspect(1),
-            limits = ((0, grid.Lx), (0, grid.Ly)),
-            title = "wˢ(z=-2m) x 100")
+                     xlabel = "x (m)",
+                     ylabel = "y (m)",
+                     aspect = AxisAspect(1),
+                     limits = ((0, grid.Lx), (0, grid.Ly)),
+                     title = "wˢ(z=-2m) x 100")
 
 ax_y_stokesw = Axis(fig[2, 1];
-            xlabel = string("wˢ(x=", 3*grid.Lx/8, "m, z=-2m) terms ([m] s⁻¹)"),
-            ylabel = "y (m)")
+                    xlabel = string("wˢ(x=", 3*grid.Lx/8, "m, z=-2m) terms ([m] s⁻¹)"),
+                    ylabel = "y (m)")
 
 ax_U = Axis(fig[3, 4];
             xlabel = "Velocities (m s⁻¹)",
@@ -391,8 +391,8 @@ Vₙ = @lift time_series.V[$n][1, 1, :]
 wuₙ = @lift time_series.wu[$n][1, 1, :]
 wvₙ = @lift time_series.wv[$n][1, 1, :]
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
-wxyₙ = @lift interior(time_series.w[$n], :, :, k)
+k_index = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+wxyₙ = @lift interior(time_series.w[$n], :, :, k_index)
 wyzₙ = @lift interior(time_series.w[$n], 1, :, :)
 uyzₙ = @lift interior(time_series.u[$n], 1, :, :)
 
@@ -401,48 +401,51 @@ ulims = (-0.05, 0.05)
 stokeslims = (-0.025, 0.025)
 
 global ii = 1
-uˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂z_uˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂y_uˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂x_uˢ_yvariation = Array{Float32}(undef, size(yu,1))
-wˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂z_wˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂y_wˢ_yvariation = Array{Float32}(undef, size(yu,1))
-∂x_wˢ_yvariation = Array{Float32}(undef, size(yu,1))
-uˢ_xvariation = Array{Float32}(undef, size(xu,1))
-wˢ_xvariation = Array{Float32}(undef, size(xu,1))
-uˢ_map = Array{Float32}(undef, size(xu,1), size(yu,1))
-wˢ_map = Array{Float32}(undef, size(xu,1), size(yu,1))
-while ii <= size(yu,1) 
-    uˢ_yvariation[ii] = uˢ(3*grid.Lx/8, yu[ii], -2, 0)  
-    ∂z_uˢ_yvariation[ii] = ∂z_uˢ(3*grid.Lx/8, yu[ii], -2, 0) 
+
+uˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂z_uˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂y_uˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂x_uˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+wˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂z_wˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂y_wˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+∂x_wˢ_yvariation = Array{Float32}(undef, size(yu, 1))
+uˢ_xvariation = Array{Float32}(undef, size(xu, 1))
+wˢ_xvariation = Array{Float32}(undef, size(xu, 1))
+uˢ_map = Array{Float32}(undef, size(xu, 1), size(yu, 1))
+wˢ_map = Array{Float32}(undef, size(xu, 1), size(yu, 1))
+
+while ii <= size(yu, 1)
+    uˢ_yvariation[ii] = uˢ(3*grid.Lx/8, yu[ii], -2, 0)
+    ∂z_uˢ_yvariation[ii] = ∂z_uˢ(3*grid.Lx/8, yu[ii], -2, 0)
     ∂y_uˢ_yvariation[ii] = ∂y_uˢ(3*grid.Lx/8, yu[ii], -2, 0)
     ∂x_uˢ_yvariation[ii] = ∂x_uˢ(3*grid.Lx/8, yu[ii], -2, 0)
     wˢ_yvariation[ii] = wˢ(3*grid.Lx/8, yu[ii], -2, 0)  
-    ∂z_wˢ_yvariation[ii] = ∂z_wˢ(3*grid.Lx/8, yu[ii], -2, 0) 
+    ∂z_wˢ_yvariation[ii] = ∂z_wˢ(3*grid.Lx/8, yu[ii], -2, 0)
     ∂y_wˢ_yvariation[ii] = ∂y_wˢ(3*grid.Lx/8, yu[ii], -2, 0)
-    ∂x_wˢ_yvariation[ii] = ∂x_wˢ(3*grid.Lx/8, yu[ii], -2, 0) 
+    ∂x_wˢ_yvariation[ii] = ∂x_wˢ(3*grid.Lx/8, yu[ii], -2, 0)
+
     global jj = 1
-    while jj <= size(xu,1) 
-        uˢ_xvariation[jj] = uˢ(xu[jj], stokes_jet_center + 0.5* (stokes_jet_central_width + stokes_jet_edge_width), -2, 0)  
-        wˢ_xvariation[jj] = wˢ(xu[jj], stokes_jet_center + 0.5* (stokes_jet_central_width + stokes_jet_edge_width), -2, 0)   
+    while jj <= size(xu, 1)
+        uˢ_xvariation[jj] = uˢ(xu[jj], stokes_jet_center + 0.5 * (stokes_jet_central_width + stokes_jet_edge_width), -2, 0)
+        wˢ_xvariation[jj] = wˢ(xu[jj], stokes_jet_center + 0.5 * (stokes_jet_central_width + stokes_jet_edge_width), -2, 0)
         uˢ_map[jj,ii] = uˢ(xu[jj], yu[ii], -2, 0)
         wˢ_map[jj,ii] = wˢ(xu[jj], yu[ii], -2, 0)
         global jj += 1
-    end 
+    end
     global ii += 1
 end 
 
 lines!(ax_y_stokesu, uˢ_yvariation, yu; label = L"u^s")
 lines!(ax_y_stokesu, ∂z_uˢ_yvariation, yu; label = L"\partial_z u^s")
 lines!(ax_y_stokesu, ∂y_uˢ_yvariation, yu; label = L"\partial_y u^s")
-lines!(ax_y_stokesu, ∂x_uˢ_yvariation*100, yu; label = L"\partial_x u^s \times 100")
+lines!(ax_y_stokesu, ∂x_uˢ_yvariation * 100, yu; label = L"\partial_x u^s \times 100")
 axislegend(ax_y_stokesu; position = :rt)
 
-lines!(ax_y_stokesw, wˢ_yvariation*100, yu; label = L"w^s \times 100")
-lines!(ax_y_stokesw, ∂z_wˢ_yvariation*100, yu; label = L"\partial_z w^s \times 100")
-lines!(ax_y_stokesw, ∂y_wˢ_yvariation*100, yu; label = L"\partial_y w^s \times 100")
-lines!(ax_y_stokesw, ∂x_wˢ_yvariation*100, yu; label = L"\partial_x w^s \times 100")
+lines!(ax_y_stokesw, wˢ_yvariation * 100, yu; label = L"w^s \times 100")
+lines!(ax_y_stokesw, ∂z_wˢ_yvariation * 100, yu; label = L"\partial_z w^s \times 100")
+lines!(ax_y_stokesw, ∂y_wˢ_yvariation * 100, yu; label = L"\partial_y w^s \times 100")
+lines!(ax_y_stokesw, ∂x_wˢ_yvariation * 100, yu; label = L"\partial_x w^s \times 100")
 axislegend(ax_y_stokesw; position = :rt)
 
 lines!(ax_x_stokes, uˢ_xvariation, xu; label = L"u^s")
@@ -460,14 +463,14 @@ lines!(ax_fluxes, wvₙ, zw; label = L"mean $wv$")
 axislegend(ax_fluxes; position = :rb)
 
 hm_xy_stokesu = heatmap!(ax_xy_stokesu, xw, yw, uˢ_map;
-                  colorrange = stokeslims,
-                  colormap = :balance)
+                         colorrange = stokeslims,
+                         colormap = :balance)
 
 Colorbar(fig[1, 3], hm_xy_stokesu; label = "m s⁻¹")
 
 hm_xy_stokesw = heatmap!(ax_xy_stokesw, xw, yw, wˢ_map*100;
-                  colorrange = stokeslims,
-                  colormap = :balance)
+                         colorrange = stokeslims,
+                         colormap = :balance)
 
 hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
                   colorrange = wlims,
@@ -499,5 +502,5 @@ record(fig, "Stokes_drift_x_jet.mp4", frames, framerate=8) do i
 end
 nothing #hide
 
-# ![](langmuir_turbulence.mp4)
+# ![](Stokes_drift_x_jet.mp4)
 
