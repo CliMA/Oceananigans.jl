@@ -16,7 +16,7 @@ const Uˢ = ϵ^2 * c
 @inline       A(ξ, η) = exp(- (ξ^2 + η^2) / 2δ^2)
 @inline    ∂ξ_A(ξ, η) = - ξ / δ^2 * A(ξ, η)
 @inline    ∂η_A(ξ, η) = - η / δ^2 * A(ξ, η)
-@inline ∂η_∂ξ_A(ξ, η) = - η * ξ / δ^4 * A(ξ, η)
+@inline ∂η_∂ξ_A(ξ, η) = η * ξ / δ^4 * A(ξ, η)
 @inline   ∂²ξ_A(ξ, η) = (ξ^2 / δ^2 - 1) * A(ξ, η) / δ^2
 
 # Write the Stokes drift as
