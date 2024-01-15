@@ -72,7 +72,7 @@ N² = 0 #1e-6
 bᵢ(x, y, z) = N² * z
 set!(model, u=uᵢ, b=bᵢ)
 
-Δx = xspacings(grid, Center())
+Δx = minimum_xspacing(grid)
 Δt = 0.2 * Δx / cᵍ
 simulation = Simulation(model; Δt, stop_iteration = 200)
 
@@ -82,7 +82,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 filename = "surface_wave_quasi_geostrophic_induced_flow.jld2"
 outputs = model.velocities
 simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(10),
+                                                    schedule = IterationInterval(3),
                                                     overwrite_existing = true)
 
 run!(simulation)
@@ -102,7 +102,7 @@ wn = @lift interior(wt[$n], :, :, Nz)
 xu, yu, zu = nodes(ut)
 xw, yw, zw = nodes(wt)
 
-fig = Figure(resolution=(800, 400))
+fig = Figure(size=(800, 400))
 
 axu = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", aspect=1)
 axw = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)", aspect=1)
@@ -110,7 +110,6 @@ axw = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)", aspect=1)
 heatmap!(axu, xu, yu, un)
 heatmap!(axw, xw, yw, wn)
 
-record(fig, "surface_wave_induced_flow.mp4", 1:Nt, framerate=12) do nn
+record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
-

@@ -67,7 +67,7 @@ N² = 0
 bᵢ(x, z) = N² * z
 set!(model, u=uᵢ, b=bᵢ)
 
-Δx = xspacings(grid, Center())
+Δx = minimum_xspacing(grid)
 Δt = 0.2 * Δx / cᵍ
 simulation = Simulation(model; Δt, stop_iteration = 600)
 
@@ -96,7 +96,7 @@ wn = @lift interior(wt[$n], :, 1, :)
 xu, yu, zu = nodes(ut)
 xw, yw, zw = nodes(wt)
 
-fig = Figure(resolution=(800, 300))
+fig = Figure(size=(800, 300))
 
 axu = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)")
 axw = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)")
