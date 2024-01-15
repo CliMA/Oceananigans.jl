@@ -210,26 +210,22 @@ A wavepacket moving with the group velocity. We write the Stokes drift as:
 uˢ(x, y, z, t) = A(x - cᵍ t, y) * ûˢ(z)
 ```
 
-with ``A(ξ, η) = \exp[- (ξ^2 + η^2) / 2δ^2]``. If ``uˢ`` represents the solenoidal component
-of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore ``wˢ = - (∂_ξ A / 2k) ûˢ``
-under the assumption that ``wˢ`` tends to zero at large depths.
-```
-
+with ``A(ξ, η) = \\exp{-(ξ^2 + η^2) / 2δ^2}``. If ``uˢ`` represents the solenoidal component
+of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore, under
+the assumption that ``wˢ`` tends to zero at large depths, we get ``wˢ = - (∂_ξ A / 2k) ûˢ``.
 
 ```jldoctest
 using Oceananigans
 using Oceananigans.Units
 
+g = 9.81 # gravitational acceleration
+
 ϵ = 0.1
-λ = 100meters
-g = 9.81
-
-const k = 2π / λ
-
-c = sqrt(g / k)
-
-const δ = 400kilometer
-const cᵍ = c / 2
+λ = 100meters  # horizontal wavelength
+const k = 2π / λ  # horizontal wavenumber
+c = sqrt(g / k)  # phase speed
+const δ = 400kilometers  # wavepacket spread
+const cᵍ = c / 2  # group speed
 const Uˢ = ϵ^2 * c
 
 @inline A(ξ, η) = exp(- (ξ^2 + η^2) / 2δ^2)
