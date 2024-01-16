@@ -151,7 +151,7 @@ function configured_kernel(arch, grid, workspec, kernel!;
         workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
 
-        # A fully immersed domain! 
+        # A non active domain! 
         if worksize == 0
             return nothing
         end
