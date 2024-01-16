@@ -9,7 +9,7 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW, FT} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -21,6 +21,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
+    mask_immersed :: FT
 end
 
 noinit(args...) = nothing
@@ -32,6 +33,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                           indices = (:, :, :),
                        with_halos = false,
                        array_type = Array{Float64},
+                    mask_immersed = nothing,
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -77,6 +79,9 @@ Keyword arguments
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
+
+- `mask_immersed`: The value with which immersed boundary regions are filled with before saving.
+                   You can either choose a numerical value or `NaN`. Default: `nothing`.
 
 ## File management
 
@@ -163,6 +168,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                indices = (:, :, :),
                             with_halos = false,
                             array_type = Array{Float64},
+                         mask_immersed = nothing,
                           max_filesize = Inf,
                     overwrite_existing = false,
                                   init = noinit,
@@ -175,7 +181,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
-    
+
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
@@ -184,8 +190,10 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
-    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
+    mask_immersed = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+
+    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init, including, part,
+                            max_filesize, overwrite_existing, verbose, jld2_kw, mask_immersed)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)

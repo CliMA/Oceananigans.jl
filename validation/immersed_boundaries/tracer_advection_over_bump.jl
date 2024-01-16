@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
 using Printf
@@ -31,7 +31,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(seamount))
 Ψ = Field{Center, Face, Face}(grid)
 set!(Ψ, Ψᵢ)
 fill_halo_regions!(Ψ, arch)
-mask_immersed_field!(Ψ)
+mask_immersed!(Ψ)
 
 # Set velocity field from streamfunction
 v = YFaceField(grid)
@@ -41,8 +41,8 @@ w .= - ∂y(Ψ)
 
 fill_halo_regions!(v, arch)
 fill_halo_regions!(w, arch)
-mask_immersed_field!(v)
-mask_immersed_field!(w)
+mask_immersed!(v)
+mask_immersed!(w)
 
 D = compute!(Field(∂y(v) + ∂z(w)))
 @info @sprintf("Maximum divergence is %.2e.", maximum(D))

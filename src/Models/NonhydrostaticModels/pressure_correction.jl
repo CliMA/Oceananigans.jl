@@ -8,7 +8,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
-    foreach(mask_immersed_field!, model.velocities)
+    foreach(mask_immersed!, model.velocities)
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 

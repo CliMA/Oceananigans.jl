@@ -216,7 +216,7 @@ We then have
 
 * `inactive_node(i, 1, 1, grid, f, c, c) = false`
 
-As well as
+as well as
 
 * `inactive_node(i,   1, 1, grid, c, c, c) = false`
 * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
@@ -303,7 +303,7 @@ include("partial_cell_bottom.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
-include("mask_immersed_field.jl")
+include("mask_immersed.jl")
 include("immersed_reductions.jl")
 
 # Extension to distributed Immersed boundaries

@@ -42,8 +42,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     end
 
     # Apply a mask
-    foreach(mask_immersed_field!, model.tracers)
-    foreach(mask_immersed_field!, model.velocities)
+    foreach(mask_immersed!, model.tracers)
+    foreach(mask_immersed!, model.velocities)
     update_state!(model)
 
     if enforce_incompressibility

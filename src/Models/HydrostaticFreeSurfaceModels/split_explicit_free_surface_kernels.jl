@@ -299,13 +299,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         set!(free_surface.η, free_surface.state.η̅)
     end
 
+
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
     @apply_regionally begin 
-        mask_immersed_field!(model.velocities.u)
-        mask_immersed_field!(model.velocities.v)
+        mask_immersed!(model.velocities.u)
+        mask_immersed!(model.velocities.v)
     end
 
     return nothing
@@ -380,6 +381,11 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
+
+    mask_immersed!(Gu⁻)
+    mask_immersed!(Gv⁻)
+    mask_immersed!(Guⁿ)
+    mask_immersed!(Gvⁿ)
 
     auxiliary = free_surface.auxiliary
 

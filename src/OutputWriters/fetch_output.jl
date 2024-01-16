@@ -1,16 +1,28 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
 time(model) = model.clock.time
 time(::Nothing) = nothing
 
-fetch_output(output, model) = output(model)
+# Default fetch_output with mask_immersed = nothing
+fetch_output(output, model) = fetch_output(output, model, nothing)
 
-function fetch_output(field::AbstractField, model)
+function fetch_output(output, model, mask_immersed)
+    fetched = output(model)
+    if fetched isa Field
+        !isnothing(mask_immersed) && mask_immersed!(fetched, mask_immersed)
+        return parent(fetched)
+    end
+    return fetched
+end
+
+function fetch_output(field::AbstractField, model, mask_immersed)
     compute_at!(field, time(model))
+    !isnothing(mask_immersed) && mask_immersed!(field, mask_immersed)
     return parent(field)
 end
 
@@ -38,7 +50,7 @@ convert_output(outputs::NamedTuple, writer) =
     NamedTuple(name => convert_output(outputs[name], writer) for name in keys(outputs))
 
 function fetch_and_convert_output(output, model, writer)
-    fetched = fetch_output(output, model)
+    fetched = fetch_output(output, model, writer.mask_immersed)
     return convert_output(fetched, writer)
 end
 

@@ -10,7 +10,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
-mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{D, O, T, A, FT} <: AbstractOutputWriter
     filepath :: String
     dataset :: D
     outputs :: O
@@ -19,6 +19,7 @@ mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     array_type :: A
     previous :: Float64
     verbose :: Bool
+    mask_immersed :: FT
 end
 
 ext(::Type{NetCDFOutputWriter}) = ".nc"
@@ -160,6 +161,7 @@ end
                                    array_type = Array{Float64},
                                       indices = nothing,
                                    with_halos = false,
+                                mask_immersed = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -199,6 +201,9 @@ Keyword arguments
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
+
+- `mask_immersed`: The value with which immersed boundary regions are filled with before saving.
+                   You can either choose a numerical value or `NaN`. Default: `nothing`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -332,6 +337,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                    array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
+                                mask_immersed = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -427,7 +433,10 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
+    mask_immersed = mask_immersed isa Number ? eltype(model.grid)(mask_immersed) : mask_immersed
+
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing,
+                              array_type, 0.0, verbose, mask_immersed)
 end
 
 get_default_dimension_attributes(::RectilinearGrid) =

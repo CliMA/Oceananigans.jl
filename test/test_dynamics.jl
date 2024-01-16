@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed!
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.Fields: ZeroField, ConstantField
 

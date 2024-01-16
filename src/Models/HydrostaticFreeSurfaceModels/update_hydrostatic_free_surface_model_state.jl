@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
+using Oceananigans.ImmersedBoundaries: mask_immersed!, mask_immersed_horizontal!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
@@ -59,10 +59,10 @@ function mask_immersed_model_fields!(model, grid)
 
     foreach(fields_to_mask) do field
         if field !== η
-            mask_immersed_field!(field)
+            mask_immersed!(field)
         end
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
+    mask_immersed_horizontal!(η, k=size(grid, 3)+1, mask = inactive_node)
 
     return nothing
 end

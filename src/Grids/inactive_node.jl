@@ -130,4 +130,3 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 Return `true` when the location `(LX, LY, LZ)` lies on a boundary.
 """
 @inline boundary_node(i, j, k, grid, LX, LY, LZ) = peripheral_node(i, j, k, grid, LX, LY, LZ) & !inactive_node(i, j, k, grid, LX, LY, LZ)
-
