@@ -1,4 +1,5 @@
 using KernelAbstractions: @kernel, @index
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
@@ -140,7 +141,7 @@ end
 
     fo = ForwardOrdering()
 
-    @inbounds for k = 1:target_grid.Nz
+    @inbounds @unroll for k = 1:target_grid.Nz
         target_field[i, j, k] = 0
 
         z₋ = znode(i, j, k,   target_grid, c, c, f)
@@ -159,7 +160,7 @@ end
             target_field[i, j, k] = source_field[i_src, j_src, k₊_src]
         else
             # Add contribution from all full cells in the integration range
-            for k_src = k₋_src:k₊_src-1
+            @unroll for k_src = k₋_src:k₊_src-1
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
@@ -195,7 +196,7 @@ end
 
     fo = ForwardOrdering()
 
-    @inbounds for j = 1:target_grid.Ny
+    @inbounds @unroll for j = 1:target_grid.Ny
         target_field[i, j, k] = 0
 
         y₋ = ηnode(i, j,   k, target_grid, c, f, c)
@@ -214,7 +215,7 @@ end
             target_field[i, j, k] = source_field[i_src, j₊_src, k_src]
         else
             # Add contribution from all full cells in the integration range
-            for j_src = j₋_src:j₊_src-1
+            @unroll for j_src = j₋_src:j₊_src-1
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
@@ -262,7 +263,7 @@ end
 
     fo = ForwardOrdering()
 
-    @inbounds for i = 1:target_grid.Nx
+    @inbounds @unroll for i = 1:target_grid.Nx
         target_field[i, j, k] = 0
 
         # Integrate source field from ξ₋ to ξ₊
@@ -287,7 +288,7 @@ end
             # sum up all the contributions from the source field to the target cell.
             
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
-            for i_src = i₋_src:i₊_src-1
+            @unroll for i_src = i₋_src:i₊_src-1
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
     

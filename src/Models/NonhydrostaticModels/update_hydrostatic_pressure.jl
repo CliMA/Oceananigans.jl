@@ -14,7 +14,7 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
 
     @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
 
-    for k in grid.Nz-1 : -1 : 1
+    @unroll for k in grid.Nz-1 : -1 : 1
         @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
     end
 end

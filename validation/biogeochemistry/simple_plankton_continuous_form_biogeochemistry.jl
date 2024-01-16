@@ -104,7 +104,7 @@ end
     ∫chl = @inbounds - (zᶜ[grid.Nz] - zᶠ[grid.Nz]) * P[i, j, grid.Nz] ^ e
     @inbounds PAR[i, j, grid.Nz] =  PAR⁰ * exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
 
-    for k in grid.Nz-1:-1:1
+    @unroll for k in grid.Nz-1:-1:1
         @inbounds begin
             ∫chl += (zᶜ[k + 1] - zᶠ[k])*P[i, j, k + 1]^e + (zᶠ[k] - zᶜ[k])*P[i, j, k]^e
             PAR[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
@@ -179,3 +179,4 @@ simulation.output_writers[:simple_output] = JLD2OutputWriter(model, outputs; fil
                                                              overwrite_existing = true)
 
 run!(simulation)
+
