@@ -1,10 +1,12 @@
 include("dependencies_for_runtests.jl")
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kernel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calculate_adaptive_settings
+
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings, split_explicit_free_surface_substep!
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kernel
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calculate_adaptive_settings
 
 @testset "Split-Explicit Dynamics" begin
 
@@ -98,7 +100,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
 
                 Nsubsteps  = calculate_substeps(settings.substepping, 1)
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
-    
+
                 for i in 1:Nt
                     split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, weights, arch, grid, g, Δτ, i)
                 end
