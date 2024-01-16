@@ -12,7 +12,6 @@ import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 
 using Oceananigans.Models: update_model_field_time_series!
-using NVTX
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 

@@ -8,7 +8,6 @@ using CUDA
 using KernelAbstractions
 using Adapt
 using OffsetArrays
-using NVTX
 
 """
     AbstractArchitecture

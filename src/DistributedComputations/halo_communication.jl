@@ -22,8 +22,6 @@ import Oceananigans.BoundaryConditions:
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
-using NVTX
-
 #####
 ##### MPI tags for halo communication BCs
 #####
