@@ -56,4 +56,3 @@ end
 
 @inline scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field, mask=peripheral_node) =
     @inbounds ifelse(mask(i, j, k, grid, LX, LY, LZ), value, field[i, j, k])
-
