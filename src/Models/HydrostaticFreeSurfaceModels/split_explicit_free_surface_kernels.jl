@@ -17,7 +17,7 @@ const θ = - 0.5 - 2β
 const γ = 0.088
 const δ = 0.614
 const ϵ = 0.013
-const μ = 1.0 - δ - γ - ϵ
+const μ = 1 - δ - γ - ϵ
 
 # Evolution Kernels
 #
