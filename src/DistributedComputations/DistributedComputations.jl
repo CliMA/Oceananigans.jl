@@ -3,8 +3,7 @@ module DistributedComputations
 export
     Distributed, Partition, Equal, Fractional, 
     child_architecture, reconstruct_global_grid, 
-    inject_halo_communication_boundary_conditions,
-    DistributedFFTBasedPoissonSolver
+    inject_halo_communication_boundary_conditions
 
 using MPI
 
@@ -18,6 +17,6 @@ include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
 include("distributed_fields.jl")
 include("halo_communication.jl")
-include("distributed_fft_based_poisson_solver.jl")
+# include("distributed_fft_based_poisson_solver.jl")
 
 end # module
