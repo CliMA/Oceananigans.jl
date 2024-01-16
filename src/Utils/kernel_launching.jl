@@ -145,7 +145,6 @@ function configured_kernel(arch, grid, workspec, kernel!;
                                     reduced_dimensions,
                                     location)
 
-
     offset = offsets(workspec)
 
     if !isnothing(only_active_cells) 
