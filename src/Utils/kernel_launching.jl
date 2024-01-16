@@ -150,12 +150,13 @@ function configured_kernel(arch, grid, workspec, kernel!;
     if !isnothing(only_active_cells) 
         workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
+
+        # A fully immersed domain! 
+        if worksize == 0
+            return nothing
+        end
     end
 
-    if worksize == 0
-        return nothing
-    end
-    
     # We can only launch offset kernels with Static sizes!!!!
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
