@@ -97,7 +97,7 @@ coriolis = FPlane(latitude = -45)
 
 # Now we have everything we require to construct the tidal forcing given a value of the
 # excursion parameter.
-#
+
 T₂ = 12.421hours
 ω₂ = 2π / T₂ # radians/sec
 
@@ -107,7 +107,7 @@ U_tidal = ϵ * ω₂ * width
 
 tidal_forcing_amplitude = U_tidal * (ω₂^2 - coriolis.f^2) / ω₂
 
-@inline tidal_forcing(x, y, z, t, p) = p.tidal_forcing_amplitude * sin(p.ω₂ * t)
+@inline tidal_forcing(x, z, t, p) = p.tidal_forcing_amplitude * sin(p.ω₂ * t)
 
 u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂))
 
@@ -116,8 +116,7 @@ u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂)
 # We built a `HydrostaticFreeSurfaceModel` with a `SplitExplicitFreeSurface` solver.
 # We limit our maximum timestep to 3 minutes.
 
-max_Δt = 5minutes
-free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7, max_Δt)
+free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7)
 
 model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface,
                                       buoyancy = BuoyancyTracer(),
@@ -128,16 +127,16 @@ model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface,
 
 # We initialize the model with the tidal flow and a linear stratification.
 
-uᵢ(x, y, z) = U_tidal
+uᵢ(x, z) = U_tidal
 
 Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
-bᵢ(x, y, z) = Nᵢ² * z
+bᵢ(x, z) = Nᵢ² * z
 
 set!(model, u=uᵢ, b=bᵢ)
 
 # Now let's built a `Simulation`.
 
-Δt = max_Δt
+Δt = 5minutes
 stop_time = 4days
 
 simulation = Simulation(model; Δt, stop_time)
