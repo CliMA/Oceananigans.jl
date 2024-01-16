@@ -6,10 +6,28 @@ using Test
 using Printf
 using Test
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
+using MPI
 
 import Oceananigans.Fields: interior
 
-test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
+function test_architectures() 
+    child_arch =  CUDA.has_cuda() ? GPU() : CPU()
+
+    # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # and `Partition(x = 4, y = 4)`
+    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+        return (Distributed(child_arch; partition = Partition(4)),
+                Distributed(child_arch; partition = Partition(1, 4)),
+                Distributed(child_arch; partition = Partition(2, 2)),
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+    else
+        return tuple(child_arch)
+    end
+end
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)

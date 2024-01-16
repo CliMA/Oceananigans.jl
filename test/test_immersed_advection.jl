@@ -25,7 +25,7 @@ function run_tracer_interpolation_test(c, ibg, scheme)
     for i in 6:19, j in 6:19
         if typeof(scheme) <: Centered
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, c) ≈ 1.0
@@ -43,7 +43,7 @@ function run_tracer_conservation_test(grid, scheme)
                                         coriolis = nothing)
 
     c = model.tracers.c
-    set!(model, c = 1.0)
+    set!(model, c = 1)
     fill_halo_regions!(c)
 
     η = model.free_surface.η
@@ -78,7 +78,7 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
@@ -99,10 +99,10 @@ for arch in archs
         @info "Running immersed tracer reconstruction tests..."
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
-        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
     
         c = CenterField(ibg)
-        set!(c, 1.0)
+        set!(c, 1)
         mask_immersed!(c)
         fill_halo_regions!(c)
     
@@ -134,12 +134,12 @@ for arch in archs
         @info "Running immersed momentum recontruction tests..."
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
-        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
 
         u = XFaceField(ibg)
         v = YFaceField(ibg)
-        set!(u, 1.0)
-        set!(v, 1.0)
+        set!(u, 1)
+        set!(v, 1)
 
         mask_immersed!(u)
         mask_immersed!(v)

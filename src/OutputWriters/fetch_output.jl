@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!
+using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 using Oceananigans.ImmersedBoundaries: mask_immersed!
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
@@ -53,3 +53,6 @@ function fetch_and_convert_output(output, model, writer)
     fetched = fetch_output(output, model, writer.mask_immersed)
     return convert_output(fetched, writer)
 end
+
+fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
+

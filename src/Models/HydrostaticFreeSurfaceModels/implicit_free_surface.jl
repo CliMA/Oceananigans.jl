@@ -127,7 +127,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     ∫ᶻQ    = free_surface.barotropic_volume_flux
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
- 
+
     fill_halo_regions!(model.velocities)
 
     # Compute right hand side of implicit free surface equation
@@ -144,17 +144,16 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η)
-    
+
     return nothing
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
     foreach(mask_immersed!, velocities)
-    
+
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
 
     return nothing
 end
-

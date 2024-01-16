@@ -186,7 +186,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds 0.5*(β₁[$stencil] + β₂[$stencil]))
+        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
     end
 
     return :($(elem...),)
@@ -324,16 +324,16 @@ julia> calc_weno_stencil(2, :right, :x)
             c = n - buffer - 1
             if func 
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ(i + $c, j, k, args...)) :
-                                    dir == :y ?
-                                    :(@inbounds ψ(i, j + $c, k, args...)) :
-                                    :(@inbounds ψ(i, j, k + $c, args...))
+                                      :(@inbounds ψ(i + $c, j, k, args...)) :
+                                      dir == :y ?
+                                      :(@inbounds ψ(i, j + $c, k, args...)) :
+                                      :(@inbounds ψ(i, j, k + $c, args...))
             else    
                 stencil_point[idx] =  dir == :x ? 
-                                    :(@inbounds ψ[i + $c, j, k]) :
-                                    dir == :y ?
-                                    :(@inbounds ψ[i, j + $c, k]) :
-                                    :(@inbounds ψ[i, j, k + $c])
+                                      :(@inbounds ψ[i + $c, j, k]) :
+                                      dir == :y ?
+                                      :(@inbounds ψ[i, j + $c, k]) :
+                                      :(@inbounds ψ[i, j, k + $c])
             end                
         end
         stencil_full[buffer - stencil + 1] = :($(stencil_point...), )

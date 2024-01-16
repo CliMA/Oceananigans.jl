@@ -306,7 +306,7 @@ using the `discrete_form`. For example:
 
 ```jldoctest
 @inline filtered_drag(i, j, grid, clock, model_fields) =
-   @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+    @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
 
 u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 
@@ -442,7 +442,7 @@ hill (generic function with 1 method)
 
 julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(min(h)=1.00e-01, max(h)=1.98e-01)
+├── immersed_boundary: GridFittedBottom(mean(z)=0.108726, min(z)=0.1, max(z)=0.198258)
 ├── underlying_grid: 32×32×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [-3.0, 3.0) regularly spaced with Δx=0.1875
 ├── Periodic y ∈ [-3.0, 3.0) regularly spaced with Δy=0.1875

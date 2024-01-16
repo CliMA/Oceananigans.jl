@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractRectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -27,17 +27,17 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Face) = ("xF",)
-ydim(::Face) = ("yF",)
-zdim(::Face) = ("zF",)
+xdim(::Face) = tuple("xF")
+ydim(::Face) = tuple("yF")
+zdim(::Face) = tuple("zF")
 
-xdim(::Center) = ("xC",)
-ydim(::Center) = ("yC",)
-zdim(::Center) = ("zC",)
+xdim(::Center) = tuple("xC")
+ydim(::Center) = tuple("yC")
+zdim(::Center) = tuple("zC")
 
-xdim(::Nothing) = ()
-ydim(::Nothing) = ()
-zdim(::Nothing) = ()
+xdim(::Nothing) = tuple()
+ydim(::Nothing) = tuple()
+zdim(::Nothing) = tuple()
 
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
@@ -81,35 +81,35 @@ function default_dimensions(output, grid, indices, with_halos)
     return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
-const default_dimension_attributes_rectilinear = Dict(
-    "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-    "xF"          => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-    "yC"          => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-    "yF"          => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("longname" => "Time", "units" => "s"),
-    "particle_id" => Dict("longname" => "Particle ID")
+const default_rectilinear_dimension_attributes = Dict(
+    "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+    "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+    "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+    "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("long_name" => "Time", "units" => "s"),
+    "particle_id" => Dict("long_name" => "Particle ID")
 )
 
-const default_dimension_attributes_curvilinear = Dict(
-    "xC"          => Dict("longname" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
-    "xF"          => Dict("longname" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
-    "yC"          => Dict("longname" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
-    "yF"          => Dict("longname" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
-    "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("longname" => "Time", "units" => "s"),
-    "particle_id" => Dict("longname" => "Particle ID")
+const default_curvilinear_dimension_attributes = Dict(
+    "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+    "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+    "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+    "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
+    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("long_name" => "Time", "units" => "s"),
+    "particle_id" => Dict("long_name" => "Particle ID")
 )
 
 const default_output_attributes = Dict(
-    "u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
-    "v" => Dict("longname" => "Velocity in the y-direction", "units" => "m/s"),
-    "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
-    "b" => Dict("longname" => "Buoyancy",                    "units" => "m/s²"),
-    "T" => Dict("longname" => "Conservative temperature",    "units" => "°C"),
-    "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
+    "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
+    "v" => Dict("long_name" => "Velocity in the y-direction", "units" => "m/s"),
+    "w" => Dict("long_name" => "Velocity in the z-direction", "units" => "m/s"),
+    "b" => Dict("long_name" => "Buoyancy",                    "units" => "m/s²"),
+    "T" => Dict("long_name" => "Conservative temperature",    "units" => "°C"),
+    "S" => Dict("long_name" => "Absolute salinity",           "units" => "g/kg")
 )
 
 add_schedule_metadata!(attributes, schedule) = nothing
@@ -312,9 +312,9 @@ outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
-    "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
-    "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-    "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+    "scalar"  => Dict("long_name" => "Some scalar", "units" => "bananas"),
+    "profile" => Dict("long_name" => "Some vertical profile", "units" => "watermelons"),
+    "slice"   => Dict("long_name" => "Some slice", "units" => "mushrooms")
 )
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
@@ -408,8 +408,8 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
-            Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
-            Dict("longname" => "Time", "units" => "seconds")
+            Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
+            Dict("long_name" => "Time", "units" => "seconds")
 
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
@@ -439,11 +439,11 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                               array_type, 0.0, verbose, mask_immersed)
 end
 
-get_default_dimension_attributes(grid::AbstractRectilinearGrid) =
-    default_dimension_attributes_rectilinear
+get_default_dimension_attributes(::RectilinearGrid) =
+    default_rectilinear_dimension_attributes
 
-get_default_dimension_attributes(grid::AbstractCurvilinearGrid) =
-    default_dimension_attributes_curvilinear
+get_default_dimension_attributes(::AbstractCurvilinearGrid) =
+    default_curvilinear_dimension_attributes
 
 get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
     get_default_dimension_attributes(grid.underlying_grid)
