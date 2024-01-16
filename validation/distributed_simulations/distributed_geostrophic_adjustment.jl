@@ -32,7 +32,9 @@ topology = (Bounded, Periodic, Bounded)
 
 Nx = 80
 # Distribute problem irregularly
-# arch = Distributed(CPU(); partition = Partition(x = [10, 13, 18, 39]))
+# using Oceananigans.DistributedComputations: Sizes
+# partition_sizes = Partition(x = Sizes(10, 13, 18, 39))
+# arch = Distributed(CPU(); partition = partition_sizes)
 arch = Distributed(CPU(); partition=Partition(Nranks, 1, 1))
 
 grid = RectilinearGrid(arch; topology,
