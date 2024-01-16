@@ -1,7 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils
 using Oceananigans.Grids: architecture
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Base
 
@@ -369,4 +368,3 @@ const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), 
 @inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
-

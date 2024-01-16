@@ -1,3 +1,5 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 #####
 ##### Stretched smoothness indicators gathered from precomputed values.
 ##### The stretched values for β coefficients are calculated from 
