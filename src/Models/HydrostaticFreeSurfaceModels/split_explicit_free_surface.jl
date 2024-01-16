@@ -71,10 +71,10 @@ Keyword Arguments
   - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
-SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
+SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
                              SplitExplicitSettings(FT; gravitational_acceleration, kwargs...))
-                             
+
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
@@ -150,13 +150,13 @@ function SplitExplicitState(grid::AbstractGrid)
     ηᵐ   = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-          
+
     U    = Field((Face, Center, Nothing), grid)
     V    = Field((Center, Face, Nothing), grid)
 
     Uᵐ⁻¹ = Field((Face, Center, Nothing), grid)
     Vᵐ⁻¹ = Field((Center, Face, Nothing), grid)
-          
+
     Uᵐ⁻² = Field((Face, Center, Nothing), grid)
     Vᵐ⁻² = Field((Center, Face, Nothing), grid)
           
