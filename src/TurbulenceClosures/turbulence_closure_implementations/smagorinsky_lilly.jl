@@ -22,7 +22,8 @@ end
     SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
-Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
+[Lilly62, smagorinsky1958numerical, smagorinsky1963general, Lilly66](@citet), which has an eddy
+viscosity of the form
 
 ```
 νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
