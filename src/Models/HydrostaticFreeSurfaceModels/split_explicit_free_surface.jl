@@ -248,7 +248,7 @@ end
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
-a fixed `Δt_barotopic` based on a CFL condition """
+a fixed `Δt_barotropic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
     Δt_barotropic    :: B
     averaging_kernel :: F

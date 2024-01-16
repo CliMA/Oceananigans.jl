@@ -349,7 +349,7 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     return nothing
 end
 
-# Calculate RHS for the barotopic time step. 
+# Calculate RHS for the barotropic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)	
 
@@ -369,7 +369,7 @@ end
 @inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
     @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
-# Setting up the RHS for the barotropic step (tendencies of the barotopic velocity components)
+# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 
