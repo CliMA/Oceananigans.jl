@@ -338,10 +338,10 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings) =
     SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
 
-Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(s.Δt_barotopic)")
+Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substepping)")
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 function reset!(sefs::SplitExplicitFreeSurface)
