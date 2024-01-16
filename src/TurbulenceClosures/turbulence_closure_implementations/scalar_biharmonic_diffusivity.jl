@@ -102,3 +102,10 @@ function Base.summary(closure::ScalarBiharmonicDiffusivity)
 end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
+
+function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+    ν = Adapt.adapt(to, closure.ν)
+    κ = Adapt.adapt(to, closure.κ)
+    return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+end
+
