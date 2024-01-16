@@ -195,7 +195,6 @@ julia> xspacings(grid, Center(), Face(), Center())
 """
 @inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
 
-
 """
     yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
 
@@ -260,6 +259,7 @@ julia> minimum_xspacing(grid, Center(), Center(), Center())
 """
 minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
 minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
+
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
     minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
@@ -299,5 +299,3 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 """
 minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
-
-
