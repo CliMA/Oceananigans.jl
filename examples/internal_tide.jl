@@ -35,16 +35,16 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
 # it returns the ``z`` of the bottom, or *(ii)* a two-dimensional array with the values of ``z`` at
 # the bottom cell centers.
 #
-# In this example we'd like to have a small Gaussian hill at the center of the domain.
+# In this example we'd like to have a Gaussian hill at the center of the domain.
 #
 # ```math
 # h(x) = -H + h_0 \exp(-x^2 / 2σ^2)
 # ```
 
-h₀ = 250 # m
+h₀ = 250meters
 width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
-bottom(x, y) = - H + hill(x)
+bottom(x) = - H + hill(x)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
@@ -59,7 +59,7 @@ fig = Figure(resolution = (700, 200))
 ax = Axis(fig[1, 1],
           xlabel="x [km]",
           ylabel="z [m]",
-          limits=((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz, -4grid.Lz/5)))
+          limits=((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz, 0)))
 
 lines!(ax, xC/1e3, bottom_boundary)
 
