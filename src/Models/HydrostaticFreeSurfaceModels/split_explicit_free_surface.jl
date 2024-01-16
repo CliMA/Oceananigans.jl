@@ -260,11 +260,10 @@ struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
 end
-    
-function FixedTimeStepSize(FT::DataType = Float64;
-                           cfl = 0.7, 
-                           grid,
-                           averaging_kernel = averaging_shape_function, 
+
+function FixedTimeStepSize(grid;
+                           cfl = 0.7,
+                           averaging_kernel = averaging_shape_function,
                            gravitational_acceleration = g_Earth)
 
     Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
@@ -273,7 +272,7 @@ function FixedTimeStepSize(FT::DataType = Float64;
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
 
-    Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
+    Δt_barotropic = convert(eltype(grid), cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
@@ -314,7 +313,7 @@ function SplitExplicitSettings(FT::DataType=Float64;
         if isnothing(grid)
             throw(ArgumentError("Need to specify the grid kwarg to calculate the barotropic substeps from the cfl"))
         end
-        substepping = FixedTimeStepSize(FT; cfl, grid, gravitational_acceleration, averaging_kernel)
+        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
         if isnothing(fixed_Δt)
             return SplitExplicitSettings(substepping, timestepper)
         else
