@@ -54,7 +54,7 @@ function test_jld2_file_splitting(arch)
                           schedule = IterationInterval(1),
                           init = fake_bc_init,
                           including = [:grid],
-                          array_type = Array{Float64},
+                          type = Float32,
                           with_halos = true,
                           max_filesize = 200KiB,
                           overwrite_existing = true)

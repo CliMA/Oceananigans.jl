@@ -167,8 +167,6 @@ end
 
 output_averaging_schedule(output) = nothing # fallback
 
-show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
-
 """
     auto_extension(filename, ext)                                                             
 
