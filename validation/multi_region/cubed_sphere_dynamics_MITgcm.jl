@@ -12,7 +12,7 @@ using Oceananigans, Printf
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Grids: φnode, λnode, halo_size, total_size
+using Oceananigans.Grids: φnode, λnode, xnode, ynode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
@@ -155,11 +155,25 @@ end
 u = XFaceField(grid)
 v = YFaceField(grid)
 
+#=
+c₁ = 1
+c₂ = 2
+=#
+
 for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
         #=
+        # Debugging option 1
         u[region][i, j, k] = 1
         v[region][i, j, k] = 2 
+        =#
+        #=
+        # Debugging option 2
+        x = xnode(i, j, k, grid[region], Center(), Face(), Center())
+        y = ynode(i, j, k, grid[region], Face(), Center(), Center())
+        u[region][i, j, k] = c₁ * y
+        v[region][i, j, k] = c₂ * x
+        # Specify v[region][i, j, k] = 0 for further debugging and turn off visualization of the initial meridional velocity field.
         =#
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
