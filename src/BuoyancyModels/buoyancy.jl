@@ -16,17 +16,16 @@ Example
 =======
 
 ```jldoctest
-
 using Oceananigans
 
 grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1))
 
 θ = 45 # degrees
-g̃ = (0, sind(θ), cosd(θ));
+g̃ = (0, -sind(θ), -cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
-model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 
 # output
 
