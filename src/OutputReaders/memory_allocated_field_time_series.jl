@@ -45,3 +45,8 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
 
     return nothing
 end
+
+function fill_halo_regions!(fts::InMemoryFieldTimeSeries)
+    fts_tuple = Tuple(fts[n] for n in 1:length(fts.times))
+    return fill_halo_regions!(fts_tuple)
+end

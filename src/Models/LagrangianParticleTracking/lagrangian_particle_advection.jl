@@ -1,5 +1,6 @@
 using Oceananigans.Utils: instantiate 
 using Oceananigans.Models: total_velocities
+using Oceananigans.Grids: AbstractGrid
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -43,7 +44,10 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     i = Base.unsafe_trunc(Int, i)
     j = Base.unsafe_trunc(Int, j)
     k = Base.unsafe_trunc(Int, k)
-   
+    
+    # We didn't hit the boundaries
+    x⁺, y⁺, z⁺ = x, y, z
+    
     if immersed_cell(i, j, k, grid)
         # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
@@ -133,7 +137,10 @@ end
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
+@inline x_metric(i, j, grid::ImmersedBoundaryGrid) = x_metric(i, j, grid.underlying_grid)
+@inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
+
+@kernel function _advect_particles!(particles, restitution, grid::AbstractGrid, Δt, velocities) 
     p = @index(Global)
 
     @inbounds begin

@@ -37,7 +37,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # boundaries of the domain
     compute_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
                                                          model.architecture,
-                                                         model.velocities,
+                                                         retrieve_velocity(model.velocities, model.clock),
                                                          model.free_surface,
                                                          model.tracers,
                                                          model.clock,
@@ -80,7 +80,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
     arch = model.architecture
     grid = model.grid
 
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; only_active_cells)
+    compute_hydrostatic_momentum_tendencies!(model, retrieve_velocity(model.velocities, model.clock), kernel_parameters; only_active_cells)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
@@ -102,7 +102,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
-                     model.velocities,
+                     retrieve_velocity(model.velocities, model.clock),
                      model.free_surface,
                      model.tracers,
                      top_tracer_bcs,

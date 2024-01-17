@@ -18,6 +18,8 @@ using Oceananigans.Fields: boundary_conditions
 import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
 
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+
 using Dates: AbstractTime
 
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}

@@ -34,7 +34,7 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     return sim, jld2_filepath, nc_filepath
 end
 
-function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false)
+function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false, immersed=false)
     topo = (Periodic, Periodic, Bounded)
 
     Nx = Ny = Nz = 5
@@ -47,6 +47,11 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
 
     grid = RectilinearGrid(arch; topology=topo, size=(Nx, Ny, Nz),
                            x=(-1, 1), y=(-1, 1), z)
+
+    if immersed 
+        bottom(x, y) = (x < 0.5 && x > -0.5) && (y < 0.5 && y > -0.5) ? 1.0 : -2.0
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    end
 
     P = 10
     
@@ -281,5 +286,8 @@ end
 
         @info "  Testing stretched grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
         run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=true)
+
+        @info "  Testing stretched grid Lagrangian particle tracking [$(typeof(arch)), $timestepper]..."
+        run_simple_particle_tracking_tests(arch, timestepper; immersed=true)
     end
 end
