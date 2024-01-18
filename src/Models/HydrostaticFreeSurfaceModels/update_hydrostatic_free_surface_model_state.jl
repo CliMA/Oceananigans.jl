@@ -35,238 +35,87 @@ function fill_velocity_halos!(velocities)
     grid = u.grid
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
+    plmn = -1
+#- will not work if (Nx,Hx) and (Ny,Hy) are not equal
+    Nc = Nx ; Hc = Hx
 
+#=
     for passes in 1:3
         fill_halo_regions!(u)
         fill_halo_regions!(v)
         @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
     end
+=#
 
-    for region in [1, 3, 5]
+    #-- first pass: only take interior-point value:
+    for region in 1:6
 
-        region_south = mod(region + 4, 6) + 1
-        region_east = region + 1
-        region_north = mod(region + 2, 6)
-        region_west = mod(region + 4, 6)
-
-        # Northwest corner region
+      if mod(region,2) == 1
+        #- odd face number (1,3,5):
+        region_E = mod(region + 0, 6) + 1
+        region_N = mod(region + 1, 6) + 1
+        region_W = mod(region + 3, 6) + 1
+        region_S = mod(region + 4, 6) + 1
         for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, Ny+1] to [1, Ny+Hy].
-            # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
-            u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
-            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            if Hy > 1
-                v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
-            end
-            # Local x direction
-            # (a) Proceed from [1-Hx, Ny] to [0, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
-            u[region][1-Hx:0, Ny+1, k] .= reverse(-u[region_north][2:Hx+1, Ny, k])
-            v[region][1-Hx:0, Ny+1, k] .= -u[region_west][1, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = -u[region_west][2, Ny, k]
-            u_CW = -u[region_north][2, Ny, k]
-            u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region][1, Ny, k] 
-            v_CW = -u[region_west][1, Ny, k]
-            v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
+        #- E + W Halo for U:
+            u[region][Nc+1:Nc+Hc, 1:Nc, k] .=     u[region_E][1:Hc, 1:Nc, k]
+            u[region][1-Hc:0, 1:Nc, k] .= reverse(v[region_W][1:Nc, Nc+1-Hc:Nc, k],dims=1)'
+        #- N + S Halo for V:
+            v[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(u[region_N][1:Hc, 1:Nc, k],dims=2)'
+            v[region][1:Nc, 1-Hc:0, k] .=             v[region_S][1:Nc, Nc+1-Hc:Nc, k]
         end
-
-        # Northeast corner region
+      else
+        #- even face number (2,4,6):
+        region_E = mod(region + 1, 6) + 1
+        region_N = mod(region + 0, 6) + 1
+        region_W = mod(region + 4, 6) + 1
+        region_S = mod(region + 3, 6) + 1
         for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, Ny+1] to [Nx, Ny+Hy].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, Ny+1] to [Nx+1, Ny+Hy].
-            u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
-            v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
-            # Local x direction
-            # (a) Proceed from [Nx+1, Ny] to [Nx+Hx, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [Nx+1, Ny+1] to [Nx+Hx, Ny+1].
-            u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_north][1:Hx, 1, k]
-            v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][1:Hx, 1, k]
-            # Corner point operation
-            u_CCW = u[region_north][1, 1, k]
-            u_CW = -v[region_north][1, 1, k]
-            u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                       operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points in ["default", "CW"] ? u_CW : nothing
-            v_CCW = v[region_north][1, 1, k]
-            v_CW = u[region_east][1, Ny, k]
-            v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                       operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points in ["default", "CW"] ? v_CW : nothing
+        #- E + W Halo for U:
+            u[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(v[region_E][1:Nc, 1:Hc, k],dims=1)'
+            u[region][1-Hc:0, 1:Nc, k] .=             u[region_W][Nc+1-Hc:Nc,  1:Nc, k]
+        #- N + S Halo for V:
+            v[region][1:Nc, Nc+1:Nc+Hc, k] .=     v[region_N][1:Nc, 1:Hc, k]
+            v[region][1:Nc, 1-Hc:0, k] .= reverse(u[region_S][Nc+1-Hc:Nc, 1:Nc, k],dims=2)'
         end
+      end
 
-        # Southwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, 1-Hy] to [1, 0].
-            # (b) Shift left by one index in the first dimension to proceed from [0, 1-Hy] to [0, 0].
-            u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
-            v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
-            # Local x direction
-            # (a) Proceed from [1-Hx, 1] to [0, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [1-Hx, 0] to [0, 0].
-            u[region][1-Hx:0, 0, k] .= v[region_south][1, Ny-Hx+1:Ny, k]
-            v[region][1-Hx:0, 0, k] .= -u[region_south][2, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = v[region_south][1, Ny, k]
-            u_CW = u[region_west][Nx, Ny, k]
-            u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                 operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points in ["default", "CW"] ? u_CW : nothing
-            v_CCW = -u[region_south][2, Ny, k]
-            v_CW = v[region_west][Nx, Ny, k]
-            v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                 operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points in ["default", "CW"] ? v_CW : nothing
-        end
-
-        # Southeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, 1-Hy] to [Nx, 0].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, 1-Hy] to [Nx+1, 0].
-            u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
-            v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
-            # Local x direction
-            # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
-            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            if Hx > 1
-                u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
-            end
-            v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = v[region_east][1, 1, k]
-            u_CW = -v[region][Nx, 1, k]
-            u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region_east][2, 1, k]
-            v_CW = u[region_south][Nx, Ny, k]
-            v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
-        end
     end
-    
-    for region in [2, 4, 6]
-        region_south = mod(region + 3, 6) + 1
-        region_east = mod(region, 6) + 2
-        region_north = mod(region, 6) + 1
-        region_west = region - 1
 
-        # Northwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, Ny+1] to [1, Ny+Hy].
-            # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
-            u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
-            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            if Hy > 1
-                v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
-            end
-            # Local x direction
-            # (a) Proceed from [1-Hx, Ny] to [0, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
-            u[region][1-Hx:0, Ny+1, k] .= reverse(-v[region_north][1, 2:Hx+1, k])
-            v[region][1-Hx:0, Ny+1, k] .= reverse(u[region_north][1, 1:Hx, k])
-            # Corner point operation
-            u_CCW = v[region_west][Nx, Ny, k]
-            u_CW = -v[region_north][1, 2, k]
-            u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region][1, Ny, k]
-            v_CW = u[region_north][1, 1, k]
-            v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing    
-        end
+    #-- Second pass: fill the remaining halo:
+    # iMn = 1 ; iMx = Nc+1     #- filling over this range is neccessary
+    iMn = 2-Hc ; iMx = Nc+Hc   #- this will also fill corner halos with useless values
+    for region in 1:6
 
-        # Northeast corner region
+      if mod(region,2) == 1
+        #- odd face number (1,3,5):
+        region_E = mod(region + 0, 6) + 1
+        region_N = mod(region + 1, 6) + 1
+        region_W = mod(region + 3, 6) + 1
+        region_S = mod(region + 4, 6) + 1
         for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, Ny+1] to [Nx, Ny+Hy].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, Ny+1] to [Nx+1, Ny+Hy].
-            u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
-            v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
-            # Local x direction
-            # (a) Proceed from [Nx+1, Ny] to [Nx+Hx, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [Nx+1, Ny+1] to [Nx+Hx, Ny+1].
-            u[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][Nx, 1:Hx, k]
-            v[region][Nx+1:Nx+Hx, Ny+1, k] .= -u[region_east][1, 1:Hx, k]
-            # Corner point operation
-            u_CCW = v[region_north][Nx, 1, k]
-            u_CW = u[region_east][1, 1, k]
-            u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                       operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points in ["default", "CW"] ? u_CW : nothing
-            v_CCW = -u[region_east][1, 1, k]
-            v_CW = v[region_east][1, 1, k]
-            v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                       operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points in ["default", "CW"] ? v_CW : nothing
+        #- N + S Halo for U:
+            u[region][iMn:iMx, Nc+1:Nc+Hc, k] .= reverse(v[region_N][1:Hc, iMn:iMx, k],dims=2)'*plmn
+            u[region][iMn:iMx, 1-Hc:0, k] .=             u[region_S][iMn:iMx, Nc+1-Hc:Nc, k]
+        #- E + W Halo for V:
+            v[region][Nc+1:Nc+Hc, iMn:iMx, k] .=     v[region_E][1:Hc, iMn:iMx, k]
+            v[region][1-Hc:0, iMn:iMx, k] .= reverse(u[region_W][iMn:iMx, Nc+1-Hc:Nc, k],dims=1)'*plmn
         end
-        
-        # Southwest corner region
+      else
+        #- even face number (2,4,6):
+        region_E = mod(region + 1, 6) + 1
+        region_N = mod(region + 0, 6) + 1
+        region_W = mod(region + 4, 6) + 1
+        region_S = mod(region + 3, 6) + 1
         for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, 1-Hy] to [1, 0].
-            # (b) Shift left by one index in the first dimension to proceed from [0, 1-Hy] to [0, 0].
-            u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
-            v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
-            # Local x direction
-            # (a) Proceed from [1-Hx, 1] to [0, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [1-Hx, 0] to [0, 0].
-            u[region][1-Hx:0, 0, k] .= u[region_south][Nx-Hx+1:Nx, Ny, k]
-            v[region][1-Hx:0, 0, k] .= v[region_south][Nx-Hx+1:Nx, Ny, k]
-            # Corner point operation
-            u_CCW = u[region_south][Nx, Ny, k]
-            u_CW = -v[region_west][Nx, 2, k]
-            u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                 operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points in ["default", "CW"] ? u_CW : nothing
-            v_CCW = v[region_south][Nx, Ny, k]
-            v_CW = u[region_west][Nx, 1, k]
-            v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                 operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points in ["default", "CW"] ? v_CW : nothing
+        #- N + S Halo for U:
+            u[region][iMn:iMx, Nc+1:Nc+Hc, k] .=     u[region_N][iMn:iMx, 1:Hc, k]
+            u[region][iMn:iMx, 1-Hc:0, k] .= reverse(v[region_S][Nc+1-Hc:Nc, iMn:iMx, k],dims=2)'*plmn
+        #- E + W Halo for V:
+            v[region][Nc+1:Nc+Hc, iMn:iMx, k] .= reverse(u[region_E][iMn:iMx, 1:Hc, k],dims=1)'*plmn
+            v[region][1-Hc:0, iMn:iMx, k] .=             v[region_W][Nc+1-Hc:Nc, iMn:iMx, k]
         end
-        
-        # Southeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, 1-Hy] to [Nx, 0].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, 1-Hy] to [Nx+1, 0].
-            u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
-            v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
-            # Local x direction
-            # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
-            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            if Hx > 1 
-                u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
-            end
-            v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
-            # Corner point operation
-            u_CCW = -v[region_south][Nx, 1, k]
-            u_CW = -v[region][Nx, 1, k]
-            u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -v[region_east][Nx, 2, k]
-            v_CW = -v[region_south][Nx, 2, k]
-            v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points in ["default", "CCW"] ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
-        end        
+      end
     end
 
     return nothing
