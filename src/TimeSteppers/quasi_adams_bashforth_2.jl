@@ -62,6 +62,8 @@ end
 ##### Time steppping
 #####
 
+using Oceananigans.Advection: correct_advection!
+
 """
     time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
 
@@ -96,6 +98,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
+    correct_advection!(model, Δt)
+    
     tick!(model.clock, Δt)
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, Δt)
