@@ -36,7 +36,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
@@ -84,3 +83,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     end
     return nothing
 end
+
+import Oceananigans.Advection: correct_mpdata_momentum!
+
+correct_mpdata_momentum!(model::HydrostaticFreeSurfaceModel, Δt) = 
+    correct_mpdata_momentum!(model.velocities, model.grid, Δt, model.advection.momentum, 2)

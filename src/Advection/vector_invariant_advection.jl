@@ -111,9 +111,9 @@ Vector Invariant, Dimension-by-dimension reconstruction
 function VectorInvariant(; vorticity_scheme = EnstrophyConserving(), 
                            vorticity_stencil = VelocityStencil(),
                            vertical_scheme = EnergyConserving(),
-                           kinetic_energy_gradient_scheme = vertical_scheme,
                            divergence_scheme = vertical_scheme,
-                           upwinding  = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
+                           kinetic_energy_gradient_scheme = divergence_scheme,
+                           upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                            multi_dimensional_stencil = false)
 
     N = required_halo_size(vorticity_scheme)
@@ -132,7 +132,6 @@ end
 const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
 
 #                                                 VectorInvariant{N,     FT,    M,     Z (vorticity scheme)
-const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
 const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:Any, <:EnergyConserving}
 const VectorInvariantEnstrophyConserving        = VectorInvariant{<:Any, <:Any, <:Any, <:EnstrophyConserving}
 const VectorInvariantUpwindVorticity            = VectorInvariant{<:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
@@ -145,10 +144,10 @@ const VectorInvariantKEGradientEnergyConserving = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantKineticEnergyUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 
 
-#                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,    V,                                     K,     D,     U (upwinding)
-const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:CrossAndSelfUpwinding}
-const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:OnlySelfUpwinding}
-const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:Any, <:Any, <:VelocityUpwinding}
+#                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,     V,     K,     D,                                     U (upwinding)
+const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
+const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
+const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:VelocityUpwinding}
 
 Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
@@ -167,10 +166,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 ##### Convenience for WENO Vector Invariant
 #####
 
-#                           VectorInvariant{N,     FT,    M,     Z (vorticity scheme),      ZS,    V (vertical scheme),      K (kinetic energy gradient scheme)
-const WENOVectorInvariant = VectorInvariant{<:Any, <:Any, <:Any, <:WENO, <:Any, <:WENO, <:WENO}
-
-nothing_to_default(user_value, default) = isnothing(user_value) ? default : user_value
+nothing_to_default(user_value; default) = isnothing(user_value) ? default : user_value
 
 """
     function WENOVectorInvariant(; upwinding = nothing,
@@ -189,23 +185,23 @@ function WENOVectorInvariant(; upwinding = nothing,
                                weno_kw...)
 
     if isnothing(order) # apply global defaults
-        vorticity_order               = nothing_to_default(vorticity_order, default=9)
-        vertical_order                = nothing_to_default(vertical_order, default=5)
-        divergence_order              = nothing_to_default(divergence_order, default=5)
-        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default=5)
+        vorticity_order               = nothing_to_default(vorticity_order,  default = 9)
+        vertical_order                = nothing_to_default(vertical_order,   default = 5)
+        divergence_order              = nothing_to_default(divergence_order, default = 5)
+        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = 5)
     else # apply user supplied `order` unless overridden by more specific value
-        vorticity_order               = nothing_to_default(vorticity_order, default=order)
-        vertical_order                = nothing_to_default(vertical_order, default=order)
-        divergence_order              = nothing_to_default(divergence_order, default=order)
-        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default=order)
+        vorticity_order               = nothing_to_default(vorticity_order,  default = order)
+        vertical_order                = nothing_to_default(vertical_order,   default = order)
+        divergence_order              = nothing_to_default(divergence_order, default = order)
+        kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(; order=vorticity_order, weno_kw...)
-    vertical_scheme                = WENO(; order=vertical_order, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(; order=kinetic_energy_gradient_order, weno_kw...)
-    divergence_scheme              = WENO(; order=divergence_order, weno_kw...)
+    vorticity_scheme               = WENO(; order = vorticity_order, weno_kw...)
+    vertical_scheme                = WENO(; order = vertical_order, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(; order = kinetic_energy_gradient_order, weno_kw...)
+    divergence_scheme              = WENO(; order = divergence_order, weno_kw...)
 
-    default_upwinding = OnlySelfUpwinding(cross_scheme=divergence_scheme)
+    default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
     schemes = (vorticity_scheme, vertical_scheme, kinetic_energy_gradient_scheme, divergence_scheme)

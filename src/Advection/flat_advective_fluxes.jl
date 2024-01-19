@@ -33,6 +33,10 @@ for side in (:left_biased, :right_biased, :symmetric)
             @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ, args...)           = @inbounds ψ[i, j, k]
             @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
             @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
+        
+            @inline $interp_function(i, j, k, grid::$Grid, scheme::MPData, ψ, args...)           = @inbounds ψ[i, j, k]
+            @inline $interp_function(i, j, k, grid::$Grid, scheme::MPData, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+            @inline $interp_function(i, j, k, grid::$Grid, scheme::MPData, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
         end
     end
 end

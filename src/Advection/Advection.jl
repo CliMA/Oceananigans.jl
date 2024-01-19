@@ -19,7 +19,7 @@ export
     AdvectionScheme,
     Centered, CenteredSecondOrder, CenteredFourthOrder,
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
-    WENO, WENOThirdOrder, WENOFifthOrder,
+    WENO, WENOThirdOrder, WENOFifthOrder, MPData,
     VectorInvariant, WENOVectorInvariant,
     EnergyConserving,
     EnstrophyConserving
@@ -59,6 +59,8 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
+
+include("mpdata_advection.jl")
 
 include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")

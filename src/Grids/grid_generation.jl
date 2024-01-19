@@ -13,6 +13,7 @@ get_face_node(coord::Function, i) = coord(i)
 get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
+
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 

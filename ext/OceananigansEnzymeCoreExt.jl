@@ -102,19 +102,19 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 end
 
 function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWidth{1},
-                                                func::EnzymeCore.Const{typeof(Oceananigans.Utils.launch!)},
-                                                 ::Type{EnzymeCore.Const{Nothing}},
-                                                 tape,
-                                                 arch,
-                                                 grid,
-                                                 workspec,
-                                                 kernel!,
-                                                 kernel_args...;
-                                                 include_right_boundaries = false,
-                                                 reduced_dimensions = (),
-                                                 location = nothing,
-                                                 only_active_cells = nothing,
-                                                 kwargs...)
+                                        func::EnzymeCore.Const{typeof(Oceananigans.Utils.launch!)},
+                                         ::Type{EnzymeCore.Const{Nothing}},
+                                         tape,
+                                         arch,
+                                         grid,
+                                         workspec,
+                                         kernel!,
+                                         kernel_args...;
+                                         include_right_boundaries = false,
+                                         reduced_dimensions = (),
+                                         location = nothing,
+                                         only_active_cells = nothing,
+                                         kwargs...)
 
   subrets = if tape !== nothing
     duploop, subtape = tape

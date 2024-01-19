@@ -37,7 +37,7 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 const HOADV = Union{WENO, 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
-const LOADV = Union{UpwindBiased{1}, Centered{1}}
+const LOADV = Union{UpwindBiased{1}, Centered{1}, MPData}
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
