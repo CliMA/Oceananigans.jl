@@ -60,6 +60,8 @@ const PartialMPData = MPData{<:Any, <:Any, <:AbstractAdvectionScheme}
 @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
 
 # second to Nth correction pass, applied after the tracer/momentum update
+# This should probably go in the Models module since it is different for 
+# hydrostatic and nonhydrostatic and should be part of `update_state!`
 function correct_advection!(model, Δt)
     grid = model.grid
     velocities = model.velocities
