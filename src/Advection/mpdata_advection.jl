@@ -3,18 +3,26 @@ using Oceananigans.Fields
 using Oceananigans.Fields: VelocityFields, location
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Utils
+using Adapt 
 
 struct MPData{FT, I, A} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
     velocities :: A
     previous_velocities :: A
     iterations :: I
+
+    MPData{FT}(v::A, pv::A, i::I) = new{FT, A, I}(v, pv, i)
 end
 
 function MPData(grid; iterations = nothing)
     velocities = VelocityFields(grid)
     previous_velocities = VelocityFields(grid)
-    return MPData{eltype(grid), typeof(iterations), typeof(velocities)}(velocities, previous_velocities, iterations)
+    return MPData{eltype(grid)}(velocities, previous_velocities, iterations)
 end
+
+Adapt.adapt_structure(to, scheme::MPData{FT}) where FT = 
+    MPData{FT}(Adapt.adapt(to, scheme.velocities),
+               Adapt.adapt(to, scheme.previous_velocities))
+               Adapt.adapt(to, scheme.iterations),
 
 # Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
 # which has only two passes

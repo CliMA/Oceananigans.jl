@@ -74,7 +74,7 @@ grid = RectilinearGrid(size = (64, 64),
                           x = (-1, 1), 
                           y = (-1, 1))
 
-advection = Oceananigans.MPData(grid; iterations = 3) # WENO(; order = 9) # 
+advection = Oceananigans.MPData(grid; iterations = nothing) # WENO(; order = 9) # 
 
 model = NonhydrostaticModel(; grid, 
                               advection)
