@@ -3,8 +3,7 @@ module DistributedComputations
 export
     Distributed, Partition, Equal, Fractional, 
     child_architecture, reconstruct_global_grid, 
-    inject_halo_communication_boundary_conditions,
-    
+    inject_halo_communication_boundary_conditions
 
 using MPI
 
