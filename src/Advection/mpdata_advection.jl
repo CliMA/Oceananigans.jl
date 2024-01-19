@@ -6,10 +6,11 @@ using Oceananigans.Utils
 using Adapt 
 
 struct MPData{FT, I, A, V} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
-    velocities :: A
-    previous_velocities :: A
-    vertical_advection :: V
-    iterations :: I
+           velocities :: A # MPData antidiffusive pseudo-velocities 
+  previous_velocities :: A # Non corrected velocities
+   vertical_advection :: V # if not a nothing, the advection scheme used in the vertical direction
+           iterations :: I # number of mpdata passes, if nothing an "optimal" two-pass scheme is used
+    
     MPData{FT}(v::A, pv::A, va::V, i::I) where {FT, A, V, I} = new{FT, I, A, V}(v, pv, va, i)
 end
 
@@ -27,13 +28,13 @@ Adapt.adapt_structure(to, scheme::MPData{FT}) where FT =
                Adapt.adapt(to, scheme.iterations))
 
 # Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
-# which has only two passes 
+# only two passes with a pseudovelocity calculated from compounding infinite passes
 const OptimalMPData = MPData{<:Any, <:Nothing}
 
 # Different scheme in the vertical direction
 const PartialMPData = MPData{<:Any, <:Any, <:AbstractAdvectionScheme}
 
-# Basically just first order upwind (also called the "donor cell" scheme)
+# an mpdata pass is equivalent to first order upwind (called the "donor cell" scheme in mpdata literature)
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::MPData, c, args...) = ℑxᶠᵃᵃ(i, j, k, grid, c, args...)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, c, args...) = ℑyᵃᶠᵃ(i, j, k, grid, c, args...)
 @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, c, args...) = ℑzᵃᵃᶠ(i, j, k, grid, c, args...)
@@ -58,6 +59,7 @@ const PartialMPData = MPData{<:Any, <:Any, <:AbstractAdvectionScheme}
 @inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
 @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
 
+# second to Nth correction pass, applied after the tracer/momentum update
 function correct_advection!(model, Δt)
     grid = model.grid
     velocities = model.velocities
@@ -75,6 +77,7 @@ end
 
 correct_mpdata_momentum!(velocities, grid, Δt, scheme) = nothing
 
+# we need to save the previous velocities to ensure a correct mpdata pass
 function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData)
     pseudo_velocities = scheme.velocities
     previous_velocities = scheme.previous_velocities
@@ -112,6 +115,9 @@ function correct_mpdata_tracer!(field, grid, Δt, velocities, scheme::MPData)
     return nothing
 end
 
+# The optimal MPData scheme uses only one additional pass
+# (with a more complicated antidiffusive pseudo-velocity
+# equivalent to 3/4 passes in the standard MPData)
 function mpdata_iterate!(field, grid, scheme::OptimalMPData, pseudo_velocities, Δt, divUc)
 
     fill_halo_regions!(field)
@@ -125,6 +131,8 @@ function mpdata_iterate!(field, grid, scheme::OptimalMPData, pseudo_velocities, 
     return nothing
 end
 
+# Standard MPData iterates to cancel subsequent error order. As a rule of thumb,
+# the scheme converges at the third/fourth pass
 function mpdata_iterate!(field, grid, scheme, pseudo_velocities, Δt, divUc)
 
     for iter in 1:scheme.iterations
@@ -147,9 +155,9 @@ uᵖ = abs(u)(1 - abs(u)) A - u v B - u w C
 vᵖ = abs(v)(1 - abs(v)) B - u v A - v w C
 wᵖ = abs(w)(1 - abs(w)) C - u w A - v w B
 
-where A = Δx / 2ψ ∂x(ψ)
-and   B = Δy / 2ψ ∂y(ψ)
-and   C = Δz / 2ψ ∂z(ψ)
+where A = Δx / 2ψ ∂x(ψ) is updated between iterations
+and   B = Δy / 2ψ ∂y(ψ) is updated between iterations
+and   C = Δz / 2ψ ∂z(ψ) is updated between iterations
 """
 @kernel function _calculate_mpdata_velocities!(velocities, grid, ψ, Δt)
     i, j, k = @index(Global, NTuple)
@@ -173,8 +181,9 @@ uᵖ = ∑₁∞ abs(uᴾ)(1 - abs(uᴾ)) A - uᴾ vᴾ B - uᵖ wᵖ C
 vᵖ = ∑₁∞ abs(vᴾ)(1 - abs(vᴾ)) B - uᴾ vᴾ A - vᵖ wᵖ C
 wᵖ = ∑₁∞ abs(wᴾ)(1 - abs(wᴾ)) C - uᴾ wᴾ A - vᵖ wᵖ B
 
-where A = Δx / 2ψ ∂x(ψ) stays fixed
-and   B = Δy / 2ψ ∂y(ψ) stays fixed
+where A = Δx / 2ψ ∂x(ψ) remaines fixed
+and   B = Δy / 2ψ ∂y(ψ) remaines fixed
+and   C = Δz / 2ψ ∂z(ψ) remaines fixed
 """
 @kernel function _calculate_optimal_mpdata_velocities!(velocities, grid, ψ, Δt)
     i, j, k = @index(Global, NTuple)
@@ -350,6 +359,12 @@ end
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
                                     δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection.vertical_advection, U[3], v))
+end
+
+@inline function div_𝐯w(i, j, k, grid, advection::PartialMPData, U, w)
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
+                                    δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection.vertical_advection, U[3], w))
 end
 
 @inline function div_Uc(i, j, k, grid, advection::PartialMPData, U, c)
