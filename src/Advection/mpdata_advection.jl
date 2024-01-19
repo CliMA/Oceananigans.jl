@@ -5,24 +5,25 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Utils
 using Adapt 
 
-struct MPData{FT, I, A} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
+struct MPData{FT, I, A, V} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
     velocities :: A
     previous_velocities :: A
+    vertical_advection :: V
     iterations :: I
-
-    MPData{FT}(v::A, pv::A, i::I) where {FT, A, I} = new{FT, A, I}(v, pv, i)
+    MPData{FT}(v::A, pv::A, va::V, i::I) where {FT, A, V, I} = new{FT, I, A, V}(v, pv, va, i)
 end
 
 function MPData(grid; iterations = nothing)
     velocities = VelocityFields(grid)
     previous_velocities = VelocityFields(grid)
-    return MPData{eltype(grid)}(velocities, previous_velocities, iterations)
+    return MPData{eltype(grid)}(velocities, previous_velocities, Centered(), iterations)
 end
 
 Adapt.adapt_structure(to, scheme::MPData{FT}) where FT = 
     MPData{FT}(Adapt.adapt(to, scheme.velocities),
-               Adapt.adapt(to, scheme.previous_velocities))
-               Adapt.adapt(to, scheme.iterations),
+               Adapt.adapt(to, scheme.previous_velocities),
+               Adapt.adapt(to, scheme.vertical_advection),
+               Adapt.adapt(to, scheme.iterations))
 
 # Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
 # which has only two passes
@@ -290,11 +291,11 @@ end
 @inline function div_𝐯u(i, j, k, grid, advection::MPData, U, u)
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection,  U[1], u) +
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection,  U[2], u) +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, Centered(), U[3], u))
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection.vertical_advection, U[3], u))
 end
 
 @inline function div_𝐯v(i, j, k, grid, advection::MPData, U, v)
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection,  U[1], v) +
                                     δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection,  U[2], v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, Centered(), U[3], v))
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection.vertical_advection, U[3], v))
 end
