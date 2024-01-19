@@ -84,9 +84,15 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note that
+Implementation follows \citet{Press1992}; § 2.4. Note that
 a slightly different notation from Press et al. is used for indexing the off-diagonal
 elements; see [`BatchedTridiagonalSolver`](@ref).
+
+Reference
+=========
+
+Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian, P. (1992).
+    Numerical recipes: the art of scientific computing. Cambridge University Press
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
