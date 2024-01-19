@@ -40,7 +40,7 @@ grid = RectilinearGrid(size = (64, 64),
                           x = (-1, 1), 
                           y = (-1, 1))
 
-tracer_advection = Oceananigans.MPData(grid; iterations = 2) #WENO(; order = 9)
+tracer_advection = Oceananigans.MPData(grid; iterations = 3) #WENO(; order = 9)
 
 U = 1
 V = 1
@@ -63,6 +63,6 @@ CFL = 0.2
 
 Δt = CFL / (U / Δx + V / Δy)
 
-simulation = Simulation(model; Δt, stop_time = 12) #stop_iteration = 5)
+simulation = Simulation(model; Δt, stop_time = 12) 
 
 run!(simulation)

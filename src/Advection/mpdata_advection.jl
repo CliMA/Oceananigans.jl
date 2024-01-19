@@ -1,9 +1,9 @@
 using Oceananigans.BoundaryConditions
-using Oceananigans.Fields: VelocityFields, location, CenterField, XFaceField, YFaceField
+using Oceananigans.Fields
+using Oceananigans.Fields: VelocityFields, location
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Utils
 
-# Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
 struct MPData{FT, I, A} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
     velocities :: A
     iterations :: I
@@ -14,6 +14,8 @@ function MPData(grid; iterations = nothing)
     return MPData{eltype(grid), typeof(iterations), typeof(velocities)}(velocities, iterations)
 end
 
+# Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
+# which has only two passes
 const OptimalMPData = MPData{<:Any, <:Nothing}
 
 # Basically just first order upwind (also called the "donor cell" scheme)
@@ -58,8 +60,8 @@ function correct_mpdata_advection!(field, grid, Δt, velocities, scheme::MPData)
     pseudo_velocities = scheme.velocities
     loc = location(field)
 
-    pseudo_velocities.u .= velocities.u
-    # pseudo_velocities.v .= velocities.v
+    set!(pseudo_velocities.u, velocities.u)
+    set!(pseudo_velocities.v, velocities.v)
 
     divUc = # "Extractor function
           loc === (Center, Center, Center) ? div_Uc :
@@ -77,23 +79,25 @@ function mpdata_iterate!(field, grid, scheme::OptimalMPData, pseudo_velocities, 
 
     fill_halo_regions!(field)
     launch!(architecture(grid), grid, :xyz, _calculate_optimal_mpdata_velocities!, 
-                             pseudo_velocities, grid, field, Δt)
+            pseudo_velocities, grid, field, Δt)
 
     fill_halo_regions!(pseudo_velocities)
-    launch!(architecture(grid), grid, :xyz, _update_tracer!, field, scheme, pseudo_velocities, grid, divUc, Δt) 
+    launch!(architecture(grid), grid, :xyz, _update_tracer!, field, 
+            scheme, pseudo_velocities, grid, divUc, Δt) 
 
     return nothing
 end
 
 function mpdata_iterate!(field, grid, scheme, pseudo_velocities, Δt, divUc)
 
-    for iter in scheme.iterations
+    for iter in 1:scheme.iterations
         fill_halo_regions!(field)
         launch!(architecture(grid), grid, :xyz, _calculate_mpdata_velocities!, 
-                                 pseudo_velocities, grid, field, Δt)
+                pseudo_velocities, grid, field, Δt)
 
         fill_halo_regions!(pseudo_velocities)
-        launch!(architecture(grid), grid, :xyz, _update_tracer!, field, scheme, pseudo_velocities, grid, divUc, Δt) 
+        launch!(architecture(grid), grid, :xyz, _update_tracer!, field, scheme, 
+                pseudo_velocities, grid, divUc, Δt) 
     end
 
     return nothing
@@ -102,82 +106,40 @@ end
 """ 
 Pseudo-velocities are calculated as:
 
-uᵖ = abs(u)(1 - abs(u)) A - 2f u v B
-vᵖ = abs(v)(1 - abs(v)) A - 2(1 - f) u v B
+uᵖ = abs(u)(1 - abs(u)) A - u v B
+vᵖ = abs(v)(1 - abs(v)) A - u v A
 
 where A = Δx / 2ψ ∂x(ψ)
 and   B = Δy / 2ψ ∂y(ψ)
 """
-
-@kernel function _calculate_mpdata_velocities!(pseudo_velocities, grid, ψ, Δt)
+@kernel function _calculate_mpdata_velocities!(velocities, grid, ψ, Δt)
     i, j, k = @index(Global, NTuple)
 
-    ψ₁ᶠᶜᶜ = 2 * ℑxᶠᵃᵃ(i, j, k, grid, ψ)
-    ψ₁ᶜᶠᶜ = 2 * ℑyᵃᶠᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶠᶜᶜ = δxᶠᵃᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶜᶠᶜ = δyᵃᶠᵃ(i, j, k, grid, ψ)
+    Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ = mpdata_auxiliaries(i, j, k, grid, ψ)
+    uᵖ, vᵖ, wᵖ = velocities
 
-    # Calculating A and B
-    @inbounds begin
-        ψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] + ψ[i, j-1, k] + ψ[i-1, j-1, k])
-        ψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] + ψ[i-1, j, k] + ψ[i-1, j-1, k])
-
-        Δψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] - ψ[i, j-1, k] - ψ[i-1, j-1, k])
-        Δψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] - ψ[i-1, j, k] - ψ[i-1, j-1, k])
-
-        Aᶠᶜᶜ = ifelse(abs(ψ₁ᶠᶜᶜ) > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, 0)
-        Bᶜᶠᶜ = ifelse(abs(ψ₁ᶜᶠᶜ) > 0, Δψ₁ᶜᶠᶜ / ψ₁ᶜᶠᶜ, 0)
-        Bᶠᶜᶜ = ifelse(abs(ψ₂ᶠᶜᶜ) > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, 0)
-        Aᶜᶠᶜ = ifelse(abs(ψ₂ᶜᶠᶜ) > 0, Δψ₂ᶜᶠᶜ / ψ₂ᶜᶠᶜ, 0)
-    end
-
-    uᵖ, vᵖ, wᵖ = pseudo_velocities
+    ξ, η = mpdata_pseudo_velocities(i, j, k, grid, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
 
     @inbounds begin
-        u_abs = abs(uᵖ[i, j, k])
-        v_abs = abs(vᵖ[i, j, k])
-        
-        Aₐᶠᶜᶜ = abs(Aᶠᶜᶜ)
-        Bₐᶠᶜᶜ = abs(Bᶠᶜᶜ)
-        Aₐᶜᶠᶜ = abs(Aᶜᶠᶜ)
-        Bₐᶜᶠᶜ = abs(Bᶜᶠᶜ)
-
-        u̅ᶠᶜᶜ = abs(uᵖ[i, j, k]) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
-        v̅ᶜᶠᶜ = abs(vᵖ[i, j, k]) * Δt / Δyᶜᶠᶜ(i, j, k, grid)  
-        u̅ᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶠᶜ(i, j, k, grid)
-        v̅ᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, vᵖ) * Δt / Δyᶠᶜᶜ(i, j, k, grid)  
-
-        ξ = u_abs * (1 - u̅ᶠᶜᶜ) * Aᶠᶜᶜ - uᵖ[i, j, k] * v̅ᶠᶜᶜ * Bᶠᶜᶜ
-        η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ[i, j, k] * u̅ᶜᶠᶜ * Aᶜᶠᶜ
-
         uᵖ[i, j, k] = min(u_abs, abs(ξ)) * sign(ξ)
         vᵖ[i, j, k] = min(v_abs, abs(η)) * sign(η)
     end 
 end
 
-@kernel function _calculate_optimal_mpdata_velocities!(pseudo_velocities, grid, ψ, Δt)
+""" 
+Pseudo-velocities are calculated as:
+
+uᵖ = ∑₁∞ abs(uᴾ)(1 - abs(uᴾ)) A - uᴾ vᴾ B
+vᵖ = ∑₁∞ abs(vᴾ)(1 - abs(vᴾ)) A - uᴾ vᴾ A
+
+where A = Δx / 2ψ ∂x(ψ) stays fixed
+and   B = Δy / 2ψ ∂y(ψ) stays fixed
+"""
+@kernel function _calculate_optimal_mpdata_velocities!(velocities, grid, ψ, Δt)
     i, j, k = @index(Global, NTuple)
 
-    ψ₁ᶠᶜᶜ = 2 * ℑxᶠᵃᵃ(i, j, k, grid, ψ)
-    ψ₁ᶜᶠᶜ = 2 * ℑyᵃᶠᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶠᶜᶜ = δxᶠᵃᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶜᶠᶜ = δyᵃᶠᵃ(i, j, k, grid, ψ)
-
-    # Calculating A and B
-    @inbounds begin
-        ψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] + ψ[i, j-1, k] + ψ[i-1, j-1, k])
-        ψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] + ψ[i-1, j, k] + ψ[i-1, j-1, k])
-
-        Δψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] - ψ[i, j-1, k] - ψ[i-1, j-1, k])
-        Δψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] - ψ[i-1, j, k] - ψ[i-1, j-1, k])
-
-        Aᶠᶜᶜ = ifelse(abs(ψ₁ᶠᶜᶜ) > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, 0)
-        Bᶜᶠᶜ = ifelse(abs(ψ₁ᶜᶠᶜ) > 0, Δψ₁ᶜᶠᶜ / ψ₁ᶜᶠᶜ, 0)
-        Bᶠᶜᶜ = ifelse(abs(ψ₂ᶠᶜᶜ) > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, 0)
-        Aᶜᶠᶜ = ifelse(abs(ψ₂ᶜᶠᶜ) > 0, Δψ₂ᶜᶠᶜ / ψ₂ᶜᶠᶜ, 0)
-    end
-
-    uᵖ, vᵖ, wᵖ = pseudo_velocities
+    uᵖ, vᵖ, wᵖ = velocities
+    Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ = mpdata_auxiliaries(i, j, k, grid, ψ)
 
     @inbounds begin
         u_abs = abs(uᵖ[i, j, k])
@@ -188,13 +150,7 @@ end
         Aₐᶜᶠᶜ = abs(Aᶜᶠᶜ)
         Bₐᶜᶠᶜ = abs(Bᶜᶠᶜ)
 
-        u̅ᶠᶜᶜ = abs(uᵖ[i, j, k]) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
-        v̅ᶜᶠᶜ = abs(vᵖ[i, j, k]) * Δt / Δyᶜᶠᶜ(i, j, k, grid)  
-        u̅ᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶠᶜ(i, j, k, grid)
-        v̅ᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, vᵖ) * Δt / Δyᶠᶜᶜ(i, j, k, grid)  
-
-        ξ = u_abs * (1 - u̅ᶠᶜᶜ) * Aᶠᶜᶜ - uᵖ[i, j, k] * v̅ᶠᶜᶜ * Bᶠᶜᶜ
-        η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ[i, j, k] * u̅ᶜᶠᶜ * Aᶜᶠᶜ
+        ξ, η = mpdata_pseudo_velocities(i, j, k, grid, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
 
         ξ *= Δt / Δxᶠᶜᶜ(i, j, k, grid)
         η *= Δt / Δyᶜᶠᶜ(i, j, k, grid)  
@@ -249,6 +205,48 @@ end
         uᵖ[i, j, k] = min(u_abs, abs(uᵖ[i, j, k])) * sign(uᵖ[i, j, k])
         vᵖ[i, j, k] = min(v_abs, abs(vᵖ[i, j, k])) * sign(vᵖ[i, j, k])
     end 
+end
+
+@inline function mpdata_auxiliaries(i, j, k, grid, ψ)
+
+    ψ₁ᶠᶜᶜ = 2 * ℑxᶠᵃᵃ(i, j, k, grid, ψ)
+    ψ₁ᶜᶠᶜ = 2 * ℑyᵃᶠᵃ(i, j, k, grid, ψ)
+    Δψ₁ᶠᶜᶜ = δxᶠᵃᵃ(i, j, k, grid, ψ)
+    Δψ₁ᶜᶠᶜ = δyᵃᶠᵃ(i, j, k, grid, ψ)
+
+    # Calculating A and B
+    @inbounds begin
+        ψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] + ψ[i, j-1, k] + ψ[i-1, j-1, k])
+        ψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] + ψ[i-1, j, k] + ψ[i-1, j-1, k])
+
+        Δψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] - ψ[i, j-1, k] - ψ[i-1, j-1, k])
+        Δψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] - ψ[i-1, j, k] - ψ[i-1, j-1, k])
+
+        Aᶠᶜᶜ = ifelse(abs(ψ₁ᶠᶜᶜ) > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, 0)
+        Bᶠᶜᶜ = ifelse(abs(ψ₂ᶠᶜᶜ) > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, 0)
+        Aᶜᶠᶜ = ifelse(abs(ψ₂ᶜᶠᶜ) > 0, Δψ₂ᶜᶠᶜ / ψ₂ᶜᶠᶜ, 0)
+        Bᶜᶠᶜ = ifelse(abs(ψ₁ᶜᶠᶜ) > 0, Δψ₁ᶜᶠᶜ / ψ₁ᶜᶠᶜ, 0)
+    end
+
+    return Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ
+end
+
+@inline function mpdata_pseudo_velocities(i, j, k, grid, U, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
+
+    uᴾ, vᴾ, _ = U
+
+    u_abs = abs(uᵖ[i, j, k])
+    v_abs = abs(vᵖ[i, j, k])
+
+    u̅ᶠᶜᶜ = abs(uᵖ[i, j, k]) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
+    v̅ᶜᶠᶜ = abs(vᵖ[i, j, k]) * Δt / Δyᶜᶠᶜ(i, j, k, grid)  
+    u̅ᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶠᶜ(i, j, k, grid)
+    v̅ᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, vᵖ) * Δt / Δyᶠᶜᶜ(i, j, k, grid)  
+
+    ξ = u_abs * (1 - u̅ᶠᶜᶜ) * Aᶠᶜᶜ - uᵖ[i, j, k] * v̅ᶠᶜᶜ * Bᶠᶜᶜ
+    η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ[i, j, k] * u̅ᶜᶠᶜ * Aᶜᶠᶜ
+
+    return ξ, η
 end
 
 @kernel function _update_tracer!(c, scheme, pseudo_velocities, grid, divUc, Δt)
