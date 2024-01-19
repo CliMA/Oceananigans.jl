@@ -327,25 +327,27 @@ end
 
     uᵖ, vᵖ, wᵖ = U
 
-    u_abs = abs(uᵖ[i, j, k])
-    v_abs = abs(vᵖ[i, j, k])
-    w_abs = abs(wᵖ[i, j, k])
+    @inbounds begin
+        u_abs = abs(uᵖ[i, j, k])
+        v_abs = abs(vᵖ[i, j, k])
+        w_abs = abs(wᵖ[i, j, k])
 
-    u̅ᶠᶜᶜ = abs(uᵖ[i, j, k]) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
-    v̅ᶜᶠᶜ = abs(vᵖ[i, j, k]) * Δt / Δyᶜᶠᶜ(i, j, k, grid)  
-    w̅ᶜᶜᶠ = abs(wᵖ[i, j, k]) * Δt / Δzᶜᶜᶠ(i, j, k, grid) 
+        u̅ᶠᶜᶜ = abs(uᵖ[i, j, k]) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
+        v̅ᶜᶠᶜ = abs(vᵖ[i, j, k]) * Δt / Δyᶜᶠᶜ(i, j, k, grid)  
+        w̅ᶜᶜᶠ = abs(wᵖ[i, j, k]) * Δt / Δzᶜᶜᶠ(i, j, k, grid) 
 
-    u̅ᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶠᶜ(i, j, k, grid)
-    u̅ᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶜᶠ(i, j, k, grid)
-    v̅ᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, vᵖ) * Δt / Δyᶠᶜᶜ(i, j, k, grid) 
-    v̅ᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, vᵖ) * Δt / Δyᶜᶜᶠ(i, j, k, grid)  
-    w̅ᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, wᵖ) * Δt / Δzᶠᶜᶜ(i, j, k, grid)  
-    w̅ᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, wᵖ) * Δt / Δzᶜᶠᶜ(i, j, k, grid)  
+        u̅ᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶠᶜ(i, j, k, grid)
+        u̅ᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, uᵖ) * Δt / Δxᶜᶜᶠ(i, j, k, grid)
+        v̅ᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, vᵖ) * Δt / Δyᶠᶜᶜ(i, j, k, grid) 
+        v̅ᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, vᵖ) * Δt / Δyᶜᶜᶠ(i, j, k, grid)  
+        w̅ᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, wᵖ) * Δt / Δzᶠᶜᶜ(i, j, k, grid)  
+        w̅ᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, wᵖ) * Δt / Δzᶜᶠᶜ(i, j, k, grid)  
 
-    @inbounds ξ = u_abs * (1 - u̅ᶠᶜᶜ) * Aᶠᶜᶜ - uᵖ[i, j, k] * v̅ᶠᶜᶜ * Bᶠᶜᶜ - uᵖ[i, j, k] * w̅ᶠᶜᶜ * Cᶠᶜᶜ
-    @inbounds η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ[i, j, k] * u̅ᶜᶠᶜ * Aᶜᶠᶜ - vᵖ[i, j, k] * w̅ᶜᶠᶜ * Cᶜᶠᶜ
-    @inbounds ζ = w_abs * (1 - w̅ᶜᶜᶠ) * Cᶜᶜᶠ - wᵖ[i, j, k] * u̅ᶜᶜᶠ * Aᶜᶜᶠ - wᵖ[i, j, k] * v̅ᶜᶜᶠ * Bᶜᶜᶠ
-
+        ξ = u_abs * (1 - u̅ᶠᶜᶜ) * Aᶠᶜᶜ - uᵖ[i, j, k] * v̅ᶠᶜᶜ * Bᶠᶜᶜ - uᵖ[i, j, k] * w̅ᶠᶜᶜ * Cᶠᶜᶜ
+        η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ[i, j, k] * u̅ᶜᶠᶜ * Aᶜᶠᶜ - vᵖ[i, j, k] * w̅ᶜᶠᶜ * Cᶜᶠᶜ
+        ζ = w_abs * (1 - w̅ᶜᶜᶠ) * Cᶜᶜᶠ - wᵖ[i, j, k] * u̅ᶜᶜᶠ * Aᶜᶜᶠ - wᵖ[i, j, k] * v̅ᶜᶜᶠ * Bᶜᶜᶠ
+    end
+    
     return ξ, η, ζ
 end
 
