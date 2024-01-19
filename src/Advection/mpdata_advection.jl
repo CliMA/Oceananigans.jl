@@ -72,15 +72,15 @@ function correct_advection!(model, Δt)
         correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme)
     end
 
-    correct_mpdata_momentum!(velocities, grid, Δt, model.advection)
+    correct_mpdata_momentum!(model, Δt)
 
     return nothing
 end
 
-correct_mpdata_momentum!(velocities, grid, Δt, scheme) = nothing
+correct_mpdata_momentum!(velocities, grid, Δt, scheme, dims) = nothing
 
 # we need to save the previous velocities to ensure a correct mpdata pass
-function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData)
+function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData, dims)
     pseudo_velocities = scheme.velocities
     previous_velocities = scheme.previous_velocities
 
@@ -99,6 +99,14 @@ function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData)
     set!(pseudo_velocities.w, previous_velocities.w)
 
     mpdata_iterate!(velocities.v, grid, scheme, pseudo_velocities, Δt, div_𝐯u)
+
+    if dims == 3 # 3D evolution including vertical velocity
+        set!(pseudo_velocities.u, previous_velocities.u)
+        set!(pseudo_velocities.v, previous_velocities.v)
+        set!(pseudo_velocities.w, previous_velocities.w)
+    
+        mpdata_iterate!(velocities.w, grid, scheme, pseudo_velocities, Δt, div_𝐯w)
+    end
 
     return nothing
 end

@@ -62,3 +62,8 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p
     end
     return nothing
 end
+
+import Oceananigans.Advection: correct_mpdata_momentum!
+
+correct_mpdata_momentum!(model::NonhydrostaticModel, Δt) = 
+    correct_mpdata_momentum!(model.velocitites, model.grid, Δt, model.advection, 3)
