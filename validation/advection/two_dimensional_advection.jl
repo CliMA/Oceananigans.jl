@@ -67,19 +67,18 @@ using Oceananigans
 
 # run!(simulation)
 
-
-grid = RectilinearGrid(size = (64, 64), 
-                       halo = (9, 9), 
-                   topology = (Periodic, Periodic, Flat),
+grid = RectilinearGrid(size = (64, 64, 3), 
+                   topology = (Periodic, Periodic, Bounded),
                           x = (-1, 1), 
-                          y = (-1, 1))
+                          y = (-1, 1),
+                          z = (0, 1))
 
-advection = Oceananigans.MPData(grid; iterations = nothing) # WENO(; order = 9) # 
+momentum_advection = Oceananigans.MPData(grid; iterations = 3) # WENO(; order = 9) # 
 
-model = NonhydrostaticModel(; grid, 
-                              advection)
+model = HydrostaticFreeSurfaceModel(; grid, 
+                                      momentum_advection)
 
-set!(model, u = (x, y) -> rand() - 0.5, v = (x, y) -> rand() - 0.5)
+set!(model, u = (x, y, z) -> rand() - 0.5, v = (x, y, z) -> rand() - 0.5)
 
 CFL = 0.2
 
