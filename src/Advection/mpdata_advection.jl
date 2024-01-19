@@ -6,12 +6,14 @@ using Oceananigans.Utils
 
 struct MPData{FT, I, A} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
     velocities :: A
+    previous_velocities :: A
     iterations :: I
 end
 
 function MPData(grid; iterations = nothing)
     velocities = VelocityFields(grid)
-    return MPData{eltype(grid), typeof(iterations), typeof(velocities)}(velocities, iterations)
+    previous_velocities = VelocityFields(grid)
+    return MPData{eltype(grid), typeof(iterations), typeof(velocities)}(velocities, previous_velocities, iterations)
 end
 
 # Optimal MPData scheme from "Antidiffusive Velocities for Multipass Donor Cell Advection"
@@ -50,27 +52,45 @@ function correct_advection!(model, Δt)
     for tracer_name in propertynames(model.tracers)
         @inbounds tracer = model.tracers[tracer_name]
         @inbounds scheme = model.advection[tracer_name]
-        correct_mpdata_advection!(tracer, grid, Δt, velocities, scheme)
+        correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme)
     end
+
+    correct_mpdata_momentum!(velocities, grid, Δt, model.advection)
+
+    return nothing
 end
 
-correct_mpdata_advection!(field, grid, Δt, velocities, scheme) = nothing 
+correct_mpdata_momentum!(velocities, grid, Δt, scheme) = nothing
 
-function correct_mpdata_advection!(field, grid, Δt, velocities, scheme::MPData) 
+function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData)
     pseudo_velocities = scheme.velocities
-    loc = location(field)
+    previous_velocities = scheme.previous_velocities
 
     set!(pseudo_velocities.u, velocities.u)
     set!(pseudo_velocities.v, velocities.v)
 
-    divUc = # "Extractor function
-          loc === (Center, Center, Center) ? div_Uc :
-          loc === (Face, Center, Center)   ? div_𝐯u :
-          loc === (Center, Face, Center)   ? div_𝐯v :
-          loc === (Center, Center, Face)   ? div_𝐯w :
-          error("Cannot MPData-correct for a field at $location")
+    set!(previous_velocities.u, velocities.u)
+    set!(previous_velocities.v, velocities.v)
 
-    mpdata_iterate!(field, grid, scheme, pseudo_velocities, Δt, divUc)
+    mpdata_iterate!(velocities.u, grid, scheme, pseudo_velocities, Δt, div_𝐯u)
+
+    set!(pseudo_velocities.u, previous_velocities.u)
+    set!(pseudo_velocities.v, previous_velocities.v)
+
+    mpdata_iterate!(velocities.v, grid, scheme, pseudo_velocities, Δt, div_𝐯u)
+
+    return nothing
+end
+
+correct_mpdata_tracer!(field, grid, Δt, velocities, scheme) = nothing 
+
+function correct_mpdata_tracer!(field, grid, Δt, velocities, scheme::MPData) 
+    pseudo_velocities = scheme.velocities
+
+    set!(pseudo_velocities.u, velocities.u)
+    set!(pseudo_velocities.v, velocities.v)
+
+    mpdata_iterate!(field, grid, scheme, pseudo_velocities, Δt, div_Uc)
 
     return nothing
 end
@@ -118,11 +138,11 @@ and   B = Δy / 2ψ ∂y(ψ)
     Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ = mpdata_auxiliaries(i, j, k, grid, ψ)
     uᵖ, vᵖ, wᵖ = velocities
 
-    ξ, η = mpdata_pseudo_velocities(i, j, k, grid, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
+    ξ, η = mpdata_pseudo_velocities(i, j, k, grid, Δt, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
 
     @inbounds begin
-        uᵖ[i, j, k] = min(u_abs, abs(ξ)) * sign(ξ)
-        vᵖ[i, j, k] = min(v_abs, abs(η)) * sign(η)
+        uᵖ[i, j, k] = min(abs(uᵖ[i, j, k]), abs(ξ)) * sign(ξ)
+        vᵖ[i, j, k] = min(abs(vᵖ[i, j, k]), abs(η)) * sign(η)
     end 
 end
 
@@ -150,7 +170,7 @@ and   B = Δy / 2ψ ∂y(ψ) stays fixed
         Aₐᶜᶠᶜ = abs(Aᶜᶠᶜ)
         Bₐᶜᶠᶜ = abs(Bᶜᶠᶜ)
 
-        ξ, η = mpdata_pseudo_velocities(i, j, k, grid, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
+        ξ, η = mpdata_pseudo_velocities(i, j, k, grid, Δt, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
 
         ξ *= Δt / Δxᶠᶜᶜ(i, j, k, grid)
         η *= Δt / Δyᶜᶠᶜ(i, j, k, grid)  
@@ -233,9 +253,9 @@ end
     return Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ
 end
 
-@inline function mpdata_pseudo_velocities(i, j, k, grid, U, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
+@inline function mpdata_pseudo_velocities(i, j, k, grid, Δt, U, Aᶠᶜᶜ, Bᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ)
 
-    uᴾ, vᴾ, _ = U
+    uᵖ, vᵖ, _ = U
 
     u_abs = abs(uᵖ[i, j, k])
     v_abs = abs(vᵖ[i, j, k])
