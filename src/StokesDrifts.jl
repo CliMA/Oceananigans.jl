@@ -124,20 +124,19 @@ const c = Center()
 @inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(k, grid, c), time, sw.parameters)
 @inline ∂t_wˢ(i, j, k, grid, sw::USD, time) = zero(grid)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time, sw.parameters)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time, sw.parameters)
-
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time, sw.parameters)
-                                                                        - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time, sw.parameters) )
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time, sw.parameters)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time, sw.parameters)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time, sw.parameters)
+                                                              - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time, sw.parameters))
 
 # Methods for when `parameters == nothing`
 @inline ∂t_uˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_uˢ(znode(k, grid, c), time)
 @inline ∂t_vˢ(i, j, k, grid, sw::USDnoP, time) = sw.∂t_vˢ(znode(k, grid, c), time)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time)
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time)
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = @inbounds (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time)
-                                                                           - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time))
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) =    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(k, grid, c), time)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) =    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(k, grid, c), time)
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time)
+                                                                 - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time))
 
 struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂x_vˢ :: VX
@@ -185,21 +184,20 @@ To resolve the evolution of the Lagrangian-mean momentum, we require all the com
 of the "psuedovorticity",
 
 ```math
-𝛁 × 𝐮ˢ = ̂𝐱 (∂_y wˢ - ∂_z vˢ) + ̂𝐲 (∂_z uˢ - ∂_x wˢ) + ̂𝐳 (∂_x vˢ - ∂_y uˢ)
+𝛁 × 𝐮ˢ = \boldsymbol{̂x} (∂_y wˢ - ∂_z vˢ) + \boldsymbol{̂y} (∂_z uˢ - ∂_x wˢ) + \boldsymbol{̂z} (∂_x vˢ - ∂_y uˢ)
 ```
 
-as well as time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
+as well as the time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
-Note that each function (e.g., `∂z_uˢ`) is a function of horizontal coordinates and time.
+Note that each function (e.g., `∂z_uˢ`) is a function of depth, horizontal coordinates, and time.
 Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
 are omitted.
 
 For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`),
-then `∂z_uˢ` (for example) should be callable via `∂z_uˢ(x, z, t)`.
-When `!isnothing(parameters)`, then in this case `∂z_uˢ` should be callable via `∂z_uˢ(x, z, t, parameters)`.
-
-Similarly, on a grid with `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`,
-`∂z_uˢ` should be callable via `∂z_uˢ(x, y, z, t)`.
+then, e.g., `∂z_uˢ` is callable via `∂z_uˢ(x, z, t)`. When `!isnothing(parameters)`, then
+`∂z_uˢ` is callable via `∂z_uˢ(x, z, t, parameters)`. Similarly, on a grid with
+`topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`, `∂z_uˢ` is called
+via `∂z_uˢ(x, y, z, t)`.
 
 Example
 =======
