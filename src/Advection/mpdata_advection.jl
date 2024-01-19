@@ -119,7 +119,7 @@ function mpdata_iterate!(field, grid, scheme::OptimalMPData, pseudo_velocities, 
             pseudo_velocities, grid, field, Δt)
 
     fill_halo_regions!(pseudo_velocities)
-    launch!(architecture(grid), grid, :xyz, _update_tracer!, field, 
+    launch!(architecture(grid), grid, :xyz, _mpdata_update_field!, field, 
             scheme, pseudo_velocities, grid, divUc, Δt) 
 
     return nothing
@@ -133,7 +133,7 @@ function mpdata_iterate!(field, grid, scheme, pseudo_velocities, Δt, divUc)
                 pseudo_velocities, grid, field, Δt)
 
         fill_halo_regions!(pseudo_velocities)
-        launch!(architecture(grid), grid, :xyz, _update_tracer!, field, scheme, 
+        launch!(architecture(grid), grid, :xyz, _mpdata_update_field!, field, scheme, 
                 pseudo_velocities, grid, divUc, Δt) 
     end
 
@@ -332,22 +332,28 @@ end
 end
 
 # The actual MPData correction
-@kernel function _update_tracer!(c, scheme, pseudo_velocities, grid, divUc, Δt)
+@kernel function _mpdata_update_field!(c, scheme, pseudo_velocities, grid, divUc, Δt)
     i, j, k = @index(Global, NTuple)
 
     ∇uc = divUc(i, j, k, grid, scheme, pseudo_velocities, c)
     @inbounds c[i, j, k] -= Δt * ∇uc
 end
 
-# Vertical does not matter at the moment!
+# Different vertical advection for `PartialMPData`
 @inline function div_𝐯u(i, j, k, grid, advection::PartialMPData, U, u)
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection,  U[1], u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection,  U[2], u) +
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection.vertical_advection, U[3], u))
 end
 
 @inline function div_𝐯v(i, j, k, grid, advection::PartialMPData, U, v)
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection,  U[1], v) +
-                                    δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection,  U[2], v) +
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection.vertical_advection, U[3], v))
+end
+
+@inline function div_Uc(i, j, k, grid, advection::PartialMPData, U, c)
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection.vertical_advection, U.w, c))
 end
