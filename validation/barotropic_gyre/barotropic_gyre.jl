@@ -89,7 +89,9 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = nothing,
                                     buoyancy = nothing)
 
+#=
 model.timestepper.χ = -0.5
+=#
 
 g = model.free_surface.gravitational_acceleration
 
@@ -118,7 +120,7 @@ function (p::Progress)(sim)
 end
 
 simulation = Simulation(model,
-                        Δt = 3600,
+                        Δt = 600,
                         stop_time = 365*86400)
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
