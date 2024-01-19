@@ -184,7 +184,7 @@ To resolve the evolution of the Lagrangian-mean momentum, we require all the com
 of the "psuedovorticity",
 
 ```math
-𝛁 × 𝐮ˢ = \boldsymbol{̂x} (∂_y wˢ - ∂_z vˢ) + \boldsymbol{̂y} (∂_z uˢ - ∂_x wˢ) + \boldsymbol{̂z} (∂_x vˢ - ∂_y uˢ)
+𝛁 × 𝐮ˢ = \\hat{\\boldsymbol{x}} (∂_y wˢ - ∂_z vˢ) + \\hat{\\boldsymbol{y}} (∂_z uˢ - ∂_x wˢ) + \\hat{\\boldsymbol{z}} (∂_x vˢ - ∂_y uˢ)
 ```
 
 as well as the time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
