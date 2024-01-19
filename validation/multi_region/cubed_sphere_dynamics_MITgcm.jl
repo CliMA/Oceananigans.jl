@@ -387,7 +387,9 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
                                     buoyancy = nothing)
 
+#=
 model.timestepper.χ = -0.5
+=#
 
 # Initial conditions
 
