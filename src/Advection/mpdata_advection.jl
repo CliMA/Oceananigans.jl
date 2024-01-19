@@ -201,7 +201,7 @@ and   C = Δz / 2ψ ∂z(ψ) remaines fixed
 
         ξ *= Δt / Δxᶠᶜᶜ(i, j, k, grid)
         η *= Δt / Δyᶜᶠᶜ(i, j, k, grid)  
-        ξ *= Δt / Δzᶜᶜᶠ(i, j, k, grid)
+        ζ *= Δt / Δzᶜᶜᶠ(i, j, k, grid)
 
         Σˣᵅ, Σˣᵝ, Σˣᵞ = Σᵅᵝᵞ(Aᶠᶜᶜ)
         Σʸᵅ, Σʸᵝ, Σʸᵞ = Σᵅᵝᵞ(Bᶜᶠᶜ)
