@@ -207,20 +207,22 @@ and   B = Δy / 2ψ ∂y(ψ) stays fixed
     end 
 end
 
+@inline abs_ψ(i, j, k, grid, ψ) = abs(ψ[i, j, k])
+
 @inline function mpdata_auxiliaries(i, j, k, grid, ψ)
 
-    ψ₁ᶠᶜᶜ = 2 * ℑxᶠᵃᵃ(i, j, k, grid, ψ)
-    ψ₁ᶜᶠᶜ = 2 * ℑyᵃᶠᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶠᶜᶜ = δxᶠᵃᵃ(i, j, k, grid, ψ)
-    Δψ₁ᶜᶠᶜ = δyᵃᶠᵃ(i, j, k, grid, ψ)
+    ψ₁ᶠᶜᶜ = 2 * ℑxᶠᵃᵃ(i, j, k, grid, abs_ψ, ψ)
+    ψ₁ᶜᶠᶜ = 2 * ℑyᵃᶠᵃ(i, j, k, grid, abs_ψ, ψ)
+    Δψ₁ᶠᶜᶜ = δxᶠᵃᵃ(i, j, k, grid, abs_ψ, ψ)
+    Δψ₁ᶜᶠᶜ = δyᵃᶠᵃ(i, j, k, grid, abs_ψ, ψ)
 
     # Calculating A and B
     @inbounds begin
-        ψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] + ψ[i, j-1, k] + ψ[i-1, j-1, k])
-        ψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] + ψ[i-1, j, k] + ψ[i-1, j-1, k])
+        ψ₂ᶠᶜᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) + abs(ψ[i, j-1, k]) + abs(ψ[i-1, j-1, k]))
+        ψ₂ᶜᶠᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) + abs(ψ[i-1, j, k]) + abs(ψ[i-1, j-1, k]))
 
-        Δψ₂ᶠᶜᶜ = (ψ[i, j+1, k] + ψ[i-1, j+1, k] - ψ[i, j-1, k] - ψ[i-1, j-1, k])
-        Δψ₂ᶜᶠᶜ = (ψ[i+1, j, k] + ψ[i+1, j-1, k] - ψ[i-1, j, k] - ψ[i-1, j-1, k])
+        Δψ₂ᶠᶜᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) - abs(ψ[i, j-1, k]) - abs(ψ[i-1, j-1, k]))
+        Δψ₂ᶜᶠᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) - abs(ψ[i-1, j, k]) - abs(ψ[i-1, j-1, k]))
 
         Aᶠᶜᶜ = ifelse(abs(ψ₁ᶠᶜᶜ) > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, 0)
         Bᶠᶜᶜ = ifelse(abs(ψ₂ᶠᶜᶜ) > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, 0)
