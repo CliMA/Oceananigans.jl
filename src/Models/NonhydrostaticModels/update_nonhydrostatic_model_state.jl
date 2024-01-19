@@ -66,4 +66,4 @@ end
 import Oceananigans.Advection: correct_mpdata_momentum!
 
 correct_mpdata_momentum!(model::NonhydrostaticModel, Δt) = 
-    correct_mpdata_momentum!(model.velocitites, model.grid, Δt, model.advection, 3)
+    correct_mpdata_momentum!(model.velocities, model.grid, Δt, model.advection, 3)
