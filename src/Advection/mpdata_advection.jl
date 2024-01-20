@@ -236,9 +236,9 @@ and   C = Δz / 2ψ ∂z(ψ) remaines fixed
                        Σᶻˣᵃ * ζ * ξ + Σᶻˣᵇ * ζ^2 * ξ + Σᶻˣᶜ * ζ * ξ^2 +
                        Σᶻʸᵃ * ζ * η + Σᶻʸᵇ * ζ^2 * η + Σᶻʸᶜ * ζ * η^2) * Δzᶜᶜᶠ(i, j, k, grid) / Δt
         
-        uᵖ[i, j, k] = min(u_abs, abs(uᵖ[i, j, k])) * sign(uᵖ[i, j, k])
-        vᵖ[i, j, k] = min(v_abs, abs(vᵖ[i, j, k])) * sign(vᵖ[i, j, k])
-        wᵖ[i, j, k] = min(w_abs, abs(wᵖ[i, j, k])) * sign(wᵖ[i, j, k])
+        uᵖ[i, j, k] = ifelse(u_abs < abs(uᵖ[i, j, k]), u_abs * sign(uᵖ[i, j, k]), uᵖ[i, j, k])
+        vᵖ[i, j, k] = ifelse(v_abs < abs(vᵖ[i, j, k]), v_abs * sign(vᵖ[i, j, k]), vᵖ[i, j, k])
+        wᵖ[i, j, k] = ifelse(w_abs < abs(wᵖ[i, j, k]), w_abs * sign(wᵖ[i, j, k]), wᵖ[i, j, k])
     end 
 end
 
