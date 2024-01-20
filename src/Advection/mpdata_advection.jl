@@ -178,13 +178,10 @@ and   C = Δz / 2ψ ∂z(ψ) is updated between iterations
     ξ, η, ζ = mpdata_pseudo_velocities(i, j, k, grid, Δt, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
 
     @inbounds begin
-        ξ = ifelse(abs(uᵖ[i, j, k]) < abs(ξ), abs(uᵖ[i, j, k]) * sign(ξ), ξ)
-        η = ifelse(abs(vᵖ[i, j, k]) < abs(η), abs(vᵖ[i, j, k]) * sign(η), η)
-        ζ = ifelse(abs(wᵖ[i, j, k]) < abs(ζ), abs(wᵖ[i, j, k]) * sign(ζ), ζ)
-
-        uᵖ[i, j, k] = ξ
-        vᵖ[i, j, k] = η
-        wᵖ[i, j, k] = ζ
+        # Limit the velocity to keep a reasonable CFL
+        uᵖ[i, j, k] = ifelse(abs(uᵖ[i, j, k]) < abs(ξ), abs(uᵖ[i, j, k]) * sign(ξ), ξ)
+        vᵖ[i, j, k] = ifelse(abs(vᵖ[i, j, k]) < abs(η), abs(vᵖ[i, j, k]) * sign(η), η)
+        wᵖ[i, j, k] = ifelse(abs(wᵖ[i, j, k]) < abs(ζ), abs(wᵖ[i, j, k]) * sign(ζ), ζ)
     end 
 end
 
@@ -236,6 +233,7 @@ and   C = Δz / 2ψ ∂z(ψ) remaines fixed
                        Σᶻˣᵃ * ζ * ξ + Σᶻˣᵇ * ζ^2 * ξ + Σᶻˣᶜ * ζ * ξ^2 +
                        Σᶻʸᵃ * ζ * η + Σᶻʸᵇ * ζ^2 * η + Σᶻʸᶜ * ζ * η^2) * Δzᶜᶜᶠ(i, j, k, grid) / Δt
         
+        # Limit the velocity to keep a reasonable CFL
         uᵖ[i, j, k] = ifelse(u_abs < abs(uᵖ[i, j, k]), u_abs * sign(uᵖ[i, j, k]), uᵖ[i, j, k])
         vᵖ[i, j, k] = ifelse(v_abs < abs(vᵖ[i, j, k]), v_abs * sign(vᵖ[i, j, k]), vᵖ[i, j, k])
         wᵖ[i, j, k] = ifelse(w_abs < abs(wᵖ[i, j, k]), w_abs * sign(wᵖ[i, j, k]), wᵖ[i, j, k])
