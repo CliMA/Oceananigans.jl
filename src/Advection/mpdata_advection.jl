@@ -322,7 +322,7 @@ end
         Cᶜᶜᶠ = ifelse(abs(ψ₁ᶜᶜᶠ) > 0, Δψ₁ᶜᶜᶠ / ψ₁ᶜᶜᶠ, 0)        
     end
 
-    return Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ
+    return (Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
 end
 
 @inline function mpdata_pseudo_velocities(i, j, k, grid, Δt, U, Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
@@ -350,7 +350,7 @@ end
     η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ * u̅ᶜᶠᶜ * Aᶜᶠᶜ - vᵖ * w̅ᶜᶠᶜ * Cᶜᶠᶜ
     ζ = w_abs * (1 - w̅ᶜᶜᶠ) * Cᶜᶜᶠ - wᵖ * u̅ᶜᶜᶠ * Aᶜᶜᶠ - wᵖ * v̅ᶜᶜᶠ * Bᶜᶜᶠ
 
-    return ξ, η, ζ
+    return (ξ, η, ζ)
 end
 
 # The actual MPData correction
