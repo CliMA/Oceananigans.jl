@@ -178,9 +178,13 @@ and   C = Δz / 2ψ ∂z(ψ) is updated between iterations
     ξ, η, ζ = mpdata_pseudo_velocities(i, j, k, grid, Δt, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
 
     @inbounds begin
-        uᵖ[i, j, k] = min(abs(uᵖ[i, j, k]), abs(ξ)) * sign(ξ)
-        vᵖ[i, j, k] = min(abs(vᵖ[i, j, k]), abs(η)) * sign(η)
-        wᵖ[i, j, k] = min(abs(wᵖ[i, j, k]), abs(ζ)) * sign(ζ)
+        ξ = ifelse(abs(uᵖ[i, j, k]) < abs(ξ), abs(uᵖ[i, j, k]) * sign(ξ), ξ)
+        η = ifelse(abs(vᵖ[i, j, k]) < abs(η), abs(vᵖ[i, j, k]) * sign(η), η)
+        ζ = ifelse(abs(wᵖ[i, j, k]) < abs(ζ), abs(wᵖ[i, j, k]) * sign(ζ), ζ)
+
+        uᵖ[i, j, k] = ξ
+        vᵖ[i, j, k] = η
+        wᵖ[i, j, k] = ζ
     end 
 end
 
