@@ -81,6 +81,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Gupta, M., Gürcan, E., and Thompson, A. F. (2024). [Eddy-induced dispersion of sea ice floes at the marginal ice zone](https://doi.org/10.1029/2023GL105656) _Geophysical Research Letters_, **51**, e2023GL105656. DOI: [10.1029/2023GL105656](https://doi.org/10.1029/2023GL105656)
 
+1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920) _Journal of Fluid Mechanics_, **976**, A8. DOI:[10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
+
 1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669) _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
 
 1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Ramadhan, A., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2023). [CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment](https://doi.org/10.22541/essoar.168748454.49694722/v1) _ESS Open Archive_. DOI: [10.22541/essoar.168748454.49694722/v1](https://doi.org/10.22541/essoar.168748454.49694722/v1)
