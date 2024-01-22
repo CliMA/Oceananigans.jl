@@ -83,6 +83,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920) _Journal of Fluid Mechanics_, **976**, A8. DOI:[10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
 
+1. Jiménez-Urias, M. A. and Haine T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748) _Journal of Fluid Mechanics_, **973**, A44. DOI:[10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
+
 1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669) _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
 
 1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Ramadhan, A., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2023). [CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment](https://doi.org/10.22541/essoar.168748454.49694722/v1) _ESS Open Archive_. DOI: [10.22541/essoar.168748454.49694722/v1](https://doi.org/10.22541/essoar.168748454.49694722/v1)
