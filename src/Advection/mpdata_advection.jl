@@ -280,7 +280,7 @@ end
     return Σᵃ, Σᵇ, Σᶜ
 end
 
-@inline abs_ψ(i, j, k, grid, ψ) = abs(ψ[i, j, k])
+@inline abs_ψ(i, j, k, grid, ψ) = @inbounds abs(ψ[i, j, k])
 
 @inline function mpdata_auxiliaries(i, j, k, grid, ψ)
 
@@ -293,36 +293,36 @@ end
 
     # Calculating A and B
     @inbounds begin
-        ψ₂ᶠᶜᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) + abs(ψ[i, j-1, k]) + abs(ψ[i-1, j-1, k]))
-        ψ₂ᶜᶠᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) + abs(ψ[i-1, j, k]) + abs(ψ[i-1, j-1, k]))
-        ψ₂ᶜᶜᶠ = (abs(ψ[i, j, k+1]) + abs(ψ[i-1, j, k+1]) + abs(ψ[i, j, k-1]) + abs(ψ[i-1, j, k-1]))
+        ψ₂ᶠᶜᶜ = abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) + abs(ψ[i, j-1, k]) + abs(ψ[i-1, j-1, k])
+        ψ₂ᶜᶠᶜ = abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) + abs(ψ[i-1, j, k]) + abs(ψ[i-1, j-1, k])
+        ψ₂ᶜᶜᶠ = abs(ψ[i, j, k+1]) + abs(ψ[i-1, j, k+1]) + abs(ψ[i, j, k-1]) + abs(ψ[i-1, j, k-1])
 
-        Δψ₂ᶠᶜᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) - abs(ψ[i, j-1, k]) - abs(ψ[i-1, j-1, k]))
-        Δψ₂ᶜᶠᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) - abs(ψ[i-1, j, k]) - abs(ψ[i-1, j-1, k]))
-        Δψ₂ᶜᶜᶠ = (abs(ψ[i, j, k+1]) + abs(ψ[i-1, j, k+1]) - abs(ψ[i, j, k-1]) - abs(ψ[i-1, j, k-1]))
+        Δψ₂ᶠᶜᶜ = abs(ψ[i, j+1, k]) + abs(ψ[i-1, j+1, k]) - abs(ψ[i, j-1, k]) - abs(ψ[i-1, j-1, k])
+        Δψ₂ᶜᶠᶜ = abs(ψ[i+1, j, k]) + abs(ψ[i+1, j-1, k]) - abs(ψ[i-1, j, k]) - abs(ψ[i-1, j-1, k])
+        Δψ₂ᶜᶜᶠ = abs(ψ[i, j, k+1]) + abs(ψ[i-1, j, k+1]) - abs(ψ[i, j, k-1]) - abs(ψ[i-1, j, k-1])
 
-        ψ₃ᶠᶜᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j, k-1]) + abs(ψ[i-1, j, k]) + abs(ψ[i-1, j, k-1]))
-        ψ₃ᶜᶠᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i, j+1, k-1]) + abs(ψ[i, j-1, k]) + abs(ψ[i, j-1, k-1]))
-        ψ₃ᶜᶜᶠ = (abs(ψ[i, j, k+1]) + abs(ψ[i, j-1, k+1]) + abs(ψ[i, j, k-1]) + abs(ψ[i, j-1, k-1]))
+        ψ₃ᶠᶜᶜ = abs(ψ[i+1, j, k]) + abs(ψ[i+1, j, k-1]) + abs(ψ[i-1, j, k]) + abs(ψ[i-1, j, k-1])
+        ψ₃ᶜᶠᶜ = abs(ψ[i, j+1, k]) + abs(ψ[i, j+1, k-1]) + abs(ψ[i, j-1, k]) + abs(ψ[i, j-1, k-1])
+        ψ₃ᶜᶜᶠ = abs(ψ[i, j, k+1]) + abs(ψ[i, j-1, k+1]) + abs(ψ[i, j, k-1]) + abs(ψ[i, j-1, k-1])
 
-        Δψ₃ᶠᶜᶜ = (abs(ψ[i+1, j, k]) + abs(ψ[i+1, j, k-1]) - abs(ψ[i-1, j, k]) - abs(ψ[i-1, j, k-1]))
-        Δψ₃ᶜᶠᶜ = (abs(ψ[i, j+1, k]) + abs(ψ[i, j+1, k-1]) - abs(ψ[i, j-1, k]) - abs(ψ[i, j-1, k-1]))
-        Δψ₃ᶜᶜᶠ = (abs(ψ[i, j, k+1]) + abs(ψ[i, j-1, k+1]) - abs(ψ[i, j, k-1]) - abs(ψ[i, j-1, k-1]))
+        Δψ₃ᶠᶜᶜ = abs(ψ[i+1, j, k]) + abs(ψ[i+1, j, k-1]) - abs(ψ[i-1, j, k]) - abs(ψ[i-1, j, k-1])
+        Δψ₃ᶜᶠᶜ = abs(ψ[i, j+1, k]) + abs(ψ[i, j+1, k-1]) - abs(ψ[i, j-1, k]) - abs(ψ[i, j-1, k-1])
+        Δψ₃ᶜᶜᶠ = abs(ψ[i, j, k+1]) + abs(ψ[i, j-1, k+1]) - abs(ψ[i, j, k-1]) - abs(ψ[i, j-1, k-1])
 
-        Aᶠᶜᶜ = ifelse(abs(ψ₁ᶠᶜᶜ) > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, 0)
-        Bᶠᶜᶜ = ifelse(abs(ψ₂ᶠᶜᶜ) > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, 0)
-        Cᶠᶜᶜ = ifelse(abs(ψ₃ᶠᶜᶜ) > 0, Δψ₃ᶠᶜᶜ / ψ₃ᶠᶜᶜ, 0)
+        Aᶠᶜᶜ = ifelse(ψ₁ᶠᶜᶜ > 0, Δψ₁ᶠᶜᶜ / ψ₁ᶠᶜᶜ, zero(grid))
+        Bᶠᶜᶜ = ifelse(ψ₂ᶠᶜᶜ > 0, Δψ₂ᶠᶜᶜ / ψ₂ᶠᶜᶜ, zero(grid))
+        Cᶠᶜᶜ = ifelse(ψ₃ᶠᶜᶜ > 0, Δψ₃ᶠᶜᶜ / ψ₃ᶠᶜᶜ, zero(grid))
 
-        Aᶜᶠᶜ = ifelse(abs(ψ₂ᶜᶠᶜ) > 0, Δψ₂ᶜᶠᶜ / ψ₂ᶜᶠᶜ, 0)
-        Bᶜᶠᶜ = ifelse(abs(ψ₁ᶜᶠᶜ) > 0, Δψ₁ᶜᶠᶜ / ψ₁ᶜᶠᶜ, 0)
-        Cᶜᶠᶜ = ifelse(abs(ψ₃ᶜᶠᶜ) > 0, Δψ₃ᶜᶠᶜ / ψ₃ᶜᶠᶜ, 0)
+        Aᶜᶠᶜ = ifelse(ψ₂ᶜᶠᶜ > 0, Δψ₂ᶜᶠᶜ / ψ₂ᶜᶠᶜ, zero(grid))
+        Bᶜᶠᶜ = ifelse(ψ₁ᶜᶠᶜ > 0, Δψ₁ᶜᶠᶜ / ψ₁ᶜᶠᶜ, zero(grid))
+        Cᶜᶠᶜ = ifelse(ψ₃ᶜᶠᶜ > 0, Δψ₃ᶜᶠᶜ / ψ₃ᶜᶠᶜ, zero(grid))
 
-        Aᶜᶜᶠ = ifelse(abs(ψ₂ᶜᶜᶠ) > 0, Δψ₂ᶜᶜᶠ / ψ₂ᶜᶜᶠ, 0)
-        Bᶜᶜᶠ = ifelse(abs(ψ₃ᶜᶜᶠ) > 0, Δψ₃ᶜᶜᶠ / ψ₃ᶜᶜᶠ, 0)
-        Cᶜᶜᶠ = ifelse(abs(ψ₁ᶜᶜᶠ) > 0, Δψ₁ᶜᶜᶠ / ψ₁ᶜᶜᶠ, 0)        
+        Aᶜᶜᶠ = ifelse(ψ₂ᶜᶜᶠ > 0, Δψ₂ᶜᶜᶠ / ψ₂ᶜᶜᶠ, zero(grid))
+        Bᶜᶜᶠ = ifelse(ψ₃ᶜᶜᶠ > 0, Δψ₃ᶜᶜᶠ / ψ₃ᶜᶜᶠ, zero(grid))
+        Cᶜᶜᶠ = ifelse(ψ₁ᶜᶜᶠ > 0, Δψ₁ᶜᶜᶠ / ψ₁ᶜᶜᶠ, zero(grid))        
     end
 
-    return (Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
+    return Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ
 end
 
 @inline function mpdata_pseudo_velocities(i, j, k, grid, Δt, U, Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
@@ -350,7 +350,7 @@ end
     η = v_abs * (1 - v̅ᶜᶠᶜ) * Bᶜᶠᶜ - vᵖ * u̅ᶜᶠᶜ * Aᶜᶠᶜ - vᵖ * w̅ᶜᶠᶜ * Cᶜᶠᶜ
     ζ = w_abs * (1 - w̅ᶜᶜᶠ) * Cᶜᶜᶠ - wᵖ * u̅ᶜᶜᶠ * Aᶜᶜᶠ - wᵖ * v̅ᶜᶜᶠ * Bᶜᶜᶠ
 
-    return (ξ, η, ζ)
+    return ξ, η, ζ
 end
 
 # The actual MPData correction
