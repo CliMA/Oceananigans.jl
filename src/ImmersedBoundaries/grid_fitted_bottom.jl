@@ -1,5 +1,6 @@
 using Adapt
 using CUDA: CuArray
+using AMDGPU: ROCArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size

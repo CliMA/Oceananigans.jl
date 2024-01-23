@@ -8,6 +8,7 @@ export
     tendencies
 
 using CUDA
+using AMDGPU
 using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
