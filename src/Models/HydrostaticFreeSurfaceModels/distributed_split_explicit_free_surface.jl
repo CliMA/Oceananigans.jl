@@ -12,13 +12,27 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     Gᵁ = XFaceField(grid, indices = (:, :, Nz))
     Gⱽ = YFaceField(grid, indices = (:, :, Nz))
     
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+
+    calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
+
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
     kernel_offsets = augmented_kernel_offsets(grid)
 
     kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+end
+
+"""Integrate z at locations `location` and set! `height`` with the result"""
+@inline function calculate_column_height!(height, location)
+    dz = GridMetricOperation(location, Δz, height.grid)
+    return sum!(height, dz)
 end
 
 @inline function augmented_kernel_size(grid::DistributedGrid)
