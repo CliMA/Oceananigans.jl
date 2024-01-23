@@ -275,6 +275,10 @@ compare_old_and_new_code_metrics = true
 
 if compare_old_and_new_code_metrics
 
+    old_xᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_xᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_yᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_yᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
@@ -295,6 +299,10 @@ if compare_old_and_new_code_metrics
 
     if old_code_metrics_JMC
         for region in 1:6
+            old_xᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_xᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δyᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
@@ -322,6 +330,10 @@ if compare_old_and_new_code_metrics
     if overwrite_grid_metrics_from_old_code
         if old_code_metrics_JMC
             for region in 1:6
+                grid[region].λᶜᶜᵃ[:,:]  =  old_xᶜᶜᵃ_parent[:, :, region]
+                grid[region].λᶠᶠᵃ[:,:]  =  old_xᶠᶠᵃ_parent[:, :, region]
+                grid[region].φᶜᶜᵃ[:,:]  =  old_yᶜᶜᵃ_parent[:, :, region]
+                grid[region].φᶠᶠᵃ[:,:]  =  old_yᶠᶠᵃ_parent[:, :, region]
                 grid[region].Δxᶠᶜᵃ[:,:] = old_Δxᶠᶜᵃ_parent[:, :, region]
                 grid[region].Δxᶜᶠᵃ[:,:] = old_Δxᶜᶠᵃ_parent[:, :, region]
                 grid[region].Δyᶠᶜᵃ[:,:] = old_Δyᶠᶜᵃ_parent[:, :, region]
