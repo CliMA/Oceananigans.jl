@@ -6,10 +6,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
-    Nz = size(grid, 3)
-
-    Gᵁ = XFaceField(grid; indices = (:, :, Nz))
-    Gⱽ = YFaceField(grid; indices = (:, :, Nz))
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
