@@ -41,8 +41,9 @@ end
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
-        @warn "The domain size specified in the architecture $(sum(R.sizes)) is inconsistent 
-               with the grid size $N: using the architecture-specified size"
+        @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent \  
+               with the grid size: (N = $N != sum(Sizes) = $(sum(R.sizes))). \ 
+               Using $(R.sizes)..."
     end
     return R.sizes
 end
