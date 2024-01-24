@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
-using AMDGPU
+using AMDGPU, AMDGPU.rocSPARSE
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays, IncompleteLU
@@ -15,7 +15,7 @@ using SparseArrays: fkeep!
 @inline constructors(::ROCmGPU, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
 @inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
 @inline constructors(::CUDAGPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-@inline constructors(::ROCmGPU, A::rocSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
+@inline constructors(::ROCmGPU, A::ROCSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 @inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
 @inline constructors(::CUDAGPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
 @inline constructors(::ROCmGPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
@@ -29,14 +29,14 @@ using SparseArrays: fkeep!
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::CUDAGPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::ROCmGPU, constr::Tuple) = rocSparseMatrixCSC(constr...)
+@inline arch_sparse_matrix(::ROCmGPU, constr::Tuple) = ROCSparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(constructors(CPU(), A)...)
 @inline arch_sparse_matrix(::CUDAGPU, A::SparseMatrixCSC)     = CuSparseMatrixCSC(constructors(GPU(), A)...)
-@inline arch_sparse_matrix(::ROCmGPU, A::SparseMatrixCSC)     = rocSparseMatrixCSC(constructors(GPU(), A)...)
+@inline arch_sparse_matrix(::ROCmGPU, A::SparseMatrixCSC)     = ROCSparseMatrixCSC(constructors(GPU(), A)...)
 
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::CUDAGPU, A::CuSparseMatrixCSC) = A
-@inline arch_sparse_matrix(::ROCmGPU, A::rocSparseMatrixCSC) = A
+@inline arch_sparse_matrix(::ROCmGPU, A::ROCSparseMatrixCSC) = A
 
 # We need to update the diagonal element each time the time step changes!!
 function update_diag!(constr, arch, M, N, diag, Δt, disp)   

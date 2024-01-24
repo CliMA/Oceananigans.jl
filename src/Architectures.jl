@@ -7,8 +7,6 @@ export device, architecture, array_type, arch_array, unified_array, device_copy_
 using CUDA
 using AMDGPU
 using KernelAbstractions
-# using CUDAKernels
-# using ROCKernels
 using Adapt
 using OffsetArrays
 
@@ -82,8 +80,7 @@ arch_array(::ROCmGPU, a::ROCArray) = a
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
-arch_array(::ROCmGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+arch_array(::ROCmGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
 
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 arch_array(::ROCmGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)

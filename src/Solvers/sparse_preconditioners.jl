@@ -2,10 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
-using AMDGPU
-#if AMDGPU.functional(:rocsparse)
-using AMDGPU.rocSparse
-#end
+using AMDGPU, AMDGPU.rocSPARSE
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays, IncompleteLU
@@ -88,7 +85,7 @@ function build_preconditioner(::Val{:ILUFactorization},  A, settings)
     end
 end
 
-@inline architecture(::RocSparseMatrixCSC) = ROCmGPU()
+@inline architecture(::ROCSparseMatrixCSC) = ROCmGPU()
 @inline architecture(::CuSparseMatrixCSC) = CUDAGPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
 

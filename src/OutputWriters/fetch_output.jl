@@ -23,7 +23,7 @@ end
 convert_output(output, writer) = output
 
 function convert_output(output::AbstractArray, writer)
-    if architecture(output) isa GPU
+    if architecture(output) isa CUDAGPU || architecture(output) isa ROCmGPU
         output_array = writer.array_type(undef, size(output)...)
         copyto!(output_array, output)
     else
