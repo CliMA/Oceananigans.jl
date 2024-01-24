@@ -235,6 +235,17 @@ trilinear(x, y, z) = x + y + z
 
             set!(c, (x, y) -> y)
             @test maximum(c) == CUDA.@allowscalar grid.yᵃᶜᵃ[3]
+
+            underlying_grid = RectilinearGrid(arch, size = (1, 1, 8), extent=(1, 1, 1))
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -3/4))
+            c = Field((Center, Center, Center), grid)
+
+            set!(c, (x, y, z) -> -z)
+            @test maximum(c) == CUDA.@allowscalar c[1,1,3]
+            @test CUDA.@allowscalar compute!(Field(Average(c, condition=(c .< 0.5))))[1,1,1] == 0.25
+            zᶜᶜᶜ = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
+            @test CUDA.@allowscalar compute!(Field(Average(c; condition = zᶜᶜᶜ .< -1/2)))[1,1,1] == (c[1,1,3] + c[1,1,4])/2
         end
     end
 end
