@@ -96,16 +96,16 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
         interior_map = map_interior_active_cells(ibg)
-        surface_map  = map_active_z_columns(ibg)
+        column_map   = map_active_z_columns(ibg)
     else
         interior_map = nothing
-        surface_map  = nothing
+        column_map  = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
                                             ibg.immersed_boundary, 
                                             interior_map,
-                                            surface_map)
+                                            column_map)
 end
 
 with_halo(halo, ibg::ActiveCellsIBG) =
@@ -140,7 +140,7 @@ const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 """
-    active_interior_indices(ibg; parameters = :xyz)
+    interior_active_indices(ibg; parameters = :xyz)
 
 Compute the indices of the active interior cells in the given immersed boundary grid.
 
@@ -151,7 +151,7 @@ Compute the indices of the active interior cells in the given immersed boundary 
 # Returns
 An array of tuples representing the indices of the active interior cells.
 """
-function active_interior_indices(ibg; parameters = :xyz)
+function interior_active_indices(ibg; parameters = :xyz)
     active_cells_field = compute_interior_active_cells(ibg; parameters)
     
     N = maximum(size(ibg))
@@ -190,7 +190,7 @@ end
 
 @inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
 
-map_interior_active_cells(ibg) = active_interior_indices(ibg; parameters = :xyz)
+map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 
 # In case of a `DistributedGrid` we want to have different maps depending on the 
 # partitioning of the domain
@@ -214,10 +214,10 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west  = include_west  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
-    east  = include_east  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
-    south = include_south ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
-    north = include_north ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    west  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
+    east  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
+    south = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
+    north = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
     
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
@@ -225,7 +225,7 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    interior = active_interior_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    interior = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
     return (; interior, west, east, south, north)
 end
