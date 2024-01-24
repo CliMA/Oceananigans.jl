@@ -230,15 +230,17 @@ function Distributed(child_architecture = CPU();
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
     local_connectivity = RankConnectivity(local_index, ranks) 
 
-    local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
-    node_rank  = MPI.Comm_rank(local_comm)
-
-    # Assign CUDA device if on GPUs
-    if child_architecture isa CUDAGPU
-        CUDA.device!(isnothing(devices) ? node_rank % CUDA.ndevices() : devices[node_rank+1])
-    end
-    if child_architecture isa ROCmGPU
-        AMDGPU.device!(isnothing(devices) ? AMDGPU.devices(:gpu)[node_rank % length(AMDGPU.devices(:gpu))+1] : AMDGPU.devices(:gpu)[devices[node_rank+1]])
+    if child_architecture isa GPU
+        local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
+        node_rank  = MPI.Comm_rank(local_comm)
+        if child_architecture isa CUDAGPU
+            device_id = isnothing(devices) ? node_rank % CUDA.ndevices() : devices[node_rank+1]
+            CUDA.device!(device_id)
+        end
+        if child_architecture isa ROCmGPU
+            device_id = isnothing(devices) ? node_rank % AMDGPU.ndevices() : devices[node_rank+1]
+            AMDGPU.device!(device_id)
+        end
     end
 
     mpi_requests = MPI.Request[]
