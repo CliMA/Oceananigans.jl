@@ -106,7 +106,7 @@ end
     w★ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, w★)
     w★²ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, w★)
     w★³ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, w★)
-    S²ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, S²)
+    S²ᶜᶜᶠ    = @inbounds S²[i, j, k]
     N²_local = @inbounds N²[i, j, k]
     N²_above = @inbounds N²[i, j, k+1]
 
@@ -144,9 +144,9 @@ end
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★²      = w★^2
-    w★³      = w★^3
-    S²ᶜᶜᶜ    = @inbounds S²[i, j, k]
+    w★²      = @inbounds w★[i, j, k]^2
+    w★³      = @inbounds w★[i, j, k]^3
+    S²ᶜᶜᶜ    = ℑzᵃᵃᶜ(i, j, k, grid, S²)
     N²_local = ℑzᵃᵃᶜ(i, j, k, grid, N²)
     N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, N²)
 
@@ -184,8 +184,9 @@ end
 @inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
 @inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
-    S²ᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, S²)
-    Ri = ifelse(N² ≤ 0, zero(grid), N² / S²ᶜᶜᶠ) 
+    N²ᶜᶜᶠ = @inbounds N²[i, j, k]
+    S²ᶜᶜᶠ = @inbounds S²[i, j, k]
+    Ri = ifelse(N²ᶜᶜᶠ ≤ 0, zero(grid), N²ᶜᶜᶠ / S²ᶜᶜᶠ) 
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
@@ -193,7 +194,8 @@ end
 
 @inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
     N²ᶜᶜᶜ = ℑzᵃᵃᶠ(i, j, k, grid, N²)
-    Ri = ifelse(N² ≤ 0, zero(grid), N²ᶜᶜᶜ / S²) 
+    S²ᶜᶜᶜ = ℑzᵃᵃᶠ(i, j, k, grid, S²)
+    Ri = ifelse(N²ᶜᶜᶜ ≤ 0, zero(grid), N²ᶜᶜᶜ / S²ᶜᶜᶜ) 
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)

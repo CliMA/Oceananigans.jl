@@ -51,20 +51,20 @@ end
 #     ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
 # Non-conservative reconstruction of buoyancy flux:
-@inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline function explicit_buoyancy_flux(i, j, k, grid, closure, diffusivities) 
     closure = getclosure(i, j, closure)
-    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    κᶜ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.κᶜ) 
     N² = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.N²)
     return - κᶜ * N²
 end
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    explicit_buoyancy_flux(i, j, k, grid, closure, diffusivities) 
 
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
