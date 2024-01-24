@@ -28,6 +28,10 @@ weakdeps = ["StaticArrays"]
     [deps.Adapt.extensions]
     AdaptStaticArraysExt = "StaticArrays"
 
+[[deps.AMDGPU]]
+uuid = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+version = "0.8.5"
+
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 version = "1.1.1"
