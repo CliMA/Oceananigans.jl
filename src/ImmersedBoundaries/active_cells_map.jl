@@ -11,14 +11,22 @@ using Oceananigans.DistributedComputations: DistributedGrid
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
-const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
 const ArrayActiveCellsIBG       = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 const NamedTupleActiveCellsIBG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
-const ActiveCellsIBG            = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
+
+"""
+A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
+"""
+const ActiveCellsIBG = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
+
+"""
+A constant representing an immersed boundary grid, where active columns in the Z-direction are mapped to linear indices in grid.active_z_columns
+"""
+const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 struct InteriorMap end
-struct SurfaceMap end
+struct ZColumnMap end
 
 struct WestMap  end
 struct EastMap  end
@@ -31,7 +39,7 @@ active_map(::Val{:south}) = SouthMap()
 active_map(::Val{:north}) = NorthMap()
 
 @inline use_only_active_surface_cells(::AbstractGrid)               = nothing
-@inline use_only_active_surface_cells(::ActiveSurfaceIBG)           = SurfaceMap()
+@inline use_only_active_surface_cells(::ActiveZColumnsIBG)          = ZColumnMap()
 
 @inline use_only_active_interior_cells(::AbstractGrid)              = nothing
 @inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
@@ -57,7 +65,7 @@ Compute the work layout for active cells based on the given map type and grid.
 @inline active_cells_work_layout(group, size, ::EastMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
 @inline active_cells_work_layout(group, size, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
 @inline active_cells_work_layout(group, size, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)         = min(length(grid.surface_active_cells),  256),          length(grid.surface_active_cells)
+@inline active_cells_work_layout(group, size, ::ZColumnMap, grid::ActiveZColumnsIBG)        = min(length(grid.active_z_columns),  256),              length(grid.active_z_columns)
 
 """
     active_linear_index_to_tuple(idx, map, grid)
@@ -78,7 +86,7 @@ A tuple of indices corresponding to the linear index.
 @inline active_linear_index_to_tuple(idx, ::EastMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
 @inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
 @inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
-@inline active_linear_index_to_tuple(idx, ::SurfaceMap,  grid::ActiveSurfaceIBG)         = Base.map(Int, grid.surface_active_cells[idx])
+@inline active_linear_index_to_tuple(idx, ::ZColumnMap,  grid::ActiveZColumnsIBG)         = Base.map(Int, grid.active_z_columns[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
@@ -88,7 +96,7 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
         interior_map = map_interior_active_cells(ibg)
-        surface_map  = map_surface_active_cells(ibg)
+        surface_map  = map_active_z_columns(ibg)
     else
         interior_map = nothing
         surface_map  = nothing
@@ -118,7 +126,7 @@ function compute_interior_active_cells(ibg; parameters = :xyz)
     return active_cells_field
 end
 
-function compute_surface_active_cells(ibg)
+function compute_active_z_columns(ibg)
     one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0)
     column    = sum(one_field, dims = 3)
     is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
@@ -224,8 +232,8 @@ end
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
-function map_surface_active_cells(ibg)
-    active_cells_field = compute_surface_active_cells(ibg)
+function map_active_z_columns(ibg)
+    active_cells_field = compute_active_z_columns(ibg)
     interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
   
     full_indices = findall(interior_cells)
