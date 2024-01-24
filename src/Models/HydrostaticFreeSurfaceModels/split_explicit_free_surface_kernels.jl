@@ -9,7 +9,7 @@ using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
-using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBGIBG
+using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
 using Printf
@@ -211,7 +211,7 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveZColumnsIBGIBG, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveZColumnsIBG, u, v)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz+1
@@ -431,7 +431,7 @@ end
 end
 
 # Calculate RHS for the barotopic time step. 
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBGIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz+1
