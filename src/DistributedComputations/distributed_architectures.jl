@@ -238,7 +238,7 @@ function Distributed(child_architecture = CPU();
             CUDA.device!(device_id)
         end
         if child_architecture isa ROCmGPU
-            device_id = isnothing(devices) ? node_rank % AMDGPU.ndevices() : devices[node_rank+1]
+            device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
             AMDGPU.device!(device_id)
         end
     end
