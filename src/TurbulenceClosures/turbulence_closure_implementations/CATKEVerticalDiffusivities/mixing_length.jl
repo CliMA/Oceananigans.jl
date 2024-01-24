@@ -61,7 +61,8 @@ end
     FT = eltype(grid)
     N²ᶜᶜᶜ = ℑzᵃᵃᶜ(i, j, k, grid, N²)
     N²⁺ = clip(N²ᶜᶜᶜ)
-    return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
+    w★ᶜᶜᶜ = @inbounds w★[i, j, k]
+    return ifelse(N²⁺ == 0, FT(Inf), w★ᶜᶜᶜ / sqrt(N²⁺))
 end
 
 @inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, N², w★)
@@ -103,7 +104,7 @@ end
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, w★)
+    w★¹ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, w★)
     w★²ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, w★)
     w★³ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, w★)
     S²ᶜᶜᶠ    = @inbounds S²[i, j, k]
@@ -128,7 +129,7 @@ end
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ᶜᶜᶠ * N²_local + Qᵇᵋ)
+    ℓᵉ = Cᵉ * Qᵇ / (w★¹ᶜᶜᶠ * N²_local + Qᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     
     entraining = (Qᵇ > Qᵇᵋ) & (N²_local > 0) & (N²_above < 0)
@@ -144,6 +145,7 @@ end
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
+    w★¹      = @inbounds w★[i, j, k]
     w★²      = @inbounds w★[i, j, k]^2
     w★³      = @inbounds w★[i, j, k]^3
     S²ᶜᶜᶜ    = ℑzᵃᵃᶜ(i, j, k, grid, S²)
@@ -168,7 +170,7 @@ end
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = @inbounds Cᵉ * Qᵇ / (w★[i, j, k] * N²_local + Qᵇᵋ)
+    ℓᵉ = Cᵉ * Qᵇ / (w★¹ * N²_local + Qᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     
     entraining = (Qᵇ > Qᵇᵋ) & (N²_local > 0) & (N²_above < 0)

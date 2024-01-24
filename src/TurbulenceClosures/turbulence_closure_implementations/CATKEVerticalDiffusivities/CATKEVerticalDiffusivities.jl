@@ -274,7 +274,7 @@ end
     S² = diffusivities.S²
     N² = diffusivities.N²
     w★ = diffusivities.w★
-    u, v, w = velocities
+    u, v, _ = velocities
 
     @inbounds begin
         S²[i, j, k] = shearᶜᶜᶠ(i, j, k, grid, u, v)

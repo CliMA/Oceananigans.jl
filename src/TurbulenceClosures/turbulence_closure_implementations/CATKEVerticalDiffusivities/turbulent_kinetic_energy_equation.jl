@@ -84,7 +84,7 @@ end
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     Qᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, surface_buoyancy_flux, S², N², w★)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, Qᵇ, S², N², w★)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
