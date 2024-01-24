@@ -33,8 +33,8 @@ end
 
     # Non-conservative reconstruction of shear production:
     closure = getclosure(i, j, closure)
-    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
-    S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
+    κᵘ = @inbounds diffusivities.κᵘ[i, j, k]
+    S² = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.S²)
 
     return κᵘ * S²
 end
@@ -54,7 +54,7 @@ end
 @inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     closure = getclosure(i, j, closure)
     κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.N²)
     return - κᶜ * N²
 end
 
@@ -75,23 +75,22 @@ const VITD = VerticallyImplicitTimeDiscretization
     return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
 end
 
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
+@inline dissipation(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
-@inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
-                                             buoyancy, surface_buoyancy_flux)
+@inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, surface_buoyancy_flux, S², N², w★)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     Qᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Qᵇ)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, surface_buoyancy_flux, S², N², w★)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
-    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, N², w★)
     ℓ★ = ℓ★ / σᴰ
 
     # Dissipation length
@@ -103,12 +102,15 @@ end
     return min(H, ℓᴰ)
 end
 
-@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
-                                  velocities, tracers, buoyancy, diffusivities)
+@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, diffusivities)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    Qᵇ = diffusivities.Qᵇ
+    S² = diffusivities.S²
+    N² = diffusivities.N²
+    w★ = diffusivities.w★
+
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Qᵇ, S², N², w★)
     e = tracers.e
-    FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
     
     # Note:
@@ -126,9 +128,9 @@ end
 end
 
 # Fallbacks for explicit time discretization
-@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     eᵢ = @inbounds tracers.e[i, j, k]
-    ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
+    ω = dissipation_rate(i, j, k, grid, closure, diffusivities)
     return ω * eᵢ
 end
 

@@ -50,23 +50,21 @@ end
     return S²
 end
 
-@inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
+@inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, N², w★)
     FT = eltype(grid)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = clip(N²)
-    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
+    @inbounds N²⁺ = clip(N²[i, j, k])
+    w★ᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, w★)
+    return ifelse(N²⁺ == 0, FT(Inf), w★ᶜᶜᶠ / sqrt(N²⁺))
+end
+
+@inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, N², w★)
+    FT = eltype(grid)
+    N²ᶜᶜᶜ = ℑzᵃᵃᶜ(i, j, k, grid, N²)
+    N²⁺ = clip(N²ᶜᶜᶜ)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
 
-@inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
-    FT = eltype(grid)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²⁺ = clip(N²)
-    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
-    return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
-end
-
-@inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+@inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, N², w★)
     Cˢ = closure.mixing_length.Cˢ
     Cᵇ = closure.mixing_length.Cᵇ
 
@@ -74,7 +72,7 @@ end
     d_down = Cᵇ * height_above_bottomᶜᶜᶠ(i, j, k, grid)
     d = min(d_up, d_down)
 
-    ℓᴺ = stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓᴺ = stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, N², w★)
 
     ℓ = min(d, ℓᴺ)
     ℓ = ifelse(isnan(ℓ), d, ℓ)
@@ -82,14 +80,14 @@ end
     return ℓ
 end
 
-@inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+@inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, N², w★)
     Cˢ = closure.mixing_length.Cˢ
     Cᵇ = closure.mixing_length.Cᵇ
     d_up   = Cˢ * depthᶜᶜᶜ(i, j, k, grid)
     d_down = Cᵇ * height_above_bottomᶜᶜᶜ(i, j, k, grid)
     d = min(d_up, d_down)
 
-    ℓᴺ = stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓᴺ = stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, N², w★)
 
     ℓ = min(d, ℓᴺ)
     ℓ = ifelse(isnan(ℓ), d, ℓ)
@@ -97,34 +95,31 @@ end
     return ℓ
 end
 
-@inline three_halves_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^3
-@inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
+@inline three_halves_tkeᶜᶜᶜ(i, j, k, grid, w★) = @inbounds w★[i, j, k]^3
+@inline squared_tkeᶜᶜᶜ(i, j, k, grid, w★) = @inbounds w★[i, j, k]^2
 
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
-
-    u = velocities.u
-    v = velocities.v
+                                            surface_buoyancy_flux, S², N², w★)
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
-    w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
-    S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
-    N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    w★ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, w★)
+    w★²ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, w★)
+    w★³ᶜᶜᶠ   = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, w★)
+    S²ᶜᶜᶠ    = ℑzᵃᵃᶠ(i, j, k, grid, S²)
+    N²_local = @inbounds N²[i, j, k]
+    N²_above = @inbounds N²[i, j, k+1]
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
+    ℓᶜ = Cᶜ * w★³ᶜᶜᶠ / (Qᵇ + Qᵇᵋ)
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+    convecting = (Qᵇ > Qᵇᵋ) & (N²_local < 0)
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
+    Sp = sqrt(S²ᶜᶜᶠ) * w★²ᶜᶜᶠ / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
@@ -133,10 +128,10 @@ end
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    ℓᵉ = Cᵉ * Qᵇ / (w★ᶜᶜᶠ * N²_local + Qᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+    entraining = (Qᵇ > Qᵇᵋ) & (N²_local > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -145,19 +140,15 @@ end
 end
 
 @inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
-
-    u = velocities.u
-    v = velocities.v
+                                            surface_buoyancy_flux, S², N², w★)
 
     Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
-    w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
-    S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
-    N²       = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+    w★²      = w★^2
+    w★³      = w★^3
+    S²ᶜᶜᶜ    = @inbounds S²[i, j, k]
+    N²_local = ℑzᵃᵃᶜ(i, j, k, grid, N²)
+    N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, N²)
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
@@ -165,10 +156,10 @@ end
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+    convecting = (Qᵇ > Qᵇᵋ) & (N²_local < 0)
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
+    Sp = sqrt(S²ᶜᶜᶜ) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
@@ -177,10 +168,10 @@ end
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    ℓᵉ = @inbounds Cᵉ * Qᵇ / (w★[i, j, k] * N²_local + Qᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+    entraining = (Qᵇ > Qᵇᵋ) & (N²_local > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -192,26 +183,28 @@ end
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
 @inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
-@inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+@inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    S²ᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, S²)
+    Ri = ifelse(N² ≤ 0, zero(grid), N² / S²ᶜᶜᶠ) 
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
-@inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
+@inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    N²ᶜᶜᶜ = ℑzᵃᵃᶠ(i, j, k, grid, N²)
+    Ri = ifelse(N² ≤ 0, zero(grid), N²ᶜᶜᶜ / S²) 
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
-@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, S², N², w★)
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
 
-    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, N², w★)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
@@ -219,12 +212,12 @@ end
     return min(H, ℓ★)
 end
 
-@inline function momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, S², N², w★)
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
-    σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
 
-    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, N², w★)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
@@ -232,16 +225,16 @@ end
     return min(H, ℓ★)
 end
 
-@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, surface_buoyancy_flux, S², N², w★)
     Cᶜ  = closure.mixing_length.Cᶜc
     Cᵉ  = closure.mixing_length.Cᵉc
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, surface_buoyancy_flux, S², N², w★)
 
     Cˡᵒ = closure.mixing_length.Cˡᵒc
     Cʰⁱ = closure.mixing_length.Cʰⁱc
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, N², w★)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
@@ -251,16 +244,16 @@ end
     return min(H, ℓᶜ)
 end
 
-@inline function tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, surface_buoyancy_flux, S², N², w★)
     Cᶜ  = closure.mixing_length.Cᶜc
     Cᵉ  = closure.mixing_length.Cᵉc
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, surface_buoyancy_flux, S², N², w★)
 
     Cˡᵒ = closure.mixing_length.Cˡᵒc
     Cʰⁱ = closure.mixing_length.Cʰⁱc
-    σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, N², w★)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
@@ -271,16 +264,16 @@ end
     return min(H, ℓᶜ)
 end
 
-@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, surface_buoyancy_flux, S², N², w★)
     Cᶜ  = closure.mixing_length.Cᶜe
     Cᵉ  = closure.mixing_length.Cᵉe
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, surface_buoyancy_flux, S², N², w★)
 
     Cˡᵒ = closure.mixing_length.Cˡᵒe
     Cʰⁱ = closure.mixing_length.Cʰⁱe
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, S², N²)
+    ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure,  N², w★)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
