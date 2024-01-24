@@ -102,7 +102,7 @@ end
     return min(H, ℓᴰ)
 end
 
-@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, diffusivities)
+@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, tracers, diffusivities)
 
     Qᵇ = diffusivities.Qᵇ
     S² = diffusivities.S²
@@ -130,7 +130,7 @@ end
 # Fallbacks for explicit time discretization
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     eᵢ = @inbounds tracers.e[i, j, k]
-    ω = dissipation_rate(i, j, k, grid, closure, diffusivities)
+    ω = dissipation_rate(i, j, k, grid, closure, tracers, diffusivities)
     return ω * eᵢ
 end
 

@@ -334,7 +334,7 @@ end
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+        wb = explicit_buoyancy_flux(i, j, k, grid, closure, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
         # See `buoyancy_flux`
@@ -348,7 +348,7 @@ end
         Q_e = - Cᵂϵ * w★[i, j, k] / Δz * on_bottom
 
         # Implicit TKE dissipation
-        ω_e = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        ω_e = dissipation_rate(i, j, k, grid, closure_ij, tracers, diffusivities)
         
         diffusivities.Lᵉ[i, j, k] = - wb_e - ω_e + Q_e
     end
