@@ -1,4 +1,5 @@
 using CUDA
+using AMDGPU
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 

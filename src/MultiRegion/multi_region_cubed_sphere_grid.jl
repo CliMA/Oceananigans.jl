@@ -235,7 +235,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
             $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
 
-            CUDA.@allowscalar begin
+            GPUArrays.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
                     getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
                     getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
@@ -253,7 +253,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 end
             end
 
-            CUDA.@allowscalar begin
+            GPUArrays.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
                     getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
                     getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
@@ -268,7 +268,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     function fill_faceface_coordinates!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
-        CUDA.allowscalar() do
+        GPUArrays.allowscalar() do
             getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
             getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
             getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
@@ -319,7 +319,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     function fill_faceface_metrics!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
 
-        CUDA.@allowscalar begin
+        GPUArrays.@allowscalar begin
             getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
             getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
             getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
@@ -383,7 +383,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         fill_faceface_metrics!(grid)
     end
 
-    CUDA.@allowscalar begin
+    GPUArrays.@allowscalar begin
         for region in 1:6
             getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
             getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180

@@ -1,5 +1,6 @@
 using Base: @propagate_inbounds
 using CUDA
+using AMDGPU
 using Adapt
 using OffsetArrays
 using Statistics

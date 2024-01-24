@@ -10,6 +10,8 @@ export
 using Statistics
 using FFTW
 using CUDA
+using AMDGPU
+using GPUArrays
 using SparseArrays
 using KernelAbstractions
 using KernelAbstractions.Extras.LoopInfo: @unroll

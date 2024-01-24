@@ -3,6 +3,7 @@ module Diagnostics
 export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
 using CUDA
+using AMDGPU
 using Oceananigans
 using Oceananigans.Operators
 

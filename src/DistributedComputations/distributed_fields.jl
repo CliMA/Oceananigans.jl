@@ -2,6 +2,7 @@ import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using CUDA: CuArray
+using AMDGPU: ROCArray
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
 
@@ -37,6 +38,25 @@ end
 
 # Automatically partition under the hood if sizes are compatible
 function set!(u::DistributedField, v::Union{Array, CuArray})
+    gsize = global_size(architecture(u), size(u))
+
+    if size(v) == gsize
+        f = partition_global_array(architecture(u), v, size(u))
+        u .= f
+        return u
+    else
+        try
+            f = arch_array(architecture(u), v)
+            u .= f
+            return u
+    
+        catch
+            throw(ArgumentError("ERROR: DimensionMismatch: array could not be set to match destination field"))
+        end
+    end
+end
+
+function set!(u::DistributedField, v::Union{Array, ROCArray})
     gsize = global_size(architecture(u), size(u))
 
     if size(v) == gsize

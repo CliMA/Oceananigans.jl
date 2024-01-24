@@ -23,6 +23,8 @@ export on_architecture
 
 using CUDA
 using CUDA: has_cuda
+using AMDGPU
+using AMDGPU: has_rocm_gpu
 using Adapt
 using OffsetArrays
 

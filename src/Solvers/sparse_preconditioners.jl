@@ -2,6 +2,10 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
+using AMDGPU
+#if AMDGPU.functional(:rocsparse)
+using AMDGPU.rocSparse
+#end
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays, IncompleteLU
@@ -77,14 +81,15 @@ build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diago
 build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
-    if architecture(A) isa GPU 
+    if architecture(A) isa CUDAGPU || architecture(A) isa ROCmGPU 
         throw(ArgumentError("the ILU factorization is not available on the GPU! choose another method"))
     else
         return ilu(A, τ = settings.τ)
     end
 end
 
-@inline architecture(::CuSparseMatrixCSC) = GPU()
+@inline architecture(::RocSparseMatrixCSC) = ROCmGPU()
+@inline architecture(::CuSparseMatrixCSC) = CUDAGPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
 
 abstract type AbstractInversePreconditioner{M} end
