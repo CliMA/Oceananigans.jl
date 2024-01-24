@@ -238,7 +238,7 @@ function Distributed(child_architecture = CPU();
         CUDA.device!(isnothing(devices) ? node_rank % CUDA.ndevices() : devices[node_rank+1])
     end
     if child_architecture isa ROCmGPU
-        AMDGPU.default_device!(isnothing(devices) ? AMDGPU.devices(:gpu)[node_rank % length(AMDGPU.devices(:gpu))+1] : AMDGPU.devices(:gpu)[devices[node_rank+1]])
+        AMDGPU.device!(isnothing(devices) ? AMDGPU.devices(:gpu)[node_rank % length(AMDGPU.devices(:gpu))+1] : AMDGPU.devices(:gpu)[devices[node_rank+1]])
     end
 
     mpi_requests = MPI.Request[]
