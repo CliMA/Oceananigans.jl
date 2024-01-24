@@ -7,8 +7,8 @@ export device, architecture, array_type, arch_array, unified_array, device_copy_
 using CUDA
 using AMDGPU
 using KernelAbstractions
-using CUDAKernels
-using ROCKernels
+# using CUDAKernels
+# using ROCKernels
 using Adapt
 using OffsetArrays
 
@@ -36,20 +36,20 @@ struct GPU{D} <: AbstractArchitecture
     device :: D
 end
 
-const CUDAGPU = GPU{<:CUDAKernels.CUDADevice}
-const ROCmGPU = GPU{<:ROCKernels.ROCDevice}
+const CUDAGPU = GPU{<:CUDA.CUDABackend}
+const ROCmGPU = GPU{<:AMDGPU.ROCBackend}
 
 # Convenience, non-public constructors (may be better to remove these eventually for code clarity)
-CUDAGPU() = GPU(CUDAKernels.CUDADevice())
-ROCmGPU() = GPU(ROCKernels.ROCDevice())
+CUDAGPU() = GPU(CUDA.CUDABackend())
+ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::CUDAGPU) = CUDAKernels.CUDADevice(;always_inline=true)
-device(::ROCmGPU) = ROCKernels.ROCDevice()
+device(::CUDAGPU) = CUDA.CUDABackend(; always_inline=true)
+device(::ROCmGPU) = AMDGPU.ROCBackend(; always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
