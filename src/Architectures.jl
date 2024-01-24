@@ -47,7 +47,7 @@ ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::CUDAGPU) = CUDA.CUDABackend(; always_inline=true)
-device(::ROCmGPU) = AMDGPU.ROCBackend(; always_inline=true)
+device(::ROCmGPU) = AMDGPU.ROCBackend()
 
 architecture() = nothing
 architecture(::Number) = nothing

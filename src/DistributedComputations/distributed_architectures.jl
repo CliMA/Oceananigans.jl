@@ -239,7 +239,11 @@ function Distributed(child_architecture = CPU();
         end
         if child_architecture isa ROCmGPU
             device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
-            AMDGPU.device!(device_id)
+            println(length(AMDGPU.devices()))
+            println(device_id)
+            device = AMDGPU.devices()[device_id+1] # AMDGPU uses 1-based indexing for devices
+            println(device)
+            AMDGPU.device!(device)
         end
     end
 
