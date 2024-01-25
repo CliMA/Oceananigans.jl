@@ -209,8 +209,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                                            connectivity,
                                                                                            region_grids,
                                                                                            devices)
-    
-    return grid 
+
     # TODO: Use fill_halo_regions! for the Face-Face-Any fields.
     #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
     #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
