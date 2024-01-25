@@ -242,10 +242,11 @@ trilinear(x, y, z) = x + y + z
             c = Field((Center, Center, Center), grid)
 
             set!(c, (x, y, z) -> -z)
-            @test maximum(c) == CUDA.@allowscalar c[1,1,3]
-            @test CUDA.@allowscalar compute!(Field(Average(c, condition=(c .< 0.5))))[1,1,1] == 0.25
+            @test maximum(c) == CUDA.@allowscalar c[1, 1, 3]
+            @test CUDA.@allowscalar compute!(Field(Average(c, condition=(c .< 0.5))))[1, 1, 1] == 0.25
             zᶜᶜᶜ = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
-            @test CUDA.@allowscalar compute!(Field(Average(c; condition = zᶜᶜᶜ .< -1/2)))[1,1,1] == (c[1,1,3] + c[1,1,4])/2
+            avg_bottom_half_not_immersed = CUDA.@allowscalar (c[1, 1, 3] + c[1, 1, 4]) / 2
+            @test CUDA.@allowscalar compute!(Field(Average(c; condition=(zᶜᶜᶜ .< -1/2))))[1, 1, 1] == avg_bottom_half_not_immersed
         end
     end
 end
