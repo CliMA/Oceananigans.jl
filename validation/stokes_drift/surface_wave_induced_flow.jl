@@ -13,7 +13,7 @@ const δ = 1kilometer
 const cᵍ = c / 2
 const Uˢ = ϵ^2 * c
 
-@inline A(ξ) = exp(- ξ^2 / (2 * δ^2) )
+@inline A(ξ) = exp(- ξ^2 / 2δ^2)
 @inline A′(ξ) = - ξ / δ^2 * A(ξ)
 @inline A′′(ξ) = (ξ^2 / δ^2 - 1) * A(ξ) / δ^2
 
@@ -35,7 +35,8 @@ const Uˢ = ϵ^2 * c
 # ∂z_wˢ = - ∂x_uˢ = - A′ * ûˢ .
 # ```
 #
-# We therefore find that
+# Thus, after integrating from bottom up to ``z`` and assuming that ``w`` at
+# the bottom vanishes, we find that
 #
 # ```math
 # wˢ = - A′ / 2k * ûˢ
@@ -66,7 +67,7 @@ N² = 0
 bᵢ(x, z) = N² * z
 set!(model, u=uᵢ, b=bᵢ)
 
-Δx = xspacings(grid, Center())
+Δx = minimum_xspacing(grid)
 Δt = 0.2 * Δx / cᵍ
 simulation = Simulation(model; Δt, stop_iteration = 600)
 
@@ -106,4 +107,3 @@ heatmap!(axw, xw, zw, wn)
 record(fig, "surface_wave_induced_flow.mp4", 1:Nt, framerate=12) do nn
     n[] = nn
 end
-

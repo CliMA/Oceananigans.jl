@@ -16,7 +16,7 @@ const Uˢ = ϵ^2 * c
 @inline       A(ξ, η) = exp(- (ξ^2 + η^2) / 2δ^2)
 @inline    ∂ξ_A(ξ, η) = - ξ / δ^2 * A(ξ, η)
 @inline    ∂η_A(ξ, η) = - η / δ^2 * A(ξ, η)
-@inline ∂η_∂ξ_A(ξ, η) = - η * ξ / δ^4 * A(ξ, η)
+@inline ∂η_∂ξ_A(ξ, η) = η * ξ / δ^4 * A(ξ, η)
 @inline   ∂²ξ_A(ξ, η) = (ξ^2 / δ^2 - 1) * A(ξ, η) / δ^2
 
 # Write the Stokes drift as
@@ -72,7 +72,7 @@ N² = 0 #1e-6
 bᵢ(x, y, z) = N² * z
 set!(model, u=uᵢ, b=bᵢ)
 
-Δx = xspacings(grid, Center())
+Δx = minimum_xspacing(grid)
 Δt = 0.2 * Δx / cᵍ
 simulation = Simulation(model; Δt, stop_iteration = 200)
 
@@ -82,7 +82,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 filename = "surface_wave_quasi_geostrophic_induced_flow.jld2"
 outputs = model.velocities
 simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(10),
+                                                    schedule = IterationInterval(3),
                                                     overwrite_existing = true)
 
 run!(simulation)
@@ -110,7 +110,6 @@ axw = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)", aspect=1)
 heatmap!(axu, xu, yu, un)
 heatmap!(axw, xw, yw, wn)
 
-record(fig, "surface_wave_induced_flow.mp4", 1:Nt, framerate=12) do nn
+record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
-
