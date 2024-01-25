@@ -35,6 +35,9 @@ instantiate(t) = t
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
+    loc = map(instantiate, loc)
+    topo = map(instantiate, topo)
+    ii = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
     extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
