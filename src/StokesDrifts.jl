@@ -184,7 +184,7 @@ To resolve the evolution of the Lagrangian-mean momentum, we require all the com
 of the "psuedovorticity",
 
 ```math
-𝛁 × 𝐮ˢ = \\hat{\\boldsymbol{x}} (∂_y wˢ - ∂_z vˢ) + \\hat{\\boldsymbol{y}} (∂_z uˢ - ∂_x wˢ) + \\hat{\\boldsymbol{z}} (∂_x vˢ - ∂_y uˢ)
+𝛁 × 𝐯ˢ = \\hat{\\boldsymbol{x}} (∂_y wˢ - ∂_z vˢ) + \\hat{\\boldsymbol{y}} (∂_z uˢ - ∂_x wˢ) + \\hat{\\boldsymbol{z}} (∂_x vˢ - ∂_y uˢ)
 ```
 
 as well as the time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
@@ -202,15 +202,18 @@ via `∂z_uˢ(x, y, z, t)`.
 Example
 =======
 
-A wavepacket moving with the group velocity. We write the Stokes drift as:
+A wavepacket moving with the group velocity in the ``x``-direction.
+We write the Stokes drift as:
 
 ```math
-uˢ(x, y, z, t) = A(x - cᵍ t, y) * ûˢ(z)
+uˢ(x, y, z, t) = A(x - cᵍ \\, t, y) ûˢ(z)
 ```
 
-with ``A(ξ, η) = \\exp{-(ξ^2 + η^2) / 2δ^2}``. If ``uˢ`` represents the solenoidal component
-of the Stokes drift, then ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore, under
-the assumption that ``wˢ`` tends to zero at large depths, we get ``wˢ = - (∂_ξ A / 2k) ûˢ``.
+with ``A(ξ, η) = \\exp{[-(ξ^2 + η^2) / 2δ^2]}``. We also assume ``vˢ = 0``.
+If ``𝐯ˢ`` represents the solenoidal component of the Stokes drift, then
+in this system from incompressibility requirement we have that
+``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore, under the assumption
+that ``wˢ`` tends to zero at large depths, we get ``wˢ = - (∂_ξ A / 2k) ûˢ``.
 
 ```jldoctest
 using Oceananigans
