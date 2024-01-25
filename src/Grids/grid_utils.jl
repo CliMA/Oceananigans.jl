@@ -47,6 +47,7 @@ end
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
+Base.length(::Face,    ::FullyConnected,  N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
@@ -98,6 +99,7 @@ is restricted by `length(ind)`.
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
 total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
+total_length(::Face,    ::FullyConnected,  N, H=0) = N + 1 + 2H
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
@@ -483,4 +485,3 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
 end
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
-

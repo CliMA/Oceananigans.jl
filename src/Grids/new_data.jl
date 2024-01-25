@@ -19,6 +19,7 @@ Return a range of indices for a field located at cell `Face`s along a grid dimen
 is `Bounded` and has length `N` and with halo points `H`.
 """
 offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Face, ::FullyConnected, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
@@ -34,9 +35,6 @@ instantiate(t) = t
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
-    loc = map(instantiate, loc)
-    topo = map(instantiate, topo)
-    ii = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
     extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
@@ -47,11 +45,10 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
 end
 
 """
-    offset_data(underlying_data, grid::AbstractGrid, loc)
+    offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
 
-Returns an `OffsetArray` that maps to `underlying_data` in memory,
-with offset indices appropriate for the `data` of a field on
-a `grid` of `size(grid)` and located at `loc`.
+Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
+appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -59,7 +56,7 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
 """
     new_data(FT, arch, loc, topo, sz, halo_sz, indices)
 
-Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
+Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
