@@ -67,7 +67,8 @@ function Reduction(int::Integral, field::AbstractField; condition = nothing, mas
 end
 
 """
-    Integral(field; dims=:)
+    Integral(field::AbstractField; condition = nothing, mask = 0, dims=:)
+
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
 """
