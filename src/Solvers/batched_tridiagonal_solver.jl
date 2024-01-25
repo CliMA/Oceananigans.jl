@@ -84,9 +84,8 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-Implementation follows \citet{Press1992}; § 2.4. Note that
-a slightly different notation from Press et al. is used for indexing the off-diagonal
-elements; see [`BatchedTridiagonalSolver`](@ref).
+Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
+Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
 
 Reference
 =========
