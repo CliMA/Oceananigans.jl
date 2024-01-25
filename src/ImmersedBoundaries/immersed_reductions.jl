@@ -25,7 +25,7 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
     arch = architecture(op.grid)
     arch_condition = arch_array(arch, cond)
     ni_condition = NotImmersed(arch_condition)
-    return ConditionalOperation(op; func, ni_condition, mask)
+    return ConditionalOperation(op; func, condition=ni_condition, mask)
 end
 
 
