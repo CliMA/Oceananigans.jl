@@ -81,7 +81,7 @@ Compute the integral of ``f(x, y, z) = x y z`` over the domain
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(size=(18, 18, 8), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, Periodic));
+julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, Periodic));
 
 julia> f = CenterField(grid);
 
