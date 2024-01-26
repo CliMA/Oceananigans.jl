@@ -76,7 +76,8 @@ Example
 =======
 
 Compute the integral of ``f(x, y, z) = x y z`` over the domain
-``(x, y, z) ∈ [0, 1] × [0, 1] × [0, 1]``.
+``(x, y, z) ∈ [0, 1] × [0, 1] × [0, 1]``. The analytical answer
+is ``\iiint x y z \\, dx \\, dy \\, dz = 1/8``.
 
 ```jldoctest
 julia> using Oceananigans
