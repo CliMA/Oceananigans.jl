@@ -84,15 +84,15 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1));
 
-julia> f = CenterField(grid)
+julia> f = CenterField(grid);
 
-julia> set!(f, (x, y, z) -> x * y * z);
+julia> set!(f, (x, y, z) -> x * y * z)
 8×8×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=0.823975, min=0.000244141, mean=0.125
 
 julia> ∫f = Integral(f)
 sum! over dims (1, 2, 3) of BinaryOperation at (Center, Center, Center)
