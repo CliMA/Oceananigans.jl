@@ -164,6 +164,11 @@ function run_field_interpolation_tests(grid)
             ℑf = Array(ℑf)
             @test all(isapprox.(ℑf, F, atol=tolerance))
 
+            # interpolate! fills the halos therefore to test
+            # interpolate when f=w  we need to fill the halos
+            # of the original field so that f(k=1) = f(k=grid.Nz) = 0
+            fill_halo_regions!(f)
+
             f_copy = deepcopy(f)
             fill!(f_copy, 0)
             interpolate!(f_copy, f)
@@ -411,7 +416,7 @@ end
                                              x = [0.0, 0.26, 0.49, 0.78, 1.0],
                                              y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
                                              z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7])
-    
+
             grids = [reg_grid, stretched_grid]
 
             for grid in grids
