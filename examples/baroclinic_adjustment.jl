@@ -221,7 +221,7 @@ nothing #hide
 # Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
 # zonal average flow is located.
 
-fig = Figure(resolution = (1600, 800))
+fig = Figure(size = (1600, 800))
 
 zonal_slice_displacement = 1.2
 
@@ -309,7 +309,7 @@ yv = yv ./ 1e3 # convert m -> km
 
 set_theme!(Theme(fontsize=24))
 
-fig = Figure(resolution=(1800, 1000))
+fig = Figure(size=(1800, 1000))
 
 axb = Axis(fig[1, 2], xlabel="x (km)", ylabel="y (km)", aspect=1)
 axζ = Axis(fig[1, 3], xlabel="x (km)", ylabel="y (km)", aspect=1, yaxisposition=:right)
