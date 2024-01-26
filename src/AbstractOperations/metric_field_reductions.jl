@@ -82,7 +82,7 @@ is ``∭ x y z \\, dx \\, dy \\, dz = 1/8``.
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, Periodic));
+julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1));
 
 julia> f = CenterField(grid);
 
