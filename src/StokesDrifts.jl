@@ -10,11 +10,15 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
+using Adapt: adapt
+
 using Oceananigans.Fields
 using Oceananigans.Operators
 
 using Oceananigans.Grids: AbstractGrid, node
 using Oceananigans.Utils: prettysummary
+
+import Adapt: adapt_structure
 
 #####
 ##### Functions for "no surface waves"
@@ -39,6 +43,12 @@ struct UniformStokesDrift{P, UZ, VZ, UT, VT}
     ∂t_vˢ :: VT
     parameters :: P
 end
+
+adapt_structure(to, sd::UniformStokesDrift) = UniformStokesDrift(adapt(to, sd.∂z_uˢ),
+                                                                 adapt(to, sd.∂z_vˢ),
+                                                                 adapt(to, sd.∂t_uˢ),
+                                                                 adapt(to, sd.∂t_vˢ),
+                                                                 adapt(to, sd.parameters))
 
 Base.summary(::UniformStokesDrift{Nothing}) = "UniformStokesDrift{Nothing}"
 
@@ -150,6 +160,17 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂t_wˢ :: WT
     parameters :: P
 end
+
+adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.∂x_vˢ),
+                                                   adapt(to, sd.∂x_wˢ),
+                                                   adapt(to, sd.∂y_uˢ),
+                                                   adapt(to, sd.∂y_wˢ),
+                                                   adapt(to, sd.∂z_uˢ),
+                                                   adapt(to, sd.∂z_vˢ),
+                                                   adapt(to, sd.∂t_uˢ),
+                                                   adapt(to, sd.∂t_vˢ),
+                                                   adapt(to, sd.∂t_wˢ),
+                                                   adapt(to, sd.parameters))
 
 Base.summary(::StokesDrift{Nothing}) = "StokesDrift{Nothing}"
 
