@@ -97,7 +97,7 @@ julia> set!(f, (x, y, z) -> x * y * z)
 julia> ∫f = Integral(f)
 sum! over dims (1, 2, 3) of BinaryOperation at (Center, Center, Center)
 └── operand: BinaryOperation at (Center, Center, Center)
-    └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halojulia> compute!(∫f);
+    └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 
 julia> ∫f = Field(Integral(f));
 
