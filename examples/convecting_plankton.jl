@@ -70,7 +70,7 @@ set_theme!(Theme(fontsize = 24, linewidth=2))
 
 times = range(0, 12hours, length=100)
 
-fig = Figure(resolution = (800, 300))
+fig = Figure(size = (800, 300))
 ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)")
 
 flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
@@ -239,7 +239,7 @@ w_lims = (-w_lim, w_lim)
 
 P_lims = (0.95, 1.1)
 
-fig = Figure(resolution = (1200, 1000))
+fig = Figure(size = (1200, 1000))
 
 ax_w = Axis(fig[2, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
 ax_P = Axis(fig[3, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
