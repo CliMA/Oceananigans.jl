@@ -5,8 +5,8 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, T, D, χ} <: AbstractArray{T, 4}
     times :: χ
 
     function GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(data::D,
-                                                     times::χ) where {T, LX, LY, LZ, D, χ}
-        return new{LX, LY, LZ, T, D, χ}(data, backend, times)
+                                                      times::χ) where {T, LX, LY, LZ, D, χ}
+        return new{LX, LY, LZ, T, D, χ}(data, times)
     end
 end
 
