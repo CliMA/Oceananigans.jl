@@ -44,7 +44,8 @@ contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
-function heuristic_workgroup(Wx, Wy, Wz=nothing)
+# This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
+function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
 
     workgroup = Wx == 1 && Wy == 1 ?
 
@@ -61,7 +62,7 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
                     # Two-dimensional x-z slice models:
                     (min(256, Wx), 1) :
 
-                    # Three-dimensional models
+                    # Three-dimensional (and four-dimensional) models
                     (16, 16)
 
     return workgroup

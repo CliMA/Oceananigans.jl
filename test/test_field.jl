@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 
 using Oceananigans.Fields: ReducedField, has_velocities
-using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
+using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 
 """
@@ -98,63 +98,83 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
+@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
+    interpolate((x, y, z), from_field, from_loc, from_grid)
+
+# Choose a trilinear function so trilinear interpolation can return values that
+# are exactly correct.
+@inline func(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
+
 function run_field_interpolation_tests(grid)
+    arch = architecture(grid)
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)
 
     (u, v, w), c = velocities, tracers.c
 
-    # Choose a trilinear function so trilinear interpolation can return values that
-    # are exactly correct.
-    f(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
-
     # Maximum expected rounding error is the unit in last place of the maximum value
-    # of f over the domain of the grid.
+    # of func over the domain of the grid.
 
     # TODO: remove this allowscalar when `nodes` returns broadcastable object on GPU
     xf, yf, zf = nodes(grid, (Face(), Face(), Face()), reshape=true)
-    f_max = CUDA.@allowscalar maximum(f.(xf, yf, zf))
+    f_max = CUDA.@allowscalar maximum(func.(xf, yf, zf))
     ε_max = eps(f_max)
     tolerance = 10 * ε_max
 
-    set!(u, f)
-    set!(v, f)
-    set!(w, f)
-    set!(c, f)
+    set!(u, func)
+    set!(v, func)
+    set!(w, func)
+    set!(c, func)
 
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
 
-    CUDA.@allowscalar begin
-        ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
-        ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
-        ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
-        ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+    for f in (u, v, w, c)
+        x, y, z = nodes(f, reshape=true)
+        loc = Tuple(L() for L in location(f))
 
-        @test all(isapprox.(ℑu, Array(interior(u)), atol=tolerance))
-        @test all(isapprox.(ℑv, Array(interior(v)), atol=tolerance))
-        @test all(isapprox.(ℑw, Array(interior(w)), atol=tolerance))
-        @test all(isapprox.(ℑc, Array(interior(c)), atol=tolerance))
+        CUDA.@allowscalar begin
+            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
+        end
+
+        ℑf_cpu = Array(ℑf)
+        f_interior_cpu = Array(interior(f))
+        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
     end
 
     # Check that interpolating between grid points works as expected.
 
-    xs = reshape([0.3, 0.55, 0.73], (3, 1, 1))
-    ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
-    zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
+    xs = Array(reshape([0.3, 0.55, 0.73], (3, 1, 1)))
+    ys = Array(reshape([-π/6, 0, 1+1e-7], (1, 3, 1)))
+    zs = Array(reshape([-1.3, 1.23, 2.1], (1, 1, 3)))
+
+    X = [(xs[i], ys[j], zs[k]) for i=1:3, j=1:3, k=1:3]
+    X = arch_array(arch, X)
+
+    xs = arch_array(arch, xs)
+    ys = arch_array(arch, ys)
+    zs = arch_array(arch, zs)
 
     CUDA.@allowscalar begin
-        ℑu = interpolate.(Ref(u), xs, ys, zs)
-        ℑv = interpolate.(Ref(v), xs, ys, zs)
-        ℑw = interpolate.(Ref(w), xs, ys, zs)
-        ℑc = interpolate.(Ref(c), xs, ys, zs)
+        for f in (u, v, w, c)
+            loc = Tuple(L() for L in location(f))
+            ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
+            F = func.(xs, ys, zs)
+            F = Array(F)
+            ℑf = Array(ℑf)
+            @test all(isapprox.(ℑf, F, atol=tolerance))
 
-        F = f.(xs, ys, zs)
+            # interpolate! fills the halos therefore to test
+            # interpolate when f=w  we need to fill the halos
+            # of the original field so that f(k=1) = f(k=grid.Nz) = 0
+            fill_halo_regions!(f)
 
-        @test all(isapprox.(ℑu, F, atol=tolerance))
-        @test all(isapprox.(ℑv, F, atol=tolerance))
-        @test all(isapprox.(ℑw, F, atol=tolerance))
-        @test all(isapprox.(ℑc, F, atol=tolerance))
+            f_copy = deepcopy(f)
+            fill!(f_copy, 0)
+            interpolate!(f_copy, f)
+
+            @test all(interior(f_copy) .≈ interior(f))
+        end
     end
 
     return nothing
@@ -388,13 +408,15 @@ end
 
         for arch in archs, FT in float_types
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
-            # Chosen these z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
 
-            stretched_grid = RectilinearGrid(arch, size=(4, 5, 7),
+            # Choose points z points to be rounded values of `reg_grid` z nodes so that interpolation matches tolerance
+            stretched_grid = RectilinearGrid(arch,
+                                             size = (4, 5, 7),
+                                             halo = (1, 1, 1),
                                              x = [0.0, 0.26, 0.49, 0.78, 1.0],
                                              y = [-3.1, -1.9, -0.6, 0.6, 1.9, 3.1],
-                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7], halo=(1, 1, 1))
-    
+                                             z = [-5.3, -4.2, -3.0, -1.9, -0.7, 0.4, 1.6, 2.7])
+
             grids = [reg_grid, stretched_grid]
 
             for grid in grids

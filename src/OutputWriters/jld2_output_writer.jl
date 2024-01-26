@@ -254,7 +254,7 @@ function write_output!(writer::JLD2OutputWriter, model)
     if iteration_exists(path, current_iteration)
 
         if writer.overwrite_existing
-            # Something went wrong, so we remove the file re-initialize it.
+            # Something went wrong, so we remove the file and re-initialize it.
             rm(path, force=true)
             initialize_jld2_file!(writer, model)
         else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing

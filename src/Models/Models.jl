@@ -34,7 +34,7 @@ using Oceananigans.OutputReaders: update_field_time_series!, extract_field_times
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
-architecture(model::AbstractModel) = model.architecture
+architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 timestepper(model::AbstractModel) = model.timestepper
@@ -54,8 +54,8 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                                       closure)
 
     any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \
-                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n \
+                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \n \
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 

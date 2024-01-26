@@ -1,7 +1,7 @@
 struct FieldDataset{F, M, P}
     fields :: F
-  metadata :: M
-  filepath :: P
+    metadata :: M
+    filepath :: P
 end
 
 """
