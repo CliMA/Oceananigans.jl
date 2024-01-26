@@ -5,24 +5,32 @@ export FieldTimeSeries, FieldDataset
 
 abstract type AbstractDataBackend end
 
-struct InMemory{I} <: AbstractDataBackend 
+mutable struct InMemory{I} <: AbstractDataBackend 
     index_range :: I
 end
 
-InMemory(; chunk_size = Colon()) = chunk_size isa Colon ? 
-                                          InMemory(chunk_size) :
-                                          InMemory(1:chunk_size)
+function InMemory(; chunk_size = Colon())
+    index_range = if chunk_size isa Colon 
+        Colon()
+    else
+        UnitRange(1, chunk_size)
+    end
+
+    return InMemory(index_range)
+end
 
 struct OnDisk <: AbstractDataBackend end
 
-regularize_backend(::InMemory, data) = InMemory(collect(1:size(data, 4)))
-regularize_backend(::OnDisk,   data) = OnDisk()
+# validate_backend(::InMemory{Nothing}, data) = InMemory(collect(1:size(data, 4)))
+# validate_backend(::OnDisk,   data)          = OnDisk()
+# validate_backend(in_memory::InMemory, data) = in_memory
 
 include("field_time_series.jl")
 include("memory_allocated_field_time_series.jl")
 include("on_disk_field_time_series.jl")
-include("adapted_field_time_series.jl")
+include("gpu_adapted_field_time_series.jl")
 include("update_field_time_series.jl")
 include("field_dataset.jl")
 
 end # module
+
