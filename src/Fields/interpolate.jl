@@ -228,17 +228,17 @@ Note that this is a lower-level `interpolate` method defined for use in CPU/GPU 
 end
 
 """
-    interpolator(ii)
+    interpolator(fractional_idx)
 
-Return an ``interpolator tuple'' from the ``fractional'' index `ii`
+Return an ``interpolator tuple'' from the fractional index `fractional_idx`
 defined as the 3-tuple
 
 ```
 (i⁻, i⁺, ξ)
 ```
 
-where `i⁻` is the index to the left of `ii`, `i⁺` is the index to the
-right of `ii`, and `ξ` is the fractional distance between `ii` and the
+where `i⁻` is the index to the left of `i`, `i⁺` is the index to the
+right of `i`, and `ξ` is the fractional distance between `i` and the
 left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 """
 @inline function interpolator(fractional_idx)
@@ -284,7 +284,7 @@ end
 end
 
 """
-    interpolate(field, x, y, z)
+    interpolate(to_node, from_field)
 
 Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
 """
