@@ -88,7 +88,7 @@ function run_field_reduction_tests(FT, arch)
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(ϕ, dims=dims), mean(ϕ_vals, dims=dims), atol=4ε))
-                               
+
             @test all(isapprox(minimum(sin, ϕ, dims=dims), minimum(sin, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(cos, ϕ, dims=dims), maximum(cos, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(cosh, ϕ, dims=dims), mean(cosh, ϕ_vals, dims=dims), atol=5ε))
