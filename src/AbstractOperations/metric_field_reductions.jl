@@ -71,6 +71,29 @@ end
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
+
+Example
+=======
+
+Compute the integral of ``f(x, y, z) = x y z`` over the domain
+``(x, y, z) ∈ [0, 1] \times [0, 1] \times [0, 1]``.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1));
+
+julia> f = CenterField(grid);
+
+julia> set!(f, (x, y, z) -> x * y * z);
+
+julia> ∫f = Field(Integral(f));
+
+julia> compute!(∫f);
+
+julia> ∫f[1, 1, 1]
+0.125
+```
 """
 Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(field, condition, mask); dims)
 
