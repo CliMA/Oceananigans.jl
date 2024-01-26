@@ -67,6 +67,10 @@ end
 
 Hx, Hy, Hz = halo_size(grid)
 
+grid_Δxᶠᶜᵃ = Field{Face, Center, Center}(grid)
+grid_Δyᶜᶠᵃ = Field{Center, Face, Center}(grid)
+grid_Azᶠᶠᵃ = Field{Face, Face, Center}(grid)
+
 # Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
 for region in [1, 3, 5]
     region_east = region + 1
@@ -79,13 +83,28 @@ for region in [2, 4, 6]
     grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
 end
 
+for region in 1:6
+    for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
+        grid_Δxᶠᶜᵃ[region][i, j, k] = grid[region].Δxᶠᶜᵃ[i, j]
+        grid_Δyᶜᶠᵃ[region][i, j, k] = grid[region].Δyᶜᶠᵃ[i, j]
+        grid_Azᶠᶠᵃ[region][i, j, k] = Azᶠᶠᶜ(i, j, k, grid[region])
+    end
+end
+
 ## Model setup
 
+horizontal_closure = HorizontalScalarDiffusivity(ν = 1e+4) 
+#=
+Switch between horizontal_closure = HorizontalScalarDiffusivity(ν = 1e+4) and horizontal_closure = nothing. Here, ν is 
+the horizontal viscosity for the momentum equations and κ is the horizontal diffusivity for the continuity equation. 
+Both are in [m² s⁻¹].
+=#
+
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = nothing,
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = 100),
                                     coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving()),
-                                    closure = nothing,
+                                    closure = (horizontal_closure),
                                     tracers = nothing,
                                     buoyancy = nothing)
 
@@ -201,7 +220,27 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-plot_initial_condition_before_model_definition = true
+# Plot the grid metrics.
+
+fig = panel_wise_visualization_with_halos(grid, grid_Δxᶠᶜᵃ)
+save("grid_Δxᶠᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Δxᶠᶜᵃ)
+save("grid_Δxᶠᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Δyᶜᶠᵃ)
+save("grid_Δyᶜᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Δyᶜᶠᵃ)
+save("grid_Δyᶜᶠᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶠᵃ)
+save("grid_Azᶠᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Azᶠᶠᵃ)
+save("grid_Azᶠᶠᵃ.png", fig)
+
+plot_initial_condition_before_model_definition = false
 
 if plot_initial_condition_before_model_definition
     # Plot the initial velocity field before model definition.
@@ -244,6 +283,10 @@ compare_old_and_new_code_metrics = true
 
 if compare_old_and_new_code_metrics
 
+    old_xᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_xᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_yᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_yᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
@@ -264,6 +307,10 @@ if compare_old_and_new_code_metrics
 
     if old_code_metrics_JMC
         for region in 1:6
+            old_xᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_xᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δyᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
@@ -291,6 +338,10 @@ if compare_old_and_new_code_metrics
     if overwrite_grid_metrics_from_old_code
         if old_code_metrics_JMC
             for region in 1:6
+                grid[region].λᶜᶜᵃ[:,:]  =  old_xᶜᶜᵃ_parent[:, :, region]
+                grid[region].λᶠᶠᵃ[:,:]  =  old_xᶠᶠᵃ_parent[:, :, region]
+                grid[region].φᶜᶜᵃ[:,:]  =  old_yᶜᶜᵃ_parent[:, :, region]
+                grid[region].φᶠᶠᵃ[:,:]  =  old_yᶠᶠᵃ_parent[:, :, region]
                 grid[region].Δxᶠᶜᵃ[:,:] = old_Δxᶠᶜᵃ_parent[:, :, region]
                 grid[region].Δxᶜᶠᵃ[:,:] = old_Δxᶜᶠᵃ_parent[:, :, region]
                 grid[region].Δyᶠᶜᵃ[:,:] = old_Δyᶠᶜᵃ_parent[:, :, region]
@@ -384,7 +435,7 @@ angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
 stop_time = deg2rad(360) / abs(angular_velocity)
 @info "Stop time = $(prettytime(stop_time))"
 
-Δt = 20
+Δt = 20 # The numerical solution blows up, not just with Δt = 20, but also with Δt = 5, a factor of 4 less.
 
 gravity_wave_speed = sqrt(g * H)
 min_spacing = filter(!iszero, grid[1].Δyᶠᶠᵃ) |> minimum
@@ -393,7 +444,7 @@ gravity_wave_cfl = Δt / wave_propagation_time_scale
 @info "Gravity wave CFL = $gravity_wave_cfl"
 
 if !isnothing(model.closure)
-    ν = model.closure.νh
+    ν = model.closure.ν
     diffusive_cfl = ν * Δt / min_spacing^2
     @info "Diffusive CFL = $diffusive_cfl"
 end
