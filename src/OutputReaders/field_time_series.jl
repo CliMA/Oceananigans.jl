@@ -4,23 +4,22 @@ using OffsetArrays
 using Statistics
 using JLD2
 
+using Dates: AbstractTime
+using KernelAbstractions: @kernel, @index
+
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location, index_binary_search,
-                           indices_summary, boundary_conditions 
-
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location,
+                           index_binary_search, indices_summary, boundary_conditions
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
-
-using Dates: AbstractTime
-using KernelAbstractions: @kernel, @index
 
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
@@ -91,10 +90,10 @@ Construct a `FieldTimeSeries` on `grid` and at `times`.
 Keyword arguments
 =================
 
-- indices: spatial indices
-- backend: backend, `InMemory(indices=Colon())` or `OnDisk()`
-- path: path to data for `backend = OnDisk()`
-- name: name of field for `backend = OnDisk()`
+- `indices`: spatial indices
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+- `path`: path to data for `backend = OnDisk()`
+- `name`: name of field for `backend = OnDisk()`
 """
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} =
     FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
@@ -518,4 +517,3 @@ field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
     string("├── backend: ", summary(fts.backend), '\n',
            "├── path: ", fts.path, '\n',
            "└── name: ", fts.name)
-
