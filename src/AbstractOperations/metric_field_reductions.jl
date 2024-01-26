@@ -107,7 +107,8 @@ julia> ∫f[1, 1, 1]
 0.125
 ```
 """
-Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(field, condition, mask); dims)
+Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) =
+    Reduction(Integral(), condition_operand(field, condition, mask); dims)
 
 #####
 ##### show
