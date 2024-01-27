@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo
-import Oceananigans.Models: validate_tracer_advection
+import Oceananigans.Models: validate_tracer_advection, validate_momentum_advection
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ

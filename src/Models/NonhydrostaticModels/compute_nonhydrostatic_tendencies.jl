@@ -73,7 +73,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; only
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    start_momentum_kernel_args = (advection,
+    start_momentum_kernel_args = (advection.momentum,
                                   coriolis,
                                   stokes_drift,
                                   closure)
@@ -103,10 +103,11 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; only
                 only_active_cells)
     end
 
-    start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
 
-    for tracer_index in 1:length(tracers)
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        start_tracer_kernel_args = (advection[tracer_name], closure)
+
         @inbounds c_tendency = tendencies[tracer_index + 3]
         @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed

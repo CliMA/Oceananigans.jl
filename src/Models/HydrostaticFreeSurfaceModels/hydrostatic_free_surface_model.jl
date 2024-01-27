@@ -12,7 +12,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, validate_momentum_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
@@ -32,7 +32,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
                  clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-             advection :: V        # Advection scheme for tracers
+             advection :: V        # Advection scheme for velocities and tracers
               buoyancy :: B        # Set of parameters for buoyancy model
               coriolis :: R        # Set of parameters for the background rotation rate of `Model`
           free_surface :: S        # Free surface parameters and fields
@@ -209,13 +209,6 @@ validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = f
 validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
-
-validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
-validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
-validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
-validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
 initialize_free_surface!(free_surface, grid, velocities) = nothing
