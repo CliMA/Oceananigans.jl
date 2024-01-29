@@ -66,7 +66,7 @@ time_extrapolation(fts::FieldTimeSeries{LX, LY, LZ, TE}) where {LX, LY, LZ, TE} 
 
 instantiate(T::Type) = T()
 
-function FieldTimeSeries(loc, grid, times;
+function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
                          backend = InMemory(),
                          path = nothing, 
@@ -105,8 +105,10 @@ Keyword arguments
 - `path`: path to data for `backend = OnDisk()`
 - `name`: name of field for `backend = OnDisk()`
 """
-FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...) where {LX, LY, LZ} =
-    FieldTimeSeries((LX, LY, LZ), grid, times; kwargs...)
+function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
+    loc = (LX, LY, LZ)
+    return FieldTimeSeries(loc, grid, times; kwargs...)
+end
 
 """
     FieldTimeSeries(path, name;
@@ -319,7 +321,9 @@ end
 ##### set!
 #####
 
-function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractField})
+const FieldsVector = AbstractVector{<:AbstractField}
+
+function set!(fts::FieldTimeSeries, fields_vector::FieldsVector)
     raw_data = parent(fts)
     file = jldopen(path)
 

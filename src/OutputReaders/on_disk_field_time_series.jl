@@ -36,19 +36,20 @@ function maybe_write_property!(file, property, data)
 end
 
 """
-    set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int)
+    set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int, time=fts.times[time_index])
 
 Write the data in `parent(field)` to the file at `fts.path`,
-under `fts.name` and at index `fts.times[time_index]`.
+under `fts.name` and at `time_index`. The save field is assigned `time`,
+which is extracted from `fts.times[time_index]` if not provided.
 """
-function set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int)
+function set!(fts::OnDiskFieldTimeSeries, field::Field, time_index::Int, time=fts.times[time_index])
     fts.grid == field.grid || error("The grids attached to the Field and \
                                     FieldTimeSeries appear to be different.")
     path = fts.path
     name = fts.name
     jldopen(path, "a+") do file
         initialize_file!(file, name, fts)
-        maybe_write_property!(file, "timeseries/t/$time_index", fts.times[time_index])
+        maybe_write_property!(file, "timeseries/t/$time_index", time)
         maybe_write_property!(file, "timeseries/$name/$time_index", parent(field))
     end
 end
