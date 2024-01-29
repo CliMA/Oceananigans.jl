@@ -78,4 +78,3 @@ julia> dcfl(model)
 ```
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
-a
