@@ -8,15 +8,15 @@ abstract type AbstractDataBackend end
 
 mutable struct InMemory{I} <: AbstractDataBackend 
     index_range :: I
+
+    function InMemory(index_range=Colon())
+        I = typeof(index_range)
+        return new{I}(index_range)
+    end
 end
 
-function InMemory(; chunk_size = Colon())
-    index_range = if chunk_size isa Colon 
-        Colon()
-    else
-        UnitRange(1, chunk_size)
-    end
-
+function InMemory(chunk_size::Int)
+    index_range = UnitRange(1, chunk_size)
     return InMemory(index_range)
 end
 

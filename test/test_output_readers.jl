@@ -262,7 +262,7 @@ end
         @info "  Testing Chunked abstraction..."      
         filepath = "testfile.jld2"
         f = FieldTimeSeries(filepath, "c")
-        f_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(; chunk_size = 2))
+        f_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2))
 
         for t in eachindex(f.times)
             f_chunked[t] == f[t]
