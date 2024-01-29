@@ -248,7 +248,8 @@ trilinear(x, y, z) = x + y + z
             @test avg_c_smaller_than_½[1, 1, 1] == 0.25
 
             zᶜᶜᶜ = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
-            avg_bottom_half_not_immersed_manual = (Array(interior(c))[1, 1, 3] + Array(interior(c))[1, 1, 4]) / 2
+            ci = Array(interior(c)) # transfer to CPU
+            avg_bottom_half_not_immersed_manual = (ci[1, 1, 3] + ci[1, 1, 4]) / 2
             avg_bottom_half_not_immersed = Array(interior(compute!(Field(Average(c; condition=(zᶜᶜᶜ .< -1/2))))))
             @test avg_bottom_half_not_immersed[1, 1, 1] == avg_bottom_half_not_immersed_manual
         end
