@@ -8,20 +8,21 @@ abstract type AbstractDataBackend end
 
 mutable struct InMemory{I} <: AbstractDataBackend 
     index_range :: I
-
-    function InMemory(index_range=Colon())
-        I = typeof(index_range)
-        return new{I}(index_range)
-    end
 end
 
+"""
+    InMemory(N=Colon())
+
+Return a `backend` for `FieldTimeSeries` that stores
+`N` fields from the field time series in memory.
+The default is `N = :`, which stores all fields in memory.
+"""
 function InMemory(chunk_size::Int)
     index_range = UnitRange(1, chunk_size)
     return InMemory(index_range)
 end
 
-# `Ntimes` time steps in memory
-InMemory(Ntimes::Int) = InMemory(UnitRange(1, Ntimes))
+InMemory() = InMemory(Colon())
 
 struct OnDisk <: AbstractDataBackend end
 
