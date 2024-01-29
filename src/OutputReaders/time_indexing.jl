@@ -22,7 +22,7 @@ const YZGPUFTS = GPUAdaptedFieldTimeSeries{Nothing, <:Any, <:Any}
 @inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_get_index(fts, i, j, k, time_index)
 
-const CyclicFTS = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclic}, FieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclic}}
+const CyclicalFTS = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclical}, FieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclical}}
 const LinearFTS = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Linear}, FieldTimeSeries{<:Any, <:Any, <:Any, <:Linear}}
 const ClampFTS  = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp},  FieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp}}
     
@@ -33,11 +33,11 @@ const ClampFTS  = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp},
     return n, n₁, n₂
 end
 
-# Cyclic implementation if out-of-bounds (wrap around the time-series)
-# Note: Cyclic interpolation will not work if t - t₂ > t₂ - t₁
+# Cyclical implementation if out-of-bounds (wrap around the time-series)
+# Note: Cyclical interpolation will not work if t - t₂ > t₂ - t₁
 # or if t₁ - t > t₂ - t₁ (i.e. if we are skipping several Δt)
 # to make that work we need to `update_field_time_series!`
-@inline function interpolated_time_indices(n₁, n₂, ::CyclicFTS, t, t₁, t₂, Nt)
+@inline function interpolated_time_indices(n₁, n₂, ::CyclicalFTS, t, t₁, t₂, Nt)
     n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + n₁
     n, n₁, n₂ = ifelse(n > Nt, (n - n₂, n₂, 1),   # Beyond the last time:  circle around
                 ifelse(n < 1,  (n₁ - n, n₁, Nt),  # Before the first time: circle around

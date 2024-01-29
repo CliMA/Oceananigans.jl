@@ -30,18 +30,21 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
                   times :: χ
                    path :: P
                    name :: N
+     time_extrapolation :: TE
+    
 
-    function FieldTimeSeries{LX, LY, LZ, TE}(data::D,
-                                             grid::G,
-                                             backend::K,
-                                             bcs::B,
-                                             indices::I, 
-                                             times::χ,
-                                             path::P,
-                                             name::N) where {LX, LY, LZ, TE, K, D, G, B, χ, I, P, N}
+    function FieldTimeSeries{LX, LY, LZ}(data::D,
+                                         grid::G,
+                                         backend::K,
+                                         bcs::B,
+                                         indices::I, 
+                                         times::χ,
+                                         path::P,
+                                         name::N,
+                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, χ, I, P, N}
         T = eltype(data)
         return new{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
-                                                              indices, times, path, name)
+                                                              indices, times, path, name, te)
     end
 end
 
@@ -58,11 +61,9 @@ struct UnspecifiedBoundaryConditions end
 #####
 
 # Time extrapolation modes
-struct Cyclic end # cyclic in time
+struct Cyclical end # Cyclical in time
 struct Linear end # linear extrapolation
 struct Clamp  end # clamp to nearest value
-
-time_extrapolation(fts::FieldTimeSeries{LX, LY, LZ, TE}) where {LX, LY, LZ, TE} = TE()
 
 instantiate(T::Type) = T()
 
@@ -71,7 +72,7 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing, 
                          name = nothing,
-                         time_extrapolation = Cyclic(),
+                         time_extrapolation = Cyclical(),
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
@@ -86,10 +87,8 @@ function FieldTimeSeries(loc, grid, times=();
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
 
-    TE = typeof(time_extrapolation)
-
-    return FieldTimeSeries{LX, LY, LZ, TE}(data, grid, backend, boundary_conditions,
-                                           indices, times, path, name)
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
+                                       indices, times, path, name, time_extrapolation)
 end
 
 """
@@ -143,7 +142,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
                          grid = nothing,
                          location = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_extrapolation = Cyclic(),
+                         time_extrapolation = Cyclical(),
                          iterations = nothing,
                          times = nothing)
 

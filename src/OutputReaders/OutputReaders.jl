@@ -2,7 +2,7 @@ module OutputReaders
 
 export InMemory, OnDisk
 export FieldTimeSeries, FieldDataset
-export Cyclic, Linear, Clamp
+export Cyclical, Linear, Clamp
 
 abstract type AbstractDataBackend end
 
