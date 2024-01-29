@@ -21,7 +21,7 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
-struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
+struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
                 backend :: K
@@ -31,31 +31,38 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ, P, N} <: AbstractField{
                    path :: P
                    name :: N
 
-    function FieldTimeSeries{LX, LY, LZ}(data::D,
-                                         grid::G,
-                                         backend::K,
-                                         bcs::B,
-                                         indices::I, 
-                                         times::χ,
-                                         path::P,
-                                         name::N) where {LX, LY, LZ, K, D, G, B, χ, I, P, N}
+    function FieldTimeSeries{LX, LY, LZ, TE}(data::D,
+                                             grid::G,
+                                             backend::K,
+                                             bcs::B,
+                                             indices::I, 
+                                             times::χ,
+                                             path::P,
+                                             name::N) where {LX, LY, LZ, TE, K, D, G, B, χ, I, P, N}
         T = eltype(data)
-        return new{LX, LY, LZ, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
-                                                          indices, times, path, name)
+        return new{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
+                                                              indices, times, path, name)
     end
 end
 
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 
-const TotallyInMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory{Colon}}
-const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:InMemory}
-const OnDiskFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, <:OnDisk}
+const TotallyInMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory{Colon}}
+const InMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory}
+const OnDiskFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:OnDisk}
 
 struct UnspecifiedBoundaryConditions end
 
 #####
 ##### Constructors
 #####
+
+# Time extrapolation modes
+struct Cyclic end # cyclic in time
+struct Linear end # linear extrapolation
+struct Clamp  end # clamp to nearest value
+
+time_extrapolation(fts::FieldTimeSeries{LX, LY, LZ, TE}) where {LX, LY, LZ, TE} = TE()
 
 instantiate(T::Type) = T()
 
@@ -64,6 +71,7 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing, 
                          name = nothing,
+                         time_extrapolation = Cyclic(),
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
@@ -78,8 +86,10 @@ function FieldTimeSeries(loc, grid, times=();
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
 
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                       indices, times, path, name)
+    TE = typeof(time_extrapolation)
+
+    return FieldTimeSeries{LX, LY, LZ, TE}(data, grid, backend, boundary_conditions,
+                                           indices, times, path, name)
 end
 
 """
@@ -133,6 +143,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
                          grid = nothing,
                          location = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
+                         time_extrapolation = Cyclic(),
                          iterations = nothing,
                          times = nothing)
 
@@ -209,12 +220,14 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     close(file)
 
     LX, LY, LZ = Location
+    TE = typeof(time_extrapolation)
+
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                              indices, times, path, name)
+    time_series = FieldTimeSeries{LX, LY, LZ, TE}(data, grid, backend, boundary_conditions,
+                                                  indices, times, path, name)
 
     set!(time_series, path, name)
 
@@ -225,42 +238,6 @@ end
 Base.lastindex(fts::FieldTimeSeries) = size(fts, 4)
 Base.firstindex(fts::FieldTimeSeries) = 1
 Base.length(fts::FieldTimeSeries) = size(fts, 4)
-
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, time_index::Time)
-    Ntimes = length(fts.times)
-    time = time_index.time
-    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
-    if n₁ == n₂ # no interpolation
-        return fts[n₁]
-    end
-    
-    # Calculate fractional index
-    n = @inbounds (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-
-    # Make a Field representing a linear interpolation in time
-    time_interpolated_field = Field(fts[n₂] * (n - n₁) + fts[n₁] * (n₂ - n))
-
-    # Compute the field and return it
-    return compute!(time_interpolated_field)
-end
-
-# Linear time interpolation, used by FieldTimeSeries and GPUAdaptedFieldTimeSeries
-@inline function interpolating_get_index(fts, i, j, k, time_index)
-    Ntimes = length(fts.times)
-    time = time_index.time
-    n₁, n₂ = index_binary_search(fts.times, time, Ntimes)
-
-    # fractional index
-    n = @inbounds (n₂ - n₁) / (fts.times[n₂] - fts.times[n₁]) * (time - fts.times[n₁]) + n₁
-    interpolated_fts = getindex(fts, i, j, k, n₂) * (n - n₁) + getindex(fts, i, j, k, n₁) * (n₂ - n)
-
-    # Don't interpolate if n = 0.
-    return ifelse(n₁ == n₂, getindex(fts, i, j, k, n₁), interpolated_fts)
-end
-
-@inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
-    interpolating_get_index(fts, i, j, k, time_index)
 
 function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
 
@@ -474,10 +451,14 @@ function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     return string("$sz_str FieldTimeSeries{$B} located at ", show_location(fts), suffix)
 end
 
-function Base.show(io::IO, fts::FieldTimeSeries)
+function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, LZ, E}
+
+    extrapolation_str = string("├── time boundaries: $(E)")
+
     prefix = string(summary(fts), '\n',
                    "├── grid: ", summary(fts.grid), '\n',
-                   "├── indices: ", indices_summary(fts), '\n')
+                   "├── indices: ", indices_summary(fts), '\n',
+                   "├── time boundaries: $(E)", '\n')
 
     suffix = field_time_series_suffix(fts)
 

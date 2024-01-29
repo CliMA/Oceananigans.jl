@@ -2,6 +2,7 @@ module OutputReaders
 
 export InMemory, OnDisk
 export FieldTimeSeries, FieldDataset
+export Cyclic, Linear, Clamp
 
 abstract type AbstractDataBackend end
 
@@ -26,9 +27,10 @@ struct OnDisk <: AbstractDataBackend end
 # validate_backend(in_memory::InMemory, data) = in_memory
 
 include("field_time_series.jl")
+include("gpu_adapted_field_time_series.jl")
+include("time_indexing.jl")
 include("memory_allocated_field_time_series.jl")
 include("on_disk_field_time_series.jl")
-include("gpu_adapted_field_time_series.jl")
 include("update_field_time_series.jl")
 include("field_dataset.jl")
 
