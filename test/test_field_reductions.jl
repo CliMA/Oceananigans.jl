@@ -250,7 +250,10 @@ trilinear(x, y, z) = x + y + z
             zᶜᶜᶜ = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
             ci = Array(interior(c)) # transfer to CPU
             avg_bottom_half_not_immersed_manual = (ci[1, 1, 3] + ci[1, 1, 4]) / 2
-            avg_bottom_half_not_immersed = Array(interior(compute!(Field(Average(c; condition=(zᶜᶜᶜ .< -1/2))))))
+            bottom_half_average = Average(c; condition=(zᶜᶜᶜ .< -1/2))
+            bottom_half_average_field = Field(bottom_half_average)
+            compute!(bottom_half_average_field)
+            bottom_half_average_array = Array(interior(bottom_half_average_field))
             @test avg_bottom_half_not_immersed[1, 1, 1] == avg_bottom_half_not_immersed_manual
         end
     end
