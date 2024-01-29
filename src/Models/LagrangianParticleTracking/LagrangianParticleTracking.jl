@@ -8,9 +8,12 @@ using KernelAbstractions
 using StructArrays
 
 using Oceananigans.Grids
+using Oceananigans.ImmersedBoundaries
+
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
-using Oceananigans.ImmersedBoundaries
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
+using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
@@ -114,6 +117,15 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
         "├── ", length(fields), " tracked fields: ", propertynames(fields), "\n",
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
+
+# To support interpolation on Flat grids
+@inline flattened_node((x, y, z), grid) = (x, y, z)
+@inline flattened_node((x, y, z), grid::XFlatGrid) = (y, z)
+@inline flattened_node((x, y, z), grid::YFlatGrid) = (x, z)
+@inline flattened_node((x, y, z), grid::ZFlatGrid) = (x, y)
+@inline flattened_node((x, y, z), grid::YZFlatGrid) = tuple(x)
+@inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
+@inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
 
 include("update_lagrangian_particle_properties.jl")
 include("lagrangian_particle_advection.jl")

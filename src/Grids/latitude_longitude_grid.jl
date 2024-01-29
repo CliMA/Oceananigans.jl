@@ -186,8 +186,11 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+    topology, size, halo, latitude, longitude, z, precompute_metrics =
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+
+    Nλ, Nφ, Nz = size
+    Hλ, Hφ, Hz = halo
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -237,38 +240,42 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-    Nλ, Nφ, Nz = N = size
-    
-    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-    @assert -90 <= φ₁ <= φ₂ <= 90
-    
+function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
     if !isnothing(topology)
-        TX, TY, TZ = topology
-        Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-        Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
-    else
-        Lλ = λ₂ - λ₁
+        TX, TY, TZ = validate_topology(topology)
+        Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
+    else # Set default topology according to longitude
+        Nλ, Nφ, Nz = size # using default topology, does not support Flat
+        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
 
+        Lλ = λ₂ - λ₁
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
         TZ = Bounded
     end
 
+    # Validate longitude and latitude
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
+
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
+    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
+    φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
+
     if TX == Flat || TY == Flat 
         precompute_metrics = false
     end
 
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
+    longitude = validate_dimension_specification(TX, longitude, :longitude, Nλ, FT)
+    latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
+    z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
 
-    longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)
-    latitude  = validate_dimension_specification(TY, latitude,  :y, Nφ, FT)
-    z         = validate_dimension_specification(TZ, z,         :z, Nz, FT)
+    halo = validate_halo(TX, TY, TZ, halo)
+    topology = (TX, TY, TZ)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ), precompute_metrics
+    return topology, size, halo, latitude, longitude, z, precompute_metrics
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
