@@ -110,8 +110,7 @@ function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) wh
 end
 
 """
-    FieldTimeSeries(path, name;
-                    backend = InMemory(),
+    FieldTimeSeries(path, name, backend = InMemory();
                     grid = nothing,
                     iterations = nothing,
                     times = nothing)
@@ -141,6 +140,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
                          architecture = nothing,
                          grid = nothing,
                          location = nothing,
+                         architecture = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
                          time_extrapolation = Cyclical(),
                          iterations = nothing,
