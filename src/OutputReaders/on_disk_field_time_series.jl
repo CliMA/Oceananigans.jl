@@ -4,7 +4,7 @@ new_data(FT, grid, loc, indices, Nt, ::OnDisk) = nothing
 Base.parent(fts::OnDiskFieldTimeSeries) = nothing
 Base.length(fts::OnDiskFieldTimeSeries) = length(fts.times)
 
-function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
+function Base.getindex(fts::OnDiskFieldTimeSeries{LX, LY, LZ}, n::Int) where {LX, LY, LZ}
     # Load data
     arch = architecture(fts)
     file = jldopen(fts.path)
