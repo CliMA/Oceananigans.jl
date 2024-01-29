@@ -219,14 +219,13 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     close(file)
 
     LX, LY, LZ = Location
-    TE = typeof(time_extrapolation)
 
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
-    time_series = FieldTimeSeries{LX, LY, LZ, TE}(data, grid, backend, boundary_conditions,
-                                                  indices, times, path, name)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
+                                              indices, times, path, name, time_extrapolation)
 
     set!(time_series, path, name)
 
