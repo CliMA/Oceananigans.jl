@@ -60,7 +60,7 @@ struct UnspecifiedBoundaryConditions end
 # Time extrapolation modes
 struct Cyclic end # cyclic in time
 struct Linear end # linear extrapolation
-struct Clamp  end # clamp to last value
+struct Clamp  end # clamp to nearest value
 
 time_extrapolation(fts::FieldTimeSeries{LX, LY, LZ, TE}) where {LX, LY, LZ, TE} = TE()
 
@@ -447,10 +447,14 @@ function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     return string("$sz_str FieldTimeSeries{$B} located at ", show_location(fts), suffix)
 end
 
-function Base.show(io::IO, fts::FieldTimeSeries)
+function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, LZ, E}
+
+    extrapolation_str = string("├── time boundaries: $(E)")
+
     prefix = string(summary(fts), '\n',
                    "├── grid: ", summary(fts.grid), '\n',
-                   "├── indices: ", indices_summary(fts), '\n')
+                   "├── indices: ", indices_summary(fts), '\n',
+                   "├── time boundaries: $(E)", '\n')
 
     suffix = field_time_series_suffix(fts)
 
