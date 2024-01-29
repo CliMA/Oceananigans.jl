@@ -34,6 +34,9 @@ const ClampFTS  = Union{GPUAdaptedFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp},
 end
 
 # Cyclic implementation if out-of-bounds (wrap around the time-series)
+# Note: Cyclic interpolation will not work if t - t₂ > t₂ - t₁
+# or if t₁ - t > t₂ - t₁ (i.e. if we are skipping several Δt)
+# to make that work we need to `update_field_time_series!`
 @inline function interpolated_time_indices(n₁, n₂, ::CyclicFTS, t, t₁, t₂, Nt)
     n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + n₁
     n, n₁, n₂ = ifelse(n > Nt, (n - n₂, n₂, 1),   # Beyond the last time:  circle around

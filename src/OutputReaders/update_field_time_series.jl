@@ -37,8 +37,8 @@ const ClampInMemoryFTS  = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp}
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
     time = time_index.time
-    corrected_time = correct_time(time, fts.times[1], fts.times[end], time_extrapolation(fts))
-    n₁, n₂ = index_binary_search(fts.times, corrected_time, length(fts.times))
+    correct_time = corrected_time(time, fts.times[1], fts.times[end], time_extrapolation(fts))
+    n₁, n₂ = index_binary_search(fts.times, correct_time, length(fts.times))
     update_field_time_series!(fts, n₂)
     return nothing
 end
@@ -48,12 +48,17 @@ end
     ifelse(time < first_time, first_time,  # Before first time: clamp to first
            time))                          # business as usual
 
-@inline corrected_time(time, first_time, last_time, ::Linear) = time # Fallback for linear extrapolation
+@inline corrected_time(time, first_time, last_time, ::Linear) = time # Fallback for linear extrapolation (no need to handle boundaries)
 
-@inline corrected_time(time, first_time, last_time, ::Cyclic) = 
-    ifelse(time > last_time,  time - last_time,                 # Beyond last time: circle around
-    ifelse(time < first_time, last_time - (first_time - time),  # Before first time: circle around
-           time))                                               # business as usual
+@inline function corrected_time(time, first_time, last_time, ::Cyclic) 
+    ΔT  = last_time - first_time
+    Δt⁺ = time - last_time   
+    Δt⁻ = first_time - time
+
+    return ifelse(time > last_time,  mod(Δt⁺, ΔT),             # Beyond last time: circle around
+           ifelse(time < first_time, last_time - mod(Δt⁻, ΔT), # Before first time: circle around
+                  time))                                       # business as usual
+end
 
 # Update `fts` to contain the time index `n`.
 # update rules are the following: 

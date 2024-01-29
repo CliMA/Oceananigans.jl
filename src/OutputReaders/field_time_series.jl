@@ -481,7 +481,7 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
                                      
         end
 
-        backend_str = string("├── backend: InMemory(", index_range_str, ")", '\n')
+        backend_str = string("├── backend: InMemory(", index_range_str, ")")
     end
 
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
