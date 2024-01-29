@@ -20,6 +20,9 @@ function InMemory(; chunk_size = Colon())
     return InMemory(index_range)
 end
 
+# `Ntimes` time steps in memory
+InMemory(Ntimes::Int) = InMemory(UnitRange(1, Ntimes))
+
 struct OnDisk <: AbstractDataBackend end
 
 # validate_backend(::InMemory{Nothing}, data) = InMemory(collect(1:size(data, 4)))

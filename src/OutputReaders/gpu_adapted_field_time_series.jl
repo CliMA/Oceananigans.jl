@@ -1,6 +1,6 @@
 using Adapt
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, T, D, χ} <: AbstractArray{T, 4}
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, T, D, χ} <: AbstractArray{T, 4}
     data :: D
     times :: χ
     time_extrapolation :: TE
@@ -12,10 +12,10 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, T, D, χ} <: AbstractArray{T, 4}
     end
 end
 
-Adapt.adapt_structure(to, fts::FieldTimeSeries{LX, LY, LZ, TE}) where {LX, LY, LZ, TE} = 
+Adapt.adapt_structure(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} = 
     GPUAdaptedFieldTimeSeries{LX, LY, LZ, eltype(fts.grid)}(adapt(to, fts.data),
-                                                            adapt(to, fts.times)
-                                                            TE())
+                                                            adapt(to, fts.times),
+                                                            adapt(to, fts.time_extrapolation))
 
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
