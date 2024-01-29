@@ -63,7 +63,7 @@ struct UnspecifiedBoundaryConditions end
 # Time extrapolation modes
 struct Cyclical end # Cyclical in time
 struct Linear end # linear extrapolation
-struct Clamp  end # clamp to nearest value
+struct Clamp end # clamp to nearest value
 
 instantiate(T::Type) = T()
 
