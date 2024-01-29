@@ -55,8 +55,9 @@ end
 end
 
 #####
-##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-##### Use other methods if a more accurate interpolation is required
+##### Note: interpolation on LatitudeLongitudeGrid assumes a thin shell
+##### (i.e. curvature effects are not incorporated when interpolating).
+##### Use other methods if a more accurate interpolation is required.
 #####
 
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
@@ -267,20 +268,20 @@ end
 @inline ϕ₇(ξ, η, ζ) =      ξ  *      η  * (1 - ζ)
 @inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
 
-@inline function _interpolate(data, ix, iy, iz)
+@inline function _interpolate(data, ix, iy, iz, in...)
     # Unpack the "interpolators"
     i⁻, i⁺, ξ = ix
     j⁻, j⁺, η = iy
     k⁻, k⁺, ζ = iz
 
-    return @inbounds ϕ₁(ξ, η, ζ) * data[i⁻, j⁻, k⁻] +
-                     ϕ₂(ξ, η, ζ) * data[i⁻, j⁻, k⁺] +  
-                     ϕ₃(ξ, η, ζ) * data[i⁻, j⁺, k⁻] +
-                     ϕ₄(ξ, η, ζ) * data[i⁻, j⁺, k⁺] +
-                     ϕ₅(ξ, η, ζ) * data[i⁺, j⁻, k⁻] +
-                     ϕ₆(ξ, η, ζ) * data[i⁺, j⁻, k⁺] +
-                     ϕ₇(ξ, η, ζ) * data[i⁺, j⁺, k⁻] +
-                     ϕ₈(ξ, η, ζ) * data[i⁺, j⁺, k⁺]
+    return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
+                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +  
+                     ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
+                     ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
+                     ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
+                     ϕ₆(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁺, in...) +
+                     ϕ₇(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁻, in...) +
+                     ϕ₈(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁺, in...)
 end
 
 """
