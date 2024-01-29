@@ -457,7 +457,7 @@ function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, L
     prefix = string(summary(fts), '\n',
                    "├── grid: ", summary(fts.grid), '\n',
                    "├── indices: ", indices_summary(fts), '\n',
-                   "├── time boundaries: $(E)", '\n')
+                   "├── time extrapolation: $(fts.time_extrapolation)", '\n')
 
     suffix = field_time_series_suffix(fts)
 
