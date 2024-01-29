@@ -251,7 +251,7 @@ git-tree-sha1 = "ae881b2f107e3c01444edbaa0bf3b73f461539f6"
 repo-rev = "main"
 repo-url = "https://github.com/EnzymeAD/Enzyme.jl.git"
 uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-version = "0.11.13"
+version = "0.11.14"
 
 [[deps.EnzymeCore]]
 git-tree-sha1 = "59c44d8fbc651c0395d8a6eda64b05ce316f58b4"
