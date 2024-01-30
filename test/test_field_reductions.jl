@@ -228,13 +228,13 @@ trilinear(x, y, z) = x + y + z
             c = Field((Center, Center, Nothing), grid)
 
             set!(c, (x, y) -> y)
-            @test maximum(c) == CUDA.@allowscalar grid.yᵃᶜᵃ[1]
+            @test maximum(c) == grid.yᵃᶜᵃ[1]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
             c = Field((Center, Center, Nothing), grid)
 
             set!(c, (x, y) -> y)
-            @test maximum(c) == CUDA.@allowscalar grid.yᵃᶜᵃ[3]
+            @test maximum(c) == grid.yᵃᶜᵃ[3]
 
             underlying_grid = RectilinearGrid(arch, size = (1, 1, 8), extent=(1, 1, 1))
 
@@ -242,11 +242,19 @@ trilinear(x, y, z) = x + y + z
             c = Field((Center, Center, Center), grid)
 
             set!(c, (x, y, z) -> -z)
-            @test maximum(c) == CUDA.@allowscalar c[1, 1, 3]
-            @test CUDA.@allowscalar compute!(Field(Average(c, condition=(c .< 0.5))))[1, 1, 1] == 0.25
+            @test maximum(c) == Array(interior(c))[1, 1, 3]
+            c_condition = interior(c) .< 0.5
+            avg_c_smaller_than_½ = Array(interior(compute!(Field(Average(c, condition=c_condition)))))
+            @test avg_c_smaller_than_½[1, 1, 1] == 0.25
+
             zᶜᶜᶜ = KernelFunctionOperation{Center, Center, Center}(znode, grid, Center(), Center(), Center())
-            avg_bottom_half_not_immersed = CUDA.@allowscalar (c[1, 1, 3] + c[1, 1, 4]) / 2
-            @test CUDA.@allowscalar compute!(Field(Average(c; condition=(zᶜᶜᶜ .< -1/2))))[1, 1, 1] == avg_bottom_half_not_immersed
+            ci = Array(interior(c)) # transfer to CPU
+            bottom_half_average_manual = (ci[1, 1, 3] + ci[1, 1, 4]) / 2
+            bottom_half_average = Average(c; condition=(zᶜᶜᶜ .< -1/2))
+            bottom_half_average_field = Field(bottom_half_average)
+            compute!(bottom_half_average_field)
+            bottom_half_average_array = Array(interior(bottom_half_average_field))
+            @test bottom_half_average_array[1, 1, 1] == bottom_half_average_manual
         end
     end
 end
