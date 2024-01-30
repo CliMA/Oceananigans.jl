@@ -4,6 +4,11 @@ export InMemory, OnDisk
 export FieldTimeSeries, FieldDataset
 export Cyclical, Linear, Clamp
 
+
+#####
+##### Data backends for FieldTimeSeries
+#####
+
 abstract type AbstractDataBackend end
 
 mutable struct InMemory{I} <: AbstractDataBackend 
@@ -11,11 +16,10 @@ mutable struct InMemory{I} <: AbstractDataBackend
 end
 
 """
-    InMemory(N=Colon())
+    InMemory(N=:)
 
-Return a `backend` for `FieldTimeSeries` that stores
-`N` fields from the field time series in memory.
-The default is `N = :`, which stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `N`
+fields in memory. The default `N = :` stores all fields in memory.
 """
 function InMemory(chunk_size::Int)
     index_range = UnitRange(1, chunk_size)
@@ -26,19 +30,43 @@ InMemory() = InMemory(Colon())
 
 struct OnDisk <: AbstractDataBackend end
 
+#####
+##### Time extrapolation modes for FieldTimeSeries
+#####
 
-# Time extrapolation modes
-struct Cyclical{T} # Cyclical in time
-    Δt :: T # the cycle period will be tᴺ - t¹ + Δt where tᴺ is the last time and t¹ is the first time
+"""
+    Cyclical(period=nothing)
+
+Specifies cyclical FieldTimeSeries linear Time extrapolation.
+If `period` is not specified, it is inferred from the `fts::FieldTimeSeries`
+as
+
+```julia
+t = fts.times
+Δt = t[end] - t[end-1]
+period = t[end] - t[1] + Δt
+```
+"""
+struct Cyclical{FT} # Cyclical in time
+    period :: FT
 end 
 
-struct Linear end # linear extrapolation
+Cyclical() = Cyclical(nothing)
+
+
+"""
+    Linear()
+
+Specifies FieldTimeSeries linear Time extrapolation.
+"""
+struct Linear end
+
+"""
+    Clamp()
+
+Specifies FieldTimeSeries Time extrapolation that returns data from the nearest value.
+"""
 struct Clamp end # clamp to nearest value
-
-
-# validate_backend(::InMemory{Nothing}, data) = InMemory(collect(1:size(data, 4)))
-# validate_backend(::OnDisk,   data)          = OnDisk()
-# validate_backend(in_memory::InMemory, data) = in_memory
 
 include("field_time_series.jl")
 include("gpu_adapted_field_time_series.jl")

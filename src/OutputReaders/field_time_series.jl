@@ -81,6 +81,12 @@ function FieldTimeSeries(loc, grid, times=();
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
 
+    if time_extrapolation isa Cyclical{Nothing} # infer the period
+        Δt = times[end] - times[end-1]
+        period = times[end] - times[1] + Δt
+        time_extrapolation = Cyclical(period)
+    end
+
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                        indices, times, path, name, time_extrapolation)
 end
@@ -500,3 +506,4 @@ field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
     string("├── backend: ", summary(fts.backend), '\n',
            "├── path: ", fts.path, '\n',
            "└── name: ", fts.name)
+

@@ -59,7 +59,7 @@ end
     t¹ = first(times) 
     tᴺ = times[Nt]
     
-    Δt = fts.time_extrapolation.Δt
+    Δt = fts.time_extrapolation.period - (tᴺ - t¹)
 
     ΔT  = tᴺ - t¹ + Δt # Period of the cycle
     Δt⁺ = t  - tᴺ - Δt # excess time
