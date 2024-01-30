@@ -32,7 +32,6 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
                    name :: N
      time_extrapolation :: TE
     
-
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
                                          backend::K,
@@ -92,7 +91,7 @@ function FieldTimeSeries(loc, grid, times=();
 end
 
 """
-    FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times; kwargs...)
+    FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...)
 
 Construct a `FieldTimeSeries` on `grid` and at `times`.
 
@@ -100,8 +99,11 @@ Keyword arguments
 =================
 
 - `indices`: spatial indices
+
 - `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
 - `path`: path to data for `backend = OnDisk()`
+
 - `name`: name of field for `backend = OnDisk()`
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
