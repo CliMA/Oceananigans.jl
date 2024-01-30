@@ -51,26 +51,26 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;          grid,
-                                  clock = Clock{eltype(grid)}(0, 0, 1),
-                              advection = CenteredSecondOrder(),
-                               buoyancy = nothing,
-                               coriolis = nothing,
-                           stokes_drift = nothing,
-                    forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-        boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (),
-                            timestepper = :QuasiAdamsBashforth2,
-          background_fields::NamedTuple = NamedTuple(),
-          particles::ParticlesOrNothing = nothing,
-  biogeochemistry::AbstractBGCOrNothing = nothing,
-                             velocities = nothing,
-                              pressures = nothing,
-                     diffusivity_fields = nothing,
-                        pressure_solver = nothing,
-                      immersed_boundary = nothing,
-                       auxiliary_fields = NamedTuple())
+    NonhydrostaticModel(;           grid,
+                                    clock = Clock{eltype(grid)}(0, 0, 1),
+                                advection = CenteredSecondOrder(),
+                                 buoyancy = nothing,
+                                 coriolis = nothing,
+                             stokes_drift = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                                  closure = nothing,
+          boundary_conditions::NamedTuple = NamedTuple(),
+                                  tracers = (),
+                              timestepper = :QuasiAdamsBashforth2,
+            background_fields::NamedTuple = NamedTuple(),
+            particles::ParticlesOrNothing = nothing,
+    biogeochemistry::AbstractBGCOrNothing = nothing,
+                               velocities = nothing,
+                                pressures = nothing,
+                       diffusivity_fields = nothing,
+                          pressure_solver = nothing,
+                        immersed_boundary = nothing,
+                         auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
