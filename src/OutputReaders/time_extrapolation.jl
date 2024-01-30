@@ -1,5 +1,4 @@
 import Oceananigans.Fields: interpolate
-
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 
 const XYFTS = FieldTimeSeries{<:Any, <:Any, Nothing}
@@ -64,9 +63,9 @@ end
 
     ΔT  = tᴺ - t¹ + Δt # Period of the cycle
     Δt⁺ = t  - tᴺ - Δt # excess time
-    Δt⁻ = t¹ - t       # defect time (the Δt is added only at the right)  
-
-    # for all other cases, just cycle the time to calculate the correct indices
+    Δt⁻ = t¹ - t  - Δt # defect time
+    
+    # cycle the time to calculate the correct indices
     cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
                ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
                       t))
