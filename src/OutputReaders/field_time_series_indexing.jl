@@ -1,58 +1,69 @@
 import Oceananigans.Fields: interpolate
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 
-const XYFTS = FieldTimeSeries{<:Any, <:Any, Nothing}
-const XZFTS = FieldTimeSeries{<:Any, Nothing, <:Any}
-const YZFTS = FieldTimeSeries{Nothing, <:Any, <:Any}
-
-const XYGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, <:Any, Nothing}
-const XZGPUFTS = GPUAdaptedFieldTimeSeries{<:Any, Nothing, <:Any}
-const YZGPUFTS = GPUAdaptedFieldTimeSeries{Nothing, <:Any, <:Any}
-
-# Handle `Nothing` locations to allow `getbc` to work
-@propagate_inbounds Base.getindex(fts::XYGPUFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
-@propagate_inbounds Base.getindex(fts::XZGPUFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
-@propagate_inbounds Base.getindex(fts::YZGPUFTS, j::Int, k::Int, n) = fts[1, j, k, n]
-
-@propagate_inbounds Base.getindex(fts::XYFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
-@propagate_inbounds Base.getindex(fts::XZFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
-@propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
-
-const FlavorOfFTS{LX, LY, LZ, TE} =
-    Union{GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE},
-                    FieldTimeSeries{LX, LY, LZ, TE}} where {LX, LY, LZ, TE} 
+const FlavorOfFTS{LX, LY, LZ, TE, K} =
+    Union{GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K},
+                    FieldTimeSeries{LX, LY, LZ, TE, K}} where {LX, LY, LZ, TE, K} 
 
 const CyclicalFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical, K} where K
 const LinearFTS{K}   = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear, K} where K
 const ClampFTS{K}    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp, K} where K
 
-# Local getindex with (i, j, k, n) Integers
+const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory{Colon}}
+const CyclicalChunkedFTS = CyclicalFTS{<:InMemory{Tuple}}
+
+# Reduced FTS
+const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
+const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
+const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
+
+#####
+##### Reduced `getindex` with integers `(i, j, n)`
+#####
+
+@propagate_inbounds Base.getindex(fts::XYFTS, i::Int, j::Int, n) = fts[i, j, 1, n]
+@propagate_inbounds Base.getindex(fts::XZFTS, i::Int, k::Int, n) = fts[i, 1, k, n]
+@propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
+
+#####
+##### Local `getindex` with integers `(i, j, k, n)`
+#####
+
 @propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) =
     f.data[i, j, k, n - f.backend.index_range[1] + 1]
 
-@propagate_inbounds function Base.getindex(f::CyclicalFTS{InMemory{Tuple}}, i, j, k, n::Int)
+@propagate_inbounds function Base.getindex(f::CyclicalChunkedFTS, i, j, k, n::Int)
     Ni = length(f.backend.index_range)
     # Should find n₁ == n₂
     n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
     return f.data[i, j, k, n₁]
 end
 
-@propagate_inbounds Base.getindex(f::FlavorOfFTS{InMemory{Colon}}, i, j, k, n::Int) =
+@propagate_inbounds Base.getindex(f::TotallyInMemoryFTS, i, j, k, n::Int) =
     f.data[i, j, k, n]
 
-@propagate_inbounds Base.setindex!(f::InMemoryFieldTimeSeries, v, i, j, k, n::Int) =
+#####
+##### Local setindex! with integers `(i, j, k, n)` 
+#####
+
+@propagate_inbounds Base.setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) =
     setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
 
-@propagate_inbounds function Base.setindex(f::CyclicalFTS{InMemory{Tuple}}, v, i, j, k, n::Int)
+@propagate_inbounds function Base.setindex(f::CyclicalChunkedFTS, v, i, j, k, n::Int)
     Ni = length(f.backend.index_range)
     # Should find n₁ == n₂
     n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
     return setindex!(f.data, v, i, j, k, n₁)
 end    
 
-@propagate_inbounds Base.setindex!(f::FlavorOfFTS{InMemory{Colon}}, v, i, j, k, n::Int) =
+@propagate_inbounds Base.setindex!(f::TotallyInMemoryFTS, v, i, j, k, n::Int) =
     setindex!(f.data, v, i, j, k, n)
 
+#####
+##### Local getindex with integers `(i, j, k)` and `n :: Time`
+#####
+
+# Valid for all flavors of FTS
 @inline Base.getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts, i, j, k, time_index)
 
@@ -116,6 +127,21 @@ end
     return indices
 end
 
+@inline function interpolating_getindex(fts, i, j, k, time_index)
+    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
+    
+    ψ₁ = getindex(fts, i, j, k, n₁)
+    ψ₂ = getindex(fts, i, j, k, n₂)
+    ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
+
+    # Don't interpolate if n₁ == n₂
+    return ifelse(n₁ == n₂, ψ₁, ψ̃)
+end
+
+#####
+##### Global `getindex` with `time_index :: Time`
+#####
+
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
@@ -134,19 +160,10 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     return compute!(ψ̃)
 end
 
-# Linear time interpolation, used by FieldTimeSeries and GPUAdaptedFieldTimeSeries
-@inline function interpolating_getindex(fts, i, j, k, time_index)
-    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
-    
-    ψ₁ = getindex(fts, i, j, k, n₁)
-    ψ₂ = getindex(fts, i, j, k, n₂)
-    ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
+#####
+##### Linear time- and space-interpolation of a FTS
+#####
 
-    # Don't interpolate if n₁ == n₂
-    return ifelse(n₁ == n₂, ψ₁, ψ̃)
-end
-
-# Linear time- and space-interpolation
 @inline function interpolate(at_node, at_time::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
     # Build space interpolators
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
