@@ -173,27 +173,28 @@ end
 
 """
     Distributed(child_architecture = CPU(); 
-                topology, 
-                partition,
+                communicator = MPI.COMM_WORLD,
                 devices = nothing, 
-                communicator = MPI.COMM_WORLD)
+                synchronized_communication = false,
+                partition = Partition(MPI.Comm_size(communicator)))
 
-Constructor for a distributed architecture that uses MPI for communications
+Return a distributed architecture that uses MPI for communications.
 
 Positional arguments
-=================
+====================
 
 - `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
-                        Default: `child_architecture = CPU()`.
+                        Default: `CPU()`.
 
 Keyword arguments
 =================
-                        
-- `synchronized_communication`: if true, always use synchronized communication through ranks
 
-- `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
-                      `y` and `z` direction. NOTE: support for distributed z direction is 
-                      limited, so `Rz = 1` is strongly suggested.
+- `synchronized_communication`: If `true`, always use synchronized communication through ranks.
+                                Default: `false`.
+
+- `partition`: A [`Partition`](@ref) specifying the total processors in the `x`, `y`, and `z` direction.
+               Note that support for distributed `z` direction is  limited; we strongly suggest
+               using partition with `z = 1` kwarg.
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
@@ -223,7 +224,7 @@ function Distributed(child_architecture = CPU();
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
-    
+
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
@@ -310,7 +311,7 @@ end
 """
     RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
 
-generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
+Generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
 """
 RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
     RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
@@ -354,7 +355,7 @@ function RankConnectivity(local_index, ranks)
     southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
     southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(west=west_rank, east=east_rank, 
+    return RankConnectivity(west=west_rank, east=east_rank,
                             south=south_rank, north=north_rank,
                             southwest=southwest_rank,
                             southeast=southeast_rank,
@@ -380,4 +381,3 @@ function Base.show(io::IO, arch::Distributed)
               isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
               isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
 end
-              

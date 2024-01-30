@@ -379,7 +379,7 @@ end
 """
     interior(f::Field)
 
-Returns a view of `f` that excludes halo points."
+Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
