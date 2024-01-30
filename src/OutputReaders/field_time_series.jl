@@ -60,6 +60,8 @@ struct UnspecifiedBoundaryConditions end
 #####
 
 instantiate(T::Type) = T()
+tupleit(t::Tuple) = t
+tupleit(t) = Tuple(t)
 
 function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
@@ -70,7 +72,8 @@ function FieldTimeSeries(loc, grid, times=();
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
-    Nt   = length(times)
+    times = tupleit(times)
+    Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
     if backend isa OnDisk
