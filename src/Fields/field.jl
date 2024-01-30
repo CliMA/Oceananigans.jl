@@ -1,11 +1,11 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
 
@@ -379,7 +379,7 @@ end
 """
     interior(f::Field)
 
-Returns a view of `f` that excludes halo points."
+Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -519,6 +519,21 @@ reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
+
+const XFieldBC = BoundaryCondition{<:Any, XReducedField}
+const YFieldBC = BoundaryCondition{<:Any, YReducedField}
+const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
+
+# Boundary conditions reduced in one direction --- drop boundary-normal index
+@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
+@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
+@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+
+# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+
+# 0D boundary conditions --- easy case
+const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
+@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)

@@ -221,7 +221,7 @@ nothing #hide
 # Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
 # zonal average flow is located.
 
-fig = Figure(size=(1600, 800))
+fig = Figure(size = (1600, 800))
 
 zonal_slice_displacement = 1.2
 

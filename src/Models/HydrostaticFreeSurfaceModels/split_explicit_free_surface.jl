@@ -64,12 +64,16 @@ Keyword Arguments
                       within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
                       with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
                       centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
-                      described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-                      is chosen.
+                      described by [Shchepetkin2005](@citet) is chosen.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
-  - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+  * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
+  * `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+
+References
+==========
+
+Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),

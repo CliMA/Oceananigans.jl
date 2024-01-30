@@ -258,7 +258,7 @@ n = Observable(intro)
  Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
 νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
 
-fig = Figure(size=(1000, 500))
+fig = Figure(size = (1000, 500))
 
 axis_kwargs = (xlabel="x (m)",
                ylabel="z (m)",
