@@ -28,7 +28,6 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
     return ConditionalOperation(op; func, condition=ni_condition, mask)
 end
 
-
 @inline conditional_length(c::IF)       = conditional_length(condition_operand(identity, c, nothing, 0))
 @inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, nothing, 0), dims)
 
