@@ -25,9 +25,9 @@ const YZGPUFTS = GPUAdaptedFieldTimeSeries{Nothing, <:Any, <:Any}
 @inline Base.getindex(fts::FieldTimeSeries, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts, i, j, k, time_index)
 
-const FlavorOfFTS{LX, LY, LZ, TE} where {LX, LY, LZ, TE} =
+const FlavorOfFTS{LX, LY, LZ, TE} =
     Union{GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE},
-          FieldTimeSeries{LX, LY, LZ, TE}}
+                    FieldTimeSeries{LX, LY, LZ, TE}} where {LX, LY, LZ, TE} 
 
 const CyclicalFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical}
 const LinearFTS   = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear}
