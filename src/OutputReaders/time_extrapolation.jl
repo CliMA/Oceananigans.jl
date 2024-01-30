@@ -57,34 +57,24 @@ end
     times = fts.times
     Nt = length(times)
     t¹ = first(times) 
-    tᴺ = times[Nt]
-    
-    Δt = fts.time_extrapolation.period - (tᴺ - t¹)
+    tᴺ = last(times)
 
-    ΔT  = tᴺ - t¹ + Δt # Period of the cycle
-    Δt⁺ = t  - tᴺ - Δt # excess time
-    Δt⁻ = t¹ - t  - Δt # defect time
-    
-    # cycle the time to calculate the correct indices
-    cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
-                      t))
+    T = fts.time_extrapolation.period
+    Δt = T - (tᴺ - t¹)
 
-    time_indices = time_index_binary_search(fts, cycled_t)
+    # Compute modulus of shifted time, then add shift back
+    τ = t - t¹
+    mod_τ = mod(τ, T)
+    mod_t = mod_τ + t¹
 
-    # if cycled_t is inbetween tᴺ and t¹ the point lies outside
-    # our explicit time domain, but the solution is simple
-    time_indices⁺   = ((cycled_t  - tᴺ) / Δt, Nt, 1)
-    time_indices⁻   = ((t¹ - cycled_t ) / Δt, 1, Nt)
-    outside_domain⁺ = (tᴺ < cycled_t < tᴺ + Δt) 
-    outside_domain⁻ = (t¹ - Δt < cycled_t < t¹)
+    n, n₁, n₂ = time_index_binary_search(fts, mod_t)
 
-    indices = ifelse(outside_domain⁺, time_indices⁺, 
-              ifelse(outside_domain⁻, time_indices⁻,
-                                      time_indices))
-        
-    return indices
-end
+    cycling = n > 1 # we are _between_ tᴺ and t¹ + T
+    cycled_indices   = (1 - n, Nt, 1)
+    uncycled_indices = (n, n₁, n₂)
+
+    return ifelse(cycling, cycled_indices, uncycled_indices)
+end   
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(fts::ClampFTS, t)
