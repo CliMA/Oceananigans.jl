@@ -1,5 +1,4 @@
 import Oceananigans.Fields: interpolate
-
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 
 const XYFTS = FieldTimeSeries{<:Any, <:Any, Nothing}
@@ -60,27 +59,31 @@ end
     t¹ = first(times) 
     tᴺ = times[Nt]
     
-    ΔT  = tᴺ - t¹ # time range
-    Δt⁺ = t  - tᴺ # excess time
-    Δt⁻ = t¹ - t  # time defect
+    Δt = fts.time_extrapolation.Δt
 
-    Δtᴺ = tᴺ - times[Nt-1]
-    Δt¹ = times[2] - t¹
-
-    # To interpolate inbetween tᴺ and t¹ we assume that:
-    # - tᴺ corresponds to 2t¹ - t²
-    # - t¹ corresponds to 2tᴺ - tᴺ⁻¹
-    cycled_t = ifelse(t > tᴺ, t¹ - Δt¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹, tᴺ + Δtᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+    ΔT  = tᴺ - t¹ + Δt # Period of the cycle
+    Δt⁺ = t  - tᴺ - Δt # excess time
+    Δt⁻ = t¹ - t  - Δt # defect time
+    
+    # cycle the time to calculate the correct indices
+    cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
                       t))
 
-    n, n₁, n₂ = time_index_binary_search(fts, cycled_t)
+    time_indices = time_index_binary_search(fts, cycled_t)
 
-    # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
-    # so we need to care for `cycled_t < t¹`
-    n, n₁, n₂ = ifelse(cycled_t < t¹, (n, Nt, 1), (n, n₁, n₂))
+    # if cycled_t is inbetween tᴺ and t¹ the point lies outside
+    # our explicit time domain, but the solution is simple
+    time_indices⁺   = ((cycled_t  - tᴺ) / Δt, Nt, 1)
+    time_indices⁻   = ((t¹ - cycled_t ) / Δt, 1, Nt)
+    outside_domain⁺ = (tᴺ < cycled_t < tᴺ + Δt) 
+    outside_domain⁻ = (t¹ - Δt < cycled_t < t¹)
+
+    indices = ifelse(outside_domain⁺, time_indices⁺, 
+              ifelse(outside_domain⁻, time_indices⁻,
+                                      time_indices))
         
-    return n, n₁, n₂
+    return indices
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor

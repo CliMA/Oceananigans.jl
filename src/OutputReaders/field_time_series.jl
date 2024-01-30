@@ -59,11 +59,6 @@ struct UnspecifiedBoundaryConditions end
 ##### Constructors
 #####
 
-# Time extrapolation modes
-struct Cyclical end # Cyclical in time
-struct Linear end # linear extrapolation
-struct Clamp end # clamp to nearest value
-
 instantiate(T::Type) = T()
 
 function FieldTimeSeries(loc, grid, times=();
@@ -71,7 +66,7 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing, 
                          name = nothing,
-                         time_extrapolation = Cyclical(),
+                         time_extrapolation = Linear(),
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
@@ -143,7 +138,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
                          grid = nothing,
                          location = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_extrapolation = Cyclical(),
+                         time_extrapolation = Linear(),
                          iterations = nothing,
                          times = nothing)
 
