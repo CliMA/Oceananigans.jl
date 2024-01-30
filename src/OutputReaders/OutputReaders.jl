@@ -26,6 +26,16 @@ InMemory() = InMemory(Colon())
 
 struct OnDisk <: AbstractDataBackend end
 
+
+# Time extrapolation modes
+struct Cyclical{T} # Cyclical in time
+    Δt :: T # the cycle period will be tᴺ - t¹ + Δt where tᴺ is the last time and t¹ is the first time
+end 
+
+struct Linear end # linear extrapolation
+struct Clamp end # clamp to nearest value
+
+
 # validate_backend(::InMemory{Nothing}, data) = InMemory(collect(1:size(data, 4)))
 # validate_backend(::OnDisk,   data)          = OnDisk()
 # validate_backend(in_memory::InMemory, data) = in_memory

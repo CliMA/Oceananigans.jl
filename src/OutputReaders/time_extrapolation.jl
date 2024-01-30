@@ -60,26 +60,34 @@ end
     t¹ = first(times) 
     tᴺ = times[Nt]
     
-    ΔT  = tᴺ - t¹ # time range
-    Δt⁺ = t  - tᴺ # excess time
-    Δt⁻ = t¹ - t  # time defect
+    Δt = fts.time_extrapolation.Δt
 
-    Δtᴺ = tᴺ - times[Nt-1]
-    Δt¹ = times[2] - t¹
+    ΔT  = tᴺ - t¹ # Period of the cycle
+    Δt⁺ = t  - tᴺ - Δt # excess time
+    Δt⁻ = t¹ - t  + Δt # time defect
 
-    # To interpolate inbetween tᴺ and t¹ we assume that:
-    # - tᴺ corresponds to 2t¹ - t²
-    # - t¹ corresponds to 2tᴺ - tᴺ⁻¹
-    cycled_t = ifelse(t > tᴺ, t¹ - Δt¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹, tᴺ + Δtᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+    # if t is inbetween tᴺ and t¹ the point lies outside
+    # our time domain, but the indices are simple
+    time_indices⁺   = ((t  - tᴺ) / Δt, Nt, 1)
+    time_indices⁻   = ((t¹ - t ) / Δt, 1, Nt)
+    outside_domain⁺ = (tᴺ < t < tᴺ + Δt) 
+    outside_domain⁻ = (t¹ - Δt < t < t¹)
+
+    # for all other cases, just cycle the time to calculate the correct indices
+    cycled_t = ifelse(t > tᴺ, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹, tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
                       t))
 
-    n, n₁, n₂ = time_index_binary_search(fts, cycled_t)
+    time_indices = time_index_binary_search(fts, cycled_t)
 
     # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
     # so we need to care for `cycled_t < t¹`
-    n, n₁, n₂ = ifelse(cycled_t < t¹, (n, Nt, 1), (n, n₁, n₂))
+    n, n₁, n₂ = ifelse(outside_domain⁺, time_indices⁺, 
+                ifelse(outside_domain⁻, time_indices⁻,
+                                        time_indices))
         
+    @show outside_domain⁺, cycled_t, t, n, n₁, n₂
+
     return n, n₁, n₂
 end
 
