@@ -138,7 +138,7 @@ end
     iy = interpolator(jj)
     iz = interpolator(kk)
 
-    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
+    ñ, n₁, n₂ = interpolating_time_indices(fts, at_time.time)
 
     ψ₁ = _interpolate(from_fts, ix, iy, iz, n₁)
     ψ₂ = _interpolate(from_fts, ix, iy, iz, n₂)

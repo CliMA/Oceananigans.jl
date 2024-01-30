@@ -267,19 +267,13 @@ end
         for t in eachindex(f.times)
             f_chunked[t] == f[t]
         end
-    end
 
-    for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend}" begin
-            @info "  Testing FieldDataset{$Backend}..."
+        max_fts, min_fts = extrema(fts)
 
-            ds = FieldDataset(filepath3d, backend=Backend())
-
-            @test ds isa FieldDataset
-            @test length(keys(ds.fields)) == 8
-            @test ds["u"] isa FieldTimeSeries
-            @test ds["v"][1] isa Field
-            @test ds["T"][2] isa Field
+        # Test cyclic time interpolation with update_field_time_series!
+        for time in Time.(collect(0:0.1:300))
+            @test fts[time] ≤ max_fts
+            @test fts[time] ≥ min_fts
         end
     end
 
@@ -299,6 +293,20 @@ end
         for time in Time.(collect(0:0.1:300))
             @test fts[1, 1, 1, time] ≤ 50
             @test fts[1, 1, 1, time] ≥ 1
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldDataset{$Backend}" begin
+            @info "  Testing FieldDataset{$Backend}..."
+
+            ds = FieldDataset(filepath3d, backend=Backend())
+
+            @test ds isa FieldDataset
+            @test length(keys(ds.fields)) == 8
+            @test ds["u"] isa FieldTimeSeries
+            @test ds["v"][1] isa Field
+            @test ds["T"][2] isa Field
         end
     end
 

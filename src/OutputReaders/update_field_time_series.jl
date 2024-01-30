@@ -43,21 +43,29 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Tim
     return nothing
 end
 
-@inline corrected_time(time, first_time, last_time, ::Clamp) = 
-    ifelse(time > last_time,  last_time,   # Beyond last time: clamp to last
-    ifelse(time < first_time, first_time,  # Before first time: clamp to first
-           time))                          # business as usual
+@inline corrected_time(t, t¹, tᴺ, ::Clamp) = 
+    ifelse(t > tᴺ, tᴺ,  # Beyond last time: clamp to last
+    ifelse(t < t¹, t¹,  # Before first time: clamp to first
+           t))          # business as usual
 
-@inline corrected_time(time, first_time, last_time, ::Linear) = time # Fallback for linear extrapolation (no need to handle boundaries)
+@inline corrected_time(t, t¹, tᴺ, ::Linear) = t # Fallback for linear extrapolation (no need to handle boundaries)
 
-@inline function corrected_time(time, first_time, last_time, ::Cyclical) 
-    ΔT  = last_time - first_time
-    Δt⁺ = time - last_time   
-    Δt⁻ = first_time - time
+@inline function corrected_time(t, t¹, tᴺ, ::Cyclical) 
+    ΔT  = tᴺ - t¹ # time range
+    Δt⁺ = t  - tᴺ # excess time
+    Δt⁻ = t¹ - t  # time defect
 
-    return ifelse(time > last_time,  mod(Δt⁺, ΔT),             # Beyond last time: circle around
-           ifelse(time < first_time, last_time - mod(Δt⁻, ΔT), # Before first time: circle around
-                  time))                                       # business as usual
+    Δtᴺ = tᴺ - times[end-1]
+    Δt¹ = times[2] - t¹
+
+    # To interpolate inbetween tᴺ and t¹ we assume that:
+    # - tᴺ corresponds to 2t¹ - t²
+    # - t¹ corresponds to 2tᴺ - tᴺ⁻¹
+    cycled_t = ifelse(t > tᴺ, t¹ - Δt¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹, tᴺ + Δtᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+                      t))                              # business as usual
+
+    return cycled_t
 end
 
 # Update `fts` to contain the time index `n`.
