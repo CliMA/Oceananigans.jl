@@ -62,21 +62,21 @@ end
     
     Δt = fts.time_extrapolation.Δt
 
-    ΔT  = tᴺ - t¹ # Period of the cycle
+    ΔT  = tᴺ - t¹ + Δt # Period of the cycle
     Δt⁺ = t  - tᴺ - Δt # excess time
-    Δt⁻ = t¹ - t  + Δt # time defect
+    Δt⁻ = t¹ - t       # defect time (the Δt is added only at the right)  
+
+    # for all other cases, just cycle the time to calculate the correct indices
+    cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+                      t))
 
     # if t is inbetween tᴺ and t¹ the point lies outside
     # our time domain, but the indices are simple
-    time_indices⁺   = ((t  - tᴺ) / Δt, Nt, 1)
-    time_indices⁻   = ((t¹ - t ) / Δt, 1, Nt)
-    outside_domain⁺ = (tᴺ < t < tᴺ + Δt) 
-    outside_domain⁻ = (t¹ - Δt < t < t¹)
-
-    # for all other cases, just cycle the time to calculate the correct indices
-    cycled_t = ifelse(t > tᴺ, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹, tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
-                      t))
+    time_indices⁺   = ((cycled_t  - tᴺ) / Δt, Nt, 1)
+    time_indices⁻   = ((t¹ - cycled_t ) / Δt, 1, Nt)
+    outside_domain⁺ = (tᴺ < cycled_t < tᴺ + Δt) 
+    outside_domain⁻ = (t¹ - Δt < cycled_t < t¹)
 
     time_indices = time_index_binary_search(fts, cycled_t)
 
