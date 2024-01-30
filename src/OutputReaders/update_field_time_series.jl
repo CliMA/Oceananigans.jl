@@ -17,9 +17,9 @@ set!(::TotallyInMemoryFieldTimeSeries, index_range) = nothing
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
 # and load the new data
-function set!(fts::InMemoryFieldTimeSeries, index_range::Vector)
+function set!(fts::InMemoryFieldTimeSeries, index_range::Tuple)
     # TODO: only load new data by comparing current and new index range?
-    fts.backend.index_range .= index_range
+    fts.backend.index_range = index_range
     set!(fts, fts.path, fts.name)
     return nothing
 end
@@ -54,23 +54,19 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
 
     if !in_range # out of range
         Nt = length(fts.times)
-        index_range = fts.backend.index_range
-        Ni = length(index_range)
+        Ni = length(fts.backend.index_range)
 
         te = fts.time_extrapolation
-
-        index_range[1] = n₁
-        index_range[2] = n₂
         nᴺ = n₂ + Ni - 2
 
-        if te isa Cycled
-            for n = n₂+1:nᴺ
-                index_range[n] = mod1(n, Nt)
-            end
+        if te isa Cycling
+            possibly_wrapped_indices = Tuple(mod1(n, Nt) for n = n₂+1:nᴺ)
+            index_range = tuple(n₁, n₂, possibly_wrapped_indices...)
         else
-            nᴺ = min(nᴺ, Nt)
-            n₁ = nᴺ - Ni + 1
-            index_range .= n₁:nᴺ
+            nᴺ = min(nᴺ, Nt) # clip to Nt
+            n₁ = nᴺ - Ni + 1 # recompute if clipped
+            index_range = n₁:nᴺ
+            index_range = tuple(index_range...)
         end
 
         set!(fts, index_range)
@@ -101,3 +97,4 @@ extract_field_timeseries(t::AbstractField)     = Tuple(extract_field_timeseries(
 extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
 extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
 extract_field_timeseries(t::NamedTuple)        = Tuple(extract_field_timeseries(n) for n in t)
+

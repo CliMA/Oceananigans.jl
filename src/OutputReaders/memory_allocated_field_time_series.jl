@@ -50,7 +50,7 @@ set!(fts::InMemoryFieldTimeSeries, f, index::Int) = set!(fts[index], f)
 
 iterations_from_file(file, ::Colon) = parse.(Int, keys(file["timeseries/t"]))
 
-function iterations_from_file(file, index_range::Vector)
+function iterations_from_file(file, index_range::Tuple)
     all_iterations = iterations_from_file(file, Colon())
     return all_iterations[index_range]
 end
