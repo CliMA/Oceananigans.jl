@@ -78,7 +78,7 @@ end
 
     # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
     # so we need to care for `cycled_t < t¹`
-    n, n₁, n₂ = ifelse(cycled_t < t¹, (n + n₁, Nt, 1), (n, n₁, n₂))
+    n, n₁, n₂ = ifelse(cycled_t < t¹, (n, Nt, 1), (n, n₁, n₂))
         
     return n, n₁, n₂
 end
