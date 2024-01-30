@@ -144,7 +144,7 @@ We can easily visualize the spacing of ``y`` and ``z`` directions.
 ```@example 1
 using CairoMakie
 
-fig = Figure(resolution=(800, 900))
+fig = Figure(size=(800, 900))
 
 ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
 lines!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])

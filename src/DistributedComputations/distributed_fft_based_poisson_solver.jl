@@ -26,13 +26,13 @@ infer_transform(::Flat)     = PencilFFTs.Transforms.NoTransform!()
 """
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-Return a FFT-based solver for the Poisson equation,
+Return an FFT-based solver for the Poisson equation,
 
 ```math
 ∇²φ = b
 ```
 
-for `Distributed`itectures.
+on `Distributed`itectures.
 
 Supported configurations
 ========================
@@ -150,7 +150,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
-    
+
     # Permute the λ appropriately
     permuted_eigenvalues = Tuple(unpermuted_eigenvalues[d] for d in Tuple(input_permutation))
     eigenvalues = PencilFFTs.localgrid(last(storage), permuted_eigenvalues)
