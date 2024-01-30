@@ -9,9 +9,6 @@ const CyclicalFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical, K} where K
 const LinearFTS{K}   = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear, K} where K
 const ClampFTS{K}    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp, K} where K
 
-const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory{Colon}}
-const CyclicalChunkedFTS = CyclicalFTS{<:InMemory{Tuple}}
-
 # Reduced FTS
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
 const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
@@ -26,38 +23,33 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 @propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
 
 #####
+##### Underlying data index corresponding to time index `n :: int`
+#####
+
+inmemory_time_index(time_extr, index_range, n) = n - index_range[1] + 1
+inmemory_time_index(time_extr, ::Colon,     n) = n
+inmemory_time_index(::Cycling, ::Colon,     n) = n
+
+function inmemory_time_index(::Cycling, index_range, n) 
+    Ni = length(index_range)
+    # Should find n₁ == n₂
+    n₁, n₂ = index_binary_search(index_range, n, Ni)
+    return n₁
+end
+
+#####
 ##### Local `getindex` with integers `(i, j, k, n)`
 #####
 
 @propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) =
-    f.data[i, j, k, n - f.backend.index_range[1] + 1]
-
-@propagate_inbounds function Base.getindex(f::CyclicalChunkedFTS, i, j, k, n::Int)
-    Ni = length(f.backend.index_range)
-    # Should find n₁ == n₂
-    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
-    return f.data[i, j, k, n₁]
-end
-
-@propagate_inbounds Base.getindex(f::TotallyInMemoryFTS, i, j, k, n::Int) =
-    f.data[i, j, k, n]
+    f.data[i, j, k, inmemory_time_index(f.time_extrapolation, f.backend.index_range, n)]
 
 #####
 ##### Local setindex! with integers `(i, j, k, n)` 
 #####
 
 @propagate_inbounds Base.setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
-
-@propagate_inbounds function Base.setindex(f::CyclicalChunkedFTS, v, i, j, k, n::Int)
-    Ni = length(f.backend.index_range)
-    # Should find n₁ == n₂
-    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
-    return setindex!(f.data, v, i, j, k, n₁)
-end    
-
-@propagate_inbounds Base.setindex!(f::TotallyInMemoryFTS, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n)
+    setindex!(f.data, v, i, j, k, inmemory_time_index(f.time_extrapolation, f.backend.index_range, n))
 
 #####
 ##### Local getindex with integers `(i, j, k)` and `n :: Time`

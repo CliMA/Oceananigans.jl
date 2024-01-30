@@ -9,9 +9,6 @@ end
  
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 
-compute_time_index(index_range, n) = n - index_range[1] + 1
-compute_time_index(::Colon, n) = n
-
 # If `n` is not in memory, getindex automatically sets the data in memory to have the `n`
 # as the second index (to allow interpolation with the previous time step)
 # If n is `1` or within the end the timeseries different rules apply
@@ -19,7 +16,7 @@ function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     update_field_time_series!(fts, n)
 
     index_range = fts.backend.index_range
-    time_index = compute_time_index(index_range, n)
+    time_index = inmemory_time_index(fts.time_extrapolation, index_range, n)
     underlying_data = view(parent(fts), :, :, :, time_index)
 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
@@ -33,7 +30,7 @@ iterations_from_file(file, ::Colon) = parse.(Int, keys(file["timeseries/t"]))
 
 function iterations_from_file(file, index_range::Tuple)
     all_iterations = iterations_from_file(file, Colon())
-    return all_iterations[index_range]
+    return all_iterations[[index_range...]]
 end
 
 time_indices(fts::InMemoryFieldTimeSeries) = time_indices(fts.backend.index_range, fts.times)
@@ -51,7 +48,7 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
 
-    times = fts.times[index_range]
+    times = fts.times[[index_range...]]
     indices = time_indices(fts)
 
     for (n, time) in zip(indices, times)
