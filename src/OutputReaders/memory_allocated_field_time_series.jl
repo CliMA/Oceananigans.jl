@@ -10,6 +10,13 @@ end
 @propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) =
     f.data[i, j, k, n - f.backend.index_range[1] + 1]
 
+@propagate_inbounds function Base.getindex(f::CyclicalFTS{InMemory{Tuple}}, i, j, k, n::Int)
+    Ni = length(f.backend.index_range)
+    # Should find n₁ == n₂
+    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
+    return f.data[i, j, k, n₁]
+end
+
 @propagate_inbounds Base.getindex(f::TotallyInMemoryFieldTimeSeries, i, j, k, n::Int) =
     f.data[i, j, k, n]
 
@@ -43,7 +50,7 @@ set!(fts::InMemoryFieldTimeSeries, f, index::Int) = set!(fts[index], f)
 
 iterations_from_file(file, ::Colon) = parse.(Int, keys(file["timeseries/t"]))
 
-function iterations_from_file(file, index_range::UnitRange)
+function iterations_from_file(file, index_range::Vector)
     all_iterations = iterations_from_file(file, Colon())
     return all_iterations[index_range]
 end

@@ -17,9 +17,9 @@ set!(::TotallyInMemoryFieldTimeSeries, index_range) = nothing
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
 # and load the new data
-function set!(fts::InMemoryFieldTimeSeries, index_range::UnitRange)
+function set!(fts::InMemoryFieldTimeSeries, index_range::Vector)
     # TODO: only load new data by comparing current and new index range?
-    fts.backend.index_range = index_range
+    fts.backend.index_range .= index_range
     set!(fts, fts.path, fts.name)
     return nothing
 end
@@ -36,37 +36,10 @@ const ClampInMemoryFTS  = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp}
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, time_index::Time)
-    time = time_index.time
-    correct_time = corrected_time(time, fts.times[1], fts.times[end], fts.time_extrapolation)
-    n₁, n₂ = index_binary_search(fts.times, correct_time, length(fts.times))
-    update_field_time_series!(fts, n₂)
+    t = time_index.time
+    n, n₁, n₂ = interpolating_time_indices(fts, t)
+    update_field_time_series!(fts, n₁, n₂)
     return nothing
-end
-
-@inline corrected_time(t, t¹, tᴺ, ::Clamp) = 
-    ifelse(t > tᴺ, tᴺ,  # Beyond last time: clamp to last
-    ifelse(t < t¹, t¹,  # Before first time: clamp to first
-           t))          # business as usual
-
-@inline corrected_time(t, t¹, tᴺ, ::Linear) = t # Fallback for linear extrapolation (no need to handle boundaries)
-
-@inline function corrected_time(t, t¹, tᴺ, ::Cyclical) 
-    ΔT  = tᴺ - t¹ # time range
-    Δt⁺ = t  - tᴺ # excess time
-    Δt⁻ = t¹ - t  # time defect
-
-    Δt = fts.time_extrapolation.Δt
-
-    ΔT  = tᴺ - t¹ + Δt # Period of the cycle
-    Δt⁺ = t  - tᴺ - Δt # excess time
-    Δt⁻ = t¹ - t  - Δt # defect time
-    
-    # cycle the time to calculate the correct indices
-    cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
-                      t))
-
-    return cycled_t
 end
 
 # Update `fts` to contain the time index `n`.
@@ -74,17 +47,33 @@ end
 # if `n` is 1, load the first `length(fts.backend.index_range)` time steps
 # if `n` is within the last `length(fts.backend.index_range)` time steps, load the last `length(fts.backend.index_range)` time steps
 # otherwise `n` will be placed at index `[:, :, :, 2]` of `fts.data`
-function update_field_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
-    if !(n ∈ fts.backend.index_range)
+function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
+
+    in_range = n₁ ∈ fts.backend.index_range &&
+               n₂ ∈ fts.backend.index_range
+
+    if !in_range # out of range
         Nt = length(fts.times)
-        Ni = length(fts.backend.index_range)
-        if n == 1
-            set!(fts, 1:Ni)
-        elseif n > Nt - Ni
-            set!(fts, Nt-Ni+1:Nt)
+        index_range = fts.backend.index_range
+        Ni = length(index_range)
+
+        te = fts.time_extrapolation
+
+        index_range[1] = n₁
+        index_range[2] = n₂
+        nᴺ = n₂ + Ni - 2
+
+        if te isa Cycled
+            for n = n₂+1:nᴺ
+                index_range[n] = mod1(n, Nt)
+            end
         else
-            set!(fts, n-1:n+Ni-2)
+            nᴺ = min(nᴺ, Nt)
+            n₁ = nᴺ - Ni + 1
+            index_range .= n₁:nᴺ
         end
+
+        set!(fts, index_range)
     end
 
     return nothing

@@ -22,7 +22,12 @@ Return a `backend` for `FieldTimeSeries` that stores `N`
 fields in memory. The default `N = :` stores all fields in memory.
 """
 function InMemory(chunk_size::Int)
-    index_range = UnitRange(1, chunk_size)
+    chunk_size > 2 &&
+        throw(ArgumentError("The chunk_size for InMemory backend cannot be less than 2."))
+
+    index_range = 1:chunk_size
+    index_range = tuple(index_range...)
+
     return InMemory(index_range)
 end
 
