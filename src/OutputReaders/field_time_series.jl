@@ -498,7 +498,7 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
                   path_str,
                   name_str,
                   "└── data: ", summary(fts.data), '\n',
-                  "    └── ", data_summary(fts.data))
+                  "    └── ", data_summary(interior(fts)))
 end
 
 field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
