@@ -86,8 +86,6 @@ end
                 ifelse(outside_domain⁻, time_indices⁻,
                                         time_indices))
         
-    @show outside_domain⁺, cycled_t, t, n, n₁, n₂
-
     return n, n₁, n₂
 end
 
