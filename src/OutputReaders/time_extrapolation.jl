@@ -45,7 +45,7 @@ const ClampFTS    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp}
         t₂ = fts.times[n₂]    
     end
 
-    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + n₁
+    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
 
     return n, n₁, n₂
 end
@@ -78,7 +78,7 @@ end
 
     # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
     # so we need to care for `cycled_t < t¹`
-    n, n₁, n₂ = ifelse(cycled_t < t¹, (n, Nt, 1), (n - n₁, n₁, n₂))
+    n, n₁, n₂ = ifelse(cycled_t < t¹, (n + n₁, Nt, 1), (n, n₁, n₂))
         
     return n, n₁, n₂
 end
@@ -87,9 +87,9 @@ end
 @inline function interpolating_time_indices(fts::ClampFTS, t)
     n, n₁, n₂ = time_index_binary_search(fts, t)
 
-    beyond_indices    = (0,      n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0,      n₁, n₁) # Before the first time: return n₁   
-    unclamped_indices = (n - n₁, n₁, n₂) # Business as usual
+    beyond_indices    = (0,  n₂, n₂) # Beyond the last time:  return n₂
+    before_indices    = (0,  n₁, n₁) # Before the first time: return n₁   
+    unclamped_indices = (n₁, n₁, n₂) # Business as usual
 
     Nt = length(fts.times)
 
