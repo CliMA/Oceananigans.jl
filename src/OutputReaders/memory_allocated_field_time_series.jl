@@ -7,25 +7,6 @@ function new_data(FT, grid, loc, indices, Nt, backend::InMemory)
     return data
 end
  
-@propagate_inbounds Base.getindex(f::InMemoryFieldTimeSeries, i, j, k, n::Int) =
-    f.data[i, j, k, n - f.backend.index_range[1] + 1]
-
-@propagate_inbounds function Base.getindex(f::CyclicalFTS{InMemory{Tuple}}, i, j, k, n::Int)
-    Ni = length(f.backend.index_range)
-    # Should find n₁ == n₂
-    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
-    return f.data[i, j, k, n₁]
-end
-
-@propagate_inbounds Base.getindex(f::TotallyInMemoryFieldTimeSeries, i, j, k, n::Int) =
-    f.data[i, j, k, n]
-
-@propagate_inbounds Base.setindex!(f::InMemoryFieldTimeSeries, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
-
-@propagate_inbounds Base.setindex!(f::TotallyInMemoryFieldTimeSeries, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n)
-
 Base.parent(fts::InMemoryFieldTimeSeries) = parent(fts.data)
 
 compute_time_index(index_range, n) = n - index_range[1] + 1

@@ -75,7 +75,7 @@ struct Clamp end # clamp to nearest value
 
 include("field_time_series.jl")
 include("gpu_adapted_field_time_series.jl")
-include("time_extrapolation.jl")
+include("field_time_series_indexing.jl")
 include("memory_allocated_field_time_series.jl")
 include("on_disk_field_time_series.jl")
 include("update_field_time_series.jl")
