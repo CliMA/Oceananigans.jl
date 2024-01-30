@@ -164,9 +164,13 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
 
     isnothing(grid) && (grid = file["serialized/grid"])
 
-    # Default to CPU if neither architecture nor grid is specified
-    architecture = isnothing(architecture) ?
-        (isnothing(grid) ? CPU() : Architectures.architecture(grid)) : architecture
+    if isnothing(architecture) # determine architecture
+        if isnothing(grid) # go to default
+            architecture = CPU()
+        else # there's a grid, use that architecture
+            architecture = Architectures.architecture(grid)
+        end
+    end
 
     # This should be removed eventually... (4/5/2022)
     grid = try
