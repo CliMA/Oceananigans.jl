@@ -70,22 +70,20 @@ end
                ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
                       t))
 
-    # if t is inbetween tᴺ and t¹ the point lies outside
-    # our time domain, but the indices are simple
+    time_indices = time_index_binary_search(fts, cycled_t)
+
+    # if cycled_t is inbetween tᴺ and t¹ the point lies outside
+    # our explicit time domain, but the solution is simple
     time_indices⁺   = ((cycled_t  - tᴺ) / Δt, Nt, 1)
     time_indices⁻   = ((t¹ - cycled_t ) / Δt, 1, Nt)
     outside_domain⁺ = (tᴺ < cycled_t < tᴺ + Δt) 
     outside_domain⁻ = (t¹ - Δt < cycled_t < t¹)
 
-    time_indices = time_index_binary_search(fts, cycled_t)
-
-    # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
-    # so we need to care for `cycled_t < t¹`
-    n, n₁, n₂ = ifelse(outside_domain⁺, time_indices⁺, 
-                ifelse(outside_domain⁻, time_indices⁻,
-                                        time_indices))
+    indices = ifelse(outside_domain⁺, time_indices⁺, 
+              ifelse(outside_domain⁻, time_indices⁻,
+                                      time_indices))
         
-    return n, n₁, n₂
+    return indices
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
