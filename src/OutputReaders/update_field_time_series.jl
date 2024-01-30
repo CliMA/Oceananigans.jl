@@ -55,15 +55,16 @@ end
     Δt⁺ = t  - tᴺ # excess time
     Δt⁻ = t¹ - t  # time defect
 
-    Δtᴺ = tᴺ - times[end-1]
-    Δt¹ = times[2] - t¹
+    Δt = fts.time_extrapolation.Δt
 
-    # To interpolate inbetween tᴺ and t¹ we assume that:
-    # - tᴺ corresponds to 2t¹ - t²
-    # - t¹ corresponds to 2tᴺ - tᴺ⁻¹
-    cycled_t = ifelse(t > tᴺ, t¹ - Δt¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
-               ifelse(t < t¹, tᴺ + Δtᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
-                      t))                              # business as usual
+    ΔT  = tᴺ - t¹ + Δt # Period of the cycle
+    Δt⁺ = t  - tᴺ - Δt # excess time
+    Δt⁻ = t¹ - t  - Δt # defect time
+    
+    # cycle the time to calculate the correct indices
+    cycled_t = ifelse(t > tᴺ + Δt, t¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹,      tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+                      t))
 
     return cycled_t
 end
