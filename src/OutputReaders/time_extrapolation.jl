@@ -45,7 +45,7 @@ const ClampFTS    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp}
         t₂ = fts.times[n₂]    
     end
 
-    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + t₁
+    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + n₁
 
     return n, n₁, n₂
 end
@@ -54,34 +54,42 @@ end
 @inline interpolating_time_indices(fts::LinearFTS, t) = time_index_binary_search(fts, t)
 
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
-# Note: Cyclical interpolation will not work if t - t₂ > t₂ - t₁
-# or if t₁ - t > t₂ - t₁ (i.e. if we are skipping several Δt)
-# to make that work we need to `update_field_time_series!`
 @inline function interpolating_time_indices(fts::CyclicalFTS, t)
     times = fts.times
+    Nt = length(times)
     t¹ = first(times) 
-    tᴺ = times[end]
-    ΔT = tᴺ - t¹
+    tᴺ = times[Nt]
     
-    Δt⁺ = t  - tᴺ
-    Δt⁻ = t¹ - t
+    ΔT  = tᴺ - t¹ # time range
+    Δt⁺ = t  - tᴺ # excess time
+    Δt⁻ = t¹ - t  # time defect
 
-    new_t = ifelse(t > tᴺ, mod(Δt⁺, ΔT),      # Beyond last time: circle around
-            ifelse(t < t¹, tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
-                   t))   
-    # Compute modulus of shifted time, then add shift back
-    n, n₁, n₂ = time_index_binary_search(fts, new_t)
+    Δtᴺ = tᴺ - times[Nt-1]
+    Δt¹ = times[2] - t¹
 
-    return n - n₁, n₁, n₂
+    # To interpolate inbetween tᴺ and t¹ we assume that:
+    # - tᴺ corresponds to 2t¹ - t²
+    # - t¹ corresponds to 2tᴺ - tᴺ⁻¹
+    cycled_t = ifelse(t > tᴺ, t¹ - Δt¹ + mod(Δt⁺, ΔT), # Beyond last time: circle around
+               ifelse(t < t¹, tᴺ + Δtᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+                      t))
+
+    n, n₁, n₂ = time_index_binary_search(fts, cycled_t)
+
+    # cycled_t should ensure that `cycled_t ≤ tᴺ` but not that `cycled_t ≥ t¹`, 
+    # so we need to care for `cycled_t < t¹`
+    n, n₁, n₂ = ifelse(cycled_t < t¹, (n, Nt, 1), (n - n₁, n₁, n₂))
+        
+    return n, n₁, n₂
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(fts::ClampFTS, t)
     n, n₁, n₂ = time_index_binary_search(fts, t)
 
-    beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
-    unclamped_indices = (n, n₁, n₂) # Business as usual
+    beyond_indices    = (0,      n₂, n₂) # Beyond the last time:  return n₂
+    before_indices    = (0,      n₁, n₁) # Before the first time: return n₁   
+    unclamped_indices = (n - n₁, n₁, n₂) # Business as usual
 
     Nt = length(fts.times)
 
@@ -93,7 +101,7 @@ end
 
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
-    # Calculate fractional index
+    # Calculate fractional index (0 ≤ ñ ≤ 1)
     ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
 
     if n₁ == n₂ # no interpolation needed
