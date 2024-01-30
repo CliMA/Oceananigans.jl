@@ -37,6 +37,7 @@ grid = RectilinearGrid(arch; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y
 
 model = NonhydrostaticModel(; grid, advection=WENO(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
 
+Random.seed!((arch.local_rank +1) * 123) 
 ϵ(x, y) = 2rand() - 1 # ∈ (-1, 1)
 set!(model, u=ϵ, v=ϵ)
 
