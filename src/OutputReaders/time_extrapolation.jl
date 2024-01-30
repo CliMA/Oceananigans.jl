@@ -87,14 +87,14 @@ end
 @inline function interpolating_time_indices(fts::ClampFTS, t)
     n, n₁, n₂ = time_index_binary_search(fts, t)
 
-    beyond_indices    = (0,  n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0,  n₁, n₁) # Before the first time: return n₁   
-    unclamped_indices = (n₁, n₁, n₂) # Business as usual
+    beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
+    before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
+    unclamped_indices = (n, n₁, n₂) # Business as usual
 
     Nt = length(fts.times)
 
-    indices = ifelse(n > Nt, beyond_indices,
-              ifelse(n < 1,  before_indices, unclamped_indices))
+    indices = ifelse(n + n₁ > Nt, beyond_indices,
+              ifelse(n + n₁ < 1,  before_indices, unclamped_indices))
 
     return indices
 end

@@ -277,6 +277,36 @@ end
         end
     end
 
+    @testset "Time Interpolation" begin
+        times = rand(100) * 100
+        times = sort(times) # random times between 0 and 100
+
+        max_t, min_t = extrema(times)
+
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+
+        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+        fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_extrapolation = Clamp())
+
+        for t in eachindex(times)
+            fill!(fts_cyclic[t], t / 2) # value of the field between 1 and 50
+            fill!(fts_clamp[t], t / 2)  # value of the field between 1 and 50
+        end
+
+        # Let's test that the field remains bounded between 1 and 50
+        for time in Time.(collect(0:0.1:300))
+            @test fts_cyclic[1, 1, 1, time] ≤ 50
+            @test fts_cyclic[1, 1, 1, time] ≥ 1
+
+            if time.time > max_t
+                @test fts_clamp[1, 1, 1, time] == 50
+            end
+            if time.time < min_t
+                @test fts_clamp[1, 1, 1, time] == 1
+            end
+        end
+    end
+
     @testset "Cyclic time Interpolation" begin
         times = rand(100) * 100
         times = sort(times) # random times between 0 and 100
