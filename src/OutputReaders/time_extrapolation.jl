@@ -45,7 +45,7 @@ const ClampFTS    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp}
         t₂ = fts.times[n₂]    
     end
 
-    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
+    n = (n₂ - n₁) / (t₂ - t₁) * (t - t₁) + t₁
 
     return n, n₁, n₂
 end
@@ -61,28 +61,23 @@ end
     times = fts.times
     t¹ = first(times) 
     tᴺ = times[end]
-    Δt = tᴺ - times[end-1] # assumption
+    ΔT = tᴺ - t¹
+    
+    Δt⁺ = t  - tᴺ
+    Δt⁻ = t¹ - t
 
-    # Total length of cyclical interval includes final time increment
-    T = tᴺ - t¹ + Δt
-
+    new_t = ifelse(t > tᴺ, mod(Δt⁺, ΔT),      # Beyond last time: circle around
+            ifelse(t < t¹, tᴺ - mod(Δt⁻, ΔT), # Before first time: circle around
+                   t))   
     # Compute modulus of shifted time, then add shift back
-    τ = t - t¹
-    mod_τ = mod(τ, T)
-    mod_t = mod_τ + t¹
+    n, n₁, n₂ = time_index_binary_search(fts, new_t)
 
-    n, n₁, n₂ = time_index_binary_search(fts, mod_t)
-
-    cycling = n > Nt
-    cycled_indices = (Nt - n, Nt, 1)
-    uncycled_indices = (n, n₁, n₂)
-
-    return ifelse(cycling, cycled_indices, uncycled_indices)
+    return n - n₁, n₁, n₂
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(fts::ClampFTS, t)
-    n, n₁, n₂ =  time_index_binary_search(fts, t)
+    n, n₁, n₂ = time_index_binary_search(fts, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
     before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
