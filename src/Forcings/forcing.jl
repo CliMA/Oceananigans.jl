@@ -19,7 +19,7 @@ the signature of `func` must include them. For example, if `field_dependencies=(
 (and `parameters` are _not_ provided), then `func` must be callable with the signature
 
 ```
-func(x, y, z, t, u, S)`
+func(x, y, z, t, u, S)
 ```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field

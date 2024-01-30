@@ -24,42 +24,42 @@ Otherwise `κ` must be a `NamedTuple` with values for every tracer individually.
 Arguments
 =========
 
-    * `time_discretization`: either `ExplicitTimeDiscretization()` (default)
-      or `VerticallyImplicitTimeDiscretization()`.
-    
-    * `formulation`:
-      - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
-      - `VerticalFormulation()` for diffusivity applied in the vertical direction,
-      - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
-    
-    * `FT`: the float datatype (default: `Float64`)
+* `time_discretization`: either `ExplicitTimeDiscretization()` (default)
+    or `VerticallyImplicitTimeDiscretization()`.
+
+* `formulation`:
+    - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+    - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+    - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+
+* `FT`: the float datatype (default: `Float64`)
 
 Keyword arguments
 =================
 
-    * `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
-    
-    * `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
-           `NamedTuple` of diffusivities with entries for each tracer.
-    
-    * `discrete_form`: `Boolean`; default: `False`.
+* `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
+
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+        `NamedTuple` of diffusivities with entries for each tracer.
+
+* `discrete_form`: `Boolean`; default: `False`.
 
 When prescribing the viscosities or diffusivities as functions, depending on the
 value of keyword argument `discrete_form`, the constructor expects:
 
-    * `discrete_form = false` (default): functions of the grid's native coordinates
-      and time, e.g., `(x, y, z, t)` for a `RectilinearGrid` or
-      `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
-      
-    * `discrete_form = true`: 
-        - with `loc = (nothing, nothing, nothing)` (default):
-          functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
-          and `ℓz` either `Face()` or `Center()`.
-        - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
-          and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+* `discrete_form = false` (default): functions of the grid's native coordinates
+    and time, e.g., `(x, y, z, t)` for a `RectilinearGrid` or
+    `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-    * `parameters`: `NamedTuple` with parameters used by the functions
-      that compute viscosity and/or diffusivity; default: `nothing`.
+* `discrete_form = true`:
+    - with `loc = (nothing, nothing, nothing)` (default):
+        functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
+        and `ℓz` either `Face()` or `Center()`.
+    - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
+        and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
+* `parameters`: `NamedTuple` with parameters used by the functions
+    that compute viscosity and/or diffusivity; default: `nothing`.
 
 Examples
 ========
