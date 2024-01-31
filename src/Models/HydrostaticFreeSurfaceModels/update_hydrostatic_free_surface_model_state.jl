@@ -133,13 +133,13 @@ function fill_velocity_halos!(velocities)
           for k in -Hz+1:Nz+Hz
             #- NW corner:
             u[region][2-Hc:0, Nc+1, k] .= reverse(v[region][1, Nc+2:Nc+Hc, k])*plmn
-            v[region][0, Nc+2:Nc+Hc, k] .= reverse(u[region][2-Hc:0,  Nc,  k])*plmn
+            v[region][0, Nc+2:Nc+Hc, k] .= reverse(u[region][2-Hc:0,  Nc,  k])'*plmn
             #- SE corner:
             u[region][Nc+2:Nc+Hc, 0, k] .= reverse(v[region][ Nc,  2-Hc:0, k])*plmn
-            v[region][Nc+1, 2-Hc:0, k] .= reverse(u[region][Nc+2:Nc+Hc, 1, k])*plmn
+            v[region][Nc+1, 2-Hc:0, k] .= reverse(u[region][Nc+2:Nc+Hc, 1, k])'*plmn
             #- NE corner:
             u[region][Nc+2:Nc+Hc, Nc+1, k] .= v[region][Nc, Nc+2:Nc+Hc, k]
-            v[region][Nc+1, Nc+2:Nc+Hc, k] .= u[region][Nc+2:Nc+Hc, Nc, k]
+            v[region][Nc+1, Nc+2:Nc+Hc, k] .= u[region][Nc+2:Nc+Hc, Nc, k]'
           end
         end
     end
