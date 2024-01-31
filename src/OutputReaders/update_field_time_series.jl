@@ -59,7 +59,7 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
         te = fts.time_extrapolation
         nᴺ = n₂ + Ni - 2
 
-        if te isa Cycling
+        if te isa Cyclical
             possibly_wrapped_indices = Tuple(mod1(n, Nt) for n = n₂+1:nᴺ)
             index_range = tuple(n₁, n₂, possibly_wrapped_indices...)
         else

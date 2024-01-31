@@ -26,11 +26,11 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 ##### Underlying data index corresponding to time index `n :: int`
 #####
 
-inmemory_time_index(time_extr, index_range, n) = n - index_range[1] + 1
-inmemory_time_index(time_extr, ::Colon,     n) = n
-inmemory_time_index(::Cycling, ::Colon,     n) = n
+inmemory_time_index(time_extr,  index_range, n) = n - index_range[1] + 1
+inmemory_time_index(time_extr,  ::Colon,     n) = n
+inmemory_time_index(::Cyclical, ::Colon,     n) = n
 
-function inmemory_time_index(::Cycling, index_range, n) 
+function inmemory_time_index(::Cyclical, index_range, n) 
     Ni = length(index_range)
     # Should find n₁ == n₂
     n₁, n₂ = index_binary_search(index_range, n, Ni)
