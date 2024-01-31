@@ -27,11 +27,8 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 @propagate_inbounds Base.getindex(fts::YZFTS, j::Int, k::Int, n) = fts[1, j, k, n]
 
 #####
-##### Local `getindex` with integers `(i, j, k, n)`
+##### Underlying data index corresponding to time index `n :: int`
 #####
-
-@propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) =
-    f.data[i, j, k, n - f.backend.indices[1] + 1]
 
 @propagate_inbounds function Base.getindex(f::CyclicalChunkedFTS, i, j, k, n::Int)
     Ni = length(f.backend.indices)
@@ -41,6 +38,24 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 end
 
 @propagate_inbounds Base.getindex(f::TotallyInMemoryFTS, i, j, k, n::Int) = f.data[i, j, k, n]
+
+in_memory_time_index(time_extr,  index_range, n) = n - index_range[1] + 1
+in_memory_time_index(time_extr,  ::Colon,     n) = n
+in_memory_time_index(::Cyclical, ::Colon,     n) = n
+
+function in_memory_time_index(::Cyclical, index_range, n) 
+    Ni = length(index_range)
+    # Should find n₁ == n₂
+    n₁, n₂ = index_binary_search(index_range, n, Ni)
+    return n₁
+end
+
+#####
+##### Local `getindex` with integers `(i, j, k, n)`
+#####
+
+@propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) =
+    f.data[i, j, k, in_memory_time_index(f.time_extrapolation, f.backend.indices, n)]
 
 #####
 ##### Local setindex! with integers `(i, j, k, n)` 
@@ -57,7 +72,7 @@ end
 end    
 
 @propagate_inbounds Base.setindex!(f::TotallyInMemoryFTS, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n)
+    setindex!(f.data, v, i, j, k, in_memory_time_index(f.time_extrapolation, f.backend.index_range, n))
 
 #####
 ##### Local getindex with integers `(i, j, k)` and `n :: Time`

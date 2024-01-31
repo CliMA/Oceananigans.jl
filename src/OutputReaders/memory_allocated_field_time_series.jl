@@ -20,6 +20,8 @@ function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
 
     indices = fts.backend.indices
     time_index = compute_time_index(indices, n)
+
+    time_index = in_memory_time_index(fts.time_extrapolation, indices, n)
     underlying_data = view(parent(fts), :, :, :, time_index)
 
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
@@ -53,7 +55,6 @@ function set!(fts::InMemoryFieldTimeSeries, path::String, name::String)
 
     indices = [i for i in indices]
     times = fts.times[indices]
-    indices = time_indices(fts)
 
     for (n, time) in zip(indices, times)
         file_index = find_time_index(time, file_times)
