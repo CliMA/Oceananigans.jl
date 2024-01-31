@@ -9,8 +9,9 @@ const CyclicalFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical, K} where K
 const LinearFTS{K}   = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear, K} where K
 const ClampFTS{K}    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp, K} where K
 
-const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory{Colon}}
-const CyclicalChunkedFTS = CyclicalFTS{<:InMemory{Tuple}}
+const TotallyInMemoryFTS = Union{FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory{Colon}},
+                                 FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:GPUAdaptedInMemory{Colon}}}
+const CyclicalChunkedFTS = Union{CyclicalFTS{<:InMemory{Tuple}}, CyclicalFTS{<:GPUAdaptedInMemory{Tuple}}}
 
 # Reduced FTS
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
@@ -30,29 +31,28 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 #####
 
 @propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) =
-    f.data[i, j, k, n - f.backend.index_range[1] + 1]
+    f.data[i, j, k, n - f.backend.indices[1] + 1]
 
 @propagate_inbounds function Base.getindex(f::CyclicalChunkedFTS, i, j, k, n::Int)
-    Ni = length(f.backend.index_range)
+    Ni = length(f.backend.indices)
     # Should find n₁ == n₂
-    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
+    n₁, n₂ = index_binary_search(f.backend.indices, n, Ni)
     return f.data[i, j, k, n₁]
 end
 
-@propagate_inbounds Base.getindex(f::TotallyInMemoryFTS, i, j, k, n::Int) =
-    f.data[i, j, k, n]
+@propagate_inbounds Base.getindex(f::TotallyInMemoryFTS, i, j, k, n::Int) = f.data[i, j, k, n]
 
 #####
 ##### Local setindex! with integers `(i, j, k, n)` 
 #####
 
 @propagate_inbounds Base.setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) =
-    setindex!(f.data, v, i, j, k, n - f.backend.index_range[1] + 1)
+    setindex!(f.data, v, i, j, k, n - f.backend.indices[1] + 1)
 
 @propagate_inbounds function Base.setindex(f::CyclicalChunkedFTS, v, i, j, k, n::Int)
-    Ni = length(f.backend.index_range)
+    Ni = length(f.backend.indices)
     # Should find n₁ == n₂
-    n₁, n₂ = index_binary_search(f.backend.index_range, n, Ni)
+    n₁, n₂ = index_binary_search(f.backend.indices, n, Ni)
     return setindex!(f.data, v, i, j, k, n₁)
 end    
 

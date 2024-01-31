@@ -12,14 +12,14 @@ const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
 @inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
 
-set!(::TotallyInMemoryFieldTimeSeries, index_range) = nothing
+set!(::TotallyInMemoryFieldTimeSeries, indices) = nothing
 
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
 # and load the new data
-function set!(fts::InMemoryFieldTimeSeries, index_range::Tuple)
+function set!(fts::InMemoryFieldTimeSeries, indices::Tuple)
     # TODO: only load new data by comparing current and new index range?
-    fts.backend.index_range = index_range
+    fts.backend.indices = indices
     set!(fts, fts.path, fts.name)
     return nothing
 end
@@ -44,32 +44,41 @@ end
 
 # Update `fts` to contain the time index `n`.
 # update rules are the following: 
-# if `n` is 1, load the first `length(fts.backend.index_range)` time steps
-# if `n` is within the last `length(fts.backend.index_range)` time steps, load the last `length(fts.backend.index_range)` time steps
+# if `n` is 1, load the first `length(fts.backend.indices)` time steps
+# if `n` is within the last `length(fts.backend.indices)` time steps, load the last `length(fts.backend.indices)` time steps
 # otherwise `n` will be placed at index `[:, :, :, 2]` of `fts.data`
+
+function update_field_time_series!(fts::InMemoryFieldTimeSeries, n)
+    if n < 2
+        return update_field_time_series!(fts::InMemoryFieldTimeSeries, 1, 2)
+    else
+        return update_field_time_series!(fts::InMemoryFieldTimeSeries, n-1, n)
+    end
+end
+
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
 
-    in_range = n₁ ∈ fts.backend.index_range &&
-               n₂ ∈ fts.backend.index_range
+    in_range = n₁ ∈ fts.backend.indices &&
+               n₂ ∈ fts.backend.indices
 
     if !in_range # out of range
         Nt = length(fts.times)
-        Ni = length(fts.backend.index_range)
+        Ni = length(fts.backend.indices)
 
         te = fts.time_extrapolation
         nᴺ = n₂ + Ni - 2
 
         if te isa Cycling
             possibly_wrapped_indices = Tuple(mod1(n, Nt) for n = n₂+1:nᴺ)
-            index_range = tuple(n₁, n₂, possibly_wrapped_indices...)
+            indices = tuple(n₁, n₂, possibly_wrapped_indices...)
         else
             nᴺ = min(nᴺ, Nt) # clip to Nt
             n₁ = nᴺ - Ni + 1 # recompute if clipped
-            index_range = n₁:nᴺ
-            index_range = tuple(index_range...)
+            indices = n₁:nᴺ
+            indices = tuple(indices...)
         end
 
-        set!(fts, index_range)
+        set!(fts, indices)
     end
 
     return nothing

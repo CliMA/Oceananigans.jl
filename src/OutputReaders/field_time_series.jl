@@ -232,6 +232,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
+    times = tupleit(times)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                               indices, times, path, name, time_extrapolation)
@@ -350,7 +351,6 @@ function interior(fts::FieldTimeSeries)
     halo_sz = halo_size(fts.grid)
 
     i_interior = interior_parent_indices.(loc, topo, sz, halo_sz)
-
     indices = fts.indices
     i_view = interior_view_indices.(indices, i_interior)
 
@@ -473,26 +473,25 @@ function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, L
 end
 
 function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
-    ii = fts.backend.index_range
+    ii = fts.backend.indices
 
     if ii isa Colon
         backend_str = "├── backend: InMemory(:)"
     else
         N = length(ii)
         if N < 6
-            index_range_str = string(ii)
+            indices_str = string(ii)
         else
-            index_range_str = string("[", ii[1],
-                                     ", ", ii[2],
-                                     ", ", ii[3],
-                                     "  …  ",
-                                     ii[end-2], ", ",
-                                     ii[end-1], ", ",
-                                     ii[end], "]")
-                                     
+            indices_str = string("[", ii[1],
+                                 ", ", ii[2],
+                                 ", ", ii[3],
+                                 "  …  ",
+                                 ii[end-2], ", ",
+                                 ii[end-1], ", ",
+                                 ii[end], "]")
         end
 
-        backend_str = string("├── backend: InMemory(", index_range_str, ")")
+        backend_str = string("├── backend: InMemory(", indices_str, ")")
     end
 
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
