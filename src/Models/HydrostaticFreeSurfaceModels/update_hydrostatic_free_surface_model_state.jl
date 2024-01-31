@@ -83,8 +83,8 @@ function fill_velocity_halos!(velocities)
     end
 
     #-- Second pass: fill the remaining halo:
-    # iMn = 1 ; iMx = Nc+1     #- filling over this range is neccessary
-    iMn = 2-Hc ; iMx = Nc+Hc   #- this will also fill corner halos with useless values
+    iMn = 1 ; iMx = Nc+1     #- filling over this range is neccessary
+    # iMn = 2-Hc ; iMx = Nc+Hc   #- this will also fill corner halos with useless values
     for region in 1:6
 
       if mod(region,2) == 1
@@ -116,6 +116,32 @@ function fill_velocity_halos!(velocities)
             v[region][1-Hc:0, iMn:iMx, k] .=             v[region_W][Nc+1-Hc:Nc, iMn:iMx, k]
         end
       end
+
+    end
+
+    #-- Add one valid uVel,vVel value next to the corner, that allows
+    #   to compute vorticity on a wider stencil (e.g., vort3(0,1) & (1,0))
+    for region in 1:6
+        #println("region=",region,", size(U)=",size(u[region][:,:,1]),
+        #                         ", size(V)=",size(v[region][:,:,1]) )
+        for k in -Hz+1:Nz+Hz
+            #- SW corner:
+            u[region][1-Hc:0, 0, k] .= v[region][1, 1-Hc:0, k]
+            v[region][0, 1-Hc:0, k] .= u[region][1-Hc:0, 1, k]'
+        end
+        if Hc > 1
+          for k in -Hz+1:Nz+Hz
+            #- NW corner:
+            u[region][2-Hc:0, Nc+1, k] .= reverse(v[region][1, Nc+2:Nc+Hc, k])*plmn
+            v[region][0, Nc+2:Nc+Hc, k] .= reverse(u[region][2-Hc:0,  Nc,  k])*plmn
+            #- SE corner:
+            u[region][Nc+2:Nc+Hc, 0, k] .= reverse(v[region][ Nc,  2-Hc:0, k])*plmn
+            v[region][Nc+1, 2-Hc:0, k] .= reverse(u[region][Nc+2:Nc+Hc, 1, k])*plmn
+            #- NE corner:
+            u[region][Nc+2:Nc+Hc, Nc+1, k] .= v[region][Nc, Nc+2:Nc+Hc, k]
+            v[region][Nc+1, Nc+2:Nc+Hc, k] .= u[region][Nc+2:Nc+Hc, Nc, k]
+          end
+        end
     end
 
     return nothing
@@ -132,14 +158,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     fill_velocity_halos!(model.velocities)
     # second_pass_of_fill_halo_regions!(grid, model.velocities, model.clock, fields(model))
-    
+
     # @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
-    
+
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies &&
