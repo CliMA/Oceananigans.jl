@@ -299,10 +299,10 @@ if compare_old_and_new_code_metrics
 
     if old_code_metrics_JMC
         for region in 1:6
-            old_xᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_xᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_yᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_yᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_xᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_xᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_yᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δyᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
