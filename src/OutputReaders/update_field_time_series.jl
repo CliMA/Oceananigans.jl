@@ -58,14 +58,24 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, n::Int)
     return nothing
 end
 
+#=
 # Utility used to extract field time series from a type through recursion
 function extract_field_timeseries(t) 
-    prop = propertynames(t)
-    if isempty(prop)
+    names = propertynames(t)
+
+    #=
+    if isempty(names)
         return nothing
     end
+    =#
 
-    return Tuple(extract_field_timeseries(getproperty(t, p)) for p in prop)
+    Np = length(names)
+    return ntuple(Val(Np)) do p
+        Base.@_inline_meta
+        name = names[p]
+        prop = getproperty(t, name)
+        extract_field_timeseries(prop)
+    end
 end
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
@@ -80,3 +90,6 @@ extract_field_timeseries(t::AbstractField)     = Tuple(extract_field_timeseries(
 extract_field_timeseries(t::AbstractOperation) = Tuple(extract_field_timeseries(getproperty(t, p)) for p in propertynames(t))
 extract_field_timeseries(t::Tuple)             = Tuple(extract_field_timeseries(n) for n in t)
 extract_field_timeseries(t::NamedTuple)        = Tuple(extract_field_timeseries(n) for n in t)
+=#
+
+extract_field_timeseries(t) = tuple(nothing)
