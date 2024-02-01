@@ -271,6 +271,7 @@ end
 @kernel function _compute_CATKE_auxiliaries!(diffusivities, grid, closure, velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
+    e  = tracers.e
     S² = diffusivities.S²
     N² = diffusivities.N²
     w★ = diffusivities.w★
@@ -280,6 +281,7 @@ end
         S²[i, j, k] = shearᶜᶜᶠ(i, j, k, grid, u, v)
         N²[i, j, k] = ∂z_b(i, j, k, grid, buoyancy, tracers)
         w★[i, j, k] = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+         e[i, j, k] = max(zero(grid), e[i ,j, k])
     end
 end
 
