@@ -61,6 +61,9 @@ arch_array(::CPU, a::CuArray) = Array(a)
 arch_array(::GPU, a::Array)   = CuArray(a)
 arch_array(::GPU, a::CuArray) = a
 
+arch_array(::CPU, a::BitArray) = a
+arch_array(::GPU, a::BitArray) = CuArray(a)
+
 arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
