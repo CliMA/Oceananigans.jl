@@ -269,11 +269,7 @@ wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
 wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 
-<<<<<<< HEAD
-fig = Figure(size=(850, 850))
-=======
 fig = Figure(size = (850, 850))
->>>>>>> main
 
 ax_B = Axis(fig[1, 4];
             xlabel = "Buoyancy (m s⁻²)",
