@@ -40,12 +40,12 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
     end
 
     shadow = if EnzymeCore.EnzymeRules.width(config) == 1
-    	func.val(loc.val, grid.val, T.val; kw...)
+        func.val(loc.val, grid.val, T.val; kw...)
     else
-    	ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
-    		Base.@_inline_meta
-        	func.val(loc.val, grid.val, T.val; kw...)
-    	end
+        ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+            Base.@_inline_meta
+            func.val(loc.val, grid.val, T.val; kw...)
+        end
     end
 
     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
@@ -433,12 +433,12 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
     end
 
     shadow = if EnzymeCore.EnzymeRules.width(config) == 1
-    	func.val(grid.val, tracers.dval)
+        func.val(grid.val, tracers.dval)
     else
-    	ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
-    		Base.@_inline_meta
-        	func.val(grid.val, tracers.dval)
-    	end
+        ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+            Base.@_inline_meta
+            func.val(grid.val, tracers.dval)
+        end
     end
 
     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
