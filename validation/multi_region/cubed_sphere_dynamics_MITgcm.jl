@@ -25,7 +25,7 @@ include("cubed_sphere_visualization.jl")
 
 g = 10.
 
-Lz = 1
+Lz = 1000
 R  = 6370e3        # sphere's radius
 U  = 40.           # velocity scale
 
@@ -425,7 +425,7 @@ for region in 1:number_of_regions(grid)
 
     for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
-        model.free_surface.η[region][i, j, k] = fac * (sind(φ))^2
+        model.free_surface.η[region][i, j, k] = fac * ( (sind(φ))^2 -1/3 )
     end
 end
 
@@ -433,7 +433,7 @@ for passes in 1:3
     fill_halo_regions!(model.free_surface.η)
 end
 
-Δt = 1200
+Δt = 600
 stop_time = 5*86400 # 5 day
 simulation = Simulation(model; Δt, stop_time)
 
@@ -555,7 +555,7 @@ function save_vorticity(sim)
     push!(Δζ_fields, Δζ_field)
 end
 
-save_fields_iteration_interval = 9
+save_fields_iteration_interval = 12
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_eta] = Callback(save_eta, IterationInterval(save_fields_iteration_interval))
