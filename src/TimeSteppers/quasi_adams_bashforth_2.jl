@@ -1,6 +1,8 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
+#- for Forward-Backward+AB2 hack to work:
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -92,6 +94,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
+#- for Forward-Backward+AB2 hack to work:
+    fill_halo_regions!(model.free_surface.η)
 
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
