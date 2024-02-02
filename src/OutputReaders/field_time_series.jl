@@ -21,6 +21,9 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
+tupleit(t::Tuple) = t
+tupleit(t) = Tuple(t)
+
 struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
@@ -37,11 +40,19 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
                                          backend::K,
                                          bcs::B,
                                          indices::I, 
-                                         times::χ,
+                                         times,
                                          path::P,
                                          name::N,
-                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, χ, I, P, N}
+                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, I, P, N}
+
         T = eltype(data)
+        times = tupleit(times)
+        χ = typeof(times)
+
+        # TODO: check for consistency between backend and times.
+        # For example, for backend::InMemory, backend.indices cannot havex
+        # more entries than times.
+
         return new{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
                                                               indices, times, path, name, te)
     end
@@ -60,8 +71,6 @@ struct UnspecifiedBoundaryConditions end
 #####
 
 instantiate(T::Type) = T()
-tupleit(t::Tuple) = t
-tupleit(t) = Tuple(t)
 
 function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
@@ -72,7 +81,6 @@ function FieldTimeSeries(loc, grid, times=();
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
-    times = tupleit(times)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
@@ -232,7 +240,6 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     loc = map(instantiate, Location)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
-    times = tupleit(times)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                               indices, times, path, name, time_extrapolation)

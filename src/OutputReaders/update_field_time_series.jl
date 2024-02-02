@@ -58,7 +58,8 @@ end
 
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
 
-    in_range = n₁ ∈ fts.backend.indices &&
+    in_range = fts.backend.indices isa Colon || # cause then everything is in range
+               n₁ ∈ fts.backend.indices &&
                n₂ ∈ fts.backend.indices
 
     if !in_range # out of range

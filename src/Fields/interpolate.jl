@@ -143,7 +143,7 @@ end
 end
 
 """
-    fractional_indices(x, y, z, loc, grid)
+    fractional_indices(x, y, z, grid, loc...)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are

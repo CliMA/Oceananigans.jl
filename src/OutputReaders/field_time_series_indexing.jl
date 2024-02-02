@@ -11,6 +11,7 @@ const ClampFTS{K}    = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp, K} where K
 
 const TotallyInMemoryFTS = Union{FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory{Colon}},
                                  FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:GPUAdaptedInMemory{Colon}}}
+
 const CyclicalChunkedFTS = Union{CyclicalFTS{<:InMemory{Tuple}}, CyclicalFTS{<:GPUAdaptedInMemory{Tuple}}}
 
 # Reduced FTS
@@ -179,7 +180,7 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline function interpolate(at_node, at_time::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
+@inline function interpolate(at_node, at_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
     # Build space interpolators
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
 
@@ -187,7 +188,7 @@ end
     iy = interpolator(jj)
     iz = interpolator(kk)
 
-    ñ, n₁, n₂ = interpolating_time_indices(fts, at_time.time)
+    ñ, n₁, n₂ = interpolating_time_indices(from_fts, at_time_index.time)
 
     ψ₁ = _interpolate(from_fts, ix, iy, iz, n₁)
     ψ₂ = _interpolate(from_fts, ix, iy, iz, n₂)
