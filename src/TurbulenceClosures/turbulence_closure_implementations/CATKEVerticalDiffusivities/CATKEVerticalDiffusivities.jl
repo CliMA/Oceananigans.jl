@@ -226,7 +226,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κᵉ : κᶜ          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Lᵉ : ZeroField() for name in tracer_names)
 
-    S² = CenterField(grid)
+    S² = ZFaceField(grid)
     N² = ZFaceField(grid)
     w★ = CenterField(grid)
 
