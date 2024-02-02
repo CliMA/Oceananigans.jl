@@ -20,6 +20,9 @@ using Oceananigans.Utils: Iterate
 using DataDeps
 using JLD2
 using CairoMakie
+# to compute the vorticity:
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
 
 include("cubed_sphere_visualization.jl")
 
@@ -28,6 +31,11 @@ g = 10.
 Lz = 1000
 R  = 6370e3        # sphere's radius
 U  = 40.           # velocity scale
+
+# Solid body and planet rotation:
+Ω_prime = U/R
+π_MITgcm = 3.14159265358979323844
+Ω = 2π_MITgcm/86400
 
 load_cs32_grid = false
 
@@ -87,129 +95,6 @@ for region in 1:6
         grid_Δyᶜᶠᵃ[region][i, j, k] = grid[region].Δyᶜᶠᵃ[i, j]
         grid_Azᶠᶠᵃ[region][i, j, k] = Azᶠᶠᶜ(i, j, k, grid[region])
     end
-end
-
-# Solid body rotation
-Ω_prime = U/R
-π_MITgcm = 3.14159265358979323844
-Ω = 2π_MITgcm/86400
-
-ψᵣ(λ, φ, z) = -R^2*Ω_prime*sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
-
-#=
-for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
-             uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
-             vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
-             ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
-=#
-ψ = Field{Face, Face, Center}(grid)
-
-# Note that set! fills only interior points; to compute u and v we need information in the halo regions.
-set!(ψ, ψᵣ)
-
-#=
-Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not correspond
-to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not have a
-corresponding interior point.
-=#
-
-for region in [1, 3, 5]
-    i = 1
-    j = Ny+1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
-    end
-end
-
-for region in [2, 4, 6]
-    i = Nx+1
-    j = 1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
-    end
-end
-
-for passes in 1:3
-    fill_halo_regions!(ψ)
-end
-
-#=
-for region in 1:number_of_regions(grid)
-    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
-        #=
-        At the halo points, both latitude (φ) and longitude (λ) assume zero values, which in turn causes the
-        streamfunction (ψ) to be zero. Therefore, to guarantee accurate values at these points, we opted to reinstate
-        the fill halos for the streamfunction (ψ) after setting its interior values.
-        =#
-    end
-end
-=#
-
-u = XFaceField(grid)
-v = YFaceField(grid)
-
-#=
-c₁ = 1
-c₂ = 2
-=#
-
-for region in 1:number_of_regions(grid)
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
-        #=
-        # Debugging option 1
-        u[region][i, j, k] = 1
-        v[region][i, j, k] = 2
-        =#
-        #=
-        # Debugging option 2
-        x = xnode(i, j, k, grid[region], Center(), Face(), Center())
-        y = ynode(i, j, k, grid[region], Face(), Center(), Center())
-        u[region][i, j, k] = c₁ * y
-        v[region][i, j, k] = c₂ * x
-        # Specify v[region][i, j, k] = 0 for further debugging and turn off visualization of the initial meridional velocity field.
-        =#
-        u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
-        v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
-    end
-end
-
-fill_velocity_halos!((; u, v, w = nothing))
-
-# Now, compute the vorticity.
-using Oceananigans.Utils
-using KernelAbstractions: @kernel, @index
-
-ζ = Field{Face, Face, Center}(grid)
-
-@kernel function _compute_vorticity!(ζ, grid, u, v)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-end
-
-#=
-Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos.
-Additionally, the vorticity values along the boundaries are significantly higher compared to those within the domain's
-interior. These issues likely contribute to the instability in the solution. By replacing the line
-@inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-with
-@inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
-we observe that all points are populated with finite values, effectively eliminating the appearance of NANs.
-Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing
-erroneous results.
-=#
-
-offset = -1 .* halo_size(grid)
-
-@apply_regionally begin
-    params = KernelParameters(total_size(ζ[1]), offset)
-    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
 # Plot the grid metrics.
@@ -403,11 +288,127 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     coriolis = my_Coriolis,
                                     buoyancy = nothing)
 
+# model.timestepper.χ = -0.5   # to switch to Forward Euler time-stepping (no AB-2)
+
+# Define Solid body rotation flow field:
+
+ψᵣ(λ, φ, z) = -R^2*Ω_prime*sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
+
 #=
-model.timestepper.χ = -0.5
+for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
+             uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
+             vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
+             ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
+=#
+ψ = Field{Face, Face, Center}(grid)
+
+# Note that set! fills only interior points; to compute u and v we need information in the halo regions.
+set!(ψ, ψᵣ)
+
+#=
+Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not correspond
+to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not have a
+corresponding interior point.
 =#
 
-# Initial conditions
+for region in [1, 3, 5]
+    i = 1
+    j = Ny+1
+    for k in 1:Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for region in [2, 4, 6]
+    i = Nx+1
+    j = 1
+    for k in 1:Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    end
+end
+
+for passes in 1:3
+    fill_halo_regions!(ψ)
+end
+
+#=
+for region in 1:number_of_regions(grid)
+    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
+        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+        #=
+        At the halo points, both latitude (φ) and longitude (λ) assume zero values, which in turn causes the
+        streamfunction (ψ) to be zero. Therefore, to guarantee accurate values at these points, we opted to reinstate
+        the fill halos for the streamfunction (ψ) after setting its interior values.
+        =#
+    end
+end
+=#
+
+u = XFaceField(grid)
+v = YFaceField(grid)
+
+#=
+c₁ = 1
+c₂ = 2
+=#
+
+for region in 1:number_of_regions(grid)
+    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+        #=
+        # Debugging option 1
+        u[region][i, j, k] = 1
+        v[region][i, j, k] = 2
+        =#
+        #=
+        # Debugging option 2
+        x = xnode(i, j, k, grid[region], Center(), Face(), Center())
+        y = ynode(i, j, k, grid[region], Face(), Center(), Center())
+        u[region][i, j, k] = c₁ * y
+        v[region][i, j, k] = c₂ * x
+        # Specify v[region][i, j, k] = 0 for further debugging and turn off visualization of the initial meridional velocity field.
+        =#
+        u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
+        v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
+    end
+end
+
+fill_velocity_halos!((; u, v, w = nothing))
+
+# Now, compute the vorticity.
+
+ζ = Field{Face, Face, Center}(grid)
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+#=
+Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos.
+Additionally, the vorticity values along the boundaries are significantly higher compared to those within the domain's
+interior. These issues likely contribute to the instability in the solution. By replacing the line
+@inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+with
+@inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
+we observe that all points are populated with finite values, effectively eliminating the appearance of NANs.
+Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing
+erroneous results.
+=#
+
+offset = -1 .* halo_size(grid)
+
+@apply_regionally begin
+    params = KernelParameters(total_size(ζ[1]), offset)
+    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+end
+
+# set Initial conditions
 
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 
@@ -433,8 +434,9 @@ for passes in 1:3
     fill_halo_regions!(model.free_surface.η)
 end
 
-Δt = 600
-stop_time = 5*86400 # 5 day
+Δt =  600
+stop_time = 5*86400 #  5 days
+#stop_time = 10*86400 #  10 days, close to revolution period = 11.58 days
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
