@@ -122,7 +122,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                     c_tendency,
                     grid,
                     only_active_cells,
-                    args...;
+                    args;
                     only_active_cells)
         end
     end
@@ -155,7 +155,7 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args...)
+            grid, args)
 
     return nothing
 end
@@ -189,12 +189,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-                only_active_cells, u_kernel_args...;
+                only_active_cells, u_kernel_args;
                 only_active_cells)
 
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-                only_active_cells, v_kernel_args...;
+                only_active_cells, v_kernel_args;
                 only_active_cells)
     end
 
@@ -255,24 +255,24 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args...)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, map, args...)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args...)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args...)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
@@ -283,7 +283,7 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args...)
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end
