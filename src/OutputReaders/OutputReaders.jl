@@ -4,7 +4,6 @@ export InMemory, OnDisk
 export FieldTimeSeries, FieldDataset
 export Cyclical, Linear, Clamp
 
-
 #####
 ##### Data backends for FieldTimeSeries
 #####

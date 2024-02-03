@@ -10,6 +10,7 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K, T, D, χ} <: AbstractArray{T
                                                       times::χ,
                                                       backend::K,
                                                       time_extrapolation::TE) where {LX, LY, LZ, TE, K, T, D, χ}
+
         return new{LX, LY, LZ, TE, K, T, D, χ}(data, times, backend, time_extrapolation)
     end
 end
@@ -22,3 +23,4 @@ Adapt.adapt_structure(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
 
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
 @propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
+
