@@ -21,6 +21,9 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
+tupleit(t::Tuple) = t
+tupleit(t) = Tuple(t)
+
 struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
@@ -37,11 +40,19 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
                                          backend::K,
                                          bcs::B,
                                          indices::I, 
-                                         times::χ,
+                                         times,
                                          path::P,
                                          name::N,
-                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, χ, I, P, N}
+                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, I, P, N}
+
         T = eltype(data)
+        times = tupleit(times)
+        χ = typeof(times)
+
+        # TODO: check for consistency between backend and times.
+        # For example, for backend::InMemory, backend.indices cannot havex
+        # more entries than times.
+
         return new{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
                                                               indices, times, path, name, te)
     end
@@ -60,8 +71,6 @@ struct UnspecifiedBoundaryConditions end
 #####
 
 instantiate(T::Type) = T()
-tupleit(t::Tuple) = t
-tupleit(t) = Tuple(t)
 
 function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
@@ -72,7 +81,6 @@ function FieldTimeSeries(loc, grid, times=();
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
-    times = tupleit(times)
     Nt = length(times)
     data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
 
@@ -350,7 +358,6 @@ function interior(fts::FieldTimeSeries)
     halo_sz = halo_size(fts.grid)
 
     i_interior = interior_parent_indices.(loc, topo, sz, halo_sz)
-
     indices = fts.indices
     i_view = interior_view_indices.(indices, i_interior)
 
@@ -473,26 +480,25 @@ function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, L
 end
 
 function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
-    ii = fts.backend.index_range
+    ii = fts.backend.indices
 
     if ii isa Colon
         backend_str = "├── backend: InMemory(:)"
     else
         N = length(ii)
         if N < 6
-            index_range_str = string(ii)
+            indices_str = string(ii)
         else
-            index_range_str = string("[", ii[1],
-                                     ", ", ii[2],
-                                     ", ", ii[3],
-                                     "  …  ",
-                                     ii[end-2], ", ",
-                                     ii[end-1], ", ",
-                                     ii[end], "]")
-                                     
+            indices_str = string("[", ii[1],
+                                 ", ", ii[2],
+                                 ", ", ii[3],
+                                 "  …  ",
+                                 ii[end-2], ", ",
+                                 ii[end-1], ", ",
+                                 ii[end], "]")
         end
 
-        backend_str = string("├── backend: InMemory(", index_range_str, ")")
+        backend_str = string("├── backend: InMemory(", indices_str, ")")
     end
 
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')

@@ -4,6 +4,8 @@ export InMemory, OnDisk
 export FieldTimeSeries, FieldDataset
 export Cyclical, Linear, Clamp
 
+using Adapt
+
 #####
 ##### Data backends for FieldTimeSeries
 #####
@@ -11,8 +13,14 @@ export Cyclical, Linear, Clamp
 abstract type AbstractDataBackend end
 
 mutable struct InMemory{I} <: AbstractDataBackend 
-    index_range :: I
+    indices :: I
 end
+
+struct GPUAdaptedInMemory{I} <: AbstractDataBackend 
+    indices :: I
+end
+
+Adapt.adapt_structure(to, backend::InMemory) = GPUAdaptedInMemory(backend.indices)
 
 """
     InMemory(N=:)
@@ -21,13 +29,13 @@ Return a `backend` for `FieldTimeSeries` that stores `N`
 fields in memory. The default `N = :` stores all fields in memory.
 """
 function InMemory(chunk_size::Int)
-    chunk_size > 2 &&
+    chunk_size < 2 &&
         throw(ArgumentError("The chunk_size for InMemory backend cannot be less than 2."))
 
     index_range = 1:chunk_size
-    index_range = tuple(index_range...)
+    indices = tuple(index_range...) # GPU-friendly tuple
 
-    return InMemory(index_range)
+    return InMemory(indices)
 end
 
 InMemory() = InMemory(Colon())

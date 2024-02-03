@@ -1,5 +1,3 @@
-using Adapt
-
 struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K, T, D, χ} <: AbstractArray{T, 4}
     data :: D
     times :: χ
