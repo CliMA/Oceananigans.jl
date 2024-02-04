@@ -106,6 +106,7 @@ model_setup_pages = [
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
     "Diagnostics" => "model_setup/diagnostics.md",
+    "Simulation Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
     "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
