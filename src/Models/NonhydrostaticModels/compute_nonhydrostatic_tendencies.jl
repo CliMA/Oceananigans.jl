@@ -40,7 +40,6 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
                                              model.clock,
                                              fields(model))
 
-    @show callbacks
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
     end
