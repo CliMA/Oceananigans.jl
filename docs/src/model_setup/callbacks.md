@@ -48,7 +48,6 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
 function modify_tracer(model, params)
-    @info "I did it"
     model.timestepper.Gⁿ[params.c] .+= params.δ
     return nothing
 end
@@ -60,8 +59,11 @@ run!(simulation)
 
 @info model.velocities.u
 ```
-Here there is no forcing, but due to the callback the velocity is increased. 
->This is a redundant example and here for illustration only, it could be implemented better with a simple forcing function.
+
+Above there is no forcing at all, but due to the callback the velocity is increased.
+
+> This is a redundant example and here for illustration only, it could be implemented
+  better with a simple forcing function.
 
 ## Functions
 
