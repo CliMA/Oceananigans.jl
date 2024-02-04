@@ -54,7 +54,7 @@ function modify_tracer(model, params)
 end
 
 simulation.callbacks[:modify_u] = Callback(modify_tracer, IterationInterval(1),
-                                            callsite=TendencyCallsite(), parameters = (c = :u, δ = 1))
+                                           callsite=TendencyCallsite(), parameters = (c = :u, δ = 1))
 
 run!(simulation)
 
