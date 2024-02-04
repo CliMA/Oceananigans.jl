@@ -11,7 +11,7 @@ end
 function Base.show(io::IO, model::NonhydrostaticModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
-    
+
     print(io, summary(model), "\n",
         "├── grid: ", summary(model.grid), "\n",
         "├── timestepper: ", TS, "\n",

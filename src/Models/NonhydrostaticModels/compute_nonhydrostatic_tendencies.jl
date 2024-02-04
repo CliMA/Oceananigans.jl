@@ -9,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCel
 import Oceananigans.TimeSteppers: compute_tendencies!
 
 """
-    compute_tendencies!(model::NonhydrostaticModel)
+    compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
@@ -30,16 +30,17 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     compute_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
-                      
+
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.clock,
-                                               fields(model))
+                                             model.architecture,
+                                             model.velocities,
+                                             model.tracers,
+                                             model.clock,
+                                             fields(model))
 
+    @show callbacks
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
     end
@@ -195,6 +196,6 @@ function compute_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracer
     foreach(i -> apply_x_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_y_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
     foreach(i -> apply_z_bcs!(Gⁿ[i], fields[i], arch, clock, model_fields), 1:length(fields))
-                         
+
     return nothing
 end
