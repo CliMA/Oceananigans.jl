@@ -1,6 +1,6 @@
 # Callbacks
 
-Callbacks can be used to execute an arbitrary user defined function on the simulation at user 
+Callbacks can be used to execute an arbitrary user-defined function on the simulation at user 
 defined times, or between every time stepper sub-step for `state_callbacks`.
 
 For example, we can specify a callback which displays the run time every 2 iterations:
@@ -10,7 +10,7 @@ DocTestSetup = quote
 end
 ```
 
-```@repl checkpointing
+```@example checkpointing
 using Oceananigans
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
@@ -21,12 +21,26 @@ show_time(sim) = @info "Time is $(prettytime(sim.model.clock.time))"
 
 simulation.callbacks[:total_A] = Callback(show_time, IterationInterval(2))
 
+simulation
+```
+
+Now when we run the simulation the callback is called.
+
+```@example checkpointing
 run!(simulation)
 ```
 
-State callbacks are useful for inter step modification of the model state (for example if you wanted to manually modify the tendency fields). Irrespective of the specified scheduling state callbacks are executed at every sub-step. As an example we can manually add to the tendency field of one of the velocity components, here I've chosen the `:u` field using parameters:
+We can also use the convenience [`add_callback!`](@ref). For example, we could add a callback like
 
-```@repl checkpointing
+```@example checkpointing
+add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInterval(2))
+
+simulation
+```
+
+State callbacks are useful for inter-step modification of the model state (for example if you wanted to manually modify the tendency fields). Irrespective of the specified scheduling state callbacks are executed at every sub-step. As an example we can manually add to the tendency field of one of the velocity components, here I've chosen the `:u` field using parameters:
+
+```@example checkpointing
 using Oceananigans
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
@@ -65,10 +79,10 @@ DocTestSetup = quote
 end
 ```
 
-```@repl checkpointing
+```@example checkpointing
 using Oceananigans, Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=1, stop_iteration=1)
 
@@ -92,10 +106,10 @@ run!(simulation, pickup=true)
 ```
 
 which finds the latest checkpoint file in the current working directory (in this trivial case,
-this is the checkpoint associated with iteration 0), loads prognostic fields and their tendencies
+this is the checkpoint associated with iteration 0), loads the prognostic fields and their tendencies
 from file, resets the model clock and iteration, and updates the model auxiliary state before
 starting the time-stepping loop.
 
 Use `pickup=iteration`, where `iteration` is an `Integer`, to pick up from a specific iteration.
-Or, use `pickup=filepath`, where `filepath` is a string, to pickup from a specific file located
+Otherwise, use `pickup=filepath`, where `filepath` is a string, to pickup from a specific file located
 at `filepath`.
