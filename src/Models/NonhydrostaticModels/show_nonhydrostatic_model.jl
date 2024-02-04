@@ -28,4 +28,3 @@ function Base.show(io::IO, model::NonhydrostaticModel)
         print(io, "└── particles: ", summary(model.particles))
     end
 end
-
