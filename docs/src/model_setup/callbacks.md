@@ -38,20 +38,23 @@ add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInt
 simulation
 ```
 
-State callbacks are useful for inter-step modification of the model state (for example if you wanted to manually modify the tendency fields). Irrespective of the specified scheduling state callbacks are executed at every sub-step. As an example we can manually add to the tendency field of one of the velocity components, here I've chosen the `:u` field using parameters:
+State callbacks are useful for inter-step modification of the model state (for example if you wanted to manually modify the tendency fields). Irrespective of the specified scheduling state callbacks are executed at every sub-step. As an example we can manually add to the tendency field of one of the velocity components, here we've chosen the `:u` field using parameters:
 
 ```@example checkpointing
 using Oceananigans
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
+simulation = Simulation(model, Δt=1, stop_iteration=10)
+
 function modify_tracer(model, params)
+    @info "I did it"
     model.timestepper.Gⁿ[params.c] .+= params.δ
+    return nothing
 end
 
-model.state_callbacks[:modify_u] = Callback(modify_tracer, IterationInterval(1), (c = :u, δ = 1))
-
-simulation = Simulation(model, Δt=1, stop_iteration=10)
+simulation.callbacks[:modify_u] = Callback(modify_tracer, IterationInterval(1),
+                                            callsite=TendencyCallsite(), parameters = (c = :u, δ = 1))
 
 run!(simulation)
 
