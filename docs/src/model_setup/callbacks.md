@@ -1,7 +1,7 @@
 # Callbacks
 
 Callbacks can be used to execute an arbitrary user-defined function on the simulation at user 
-defined times, or between every time stepper sub-step for `state_callbacks`.
+defined times.
 
 For example, we can specify a callback which displays the run time every 2 iterations:
 ```@meta
@@ -38,7 +38,15 @@ add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInt
 simulation
 ```
 
-State callbacks are useful for inter-step modification of the model state (for example if you wanted to manually modify the tendency fields). Irrespective of the specified scheduling state callbacks are executed at every sub-step. As an example we can manually add to the tendency field of one of the velocity components, here we've chosen the `:u` field using parameters:
+By default, callbacks are called after a time-step has been completed but users
+can construct callbacks that are called after tendencies are calculated, but before taking a time-step.
+The latter is useful for modifying tendency calculations.
+
+We can control when the callback is called via the `callsite` keyword argument. By default
+`callsite = TimeStepCallsite()`. If we want the callback after the tendencies are
+computed but before taking a time-step we need to construct the callback with `callsite = TendencyCallsite()`.
+
+As an example we can manually add to the tendency field of one of the velocity components, here we've chosen the `:u` field using parameters:
 
 ```@example checkpointing
 using Oceananigans
