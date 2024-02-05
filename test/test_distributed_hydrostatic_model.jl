@@ -115,11 +115,15 @@ for arch in archs
         ηs = partition_global_array(cpu_arch, ηs, size(η))
 
         @test all(u .≈ us)
+
         @info "debug why v ≠ vs"
         @show norm(v)
         @show norm(vs)
-        @show norm(interior(v))
-        @show norm(interior(vs))
+
+        wh = v .≈ vs
+        indices = findall(x -> x == v[wh .== 0][], v)
+        @show indices
+
         @test all(v .≈ vs)
         @test all(w .≈ ws)
         @test all(c .≈ cs)
