@@ -144,10 +144,10 @@ We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, 
 nodes from the grid.
 
 ```@example 1
- yᶜ = ynodes(grid, Center()),
+ yᶜ = ynodes(grid, Center())
 Δyᶜ = yspacings(grid, Center())
 
- zᶜ = znodes(grid, Center()),
+ zᶜ = znodes(grid, Center())
 Δzᶜ = zspacings(grid, Center())
 
 using CairoMakie
