@@ -49,8 +49,8 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     arch = architecture(grid)
 
-    fill_halos!, bcs  = permute_boundary_conditions(boundary_conditions)
-    number_of_tasks   = length(fill_halos!)
+    fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
+    number_of_tasks  = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
@@ -109,11 +109,11 @@ function permute_boundary_conditions(boundary_conditions)
             bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
         end
     end
-    
+
     perm = sortperm(bcs_array, lt=fill_first)
     fill_halos! = fill_halos![perm]
     sides = sides[perm]
-    
+
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
     return fill_halos!, boundary_conditions
@@ -292,17 +292,17 @@ end
 #####
 
 fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
-            launch!(arch, grid, KernelParameters(size, offset), _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+    launch!(arch, grid, KernelParameters(size, offset), _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
 #####
 ##### Kernel launchers for double-sided fill_halos
@@ -359,7 +359,7 @@ const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), 
 @inline fill_halo_size(c::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, args...) = @inbounds size(c)[[1, 2]]
 
 # The offsets are non-zero only if the indices are not Colon
-@inline fill_halo_offset(::Symbol, args...)    = (0, 0)
-@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+@inline fill_halo_offset(::Symbol, args...)   = (0, 0)
+@inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)

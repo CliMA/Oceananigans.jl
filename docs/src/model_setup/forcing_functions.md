@@ -12,8 +12,8 @@ DocTestSetup = quote
 end
 ```
 
-Forcings are added to `Oceananigans` models by passing a `NamedTuple` of functions
-or forcing objects to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
+Forcings are added to models by passing a `NamedTuple` of functions or forcing objects
+to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
 By default, momentum and tracer forcing functions are assumed to be functions of
 `x, y, z, t`. A basic example is
 
@@ -34,12 +34,13 @@ ContinuousForcing{Nothing} at (Face, Center, Center)
 
 More general forcing functions are built via the `Forcing` constructor
 described below. `Oceananigans` also provides two convenience types:
-    * `Relaxation` for damping terms that restore a field to a
-      target distribution outside of a masked region of space. `Relaxation` can be
-      used to implement sponge layers near the boundaries of a domain.
-    * `AdvectiveForcing` for advecting individual quantities by a separate or
-      "slip" velocity relative to both the prognostic model velocity field and any
-      `BackgroundField` velocity field.
+
+ * `Relaxation` for damping terms that restore a field to a
+   target distribution outside of a masked region of space. `Relaxation` can be
+   used to implement sponge layers near the boundaries of a domain.
+ * `AdvectiveForcing` for advecting individual quantities by a separate or
+   "slip" velocity relative to both the prognostic model velocity field and any
+   `BackgroundField` velocity field.
 
 ## The `Forcing` constructor
 

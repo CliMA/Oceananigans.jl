@@ -54,10 +54,9 @@ end
 """
     erroring_NaNChecker!(simulation)
 
-Toggles `simulation`'s `NaNChecker` to throw an error when a `NaN` is detected.
+Toggle `simulation`'s `NaNChecker` to throw an error when a `NaN` is detected.
 """
 function erroring_NaNChecker!(simulation)
     simulation.callbacks[:nan_checker].func.erroring = true
     return nothing
 end
-

@@ -27,7 +27,7 @@ end
     lower_limit = @inbounds advection.bounds[1]
     upper_limit = @inbounds advection.bounds[2]
 
-    cᵢⱼ  = @inbounds c[i, j, k]
+    cᵢⱼ = @inbounds c[i, j, k]
 
     c₊ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
     c₊ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
@@ -37,13 +37,13 @@ end
     p̃   = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
     m   = min(p̃, c₊ᴸ, c₋ᴿ) 
-    θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), one(grid))
-    
+    θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
+
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u[i+1, j, k], c₊ᴸ, c₊ᴿ) - 
-           Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
+    return @inbounds Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u[i+1, j, k], c₊ᴸ, c₊ᴿ) -
+                     Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
 end
 
 @inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundPreservingScheme, v, c)
@@ -51,7 +51,7 @@ end
     lower_limit = @inbounds advection.bounds[1]
     upper_limit = @inbounds advection.bounds[2]
 
-    cᵢⱼ  = @inbounds c[i, j, k]
+    cᵢⱼ = @inbounds c[i, j, k]
 
     c₊ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
     c₊ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
@@ -61,13 +61,13 @@ end
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
     m   = min(p̃, c₊ᴸ, c₋ᴿ) 
-    θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), one(grid))
+    θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v[i, j+1, k], c₊ᴸ, c₊ᴿ) - 
-           Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v[i, j,   k], c₋ᴸ, c₋ᴿ)
+    return @inbounds Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v[i, j+1, k], c₊ᴸ, c₊ᴿ) -
+                     Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v[i, j,   k], c₋ᴸ, c₋ᴿ)
 end
 
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundPreservingScheme, w, c)
@@ -75,7 +75,7 @@ end
     lower_limit = @inbounds advection.bounds[1]
     upper_limit = @inbounds advection.bounds[2]
 
-    cᵢⱼ  = @inbounds c[i, j, k]
+    cᵢⱼ = @inbounds c[i, j, k]
 
     c₊ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
     c₊ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
@@ -85,11 +85,11 @@ end
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
     m   = min(p̃, c₊ᴸ, c₋ᴿ) 
-    θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), one(grid))
+    θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w[i, j, k+1], c₊ᴸ, c₊ᴿ) - 
-           Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w[i, j, k],   c₋ᴸ, c₋ᴿ)
+    return @inbounds Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w[i, j, k+1], c₊ᴸ, c₊ᴿ) -
+                     Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w[i, j, k],   c₋ᴸ, c₋ᴿ)
 end
