@@ -131,7 +131,7 @@ function time_step!(sim::Simulation)
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt, callbacks=model_callbacks)
+        time_step!(sim.model, Δt, callbacks=model_callbacks; compute_tendencies = false)
     end
 
     # Callbacks and callback-like things
