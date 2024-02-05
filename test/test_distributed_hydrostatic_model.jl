@@ -120,7 +120,11 @@ for arch in archs
         @show norm(v)
         @show norm(vs)
 
-        @show indices = findall(x -> x == v[(v .≈ vs) .== 0][], v)
+        values = v[(v .≈ vs) .== 0]
+        for value in values
+            index = findall(x -> x == value, v)
+            @show value, index, v[index][], vs[index][]
+        end
 
         @test all(v .≈ vs)
         @test all(w .≈ ws)
