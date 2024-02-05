@@ -144,17 +144,23 @@ We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, 
 nodes from the grid.
 
 ```@example 1
+ yᶜ = ynodes(grid, Center()),
+Δyᶜ = yspacings(grid, Center())
+
+ zᶜ = znodes(grid, Center()),
+Δzᶜ = zspacings(grid, Center())
+
 using CairoMakie
 
 fig = Figure(size=(800, 900))
 
 ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
-lines!(ax1, ynodes(grid, Center()), yspacings(grid, Center()))
-scatter!(ax1, ynodes(grid, Center()), yspacings(grid, Center()))
+lines!(ax1, yᶜ, Δyᶜ)
+scatter!(ax1, yᶜ, Δyᶜ)
 
 ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
-lines!(ax2, zspacings(grid, Center()), znodes(grid, Center()))
-scatter!(ax2, zspacings(grid, Center()), znodes(grid, Center()))
+lines!(ax2, zᶜ, Δzᶜ)
+scatter!(ax2, zᶜ, Δzᶜ)
 
 save("plot_stretched_grid.svg", fig); nothing #hide
 ```
