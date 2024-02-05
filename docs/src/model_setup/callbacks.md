@@ -1,7 +1,7 @@
 # Callbacks
 
-Callbacks can be used to execute an arbitrary user-defined function on the simulation at user 
-defined times.
+A [`Callback`](@ref) can be used to execute an arbitrary user-defined function on the
+simulation at user-defined times.
 
 For example, we can specify a callback which displays the run time every 2 iterations:
 ```@meta
@@ -24,13 +24,13 @@ simulation.callbacks[:total_A] = Callback(show_time, IterationInterval(2))
 simulation
 ```
 
-Now when we run the simulation the callback is called.
+Now when simulation runs the simulation the callback is called.
 
 ```@example checkpointing
 run!(simulation)
 ```
 
-We can also use the convenience [`add_callback!`](@ref). For example, we could add a callback like
+We can also use the convenience [`add_callback!`](@ref):
 
 ```@example checkpointing
 add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInterval(2))
@@ -38,15 +38,13 @@ add_callback!(simulation, show_time, name=:total_A_via_convenience, IterationInt
 simulation
 ```
 
-By default, callbacks are called after a time-step has been completed but users
-can construct callbacks that are called after tendencies are calculated, but before taking a time-step.
-The latter is useful for modifying tendency calculations.
+The keyword argument `callsite` determines the moment at which the callback is executed.
+By default, `callsite = TimeStepCallsite()`, indicating execution _after_ the completion of
+a timestep. The other options is `callsite = TendencyCallsite()` that executes the callback
+after the tendencies are computed but _before_ taking a timestep.
 
-We can control when the callback is called via the `callsite` keyword argument. By default
-`callsite = TimeStepCallsite()`. If we want the callback after the tendencies are
-computed but before taking a time-step we need to construct the callback with `callsite = TendencyCallsite()`.
-
-As an example we can manually add to the tendency field of one of the velocity components, here we've chosen the `:u` field using parameters:
+As an example of the latter, we use a callback to manually add to the tendency field of one
+of the velocity components, here we've chosen the `:u` field using parameters:
 
 ```@example checkpointing
 using Oceananigans
@@ -55,13 +53,14 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-function modify_tracer(model, params)
+function modify_tracer!(model, params)
     model.timestepper.Gⁿ[params.c] .+= params.δ
     return nothing
 end
 
-simulation.callbacks[:modify_u] = Callback(modify_tracer, IterationInterval(1),
-                                           callsite=TendencyCallsite(), parameters = (c = :u, δ = 1))
+simulation.callbacks[:modify_u] = Callback(modify_tracer!, IterationInterval(1),
+                                           callsite = TendencyCallsite(),
+                                           parameters = (c = :u, δ = 1))
 
 run!(simulation)
 
