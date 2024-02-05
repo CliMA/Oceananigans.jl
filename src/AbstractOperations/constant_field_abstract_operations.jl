@@ -37,4 +37,3 @@ using Oceananigans.Fields: ZeroField, ConstantField
 
 # Unary operations
 -(a::ZeroField) = a
-
