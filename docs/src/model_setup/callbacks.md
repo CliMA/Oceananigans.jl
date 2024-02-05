@@ -40,11 +40,14 @@ simulation
 
 The keyword argument `callsite` determines the moment at which the callback is executed.
 By default, `callsite = TimeStepCallsite()`, indicating execution _after_ the completion of
-a timestep. The other options is `callsite = TendencyCallsite()` that executes the callback
-after the tendencies are computed but _before_ taking a timestep.
+a timestep. The other options are `callsite = TendencyCallsite()` that executes the callback
+after the tendencies are computed but _before_ taking a timestep and `callsite = UpdateStateCallsite()`
+that executes the callback within `update_state!`, after auxiliary variables have been computed
+(for multi-stage time-steppers, `update_state!` may be called multiple times per timestep).
 
-As an example of the latter, we use a callback to manually add to the tendency field of one
-of the velocity components, here we've chosen the `:u` field using parameters:
+As an example of a callback with `callsite = TendencyCallsite()` , we show below how we can
+manually add to the tendency field of one of the velocity components. Here we've chosen
+the `:u` field using parameters:
 
 ```@example checkpointing
 using Oceananigans
@@ -53,12 +56,12 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-function modify_tracer!(model, params)
+function modify_tendecy!(model, params)
     model.timestepper.Gⁿ[params.c] .+= params.δ
     return nothing
 end
 
-simulation.callbacks[:modify_u] = Callback(modify_tracer!, IterationInterval(1),
+simulation.callbacks[:modify_u] = Callback(modify_tendecy!, IterationInterval(1),
                                            callsite = TendencyCallsite(),
                                            parameters = (c = :u, δ = 1))
 
