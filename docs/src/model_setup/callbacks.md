@@ -69,8 +69,9 @@ run!(simulation)
 
 Above there is no forcing at all, but due to the callback the velocity is increased.
 
-> This is a redundant example and here for illustration only, it could be implemented
-  better with a simple forcing function.
+!!! note "Example only for illustration purposes"
+    The above is a redundant example since it could be implemented better with a simple forcing function.
+    We include it here though for illustration purposes of how one can use callbacks.
 
 ## Functions
 
