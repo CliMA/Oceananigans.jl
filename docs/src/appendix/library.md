@@ -61,7 +61,7 @@ Private = false
 ## Distributed
 
 ```@autodocs
-Modules = [Oceananigans.Distributed]
+Modules = [Oceananigans.DistributedComputations]
 Private = false
 ```
 
@@ -181,7 +181,7 @@ Private = false
 ## Stokes drift
 
 ```@autodocs
-Modules = [Oceananigans.StokesDrift]
+Modules = [Oceananigans.StokesDrifts]
 Private = false
 ```
 

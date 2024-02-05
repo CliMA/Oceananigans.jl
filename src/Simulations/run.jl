@@ -106,7 +106,7 @@ const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
-    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
@@ -121,7 +121,7 @@ function time_step!(sim::Simulation)
             Δt = aligned_time_step(sim, sim.Δt)
             time_step!(sim.model, Δt, callbacks=model_callbacks)
 
-            if sim.verbose 
+            if sim.verbose
                 elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
                 @info "    ... initial time step complete ($elapsed_initial_step_time)."
             end
@@ -195,7 +195,7 @@ function initialize!(sim::Simulation)
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
-        reset!(sim.model.timestepper)
+        reset!(timestepper(sim.model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
@@ -222,4 +222,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-

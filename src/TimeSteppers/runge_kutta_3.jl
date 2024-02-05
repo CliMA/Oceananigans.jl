@@ -5,7 +5,7 @@ using Oceananigans: fields
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by Le and Moin (1991).
+time-stepping scheme described by [LeMoin1991](@citet).
 """
 struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
@@ -78,7 +78,7 @@ The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[], compute_tendencies = true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
@@ -99,8 +99,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    calculate_tendencies!(model, callbacks)
-
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -115,8 +113,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
-    calculate_tendencies!(model, callbacks)
-
     rk3_substep!(model, Δt, γ², ζ²)
 
     calculate_pressure_correction!(model, second_stage_Δt)
@@ -130,8 +126,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
     # Third stage
     #
-
-    calculate_tendencies!(model, callbacks)
     
     rk3_substep!(model, Δt, γ³, ζ³)
 
@@ -139,7 +133,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    update_state!(model, callbacks)
+    update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
@@ -187,18 +181,18 @@ Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
 
 where `m` denotes the substage.
 """
-@kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
+@kernel function rk3_substep_field!(U, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U[i, j, k] += Δt * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+        U[i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
     end
 end
 
-@kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
+@kernel function rk3_substep_field!(U, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
+        U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
     end
 end

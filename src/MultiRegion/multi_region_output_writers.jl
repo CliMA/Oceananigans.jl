@@ -32,6 +32,6 @@ function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) w
     return nothing
 end
 
-function serializeproperty!(file, location, mrg::MultiRegionGrid) 
+function serializeproperty!(file, location, mrg::MultiRegionGrids) 
     file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
 end

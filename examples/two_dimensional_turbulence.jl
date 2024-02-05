@@ -54,7 +54,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50)
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+add_callback!(simulation, progress, IterationInterval(100))
 
 # ## Output
 #
@@ -111,7 +111,7 @@ times = ω_timeseries.times
 
 xω, yω, zω = nodes(ω_timeseries)
 xs, ys, zs = nodes(s_timeseries)
-nothing # hide
+nothing #hide
 
 # and animate the vorticity and fluid speed.
 
@@ -120,7 +120,7 @@ set_theme!(Theme(fontsize = 24))
 
 @info "Making a neat movie of vorticity and speed..."
 
-fig = Figure(resolution = (800, 500))
+fig = Figure(size = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
@@ -147,7 +147,7 @@ heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.

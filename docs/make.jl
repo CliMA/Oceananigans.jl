@@ -106,6 +106,7 @@ model_setup_pages = [
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
     "Diagnostics" => "model_setup/diagnostics.md",
+    "Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
     "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
@@ -171,17 +172,19 @@ format = Documenter.HTML(collapselevel = 1,
                          prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
+                         size_threshold = 819200,
                          assets = String["assets/citations.css"])
 
-makedocs(bib, sitename = "Oceananigans.jl",
-              authors = "Climate Modeling Alliance and contributors",
-              format = format,
-              pages = pages,
-              modules = [Oceananigans],
-              doctest = true, # set to false to speed things up
-              strict = true,
-              clean = true,
-              checkdocs = :exports) # set to :none to speed things up
+makedocs(sitename = "Oceananigans.jl",
+         authors = "Climate Modeling Alliance and contributors",
+         format = format,
+         pages = pages,
+         plugins = [bib],
+         modules = [Oceananigans],
+         warnonly = [:cross_references],
+         doctest = true, # set to false to speed things up
+         clean = true,
+         checkdocs = :exports) # set to :none to speed things up
 
 @info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 

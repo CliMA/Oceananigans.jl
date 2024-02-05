@@ -21,8 +21,8 @@ topological_tuple_length(TX, TY, TZ) = sum(T === Flat ? 0 : 1 for T in (TX, TY, 
 
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
 function validate_tupled_argument(arg, argtype, argname, len=3; greater_than=0)
-    length(arg) == len      || throw(ArgumentError("length($argname) must be $len."))
-    all(isa.(arg, argtype)) || throw(ArgumentError("$argname=$arg must contain $argtype s."))
+    length(arg) == len        || throw(ArgumentError("length($argname) must be $len."))
+    all(isa.(arg, argtype))   || throw(ArgumentError("$argname=$arg must contain $(argtype)s."))
     all(arg .> greater_than)  || throw(ArgumentError("Elements of $argname=$arg must be > $(greater_than)!"))
     return nothing
 end
@@ -70,7 +70,7 @@ function validate_dimension_specification(T, ξ, dir, N, FT)
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
     all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
-    ξ[2] >= ξ[1]         || throw(ArgumentError("$dir=$ξ should be an increasing interval."))
+    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ should be an increasing interval."))
 
     return FT.(ξ)
 end
@@ -106,6 +106,8 @@ end
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
 
+    ξ[end] ≥ ξ[1] || throw(ArgumentError("$dir=$ξ should have increasing values."))
+
     # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
     N⁺¹ = N + 1
@@ -120,7 +122,10 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     return ξ
 end
 
-validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
+function validate_dimension_specification(T, ξ::Function, dir, N, FT)
+    ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
+    return ξ
+end
 
 validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
 validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))

@@ -5,7 +5,7 @@ using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set!
+import Oceananigans.Fields: set! 
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -204,16 +204,15 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-
         model.grid == checkpointed_grid ||
-             error("The grid associated with $filepath and model.grid are not the same!")
+             @warn "The grid associated with $filepath and model.grid are not the same!"
 
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
-            if string(name) ∈ keys(file) # Test if variable exist in checkpoint
-                parent_data = file["$name/data"]
+            if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
+                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
                 copyto!(model_field.data.parent, parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."

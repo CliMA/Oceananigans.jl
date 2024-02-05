@@ -1,11 +1,11 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
 
@@ -140,6 +140,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
@@ -150,6 +151,7 @@ julia> compute!(ωₛ)
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
@@ -286,6 +288,7 @@ julia> v = view(c, :, 2:3, 1:2)
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+├── indices: (:, 2:3, 1:2)
 └── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
 
@@ -376,7 +379,7 @@ end
 """
     interior(f::Field)
 
-Returns a view of `f` that excludes halo points."
+Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -404,7 +407,7 @@ Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
-Base.size(f::Field)  = size(f.grid, location(f), f.indices)
+@inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
@@ -516,6 +519,21 @@ reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
+
+const XFieldBC = BoundaryCondition{<:Any, XReducedField}
+const YFieldBC = BoundaryCondition{<:Any, YReducedField}
+const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
+
+# Boundary conditions reduced in one direction --- drop boundary-normal index
+@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
+@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
+@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+
+# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+
+# 0D boundary conditions --- easy case
+const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
+@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
