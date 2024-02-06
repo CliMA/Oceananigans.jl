@@ -116,21 +116,21 @@ for arch in archs
 
         atol, rtol = eps(eltype(grid)), sqrt(eps(eltype(grid)))
 
-        @test all(isapprox(u, us, atol, rtol))
-        @test all(isapprox(v, vs, atol, rtol))
+        @test all(isapprox(u, us;atol, rtol))
+        @test all(isapprox(v, vs; atol, rtol))
 
         @info "debug why w ≠ ws"
         @show norm(w)
         @show norm(ws)
 
-        values = w[isapprox.(w, ws, atol, rtol) .== 0]
+        values = w[isapprox.(w, ws; atol, rtol) .== 0]
         for value in values
             index = findall(x -> x == value, w)
             @show index, w[index][], ws[index][]
         end
 
-        @test all(isapprox(w, ws, atol, rtol))
-        @test all(isapprox(c, cs, atol, rtol))
-        @test all(isapprox(η, ηs, atol, rtol))
+        @test all(isapprox(w, ws; atol, rtol))
+        @test all(isapprox(c, cs; atol, rtol))
+        @test all(isapprox(η, ηs; atol, rtol))
     end
 end
