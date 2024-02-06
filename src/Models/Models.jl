@@ -21,7 +21,7 @@ import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_timeseries
+using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 
 # A prototype interface for AbstractModel.
 #
@@ -122,8 +122,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     time = Time(clock.time)
 
     possible_fts = possible_field_time_series(model)
-
-    time_series_tuple = extract_field_timeseries(possible_fts)
+    time_series_tuple = extract_field_time_series(possible_fts)
     time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
@@ -138,7 +137,11 @@ end
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
-possible_field_time_series(model::OceananigansModels) = tuple(fields(model), model.forcing, model.diffusivity_fields)
+function possible_field_time_series(model::OceananigansModels)
+    bcs = map(boundary_conditions, prognostic_fields(model))
+    forcings = model.forcings
+    return tuple(bcs..., forcings...)
+end
                 
 import Oceananigans.TimeSteppers: reset!
 

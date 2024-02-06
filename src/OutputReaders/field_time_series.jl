@@ -3,6 +3,7 @@ using Base: @propagate_inbounds
 using OffsetArrays
 using Statistics
 using JLD2
+using Adapt
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -12,28 +13,141 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
+
 using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location,
                            index_binary_search, indices_summary, boundary_conditions
+
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
-tupleit(t::Tuple) = t
-tupleit(t) = Tuple(t)
+#####
+##### Data backends for FieldTimeSeries
+#####
 
-mutable struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
+abstract type AbstractDataBackend end
+
+struct InMemory{S} <: AbstractDataBackend 
+    start :: S
+    size :: S
+end
+
+"""
+    InMemory(size=nothing)
+
+Return a `backend` for `FieldTimeSeries` that stores `size`
+fields in memory. The default `size = nothing` stores all fields in memory.
+"""
+function InMemory(size::Int)
+    size < 2 && throw(ArgumentError("The `size' for InMemory backend cannot be less than 2."))
+    return InMemory(1, size)
+end
+
+InMemory() = InMemory(nothing, nothing)
+
+const TotallyInMemory = InMemory{Nothing}
+const  PartlyInMemory = InMemory{Int}
+
+struct OnDisk <: AbstractDataBackend end
+
+#####
+##### Time indexing modes for FieldTimeSeries
+#####
+
+"""
+    Cyclical(period=nothing)
+
+Specifies cyclical FieldTimeSeries linear Time extrapolation.
+If `period` is not specified, it is inferred from the `fts::FieldTimeSeries`
+as
+
+```julia
+t = fts.times
+Δt = t[end] - t[end-1]
+period = t[end] - t[1] + Δt
+```
+"""
+struct Cyclical{FT} # Cyclical in time
+    period :: FT
+end 
+
+Cyclical() = Cyclical(nothing)
+
+"""
+    Linear()
+
+Specifies FieldTimeSeries linear Time extrapolation.
+"""
+struct Linear end
+
+"""
+    Clamp()
+
+Specifies FieldTimeSeries Time extrapolation that returns data from the nearest value.
+"""
+struct Clamp end # clamp to nearest value
+
+# Return the memory index associated with time index `n`.
+# For example, if all data is in memory this is simply `n`.
+# If only part of the data is in memory, then this is `n - n₀ + 1`,
+# where n₀ is the time-index of the first memory index.
+#
+# TODO: explain the concept of "continued" indices for Cyclical and Clamped time-indexing.
+
+@inline memory_index(backend, ti, Nt, n) = n
+@inline memory_index(backend::PartlyInMemory, ti, Nt, n) = shift_index(n, backend.start)
+@inline shift_index(n, n₀) = n - n₀ + 1
+
+@inline function memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
+    s = shift_index(n, backend.start)
+    m = mod1(s, Nt) # wrap index
+    return m
+end
+
+@inline memory_index(backend::TotallyInMemory, ::Cyclical, Nt, n) = mod1(n, Nt)
+
+"""
+    time_indices_in_memory(backend::PartlyInMemory, indexing, times)
+
+Return a collection of the time indices that are currently in memory.
+
+Example
+=======
+
+(5, 6, 1)
+"""
+function time_indices_in_memory(backend::PartlyInMemory, ti, times)
+    Nt = length(times)
+    St = backend.size
+    n₀ = backend.start
+
+    time_indices = ntuple(St) do m
+        nn = m + n₀ - 1
+        mod1(nn, Nt)
+    end
+
+    return time_indices
+end
+
+time_indices_in_memory(::TotallyInMemory, ti, times) = 1:length(times)
+
+#####
+##### FieldTimeSeries
+#####
+
+mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ} <: AbstractField{LX, LY, LZ, G, ET, 4}
                    data :: D
                    grid :: G
                 backend :: K
     boundary_conditions :: B
                 indices :: I
                   times :: χ
-                   path :: P
-                   name :: N
-     time_extrapolation :: TE
+                   path :: String
+                   name :: String
+          time_indexing :: TI
     
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
@@ -41,69 +155,89 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: Ab
                                          bcs::B,
                                          indices::I, 
                                          times,
-                                         path::P,
-                                         name::N,
-                                         te::TE) where {LX, LY, LZ, TE, K, D, G, B, I, P, N}
+                                         path,
+                                         name,
+                                         time_indexing) where {LX, LY, LZ, K, D, G, B, I}
 
-        T = eltype(data)
+        ET = eltype(data)
+
         # TODO: check for equal spacing and convert to range
-        # times = tupleit(times)
         χ = typeof(times)
 
         # TODO: check for consistency between backend and times.
         # For example, for backend::InMemory, backend.indices cannot havex
         # more entries than times.
+        
+        if time_indexing isa Cyclical{Nothing} # infer the period
+            Δt = times[end] - times[end-1]
+            period = times[end] - times[1] + Δt
+            time_indexing = Cyclical(period)
+        end
 
-        return new{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N}(data, grid, backend, bcs,
-                                                              indices, times, path, name, te)
+        TI = typeof(time_indexing)
+
+        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ}(data, grid, backend, bcs,
+                                                         indices, times, path, name,
+                                                         time_indexing)
     end
 end
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K, T, D, χ} <: AbstractArray{T, 4}
-    data :: D
-    times :: χ
-    backend :: K
-    time_extrapolation :: TE
+#####
+##### Minimal implementation of FieldTimeSeries for use in GPU kernels
+#####
+##### Supports reduced locations + time-interpolation / extrapolation
+#####
+
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{ET, 4}
+             data :: D
+            times :: χ
+          backend :: K
+    time_indexing :: TI
     
-    function GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(data::D,
-                                                      times::χ,
-                                                      backend::K,
-                                                      time_extrapolation::TE) where {LX, LY, LZ, TE, K, T, D, χ}
+    function GPUAdaptedFieldTimeSeries{LX, LY, LZ}(data::D,
+                                                   times::χ,
+                                                   backend::K,
+                                                   time_indexing::TI) where {LX, LY, LZ, TI, K, D, χ}
 
-        return new{LX, LY, LZ, TE, K, T, D, χ}(data, times, backend, time_extrapolation)
+        ET = eltype(fts.data)
+        return new{LX, LY, LZ, TI, K, ET, D, χ}(data, times, backend, time_indexing)
     end
 end
 
-function Adapt.adapt_structure(to, fts)
-    T = eltype(fts.data)
+function Adapt.adapt_structure(to, fts::FieldTimeSeries)
     LX, LY, LZ = location(fts)
-    return GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(adapt(to, fts.data),
-                                                    adapt(to, fts.times),
-                                                    adapt(to, fts.backend),
-                                                    adapt(to, fts.time_extrapolation))
+    return GPUAdaptedFieldTimeSeries{LX, LY, LZ}(adapt(to, fts.data),
+                                                 adapt(to, fts.times),
+                                                 adapt(to, fts.backend),
+                                                 adapt(to, fts.time_indexing))
 end
 
-@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
-@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
+const    FTS{LX, LY, LZ, TI, K} =           FieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
+const GPUFTS{LX, LY, LZ, TI, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
 
-const    FTS{LX, LY, LZ, TE, K} = FieldTimeSeries{LX, LY, LZ, TE, K} where {LX, LY, LZ, TE, K}
-const GPUFTS{LX, LY, LZ, TE, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K} where {LX, LY, LZ, TE, K}
-
-const FlavorOfFTS{LX, LY, LZ, TE, K} = Union{GPUFTS{LX, LY, LZ, TE, K},
-                                                FTS{LX, LY, LZ, TE, K}} where {LX, LY, LZ, TE, K} 
-
-
-const TotallyInMemory = InMemory{Nothing, Nothing}
-const  PartlyInMemory = InMemory{Int, Int}
+const FlavorOfFTS{LX, LY, LZ, TI, K} = Union{GPUFTS{LX, LY, LZ, TI, K},
+                                                FTS{LX, LY, LZ, TI, K}} where {LX, LY, LZ, TI, K} 
 
 const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory}
+const OnDiskFTS          = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:OnDisk}
 const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:TotallyInMemory}
 const PartlyInMemoryFTS  = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:PartlyInMemory}
 
+const CyclicalFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical, K} where K
+const   LinearFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear,   K} where K
+const    ClampFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp,    K} where K
+
 const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
 
-
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
+time_indices_in_memory(fts) = time_indices_in_memory(fts.backend, fts.time_indexing, fts.times)
+
+@inline function memory_index(fts, n)
+    backend = fts.backend
+    ti = fts.time_indexing
+    Nt = length(fts.times)
+    return memory_index(backend, ti, Nt, n)
+end
 
 #####
 ##### Constructors
@@ -111,17 +245,32 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 
 instantiate(T::Type) = T()
 
+new_data(FT, grid, loc, indices, ::Nothing) = nothing
+
+function new_data(FT, grid, loc, indices, Nt::Int)
+    space_size = total_size(grid, loc, indices)
+    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
+    data = offset_data(underlying_data, grid, loc, indices)
+    return data
+end
+
+time_indices_size(backend, times) = throw(ArgumentError("$backend is not a supported backend!"))
+time_indices_size(::TotallyInMemory, times) = length(times)
+time_indices_size(backend::PartlyInMemory, times) = backend.size
+time_indices_size(::OnDisk, times) = nothing
+
 function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
                          backend = InMemory(),
                          path = nothing, 
                          name = nothing,
-                         time_extrapolation = Linear(),
+                         time_indexing = Linear(),
                          boundary_conditions = nothing)
 
     LX, LY, LZ = loc
-    Nt = length(times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
+
+    Nt = time_indices_size(backend, times)
+    data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
         isnothing(name) && isnothing(name) &&
@@ -130,15 +279,9 @@ function FieldTimeSeries(loc, grid, times=();
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
-
-    if time_extrapolation isa Cyclical{Nothing} # infer the period
-        Δt = times[end] - times[end-1]
-        period = times[end] - times[1] + Δt
-        time_extrapolation = Cyclical(period)
-    end
-
+    
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                       indices, times, path, name, time_extrapolation)
+                                       indices, times, path, name, time_indexing)
 end
 
 """
@@ -196,7 +339,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
                          grid = nothing,
                          location = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_extrapolation = Linear(),
+                         time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing)
 
@@ -279,63 +422,15 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     LX, LY, LZ = Location
 
     loc = map(instantiate, Location)
-    Nt = length(times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt, backend)
+    Nt = time_indices_size(backend, times)
+    data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                              indices, times, path, name, time_extrapolation)
+                                              indices, times, path, name, time_indexing)
 
     set!(time_series, path, name)
 
     return time_series
-end
-
-# Making FieldTimeSeries behave like Vector
-Base.lastindex(fts::FieldTimeSeries) = size(fts, 4)
-Base.firstindex(fts::FieldTimeSeries) = 1
-Base.length(fts::FieldTimeSeries) = size(fts, 4)
-
-function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
-
-    # TODO: support time-interpolation too.
-    # This requires extending the low-level Field interpolation utilities
-    # to support time-indexing.
-    target_fts.times == source_fts.times ||
-        throw(ArgumentError("Cannot interpolate two FieldTimeSeries with different times."))
-
-    times = target_fts.times
-    Nt = length(times)
-
-    target_grid = target_fts.grid
-    source_grid = source_fts.grid
-
-    @assert architecture(target_grid) == architecture(source_grid)
-    arch = architecture(target_grid)
-
-    # Make locations
-    source_location = Tuple(L() for L in location(source_fts))
-    target_location = Tuple(L() for L in location(target_fts))
-
-    launch!(arch, target_grid, size(target_fts),
-            _interpolate_field_time_series!,
-            target_fts.data, target_grid, target_location,
-            source_fts.data, source_grid, source_location)
-
-    fill_halo_regions!(target_fts)
-
-    return nothing
-end
-
-@kernel function _interpolate_field_time_series!(target_fts, target_grid, target_location,
-                                                 source_fts, source_grid, source_location)
-
-    # 4D index, cool!
-    i, j, k, n = @index(Global, NTuple)
-
-    source_field = view(source_fts, :, :, :, n)
-    target_node = node(i, j, k, target_grid, target_location...)
-
-    @inbounds target_fts[i, j, k, n] = interpolate(target_node, source_field, source_location, source_grid)
 end
 
 """
@@ -366,121 +461,74 @@ function Field(location, path::String, name::String, iter;
     # Load the grid and data from file
     file = jldopen(path)
 
-    if isnothing(grid)
-        grid = on_architecture(architecture, file["serialized/grid"])
-    end
-        
-    raw_data = arch_array(architecture, file["timeseries/$name/$iter"])
+    isnothing(grid) && (grid = file["serialized/grid"])
+    raw_data = file["timeseries/$name/$iter"]
 
     close(file)
 
-    data = offset_data(raw_data, grid, location, indices)
+    # Change grid to specified architecture?
+    grid     = on_architecture(architecture, grid)
+    raw_data = arch_array(architecture, raw_data)
+    data     = offset_data(raw_data, grid, location, indices)
     
     return Field(location, grid; boundary_conditions, indices, data)
 end
 
 #####
-##### set!
+##### Basic behavior
 #####
 
-const FieldsVector = AbstractVector{<:AbstractField}
+Base.lastindex(fts::FlavorOfFTS, dim) = lastindex(fts.data, dim)
+Base.parent(fts::InMemoryFTS)         = parent(fts.data)
+Base.parent(fts::OnDiskFTS)           = nothing
+indices(fts::FieldTimeSeries)         = fts.indices
+interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 
-function set!(fts::FieldTimeSeries, fields_vector::FieldsVector)
-    raw_data = parent(fts)
-    file = jldopen(path)
+# Make FieldTimeSeries behave like Vector wrt to singleton indices
+Base.length(fts::FlavorOfFTS)     = length(fts.times)
+Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
+Base.firstindex(fts::FlavorOfFTS) = 1
 
-    for (n, field) in enumerate(fields_vector)
-        raw_data[:, :, :, n] .= parent(field)
-    end
-
-    close(file)
-
-    return nothing
-end
+Base.length(fts::PartlyInMemoryFTS) = fts.backend.size
 
 function interior(fts::FieldTimeSeries)
-    loc = instantiate.(location(fts))
-    topo = instantiate.(topology(fts.grid))
+    loc = map(instantiate, location(fts))
+    topo = map(instantiate, topology(fts.grid))
     sz = size(fts.grid)
     halo_sz = halo_size(fts.grid)
 
-    i_interior = interior_parent_indices.(loc, topo, sz, halo_sz)
+    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     indices = fts.indices
-    i_view = interior_view_indices.(indices, i_interior)
+    i_view = map(interior_view_indices, indices, i_interior)
 
     return view(parent(fts), i_view..., :)
 end
 
-interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
-indices(fts::FieldTimeSeries) = fts.indices
+# FieldTimeSeries boundary conditions
+const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
+const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
+const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
-function Statistics.mean(fts::FieldTimeSeries; dims=:)
-    m = mean(fts[1]; dims)
-    Nt = length(fts)
+@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
 
-    if dims isa Colon
-        for n = 2:Nt
-            m += mean(fts[n])
-        end
+#####
+##### Fill halo regions
+#####
 
-        return m / Nt
-    else
-        for n = 2:Nt
-            m .+= mean(fts[n]; dims)
-        end
+const MAX_FTS_TUPLE_SIZE = 10
 
-        m ./= Nt
+fill_halo_regions!(fts::OnDiskFTS) = nothing
 
-        return m
+function fill_halo_regions!(fts::InMemoryFTS)
+    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE) |> collect
+    Ni = length(partitioned_indices)
+
+    asyncmap(1:Ni) do i
+        indices = partitioned_indices[i]
+        fts_tuple = Tuple(fts[n] for n in indices)
+        fill_halo_regions!(fts_tuple)
     end
+
+    return nothing
 end
-
-#####
-##### Methods
-#####
-
-# Include the time dimension.
-@inline Base.size(fts::FieldTimeSeries) = (size(fts.grid, location(fts), fts.indices)..., length(fts.times))
-@propagate_inbounds Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
-
-#####
-##### Basic support for reductions
-#####
-##### TODO: support for reductions across _time_ (ie when 4 ∈ dims)
-#####
-
-const FTS = FieldTimeSeries
-
-for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
-    reduction! = Symbol(reduction, '!')
-
-    @eval begin
-
-        # Allocating
-        function Base.$(reduction)(f::Function, fts::FTS; dims=:, kw...)
-            if dims isa Colon        
-                return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
-            else
-                T = filltype(Base.$(reduction!), fts)
-                loc = LX, LY, LZ = reduced_location(location(fts); dims)
-                times = fts.times
-                rts = FieldTimeSeries{LX, LY, LZ}(grid, times, T; indices=fts.indices)
-                return Base.$(reduction!)(f, rts, fts; kw...)
-            end
-        end
-
-        Base.$(reduction)(fts::FTS; kw...) = Base.$(reduction)(identity, fts; kw...)
-
-        function Base.$(reduction!)(f::Function,rts::FTS, fts::FTS; dims=:, kw...)
-            dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
-            for n = 1:length(rts)
-                Base.$(reduction!)(f, rts[i], fts[i]; dims, kw...)
-            end
-            return rts
-        end
-
-        Base.$(reduction!)(rts::FTS, fts::FTS; kw...) = Base.$(reduction!)(identity, rts, fts; kw...)
-    end
-end
-
 

@@ -30,33 +30,20 @@ function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, L
     prefix = string(summary(fts), '\n',
                    "├── grid: ", summary(fts.grid), '\n',
                    "├── indices: ", indices_summary(fts), '\n',
-                   "├── time extrapolation: $(fts.time_extrapolation)", '\n')
+                   "├── time_indexing: $(fts.time_indexing)", '\n')
 
     suffix = field_time_series_suffix(fts)
 
     return print(io, prefix, suffix)
 end
 
-function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
-    ii = fts.backend.indices
-
-    if ii isa Colon
-        backend_str = "├── backend: InMemory(:)"
+function field_time_series_suffix(fts::InMemoryFTS)
+    backend = fts.backend
+    if backend isa TotallyInMemory
+        backend_str = "├── backend: InMemory()"
     else
-        N = length(ii)
-        if N < 6
-            indices_str = string(ii)
-        else
-            indices_str = string("[", ii[1],
-                                 ", ", ii[2],
-                                 ", ", ii[3],
-                                 "  …  ",
-                                 ii[end-2], ", ",
-                                 ii[end-1], ", ",
-                                 ii[end], "]")
-        end
-
-        backend_str = string("├── backend: InMemory(", indices_str, ")")
+        backend_str = string("├── backend: InMemory(",
+                             backend.start, ", ", backend.size, ")")
     end
 
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
@@ -69,7 +56,7 @@ function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
                   "    └── ", data_summary(interior(fts)))
 end
 
-field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
+field_time_series_suffix(fts::OnDiskFTS) =
     string("├── backend: ", summary(fts.backend), '\n',
            "├── path: ", fts.path, '\n',
            "└── name: ", fts.name)
