@@ -88,7 +88,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # ### Boundary conditions
 #
-# At the surface at ``z = 0``, Wagner et al. (2021) impose
+# At the surface ``z = 0``, Wagner et al. (2021) impose
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
