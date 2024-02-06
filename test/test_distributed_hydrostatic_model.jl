@@ -114,21 +114,10 @@ for arch in archs
         cs = partition_global_array(cpu_arch, cs, size(c))
         ηs = partition_global_array(cpu_arch, ηs, size(η))
 
-        @test all(u .≈ us)
-
-        @info "debug why v ≠ vs"
-        @show norm(v)
-        @show norm(vs)
-
-        values = v[(v .≈ vs) .== 0]
-        for value in values
-            index = findall(x -> x == value, v)
-            @show value, index, v[index][], vs[index][]
-        end
-
-        @test all(v .≈ vs)
-        @test all(w .≈ ws)
-        @test all(c .≈ cs)
-        @test all(η .≈ ηs)
+        @test all(isapprox(u, us, atol=eps(eltype(grid))))
+        @test all(isapprox(v, vs, atol=eps(eltype(grid))))
+        @test all(isapprox(w, ws, atol=eps(eltype(grid))))
+        @test all(isapprox(c, cs, atol=eps(eltype(grid))))
+        @test all(isapprox(η, ηs, atol=eps(eltype(grid))))
     end
 end
