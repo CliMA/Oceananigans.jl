@@ -24,7 +24,7 @@ import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 tupleit(t::Tuple) = t
 tupleit(t) = Tuple(t)
 
-struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
+mutable struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
                 backend :: K
@@ -46,7 +46,8 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
                                          te::TE) where {LX, LY, LZ, TE, K, D, G, B, I, P, N}
 
         T = eltype(data)
-        times = tupleit(times)
+        # TODO: check for equal spacing and convert to range
+        # times = tupleit(times)
         χ = typeof(times)
 
         # TODO: check for consistency between backend and times.
@@ -58,13 +59,51 @@ struct FieldTimeSeries{LX, LY, LZ, TE, K, I, D, G, T, B, χ, P, N} <: AbstractFi
     end
 end
 
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K, T, D, χ} <: AbstractArray{T, 4}
+    data :: D
+    times :: χ
+    backend :: K
+    time_extrapolation :: TE
+    
+    function GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(data::D,
+                                                      times::χ,
+                                                      backend::K,
+                                                      time_extrapolation::TE) where {LX, LY, LZ, TE, K, T, D, χ}
+
+        return new{LX, LY, LZ, TE, K, T, D, χ}(data, times, backend, time_extrapolation)
+    end
+end
+
+function Adapt.adapt_structure(to, fts)
+    T = eltype(fts.data)
+    LX, LY, LZ = location(fts)
+    return GPUAdaptedFieldTimeSeries{LX, LY, LZ, T}(adapt(to, fts.data),
+                                                    adapt(to, fts.times),
+                                                    adapt(to, fts.backend),
+                                                    adapt(to, fts.time_extrapolation))
+end
+
+@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries) = lastindex(fts.data)
+@propagate_inbounds Base.lastindex(fts::GPUAdaptedFieldTimeSeries, dim) = lastindex(fts.data, dim)
+
+const    FTS{LX, LY, LZ, TE, K} = FieldTimeSeries{LX, LY, LZ, TE, K} where {LX, LY, LZ, TE, K}
+const GPUFTS{LX, LY, LZ, TE, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TE, K} where {LX, LY, LZ, TE, K}
+
+const FlavorOfFTS{LX, LY, LZ, TE, K} = Union{GPUFTS{LX, LY, LZ, TE, K},
+                                                FTS{LX, LY, LZ, TE, K}} where {LX, LY, LZ, TE, K} 
+
+
+const TotallyInMemory = InMemory{Nothing, Nothing}
+const  PartlyInMemory = InMemory{Int, Int}
+
+const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory}
+const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:TotallyInMemory}
+const PartlyInMemoryFTS  = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:PartlyInMemory}
+
+const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
+
+
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
-
-const TotallyInMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory{Colon}}
-const InMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory}
-const OnDiskFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:OnDisk}
-
-struct UnspecifiedBoundaryConditions end
 
 #####
 ##### Constructors
@@ -149,6 +188,8 @@ Keyword arguments
 """
 FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) =
     FieldTimeSeries(path, name, backend; kw...)
+
+struct UnspecifiedBoundaryConditions end
 
 function FieldTimeSeries(path::String, name::String, backend::AbstractDataBackend;
                          architecture = nothing,
@@ -313,16 +354,22 @@ function Field(location, path::String, name::String, iter;
                indices = (:, :, :),
                boundary_conditions = nothing)
 
+    # Default to CPU if neither architecture nor grid is specified
+    if isnothing(architecture)
+        if isnothing(grid)
+            architecture = CPU()
+        else
+            architecture = Architectures.architecture(grid)
+        end
+    end
+    
+    # Load the grid and data from file
     file = jldopen(path)
 
-    # Default to CPU if neither architecture nor grid is specified
-    architecture = isnothing(architecture) ?
-        (isnothing(grid) ? CPU() : Architectures.architecture(grid)) :
-        architecture
-
-    grid = isnothing(grid) ?
-        on_architecture(architecture, file["serialized/grid"]) : grid
-
+    if isnothing(grid)
+        grid = on_architecture(architecture, file["serialized/grid"])
+    end
+        
     raw_data = arch_array(architecture, file["timeseries/$name/$iter"])
 
     close(file)
@@ -436,83 +483,4 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
-#####
-##### Show methods
-#####
-
-backend_str(::Type{InMemory}) = "InMemory"
-backend_str(::Type{OnDisk})   = "OnDisk"
-
-#####
-##### show
-#####
-
-function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
-    arch = architecture(fts)
-    B = string(typeof(fts.backend).name.wrapper)
-    sz_str = string(join(size(fts), "×"))
-
-    path = fts.path
-    name = fts.name
-    A = typeof(arch)
-
-    if isnothing(path)
-        suffix = " on $A"
-    else
-        suffix = " of $name at $path"
-    end
-
-    return string("$sz_str FieldTimeSeries{$B} located at ", show_location(fts), suffix)
-end
-
-function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, LZ, E}
-
-    extrapolation_str = string("├── time boundaries: $(E)")
-
-    prefix = string(summary(fts), '\n',
-                   "├── grid: ", summary(fts.grid), '\n',
-                   "├── indices: ", indices_summary(fts), '\n',
-                   "├── time extrapolation: $(fts.time_extrapolation)", '\n')
-
-    suffix = field_time_series_suffix(fts)
-
-    return print(io, prefix, suffix)
-end
-
-function field_time_series_suffix(fts::InMemoryFieldTimeSeries)
-    ii = fts.backend.indices
-
-    if ii isa Colon
-        backend_str = "├── backend: InMemory(:)"
-    else
-        N = length(ii)
-        if N < 6
-            indices_str = string(ii)
-        else
-            indices_str = string("[", ii[1],
-                                 ", ", ii[2],
-                                 ", ", ii[3],
-                                 "  …  ",
-                                 ii[end-2], ", ",
-                                 ii[end-1], ", ",
-                                 ii[end], "]")
-        end
-
-        backend_str = string("├── backend: InMemory(", indices_str, ")")
-    end
-
-    path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
-    name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name, '\n')
-
-    return string(backend_str, '\n',
-                  path_str,
-                  name_str,
-                  "└── data: ", summary(fts.data), '\n',
-                  "    └── ", data_summary(interior(fts)))
-end
-
-field_time_series_suffix(fts::OnDiskFieldTimeSeries) =
-    string("├── backend: ", summary(fts.backend), '\n',
-           "├── path: ", fts.path, '\n',
-           "└── name: ", fts.name)
 

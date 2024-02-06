@@ -12,33 +12,23 @@ using Adapt
 
 abstract type AbstractDataBackend end
 
-mutable struct InMemory{I} <: AbstractDataBackend 
-    indices :: I
+struct InMemory{S} <: AbstractDataBackend 
+    start :: S
+    size :: S
 end
-
-struct GPUAdaptedInMemory{I} <: AbstractDataBackend 
-    indices :: I
-end
-
-Adapt.adapt_structure(to, backend::InMemory) = GPUAdaptedInMemory(backend.indices)
 
 """
-    InMemory(N=:)
+    InMemory(size=nothing)
 
-Return a `backend` for `FieldTimeSeries` that stores `N`
-fields in memory. The default `N = :` stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `size`
+fields in memory. The default `size = nothing` stores all fields in memory.
 """
-function InMemory(chunk_size::Int)
-    chunk_size < 2 &&
-        throw(ArgumentError("The chunk_size for InMemory backend cannot be less than 2."))
-
-    index_range = 1:chunk_size
-    indices = tuple(index_range...) # GPU-friendly tuple
-
-    return InMemory(indices)
+function InMemory(size::Int)
+    size < 2 && throw(ArgumentError("The `size' for InMemory backend cannot be less than 2."))
+    return InMemory(1, size)
 end
 
-InMemory() = InMemory(Colon())
+InMemory() = InMemory(nothing, nothing)
 
 struct OnDisk <: AbstractDataBackend end
 
@@ -81,11 +71,13 @@ Specifies FieldTimeSeries Time extrapolation that returns data from the nearest 
 struct Clamp end # clamp to nearest value
 
 include("field_time_series.jl")
-include("gpu_adapted_field_time_series.jl")
 include("field_time_series_indexing.jl")
 include("memory_allocated_field_time_series.jl")
 include("on_disk_field_time_series.jl")
 include("update_field_time_series.jl")
+include("show_field_time_series.jl")
+
+# Experimental
 include("field_dataset.jl")
 
 end # module

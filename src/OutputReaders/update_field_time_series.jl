@@ -5,6 +5,10 @@ using Oceananigans.Fields: AbstractField
 # Termination (move all here when we switch the code up)
 extract_field_timeseries(f::FieldTimeSeries) = f
 
+const TotallyInMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory{Colon}}
+const        InMemoryFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:InMemory}
+const          OnDiskFieldTimeSeries{LX, LY, LZ, TE} = FieldTimeSeries{LX, LY, LZ, TE, <:OnDisk}
+
 const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
 const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
 
@@ -14,6 +18,16 @@ const FTSBC = Union{CPUFTSBC, GPUFTSBC}
 
 set!(::TotallyInMemoryFieldTimeSeries, indices) = nothing
 
+# fallback
+update_field_time_series!(::Nothing, time) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Int64) = nothing
+update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Time) = nothing
+
+const CyclicalInMemoryFTS = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclical}
+const LinearInMemoryFTS   = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Linear}
+const ClampInMemoryFTS    = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp}
+
+# TODO: fix this
 # Set a field with a range of time indices.
 # We change the index range of the `FieldTimeSeries`
 # and load the new data
@@ -24,14 +38,7 @@ function set!(fts::InMemoryFieldTimeSeries, indices::Tuple)
     return nothing
 end
 
-# fallback
-update_field_time_series!(::Nothing, time) = nothing
-update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Int64) = nothing
-update_field_time_series!(::TotallyInMemoryFieldTimeSeries, ::Time) = nothing
 
-const CyclicalInMemoryFTS = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Cyclical}
-const LinearInMemoryFTS = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Linear}
-const ClampInMemoryFTS  = InMemoryFieldTimeSeries{<:Any, <:Any, <:Any, <:Clamp}
 
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
@@ -56,11 +63,12 @@ function update_field_time_series!(fts::InMemoryFieldTimeSeries, n)
     end
 end
 
+update_field_time_series!(fts::TotallyInMemoryFieldTimeSeries, n₁, n₂) = nothing
+
 function update_field_time_series!(fts::InMemoryFieldTimeSeries, n₁, n₂)
 
-    in_range = fts.backend.indices isa Colon || # cause then everything is in range
-               n₁ ∈ fts.backend.indices &&
-               n₂ ∈ fts.backend.indices
+    both_in_range = in_range(fts.backend, fts.time_extrapolation, n₁) &&
+                    in_range(fts.backend, fts.time_extrapolation, n₂)
 
     if !in_range # out of range
         Nt = length(fts.times)
