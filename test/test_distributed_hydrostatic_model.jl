@@ -121,7 +121,7 @@ for arch in archs
         @show norm(w)
         @show norm(ws)
 
-        values = w[isapprox.(w, ws, atol=eps(Float64)) .== 0]
+        values = w[isapprox.(w, ws, atol=eps(eltype(grid))) .== 0]
         for value in values
             index = findall(x -> x == value, w)
             @show index, w[index][], ws[index][]
