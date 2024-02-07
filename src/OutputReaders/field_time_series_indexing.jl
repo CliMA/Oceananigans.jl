@@ -228,8 +228,8 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    ti = time_indices_in_memory(fts)
-    in_range = n₁ ∈ ti && n₂ ∈ ti
+    idxs = time_indices(fts)
+    in_range = n₁ ∈ idxs && n₂ ∈ idxs
 
     if !in_range
         # Update backend
