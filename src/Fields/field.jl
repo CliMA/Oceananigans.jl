@@ -379,7 +379,7 @@ end
 """
     interior(f::Field)
 
-Returns a view of `f` that excludes halo points."
+Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -407,7 +407,7 @@ Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
-Base.size(f::Field)  = size(f.grid, location(f), f.indices)
+@inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
