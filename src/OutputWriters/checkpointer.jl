@@ -24,7 +24,7 @@ end
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
-                 properties = [:architecture, :grid, :clock, :coriolis,
+                 properties = [:grid, :clock, :coriolis,
                                :buoyancy, :closure, :timestepper, :particles])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
@@ -57,9 +57,9 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list must contain
-                `[:grid, :architecture, :timestepper, :particles]`.
-                Default: [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure,
-                          :velocities, :tracers, :timestepper, :particles]
+                `[:grid, :timestepper, :particles]`.
+                Default: `[:grid, :timestepper, :particles, :clock,
+                           :coriolis, :buoyancy, :closure]`
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -67,11 +67,11 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = [:architecture, :grid, :clock, :coriolis,
-                                    :buoyancy, :closure, :timestepper, :particles])
+                      properties = [:grid, :timestepper, :particles, :clock,
+                                    :coriolis, :buoyancy, :closure])
 
-    # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :timestepper, :particles)
+    # Certain properties are required for `set!` to pickup from a checkpoint.
+    required_properties = (:grid, :timestepper, :particles)
 
     for rp in required_properties
         if rp ∉ properties
