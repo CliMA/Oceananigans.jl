@@ -16,7 +16,7 @@ function set!(fts::InMemoryFTS, path::String, name::String)
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
     # to parent(fts).
-    for n in time_indices_in_memory(fts)
+    for n in time_indices(fts)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
         file_iter = file_iterations[file_index]
