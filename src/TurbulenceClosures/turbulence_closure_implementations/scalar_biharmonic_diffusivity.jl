@@ -57,7 +57,7 @@ When prescribing the viscosities or diffusivities as functions, depending on the
 * `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
                                      a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-* `discrete_form = true`: 
+* `discrete_form = true`:
   * with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz`
                                                         either `Face()` or `Center()`.
   * with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.

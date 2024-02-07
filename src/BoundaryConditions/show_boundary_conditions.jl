@@ -35,7 +35,7 @@ show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 #####
 
 Base.summary(fbcs::FieldBoundaryConditions) = "FieldBoundaryConditions"
-    
+
 show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
     string("Oceananigans.FieldBoundaryConditions, with boundary conditions", "\n",
            padding, "├── west: ",     summary(bcs.west), "\n",

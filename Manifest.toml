@@ -2,7 +2,7 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "33687d05431bf3d1e78492740cfe911a5657601c"
+project_hash = "39afa30206a17bb59b9e4ecef8c35f280cf4701c"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -750,9 +750,9 @@ uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.0"
 
 [[deps.SeawaterPolynomials]]
-git-tree-sha1 = "958ba75b90c7c8a117d041d33184134201cf8c0f"
+git-tree-sha1 = "6d85acd6de472f8e6da81c61c7c5b6280a55e0bc"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.3.2"
+version = "0.3.4"
 
 [[deps.SentinelArrays]]
 deps = ["Dates", "Random"]
