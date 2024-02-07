@@ -25,11 +25,15 @@ using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 
     ñ, n₁, n₂ = time_index_binary_search(fts, mod_t)
 
+    on_point = ñ ≈ 0
     cycling = ñ > 1 # we are _between_ tᴺ and t¹ + T
+
+    on_point_indices = (0, 1, 1)
     cycled_indices   = (ñ - 1, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
-    return ifelse(cycling, cycled_indices, uncycled_indices)
+    return ifelse(on_point, on_point_indices,
+           ifelse(cycling, cycled_indices, uncycled_indices))
 end   
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
@@ -93,7 +97,7 @@ function getindex(fts::OnDiskFTS, n::Int)
                  data = field_data)
 end
 
-@propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
+@propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
@@ -101,9 +105,9 @@ const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
 const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
 const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 
-@propagate_inbounds getindex(fts::XYFTS, i::Int, j::Int, n::Int) = fts.data[i, j, 1, memory_index(fts, n)]
-@propagate_inbounds getindex(fts::XZFTS, i::Int, k::Int, n::Int) = fts.data[i, 1, k, memory_index(fts, n)]
-@propagate_inbounds getindex(fts::YZFTS, j::Int, k::Int, n::Int) = fts.data[1, j, k, memory_index(fts, n)]
+@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
+@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
+@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
 
 #####
 ##### Time interpolation / extrapolation
@@ -117,14 +121,14 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 @inline function interpolating_getindex(fts, i, j, k, time_index)
     ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
     
-    #@inbounds begin
+    @inbounds begin
         ψ₁ = getindex(fts, i, j, k, n₁)
         ψ₂ = getindex(fts, i, j, k, n₂)
-    #end
+    end
 
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂
+    # Don't interpolate if n₁ == n₂.
     return ifelse(n₁ == n₂, ψ₁, ψ̃)
 end
 

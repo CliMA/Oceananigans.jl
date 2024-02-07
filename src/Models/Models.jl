@@ -114,6 +114,17 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
+"""
+    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+
+Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
+"""
+function possible_field_time_series(model::OceananigansModels)
+    bcs = map(boundary_conditions, prognostic_fields(model))
+    forcing = model.forcing
+    return tuple(bcs..., forcing...)
+end
+ 
 # Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
 # Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
 # Flatten the resulting tuple by extracting unique values and set! them to the 
@@ -131,18 +142,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-
-"""
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
-
-Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
-"""
-function possible_field_time_series(model::OceananigansModels)
-    bcs = map(boundary_conditions, prognostic_fields(model))
-    forcing = model.forcing
-    return tuple(bcs..., forcing...)
-end
-                
+               
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)

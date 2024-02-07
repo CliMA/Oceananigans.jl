@@ -41,7 +41,9 @@ function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     file = jldopen(path)
 
     for (n, field) in enumerate(fields_vector)
-        raw_data[:, :, :, n] .= parent(field)
+        nth_raw_data = view(raw_data, :, :, :, n)
+        copyto!(nth_raw_data, parent(field))
+        # raw_data[:, :, :, n] .= parent(field)
     end
 
     close(file)

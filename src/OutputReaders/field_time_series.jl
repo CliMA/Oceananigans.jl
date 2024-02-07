@@ -42,7 +42,7 @@ Return a `backend` for `FieldTimeSeries` that stores `size`
 fields in memory. The default `size = nothing` stores all fields in memory.
 """
 function InMemory(size::Int)
-    size < 2 && throw(ArgumentError("The `size' for InMemory backend cannot be less than 2."))
+    size < 2 && throw(ArgumentError("InMemory `size` must be 2 or greater."))
     return InMemory(1, size)
 end
 
@@ -51,6 +51,13 @@ InMemory() = InMemory(nothing, nothing)
 const TotallyInMemory = InMemory{Nothing}
 const  PartlyInMemory = InMemory{Int}
 
+"""
+    OnDisk()
+
+Return a lazy `backend` for `FieldTimeSeries` that keeps data
+on disk, only loading it as requested by indexing into the
+`FieldTimeSeries`.
+"""
 struct OnDisk <: AbstractDataBackend end
 
 #####
@@ -60,9 +67,8 @@ struct OnDisk <: AbstractDataBackend end
 """
     Cyclical(period=nothing)
 
-Specifies cyclical FieldTimeSeries linear Time extrapolation.
-If `period` is not specified, it is inferred from the `fts::FieldTimeSeries`
-as
+Specifies cyclical FieldTimeSeries linear Time extrapolation. If
+`period` is not specified, it is inferred from the `fts::FieldTimeSeries` via
 
 ```julia
 t = fts.times
@@ -70,7 +76,7 @@ t = fts.times
 period = t[end] - t[1] + Δt
 ```
 """
-struct Cyclical{FT} # Cyclical in time
+struct Cyclical{FT}
     period :: FT
 end 
 
@@ -95,29 +101,33 @@ struct Clamp end # clamp to nearest value
 # If only part of the data is in memory, then this is `n - n₀ + 1`,
 # where n₀ is the time-index of the first memory index.
 #
-# TODO: explain the concept of "continued" indices for Cyclical and Clamped time-indexing.
+# TODO: do we need a special `memory_index` implementation for `Clamp` as well?
+# For example, it may be better to get a bounds error.
 
-@inline memory_index(backend, ti, Nt, n) = n
-@inline memory_index(backend::PartlyInMemory, ti, Nt, n) = shift_index(n, backend.start)
 @inline shift_index(n, n₀) = n - n₀ + 1
+@inline memory_index(backend, ti, Nt, n) = n
+@inline memory_index(backend::TotallyInMemory, ::Cyclical, Nt, n) = mod1(n, Nt)
+@inline memory_index(backend::TotallyInMemory, ::Clamp, Nt, n)    = clamp(n, 1, Nt)
 
-@inline function memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
-    s = shift_index(n, backend.start)
-    m = mod1(s, Nt) # wrap index
-    return m
+@inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
+
+@inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
+    n = clamp(n, 1, Nt)
+    return shift_index(n, backend.start)
 end
 
-@inline memory_index(backend::TotallyInMemory, ::Cyclical, Nt, n) = mod1(n, Nt)
+@inline function memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
+    m = shift_index(n, backend.start)
+    m̃ = mod1(m, Nt) # wrap index
+    return m̃
+end
 
 """
     time_indices_in_memory(backend::PartlyInMemory, indexing, times)
 
 Return a collection of the time indices that are currently in memory.
-
-Example
-=======
-
-(5, 6, 1)
+This is the inverse of `memory_index`, which converts time indices
+to memory indices.
 """
 function time_indices_in_memory(backend::PartlyInMemory, ti, times)
     Nt = length(times)
@@ -161,19 +171,28 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
 
         ET = eltype(data)
 
-        # TODO: check for equal spacing and convert to range
-        χ = typeof(times)
+        # Check consistency between `backend` and `times`.
+        if backend isa PartlyInMemory && backend.size > length(times)
+            throw(ArgumentError("`backend.size` cannot be greater than `length(times)`."))
+        end
 
-        # TODO: check for consistency between backend and times.
-        # For example, for backend::InMemory, backend.indices cannot havex
-        # more entries than times.
+        if times isa AbstractArray
+            # Try to convert to a range, cuz
+            time_range = range(first(times), last(times), length=length(times))
+            if all(time_range .≈ times) # good enough for most
+                times = time_range
+            end
+
+            times = arch_array(architecture(grid), times)
+        end
         
-        if time_indexing isa Cyclical{Nothing} # infer the period
+        if time_indexing isa Cyclical{Nothing} # we have to infer the period
             Δt = times[end] - times[end-1]
             period = times[end] - times[1] + Δt
             time_indexing = Cyclical(period)
         end
 
+        χ = typeof(times)
         TI = typeof(time_indexing)
         P = typeof(path)
         N = typeof(name)
