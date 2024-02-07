@@ -25,15 +25,11 @@ using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 
     ñ, n₁, n₂ = time_index_binary_search(fts, mod_t)
 
-    on_point = ñ ≈ 0
     cycling = ñ > 1 # we are _between_ tᴺ and t¹ + T
-
-    on_point_indices = (0, 1, 1)
     cycled_indices   = (ñ - 1, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
-    return ifelse(on_point, on_point_indices,
-           ifelse(cycling, cycled_indices, uncycled_indices))
+    return ifelse(cycling, cycled_indices, uncycled_indices)
 end   
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor

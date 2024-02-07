@@ -104,11 +104,13 @@ struct Clamp end # clamp to nearest value
 # TODO: do we need a special `memory_index` implementation for `Clamp` as well?
 # For example, it may be better to get a bounds error.
 
-@inline shift_index(n, n₀) = n - n₀ + 1
+# Totally in memory stuff
 @inline memory_index(backend, ti, Nt, n) = n
 @inline memory_index(backend::TotallyInMemory, ::Cyclical, Nt, n) = mod1(n, Nt)
 @inline memory_index(backend::TotallyInMemory, ::Clamp, Nt, n)    = clamp(n, 1, Nt)
 
+# Partly in memory stuff
+@inline shift_index(n, n₀) = n - (n₀ - 1)
 @inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
 
 @inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
@@ -116,6 +118,36 @@ struct Clamp end # clamp to nearest value
     return shift_index(n, backend.start)
 end
 
+"""
+    memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
+
+Example
+=======
+
+```julia
+Nt = 56
+backend = InMemory(8, 7) # so we have (8, 9, 10, 11, 12, 13, 14)
+n = 8
+m = 8 - (8 - 1) = 1
+m̃ = 1
+```
+
+```julia
+Nt = 5
+backend = InMemory(1, 3) # so we have (1, 2, 3)
+n = 7 # so, the right answer is m̃ = 2
+m = 7 - (1 - 1) # = 7
+m̃ = mod1(7, 5)  # = 2
+```
+
+```julia
+Nt = 5
+backend = InMemory(5, 3) # so we have (5, 1, 2)
+n = 6 # so, the right answer is m̃ = 2
+m = 6 - (5 - 1) # = 2
+m̃ = mod1(2, 5)  # = 2
+```
+"""
 @inline function memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
     m = shift_index(n, backend.start)
     m̃ = mod1(m, Nt) # wrap index
@@ -135,8 +167,9 @@ function time_indices_in_memory(backend::PartlyInMemory, ti, times)
     n₀ = backend.start
 
     time_indices = ntuple(St) do m
-        nn = m + n₀ - 1
-        mod1(nn, Nt)
+        n = m + n₀ - 1
+        ñ = mod1(n, Nt)
+        ñ
     end
 
     return time_indices
