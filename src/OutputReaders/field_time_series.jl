@@ -276,7 +276,7 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{
                                                    backend::K,
                                                    time_indexing::TI) where {LX, LY, LZ, TI, K, D, χ}
 
-        ET = eltype(fts.data)
+        ET = eltype(data)
         return new{LX, LY, LZ, TI, K, ET, D, χ}(data, times, backend, time_indexing)
     end
 end
