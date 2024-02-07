@@ -14,8 +14,8 @@ using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location,
-                           index_binary_search, indices_summary, boundary_conditions
+using Oceananigans.Fields: interior_view_indices, index_binary_search,
+                           indices_summary, boundary_conditions
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!

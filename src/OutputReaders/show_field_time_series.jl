@@ -1,3 +1,5 @@
+using Oceananigans.Fields: show_location, data_summary
+
 #####
 ##### Show methods
 #####
@@ -53,7 +55,7 @@ function field_time_series_suffix(fts::InMemoryFTS)
                   path_str,
                   name_str,
                   "└── data: ", summary(fts.data), '\n',
-                  "    └── ", data_summary(interior(fts)))
+                  "    └── ", data_summary(parent(fts)))
 end
 
 field_time_series_suffix(fts::OnDiskFTS) =
