@@ -66,11 +66,13 @@ simulation.callbacks[:modify_u] = Callback(modify_tendecy!, IterationInterval(1)
                                            parameters = (c = :u, δ = 1))
 
 run!(simulation)
-
-@info model.velocities.u
 ```
 
-Above there is no forcing at all, but due to the callback the velocity is increased.
+Above there is no forcing at all, but due to the callback the ``u``-velocity is increased.
+
+```@example checkpointing
+@info model.velocities.u
+```
 
 !!! note "Example only for illustration purposes"
     The above is a redundant example since it could be implemented better with a simple forcing function.
