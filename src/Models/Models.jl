@@ -13,7 +13,7 @@ using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: AbstractField, Field, flattened_unique_values
+using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 
@@ -139,8 +139,8 @@ Return a `Tuple` containing properties of and `OceananigansModel` that could con
 """
 function possible_field_time_series(model::OceananigansModels)
     bcs = map(boundary_conditions, prognostic_fields(model))
-    forcings = model.forcings
-    return tuple(bcs..., forcings...)
+    forcing = model.forcing
+    return tuple(bcs..., forcing...)
 end
                 
 import Oceananigans.TimeSteppers: reset!

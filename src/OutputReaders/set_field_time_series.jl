@@ -13,6 +13,9 @@ function set!(fts::InMemoryFTS, path::String, name::String)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
 
+    # TODO: a potential optimization here might be to load
+    # all of the data into a single array, and then transfer that
+    # to parent(fts).
     for (m, n) in enumerate(time_indices_in_memory(fts))
         t = fts.times[n]
         file_index = find_time_index(t, file_times)

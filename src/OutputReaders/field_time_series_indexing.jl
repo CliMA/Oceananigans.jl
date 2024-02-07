@@ -242,9 +242,8 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
     return nothing
 end
 
-# If `n` is not in memory, getindex automatically sets the data in memory to have the `n`
-# as the second index (to allow interpolation with the previous time step)
-# If n is `1` or within the end the timeseries different rules apply
+# If `n` is not in memory, getindex automatically updates the data in memory
+# so that `n` is the first index available.
 function getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 

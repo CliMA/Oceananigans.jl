@@ -138,15 +138,15 @@ time_indices_in_memory(::TotallyInMemory, ti, times) = 1:length(times)
 ##### FieldTimeSeries
 #####
 
-mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ} <: AbstractField{LX, LY, LZ, G, ET, 4}
+mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, ET, 4}
                    data :: D
                    grid :: G
                 backend :: K
     boundary_conditions :: B
                 indices :: I
                   times :: χ
-                   path :: String
-                   name :: String
+                   path :: P
+                   name :: N
           time_indexing :: TI
     
     function FieldTimeSeries{LX, LY, LZ}(data::D,
@@ -175,10 +175,12 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ} <: Abstrac
         end
 
         TI = typeof(time_indexing)
+        P = typeof(path)
+        N = typeof(name)
 
-        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ}(data, grid, backend, bcs,
-                                                         indices, times, path, name,
-                                                         time_indexing)
+        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N}(data, grid, backend, bcs,
+                                                               indices, times, path, name,
+                                                               time_indexing)
     end
 end
 
@@ -520,7 +522,8 @@ const MAX_FTS_TUPLE_SIZE = 10
 fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE) |> collect
+    partitioned_indices = Iterators.partition(time_indices_in_memory(fts), MAX_FTS_TUPLE_SIZE)
+    partitioned_indices = collect(partitioned_indices)
     Ni = length(partitioned_indices)
 
     asyncmap(1:Ni) do i
