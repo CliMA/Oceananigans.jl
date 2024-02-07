@@ -13,7 +13,7 @@ using Oceananigans, Printf
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halos_of_paired_fields!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
@@ -200,7 +200,10 @@ for region in 1:number_of_regions(grid)
     end
 end
 
+#=
 fill_velocity_halos!((; u, v, w = nothing))
+=#
+fill_halos_of_paired_fields!((u, v))
 
 # Now, compute the vorticity.
 using Oceananigans.Utils
@@ -523,7 +526,10 @@ save("ζ₀.png", fig)
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
+    #=
     fill_velocity_halos!(sim.model.velocities)
+    =#
+    fill_halos_of_paired_fields!((sim.model.velocities.u, sim.model.velocities.v))
 
     u, v, _ = sim.model.velocities
     
@@ -554,7 +560,9 @@ simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_i
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
 
+#=
 run!(simulation)
+=#
 
 #=
 fig = panel_wise_visualization_with_halos(grid, u_fields[end])

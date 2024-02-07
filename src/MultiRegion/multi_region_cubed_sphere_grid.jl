@@ -215,21 +215,21 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
     #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
 
-    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
-    LXs₁    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
-    LYs₁    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
+    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
+    LXs₁    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
+    LYs₁    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
 
-    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
-    # LXs₁    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
-    # LYs₁    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
+    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :φᶠᶜᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
+    # LXs₁    = (:Center, :Face,   :Face,   :Face,  :Center, :Face,   :Face,   :Face, :Center, :Face,   :Face )
+    # LYs₁    = (:Center, :Center, :Center, :Face,  :Center, :Center, :Center, :Face, :Center, :Center, :Face )
 
-    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
-    LXs₂    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
-    LYs₂    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
+    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
+    LXs₂    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
+    LYs₂    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
 
-    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
-    # LXs₂    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
-    # LYs₂    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
+    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
+    # LXs₂    = (:Center, :Center, :Center, :Face,  :Center, :Center, :Center, :Face, :Center, :Center, :Face )
+    # LYs₂    = (:Center, :Face,   :Face,   :Face,  :Center, :Face,   :Face,   :Face, :Center, :Face,   :Face )
 
     for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
         expr = quote
@@ -245,12 +245,15 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
             if $(horizontal_topology) == FullyConnected
                 for _ in 1:2
+                    #=
                     fill_halo_regions!($(Symbol(field₁)))
                     fill_halo_regions!($(Symbol(field₂)))
 
                     @apply_regionally replace_horizontal_vector_halos!((; u = $(Symbol(field₁)),
                                                                           v = $(Symbol(field₂)),
                                                                           w = nothing), $(grid), signed=false)
+                    =#
+                    fill_halos_of_paired_fields!(($(Symbol(field₁)), $(Symbol(field₂))), false)
                 end
             end
 

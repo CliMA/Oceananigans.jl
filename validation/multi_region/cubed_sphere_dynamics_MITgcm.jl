@@ -13,7 +13,7 @@ using Oceananigans, Printf
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, xnode, ynode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halos_of_paired_fields!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
@@ -283,7 +283,8 @@ my_Coriolis = HydrostaticSphericalCoriolis( rotation_rate = Ω ,
                                             scheme = EnstrophyConserving())
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = VectorInvariant(vorticity_scheme = EnergyConserving(),
+                                                                         vertical_scheme = EnergyConserving()),
                                     free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
                                     coriolis = my_Coriolis,
                                     buoyancy = nothing)
@@ -378,7 +379,10 @@ for region in 1:number_of_regions(grid)
     end
 end
 
+#=
 fill_velocity_halos!((; u, v, w = nothing))
+=#
+fill_halos_of_paired_fields!((u, v))
 
 # Now, compute the vorticity.
 
@@ -435,8 +439,7 @@ for passes in 1:3
 end
 
 Δt =  600
-stop_time = 5*86400 #  5 days
-#stop_time = 10*86400 #  10 days, close to revolution period = 11.58 days
+stop_time = 10*86400 # 10 days, close to revolution period = 11.58 days
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -455,11 +458,6 @@ save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
 eta_fields = Field[]
 save_eta(sim) = push!(eta_fields, deepcopy(sim.model.free_surface.η))
-
-#=
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
-fill_velocity_halos!(simulation.model.velocities)
-=#
 
 ζ = Field{Face, Face, Center}(grid)
 
@@ -534,7 +532,10 @@ save("ζ₀.png", fig)
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
+    #=
     fill_velocity_halos!(sim.model.velocities)
+    =#
+    fill_halos_of_paired_fields!((sim.model.velocities.u, sim.model.velocities.v))
 
     u, v, _ = sim.model.velocities
 

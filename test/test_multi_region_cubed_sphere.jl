@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halos_of_paired_fields!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 
@@ -418,7 +418,11 @@ end
                 @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
             end
             =#
+
+            #=
             fill_velocity_halos!((; u, v, w = nothing))
+            =#
+            fill_halos_of_paired_fields!((u, v))
 
             Hx, Hy, Hz = halo_size(u.grid)
 
@@ -689,7 +693,11 @@ end
                 @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
                 =#
             end
+
+            #=
             fill_velocity_halos!((; u, v, w = nothing))
+            =#
+            fill_halos_of_paired_fields!((u, v))
 
             Hx, Hy, Hz = halo_size(ψ.grid)
             

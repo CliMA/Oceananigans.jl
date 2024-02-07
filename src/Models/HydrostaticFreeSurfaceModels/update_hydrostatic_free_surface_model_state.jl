@@ -13,6 +13,8 @@ using Oceananigans.TurbulenceClosures: compute_diffusivities!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
 
+using Oceananigans.MultiRegion: fill_halos_of_paired_fields!
+
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
@@ -30,6 +32,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 operation_corner_points = "default" # Choose operation_corner_points to be "default", "average", "CCW", or "CW".
 
+#=
 function fill_velocity_halos!(velocities)
     u, v, _ = velocities
     grid = u.grid
@@ -146,6 +149,7 @@ function fill_velocity_halos!(velocities)
 
     return nothing
 end
+=#
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
@@ -156,7 +160,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
 
+    #=
     fill_velocity_halos!(model.velocities)
+    =#
+    fill_halos_of_paired_fields!(model.velocities)
     # second_pass_of_fill_halo_regions!(grid, model.velocities, model.clock, fields(model))
 
     # @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
