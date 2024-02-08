@@ -113,7 +113,7 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
     interpolating_getindex(fts, i, j, k, time_index)
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
-    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
     
     @inbounds begin
         ψ₁ = getindex(fts, i, j, k, n₁)
@@ -234,7 +234,7 @@ update_field_time_series!(fts, n::Int) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = interpolating_time_indices(fts, t)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, t)
     return update_field_time_series!(fts, n₁, n₂)
 end
 
