@@ -437,10 +437,17 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
+@inline function metric_worksize(grid::LatitudeLongitudeGrid)
+    TX, TY, _ = topology(grid)
+    return (total_length(Face(), TX(), grid.Nx, grid.Hx) - 2, total_length(Face(), TY(), grid.Ny, grid.Hy) - 2)
+end
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶜᵃ) - 1 
+@inline function metric_worksize(grid::XRegularLLG)
+    _, TY, _ = topology(grid)
+    return total_length(Face(), TY(), grid.Ny, grid.Hy) - 2
+end
+
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
@@ -498,7 +505,9 @@ end
 
 function precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ) - 1)
+    _, TY, _ = topology(grid)
+
+    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, total_length(Face(), TY(), grid.Ny, grid.Hy) - 2)
     precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ)
     
     return Δyᶠᶜ, Δyᶜᶠ
