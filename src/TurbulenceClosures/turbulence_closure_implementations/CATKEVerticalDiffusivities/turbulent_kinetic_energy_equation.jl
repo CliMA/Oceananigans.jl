@@ -80,6 +80,7 @@ end
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, surface_buoyancy_flux, S², N², w★)
 
     # Convective dissipation length
+    ℓ⁻ = closure.minimum_dissipation_length_scale
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
@@ -97,6 +98,7 @@ end
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓᴰ = max(ℓ★, ℓʰ)
+    ℓᴰ = max(ℓ⁻, ℓᴰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓᴰ)
