@@ -53,7 +53,6 @@ struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD
     maximum_viscosity :: FT
     minimum_turbulent_kinetic_energy :: FT
     minimum_convective_buoyancy_flux :: FT
-    minimum_dissipation_length_scale :: FT
     negative_turbulent_kinetic_energy_damping_time_scale :: FT
 end
 
@@ -64,7 +63,6 @@ CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                              maximum_viscosity::FT,
                              minimum_turbulent_kinetic_energy::FT,
                              minimum_convective_buoyancy_flux::FT,
-                             minimum_dissipation_length_scale::FT,
                              negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT} =
     CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
                                               turbulent_kinetic_energy_equation,
@@ -73,7 +71,6 @@ CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                                               maximum_viscosity,
                                               minimum_turbulent_kinetic_energy,
                                               minimum_convective_buoyancy_flux,
-                                              minimum_dissipation_length_scale,
                                               negative_turbulent_kinetic_energy_damping_time_scale)
 
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
@@ -307,10 +304,12 @@ end
     Qᵇᵋ = closure.minimum_convective_buoyancy_flux
     Qᵇᵢⱼ = @inbounds Qᵇ[i, j, 1]
     Qᵇ⁺ = max(Qᵇᵋ, Qᵇᵢⱼ, Qᵇ★) # selects fastest (dominant) time-scale
-    t★ = (ℓᴰ^2 / Qᵇ⁺)^(1/3)
+    t★ = (ℓᴰ^2 / Qᵇ⁺)^(1/3) 
     ϵ = Δt / t★
 
-    @inbounds Qᵇ[i, j, 1] = (Qᵇᵢⱼ + ϵ * Qᵇ★) / (1 + ϵ)
+    Qᵇ⁺ᵢⱼ = (Qᵇᵢⱼ + ϵ * Qᵇ★) / (1 + ϵ)
+
+    @inbounds Qᵇ[i, j, 1] = ifelse(ϵ == Inf, Qᵇ★, Qᵇ⁺ᵢⱼ) # avoid problems when `ϵ == Inf` that leads to `NaN`
 end
 
 @kernel function _compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
