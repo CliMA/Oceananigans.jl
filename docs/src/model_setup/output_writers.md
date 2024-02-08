@@ -7,7 +7,7 @@
 2. [`JLD2OutputWriter`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 3. [`Checkpointer`](@ref) that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 
-The `Checkpointer` is discussed on a separate documentation page.
+The `Checkpointer` is discussed in detail on a separate [section](@ref checkpointing) of the documentation.
 
 ## Basic usage
 
