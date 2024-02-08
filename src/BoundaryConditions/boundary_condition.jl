@@ -108,12 +108,16 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 
 @inline getbc(bc, args...) = bc.condition(args...) # fallback!
 
-@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
-@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::BC{<:Open, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::BC{<:Flux, Nothing}, ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(::Nothing,             ::Integer, ::Integer, grid::AbstractGrid, args...) = zero(grid)
 
-@inline getbc(bc::BC{C, <:Number}, args...) where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) where C = @inbounds bc.condition[i, j]
+@inline getbc(bc::BC{<:Any, <:Number}, args...) = bc.condition
+@inline getbc(bc::BC{<:Any, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j]
+
+# Support for Ref boundary conditions
+const NumberRef = Base.RefValue{<:Number}
+@inline getbc(bc::BC{<:Any, <:NumberRef}, args...) = bc.condition[]
 
 Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
                                                                      Adapt.adapt(to, bc.condition))

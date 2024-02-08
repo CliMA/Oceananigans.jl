@@ -37,21 +37,23 @@ const c = Center()
 Return a new particle position if the position `(x, y, z)` lies in an immersed cell by
 bouncing the particle off the immersed boundary with a coefficient or `restitution`.
 """
-@inline function bounce_immersed_particle((x, y, z), grid, restitution, previous_particle_indices)
+@inline function bounce_immersed_particle((x, y, z), ibg, restitution, previous_particle_indices)
+    X = flattened_node((x, y, z), ibg)
+
     # Determine current particle cell
-    i, j, k = fractional_indices(x, y, z, (c, c, c), grid.underlying_grid)
+    i, j, k = fractional_indices(X, ibg.underlying_grid, (c, c, c))
     i = Base.unsafe_trunc(Int, i)
     j = Base.unsafe_trunc(Int, j)
     k = Base.unsafe_trunc(Int, k)
    
-    if immersed_cell(i, j, k, grid)
+    if immersed_cell(i, j, k, ibg)
         # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
        
-        if !immersed_cell(i⁻, j⁻, k⁻, grid)
+        if !immersed_cell(i⁻, j⁻, k⁻, ibg)
             # Left-right bounds of the previous, non-immersed cell
-            xᴿ, yᴿ, zᴿ = node(i⁻+1, j⁻+1, k⁻+1, grid, f, f, f)
-            xᴸ, yᴸ, zᴸ = node(i⁻,   j⁻,   k⁻,   grid, f, f, f)
+            xᴿ, yᴿ, zᴿ = node(i⁻+1, j⁻+1, k⁻+1, ibg, f, f, f)
+            xᴸ, yᴸ, zᴸ = node(i⁻,   j⁻,   k⁻,   ibg, f, f, f)
 
             Cʳ = restitution
             x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)    
@@ -71,8 +73,10 @@ Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, 
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
 @inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+    X = flattened_node((x, y, z), grid)
+
     # Obtain current particle indices
-    i, j, k = fractional_indices(x, y, z, (c, c, c), grid)
+    i, j, k = fractional_indices(X, grid, c, c, c)
     i = Base.unsafe_trunc(Int, i)
     j = Base.unsafe_trunc(Int, j)
     k = Base.unsafe_trunc(Int, k)
@@ -80,9 +84,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position
-    u = interpolate(velocities.u, f, c, c, grid, x, y, z)
-    v = interpolate(velocities.v, c, f, c, grid, x, y, z)
-    w = interpolate(velocities.w, c, c, f, grid, x, y, z)
+    u = interpolate(X, velocities.u, (f, c, c), grid)
+    v = interpolate(X, velocities.v, (c, f, c), grid)
+    w = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not

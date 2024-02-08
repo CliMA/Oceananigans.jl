@@ -65,7 +65,7 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_sz, halo, x, y, z =
+    topology, global_sz, halo, x, y, z = 
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     local_sz = local_size(arch, global_sz)
@@ -76,9 +76,9 @@ function RectilinearGrid(arch::Distributed,
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
-    TX = insert_connected_topology(TX, Rx, ri)
-    TY = insert_connected_topology(TY, Ry, rj)
-    TZ = insert_connected_topology(TZ, Rz, rk)
+    TX = insert_connected_topology(topology[1], Rx, ri)
+    TY = insert_connected_topology(topology[2], Ry, rj)
+    TZ = insert_connected_topology(topology[3], Rz, rk)
     
     xl = partition(x, nx, arch, 1)
     yl = partition(y, ny, arch, 2)
@@ -113,12 +113,13 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                radius = R_Earth,
                                halo = (1, 1, 1))
     
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-
-    local_sz = local_size(arch, (Nλ, Nφ, Nz))
+    topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
+                validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+                       
+    local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz
+    Hλ, Hφ, Hz = halo
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 

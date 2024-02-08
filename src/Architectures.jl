@@ -77,6 +77,10 @@ arch_array(::CPU, a::ROCArray) = Array(a)
 arch_array(::CUDAGPU, a::Array)   = CuArray(a)
 arch_array(::CUDAGPU, a::CuArray) = a
 arch_array(::ROCmGPU, a::Array)   = ROCArray(a)
+arch_array(::CPU, a::BitArray) = a
+arch_array(::CUDAGPU, a::BitArray) = CuArray(a)
+arch_array(::ROCmGPU, a::BitArray) = ROCArray(a)
+
 arch_array(::ROCmGPU, a::ROCArray) = a
 
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a

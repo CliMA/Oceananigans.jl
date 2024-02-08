@@ -23,7 +23,7 @@ end
                         isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
-Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
+[leith1968diffusion](@citet) and [Fox-Kemper2008](@citet) which has an eddy viscosity of the form
 
 ```julia
 νₑ = (C * Δᶠ)³ * √(|∇ₕ ζ|² + |∇ₕ ∂w/∂z|²)
@@ -36,6 +36,7 @@ and `C` is a model constant.
 
 Keyword arguments
 =================
+
   - `C`: Model constant
   - `C_Redi`: Coefficient for down-gradient tracer diffusivity for each tracer.
               Either a constant applied to every tracer, or a `NamedTuple` with fields
@@ -46,15 +47,13 @@ Keyword arguments
 
 References
 ==========
+
 Leith, C. E. (1968). "Diffusion Approximation for Two‐Dimensional Turbulence", The Physics of
     Fluids 11, 671. doi: 10.1063/1.1691968
 
 Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques improve mesoscale rich
-    ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., vol. 177, pp. 319–337.
+    ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., 177, pp. 319–337.
     doi: 10.1029/177GM19
-
-Pearson, B. et al. (2017) , "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
-    rich model", Ocean Modelling 115, 42-58. doi: 10.1016/j.ocemod.2017.05.007
 """
 TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSlopeIsopycnalTensor()) =
     TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model)
@@ -88,7 +87,7 @@ end
     u, v, w = velocities
     prefactor = (closure.C * Δᶠ(i, j, k, grid, closure))^3 
     dynamic_ν = sqrt(abs²_∇h_ζ(i, j, k, grid, u, v) + abs²_∇h_wz(i, j, k, grid, w))
-    
+
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
@@ -183,5 +182,3 @@ end
         + (C_Redi + C_GM) * R₃₂ * ∂y_c
                  + C_Redi * R₃₃ * ∂z_c)
 end
-
-

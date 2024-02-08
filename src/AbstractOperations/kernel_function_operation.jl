@@ -61,7 +61,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ```
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
-                                                 grid::G, 
+                                                 grid::G,
                                                  arguments...) where {LX, LY, LZ, K, G}
         T = eltype(grid)
         D = typeof(arguments)

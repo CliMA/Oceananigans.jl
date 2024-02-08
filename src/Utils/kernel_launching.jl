@@ -45,7 +45,8 @@ contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
-function heuristic_workgroup(Wx, Wy, Wz=nothing)
+# This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
+function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
 
     workgroup = Wx == 1 && Wy == 1 ?
 
@@ -62,7 +63,7 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
                     # Two-dimensional x-z slice models:
                     (min(256, Wx), 1) :
 
-                    # Three-dimensional models
+                    # Three-dimensional (and four-dimensional) models
                     (16, 16)
 
     return workgroup
@@ -171,15 +172,15 @@ using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
+import Base
+import Base: @pure
+import KernelAbstractions: get, expand
+
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
         new{S::Tuple{Vararg}}()
     end
 end
-
-import Base
-import Base: @pure
-import KernelAbstractions: get, expand
 
 @pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}() 
 @pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}() 
@@ -212,14 +213,16 @@ Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
 const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
+# TODO: maybe don't do this
 @inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
-        stride = size(workitems(ndrange), I)
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
         gidx = groupidx.I[I]
-        (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
+        (gidx - 1) * stride + idx.I[I] + ndrange.workitems[I]
     end
-    CartesianIndex(nI)
+    return CartesianIndex(nI)
 end
 
 using KernelAbstractions.NDIteration
@@ -227,9 +230,10 @@ using KernelAbstractions: ndrange, workgroupsize
 import KernelAbstractions: partition
 
 using KernelAbstractions: CompilerMetadata
-import KernelAbstractions: __ndrange
+import KernelAbstractions: __ndrange, __groupsize
 
 @inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
+@inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
 
 # Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
 const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
@@ -243,6 +247,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     if inrange !== nothing && inrange != get(static_ndrange)
         error("Static NDRange ($static_ndrange) and launch NDRange ($inrange) differ")
     end
+
     range, offsets = getrange(static_ndrange)
 
     if static_workgroupsize <: StaticSize
@@ -263,4 +268,3 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
-
