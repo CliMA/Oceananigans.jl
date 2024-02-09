@@ -243,9 +243,6 @@ function Distributed(child_architecture = CPU();
         if child_architecture == ROCmGPU()
             device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
             AMDGPU.device!(device_id)
-
-            # gpu_device = isnothing(devices) ? AMDGPU.devices(:gpu)[node_rank % length(AMDGPU.devices(:gpu))+1] : AMDGPU.devices(:gpu)[devices[node_rank+1]]
-            # AMDGPU.default_device!(gpu_device)
         end
     end
 
