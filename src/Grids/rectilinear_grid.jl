@@ -263,9 +263,9 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-        if (architecture isa CUDAGPU && !has_cuda()) || (architecture isa ROCmGPU && !has_rocm_gpu())
-            throw(ArgumentError("Cannot create a GPU grid. No CUDA or ROCm enabled GPU was detected!"))
-        end
+    if (architecture == CUDAGPU() && !has_cuda()) || (architecture == ROCmGPU() && !has_rocm_gpu())
+        throw(ArgumentError("Cannot create a GPU grid. No CUDA or ROCm enabled GPU was detected!"))
+    end
 
     topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 

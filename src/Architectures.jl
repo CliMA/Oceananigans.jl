@@ -26,16 +26,24 @@ variable `JULIA_NUM_THREADS` is set.
 struct CPU <: AbstractArchitecture end
 
 """
-    GPU <: AbstractArchitecture
+    CUDAGPU <: AbstractArchitecture
 
-Run Oceananigans on a single GPU.
+Run Oceananigans on a single Nvidia CUDA GPU.
 """
-struct GPU{D} <: AbstractArchitecture
-    device :: D
-end
+struct CUDAGPU <: AbstractArchitecture end
 
-const CUDAGPU = GPU{<:CUDA.CUDABackend}
-const ROCmGPU = GPU{<:AMDGPU.ROCBackend}
+"""
+    ROCmGPU <: AbstractArchitecture
+
+Run Oceananigans on a single AMD ROCm GPU.
+"""
+struct ROCmGPU <: AbstractArchitecture end
+
+# const CUDAGPU = GPU{<:CUDA.CUDABackend}
+# const ROCmGPU = GPU{<:AMDGPU.ROCBackend}
+
+# CUDAGPU() = GPU(CUDA.CUDABackend())
+# ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
 #####
 ##### These methods are extended in DistributedComputations.jl

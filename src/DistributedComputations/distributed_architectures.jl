@@ -236,11 +236,11 @@ function Distributed(child_architecture = CPU();
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        if child_architecture isa CUDAGPU
+        if child_architecture == CUDAGPU()
             device_id = isnothing(devices) ? node_rank % CUDA.ndevices() : devices[node_rank+1]
             CUDA.device!(device_id)
         end
-        if child_architecture isa ROCmGPU
+        if child_architecture == ROCmGPU()
             device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
             AMDGPU.device!(device_id)
 

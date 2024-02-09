@@ -6,7 +6,7 @@ using Oceananigans.Grids: AbstractGrid
 import Base: length
 
 const CUDAGPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
-const ROCmGPUVar = Union{ROCArray, HIPContext}
+const ROCmGPUVar = Union{ROCArray, HIPContext, Ptr}
 
 ##### 
 ##### Multi Region Object
