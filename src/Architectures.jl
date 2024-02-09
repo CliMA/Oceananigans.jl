@@ -30,7 +30,7 @@ struct CPU <: AbstractArchitecture end
 
 Run Oceananigans on a single Nvidia CUDA or AMD ROCm GPU.
 """
-struct GPU{D}
+struct GPU{D} <: AbstractArchitecture
     device :: D
 end
 
