@@ -552,13 +552,18 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
                     :Azᶜᶜ)
 
     arch = grid.architecture
-    
+
+    TX, TY, _ = topology(grid)
+
+    Tx = total_length(Center(), TX(), grid.Nx, grid.Hx)
+    Ty = total_length(Center(), TY(), grid.Ny, grid.Hy)
+
     if grid isa XRegularLLG
-        offsets     = grid.φᵃᶜᵃ.offsets[1]
-        metric_size = length(grid.φᵃᶜᵃ)
+        offsets = @inbounds grid.φᵃᶜᵃ.offsets[1]
+        metric_size = Ty
     else
-        offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-        metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
+        offsets = @inbounds (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
+        metric_size = (Tx, Ty)
     end
 
     for metric in grid_metrics
@@ -568,11 +573,13 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     end
 
     if grid isa YRegularLLG
-        Δyᶠᶜ = FT(0.0)
-        Δyᶜᶠ = FT(0.0)
+        Δyᶠᶜ = FT(0)
+        Δyᶜᶠ = FT(0)
     else
-        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
+        TY = topology(grid ,2)
+        Ty = total_length(Center(), TY(), grid.Ny, grid.Hy)
+        parentC = zeros(FT, Ty)
+        parentF = zeros(FT, Ty)
         Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
         Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
