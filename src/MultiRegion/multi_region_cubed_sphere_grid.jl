@@ -12,6 +12,8 @@ using Distances
 import Oceananigans.Grids: grid_name
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: second_pass_of_fill_halo_regions!
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
 """
@@ -245,14 +247,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
             if $(horizontal_topology) == FullyConnected
                 for _ in 1:2
-                    #=
-                    fill_halo_regions!($(Symbol(field₁)))
-                    fill_halo_regions!($(Symbol(field₂)))
-
-                    @apply_regionally replace_horizontal_vector_halos!((; u = $(Symbol(field₁)),
-                                                                          v = $(Symbol(field₂)),
-                                                                          w = nothing), $(grid), signed=false)
-                    =#
                     fill_paired_halo_regions!(($(Symbol(field₁)), $(Symbol(field₂))), false)
                 end
             end

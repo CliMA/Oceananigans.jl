@@ -13,14 +13,13 @@ using Oceananigans, Printf
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, xnode, ynode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_paired_halo_regions!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
+using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
 using DataDeps
 using JLD2
 using CairoMakie
-# to compute the vorticity:
 using Oceananigans.Utils
 using KernelAbstractions: @kernel, @index
 
@@ -29,8 +28,8 @@ include("cubed_sphere_visualization.jl")
 g = 10.
 
 Lz = 1000
-R  = 6370e3        # sphere's radius
-U  = 40.           # velocity scale
+R  = 6370e3 # sphere's radius
+U  = 40.    # velocity scale
 
 # Solid body and planet rotation:
 Ω_prime = U/R
@@ -58,9 +57,6 @@ else
         Nx, Ny, Nz = 32, 32, 1
         nHalo = 1 # For the purpose of comparing metrics, you may choose any integer from 1 to 4.
     else
-        #=
-        Nx, Ny, Nz = 5, 5, 1
-        =#
         Nx, Ny, Nz = 32, 32, 1
         nHalo = 1
     end
@@ -83,20 +79,6 @@ grid_Azᶜᶜᵃ = Field{Center, Center, Center}(grid)
 grid_Azᶠᶜᵃ = Field{Face,   Center, Center}(grid)
 grid_Azᶜᶠᵃ = Field{Center, Face,   Center}(grid)
 grid_Azᶠᶠᵃ = Field{Face,   Face,   Center}(grid)
-
-#=
-# Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
-for region in [1, 3, 5]
-    region_east = region + 1
-    grid[region].Δxᶠᶜᵃ[Nx+1,1-Hy:0] = reverse(grid[region_east].Δyᶜᶠᵃ[1:Hy,1])
-end
-
-# Fix the grid metric Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] for even panels.
-for region in [2, 4, 6]
-    region_west = region - 1
-    grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
-end
-=#
 
 for region in 1:6
     for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
@@ -380,10 +362,13 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     coriolis = my_Coriolis,
                                     buoyancy = nothing)
 
-# model.timestepper.χ = -0.5   # to switch to Forward Euler time-stepping (no AB-2)
+#=
+Specify
+model.timestepper.χ = -0.5
+to switch to Forward Euler time-stepping with no AB2 step.
+=#
 
-# Define Solid body rotation flow field:
-
+# Define the solid body rotation flow field.
 ψᵣ(λ, φ, z) = -R^2*Ω_prime*sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
 
 #=
@@ -427,52 +412,16 @@ for passes in 1:3
     fill_halo_regions!(ψ)
 end
 
-#=
-for region in 1:number_of_regions(grid)
-    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
-        #=
-        At the halo points, both latitude (φ) and longitude (λ) assume zero values, which in turn causes the
-        streamfunction (ψ) to be zero. Therefore, to guarantee accurate values at these points, we opted to reinstate
-        the fill halos for the streamfunction (ψ) after setting its interior values.
-        =#
-    end
-end
-=#
-
 u = XFaceField(grid)
 v = YFaceField(grid)
 
-#=
-c₁ = 1
-c₂ = 2
-=#
-
 for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
-        #=
-        # Debugging option 1
-        u[region][i, j, k] = 1
-        v[region][i, j, k] = 2
-        =#
-        #=
-        # Debugging option 2
-        x = xnode(i, j, k, grid[region], Center(), Face(), Center())
-        y = ynode(i, j, k, grid[region], Face(), Center(), Center())
-        u[region][i, j, k] = c₁ * y
-        v[region][i, j, k] = c₂ * x
-        # Specify v[region][i, j, k] = 0 for further debugging and turn off visualization of the initial meridional velocity field.
-        =#
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
     end
 end
 
-#=
-fill_velocity_halos!((; u, v, w = nothing))
-=#
 fill_paired_halo_regions!((u, v))
 
 # Now, compute the vorticity.
@@ -484,18 +433,6 @@ fill_paired_halo_regions!((u, v))
     @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 end
 
-#=
-Upon examining the initial vorticity field plot, it was noted that NANs unexpectedly appear along the halos.
-Additionally, the vorticity values along the boundaries are significantly higher compared to those within the domain's
-interior. These issues likely contribute to the instability in the solution. By replacing the line
-@inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-with
-@inbounds ζ[i, j, k] = (-1)^(i+j+k)*(i + j + k)
-we observe that all points are populated with finite values, effectively eliminating the appearance of NANs.
-Consequently, it's evident that the flaw lies within the vorticity computation function, which seems to be producing
-erroneous results.
-=#
-
 offset = -1 .* halo_size(grid)
 
 @apply_regionally begin
@@ -503,16 +440,11 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-# set Initial conditions
+# Set the initial conditions.
 
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 
 for region in 1:number_of_regions(grid)
-    #=
-    The following operations only set the interior values of the model velocities.
-    model.velocities.u[region] .= u[region]
-    model.velocities.v[region] .= v[region]
-    =#
 
     for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
         model.velocities.u[region][i,j,k] = u[region][i, j, k]
@@ -523,6 +455,7 @@ for region in 1:number_of_regions(grid)
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
         model.free_surface.η[region][i, j, k] = fac * ( (sind(φ))^2 -1/3 )
     end
+
 end
 
 for passes in 1:3
@@ -635,9 +568,6 @@ save("ζ₀.png", fig)
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
-    #=
-    fill_velocity_halos!(sim.model.velocities)
-    =#
     fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
 
     u, v, _ = sim.model.velocities

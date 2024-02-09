@@ -13,13 +13,10 @@ using Oceananigans, Printf
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_paired_halo_regions!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
+using Oceananigans.MultiRegion: getregion, number_of_regions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
-#=
-using Oceananigans.Diagnostics: accurate_cell_advection_timescale
-=#
 using DataDeps
 using JLD2
 using CairoMakie
@@ -52,9 +49,6 @@ else
         Nx, Ny, Nz = 32, 32, 1
         nHalo = 1 # For the purpose of comparing metrics, you may choose any integer from 1 to 4.
     else
-        #=
-        Nx, Ny, Nz = 5, 5, 1
-        =#
         Nx, Ny, Nz = 32, 32, 1
         nHalo = 1
     end
@@ -78,20 +72,6 @@ grid_Azᶠᶜᵃ = Field{Face,   Center, Center}(grid)
 grid_Azᶜᶠᵃ = Field{Center, Face,   Center}(grid)
 grid_Azᶠᶠᵃ = Field{Face,   Face,   Center}(grid)
 
-#=
-# Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
-for region in [1, 3, 5]
-    region_east = region + 1
-    grid[region].Δxᶠᶜᵃ[Nx+1,1-Hy:0] = reverse(grid[region_east].Δyᶜᶠᵃ[1:Hy,1])
-end
-
-# Fix the grid metric Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] for even panels.
-for region in [2, 4, 6]
-    region_west = region - 1
-    grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
-end
-=#
-
 for region in 1:6
     for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
         grid_λᶜᶜᵃ[region][i, j, k]  = grid[region].λᶜᶜᵃ[i, j]
@@ -110,11 +90,6 @@ end
 ## Model setup
 
 horizontal_closure = nothing
-#=
-Switch between horizontal_closure = HorizontalScalarDiffusivity(ν = 1e+4) and horizontal_closure = nothing. Here, ν is 
-the horizontal viscosity for the momentum equations and κ is the horizontal diffusivity for the continuity equation. 
-Both are in [m² s⁻¹].
-=#
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = nothing,
@@ -201,24 +176,9 @@ for region in 1:number_of_regions(grid)
     for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
-        #=
-        u[region][i, j, k] = i + Nx * (j - 1)
-        v[region][i, j, k] = -100 - u[region][i, j, k]
-        =#
-        #=
-        u[region][i, j, k] = 100*region + (i + Nx * (j - 1))
-        v[region][i, j, k] = -u[region][i, j, k]
-        =#
-        #=
-        u[region][i, j, k] = Nx*Ny*(region - 1) + (i + Nx * (j - 1))
-        v[region][i, j, k] = -u[region][i, j, k]
-        =#
     end
 end
 
-#=
-fill_velocity_halos!((; u, v, w = nothing))
-=#
 fill_paired_halo_regions!((u, v))
 
 # Now, compute the vorticity.
@@ -543,10 +503,6 @@ if !isnothing(model.closure)
     @info "Diffusive CFL = $diffusive_cfl"
 end
 
-#=
-cfl = CFL(Δt, accurate_cell_advection_timescale)
-=#
-
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
@@ -655,9 +611,6 @@ save("ζ₀.png", fig)
 function save_vorticity(sim)
     Hx, Hy, Hz = halo_size(grid)
 
-    #=
-    fill_velocity_halos!(sim.model.velocities)
-    =#
     fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
 
     u, v, _ = sim.model.velocities

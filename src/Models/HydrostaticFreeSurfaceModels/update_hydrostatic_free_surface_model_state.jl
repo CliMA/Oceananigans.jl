@@ -13,8 +13,6 @@ using Oceananigans.TurbulenceClosures: compute_diffusivities!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
 
-using Oceananigans.MultiRegion: fill_paired_halo_regions!
-
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
@@ -32,21 +30,20 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 operation_corner_points = "default" # Choose operation_corner_points to be "default", "average", "CCW", or "CW".
 
-#=
-function fill_velocity_halos!(velocities)
-    u, v, _ = velocities
-    grid = u.grid
+function fill_paired_halo_regions!(fields, signed=true)
+    field₁, field₂ = fields
+    grid = field₁.grid
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
-    plmn = -1
+    signed ? plmn = -1 : plmn = 1
 #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
     Nc = Nx ; Hc = Hx
 
 #=
     for passes in 1:3
-        fill_halo_regions!(u)
-        fill_halo_regions!(v)
-        @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
+        fill_halo_regions!(field₁)
+        fill_halo_regions!(field₂)
+        @apply_regionally replace_horizontal_vector_halos!((; field₁, field₂, w = nothing), grid)
     end
 =#
 
@@ -60,12 +57,12 @@ function fill_velocity_halos!(velocities)
         region_W = mod(region + 3, 6) + 1
         region_S = mod(region + 4, 6) + 1
         for k in -Hz+1:Nz+Hz
-        #- E + W Halo for U:
-            u[region][Nc+1:Nc+Hc, 1:Nc, k] .=     u[region_E][1:Hc, 1:Nc, k]
-            u[region][1-Hc:0, 1:Nc, k] .= reverse(v[region_W][1:Nc, Nc+1-Hc:Nc, k],dims=1)'
-        #- N + S Halo for V:
-            v[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(u[region_N][1:Hc, 1:Nc, k],dims=2)'
-            v[region][1:Nc, 1-Hc:0, k] .=             v[region_S][1:Nc, Nc+1-Hc:Nc, k]
+        #- E + W Halo for field₁:
+            field₁[region][Nc+1:Nc+Hc, 1:Nc, k] .=     field₁[region_E][1:Hc, 1:Nc, k]
+            field₁[region][1-Hc:0, 1:Nc, k] .= reverse(field₂[region_W][1:Nc, Nc+1-Hc:Nc, k],dims=1)'
+        #- N + S Halo for field₂:
+            field₂[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field₁[region_N][1:Hc, 1:Nc, k],dims=2)'
+            field₂[region][1:Nc, 1-Hc:0, k] .=             field₂[region_S][1:Nc, Nc+1-Hc:Nc, k]
         end
       else
         #- even face number (2,4,6):
@@ -74,12 +71,12 @@ function fill_velocity_halos!(velocities)
         region_W = mod(region + 4, 6) + 1
         region_S = mod(region + 3, 6) + 1
         for k in -Hz+1:Nz+Hz
-        #- E + W Halo for U:
-            u[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(v[region_E][1:Nc, 1:Hc, k],dims=1)'
-            u[region][1-Hc:0, 1:Nc, k] .=             u[region_W][Nc+1-Hc:Nc,  1:Nc, k]
-        #- N + S Halo for V:
-            v[region][1:Nc, Nc+1:Nc+Hc, k] .=     v[region_N][1:Nc, 1:Hc, k]
-            v[region][1:Nc, 1-Hc:0, k] .= reverse(u[region_S][Nc+1-Hc:Nc, 1:Nc, k],dims=2)'
+        #- E + W Halo for field₁:
+            field₁[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field₂[region_E][1:Nc, 1:Hc, k],dims=1)'
+            field₁[region][1-Hc:0, 1:Nc, k] .=             field₁[region_W][Nc+1-Hc:Nc,  1:Nc, k]
+        #- N + S Halo for field₂:
+            field₂[region][1:Nc, Nc+1:Nc+Hc, k] .=     field₂[region_N][1:Nc, 1:Hc, k]
+            field₂[region][1:Nc, 1-Hc:0, k] .= reverse(field₁[region_S][Nc+1-Hc:Nc, 1:Nc, k],dims=2)'
         end
       end
 
@@ -97,12 +94,12 @@ function fill_velocity_halos!(velocities)
         region_W = mod(region + 3, 6) + 1
         region_S = mod(region + 4, 6) + 1
         for k in -Hz+1:Nz+Hz
-        #- N + S Halo for U:
-            u[region][iMn:iMx, Nc+1:Nc+Hc, k] .= reverse(v[region_N][1:Hc, iMn:iMx, k],dims=2)'*plmn
-            u[region][iMn:iMx, 1-Hc:0, k] .=             u[region_S][iMn:iMx, Nc+1-Hc:Nc, k]
-        #- E + W Halo for V:
-            v[region][Nc+1:Nc+Hc, iMn:iMx, k] .=     v[region_E][1:Hc, iMn:iMx, k]
-            v[region][1-Hc:0, iMn:iMx, k] .= reverse(u[region_W][iMn:iMx, Nc+1-Hc:Nc, k],dims=1)'*plmn
+        #- N + S Halo for field₁:
+            field₁[region][iMn:iMx, Nc+1:Nc+Hc, k] .= reverse(field₂[region_N][1:Hc, iMn:iMx, k],dims=2)'*plmn
+            field₁[region][iMn:iMx, 1-Hc:0, k] .=             field₁[region_S][iMn:iMx, Nc+1-Hc:Nc, k]
+        #- E + W Halo for field₂:
+            field₂[region][Nc+1:Nc+Hc, iMn:iMx, k] .=     field₂[region_E][1:Hc, iMn:iMx, k]
+            field₂[region][1-Hc:0, iMn:iMx, k] .= reverse(field₁[region_W][iMn:iMx, Nc+1-Hc:Nc, k],dims=1)'*plmn
         end
       else
         #- even face number (2,4,6):
@@ -111,45 +108,44 @@ function fill_velocity_halos!(velocities)
         region_W = mod(region + 4, 6) + 1
         region_S = mod(region + 3, 6) + 1
         for k in -Hz+1:Nz+Hz
-        #- N + S Halo for U:
-            u[region][iMn:iMx, Nc+1:Nc+Hc, k] .=     u[region_N][iMn:iMx, 1:Hc, k]
-            u[region][iMn:iMx, 1-Hc:0, k] .= reverse(v[region_S][Nc+1-Hc:Nc, iMn:iMx, k],dims=2)'*plmn
-        #- E + W Halo for V:
-            v[region][Nc+1:Nc+Hc, iMn:iMx, k] .= reverse(u[region_E][iMn:iMx, 1:Hc, k],dims=1)'*plmn
-            v[region][1-Hc:0, iMn:iMx, k] .=             v[region_W][Nc+1-Hc:Nc, iMn:iMx, k]
+        #- N + S Halo for field₁:
+            field₁[region][iMn:iMx, Nc+1:Nc+Hc, k] .=     field₁[region_N][iMn:iMx, 1:Hc, k]
+            field₁[region][iMn:iMx, 1-Hc:0, k] .= reverse(field₂[region_S][Nc+1-Hc:Nc, iMn:iMx, k],dims=2)'*plmn
+        #- E + W Halo for field₂:
+            field₂[region][Nc+1:Nc+Hc, iMn:iMx, k] .= reverse(field₁[region_E][iMn:iMx, 1:Hc, k],dims=1)'*plmn
+            field₂[region][1-Hc:0, iMn:iMx, k] .=             field₂[region_W][Nc+1-Hc:Nc, iMn:iMx, k]
         end
       end
 
     end
 
-    #-- Add one valid uVel,vVel value next to the corner, that allows
+    #-- Add one valid field₁, field₂ value next to the corner, that allows
     #   to compute vorticity on a wider stencil (e.g., vort3(0,1) & (1,0))
     for region in 1:6
-        #println("region=",region,", size(U)=",size(u[region][:,:,1]),
-        #                         ", size(V)=",size(v[region][:,:,1]) )
+        #println("region=",region,", size(field₁)=",size(field₁[region][:,:,1]),
+        #                         ", size(field₂)=",size(field₂[region][:,:,1]) )
         for k in -Hz+1:Nz+Hz
             #- SW corner:
-            u[region][1-Hc:0, 0, k] .= v[region][1, 1-Hc:0, k]
-            v[region][0, 1-Hc:0, k] .= u[region][1-Hc:0, 1, k]'
+            field₁[region][1-Hc:0, 0, k] .= field₂[region][1, 1-Hc:0, k]
+            field₂[region][0, 1-Hc:0, k] .= field₁[region][1-Hc:0, 1, k]'
         end
         if Hc > 1
           for k in -Hz+1:Nz+Hz
             #- NW corner:
-            u[region][2-Hc:0, Nc+1, k] .= reverse(v[region][1, Nc+2:Nc+Hc, k])*plmn
-            v[region][0, Nc+2:Nc+Hc, k] .= reverse(u[region][2-Hc:0,  Nc,  k])'*plmn
+            field₁[region][2-Hc:0, Nc+1, k] .= reverse(field₂[region][1, Nc+2:Nc+Hc, k])*plmn
+            field₂[region][0, Nc+2:Nc+Hc, k] .= reverse(field₁[region][2-Hc:0,  Nc,  k])'*plmn
             #- SE corner:
-            u[region][Nc+2:Nc+Hc, 0, k] .= reverse(v[region][ Nc,  2-Hc:0, k])*plmn
-            v[region][Nc+1, 2-Hc:0, k] .= reverse(u[region][Nc+2:Nc+Hc, 1, k])'*plmn
+            field₁[region][Nc+2:Nc+Hc, 0, k] .= reverse(field₂[region][ Nc,  2-Hc:0, k])*plmn
+            field₂[region][Nc+1, 2-Hc:0, k] .= reverse(field₁[region][Nc+2:Nc+Hc, 1, k])'*plmn
             #- NE corner:
-            u[region][Nc+2:Nc+Hc, Nc+1, k] .= v[region][Nc, Nc+2:Nc+Hc, k]
-            v[region][Nc+1, Nc+2:Nc+Hc, k] .= u[region][Nc+2:Nc+Hc, Nc, k]'
+            field₁[region][Nc+2:Nc+Hc, Nc+1, k] .= field₂[region][Nc, Nc+2:Nc+Hc, k]
+            field₂[region][Nc+1, Nc+2:Nc+Hc, k] .= field₁[region][Nc+2:Nc+Hc, Nc, k]'
           end
         end
     end
 
     return nothing
 end
-=#
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
@@ -160,9 +156,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
 
-    #=
-    fill_velocity_halos!(model.velocities)
-    =#
     fill_paired_halo_regions!(model.velocities)
     # second_pass_of_fill_halo_regions!(grid, model.velocities, model.clock, fields(model))
 

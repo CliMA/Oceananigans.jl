@@ -3,9 +3,9 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.BoundaryConditions: fill_halo_regions!, fill_paired_halo_regions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 
 function read_big_endian_coordinates(filename, Ninterior = 32, Nhalo = 1)
     # Open the file in binary read mode
@@ -410,18 +410,6 @@ end
             set!(u, u_data)
             set!(v, v_data)
             
-            #=
-            # We need 2 halo filling passes for velocities at the moment.
-            for _ in 1:2
-                fill_halo_regions!(u)
-                fill_halo_regions!(v)
-                @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
-            end
-            =#
-
-            #=
-            fill_velocity_halos!((; u, v, w = nothing))
-            =#
             fill_paired_halo_regions!((u, v))
 
             Hx, Hy, Hz = halo_size(u.grid)
@@ -687,16 +675,8 @@ end
 
             for _ in 1:2
                 fill_halo_regions!(ψ)
-                #=
-                fill_halo_regions!(u)
-                fill_halo_regions!(v)
-                @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
-                =#
             end
 
-            #=
-            fill_velocity_halos!((; u, v, w = nothing))
-            =#
             fill_paired_halo_regions!((u, v))
 
             Hx, Hy, Hz = halo_size(ψ.grid)
