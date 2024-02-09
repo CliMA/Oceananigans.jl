@@ -63,7 +63,7 @@ end
 
 @inline getdevice(a)               = nothing
 @inline getdevice(cu::CUDAGPUVar)  = CUDA.device(cu)
-@inline getdevice(roc::ROCmGPUVar)  = AMDGPU.device(roc)
+@inline getdevice(roc::ROCmGPUVar) = AMDGPU.device(roc)
 @inline getdevice(oa::OffsetArray) = getdevice(oa.parent)
 
 @inline switch_device!(a)                        = nothing
