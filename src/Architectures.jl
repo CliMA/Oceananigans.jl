@@ -99,8 +99,7 @@ arch_array(::GPU{D}, a::Number) where D = a
 arch_array(::GPU{D}, a::Function) where D = a
 
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::CUDAGPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::ROCmGPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU{D}, a::OffsetArray) where D = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::CUDAGPU) = CPU()
