@@ -106,8 +106,7 @@ cpu_architecture(::CUDAGPU) = CPU()
 cpu_architecture(::ROCmGPU) = CPU()
 
 unified_array(::CPU, a) = a
-unified_array(::CUDAGPU, a) = a
-unified_array(::ROCmGPU, a) = a
+unified_array(::GPU{D}, a) where D = a
 
 function unified_array(::CUDAGPU, arr::AbstractArray) 
     buf = CUDA.Mem.alloc(CUDA.Mem.Unified, sizeof(arr))
