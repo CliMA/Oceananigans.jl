@@ -3,19 +3,19 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halos_of_paired_fields!
+using Oceananigans.BoundaryConditions: fill_halo_regions!, fill_paired_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 
-function read_big_endian_coordinates(filename, nInterior = 32, nHalo = 1)
+function read_big_endian_coordinates(filename, Ninterior = 32, Nhalo = 1)
     # Open the file in binary read mode
     open(filename, "r") do io
         # Calculate the number of Float64 values in the file
         n = filesize(io) ÷ sizeof(Float64)
 
-        # Ensure n = (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
-        if n != (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
-            error("File size does not match the expected size for one (nInterior + 2 * nHalo) x (nInterior + 2 * nHalo) field")
+        # Ensure n = (Ninterior + 2 * Nhalo) * (Ninterior + 2 * Nhalo)
+        if n != (Ninterior + 2 * Nhalo) * (Ninterior + 2 * Nhalo)
+            error("File size does not match the expected size for one (Ninterior + 2 * Nhalo) x (Ninterior + 2 * Nhalo) field")
         end
 
         # Initialize an array to hold the data
@@ -25,7 +25,7 @@ function read_big_endian_coordinates(filename, nInterior = 32, nHalo = 1)
         read!(io, data)
 
         # Convert from big-endian to native endianness
-        native_data = reshape(bswap.(data), (nInterior + 2 * nHalo), (nInterior + 2 * nHalo))
+        native_data = reshape(bswap.(data), (Ninterior + 2 * Nhalo), (Ninterior + 2 * Nhalo))
 
         return native_data
     end
@@ -422,7 +422,7 @@ end
             #=
             fill_velocity_halos!((; u, v, w = nothing))
             =#
-            fill_halos_of_paired_fields!((u, v))
+            fill_paired_halo_regions!((u, v))
 
             Hx, Hy, Hz = halo_size(u.grid)
 
@@ -668,7 +668,7 @@ end
             grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1, horizontal_direction_halo = 3)
             
             if use_JMC_grid_metrics
-                nHalo = grid.Hx
+                Nhalo = grid.Hx
             end
 
             ψ = Field{Face, Face, Center}(grid)
@@ -697,7 +697,7 @@ end
             #=
             fill_velocity_halos!((; u, v, w = nothing))
             =#
-            fill_halos_of_paired_fields!((u, v))
+            fill_paired_halo_regions!((u, v))
 
             Hx, Hy, Hz = halo_size(ψ.grid)
             
@@ -857,18 +857,18 @@ end
 
             if use_JMC_grid_metrics
                 for region in 1:6
-                    grid[region].λᶜᶜᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].λᶠᶠᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].φᶜᶜᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].φᶠᶠᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Δxᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Δxᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Δyᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Δyᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dYc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Azᶜᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Azᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAw.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Azᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAs.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-                    grid[region].Azᶠᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAz.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+                    grid[region].λᶜᶜᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].λᶠᶠᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].φᶜᶜᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].φᶠᶠᵃ[:,:]  =  read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Δxᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Δxᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Δyᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Δyᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/dYc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Azᶜᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Azᶠᶜᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAw.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Azᶜᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAs.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+                    grid[region].Azᶠᶠᵃ[:,:] = read_big_endian_coordinates("../validation/multi_region/grid_cs32+ol4/rAz.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
                 end
             end
 

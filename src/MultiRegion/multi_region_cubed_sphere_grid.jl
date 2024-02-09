@@ -253,7 +253,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                                           v = $(Symbol(field₂)),
                                                                           w = nothing), $(grid), signed=false)
                     =#
-                    fill_halos_of_paired_fields!(($(Symbol(field₁)), $(Symbol(field₂))), false)
+                    fill_paired_halo_regions!(($(Symbol(field₁)), $(Symbol(field₂))), false)
                 end
             end
 

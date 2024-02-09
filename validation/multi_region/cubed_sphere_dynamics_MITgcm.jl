@@ -13,7 +13,7 @@ using Oceananigans, Printf
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, xnode, ynode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halos_of_paired_fields!
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_paired_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_velocity_halos!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
@@ -473,7 +473,7 @@ end
 #=
 fill_velocity_halos!((; u, v, w = nothing))
 =#
-fill_halos_of_paired_fields!((u, v))
+fill_paired_halo_regions!((u, v))
 
 # Now, compute the vorticity.
 
@@ -638,7 +638,7 @@ function save_vorticity(sim)
     #=
     fill_velocity_halos!(sim.model.velocities)
     =#
-    fill_halos_of_paired_fields!((sim.model.velocities.u, sim.model.velocities.v))
+    fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
 
     u, v, _ = sim.model.velocities
 

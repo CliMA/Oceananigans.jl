@@ -336,7 +336,7 @@ function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, buf
     return nothing
 end
 
-function fill_halos_of_paired_fields!(fields, signed=true)
+function fill_paired_halo_regions!(fields, signed=true)
     field₁, field₂ = fields
     grid = field₁.grid
     Nx, Ny, Nz = size(grid)
