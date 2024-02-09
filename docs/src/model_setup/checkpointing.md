@@ -42,18 +42,19 @@ For more advanced options and features, see [`Checkpointer`](@ref).
 ## Picking up a simulation from a checkpoint file
 
 Picking up a simulation from a checkpoint requires the original script that was used to generate
-the checkpoint data. Change the first instance of [`run!`](@ref) in the script to take `pickup=true`:
+the checkpoint data. Change the first instance of [`run!`](@ref) in the script to take `pickup=true`.
+
+When `pickup=true` is provided to `run!` then it finds the latest checkpoint file in the current working
+directory, loads prognostic fields and their tendencies from file, resets the model clock and iteration,
+to the clock time and iteration that the checkpoint corresponds to, and updates the model auxiliary state.
+After that, the time-stepping loop. In this simple example, although the simulation run up to iteration 8,
+the latest checkpoint is associated with iteration 5.
 
 ```@repl checkpointing
 simulation.stop_iteration = 12
 
 run!(simulation, pickup=true)
 ```
-
-which finds the latest checkpoint file in the current working directory (in this trivial case,
-this is the checkpoint associated with iteration 5), loads prognostic fields and their tendencies
-from file, resets the model clock and iteration, and updates the model auxiliary state before
-starting the time-stepping loop.
 
 Use `pickup=iteration`, where `iteration` is an `Integer`, to pick up from a specific iteration.
 Or, use `pickup=filepath`, where `filepath` is a string, to pickup from a specific file located
