@@ -94,15 +94,10 @@ arch_array(::CPU, ::Nothing)   = nothing
 arch_array(::CPU, a::Number)   = a
 arch_array(::CPU, a::Function) = a
 
-arch_array(::CUDAGPU, a::AbstractRange) = a
-arch_array(::CUDAGPU, ::Nothing)   = nothing
-arch_array(::CUDAGPU, a::Number)   = a
-arch_array(::CUDAGPU, a::Function) = a
-
-arch_array(::ROCmGPU, a::AbstractRange) = a
-arch_array(::ROCmGPU, ::Nothing)   = nothing
-arch_array(::ROCmGPU, a::Number)   = a
-arch_array(::ROCmGPU, a::Function) = a
+arch_array(::GPU{D}, a::AbstractRange) where D = a
+arch_array(::GPU{D}, ::Nothing) where D = nothing
+arch_array(::GPU{D}, a::Number) where D = a
+arch_array(::GPU{D}, a::Function) where D = a
 
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 arch_array(arch::CUDAGPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
