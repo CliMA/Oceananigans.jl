@@ -117,7 +117,7 @@ struct DiagonallyDominantThreeDimensionalPreconditioner end
 
     fill_halo_regions!(r)
 
-    launch!(arch, grid, :xyz, _MITgcm_precondition!,
+    launch!(arch, grid, :xyz, _DiagonallyDominantThreeDimensional_precondition!,
             P_r, grid, r)
 
     return P_r
@@ -146,7 +146,7 @@ end
                                                     2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
                                                     2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
 
-@kernel function _MITgcm_precondition!(P_r, grid, r)
+@kernel function _DiagonallyDominantThreeDimensional_precondition!(P_r, grid, r)
     i, j, k = @index(Global, NTuple)
     @inbounds P_r[i, j, k] = heuristic_inverse_times_residuals(i, j, k, r, grid)
 end
