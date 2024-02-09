@@ -67,10 +67,18 @@ end
 
 Hx, Hy, Hz = halo_size(grid)
 
-grid_Δxᶠᶜᵃ = Field{Face, Center, Center}(grid)
-grid_Δyᶜᶠᵃ = Field{Center, Face, Center}(grid)
-grid_Azᶠᶠᵃ = Field{Face, Face, Center}(grid)
+grid_λᶜᶜᵃ  = Field{Center, Center, Center}(grid)
+grid_λᶠᶠᵃ  = Field{Face,   Face,   Center}(grid)
+grid_φᶜᶜᵃ  = Field{Center, Center, Center}(grid)
+grid_φᶠᶠᵃ  = Field{Face,   Face,   Center}(grid)
+grid_Δxᶠᶜᵃ = Field{Face,   Center, Center}(grid)
+grid_Δyᶜᶠᵃ = Field{Center, Face,   Center}(grid)
+grid_Azᶜᶜᵃ = Field{Center, Center, Center}(grid)
+grid_Azᶠᶜᵃ = Field{Face,   Center, Center}(grid)
+grid_Azᶜᶠᵃ = Field{Center, Face,   Center}(grid)
+grid_Azᶠᶠᵃ = Field{Face,   Face,   Center}(grid)
 
+#=
 # Fix the grid metric Δxᶠᶜᵃ[Nx+1,1-Hy:0] for odd panels.
 for region in [1, 3, 5]
     region_east = region + 1
@@ -82,11 +90,19 @@ for region in [2, 4, 6]
     region_west = region - 1
     grid[region].Δxᶠᶜᵃ[0,Ny+1:Ny+Hy] = reverse(grid[region_west].Δyᶜᶠᵃ[Nx-Hy+1:Nx,Ny])
 end
+=#
 
 for region in 1:6
     for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
+        grid_λᶜᶜᵃ[region][i, j, k]  = grid[region].λᶜᶜᵃ[i, j]
+        grid_λᶠᶠᵃ[region][i, j, k]  = grid[region].λᶠᶠᵃ[i, j]
+        grid_φᶜᶜᵃ[region][i, j, k]  = grid[region].φᶜᶜᵃ[i, j]
+        grid_φᶠᶠᵃ[region][i, j, k]  = grid[region].φᶠᶠᵃ[i, j]
         grid_Δxᶠᶜᵃ[region][i, j, k] = grid[region].Δxᶠᶜᵃ[i, j]
         grid_Δyᶜᶠᵃ[region][i, j, k] = grid[region].Δyᶜᶠᵃ[i, j]
+        grid_Azᶜᶜᵃ[region][i, j, k] = Azᶜᶜᶜ(i, j, k, grid[region])
+        grid_Azᶠᶜᵃ[region][i, j, k] = Azᶠᶜᶜ(i, j, k, grid[region])
+        grid_Azᶜᶠᵃ[region][i, j, k] = Azᶜᶠᶜ(i, j, k, grid[region])
         grid_Azᶠᶠᵃ[region][i, j, k] = Azᶠᶠᶜ(i, j, k, grid[region])
     end
 end
@@ -225,6 +241,30 @@ end
 
 # Plot the grid metrics.
 
+fig = panel_wise_visualization_with_halos(grid, grid_λᶜᶜᵃ)
+save("grid_λᶜᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_λᶜᶜᵃ)
+save("grid_λᶜᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_λᶠᶠᵃ)
+save("grid_λᶠᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_λᶠᶠᵃ)
+save("grid_λᶠᶠᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_φᶜᶜᵃ)
+save("grid_φᶜᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_φᶜᶜᵃ)
+save("grid_φᶜᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_φᶠᶠᵃ)
+save("grid_φᶠᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_φᶠᶠᵃ)
+save("grid_φᶠᶠᵃ.png", fig)
+
 fig = panel_wise_visualization_with_halos(grid, grid_Δxᶠᶜᵃ)
 save("grid_Δxᶠᶜᵃ_with_halos.png", fig)
 
@@ -236,6 +276,24 @@ save("grid_Δyᶜᶠᵃ_with_halos.png", fig)
 
 fig = panel_wise_visualization(grid, grid_Δyᶜᶠᵃ)
 save("grid_Δyᶜᶠᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Azᶜᶜᵃ)
+save("grid_Azᶜᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Azᶜᶜᵃ)
+save("grid_Azᶜᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶜᵃ)
+save("grid_Azᶠᶜᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Azᶠᶜᵃ)
+save("grid_Azᶠᶜᵃ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, grid_Azᶜᶠᵃ)
+save("grid_Azᶜᶠᵃ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, grid_Azᶜᶠᵃ)
+save("grid_Azᶜᶠᵃ.png", fig)
 
 fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶠᵃ)
 save("grid_Azᶠᶠᵃ_with_halos.png", fig)
@@ -271,6 +329,10 @@ end
 
 jldopen("new_code_metrics.jld2", "w") do file
     for region in 1:6
+        file["λᶜᶜᵃ/" * string(region)]  =  grid[region].λᶜᶜᵃ
+        file["λᶠᶠᵃ/" * string(region)]  =  grid[region].λᶠᶠᵃ
+        file["φᶜᶜᵃ/" * string(region)]  =  grid[region].φᶜᶜᵃ
+        file["φᶠᶠᵃ/" * string(region)]  =  grid[region].φᶠᶠᵃ
         file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
         file["Δxᶜᶠᵃ/" * string(region)] = grid[region].Δxᶜᶠᵃ
         file["Δyᶠᶜᵃ/" * string(region)] = grid[region].Δyᶠᶜᵃ
@@ -286,10 +348,10 @@ compare_old_and_new_code_metrics = true
 
 if compare_old_and_new_code_metrics
 
-    old_xᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_xᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_yᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_yᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_λᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_λᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_φᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    old_φᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
@@ -299,6 +361,10 @@ if compare_old_and_new_code_metrics
     old_Azᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     old_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     
+    new_λᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_λᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_φᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
+    new_φᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
     new_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     new_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
     new_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
@@ -310,10 +376,10 @@ if compare_old_and_new_code_metrics
 
     if old_code_metrics_JMC
         for region in 1:6
-            old_xᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_xᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/XG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_yᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
-            old_yᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/YG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_λᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_λᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_φᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yC.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
+            old_φᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yG.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δxᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
             old_Δyᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-nHalo:end-4+nHalo,1+4-nHalo:end-4+nHalo]
@@ -337,14 +403,14 @@ if compare_old_and_new_code_metrics
         end
     end
 
-    overwrite_grid_metrics_from_old_code = true
+    overwrite_grid_metrics_from_old_code = false
     if overwrite_grid_metrics_from_old_code
         if old_code_metrics_JMC
             for region in 1:6
-                grid[region].λᶜᶜᵃ[:,:]  =  old_xᶜᶜᵃ_parent[:, :, region]
-                grid[region].λᶠᶠᵃ[:,:]  =  old_xᶠᶠᵃ_parent[:, :, region]
-                grid[region].φᶜᶜᵃ[:,:]  =  old_yᶜᶜᵃ_parent[:, :, region]
-                grid[region].φᶠᶠᵃ[:,:]  =  old_yᶠᶠᵃ_parent[:, :, region]
+                grid[region].λᶜᶜᵃ[:,:]  =  old_λᶜᶜᵃ_parent[:, :, region]
+                grid[region].λᶠᶠᵃ[:,:]  =  old_λᶠᶠᵃ_parent[:, :, region]
+                grid[region].φᶜᶜᵃ[:,:]  =  old_φᶜᶜᵃ_parent[:, :, region]
+                grid[region].φᶠᶠᵃ[:,:]  =  old_φᶠᶠᵃ_parent[:, :, region]
                 grid[region].Δxᶠᶜᵃ[:,:] = old_Δxᶠᶜᵃ_parent[:, :, region]
                 grid[region].Δxᶜᶠᵃ[:,:] = old_Δxᶜᶠᵃ_parent[:, :, region]
                 grid[region].Δyᶠᶜᵃ[:,:] = old_Δyᶠᶜᵃ_parent[:, :, region]
@@ -374,6 +440,10 @@ if compare_old_and_new_code_metrics
     
     new_file = jldopen("new_code_metrics.jld2")
     for region in 1:6
+        new_λᶜᶜᵃ_parent[:, :, region]  =  parent(new_file["λᶜᶜᵃ/" * string(region)][:, :, 1])
+        new_λᶠᶠᵃ_parent[:, :, region]  =  parent(new_file["λᶠᶠᵃ/" * string(region)][:, :, 1])
+        new_φᶜᶜᵃ_parent[:, :, region]  =  parent(new_file["φᶜᶜᵃ/" * string(region)][:, :, 1])
+        new_φᶠᶠᵃ_parent[:, :, region]  =  parent(new_file["φᶠᶠᵃ/" * string(region)][:, :, 1])
         new_Δxᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δxᶠᶜᵃ/" * string(region)][:, :, 1])
         new_Δxᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δxᶜᶠᵃ/" * string(region)][:, :, 1])
         new_Δyᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δyᶠᶜᵃ/" * string(region)][:, :, 1])
@@ -385,6 +455,10 @@ if compare_old_and_new_code_metrics
     end
     close(new_file)
     
+    λᶜᶜᵃ_difference  =  new_λᶜᶜᵃ_parent - old_λᶜᶜᵃ_parent
+    λᶠᶠᵃ_difference  =  new_λᶠᶠᵃ_parent - old_λᶠᶠᵃ_parent
+    φᶜᶜᵃ_difference  =  new_φᶜᶜᵃ_parent - old_φᶜᶜᵃ_parent
+    φᶠᶠᵃ_difference  =  new_φᶠᶠᵃ_parent - old_φᶠᶠᵃ_parent
     Δxᶠᶜᵃ_difference = new_Δxᶠᶜᵃ_parent - old_Δxᶠᶜᵃ_parent
     Δxᶜᶠᵃ_difference = new_Δxᶜᶠᵃ_parent - old_Δxᶜᶠᵃ_parent
     Δyᶠᶜᵃ_difference = new_Δyᶠᶜᵃ_parent - old_Δyᶠᶜᵃ_parent
@@ -394,6 +468,10 @@ if compare_old_and_new_code_metrics
     Azᶜᶠᵃ_difference = new_Azᶜᶠᵃ_parent - old_Azᶜᶠᵃ_parent
     Azᶠᶠᵃ_difference = new_Azᶠᶠᵃ_parent - old_Azᶠᶠᵃ_parent
     
+    λᶜᶜᵃ_relative_difference  =  λᶜᶜᵃ_difference ./ old_λᶜᶜᵃ_parent
+    λᶠᶠᵃ_relative_difference  =  λᶠᶠᵃ_difference ./ old_λᶠᶠᵃ_parent
+    φᶜᶜᵃ_relative_difference  =  φᶜᶜᵃ_difference ./ old_φᶜᶜᵃ_parent
+    φᶠᶠᵃ_relative_difference  =  φᶠᶠᵃ_difference ./ old_φᶠᶠᵃ_parent
     Δxᶠᶜᵃ_relative_difference = Δxᶠᶜᵃ_difference ./ old_Δxᶠᶜᵃ_parent
     Δxᶜᶠᵃ_relative_difference = Δxᶜᶠᵃ_difference ./ old_Δxᶜᶠᵃ_parent
     Δyᶠᶜᵃ_relative_difference = Δyᶠᶜᵃ_difference ./ old_Δyᶠᶜᵃ_parent
@@ -402,6 +480,19 @@ if compare_old_and_new_code_metrics
     Azᶠᶜᵃ_relative_difference = Azᶠᶜᵃ_difference ./ old_Azᶠᶜᵃ_parent
     Azᶜᶠᵃ_relative_difference = Azᶜᶠᵃ_difference ./ old_Azᶜᶠᵃ_parent
     Azᶠᶠᵃ_relative_difference = Azᶠᶠᵃ_difference ./ old_Azᶠᶠᵃ_parent
+
+    λᶜᶜᵃ_relative_difference[ old_λᶜᶜᵃ_parent  .== 0] .= 0
+    λᶠᶠᵃ_relative_difference[ old_λᶠᶠᵃ_parent  .== 0] .= 0
+    φᶜᶜᵃ_relative_difference[ old_φᶜᶜᵃ_parent  .== 0] .= 0
+    φᶠᶠᵃ_relative_difference[ old_φᶠᶠᵃ_parent  .== 0] .= 0
+    Δxᶠᶜᵃ_relative_difference[old_Δxᶠᶜᵃ_parent .== 0] .= 0
+    Δxᶜᶠᵃ_relative_difference[old_Δxᶜᶠᵃ_parent .== 0] .= 0
+    Δyᶠᶜᵃ_relative_difference[old_Δyᶠᶜᵃ_parent .== 0] .= 0
+    Δyᶜᶠᵃ_relative_difference[old_Δyᶜᶠᵃ_parent .== 0] .= 0
+    Azᶜᶜᵃ_relative_difference[old_Azᶜᶜᵃ_parent .== 0] .= 0
+    Azᶠᶜᵃ_relative_difference[old_Azᶠᶜᵃ_parent .== 0] .= 0
+    Azᶜᶠᵃ_relative_difference[old_Azᶜᶠᵃ_parent .== 0] .= 0
+    Azᶠᶠᵃ_relative_difference[old_Azᶠᶠᵃ_parent .== 0] .= 0
     
 end
 
@@ -492,6 +583,44 @@ for region in 1:number_of_regions(grid)
         ηᵢ[region][i, j, k] -= H
     end
 end
+
+# Plot the relative difference of the grid metrics with halos.
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶜᶜᵃ_relative_difference)
+save("λᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶠᶠᵃ_relative_difference)
+save("λᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶜᶜᵃ_relative_difference)
+save("φᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶠᶠᵃ_relative_difference)
+save("φᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶠᶜᵃ_relative_difference)
+save("Δxᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶜᶠᵃ_relative_difference)
+save("Δxᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶠᶜᵃ_relative_difference)
+save("Δyᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶜᶠᵃ_relative_difference)
+save("Δyᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶜᵃ_relative_difference)
+save("Azᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶜᵃ_relative_difference)
+save("Azᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶠᵃ_relative_difference)
+save("Azᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶠᵃ_relative_difference)
+save("Azᶠᶠᵃ_relative_difference_with_halos.png", fig)
 
 # Plot the initial velocity field after model definition.
 
