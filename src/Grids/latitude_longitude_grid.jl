@@ -507,7 +507,7 @@ end
 
 function precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    _, TY, _ = topology(grid)
+    TY = topology(grid, 2)
 
     precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, total_length(Face(), TY(), grid.Ny, grid.Hy) - 2)
     precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ)
