@@ -90,7 +90,7 @@ regular_dimensions(::ZRegularLLG) = tuple(3)
                           precompute_metrics = true,
                           halo = nothing)
 
-Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
+Create a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.
 
 Positional arguments
@@ -208,7 +208,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                          Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., FT(radius))
+                                                         (nothing for _ in 1:10)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
@@ -260,9 +260,9 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
-    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
-    φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
+    -90 ≤ φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
+     φ₂ ≤ 90 || throw(ArgumentError("The northern latitude cannot be more than +90 degrees."))
+     φ₁ ≤ φ₂ || throw(ArgumentError("Latitudes must increase south to north."))
 
     if TX == Flat || TY == Flat 
         precompute_metrics = false
@@ -652,9 +652,9 @@ const C = Center
     view(grid.φᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
 
 @inline xnodes(grid::LLG, ℓx, ℓy; with_halos=false) =
-    grid.radius * deg2rad.(λnodes(grid, ℓx; with_halos=with_halos))' .* hack_cosd.(φnodes(grid, ℓy; with_halos=with_halos))
+    grid.radius * deg2rad.(λnodes(grid, ℓx; with_halos))' .* hack_cosd.(φnodes(grid, ℓy; with_halos))
 @inline ynodes(grid::LLG, ℓy; with_halos=false)     =
-    grid.radius * deg2rad.(φnodes(grid, ℓy; with_halos=with_halos))
+    grid.radius * deg2rad.(φnodes(grid, ℓy; with_halos))
 
 @inline znodes(grid::LLG, ℓz::F; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
     view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
