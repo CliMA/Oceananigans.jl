@@ -80,8 +80,7 @@ arch_array(::CPU, a::BitArray) = a
 arch_array(::CUDAGPU, a::BitArray) = CuArray(a)
 arch_array(::ROCmGPU, a::BitArray) = ROCArray(a)
 
-arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::ROCmGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
+arch_array(::GPU{D}, a::SubArray{<:Any, <:Any, <:CuArray}) where D = a
 
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
