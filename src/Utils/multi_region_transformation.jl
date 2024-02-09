@@ -57,7 +57,7 @@ end
 
 @inline getdevice(a, i)                     = nothing
 @inline getdevice(cu::CUDAGPUVar, i)        = CUDA.device(cu)
-@inline getdevice(roc::ROCmGPUVar, i)        = AMDGPU.device(roc)
+@inline getdevice(roc::ROCmGPUVar, i)       = AMDGPU.device(roc)
 @inline getdevice(oa::OffsetArray, i)       = getdevice(oa.parent)
 @inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
