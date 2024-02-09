@@ -109,7 +109,7 @@ end
 
 ## Model setup
 
-horizontal_closure = HorizontalScalarDiffusivity(ν = 1e+4) 
+horizontal_closure = nothing
 #=
 Switch between horizontal_closure = HorizontalScalarDiffusivity(ν = 1e+4) and horizontal_closure = nothing. Here, ν is 
 the horizontal viscosity for the momentum equations and κ is the horizontal diffusivity for the continuity equation. 
