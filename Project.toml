@@ -44,7 +44,7 @@ Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 OceananigansEnzymeExt = "Enzyme"
 
 [compat]
-AMDGPU = "0.6"
+AMDGPU = "0.8"
 Adapt = "3"
 CUDA = "4.1.1, 5"
 Crayons = "4"
