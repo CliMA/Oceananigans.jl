@@ -6,7 +6,7 @@ using Oceananigans.Grids: AbstractGrid
 import Base: length
 
 const CUDAGPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
-const ROCmGPUVar = Union{ROCArray, ROCQueue}
+const ROCmGPUVar = Union{ROCArray, HIPContext}
 
 ##### 
 ##### Multi Region Object
@@ -69,7 +69,7 @@ end
 @inline switch_device!(a)                        = nothing
 @inline switch_device!(dev::Int)                 = CUDA.functional() ? CUDA.device!(dev) : AMDGPU.default_device!(AMDGPU.devices()[dev])
 @inline switch_device!(dev::CuDevice)            = CUDA.device!(dev)
-@inline switch_device!(dev::ROCDevice)           = AMDGPU.default_device!(dev)
+@inline switch_device!(dev::HIPDevice)           = AMDGPU.default_device!(dev)
 @inline switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
 @inline switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
@@ -191,7 +191,7 @@ end
 @inline sync_device!(::CUDAGPU)  = CUDA.synchronize()
 @inline sync_device!(::ROCmGPU)  = AMDGPU.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
-@inline sync_device!(::ROCDevice) = AMDGPU.synchronize()
+@inline sync_device!(::HIPDevice) = AMDGPU.synchronize()
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the 
