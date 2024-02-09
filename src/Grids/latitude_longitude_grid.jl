@@ -540,7 +540,7 @@ end
 
 function allocate_metrics(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    
+
     # preallocate quantities to ensure correct type and size
     grid_metrics = (:Δxᶠᶜ,
                     :Δxᶜᶠ,
@@ -583,7 +583,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
         Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
-    
+
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
