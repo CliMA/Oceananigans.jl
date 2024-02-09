@@ -144,8 +144,8 @@ end
  
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
+@inline unsafe_free!(a::CuArray)  = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-@inline unsafe_free!(a)          = nothing
+@inline unsafe_free!(a)           = nothing
 
 end # module
