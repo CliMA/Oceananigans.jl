@@ -439,7 +439,9 @@ end
 
 @inline function metric_worksize(grid::LatitudeLongitudeGrid)
     TX, TY, _ = topology(grid)
-    return (total_length(Face(), TX(), grid.Nx, grid.Hx) - 2, total_length(Face(), TY(), grid.Ny, grid.Hy) - 2)
+    Tx = total_length(Face(), TX(), grid.Nx, grid.Hx)
+    Ty = total_length(Face(), TY(), grid.Ny, grid.Hy)
+    return (Tx - 2, Ty - 2)
 end
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
