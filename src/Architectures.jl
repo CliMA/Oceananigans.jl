@@ -37,6 +37,7 @@ end
 const CUDAGPU = GPU{<:CUDA.CUDABackend}
 const ROCmGPU = GPU{<:AMDGPU.ROCBackend}
 
+GPU() = has_cuda() ? GPU(CUDA.CUDABackend()) : GPU(AMDGPU.ROCBackend())
 CUDAGPU() = GPU(CUDA.CUDABackend())
 ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
