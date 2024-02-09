@@ -446,7 +446,7 @@ end
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
 @inline function metric_worksize(grid::XRegularLLG)
-    _, TY, _ = topology(grid)
+    TY = topology(grid, 2)
     return total_length(Face(), TY(), grid.Ny, grid.Hy) - 2
 end
 
