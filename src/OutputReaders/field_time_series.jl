@@ -14,8 +14,8 @@ using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location,
-                           index_binary_search, indices_summary, boundary_conditions
+using Oceananigans.Fields: interior_view_indices, index_binary_search,
+                           indices_summary, boundary_conditions
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
@@ -105,47 +105,68 @@ struct Clamp end # clamp to nearest value
 # For example, it may be better to get a bounds error.
 
 # Totally in memory stuff
+@inline   time_index(backend, ti, Nt, m) = m
 @inline memory_index(backend, ti, Nt, n) = n
 @inline memory_index(backend::TotallyInMemory, ::Cyclical, Nt, n) = mod1(n, Nt)
-@inline memory_index(backend::TotallyInMemory, ::Clamp, Nt, n)    = clamp(n, 1, Nt)
+@inline memory_index(backend::TotallyInMemory, ::Clamp, Nt, n) = clamp(n, 1, Nt)
 
 # Partly in memory stuff
 @inline shift_index(n, n₀) = n - (n₀ - 1)
+@inline reverse_index(m, n₀) = m + n₀ - 1
+
 @inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
 
 @inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
-    n = clamp(n, 1, Nt)
-    return shift_index(n, backend.start)
+    n̂ = clamp(n, 1, Nt)
+    m = shift_index(n̂, backend.start)
+    return m
 end
 
 """
-    memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
+    time_index(backend::PartlyInMemory, time_indexing, Nt, m)
+
+Compute the time index of a snapshot currently stored at the memory index `m`,
+given `backend`, `time_indexing`, and number of times `Nt`.
+"""
+@inline time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m) =
+    reverse_index(m, backend.start)
+
+"""
+    memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
+
+Compute the current index of a snapshot in memory that has
+the time index `n`, given `backend`, `time_indexing`, and number of times `Nt`.
 
 Example
 =======
 
-```julia
-Nt = 56
-backend = InMemory(8, 7) # so we have (8, 9, 10, 11, 12, 13, 14)
-n = 8
-m = 8 - (8 - 1) = 1
-m̃ = 1
-```
+For `backend::PartlyInMemory` and `time_indexing::Cyclical`:
 
+# Simple shifting example
 ```julia
 Nt = 5
-backend = InMemory(1, 3) # so we have (1, 2, 3)
-n = 7 # so, the right answer is m̃ = 2
-m = 7 - (1 - 1) # = 7
-m̃ = mod1(7, 5)  # = 2
+backend = InMemory(2, 3) # so we have (2, 3, 4)
+n = 4           # so m̃ = 3
+m = 4 - (2 - 1) # = 3
+m̃ = mod1(3, 5)  # = 3 ✓
 ```
 
+# Shifting + wrapping example
+```julia
+Nt = 5
+backend = InMemory(4, 3) # so we have (4, 5, 1)
+n = 1 # so, the right answer is m̃ = 3
+m = 1 - (4 - 1) # = -2
+m̃ = mod1(-2, 5)  # = 3 ✓ 
+```
+
+# Another shifting + wrapping example
 ```julia
 Nt = 5
 backend = InMemory(5, 3) # so we have (5, 1, 2)
-n = 6 # so, the right answer is m̃ = 2
-m = 6 - (5 - 1) # = 2
-m̃ = mod1(2, 5)  # = 2
+n = 11 # so, the right answer is m̃ = 2
+m = 11 - (5 - 1) # = 7
+m̃ = mod1(7, 5)  # = 2 ✓
 ```
 """
 @inline function memory_index(backend::PartlyInMemory, ::Cyclical, Nt, n)
@@ -154,28 +175,30 @@ m̃ = mod1(2, 5)  # = 2
     return m̃
 end
 
+@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = mod1(n, Nt) # wrap index
+    return ñ
+end
+
 """
-    time_indices_in_memory(backend::PartlyInMemory, indexing, times)
+    time_indices(backend, time_indexing, Nt)
 
 Return a collection of the time indices that are currently in memory.
-This is the inverse of `memory_index`, which converts time indices
-to memory indices.
+If `backend::TotallyInMemory` then return `1:length(times)`.
 """
-function time_indices_in_memory(backend::PartlyInMemory, ti, times)
-    Nt = length(times)
+function time_indices(backend::PartlyInMemory, time_indexing, Nt)
     St = backend.size
     n₀ = backend.start
 
     time_indices = ntuple(St) do m
-        n = m + n₀ - 1
-        ñ = mod1(n, Nt)
-        ñ
+        time_index(backend, time_indexing, Nt, m)
     end
 
     return time_indices
 end
 
-time_indices_in_memory(::TotallyInMemory, ti, times) = 1:length(times)
+time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
 
 #####
 ##### FieldTimeSeries
@@ -253,7 +276,7 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{
                                                    backend::K,
                                                    time_indexing::TI) where {LX, LY, LZ, TI, K, D, χ}
 
-        ET = eltype(fts.data)
+        ET = eltype(data)
         return new{LX, LY, LZ, TI, K, ET, D, χ}(data, times, backend, time_indexing)
     end
 end
@@ -284,7 +307,7 @@ const    ClampFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp,    K} where K
 const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
 
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
-time_indices_in_memory(fts) = time_indices_in_memory(fts.backend, fts.time_indexing, fts.times)
+time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.times))
 
 @inline function memory_index(fts, n)
     backend = fts.backend
@@ -574,7 +597,7 @@ const MAX_FTS_TUPLE_SIZE = 10
 fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = Iterators.partition(time_indices_in_memory(fts), MAX_FTS_TUPLE_SIZE)
+    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
     partitioned_indices = collect(partitioned_indices)
     Ni = length(partitioned_indices)
 

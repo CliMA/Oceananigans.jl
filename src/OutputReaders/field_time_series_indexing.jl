@@ -6,16 +6,15 @@ using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 #####
 
 # Simplest implementation, linear extrapolation if out-of-bounds
-@inline interpolating_time_indices(fts::LinearFTS, t) = time_index_binary_search(fts, t)
+@inline interpolating_time_indices(::Linear, times, t) = time_index_binary_search(times, t)
 
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
-@inline function interpolating_time_indices(fts::CyclicalFTS, t)
-    times = fts.times
+@inline function interpolating_time_indices(ti::Cyclical, times, t)
     Nt = length(times)
     t¹ = first(times) 
     tᴺ = last(times)
 
-    T = fts.time_indexing.period
+    T = ti.period
     Δt = T - (tᴺ - t¹)
 
     # Compute modulus of shifted time, then add shift back
@@ -23,7 +22,7 @@ using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
     mod_τ = mod(τ, T)
     mod_t = mod_τ + t¹
 
-    ñ, n₁, n₂ = time_index_binary_search(fts, mod_t)
+    ñ, n₁, n₂ = time_index_binary_search(times, mod_t)
 
     cycling = ñ > 1 # we are _between_ tᴺ and t¹ + T
     cycled_indices   = (ñ - 1, Nt, 1)
@@ -33,8 +32,8 @@ using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 end   
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
-@inline function interpolating_time_indices(fts::ClampFTS, t)
-    n, n₁, n₂ = time_index_binary_search(fts, t)
+@inline function interpolating_time_indices(::Clamp, times, t)
+    n, n₁, n₂ = time_index_binary_search(times, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
     before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
@@ -48,13 +47,12 @@ end
     return indices
 end
 
-@inline function time_index_binary_search(fts, t)
-    times = fts.times
+@inline function time_index_binary_search(times, t)
     Nt = length(times)
 
     # n₁ and n₂ are the index to interpolate inbetween and 
     # n is a fractional index where 0 ≤ n ≤ 1
-    n₁, n₂ = index_binary_search(fts.times, t, Nt)
+    n₁, n₂ = index_binary_search(times, t, Nt)
 
     @inbounds begin
         t₁ = times[n₁]    
@@ -115,7 +113,7 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
     interpolating_getindex(fts, i, j, k, time_index)
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
-    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
     
     @inbounds begin
         ψ₁ = getindex(fts, i, j, k, n₁)
@@ -135,7 +133,7 @@ end
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
-    ñ, n₁, n₂ = interpolating_time_indices(fts, time_index.time)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
 
     if n₁ == n₂ # no interpolation needed
         return fts[n₁]
@@ -154,10 +152,19 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline interpolate(at_node, at_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
-    interpolate(at_node, at_time_index.time, from_fts::FlavorOfFTS, from_loc, from_grid)
+@inline function interpolate(at_node, at_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
+    data = from_fts.data
+    times = from_fts.times
+    backend = from_fts.backend
+    time_indexing = from_fts.time_indexing
+    return interpolate(at_node, at_time_index, data, from_loc, from_grid, times, backend, time_indexing)
+end
 
-@inline function interpolate(at_node, at_time, from_fts::FlavorOfFTS, from_loc, from_grid)
+@inline function interpolate(at_node, at_time_index::Time, data::OffsetArray,
+                             from_loc, from_grid, times, backend, time_indexing)
+
+    at_time = at_time_index.time
+
     # Build space interpolators
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
 
@@ -165,10 +172,14 @@ end
     iy = interpolator(jj)
     iz = interpolator(kk)
 
-    ñ, n₁, n₂ = interpolating_time_indices(from_fts, at_time)
+    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, at_time)
 
-    ψ₁ = _interpolate(from_fts, ix, iy, iz, n₁)
-    ψ₂ = _interpolate(from_fts, ix, iy, iz, n₂)
+    Nt = length(times)
+    m₁ = memory_index(backend, time_indexing, Nt, n₁)
+    m₂ = memory_index(backend, time_indexing, Nt, n₂)
+
+    ψ₁ = _interpolate(data, ix, iy, iz, m₁)
+    ψ₂ = _interpolate(data, ix, iy, iz, m₂)
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
     # Don't interpolate if n₁ == n₂
@@ -223,13 +234,13 @@ update_field_time_series!(fts, n::Int) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = interpolating_time_indices(fts, t)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, t)
     return update_field_time_series!(fts, n₁, n₂)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    ti = time_indices_in_memory(fts)
-    in_range = n₁ ∈ ti && n₂ ∈ ti
+    idxs = time_indices(fts)
+    in_range = n₁ ∈ idxs && n₂ ∈ idxs
 
     if !in_range
         # Update backend

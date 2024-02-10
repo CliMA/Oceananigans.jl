@@ -1,8 +1,15 @@
+using Statistics
+
 #####
 ##### Reductions
 #####
 
+Statistics.mean(f::Function, fts::FieldTimeSeries; dims=:) =
+    mean(f, parent(fts); dims)
+
 function Statistics.mean(fts::FieldTimeSeries; dims=:)
+    return mean(parent(fts), dims)
+    #=
     m = mean(fts[1]; dims)
     Nt = length(fts)
 
@@ -21,6 +28,7 @@ function Statistics.mean(fts::FieldTimeSeries; dims=:)
 
         return m
     end
+    =#
 end
 
 #####

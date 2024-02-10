@@ -1,9 +1,12 @@
+using Oceananigans.Fields: show_location, data_summary
+
 #####
 ##### Show methods
 #####
 
-backend_str(::Type{InMemory}) = "InMemory"
-backend_str(::Type{OnDisk})   = "OnDisk"
+Base.summary(::Clamp) = "Clamp()"
+Base.summary(::Linear) = "Linear()"
+Base.summary(ti::Cyclical) = string("Cyclical(period=", prettysummary(ti.period), ")")
 
 function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     arch = architecture(fts)
@@ -30,7 +33,7 @@ function Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, E}) where {LX, LY, L
     prefix = string(summary(fts), '\n',
                    "├── grid: ", summary(fts.grid), '\n',
                    "├── indices: ", indices_summary(fts), '\n',
-                   "├── time_indexing: $(fts.time_indexing)", '\n')
+                   "├── time_indexing: ", summary(fts.time_indexing), '\n')
 
     suffix = field_time_series_suffix(fts)
 
@@ -53,7 +56,7 @@ function field_time_series_suffix(fts::InMemoryFTS)
                   path_str,
                   name_str,
                   "└── data: ", summary(fts.data), '\n',
-                  "    └── ", data_summary(interior(fts)))
+                  "    └── ", data_summary(parent(fts)))
 end
 
 field_time_series_suffix(fts::OnDiskFTS) =
