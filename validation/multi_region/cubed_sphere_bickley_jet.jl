@@ -106,18 +106,19 @@ set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
 Δt = 0.2 * min_spacing / maximum(abs, model.velocities.u)
-Ntime = 1000
+Ntime = 10000
+iteration_interval = 200
 stop_time = Ntime * Δt
 
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|c|: %.3f, 
-                                wall time: %s\n", iteration(sim), prettytime(sim), prettytime(sim.Δt), 
-                                maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η), 
-                                maximum(abs, model.tracers.c), prettytime(sim.run_wall_time))
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|c|: %.3f, wall time: %s\n",
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
+                                maximum(abs, model.free_surface.η), maximum(abs, model.tracers.c),
+                                prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(iteration_interval))
 
 u_fields = Field[]
 save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
