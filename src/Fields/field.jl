@@ -478,15 +478,15 @@ compute_at!(field::Field, ::Nothing) = compute!(field, nothing)
 ##### Fields that are reduced along one or more dimensions
 #####
 
-const XReducedField = Field{Nothing}
-const YReducedField = Field{<:Any, Nothing}
-const ZReducedField = Field{<:Any, <:Any, Nothing}
+const XReducedField = AbstractField{Nothing}
+const YReducedField = AbstractField{<:Any, Nothing}
+const ZReducedField = AbstractField{<:Any, <:Any, Nothing}
 
-const YZReducedField = Field{<:Any, Nothing, Nothing}
-const XZReducedField = Field{Nothing, <:Any, Nothing}
-const XYReducedField = Field{Nothing, Nothing, <:Any}
+const YZReducedField = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedField = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedField = AbstractField{Nothing, Nothing, <:Any}
 
-const XYZReducedField = Field{Nothing, Nothing, Nothing}
+const XYZReducedField = AbstractField{Nothing, Nothing, Nothing}
 
 const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
                            YZReducedField, XZReducedField, XYReducedField,
