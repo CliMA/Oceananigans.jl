@@ -35,10 +35,10 @@ ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
 """
 
 function set_bickley_jet!(model;
-                          Ly = π * 6371e3, # meridional domain extent
-                          ϵ  = 0.1,        # perturbation magnitude
-                          ℓ₀ = 0.5,        # Gaussian width for meridional extent of 4π
-                          k₀ = 0.5)        # sinusoidal wavenumber for domain extents of 4π in each direction
+                          Ly = 4π,  # meridional domain extent
+                          ϵ  = 0.1, # perturbation magnitude
+                          ℓ₀ = 0.5, # Gaussian width for meridional extent of 4π
+                          k₀ = 0.5) # sinusoidal wavenumber for domain extents of 4π in each direction
     
     ℓ = ℓ₀/4π * Ly 
     k = k₀/4π * Ly
@@ -54,16 +54,16 @@ function set_bickley_jet!(model;
     # Note that u, v are only horizontally-divergence-free as resolution -> ∞.
     for region in 1:number_of_regions(grid)
         for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
-            x = xnode(i, j, k, grid[region], Face(), Face(), Center())
-            y = ynode(i, j, k, grid[region], Face(), Face(), Center())
+            x = λnode(i, j, k, grid[region], Face(), Face(), Center())
+            y = φnode(i, j, k, grid[region], Face(), Face(), Center())
             z = znode(i, j, k, grid[region], Face(), Face(), Center())
             model.velocities.u[region][i, j, k] = uᵢ(x, y, z)
-            x = xnode(i, j, k, grid[region], Center(), Face(), Center())
-            y = ynode(i, j, k, grid[region], Center(), Face(), Center())
+            x = λnode(i, j, k, grid[region], Center(), Face(), Center())
+            y = φnode(i, j, k, grid[region], Center(), Face(), Center())
             z = znode(i, j, k, grid[region], Center(), Face(), Center())
             model.velocities.v[region][i, j, k] = vᵢ(x, y, z)
-            x = xnode(i, j, k, grid[region], Center(), Center(), Center())
-            y = ynode(i, j, k, grid[region], Center(), Center(), Center())
+            x = λnode(i, j, k, grid[region], Center(), Center(), Center())
+            y = φnode(i, j, k, grid[region], Center(), Center(), Center())
             z = znode(i, j, k, grid[region], Center(), Center(), Center())
             model.tracers.c[region][i, j, k] = cᵢ(x, y, z)
         end
