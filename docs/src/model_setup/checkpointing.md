@@ -9,7 +9,7 @@ For example, to periodically checkpoint the model state to disk every 1,000,000 
 time to files of the form `model_checkpoint_iteration12500.jld2` where `12500` is the iteration
 number (automatically filled in).
 
-Here's an example where we checkpoint every 5 iterations. This is _way_ too often, we only do it here for
+Here's an example where we checkpoint every 5 iterations. This is far more often than appropriate for typical applications: we only do it here for
 illustration purposes.
 
 ```@repl checkpointing
