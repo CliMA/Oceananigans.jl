@@ -225,7 +225,6 @@ end
 
 """ one conjugate gradient iteration """
 function perform_iteration!(q, p, ρ, z, solver, args...)
-
     pp = parent(p)
     zp = parent(z)
 
@@ -237,6 +236,9 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
 
         @debug "PreconditionedConjugateGradientSolver $(solver.iteration), β: $β"
     end
+
+    # q = A * p
+    solver.linear_operation!(q, p, args...)
 
     return nothing
 end
@@ -262,7 +264,7 @@ end
 
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
     print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), "\n",
-              "├── template field: ", summary(solver.residual), "\n",
+              "├── template_field: ", summary(solver.residual), "\n",
               "├── grid: ", summary(solver.grid), "\n",
               "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",
               "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",

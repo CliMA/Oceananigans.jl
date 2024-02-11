@@ -167,9 +167,7 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
@@ -271,7 +269,7 @@ wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
 wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 
-fig = Figure(resolution = (850, 850))
+fig = Figure(size = (850, 850))
 
 ax_B = Axis(fig[1, 4];
             xlabel = "Buoyancy (m s⁻²)",

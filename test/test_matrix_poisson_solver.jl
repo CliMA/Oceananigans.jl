@@ -57,6 +57,8 @@ end
 
 poisson_rhs!(r, grid) = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
 
+random_numbers(x, y=0, z=0) = rand()
+
 function run_poisson_equation_test(grid)
     arch = architecture(grid)
 
@@ -64,7 +66,7 @@ function run_poisson_equation_test(grid)
     ϕ_truth = CenterField(grid)
 
     # Initialize zero-mean "truth" solution with random numbers
-    set!(ϕ_truth, (x, y, z) -> rand())
+    set!(ϕ_truth, random_numbers)
     parent(ϕ_truth) .-= mean(ϕ_truth)
     fill_halo_regions!(ϕ_truth)
 

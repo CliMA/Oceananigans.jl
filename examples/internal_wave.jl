@@ -43,7 +43,7 @@ coriolis = FPlane(f=0.2)
 ## Here we have one parameter, the buoyancy frequency
 
 N = 1       # buoyancy frequency [s⁻¹]
-B_func(x, y, z, t, N) = N^2 * z
+B_func(x, z, t, N) = N^2 * z
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
@@ -66,7 +66,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
-# p(x, y, z, t) = a(x, z) \, \cos(k x + m z - ω t) \, .
+# p(x, z, t) = a(x, z) \, \cos(k x + m z - ω t) \, .
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
@@ -103,10 +103,10 @@ nothing #hide
 # These relations are sometimes called the "polarization
 # relations". At ``t=0``, the polarization relations yield
 
-u₀(x, y, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k * x + m * z)
-v₀(x, y, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k * x + m * z)
-w₀(x, y, z) = a(x, z) * m * ω   / (ω^2 - N^2) * cos(k * x + m * z)
-b₀(x, y, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k * x + m * z)
+u₀(x, z) = a(x, z) * k * ω   / (ω^2 - f^2) * cos(k * x + m * z)
+v₀(x, z) = a(x, z) * k * f   / (ω^2 - f^2) * sin(k * x + m * z)
+w₀(x, z) = a(x, z) * m * ω   / (ω^2 - N^2) * cos(k * x + m * z)
+b₀(x, z) = a(x, z) * m * N^2 / (ω^2 - N^2) * sin(k * x + m * z)
 
 set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
@@ -138,7 +138,7 @@ run!(simulation)
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 
 ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
           limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))

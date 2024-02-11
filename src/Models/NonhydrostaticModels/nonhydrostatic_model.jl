@@ -51,26 +51,26 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;          grid,
-                                  clock = Clock{eltype(grid)}(0, 0, 1),
-                              advection = CenteredSecondOrder(),
-                               buoyancy = nothing,
-                               coriolis = nothing,
-                           stokes_drift = nothing,
-                    forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-        boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (),
-                            timestepper = :QuasiAdamsBashforth2,
-          background_fields::NamedTuple = NamedTuple(),
-          particles::ParticlesOrNothing = nothing,
-  biogeochemistry::AbstractBGCOrNothing = nothing,
-                             velocities = nothing,
-                              pressures = nothing,
-                     diffusivity_fields = nothing,
-                        pressure_solver = nothing,
-                      immersed_boundary = nothing,
-                       auxiliary_fields = NamedTuple())
+    NonhydrostaticModel(;           grid,
+                                    clock = Clock{eltype(grid)}(0, 0, 1),
+                                advection = CenteredSecondOrder(),
+                                 buoyancy = nothing,
+                                 coriolis = nothing,
+                             stokes_drift = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                                  closure = nothing,
+          boundary_conditions::NamedTuple = NamedTuple(),
+                                  tracers = (),
+                              timestepper = :QuasiAdamsBashforth2,
+            background_fields::NamedTuple = NamedTuple(),
+            particles::ParticlesOrNothing = nothing,
+    biogeochemistry::AbstractBGCOrNothing = nothing,
+                               velocities = nothing,
+                                pressures = nothing,
+                       diffusivity_fields = nothing,
+                          pressure_solver = nothing,
+                        immersed_boundary = nothing,
+                         auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
@@ -104,26 +104,26 @@ Keyword arguments
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
-function NonhydrostaticModel(;    grid,
-                                 clock = Clock{eltype(grid)}(0, 0, 1),
-                             advection = CenteredSecondOrder(),
-                              buoyancy = nothing,
-                              coriolis = nothing,
-                          stokes_drift = nothing,
-                   forcing::NamedTuple = NamedTuple(),
-                               closure = nothing,
-       boundary_conditions::NamedTuple = NamedTuple(),
-                               tracers = (),
-                           timestepper = :QuasiAdamsBashforth2,
-         background_fields::NamedTuple = NamedTuple(),
-         particles::ParticlesOrNothing = nothing,
- biogeochemistry::AbstractBGCOrNothing = nothing,
-                            velocities = nothing,
-                             pressures = nothing,
-                    diffusivity_fields = nothing,
-                       pressure_solver = nothing,
-                     immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple())
+function NonhydrostaticModel(; grid,
+                                    clock = Clock{eltype(grid)}(0, 0, 1),
+                                advection = CenteredSecondOrder(),
+                                 buoyancy = nothing,
+                                 coriolis = nothing,
+                             stokes_drift = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                                  closure = nothing,
+          boundary_conditions::NamedTuple = NamedTuple(),
+                                  tracers = (),
+                              timestepper = :QuasiAdamsBashforth2,
+            background_fields::NamedTuple = NamedTuple(),
+            particles::ParticlesOrNothing = nothing,
+    biogeochemistry::AbstractBGCOrNothing = nothing,
+                               velocities = nothing,
+                                pressures = nothing,
+                       diffusivity_fields = nothing,
+                          pressure_solver = nothing,
+                        immersed_boundary = nothing,
+                         auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
@@ -150,15 +150,13 @@ function NonhydrostaticModel(;    grid,
     # boundary conditions on u, v, w are regularized assuming they represent momentum at appropriate
     # staggered locations. All other fields are regularized assuming they are tracers.
     # Note that we do not regularize boundary conditions contained in *tupled* diffusivity fields right now.
-    #
+
     # First, we extract boundary conditions that are embedded within any _user-specified_ field tuples:
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
                                          extract_boundary_conditions(pressures),
                                          extract_boundary_conditions(diffusivity_fields))
 
-    # Next, we form a list of default boundary conditions:
-    
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions() for name in prognostic_field_names)
@@ -198,7 +196,7 @@ function NonhydrostaticModel(;    grid,
                                 auxiliary_fields)
 
     update_state!(model)
-    
+
     return model
 end
 
@@ -225,4 +223,3 @@ end
     (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
      v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
      w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
-
