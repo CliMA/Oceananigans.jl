@@ -353,6 +353,7 @@ end
 
         # Implicit TKE dissipation
         ω_e = dissipation_rate(i, j, k, grid, closure_ij, tracers, diffusivities)
+        ω_e = ifelse(eⁱʲᵏ > 0, ω_e, zero(grid))
         
         diffusivities.Lᵉ[i, j, k] = - wb_e - ω_e + Q_e
     end

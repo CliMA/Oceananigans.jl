@@ -75,8 +75,6 @@ const VITD = VerticallyImplicitTimeDiscretization
     return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
 end
 
-@inline dissipation(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
-
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, surface_buoyancy_flux, S², N², w★)
 
     # Convective dissipation length
@@ -121,17 +119,17 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    ω_numerical = 1 / closure.negative_turbulent_kinetic_energy_damping_time_scale
-    ω_physical = sqrt(abs(eᵢ)) / ℓᴰ
+    ω = sqrt(abs(eᵢ)) / ℓᴰ
 
-    return ifelse(eᵢ < 0, ω_numerical, ω_physical)
+    return ω
 end
 
-# Fallbacks for explicit time discretization
+# Dissipation: if e is negative treat it implicitly, otherwise explicit (we do not want to subtract
+# terms to the diagonal, same treatment as the buoyancy flux) 
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    eᵢ = @inbounds tracers.e[i, j, k]
+    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, tracers, diffusivities)
-    return ω * eᵢ
+    return ifelse(eⁱʲᵏ < 0, ω * eᵢ, zero(grid))
 end
 
 #####
