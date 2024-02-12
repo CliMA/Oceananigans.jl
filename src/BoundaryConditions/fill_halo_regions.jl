@@ -115,9 +115,12 @@ function permute_boundary_conditions(boundary_conditions)
     fill_halos! = fill_halos![perm]
     sides = sides[perm]
 
-    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
-
-    return fill_halos!, boundary_conditions
+    boundary_conditions2 = ntuple(Val(length(sides))) do i
+        Base.@_inline_meta
+        extract_bc(boundary_conditions, Val(sides[i]))
+    end
+    
+    return fill_halos!, boundary_conditions2
 end
 
 # Split direction in two distinct fill_halo! events in case of a communication boundary condition 
