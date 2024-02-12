@@ -213,8 +213,8 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     kernel_parameters = :xy
-    
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+
+  return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 """
@@ -248,7 +248,7 @@ auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
-@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
+@inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
@@ -264,7 +264,7 @@ struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
 end
-    
+
 function FixedTimeStepSize(FT::DataType = Float64;
                            cfl = 0.7, 
                            grid, 
@@ -275,7 +275,7 @@ function FixedTimeStepSize(FT::DataType = Float64;
     Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-    
+
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)

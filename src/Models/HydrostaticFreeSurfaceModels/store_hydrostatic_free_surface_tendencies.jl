@@ -38,7 +38,6 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
                 store_field_tendencies!,
                 model.timestepper.G⁻[field_name],
                 model.timestepper.Gⁿ[field_name])
-
     end
 
     store_free_surface_tendency!(model.free_surface, model)

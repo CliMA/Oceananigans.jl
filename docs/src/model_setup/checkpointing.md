@@ -1,4 +1,4 @@
-# Checkpointing
+# [Checkpointing](@id checkpointing)
 
 A checkpointer can be used to serialize the entire model state to a file from which the model
 can be restored at any time. This is useful if you'd like to periodically checkpoint when running

@@ -45,6 +45,6 @@ function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
             model.grid,
             Δt,
             model.pressures.pNHS)
-    
+
     return nothing
 end
