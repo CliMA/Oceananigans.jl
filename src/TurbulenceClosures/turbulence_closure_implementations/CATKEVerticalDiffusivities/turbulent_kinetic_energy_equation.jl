@@ -124,8 +124,8 @@ end
     return ω
 end
 
-# Dissipation: if e is negative treat it implicitly, otherwise explicit (we do not want to subtract
-# terms to the diagonal, same treatment as the buoyancy flux) 
+# Dissipation: if e is positive treat it implicitly, otherwise we treat it explicitly.
+# Here we apply the same treatment as for the buoyancy flux: we do not want to subtract terms to the diagonal
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, tracers, diffusivities)
