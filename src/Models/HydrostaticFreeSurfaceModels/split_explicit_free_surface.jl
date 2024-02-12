@@ -214,7 +214,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     kernel_parameters = :xy
 
-  return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 """
