@@ -265,6 +265,7 @@ end
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
 
     # Conditions
+    # TODO: apply a minimum entrainment buoyancy gradient?
     convecting = N² < 0 # applies regardless of Qᵇ
     entraining = (N² > 0) & (N²_above < 0) & (Qᵇ > 0)
 
