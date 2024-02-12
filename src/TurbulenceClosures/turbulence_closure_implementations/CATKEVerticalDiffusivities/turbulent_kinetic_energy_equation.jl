@@ -119,18 +119,20 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    ω = sqrt(abs(eᵢ)) / ℓᴰ
+    ω_numerical = 1 / closure.negative_turbulent_kinetic_energy_damping_time_scale
+    ω_physical = sqrt(abs(eᵢ)) / ℓᴰ
 
-    return ω
+    return ifelse(eᵢ < 0, ω_numerical, ω_physical)
 end
 
-# Dissipation: if e is positive treat it implicitly, otherwise we treat it explicitly.
-# Here we apply the same treatment as for the buoyancy flux: we do not want to subtract terms to the diagonal
-@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-    ω = dissipation_rate(i, j, k, grid, closure, tracers, diffusivities)
-    return ifelse(eⁱʲᵏ < 0, ω * eⁱʲᵏ, zero(grid))
+# Fallbacks for explicit time discretization
+@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+    eᵢ = @inbounds tracers.e[i, j, k]
+    ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
+    return ω * eᵢ
 end
+
+dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, args...) = zero(grid)
 
 #####
 ##### For closure tuples...
