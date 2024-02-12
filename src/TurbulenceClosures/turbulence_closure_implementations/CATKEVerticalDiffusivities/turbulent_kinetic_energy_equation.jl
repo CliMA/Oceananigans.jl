@@ -129,7 +129,7 @@ end
 @inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, tracers, diffusivities)
-    return ifelse(eⁱʲᵏ < 0, ω * eᵢ, zero(grid))
+    return ifelse(eⁱʲᵏ < 0, ω * eⁱʲᵏ, zero(grid))
 end
 
 #####
