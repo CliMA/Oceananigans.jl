@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
+using Oceananigans.Advection: correct_advection!
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -104,6 +105,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, first_stage_Δt)
     pressure_correct_velocities!(model, first_stage_Δt)
 
+    correct_advection!(model, Δt)
+
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
@@ -118,6 +121,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, second_stage_Δt)
     pressure_correct_velocities!(model, second_stage_Δt)
 
+    correct_advection!(model, Δt)
+
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
@@ -131,6 +136,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     calculate_pressure_correction!(model, third_stage_Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
+
+    correct_advection!(model, Δt)
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model, callbacks; compute_tendencies)

@@ -204,7 +204,8 @@ and   C = Δz / 2ψ ∂z(ψ) remaines fixed
     @inbounds begin
         u_abs = abs(uᵖ[i, j, k])
         v_abs = abs(vᵖ[i, j, k])
-
+        w_abs = abs(wᵖ[i, j, k])
+        
         ξ, η, ζ = mpdata_pseudo_velocities(i, j, k, grid, Δt, velocities, Aᶠᶜᶜ, Bᶠᶜᶜ, Cᶠᶜᶜ, Aᶜᶠᶜ, Bᶜᶠᶜ, Cᶜᶠᶜ, Aᶜᶜᶠ, Bᶜᶜᶠ, Cᶜᶜᶠ)
 
         ξ *= Δt / Δxᶠᶜᶜ(i, j, k, grid)

@@ -2,6 +2,7 @@ using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
+using Oceananigans.Advection: correct_advection!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -61,8 +62,6 @@ end
 #####
 ##### Time steppping
 #####
-
-using Oceananigans.Advection: correct_advection!
 
 """
     time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
