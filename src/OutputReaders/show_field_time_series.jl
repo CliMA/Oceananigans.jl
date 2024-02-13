@@ -42,13 +42,7 @@ end
 
 function field_time_series_suffix(fts::InMemoryFTS)
     backend = fts.backend
-    if backend isa TotallyInMemory
-        backend_str = "├── backend: InMemory()"
-    else
-        backend_str = string("├── backend: InMemory(",
-                             backend.start, ", ", backend.size, ")")
-    end
-
+    backend_str = string("├── backend: ", summary(backend))
     path_str = isnothing(fts.path) ? "" : string("├── path: ", fts.path, '\n')
     name_str = isnothing(fts.name) ? "" : string("├── name: ", fts.name, '\n')
 

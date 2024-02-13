@@ -29,27 +29,33 @@ import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 #####
 
 abstract type AbstractDataBackend end
+abstract type AbstractInMemoryBackend{S} end
 
-struct InMemory{S} <: AbstractDataBackend 
+struct InMemory{S} <: AbstractInMemoryBackend{S}
     start :: S
-    size :: S
+    length :: S
 end
 
 """
-    InMemory(size=nothing)
+    InMemory(length=nothing)
 
 Return a `backend` for `FieldTimeSeries` that stores `size`
 fields in memory. The default `size = nothing` stores all fields in memory.
 """
-function InMemory(size::Int)
-    size < 2 && throw(ArgumentError("InMemory `size` must be 2 or greater."))
-    return InMemory(1, size)
+function InMemory(length::Int)
+    length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
+    return InMemory(1, length)
 end
 
 InMemory() = InMemory(nothing, nothing)
 
-const TotallyInMemory = InMemory{Nothing}
-const  PartlyInMemory = InMemory{Int}
+const TotallyInMemory = AbstractInMemoryBackend{Nothing}
+const  PartlyInMemory = AbstractInMemoryBackend{Int}
+
+Base.summary(backend::PartlyInMemory) = string("InMemory(", backend.start, ", ", length(backend), ")")
+Base.summary(backend::TotallyInMemory) = "InMemory()"
+
+new_backend(::InMemory, start, length) = InMemory(start, length)
 
 """
     OnDisk()
@@ -188,7 +194,7 @@ Return a collection of the time indices that are currently in memory.
 If `backend::TotallyInMemory` then return `1:length(times)`.
 """
 function time_indices(backend::PartlyInMemory, time_indexing, Nt)
-    St = backend.size
+    St = length(backend)
     n₀ = backend.start
 
     time_indices = ntuple(St) do m
@@ -199,6 +205,8 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
+
+Base.length(backend::PartlyInMemory) = backend.length
 
 #####
 ##### FieldTimeSeries
@@ -228,8 +236,8 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
         ET = eltype(data)
 
         # Check consistency between `backend` and `times`.
-        if backend isa PartlyInMemory && backend.size > length(times)
-            throw(ArgumentError("`backend.size` cannot be greater than `length(times)`."))
+        if backend isa PartlyInMemory && backend.length > length(times)
+            throw(ArgumentError("`backend.length` cannot be greater than `length(times)`."))
         end
 
         if times isa AbstractArray
@@ -331,10 +339,10 @@ function new_data(FT, grid, loc, indices, Nt::Int)
     return data
 end
 
-time_indices_size(backend, times) = throw(ArgumentError("$backend is not a supported backend!"))
-time_indices_size(::TotallyInMemory, times) = length(times)
-time_indices_size(backend::PartlyInMemory, times) = backend.size
-time_indices_size(::OnDisk, times) = nothing
+time_indices_length(backend, times) = throw(ArgumentError("$backend is not a supported backend!"))
+time_indices_length(::TotallyInMemory, times) = length(times)
+time_indices_length(backend::PartlyInMemory, times) = length(backend)
+time_indices_length(::OnDisk, times) = nothing
 
 function FieldTimeSeries(loc, grid, times=();
                          indices = (:, :, :), 
@@ -346,7 +354,7 @@ function FieldTimeSeries(loc, grid, times=();
 
     LX, LY, LZ = loc
 
-    Nt = time_indices_size(backend, times)
+    Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
@@ -499,7 +507,7 @@ function FieldTimeSeries(path::String, name::String, backend::AbstractDataBacken
     LX, LY, LZ = Location
 
     loc = map(instantiate, Location)
-    Nt = time_indices_size(backend, times)
+    Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
@@ -566,7 +574,7 @@ Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
-Base.length(fts::PartlyInMemoryFTS) = fts.backend.size
+Base.length(fts::PartlyInMemoryFTS) = length(fts.backend)
 
 function interior(fts::FieldTimeSeries)
     loc = map(instantiate, location(fts))
