@@ -1,9 +1,5 @@
 using Oceananigans
 using Oceananigans.Units
-#=
-using Oceananigans.Advection: VelocityStencil, VorticityStencil, boundary_buffer
-=#
-
 using Printf
 using GLMakie
 
@@ -50,15 +46,12 @@ function run_bickley_jet(;
     outputs = merge(model.velocities, model.tracers, (; ζ=∂x(v) - ∂y(u)))
 
     @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name
-    #=
-    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
-    =#
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
-                                schedule = TimeInterval(output_time_interval),
-                                filename = output_name,
-                                overwrite_existing = true)
+                         schedule = TimeInterval(output_time_interval),
+                         filename = output_name,
+                         overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
@@ -109,23 +102,14 @@ function visualize_bickley_jet(name)
     end
 end
 
-#=
-advection_schemes = [WENO(vector_invariant=VelocityStencil()),
-                     WENO(vector_invariant=VorticityStencil()),
-                     WENO(),
-                     VectorInvariant()]
-=#
-
 advection_schemes = [VectorInvariant(vorticity_scheme = WENO()),
                      WENO(),
                      VectorInvariant()]
 
-for Nx in [128]
+experiment_names = ["VectorInvariant_VorticityScheme_WENO", "WENO", "VectorInvariant"]
+
+for Nx in [128] # for Nx in [64, 128, 256, 512, 1024]
     for (i, advection) in enumerate(advection_schemes)
-        #=
-        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
-        =#
-        experiment_names = ["VectorInvariant_VorticityScheme_WENO", "WENO", "VectorInvariant"]
         output_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx, 
                                       experiment_name = experiment_names[i])
         visualize_bickley_jet(output_name)

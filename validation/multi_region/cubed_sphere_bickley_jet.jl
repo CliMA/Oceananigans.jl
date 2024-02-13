@@ -11,9 +11,6 @@ using Oceananigans.Utils: Iterate
 using KernelAbstractions: @kernel, @index
 
 using JLD2
-using CairoMakie
-
-include("cubed_sphere_visualization.jl")
 
 # Definition of the "Bickley jet": a sech(y)^2 jet with sinusoidal tracer
 Ψ(y) = - tanh(y)
@@ -26,7 +23,7 @@ C(y, L) = sin(2π * y / L)
 ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
 
 # Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
+ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + (y + ℓ/10) / ℓ^2)
 ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
 """
@@ -40,13 +37,13 @@ function set_bickley_jet!(model;
                           ℓ₀ = 0.5, # Gaussian width for meridional extent of 4π
                           k₀ = 0.5) # sinusoidal wavenumber for domain extents of 4π in each direction
 
-    ℓ = ℓ₀/4π * Ly 
-    k = k₀/4π * Ly
+    ℓ = ℓ₀ / 4π * Ly
+    k = k₀ * 4π / Ly
 
     dr(x) = deg2rad(x)
 
-    ψᵢ(λ, φ, z) = Ψ(dr(φ)*8) + ϵ * ψ̃(dr(λ)*2, dr(φ)*8, ℓ, k)
-    cᵢ(λ, φ, z) = C(dr(φ)*8, Ly)
+    ψᵢ(λ, φ, z) = ℓ * (Ψ(dr(φ)*8) + ϵ * ψ̃(dr(λ)*2, dr(φ)*8, ℓ, k))
+    cᵢ(λ, φ, z) = C(dr(φ)*8, 180)
 
     ψ = Field{Face, Face, Center}(grid)
 
@@ -114,33 +111,39 @@ end
 
 ## Grid setup
 
-R = 2
-Ly = 2π * R
 H = 1
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 4
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = Nhalo,
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = 1, horizontal_direction_halo = Nhalo,
                                 partition = CubedSpherePartition(; R = 1))
+
+Ly = 2π * grid.radius
 
 Hx, Hy, Hz = halo_size(grid)
 
-momentum_advection = VectorInvariant(; vorticity_scheme = WENO())
+momentum_advection = VectorInvariant()
 tracer_advection = WENO()
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
+closure = ScalarDiffusivity(ν=0.0005)
+# The numerical solution blows up at ν = 0.0001 with radius = 1, N = 32, and Δt = 0.1 * min_spacing / c.
+# With ν = 0.001, the solution is a bit too diffusive.
+
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
-                                    buoyancy=nothing)
+                                    buoyancy=nothing, closure)
 
 set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
-# Specify cfl = max|u| * Δt / min(Δx) = 0.2, so that Δt = 0.2 * min(Δx) / max|u|
+# Specify cfl = c * Δt / min(Δx) = 0.1, so that Δt = 0.1 * min(Δx) / c
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
-Δt = 0.2 * min_spacing / maximum(abs, model.velocities.u)
-Ntime = 3000
-iteration_interval = 60 # I have been specifying iteration_interval in such a way that Ntime/iteration_interval = 50.
+c = sqrt(model.free_surface.gravitational_acceleration)
+Δt = 0.1 * min_spacing / c
+
+Ntime = 15000
+iteration_interval = 300 # I have been specifying iteration_interval in such a way that Ntime/iteration_interval = 50.
 stop_time = Ntime * Δt
 
 simulation = Simulation(model; Δt, stop_time)
@@ -159,9 +162,6 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
-c_fields = Field[]
-save_c(sim) = push!(c_fields, deepcopy(sim.model.tracers.c))
-
 ζ = Field{Face, Face, Center}(grid)
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
@@ -178,7 +178,7 @@ end
 
 ζ_fields = Field[]
 
-function save_vorticity(sim)
+function save_ζ(sim)
 
     Hx, Hy, Hz = halo_size(grid)
 
@@ -195,6 +195,12 @@ function save_vorticity(sim)
 
 end
 
+η_fields = Field[]
+save_η(sim) = push!(η_fields, deepcopy(sim.model.free_surface.η))
+
+c_fields = Field[]
+save_c(sim) = push!(c_fields, deepcopy(sim.model.tracers.c))
+
 uᵢ = deepcopy(simulation.model.velocities.u)
 vᵢ = deepcopy(simulation.model.velocities.v)
 ζᵢ = deepcopy(ζ) 
@@ -209,6 +215,8 @@ end
 cᵢ = deepcopy(simulation.model.tracers.c)
 
 # Plot the initial velocity field.
+
+include("cubed_sphere_visualization.jl")
 
 fig = panel_wise_visualization_with_halos(grid, uᵢ)
 save("u₀_with_halos.png", fig)
@@ -252,17 +260,18 @@ n_frames = animation_time * framerate
 save_fields_iteration_interval = floor(Int, stop_time/(Δt * n_frames))
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_c] = Callback(save_c, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
 
-#=
 start_index = 1
 use_symmetric_colorrange = true
 
 create_panel_wise_visualization_animation(grid, u_fields, start_index, use_symmetric_colorrange, framerate, "u")
 create_panel_wise_visualization_animation(grid, v_fields, start_index, use_symmetric_colorrange, framerate, "v")
 create_panel_wise_visualization_animation(grid, ζ_fields, start_index, use_symmetric_colorrange, framerate, "ζ")
-create_panel_wise_visualization_animation(grid, η_fields, start_index, use_symmetric_colorrange, framerate, "η")
+create_panel_wise_visualization_animation(grid, η_fields, start_index, use_symmetric_colorrange, framerate, "η",
+                                          grid.Nz+1, true)
 create_panel_wise_visualization_animation(grid, c_fields, start_index, use_symmetric_colorrange, framerate, "c")
-=#
