@@ -119,9 +119,9 @@ Ly = 2π * R
 H = 1
 
 Nx, Ny, Nz = 32, 32, 1
-nHalo = 4
+Nhalo = 4
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = nHalo,
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = Nhalo,
                                 partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)

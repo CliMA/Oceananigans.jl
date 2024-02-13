@@ -2,15 +2,15 @@ using LinearAlgebra
 using Oceananigans.MultiRegion: getregion
 using CairoMakie
 
-function read_big_endian_coordinates(filename, nInterior = 32, nHalo = 1)
+function read_big_endian_coordinates(filename, nInterior = 32, Nhalo = 1)
     # Open the file in binary read mode
     open(filename, "r") do io
         # Calculate the number of Float64 values in the file
         n = filesize(io) ÷ sizeof(Float64)
 
-        # Ensure n = (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
-        if n != (nInterior + 2 * nHalo) * (nInterior + 2 * nHalo)
-            error("File size does not match the expected size for one (nInterior + 2 * nHalo) x (nInterior + 2 * nHalo) field")
+        # Ensure n = (nInterior + 2 * Nhalo) * (nInterior + 2 * Nhalo)
+        if n != (nInterior + 2 * Nhalo) * (nInterior + 2 * Nhalo)
+            error("File size does not match the expected size for one (nInterior + 2 * Nhalo) x (nInterior + 2 * Nhalo) field")
         end
 
         # Initialize an array to hold the data
@@ -20,7 +20,7 @@ function read_big_endian_coordinates(filename, nInterior = 32, nHalo = 1)
         read!(io, data)
 
         # Convert from big-endian to native endianness
-        native_data = reshape(bswap.(data), (nInterior + 2 * nHalo), (nInterior + 2 * nHalo))
+        native_data = reshape(bswap.(data), (nInterior + 2 * Nhalo), (nInterior + 2 * Nhalo))
 
         return native_data
     end
