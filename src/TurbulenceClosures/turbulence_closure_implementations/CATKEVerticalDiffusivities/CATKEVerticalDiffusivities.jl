@@ -320,6 +320,17 @@ end
         # Implicit TKE dissipation
         ω_e = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         
+        # The linear implicit term `L` is defined via
+        #
+        #       ∂t e = L e + ⋯,
+        #
+        # So
+        #
+        #       L e = wb - ϵ
+        #           = (wb / e - ω) e,
+        #
+        # where ω = ϵ / e ∼ √e / ℓ.
+        #
         diffusivities.Lᵉ[i, j, k] = - wb_e - ω_e + Q_e
     end
 end
