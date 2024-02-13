@@ -9,7 +9,7 @@ using Oceananigans.Operators
 using Oceananigans.Utils
 using Oceananigans.Utils: Iterate
 using KernelAbstractions: @kernel, @index
-using DataDeps
+
 using JLD2
 using CairoMakie
 
@@ -39,12 +39,12 @@ function set_bickley_jet!(model;
                           ϵ  = 0.1, # perturbation magnitude
                           ℓ₀ = 0.5, # Gaussian width for meridional extent of 4π
                           k₀ = 0.5) # sinusoidal wavenumber for domain extents of 4π in each direction
-    
+
     ℓ = ℓ₀/4π * Ly 
     k = k₀/4π * Ly
-    
+
     dr(x) = deg2rad(x)
-    
+
     ψᵢ(λ, φ, z) = Ψ(dr(φ)*8) + ϵ * ψ̃(dr(λ)*2, dr(φ)*8, ℓ, k)
     cᵢ(λ, φ, z) = C(dr(φ)*8, Ly)
 
@@ -86,14 +86,14 @@ function set_bickley_jet!(model;
             v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
         end
     end
-    
+
     fill_paired_halo_regions!((u, v))
 
     for region in 1:number_of_regions(grid)
 
         for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
-            model.velocities.u[region][i,j,k] = u[region][i, j, k]
-            model.velocities.v[region][i,j,k] = v[region][i, j, k]
+            model.velocities.u[region][i, j, k] = u[region][i, j, k]
+            model.velocities.v[region][i, j, k] = v[region][i, j, k]
         end
 
         for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
@@ -104,13 +104,12 @@ function set_bickley_jet!(model;
         end
 
     end
-    
+
     for _ in 1:3
         fill_halo_regions!(model.tracers.c)
     end
 
     return nothing
-    
 end
 
 ## Grid setup
@@ -193,7 +192,7 @@ function save_vorticity(sim)
     end
 
     push!(ζ_fields, deepcopy(ζ))
-    
+
 end
 
 uᵢ = deepcopy(simulation.model.velocities.u)
