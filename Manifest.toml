@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "e2d5af98a66de2483721d031e8a4e08a400dc0c2"
+project_hash = "8b20885ad6041d33802c8b57f3533574cc457888"
 
 [[deps.AMDGPU]]
 deps = ["AbstractFFTs", "Adapt", "Atomix", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "HIP_jll", "KernelAbstractions", "LLD_jll", "LLVM", "LLVM_jll", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "ROCmDeviceLibs_jll", "Random", "Random123", "RandomNumbers", "SparseArrays", "SpecialFunctions", "Statistics", "UnsafeAtomicsLLVM", "hsa_rocr_jll"]
@@ -181,9 +181,9 @@ version = "4.1.1"
 
 [[deps.CubedSphere]]
 deps = ["Elliptic", "FFTW", "Printf", "ProgressBars", "SpecialFunctions", "TaylorSeries", "Test"]
-git-tree-sha1 = "253193dfb0384646936c5ff3230b27a20d91261e"
+git-tree-sha1 = "10134667d7d3569b191a65801514271b8a93b292"
 uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
-version = "0.2.4"
+version = "0.2.5"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
@@ -425,9 +425,9 @@ version = "15.0.7+10"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Requires", "Unicode"]
-git-tree-sha1 = "cb4619f7353fc62a1a22ffa3d7ed9791cfb47ad8"
+git-tree-sha1 = "9e70165cca7459d25406367f0c55e517a9a7bfe7"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "6.4.2"
+version = "6.5.0"
 weakdeps = ["BFloat16s"]
 
     [deps.LLVM.extensions]
@@ -435,9 +435,9 @@ weakdeps = ["BFloat16s"]
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "98eaee04d96d973e79c25d49167668c5c8fb50e2"
+git-tree-sha1 = "114e3a48f13d4c18ddd7fd6a00107b4b96f60f9c"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.27+1"
+version = "0.0.28+0"
 
 [[deps.LLVMLoopInfo]]
 git-tree-sha1 = "2e5c102cfc41f48ae4740c7eca7743cc7e7b75ea"
@@ -893,9 +893,9 @@ version = "2.3.1"
 
 [[deps.Static]]
 deps = ["IfElse"]
-git-tree-sha1 = "b366eb1eb68075745777d80861c6706c33f588ae"
+git-tree-sha1 = "d2fdac9ff3906e27f7a618d47b676941baa6c80c"
 uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
-version = "0.8.9"
+version = "0.8.10"
 
 [[deps.StaticArrayInterface]]
 deps = ["ArrayInterface", "Compat", "IfElse", "LinearAlgebra", "PrecompileTools", "Requires", "SparseArrays", "Static", "SuiteSparse"]
@@ -1010,9 +1010,9 @@ version = "1.10.0"
 
 [[deps.TaylorSeries]]
 deps = ["LinearAlgebra", "Markdown", "Requires", "SparseArrays"]
-git-tree-sha1 = "9138fdc8ee4e3b8839eca696a76d15e16c9c7af0"
+git-tree-sha1 = "1c7170668366821b0c4c4fe03ee78f8d6cf36e2c"
 uuid = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
-version = "0.15.4"
+version = "0.16.0"
 
     [deps.TaylorSeries.extensions]
     TaylorSeriesIAExt = "IntervalArithmetic"
@@ -1040,9 +1040,9 @@ weakdeps = ["Random", "Test"]
     TestExt = ["Test", "Random"]
 
 [[deps.TupleTools]]
-git-tree-sha1 = "155515ed4c4236db30049ac1495e2969cc06be9d"
+git-tree-sha1 = "41d61b1c545b06279871ef1a4b5fcb2cac2191cd"
 uuid = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
-version = "1.4.3"
+version = "1.5.0"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
