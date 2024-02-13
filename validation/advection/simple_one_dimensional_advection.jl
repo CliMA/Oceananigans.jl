@@ -74,8 +74,8 @@ c_real = CenterField(grid)
 formulation = ConservativeFormulation()
 set!(c_real, c₀_1D)
 
-schemes = [Centered(; order = 4), UpwindBiased(; order = 1), UpwindBiased(; order = 3), MPData(grid; iterations = 3), MPData(grid)]
-names   = [:C, :U1, :U3, :M3, :MI]
+schemes = [Centered(; order = 4), UpwindBiased(; order = 1), UpwindBiased(; order = 3), MPData(grid; iterations = 2), MPData(grid; iterations = 5)]
+names   = [:C, :U1, :U3, :M2, :M5]
 
 for (tracer_advection, name) in zip(schemes, names)
     @info "Scheme $(summary(tracer_advection))"
@@ -96,3 +96,15 @@ for (tracer_advection, name) in zip(schemes, names)
         solution[(name, Int(i))] = csim
     end
 end
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+
+lines!(ax, interior(c_real, :, 1, 1), label = L"\text{Initial conditions}", linestyle = :dash, color = :black)
+lines!(ax, solution[(:U1, end_iter)], color = :red,    label = L"\text{Upwind order 1}")
+lines!(ax, solution[(:U3, end_iter)], color = :blue,   label = L"\text{Upwind order 3}")
+lines!(ax, solution[(:M2, end_iter)], color = :green,  label = L"\text{MPData 2 iterations}")
+lines!(ax, solution[(:M5, end_iter)], color = :orange, label = L"\text{MPData 5 iterations}")
+
+leg = Legend(fig[1, 2], ax)
+
