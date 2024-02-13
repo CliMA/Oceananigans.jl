@@ -7,8 +7,8 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 # bathymetry (hB) is assumed to be a negative value equal to - depth.
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * ℑxᶠᶜᶜ(i, j, k, grid, h) * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
-@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * ℑyᶜᶠᶜ(i, j, k, grid, h) * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)
+@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * ℑxᶠᵃᵃ(i, j, k, grid, h) * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
+@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::ConservativeFormulation) = g * ℑyᵃᶠᵃ(i, j, k, grid, h) * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)
 
 @inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
 @inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)
