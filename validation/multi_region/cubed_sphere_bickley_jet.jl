@@ -2,7 +2,7 @@ using Oceananigans, Printf
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Grids: xnode, ynode, znode, halo_size, total_size
+using Oceananigans.Grids: λnode, φnode, znode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 using Oceananigans.Operators
@@ -43,33 +43,67 @@ function set_bickley_jet!(model;
     ℓ = ℓ₀/4π * Ly 
     k = k₀/4π * Ly
     
-    # Initial conditions
-    uᵢ(x, y, z) = U(y) + ϵ * ũ(x, y, ℓ, k)
-    vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
-    cᵢ(x, y, z) = C(y, Ly)
+    dr(x) = deg2rad(x)
     
+    ψᵢ(λ, φ, z) = Ψ(dr(φ)*8) + ϵ * ψ̃(dr(λ)*2, dr(φ)*8, ℓ, k)
+    cᵢ(λ, φ, z) = C(dr(φ)*8, Ly)
+
+    ψ = Field{Face, Face, Center}(grid)
+
+    # Note that set! fills only interior points; to compute u and v we need information in the halo regions.
+    set!(ψ, ψᵢ)
+
+    for region in [1, 3, 5]
+        i = 1
+        j = Ny+1
+        for k in 1:Nz
+            λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+            φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+            ψ[region][i, j, k] = ψᵢ(λ, φ, 0)
+        end
+    end
+
+    for region in [2, 4, 6]
+        i = Nx+1
+        j = 1
+        for k in 1:Nz
+            λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
+            φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
+            ψ[region][i, j, k] = ψᵢ(λ, φ, 0)
+        end
+    end
+
+    for passes in 1:3
+        fill_halo_regions!(ψ)
+    end
+
     u = XFaceField(grid)
     v = YFaceField(grid)
-    
-    # Note that u, v are only horizontally-divergence-free as resolution -> ∞.
+
     for region in 1:number_of_regions(grid)
         for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
-            x = λnode(i, j, k, grid[region], Face(), Face(), Center())
-            y = φnode(i, j, k, grid[region], Face(), Face(), Center())
-            z = znode(i, j, k, grid[region], Face(), Face(), Center())
-            model.velocities.u[region][i, j, k] = uᵢ(x, y, z)
-            x = λnode(i, j, k, grid[region], Center(), Face(), Center())
-            y = φnode(i, j, k, grid[region], Center(), Face(), Center())
-            z = znode(i, j, k, grid[region], Center(), Face(), Center())
-            model.velocities.v[region][i, j, k] = vᵢ(x, y, z)
-            x = λnode(i, j, k, grid[region], Center(), Center(), Center())
-            y = φnode(i, j, k, grid[region], Center(), Center(), Center())
-            z = znode(i, j, k, grid[region], Center(), Center(), Center())
-            model.tracers.c[region][i, j, k] = cᵢ(x, y, z)
+            u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
+            v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
         end
     end
     
-    fill_paired_halo_regions!((model.velocities.u, model.velocities.v))
+    fill_paired_halo_regions!((u, v))
+
+    for region in 1:number_of_regions(grid)
+
+        for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
+            model.velocities.u[region][i,j,k] = u[region][i, j, k]
+            model.velocities.v[region][i,j,k] = v[region][i, j, k]
+        end
+
+        for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+            λ = λnode(i, j, k, grid[region], Center(), Center(), Center())
+            φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
+            z = znode(i, j, k, grid[region], Center(), Center(), Center())
+            model.tracers.c[region][i, j, k] = cᵢ(λ, φ, z)
+        end
+
+    end
     
     for _ in 1:3
         fill_halo_regions!(model.tracers.c)
@@ -86,16 +120,16 @@ Ly = 2π * R
 H = 1
 
 Nx, Ny, Nz = 32, 32, 1
-nHalo = 3
+nHalo = 4
 
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = nHalo,
                                 partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
 
-momentum_advection = VectorInvariant()
-tracer_advection = WENO(order = 5)
-free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0)
+momentum_advection = VectorInvariant(; vorticity_scheme = WENO())
+tracer_advection = WENO()
+free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
                                     buoyancy=nothing)
@@ -106,8 +140,8 @@ set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
 Δt = 0.2 * min_spacing / maximum(abs, model.velocities.u)
-Ntime = 10000
-iteration_interval = 200
+Ntime = 3000
+iteration_interval = 60 # I have been specifying iteration_interval in such a way that Ntime/iteration_interval = 50.
 stop_time = Ntime * Δt
 
 simulation = Simulation(model; Δt, stop_time)
@@ -230,6 +264,6 @@ use_symmetric_colorrange = true
 create_panel_wise_visualization_animation(grid, u_fields, start_index, use_symmetric_colorrange, framerate, "u")
 create_panel_wise_visualization_animation(grid, v_fields, start_index, use_symmetric_colorrange, framerate, "v")
 create_panel_wise_visualization_animation(grid, ζ_fields, start_index, use_symmetric_colorrange, framerate, "ζ")
-create_panel_wise_visualization_animation(grid, v_fields, start_index, use_symmetric_colorrange, framerate, "η")
-create_panel_wise_visualization_animation(grid, v_fields, start_index, use_symmetric_colorrange, framerate, "c")
+create_panel_wise_visualization_animation(grid, η_fields, start_index, use_symmetric_colorrange, framerate, "η")
+create_panel_wise_visualization_animation(grid, c_fields, start_index, use_symmetric_colorrange, framerate, "c")
 =#

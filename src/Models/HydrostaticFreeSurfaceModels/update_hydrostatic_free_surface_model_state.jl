@@ -31,8 +31,14 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 operation_corner_points = "default" # Choose operation_corner_points to be "default", "average", "CCW", or "CW".
 
 function fill_paired_halo_regions!(fields, signed=true)
+
     field₁, field₂ = fields
     grid = field₁.grid
+
+    if !(grid isa ConformalCubedSphereGrid)
+        return
+    end
+
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
