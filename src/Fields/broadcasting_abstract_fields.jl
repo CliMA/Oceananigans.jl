@@ -4,8 +4,7 @@
 
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
-using CUDA
-using AMDGPU
+using CUDA: CuArrayStyle
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
@@ -13,16 +12,14 @@ Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::AMDGPU.ROCArrayStyle{N}) where N = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CuArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
-                                        Broadcasted{<:CUDA.CuArrayStyle},
-                                        Broadcasted{<:AMDGPU.ROCArrayStyle}}
+                                        Broadcasted{<:CuArrayStyle}}
 
 @inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrCuArray)
     if any(a isa OffsetArray for a in bc.args)

@@ -1,6 +1,4 @@
 using Adapt
-using CUDA: CuArray
-using AMDGPU: ROCArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
@@ -82,7 +80,7 @@ end
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j, 1]
-    return z <= h
+    return z ≤ h
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
@@ -105,4 +103,3 @@ end
 
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height.data),
                                                                              ib.immersed_condition)
-

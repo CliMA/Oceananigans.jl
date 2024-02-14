@@ -1,5 +1,4 @@
 using CUDA
-using AMDGPU
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
@@ -48,4 +47,3 @@ function fetch_and_convert_output(output, model, writer)
 end
 
 fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
-

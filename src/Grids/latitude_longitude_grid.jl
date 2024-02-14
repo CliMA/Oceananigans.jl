@@ -182,9 +182,9 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    if (architecture == CUDAGPU() && !has_cuda()) || (architecture == ROCmGPU() && !has_rocm_gpu())
-        throw(ArgumentError("Cannot create a GPU grid. No CUDA or ROCm enabled GPU was detected!"))
-    end
+    # if (architecture == CUDAGPU() && !has_cuda()) || (architecture == ROCmGPU() && !has_rocm_gpu())
+    #     throw(ArgumentError("Cannot create a GPU grid. No CUDA or ROCm enabled GPU was detected!"))
+    # end
 
     topology, size, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)

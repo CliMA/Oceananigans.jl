@@ -8,7 +8,7 @@ export
     # Architectures
     CPU, GPU, CUDAGPU, ROCmGPU,
 
-    # Logging
+    # Logging 
     OceananigansLogger,
 
     # Grids
@@ -127,7 +127,6 @@ using Logging
 using Statistics
 using LinearAlgebra
 using CUDA
-using AMDGPU
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -210,9 +209,9 @@ include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
-#include("MultiRegion/MultiRegion.jl")
+# include("ImmersedBoundaries/ImmersedBoundaries.jl")
+# include("Distributed/Distributed.jl")
+# include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -224,7 +223,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
 
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
@@ -281,12 +279,6 @@ function __init__()
         end
 
         CUDA.allowscalar(false)
-    end
-    if AMDGPU.has_rocm_gpu()
-        @debug "ROCm-enabled GPU(s) detected:"
-        for (id, agent) in enumerate(AMDGPU.devices())
-            @debug "$id: $(agent.name)"
-        end
     end
 end
 

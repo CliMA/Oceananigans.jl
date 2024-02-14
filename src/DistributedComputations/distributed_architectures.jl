@@ -1,7 +1,8 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA
-using AMDGPU
+# TODO REMOVE THIS
+# using AMDGPU
 
 import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
@@ -240,10 +241,11 @@ function Distributed(child_architecture = CPU();
             device_id = isnothing(devices) ? node_rank % CUDA.ndevices() : devices[node_rank+1]
             CUDA.device!(device_id)
         end
-        if child_architecture == ROCmGPU()
-            device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
-            AMDGPU.device!(device_id)
-        end
+        # MOVE THIS IN EXTENSION
+        # if child_architecture == ROCmGPU()
+        #     device_id = isnothing(devices) ? node_rank % length(AMDGPU.devices()) : devices[node_rank+1]
+        #     AMDGPU.device!(device_id)
+        # end
     end
 
     mpi_requests = MPI.Request[]

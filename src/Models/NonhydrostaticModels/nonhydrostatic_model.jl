@@ -1,5 +1,3 @@
-using CUDA: has_cuda
-using AMDGPU: has_rocm_gpu
 using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture

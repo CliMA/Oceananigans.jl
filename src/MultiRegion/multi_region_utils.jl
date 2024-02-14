@@ -7,7 +7,6 @@ validate_devices(p, ::CPU, ::Nothing) = nothing
 
 # If no device is specified on the GPU, use only the default device
 validate_devices(p, ::CUDAGPU, ::Nothing) = 1
-validate_devices(p, ::ROCmGPU, ::Nothing) = 1
 
 function validate_devices(partition, ::CUDAGPU, devices)
     @assert length(unique(devices)) ≤ length(CUDA.devices())
@@ -16,21 +15,8 @@ function validate_devices(partition, ::CUDAGPU, devices)
     return devices
 end
 
-function validate_devices(partition, ::ROCmGPU, devices)
-    @assert length(unique(devices)) ≤ length(AMDGPU.devices())
-    @assert maximum(devices) ≤ length(AMDGPU.devices())
-    @assert length(devices) ≤ length(partition)
-    return devices
-end
-
 function validate_devices(partition, ::CUDAGPU, devices::Number)
     @assert devices ≤ length(CUDA.devices())
-    @assert devices ≤ length(partition)
-    return devices
-end
-
-function validate_devices(partition, ::ROCmGPU, devices::Number)
-    @assert devices ≤ length(AMDGPU.devices())
     @assert devices ≤ length(partition)
     return devices
 end

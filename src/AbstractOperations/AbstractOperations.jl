@@ -9,7 +9,6 @@ using Base: @propagate_inbounds
 
 import Adapt
 using CUDA
-using AMDGPU
 
 using Oceananigans
 using Oceananigans.Architectures

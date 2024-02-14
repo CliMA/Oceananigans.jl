@@ -34,7 +34,6 @@ export
     cell_diffusion_timescale
 
 using CUDA
-using AMDGPU
 using KernelAbstractions
 using Adapt 
 

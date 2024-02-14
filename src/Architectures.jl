@@ -1,11 +1,10 @@
 module Architectures
 
 export AbstractArchitecture
-export CPU, GPU, MultiGPU, CUDAGPU, ROCmGPU
+export CPU, GPU, MultiGPU, CUDAGPU
 export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
-using AMDGPU
 using KernelAbstractions
 using Adapt
 using OffsetArrays
@@ -35,11 +34,9 @@ struct GPU{D} <: AbstractArchitecture
 end
 
 const CUDAGPU = GPU{<:CUDA.CUDABackend}
-const ROCmGPU = GPU{<:AMDGPU.ROCBackend}
 
-GPU() = has_cuda() ? GPU(CUDA.CUDABackend()) : GPU(AMDGPU.ROCBackend())
+GPU() = has_cuda() ? GPU(CUDA.CUDABackend()) : GPU(nothing)
 CUDAGPU() = GPU(CUDA.CUDABackend())
-ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
 #####
 ##### These methods are extended in DistributedComputations.jl
@@ -47,13 +44,12 @@ ROCmGPU() = GPU(AMDGPU.ROCBackend())
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::CUDAGPU) = CUDA.CUDABackend(; always_inline=true)
-device(::ROCmGPU) = AMDGPU.ROCBackend()
+
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU(CUDA.CUDABackend())
-architecture(::ROCArray) = GPU(AMDGPU.ROCBackend())
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -67,24 +63,18 @@ child_architecture(arch) = arch
 
 array_type(::CPU) = Array
 array_type(::CUDAGPU) = CuArray
-array_type(::ROCmGPU) = ROCArray
 
 arch_array(::CPU, a::Array)   = a
 arch_array(::CPU, a::CuArray) = Array(a)
-arch_array(::CPU, a::ROCArray) = Array(a)
 arch_array(::CUDAGPU, a::Array) = CuArray(a)
-arch_array(::ROCmGPU, a::Array) = ROCArray(a)
 arch_array(::CUDAGPU, a::CuArray) = a
-arch_array(::ROCmGPU, a::ROCArray) = a
 arch_array(::CPU, a::BitArray) = a
 arch_array(::CUDAGPU, a::BitArray) = CuArray(a)
-arch_array(::ROCmGPU, a::BitArray) = ROCArray(a)
 
 arch_array(::GPU{D}, a::SubArray{<:Any, <:Any, <:CuArray}) where D = a
 
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-arch_array(::ROCmGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
 
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
@@ -102,8 +92,7 @@ arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), 
 arch_array(arch::GPU{D}, a::OffsetArray) where D = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
-cpu_architecture(::CUDAGPU) = CPU()
-cpu_architecture(::ROCmGPU) = CPU()
+cpu_architecture(::GPU{D}) where D = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU{D}, a) where D = a
@@ -129,15 +118,9 @@ end
     return dst
 end
 
-@inline function device_copy_to!(dst::ROCArray, src::ROCArray; async::Bool = false) 
-    AMDGPU.mem.transfer!(dst.buf, src.buf, sizeof(src))
-    return dst
-end
- 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-@inline unsafe_free!(a::CuArray)  = CUDA.unsafe_free!(a)
-@inline unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-@inline unsafe_free!(a)           = nothing
+@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
+@inline unsafe_free!(a)          = nothing
 
 end # module

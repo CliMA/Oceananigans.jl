@@ -148,16 +148,9 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
 validate_boundary_condition_architecture(::CuArray, ::CUDAGPU, bc, side) = nothing
-validate_boundary_condition_architecture(::ROCArray, ::ROCmGPU, bc, side) = nothing
 
 validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-validate_boundary_condition_architecture(::ROCArray, ::CPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `Array` rather than `ROCArray` on CPU architectures!"))
-
 validate_boundary_condition_architecture(::Array, ::CUDAGPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on CUDAGPU architectures!"))
-
-validate_boundary_condition_architecture(::Array, ::ROCmGPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on ROCmGPU architectures!"))
