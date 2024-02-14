@@ -50,7 +50,6 @@ const XRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
 const YRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
 const ZRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
 const XYRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const XYRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 const XZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Any,    <:Number}
 const YZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
 const XYZRegularRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
