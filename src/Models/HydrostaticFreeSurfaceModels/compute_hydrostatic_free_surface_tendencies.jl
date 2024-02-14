@@ -7,6 +7,8 @@ using Oceananigans.Grids: halo_size
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!
 
+using Oceananigans.Advection: U_dot_∇u, U_dot_∇v
+
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
@@ -183,12 +185,15 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
-                compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
+                compute_hydrostatic_free_surface_Gu!,)
+
+        launch!(arch, grid, parameters,
+                _compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
                 only_active_cells, u_kernel_args;
                 only_active_cells)
 
         launch!(arch, grid, parameters,
-                compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
+                _compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
                 only_active_cells, v_kernel_args;
                 only_active_cells)
     end
@@ -222,27 +227,51 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
+@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid, map, scheme, U)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, scheme, U)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
+@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, scheme, U)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, scheme, U)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
+@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid, map, scheme, U)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gv[i, j, k] = - U_dot_∇v(i, j, k, grid, scheme, U)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, args)
+@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, scheme, U)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gv[i, j, k] = - U_dot_∇v(i, j, k, grid, scheme, U)
+end
+
+""" Calculate the right-hand-side of the u-velocity equation. """
+@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] += hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+end
+
+@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
+    @inbounds Gu[i, j, k] += hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+end
+
+""" Calculate the right-hand-side of the v-velocity equation. """
+@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gv[i, j, k] += hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+end
+
+@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, args)
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
+    @inbounds Gv[i, j, k] += hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
 #####

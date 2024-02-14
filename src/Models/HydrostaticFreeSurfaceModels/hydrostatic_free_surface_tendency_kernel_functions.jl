@@ -43,8 +43,7 @@ implicitly during time-stepping.
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
-             - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
+    return ( - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
@@ -82,8 +81,7 @@ implicitly during time-stepping.
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
-             - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
+    return ( - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
