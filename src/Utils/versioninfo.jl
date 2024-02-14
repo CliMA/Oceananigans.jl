@@ -8,10 +8,10 @@ function versioninfo_with_gpu()
         gpu_name = CUDA.device() |> CUDA.name
         s = s * "  GPU: $gpu_name\n"
     end
-    if AMDGPU.has_rocm_gpu()
-        gpu_name = AMDGPU.default_device().name
-        s = s * "  GPU: $gpu_name\n"
-    end
+    # if AMDGPU.has_rocm_gpu()
+    #     gpu_name = AMDGPU.default_device().name
+    #     s = s * "  GPU: $gpu_name\n"
+    # end
     return s
 end
 
