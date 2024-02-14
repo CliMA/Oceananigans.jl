@@ -185,7 +185,14 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
-                compute_hydrostatic_free_surface_Gu!,)
+                _compute_hydrostatic_advection_Gu!, model.timestepper.Gⁿ.u, grid, 
+                only_active_cells, model.advection.momentum, velocities;
+                only_active_cells)
+
+        launch!(arch, grid, parameters,
+                _compute_hydrostatic_advection_Gv!, model.timestepper.Gⁿ.v, grid, 
+                only_active_cells, model.advection.momentum, velocities;
+                only_active_cells)
 
         launch!(arch, grid, parameters,
                 _compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
@@ -227,24 +234,24 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid, map, scheme, U)
+@kernel function _compute_hydrostatic_advection_Gu!(Gu, grid, map, scheme, U)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, scheme, U)
 end
 
-@kernel function _compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, scheme, U)
+@kernel function _compute_hydrostatic_advection_Gu!(Gu, grid::ActiveCellsIBG, map, scheme, U)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, scheme, U)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid, map, scheme, U)
+@kernel function _compute_hydrostatic_advection_Gv!(Gv, grid, map, scheme, U)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = - U_dot_∇v(i, j, k, grid, scheme, U)
 end
 
-@kernel function _compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, scheme, U)
+@kernel function _compute_hydrostatic_advection_Gv!(Gv, grid::ActiveCellsIBG, map, scheme, U)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gv[i, j, k] = - U_dot_∇v(i, j, k, grid, scheme, U)
