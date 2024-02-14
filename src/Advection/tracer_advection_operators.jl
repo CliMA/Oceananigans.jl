@@ -12,7 +12,8 @@ end
 """
     function TracerAdvection(; x, y, z)
 
-builds a `TracerAdvection` type with different reconstructions in `x`, `y`, and `z`
+Builds a `TracerAdvection` type with reconstructions schemes `x`, `y`, and `z` to be applied in
+the x, y, and z direction, respectively.
 """
 function TracerAdvection(; x, y, z)
     Nx = required_halo_size(x)
