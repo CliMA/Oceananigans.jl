@@ -303,7 +303,7 @@ const GPUFTS{LX, LY, LZ, TI, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K} w
 const FlavorOfFTS{LX, LY, LZ, TI, K} = Union{GPUFTS{LX, LY, LZ, TI, K},
                                                 FTS{LX, LY, LZ, TI, K}} where {LX, LY, LZ, TI, K} 
 
-const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:InMemory}
+const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:AbstractInMemoryBackend}
 const OnDiskFTS          = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:OnDisk}
 const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:TotallyInMemory}
 const PartlyInMemoryFTS  = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:PartlyInMemory}
