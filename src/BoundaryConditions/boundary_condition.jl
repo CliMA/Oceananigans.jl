@@ -160,4 +160,4 @@ validate_boundary_condition_architecture(::Array, ::CUDAGPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on CUDAGPU architectures!"))
 
 validate_boundary_condition_architecture(::Array, ::ROCmGPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on ROCmGPU architectures!"))
+    throw(ArgumentError("$side $bc must use `ROCArray` rather than `Array` on ROCmGPU architectures!"))
