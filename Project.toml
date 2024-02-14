@@ -44,7 +44,7 @@ OceananigansEnzymeExt = "Enzyme"
 
 [compat]
 Adapt = "3"
-AMDGPU = "0.8"
+AMDGPU = "0.8.3"
 CUDA = "4.1.1, 5"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
