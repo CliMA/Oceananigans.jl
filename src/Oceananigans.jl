@@ -8,7 +8,7 @@ export
     # Architectures
     CPU, GPU, CUDAGPU, ROCmGPU,
 
-    # Logging 
+    # Logging
     OceananigansLogger,
 
     # Grids
@@ -121,7 +121,7 @@ export
 
     # Units
     Time
-    
+
 using Printf
 using Logging
 using Statistics
