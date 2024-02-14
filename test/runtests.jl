@@ -167,10 +167,11 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Enzyme extension
-    if group == :enzyme || group == :all
-        @testset "Enzyme extension tests" begin
-            include("test_enzyme.jl")
+    # Tests for Extensions
+    if group == :extensions || group == :all
+        @testset "Extension tests" begin
+            include("test_amdgpu_extension.jl")
+            include("test_enzyme_extension.jl")
         end
     end
 
