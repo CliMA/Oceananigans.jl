@@ -1,8 +1,6 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA
-# TODO REMOVE THIS
-# using AMDGPU
 
 import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
