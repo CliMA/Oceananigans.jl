@@ -29,7 +29,8 @@ function assign_devices(p::AbstractPartition, dev::Number)
     leftover = mod(part, dev)
     devices  = []
 
-    PROVIDER = AMDGPU.has_rocm_gpu() ? AMDGPU : CUDA
+    # PROVIDER = AMDGPU.has_rocm_gpu() ? AMDGPU : CUDA
+    PROVIDER = CUDA
 
     for i in 1:dev
         PROVIDER.device!(i-1)
@@ -49,7 +50,8 @@ function assign_devices(p::AbstractPartition, dev::Tuple)
     leftover = mod(part, length(dev))
     devices  = []
 
-    PROVIDER = AMDGPU.has_rocm_gpu() ? AMDGPU : CUDA
+    # PROVIDER = AMDGPU.has_rocm_gpu() ? AMDGPU : CUDA
+    PROVIDER = CUDA
 
     for i in 1:length(dev)
         PROVIDER.device!(dev[i])
