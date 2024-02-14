@@ -1,4 +1,4 @@
-using GPUArrays
+using GPUArraysCore
 using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
@@ -48,7 +48,7 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
     x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
 
-    GPUArrays.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+    GPUArraysCore.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
 const AT = AbstractTopology
@@ -146,8 +146,8 @@ constant grid spacing `Δ`, and interior extent `L`.
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
-@inline domain(topo, N, ξ) = GPUArrays.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = GPUArrays.@allowscalar ξ[1], ξ[1]
+@inline domain(topo, N, ξ) = GPUArraysCore.@allowscalar ξ[1], ξ[N+1]
+@inline domain(::Flat, N, ξ) = GPUArraysCore.@allowscalar ξ[1], ξ[1]
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)

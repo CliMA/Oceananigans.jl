@@ -16,7 +16,7 @@ using Oceananigans.Utils
 using Adapt
 using CUDA
 using AMDGPU
-using GPUArrays
+using GPUArraysCore
 using DocStringExtensions
 using OffsetArrays
 
