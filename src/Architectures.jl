@@ -19,15 +19,39 @@ abstract type AbstractArchitecture end
 """
     CPU <: AbstractArchitecture
 
-Run Oceananigans on one CPU node. Uses multiple threads if the environment
-variable `JULIA_NUM_THREADS` is set.
+An architecture to run Oceananigans on one CPU node. Uses multiple threads
+if the environment variable `JULIA_NUM_THREADS` is set.
+
+Example
+=======
+
+An instance of CPU architecture.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> CPU()
+CPU()
+```
 """
 struct CPU <: AbstractArchitecture end
 
 """
     GPU{D} <: AbstractArchitecture
 
-Run Oceananigans on a single Nvidia CUDA or AMD ROCm GPU.
+An architecture to run Oceananigans on GPU-enabled devices with backend `D`.
+
+Example
+=======
+
+An instance of GPU architecture on a CUDA-enabled device.
+
+```jldoctest
+julia> using Oceananigans, CUDA
+
+julia> GPU(CUDABackend())
+CUDAGPU{CUDABackend}(CUDABackend(false, false))
+```
 """
 struct GPU{D} <: AbstractArchitecture
     device :: D
@@ -36,6 +60,7 @@ end
 const CUDAGPU = GPU{<:CUDA.CUDABackend}
 
 GPU() = has_cuda() ? GPU(CUDA.CUDABackend()) : GPU(nothing)
+
 CUDAGPU() = GPU(CUDA.CUDABackend())
 
 #####
