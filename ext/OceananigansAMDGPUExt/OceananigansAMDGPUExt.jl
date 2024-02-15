@@ -9,6 +9,7 @@ include("BoundaryConditions.jl")
 include("Fields.jl")
 include("DistributedComputations.jl")
 include("MultiRegion.jl")
+include("Solvers.jl")
 
 using .Architectures
 using .Grids
@@ -17,6 +18,7 @@ using .BoundaryConditions
 using .Fields
 using .DistributedComputations
 using .MultiRegion
+using .Solvers
 
 function __init__()
     if AMDGPU.has_rocm_gpu()
