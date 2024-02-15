@@ -89,7 +89,7 @@ child_architecture(arch) = arch
 array_type(::CPU) = Array
 array_type(::CUDAGPU) = CuArray
 
-arch_array(::CPU, a::Array)   = a
+arch_array(::CPU, a::Array) = a
 arch_array(::CPU, a::CuArray) = Array(a)
 arch_array(::CUDAGPU, a::Array) = CuArray(a)
 arch_array(::CUDAGPU, a::CuArray) = a
@@ -103,15 +103,10 @@ arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
-arch_array(::CPU, a::AbstractRange) = a
-arch_array(::CPU, ::Nothing)   = nothing
-arch_array(::CPU, a::Number)   = a
-arch_array(::CPU, a::Function) = a
-
-arch_array(::GPU{D}, a::AbstractRange) where D = a
-arch_array(::GPU{D}, ::Nothing) where D = nothing
-arch_array(::GPU{D}, a::Number) where D = a
-arch_array(::GPU{D}, a::Function) where D = a
+arch_array(::AbstractArchitecture, a::AbstractRange) = a
+arch_array(::AbstractArchitecture, ::Nothing) = nothing
+arch_array(::AbstractArchitecture, a::Number) = a
+arch_array(::AbstractArchitecture, a::Function) = a
 
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 arch_array(arch::GPU{D}, a::OffsetArray) where D = OffsetArray(arch_array(arch, a.parent), a.offsets...)
@@ -146,6 +141,6 @@ end
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
-@inline unsafe_free!(a)          = nothing
+@inline unsafe_free!(a) = nothing
 
 end # module
