@@ -123,7 +123,7 @@ end
     end
 
     parameters = (surface_tracer_concentration = 1,
-                piston_velocity = 0.1)
+                  piston_velocity = 0.1)
 
     top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c; parameters)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
