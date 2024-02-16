@@ -8,11 +8,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
 using Enzyme
 
 # Required presently
-Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.EnzymeRules.inactive_type(::Type{<:Oceananigans.Grids.AbstractGrid}) = true
 Enzyme.EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
-Enzyme.EnzymeRules.inactive_noinl(::typeof(Core._compute_sparams), args...) = nothing
 
 f(grid) = CenterField(grid)
 
@@ -41,8 +39,6 @@ function set_initial_condition!(model, amplitude)
     return nothing
 end
 
-destantiate(::Center) = Center
-
 function stable_diffusion!(model, amplitude, diffusivity)
     set_diffusivity!(model, diffusivity)
     set_initial_condition!(model, amplitude)
@@ -50,7 +46,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     κ_max = maximum_diffusivity
-    Δz = 2π / Nz
+    Δz = 1 / Nz
     Δt = 1e-1 * Δz^2 / κ_max
 
     model.clock.time = 0
