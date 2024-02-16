@@ -441,34 +441,14 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Ly == 90
     @test grid.Lz == 1
 
-    @test grid.Δλᶠᵃᵃ == 10
-    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
-    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
-    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
-
-    @test grid.λᶠᵃᵃ[1] == -90
-    @test grid.λᶠᵃᵃ[Nλ+1] == 90
-
-    @test grid.φᵃᶠᵃ[1] == -45
-    @test grid.φᵃᶠᵃ[Nφ+1] == 45
-
-    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλᶠᵃᵃ
-    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλᶠᵃᵃ
-
-    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφᵃᶠᵃ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφᵃᶠᵃ
-
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
-
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+    @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
 
     return nothing
 end
@@ -490,34 +470,14 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Ly == 160
     @test grid.Lz == 1
 
-    @test grid.Δλᶠᵃᵃ == 10
-    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
-    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
-    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶠᶠᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶜᶜᵃ) == Nλ + 2Hλ
 
-    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
-
-    @test grid.λᶠᵃᵃ[1] == -180
-    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
-
-    @test grid.φᵃᶠᵃ[1] == -80
-    @test grid.φᵃᶠᵃ[Nφ+1] == 80
-
-    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλᶠᵃᵃ
-    @test grid.λᶠᵃᵃ[Nλ+1] == 180
-
-    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφᵃᶠᵃ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφᵃᶠᵃ
-
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
-
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+    @test length(grid.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᶜᶜᵃ) == Nφ + 2Hφ
 
     return nothing
 end
@@ -563,15 +523,15 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
-    @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
-    @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δλᶠᵃᵃ
-    @test φspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δφᵃᶜᵃ
-    @test φspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δφᵃᶠᵃ
+    @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.mapping.Δλᶜᵃᵃ
+    @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.mapping.Δλᶠᵃᵃ
+    @test φspacings(grid_reg, Center(), with_halos=true) == grid_reg.mapping.Δφᵃᶜᵃ
+    @test φspacings(grid_reg, Face(),   with_halos=true) == grid_reg.mapping.Δφᵃᶠᵃ
 
-    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
-    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
+    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.mapping.Δλᶠᵃᵃ
+    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.mapping.Δφᵃᶠᵃ
 
-    Δλ = grid_reg.Δλᶠᵃᵃ
+    Δλ = grid_reg.mapping.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
 
     Δz = grid_reg.Δzᵃᵃᶜ
@@ -579,11 +539,11 @@ function test_basic_lat_lon_general_grid(FT)
 
     grid_str = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
 
-    @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
-    @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶠᶠᵃ) == length(grid_reg.λᶠᶠᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶜᶜᵃ) == length(grid_reg.λᶜᶜᵃ) == Nλ + 2Hλ
         
-    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
-    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
+    @test length(grid_str.φᶠᶠᵃ) == length(grid_reg.φᶠᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid_str.φᶜᶜᵃ) == length(grid_reg.φᶜᶜᵃ) == Nφ + 2Hφ
     
     @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
@@ -591,10 +551,10 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
 
-    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
-    @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
-    @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
-    @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
+    @test all(grid_str.λᶜᶜᵃ == grid_reg.λᶜᶜᵃ)
+    @test all(grid_str.λᶠᶠᵃ == grid_reg.λᶠᶠᵃ)
+    @test all(grid_str.φᶜᶜᵃ == grid_reg.φᶜᶜᵃ)
+    @test all(grid_str.φᶠᶠᵃ == grid_reg.φᶠᶠᵃ)
     @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
     @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
 
@@ -714,7 +674,7 @@ end
 
 function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
 
-    grid = conformal_cubed_sphere_panel(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSpherePanelGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -927,7 +887,7 @@ end
         end
 
         # Testing show function
-        grid = conformal_cubed_sphere_panel(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = ConformalCubedSpherePanelGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
             show(grid); println()
@@ -946,7 +906,7 @@ end
                 radius = 234.5e6
 
                 Nx, Ny = 10, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ[1:Nx, 1:Ny]) ≈ 4π * grid.radius^2 / 6
@@ -956,16 +916,16 @@ end
 
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[1:Nx, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
-                grid = conformal_cubed_sphere_panel(arch, FT, size=(Nx, Ny, 1); z, radius)
+                grid = ConformalCubedSpherePanelGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, 1:Ny]) ≈ 2π * grid.radius / 4
             end
         end

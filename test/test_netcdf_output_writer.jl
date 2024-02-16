@@ -811,17 +811,17 @@ function test_netcdf_regular_lat_lon_grid_output(arch)
     @test length(ds["yF"]) == Ny+1  # y is Bounded
     @test length(ds["zF"]) == Nz+1  # z is Bounded
 
-    @test ds["xC"][1] == grid.λᶜᵃᵃ[1]
-    @test ds["xF"][1] == grid.λᶠᵃᵃ[1]
-    @test ds["yC"][1] == grid.φᵃᶜᵃ[1]
-    @test ds["yF"][1] == grid.φᵃᶠᵃ[1]
+    @test ds["xC"][1] == grid.λᶜᶜᵃ[1]
+    @test ds["xF"][1] == grid.λᶠᶠᵃ[1]
+    @test ds["yC"][1] == grid.φᶜᶜᵃ[1]
+    @test ds["yF"][1] == grid.φᶠᶠᵃ[1]
     @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
     @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
-    @test ds["xC"][end] == grid.λᶜᵃᵃ[Nx]
-    @test ds["xF"][end] == grid.λᶠᵃᵃ[Nx]
-    @test ds["yC"][end] == grid.φᵃᶜᵃ[Ny]
-    @test ds["yF"][end] == grid.φᵃᶠᵃ[Ny+1]  # y is Bounded
+    @test ds["xC"][end] == grid.λᶜᶜᵃ[Nx]
+    @test ds["xF"][end] == grid.λᶠᶠᵃ[Nx]
+    @test ds["yC"][end] == grid.φᶜᶜᵃ[Ny]
+    @test ds["yF"][end] == grid.φᶠᶠᵃ[Ny+1]  # y is Bounded
     @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
     @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 
