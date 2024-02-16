@@ -153,10 +153,10 @@ end
     set_diffusivity!(dmodel, 0)
 
     dc²_dκ = autodiff(Enzyme.Reverse,
-                    stable_diffusion!,
-                    Duplicated(model, dmodel),
-                    Const(amplitude),
-                    Active(κ))
+                      stable_diffusion!,
+                      Duplicated(model, dmodel),
+                      Const(amplitude),
+                      Active(κ))
 
     @info """ \n
     Enzyme computed $dc²_dκ
