@@ -108,8 +108,8 @@ end
     v = YFaceField(grid)
 
     U = 1
-    u₀(x, y, z) = - U * cos(x + π/4) * sin(y) * (z + 0.5)
-    v₀(x, y, z) = + U * sin(x + π/4) * cos(y) * (z + 0.5)
+    u₀(x, y, z) = - U * cos(x + L/8) * sin(y) * (z + L/2)
+    v₀(x, y, z) = + U * sin(x + L/8) * cos(y) * (z + L/2)
 
     set!(u, u₀)
     set!(v, v₀)
