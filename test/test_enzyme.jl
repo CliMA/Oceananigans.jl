@@ -32,7 +32,6 @@ function set_diffusivity!(model, diffusivity)
 end
 
 function set_initial_condition!(model, amplitude)
-    # Set initial condition
     amplitude = Ref(amplitude)
 
     # This has a "width" of 0.1
@@ -49,13 +48,13 @@ function stable_diffusion!(model, amplitude, diffusivity)
     # Do time-stepping
     Nx, Ny, Nz = size(model.grid)
     κ_max = maximum_diffusivity
-    Δz = 2π / Nz
+    Δz = minimum_zspacing(model.grid)
     Δt = 1e-1 * Δz^2 / κ_max
 
     model.clock.time = 0
     model.clock.iteration = 0
 
-    for n = 1:10
+    for _ = 1:10
         time_step!(model, Δt; euler=true)
     end
 
@@ -72,6 +71,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
         sum_c² += c[i, j, k]^2
     end
 
+    # Need the ::Float64 for type inference with automatic differentiation
     return sum_c²::Float64
 end
 
