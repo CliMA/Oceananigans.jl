@@ -94,8 +94,11 @@ end
     Nx = Ny = 64
     Nz = 8
 
-    x = y = (-π, π)
-    z = (-0.5, 0.5)
+    Lx = Ly = L = 2π
+    Lz = 1
+
+    x = y = (-L/2, L/2)
+    z = (-Lz/2, Lz/2)
     topology = (Periodic, Periodic, Bounded)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
