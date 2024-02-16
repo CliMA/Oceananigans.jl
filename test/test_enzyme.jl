@@ -66,7 +66,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
 
     # Another way to compute it
     sum_c² = 0.0
-    for i = 1:Nx, j = 1:Ny, k = 1:Nz
+    for k = 1:Nz, j = 1:Ny,  i = 1:Nx
         sum_c² += c[i, j, k]^2
     end
 
