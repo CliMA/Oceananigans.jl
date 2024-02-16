@@ -60,7 +60,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
     # Compute scalar metric
     c = model.tracers.c
 
-    # Hard way
+    # Hard way (for enzyme - the sum function sometimes errors with AD)
     # c² = c^2
     # sum_c² = sum(c²)
 
