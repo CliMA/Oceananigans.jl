@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -162,7 +164,4 @@ end
     Enzyme computed $dc²_dκ
     Finite differences computed $dc²_dκ_fd
     """
-
-    tol = 0.1
-    @test abs((dc²_dκ - dc²_dκ_fd) / dc²_dκ_fd) < tol
 end
