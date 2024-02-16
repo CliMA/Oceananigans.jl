@@ -33,7 +33,7 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     
     # Initial "at-rest" conditions
     launch!(architecture(grid), grid, :xy, _update_zstar!, 
-            sⁿ, s⁻, ΔzF, ΔzC, ZeroField(grid), grid, Val(grid.Nz))
+            sⁿ, s⁻, ΔzF, ΔzC, ZeroField(), grid, Val(grid.Nz))
 
     fill_halo_regions!((s⁻, sⁿ))
     fill_halo_regions!((ΔzF, ΔzC))
