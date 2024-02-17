@@ -390,6 +390,8 @@ function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) wh
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
+struct UnspecifiedBoundaryConditions end
+
 """
     FieldTimeSeries(path, name, backend = InMemory();
                     grid = nothing,
@@ -414,12 +416,8 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 """
-FieldTimeSeries(path::String, name::String; backend=InMemory(), kw...) =
-    FieldTimeSeries(path, name, backend; kw...)
-
-struct UnspecifiedBoundaryConditions end
-
-function FieldTimeSeries(path::String, name::String, backend::AbstractDataBackend;
+function FieldTimeSeries(path::String, name::String;
+                         backend = InMemory(),
                          architecture = nothing,
                          grid = nothing,
                          location = nothing,
