@@ -162,4 +162,9 @@ end
     Enzyme computed $dc²_dκ
     Finite differences computed $dc²_dκ_fd
     """
+
+    tol = 0.01
+    rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
+    @test  rel_error < tol
+    
 end
