@@ -122,8 +122,8 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                     c_tendency,
                     grid,
                     only_active_cells,
-                    args;
-                    only_active_cells)
+                    args::Vararg{N, T}
+                    only_active_cells) where {N, T};
         end
     end
 
@@ -134,7 +134,7 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, c, arch, args)
+function apply_flux_bcs!(Gcⁿ, c, arch, args::Vararg{N, T}) where {N, T};
     apply_x_bcs!(Gcⁿ, c, arch, args...)
     apply_y_bcs!(Gcⁿ, c, arch, args...)
     apply_z_bcs!(Gcⁿ, c, arch, args...)
@@ -154,7 +154,7 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
+            grid, args::Vararg{N, T}) where {N, T};
 
     return nothing
 end
@@ -188,13 +188,13 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-                only_active_cells, u_kernel_args;
-                only_active_cells)
+                only_active_cells, u_kernel_args::Vararg{N, T}
+                only_active_cells) where {N, T};
 
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-                only_active_cells, v_kernel_args;
-                only_active_cells)
+                only_active_cells, v_kernel_args::Vararg{N, T};
+                only_active_cells) where {N, T};
     end
 
     compute_free_surface_tendency!(grid, model, :xy)
@@ -209,15 +209,15 @@ function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, veloci
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
+        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args::Vararg{N, T}) where {N, T};
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
+    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args::Vararg{N, T}) where {N, T};
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
+        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args::Vararg{N, T}) where {N, T};
     end
 
     return nothing
@@ -228,24 +228,24 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, interior_map, args::Vararg{N, T}) where {N, T};
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, ::InteriorMap, args::Vararg{N, T}) where {N, T};
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, interior_map, args::Vararg{N, T}) where {N, T};
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, ::InteriorMap, args::Vararg{N, T}) where {N, T};
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
@@ -256,24 +256,24 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, interior_map, args::Vararg{N, T}) where {N, T};
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, ::InteriorMap, args::Vararg{N, T}) where {N, T};
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, interior_map, args::Vararg{N, T}) where {N, T};
     i, j, k = @index(Global, NTuple)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, ::InteriorMap, args::Vararg{N, T}) where {N, T};
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_interior_tuple(idx, grid)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
@@ -284,7 +284,7 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args::Vararg{N, T}) where {N, T};
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end
