@@ -66,11 +66,13 @@ simulation.callbacks[:modify_u] = Callback(modify_tendecy!, IterationInterval(1)
                                            parameters = (c = :u, δ = 1))
 
 run!(simulation)
-
-@info model.velocities.u
 ```
 
-Above there is no forcing at all, but due to the callback the velocity is increased.
+Above there is no forcing at all, but due to the callback the ``u``-velocity is increased.
+
+```@example checkpointing
+@info model.velocities.u
+```
 
 !!! note "Example only for illustration purposes"
     The above is a redundant example since it could be implemented better with a simple forcing function.
@@ -87,45 +89,3 @@ The time that callbacks are called at are specified by schedule functions which 
  - [`TimeInterval`](@ref) : runs every `n`s of model run time
  - [`SpecifiedTimes`](@ref) : runs at the specified times
  - [`WallTimeInterval`](@ref) : runs every `n`s of wall time
-
-
-```@meta
-DocTestSetup = quote
-    using Oceananigans
-end
-```
-
-```@example checkpointing
-using Oceananigans, Oceananigans.Units
-
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1)))
-
-simulation = Simulation(model, Δt=1, stop_iteration=1)
-
-simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5days), prefix="model_checkpoint")
-
-run!(simulation)
-```
-
-The default options should provide checkpoint files that are easy to restore from in most cases.
-For more advanced options and features, see [`Checkpointer`](@ref).
-
-## Picking up a simulation from a checkpoint file
-
-Picking up a simulation from a checkpoint requires the original script that was used to generate
-the checkpoint data. Change the first instance of [`run!`](@ref) in the script to take `pickup=true`:
-
-```@repl checkpointing
-simulation.stop_iteration = 2
-
-run!(simulation, pickup=true)
-```
-
-which finds the latest checkpoint file in the current working directory (in this trivial case,
-this is the checkpoint associated with iteration 0), loads the prognostic fields and their tendencies
-from file, resets the model clock and iteration, and updates the model auxiliary state before
-starting the time-stepping loop.
-
-Use `pickup=iteration`, where `iteration` is an `Integer`, to pick up from a specific iteration.
-Otherwise, use `pickup=filepath`, where `filepath` is a string, to pickup from a specific file located
-at `filepath`.
