@@ -1,4 +1,5 @@
 using Oceananigans.Fields: show_location, data_summary
+using Oceananigans.Utils: prettysummary
 
 #####
 ##### Show methods
