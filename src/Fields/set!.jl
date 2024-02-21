@@ -41,6 +41,8 @@ function set!(u::Field, f::Function)
     f_field = field(location(u), f, cpu_grid)
 
     # Try to set the FuncitonField to cpu_u
+    set!(cpu_u, f_field)
+    #=
     try
         set!(cpu_u, f_field)
     catch err
@@ -60,7 +62,7 @@ function set!(u::Field, f::Function)
         @warn msg
         throw(err)
     end
-
+    =#
     # Transfer data to GPU if u is on the GPU
     if architecture(u) isa GPU
         set!(u, cpu_u)
