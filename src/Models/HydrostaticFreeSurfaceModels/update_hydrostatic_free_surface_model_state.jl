@@ -12,6 +12,7 @@ import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 
 using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Advection: update_advection_auxiliaries!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -80,6 +81,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
                                     grid, model.buoyancy, model.tracers; 
                                     parameters = ppar)
+        update_advection_auxiliaries!(model, model.advection.momentum; parameters = wpar)
     end
+
     return nothing
 end
