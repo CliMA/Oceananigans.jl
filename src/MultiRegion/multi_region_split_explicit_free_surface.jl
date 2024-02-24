@@ -6,10 +6,16 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
-    Nz = size(grid, 3)
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
 
-    Gᵁ = XFaceField(grid; indices = (:, :, Nz))
-    Gⱽ = YFaceField(grid; indices = (:, :, Nz))
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+
+    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
+
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
@@ -17,7 +23,7 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 @inline function calculate_column_height!(height, location)

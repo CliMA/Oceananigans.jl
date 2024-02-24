@@ -12,7 +12,7 @@ end
 """
     function TracerAdvection(; x, y, z)
 
-builds a `TracerAdvection` type with different reconstructions in `x`, `y`, and `z`
+Builds a `TracerAdvection` type with reconstruction schemes in `x`, `y`, and `z`.
 """
 function TracerAdvection(; x, y, z)
     Nx = required_halo_size(x)
@@ -23,6 +23,11 @@ function TracerAdvection(; x, y, z)
 
     return TracerAdvection{max(Nx, Ny, Nz), FT}(x, y, z)
 end
+
+Adapt.adapt_structure(to, scheme::TracerAdvection{N, FT}) where {N, FT} =
+    TracerAdvection{N, FT}(Adapt.adapt(to, scheme.x),
+                           Adapt.adapt(to, scheme.y),
+                           Adapt.adapt(to, scheme.z))
 
 @inline _advective_tracer_flux_x(args...) = advective_tracer_flux_x(args...)
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
