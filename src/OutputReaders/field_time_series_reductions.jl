@@ -1,36 +1,6 @@
 using Statistics
 
 #####
-##### Reductions
-#####
-
-#=
-Statistics.mean(f::Function, fts::FieldTimeSeries; dims=:) =
-    mean(f, parent(fts); dims)
-
-function Statistics.mean(fts::FieldTimeSeries; dims=:)
-    m = mean(fts[1]; dims)
-    Nt = length(fts)
-
-    if dims isa Colon
-        for n = 2:Nt
-            m += mean(fts[n])
-        end
-
-        return m / Nt
-    else
-        for n = 2:Nt
-            m .+= mean(fts[n]; dims)
-        end
-
-        m ./= Nt
-
-        return m
-    end
-end
-=#
-
-#####
 ##### Methods
 #####
 

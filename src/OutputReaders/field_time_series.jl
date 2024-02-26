@@ -370,7 +370,7 @@ function FieldTimeSeries(loc, grid, times=();
 end
 
 """
-    FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...)
+    FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid [, times=()]; kwargs...)
 
 Construct a `FieldTimeSeries` on `grid` and at `times`.
 
