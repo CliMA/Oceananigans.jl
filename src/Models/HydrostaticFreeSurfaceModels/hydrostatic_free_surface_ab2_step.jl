@@ -43,7 +43,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid)
+                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
@@ -78,7 +78,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         closure = model.closure
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻, model.grid)
+                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
