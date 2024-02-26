@@ -573,8 +573,6 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-
-
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
