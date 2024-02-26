@@ -1,5 +1,6 @@
 module OutputReaders
 
+export FieldDataset
 export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
