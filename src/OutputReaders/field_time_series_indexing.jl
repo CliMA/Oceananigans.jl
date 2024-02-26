@@ -39,7 +39,7 @@ end
     before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
     unclamped_indices = (n, n₁, n₂) # Business as usual
 
-    Nt = length(fts.times)
+    Nt = length(times)
 
     indices = ifelse(n + n₁ > Nt, beyond_indices,
               ifelse(n + n₁ < 1,  before_indices, unclamped_indices))

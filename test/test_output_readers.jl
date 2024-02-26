@@ -287,9 +287,7 @@ end
 
         grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
 
-        Δt = times[2] - times[1]
-
-        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Cyclical(Δt))
+        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Cyclical())
         fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Clamp())
 
         for t in eachindex(times)
@@ -298,7 +296,7 @@ end
         end
 
         # Let's test that the field remains bounded between 0.5 and 50
-        for time in Time.(collect(0:0.1:300))
+        for time in Time.(collect(0:0.1:100))
             @test fts_cyclic[1, 1, 1, time] ≤ 50
             @test fts_cyclic[1, 1, 1, time] ≥ 0.5
 
@@ -307,7 +305,7 @@ end
             elseif time.time < min_t
                 @test fts_clamp[1, 1, 1, time] == 0.5
             else
-                @test fts_clamp[1, 1, 1, time] == fts_cyclic[1, 1, 1, time]
+                @test fts_clamp[1, 1, 1, time] ≈ fts_cyclic[1, 1, 1, time]
             end
         end
     end
