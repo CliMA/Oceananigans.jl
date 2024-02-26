@@ -265,7 +265,7 @@ end
         fts = FieldTimeSeries(filepath, "c")
         fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2))
 
-        for t in eachindex(f.times)
+        for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
         end
 
