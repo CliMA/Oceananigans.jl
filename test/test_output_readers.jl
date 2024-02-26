@@ -274,8 +274,8 @@ end
         # Test cyclic time interpolation with update_field_time_series!
         times = map(Time, 0:0.1:300)
         for time in times
-            @test fts_chunked[time] ≤ max_fts
-            @test fts_chunked[time] ≥ min_fts
+            @test all(interior(fts_chunked[time]) .≤ max_fts)
+            @test all(interior(fts_chunked[time]) .≥ min_fts)
         end
     end
 
