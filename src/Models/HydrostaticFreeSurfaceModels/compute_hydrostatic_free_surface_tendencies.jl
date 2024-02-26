@@ -71,8 +71,13 @@ function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple
     end
 end
 
-top_tracer_boundary_conditions(grid, tracers) =
-    NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+@inline function top_tracer_boundary_conditions(grid, tracers)
+    names = propertynames(tracers)
+    values = Tuple(tracers[c].boundary_conditions.top for c in names)
+
+    # Some shenanigans for type stability?
+    return NamedTuple{tuple(names...)}(tuple(values...))
+end
 
 """ Store previous value of the source term and compute current source term. """
 function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
@@ -129,11 +134,10 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, c, arch, args...)
+function apply_flux_bcs!(Gcⁿ, c, arch, args)
     apply_x_bcs!(Gcⁿ, c, arch, args...)
     apply_y_bcs!(Gcⁿ, c, arch, args...)
     apply_z_bcs!(Gcⁿ, c, arch, args...)
-
     return nothing
 end
 
@@ -201,17 +205,19 @@ end
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
 
+    args = Tuple(args)
+
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args...)
+        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args...)
+    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
+        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
     end
 
     return nothing

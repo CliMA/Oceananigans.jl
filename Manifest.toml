@@ -2,7 +2,11 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
+<<<<<<< HEAD
 project_hash = "21eb6b02d2870a916430d805acf3d926ca95d5b2"
+=======
+project_hash = "39afa30206a17bb59b9e4ecef8c35f280cf4701c"
+>>>>>>> origin/ss-glw/time-bcs
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -750,9 +754,9 @@ uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.0"
 
 [[deps.SeawaterPolynomials]]
-git-tree-sha1 = "958ba75b90c7c8a117d041d33184134201cf8c0f"
+git-tree-sha1 = "6d85acd6de472f8e6da81c61c7c5b6280a55e0bc"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.3.2"
+version = "0.3.4"
 
 [[deps.SentinelArrays]]
 deps = ["Dates", "Random"]

@@ -139,20 +139,28 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               z = chebychev_spaced_z_faces)
 ```
 
-We can easily visualize the spacing of ``y`` and ``z`` directions.
+We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, e.g.,
+[`ynodes`](@ref) and [`yspacings`](@ref) to extract the positions and spacings of the
+nodes from the grid.
 
 ```@example 1
+ yᶜ = ynodes(grid, Center())
+Δyᶜ = yspacings(grid, Center())
+
+ zᶜ = znodes(grid, Center())
+Δzᶜ = zspacings(grid, Center())
+
 using CairoMakie
 
 fig = Figure(size=(800, 900))
 
 ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
-lines!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
-scatter!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
+lines!(ax1, yᶜ, Δyᶜ)
+scatter!(ax1, yᶜ, Δyᶜ)
 
 ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
-lines!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
-scatter!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+lines!(ax2, zᶜ, Δzᶜ)
+scatter!(ax2, zᶜ, Δzᶜ)
 
 save("plot_stretched_grid.svg", fig); nothing #hide
 ```

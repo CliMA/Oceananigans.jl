@@ -64,12 +64,21 @@ Keyword Arguments
                       within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
                       with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
                       centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
-                      described by Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-                      is chosen.
+                      described by [Shchepetkin2005](@citet) is chosen.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
+<<<<<<< HEAD
   - `ForwardBackwardScheme()` (default): `ηᵐ⁺¹ = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+=======
+  * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
+  * `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+
+References
+==========
+
+Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
+>>>>>>> origin/ss-glw/time-bcs
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
@@ -92,8 +101,13 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     η  = ZFaceField(grid, indices = (:, :, Nz+1))
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
+<<<<<<< HEAD
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid, settings.timestepper), SplitExplicitAuxiliaryFields(grid),
            gravitational_acceleration, settings)
+=======
+    return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
+                                    gravitational_acceleration, settings)
+>>>>>>> origin/ss-glw/time-bcs
 end
 
 """
@@ -209,8 +223,13 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     kernel_parameters = :xy
+<<<<<<< HEAD
     
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+=======
+
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+>>>>>>> origin/ss-glw/time-bcs
 end
 
 """
@@ -244,7 +263,7 @@ auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
-@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
+@inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
@@ -260,7 +279,7 @@ struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
 end
-    
+
 function FixedTimeStepSize(FT::DataType = Float64;
                            cfl = 0.7, 
                            grid, 
@@ -271,7 +290,7 @@ function FixedTimeStepSize(FT::DataType = Float64;
     Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
 
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-    
+
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
