@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices
-using Oceananigans.OutputReaders: Cyclical
+using Oceananigans.OutputReaders: Cyclical, Clamp
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -263,19 +263,19 @@ end
         @info "  Testing Chunked abstraction..."      
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
-        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2))
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
 
         for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
         end
 
-        max_fts, min_fts = extrema(fts)
+        min_fts, max_fts = extrema(fts)
 
         # Test cyclic time interpolation with update_field_time_series!
         times = map(Time, 0:0.1:300)
         for time in times
-            @test all(interior(fts_chunked[time]) .≤ max_fts)
-            @test all(interior(fts_chunked[time]) .≥ min_fts)
+            @test minimum(fts_chunked[time]) ≥ min_fts
+            @test maximum(fts_chunked[time]) ≤ max_fts
         end
     end
 
@@ -289,8 +289,8 @@ end
 
         Δt = times[2] - times[1]
 
-        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_extrapolation = Cyclical(Δt))
-        fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_extrapolation = Clamp())
+        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Cyclical(Δt))
+        fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Clamp())
 
         for t in eachindex(times)
             fill!(fts_cyclic[t], t / 2) # value of the field between 0.5 and 50
