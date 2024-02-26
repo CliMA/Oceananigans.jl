@@ -188,12 +188,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-                only_active_cells, u_kernel_args;
+                only_active_cells, u_kernel_args...;
                 only_active_cells)
 
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-                only_active_cells, v_kernel_args;
+                only_active_cells, v_kernel_args...;
                 only_active_cells)
     end
 
