@@ -20,7 +20,7 @@ function TracerAdvection(x_advection, y_advection, z_advection)
     Hy = required_halo_size(y_advection)
     Hz = required_halo_size(z_advection)
 
-    FT = eltype(x)
+    FT = eltype(x_advection)
     H = max(Hx, Hy, Hz)
 
     return TracerAdvection{H, FT}(x_advection, y_advection, z_advection)
