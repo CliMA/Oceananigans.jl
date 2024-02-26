@@ -30,7 +30,7 @@ function set!(time_series::OnDiskFieldTimeSeries, f::Field, index::Int)
     jldopen(path, "a+") do file
         initialize_file!(file, name, time_series)
         maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])
-        maybe_write_property!(file, "timeseries/$(name)/$(index)", parent(f))
+        maybe_write_property!(file, "timeseries/$(name)/$(index)", Array(parent(f)))
     end
 end
 
