@@ -14,7 +14,7 @@ import Oceananigans.Models: complete_communication_and_compute_boundary!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
-                                       InteriorMap, active_linear_index_to_interior_tuple
+                                       InteriorMap, active_linear_index_to_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -180,7 +180,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-        
+
     for parameters in kernel_parameters
         launch!(arch, grid, parameters,
                 compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
@@ -222,26 +222,26 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -250,26 +250,26 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, interior_map, args)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, ::InteriorMap, args)
+@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_interior_tuple(idx, grid)
+    i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 

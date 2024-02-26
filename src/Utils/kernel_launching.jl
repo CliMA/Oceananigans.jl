@@ -7,7 +7,6 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 
 using Oceananigans.Grids: AbstractGrid
-
 import Base
 
 struct KernelParameters{S, O} end
@@ -107,7 +106,6 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 end
 
 @inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
-@inline use_only_active_interior_cells(grid) = nothing
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
@@ -122,33 +120,51 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  only_active_cells = nothing,
                  kwargs...)
 
+
+    loop! = configured_kernel(arch, grid, workspec, kernel!;
+                              include_right_boundaries,
+                              reduced_dimensions,
+                              location,
+                              only_active_cells,
+                              kwargs...)
+    
+    
+    !isnothing(loop!) && loop!(kernel_args...)
+    
+    return nothing
+end
+
+function configured_kernel(arch, grid, workspec, kernel!;
+                           include_right_boundaries = false,
+                           reduced_dimensions = (),
+                           location = nothing,
+                           only_active_cells = nothing,
+                           kwargs...)
+
     workgroup, worksize = work_layout(grid, workspec;
-                                      include_right_boundaries,
-                                      reduced_dimensions,
-                                      location)
+                                    include_right_boundaries,
+                                    reduced_dimensions,
+                                    location)
 
     offset = offsets(workspec)
 
     if !isnothing(only_active_cells) 
         workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
         offset = nothing
+
+        # A non active domain! 
+        if worksize == 0
+            return nothing
+        end
     end
 
-    if worksize == 0
-        return nothing
-    end
-    
     # We can only launch offset kernels with Static sizes!!!!
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
 
-    @debug "Launching kernel $kernel! with worksize $worksize and offsets $offset from $workspec"
-
-    loop!(kernel_args...)
-
-    return nothing
+    return loop!
 end
-
+        
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
@@ -264,4 +280,3 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
-

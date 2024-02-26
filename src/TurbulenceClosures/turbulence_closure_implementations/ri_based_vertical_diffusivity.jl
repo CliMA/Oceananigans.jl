@@ -3,7 +3,6 @@ using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
-using Oceananigans.Utils: use_only_active_interior_cells
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT

@@ -189,7 +189,6 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
 
     if !only_local_halos # Then we need to fill the `send` buffers
         fill_send_buffers!(c, buffers, grid, Val(buffer_side))
-        sync_device!(arch)
     end
 
     # Calculate size and offset of the fill_halo kernel
@@ -201,7 +200,7 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
     requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
 
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
-
+    
     return nothing
 end
 
@@ -244,6 +243,8 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
         function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
+            sync_device!(arch)
+            
             only_local_halos && return nothing
                         
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
@@ -273,6 +274,8 @@ for side in [:west, :east, :south, :north]
         function $fill_side_halo!(c, bc_side::DCBCT, size, offset, loc, arch::Distributed, grid::DistributedGrid,
                                  buffers, args...; only_local_halos = false, kwargs...)
 
+            sync_device!(arch)
+                                 
             only_local_halos && return nothing
 
             child_arch = child_architecture(arch)

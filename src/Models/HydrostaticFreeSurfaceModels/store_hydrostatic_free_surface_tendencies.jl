@@ -4,6 +4,7 @@ using Oceananigans.TimeSteppers:  store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells
 
 using Oceananigans.Utils: launch!
 
@@ -36,7 +37,6 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
         launch!(model.architecture, model.grid, :xyz,
                 store_field_tendencies!,
                 model.timestepper.G⁻[field_name],
-                model.grid,
                 model.timestepper.Gⁿ[field_name])
 
     end

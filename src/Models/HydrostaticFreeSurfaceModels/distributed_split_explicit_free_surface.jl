@@ -12,14 +12,11 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
-    
+
     calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
     calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
-       
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
@@ -27,7 +24,7 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
 
     kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 """Integrate z at locations `location` and set! `height`` with the result"""
@@ -75,7 +72,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
 
         return SplitExplicitFreeSurface(η,
-                                        SplitExplicitState(new_grid),
+                                        SplitExplicitState(new_grid, settings.timestepper),
                                         SplitExplicitAuxiliaryFields(new_grid),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)

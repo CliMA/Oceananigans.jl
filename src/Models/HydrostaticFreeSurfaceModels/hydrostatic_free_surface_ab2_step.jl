@@ -2,6 +2,8 @@ using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 
+using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, use_only_active_surface_cells
+
 import Oceananigans.TimeSteppers: ab2_step!
 
 #####
@@ -41,7 +43,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid)
 
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
@@ -76,7 +78,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         closure = model.closure
 
         launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻, model.grid)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,

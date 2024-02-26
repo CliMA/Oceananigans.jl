@@ -2,7 +2,11 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
+<<<<<<< HEAD
 project_hash = "33687d05431bf3d1e78492740cfe911a5657601c"
+=======
+project_hash = "21eb6b02d2870a916430d805acf3d926ca95d5b2"
+>>>>>>> ss/optimize-catke
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]

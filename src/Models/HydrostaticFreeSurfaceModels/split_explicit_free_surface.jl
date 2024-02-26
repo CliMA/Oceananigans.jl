@@ -68,7 +68,7 @@ Keyword Arguments
                       is chosen.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  - `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
+  - `ForwardBackwardScheme()` (default): `ηᵐ⁺¹ = f(U)`   then `U = f(η)`,
   - `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 """
 SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
@@ -79,7 +79,7 @@ SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
+    return SplitExplicitFreeSurface(η, SplitExplicitState(grid, free_surface.settings.timestepper),
                                     SplitExplicitAuxiliaryFields(grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)
@@ -88,14 +88,11 @@ end
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
 
-    if eltype(settings) != eltype(grid)
-        @warn "Using $(eltype(settings)) settings for the SplitExplicitFreeSurface on a $(eltype(grid)) grid"
-    end
-    
-    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    Nz = size(grid, 3)
+    η  = ZFaceField(grid, indices = (:, :, Nz+1))
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid), SplitExplicitAuxiliaryFields(grid),
+    return SplitExplicitFreeSurface(η, SplitExplicitState(grid, settings.timestepper), SplitExplicitAuxiliaryFields(grid),
            gravitational_acceleration, settings)
 end
 
@@ -106,35 +103,35 @@ A type containing the state fields for the split-explicit free surface.
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
+Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     "The free surface at time `m`. (`ReducedField` over ``z``)"
-    ηᵐ   :: 𝒞𝒞
+    ηᵐ   :: ACC
     "The free surface at time `m-1`. (`ReducedField` over ``z``)"
-    ηᵐ⁻¹ :: 𝒞𝒞
+    ηᵐ⁻¹ :: ACC
     "The free surface at time `m-2`. (`ReducedField` over ``z``)"
-    ηᵐ⁻² :: 𝒞𝒞
+    ηᵐ⁻² :: ACC
     "The barotropic zonal velocity at time `m`. (`ReducedField` over ``z``)"
-    U    :: ℱ𝒞
+    U    :: FC
     "The barotropic zonal velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Uᵐ⁻¹ :: ℱ𝒞
+    Uᵐ⁻¹ :: AFC
     "The barotropic zonal velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Uᵐ⁻² :: ℱ𝒞
+    Uᵐ⁻² :: AFC
     "The barotropic meridional velocity at time `m`. (`ReducedField` over ``z``)"
-    V    :: 𝒞ℱ
+    V    :: CF
     "The barotropic meridional velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Vᵐ⁻¹ :: 𝒞ℱ
+    Vᵐ⁻¹ :: ACF
     "The barotropic meridional velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Vᵐ⁻² :: 𝒞ℱ
+    Vᵐ⁻² :: ACF
     "The time-filtered free surface. (`ReducedField` over ``z``)"
-    η̅    :: 𝒞𝒞
+    η̅    :: CC
     "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
-    U̅    :: ℱ𝒞
+    U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    V̅    :: 𝒞ℱ
+    V̅    :: CF
 end
 
 """
-    SplitExplicitState(grid)
+    SplitExplicitState(grid, timestepper)
 
 Return the split-explicit state for `grid`.
 
@@ -142,24 +139,26 @@ Note that `η̅` is solely used for setting the `η` at the next substep iterati
 acts as a filter for `η`. Values with superscripts `m-1` and `m-2` correspond to previous stored
 time steps to allow using a higher-order time stepping scheme, e.g., `AdamsBashforth3Scheme`.
 """
-function SplitExplicitState(grid::AbstractGrid)
-    η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+function SplitExplicitState(grid::AbstractGrid, timestepper)
+    
+    Nz = size(grid, 3)
+    
+    η̅ = ZFaceField(grid, indices = (:, :, Nz+1))
 
-    ηᵐ   = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-    ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-    ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    ηᵐ   = auxiliary_free_surface_field(grid, timestepper)
+    ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
+    ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
           
-    U    = Field((Face, Center, Nothing), grid)
-    V    = Field((Center, Face, Nothing), grid)
+    U    = XFaceField(grid, indices = (:, :, Nz))
+    V    = YFaceField(grid, indices = (:, :, Nz))
 
-    Uᵐ⁻¹ = Field((Face, Center, Nothing), grid)
-    Vᵐ⁻¹ = Field((Center, Face, Nothing), grid)
+    Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
           
-    Uᵐ⁻² = Field((Face, Center, Nothing), grid)
-    Vᵐ⁻² = Field((Center, Face, Nothing), grid)
-          
-    U̅    = Field((Face, Center, Nothing), grid)
-    V̅    = Field((Center, Face, Nothing), grid)
+    U̅ = XFaceField(grid, indices = (:, :, Nz))
+    V̅ = YFaceField(grid, indices = (:, :, Nz))
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
@@ -175,7 +174,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -184,8 +183,6 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦
     Hᶠᶜ :: ℱ𝒞
     "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
     Hᶜᶠ :: 𝒞ℱ
-    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
-    Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -202,22 +199,18 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
     sum!(Hᶠᶜ, dz)
-   
+
     dz = GridMetricOperation((Center, Face, Center), Δz, grid)
     sum!(Hᶜᶠ, dz)
 
-    dz = GridMetricOperation((Center, Center, Center), Δz, grid)
-    sum!(Hᶜᶜ, dz)
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     kernel_parameters = :xy
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 """
@@ -234,6 +227,15 @@ end
 
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
+
+
+auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
+
+auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT 
@@ -287,7 +289,7 @@ end
     averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
 
-    return Δτ, averaging_weights
+    return Δτ, tuple(averaging_weights...)
 end
 
 function SplitExplicitSettings(FT::DataType=Float64;

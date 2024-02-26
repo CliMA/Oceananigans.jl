@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -124,7 +125,8 @@ function ab2_step!(model, Δt, χ)
 
         step_field_kernel!(field, Δt, χ,
                            model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i])
+                           model.timestepper.G⁻[i],
+                           model.grid)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -147,7 +149,7 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
+@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻, grid)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
@@ -157,4 +159,4 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     @inbounds u[i, j, k] += convert(FT, Δt) * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻, grid) = nothing
