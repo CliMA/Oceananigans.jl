@@ -120,9 +120,11 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
 function possible_field_time_series(model::OceananigansModels)
-    bcs = map(boundary_conditions, prognostic_fields(model))
     forcing = model.forcing
-    return tuple(bcs..., forcing...)
+    model_fields = fields(model)
+    # Note: we may need to include other objects in the tuple below,
+    # such as model.diffusivity_fields
+    return tuple(model_fields, forcing)
 end
  
 # Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
