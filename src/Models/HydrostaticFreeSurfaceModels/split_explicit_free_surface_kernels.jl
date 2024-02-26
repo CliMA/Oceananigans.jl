@@ -18,11 +18,10 @@ using Printf
 const β = 0.281105
 const α = 1.5 + β
 const θ = - 0.5 - 2β
-
 const γ = 0.088
 const δ = 0.614
 const ϵ = 0.013
-const μ = 1.0 - δ - γ - ϵ
+const μ = 1 - δ - γ - ϵ
 
 # Evolution Kernels
 #
@@ -404,9 +403,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
             
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
-
             averaging_weight = weights[substep]
-
             free_surface_kernel!(converted_η_args...)
             barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
         end
