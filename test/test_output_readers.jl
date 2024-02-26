@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices
+using Oceananigans.OutputReaders: Cyclical
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -261,19 +262,20 @@ end
     @testset "Test chunked abstraction" begin  
         @info "  Testing Chunked abstraction..."      
         filepath = "testfile.jld2"
-        f = FieldTimeSeries(filepath, "c")
-        f_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2))
+        fts = FieldTimeSeries(filepath, "c")
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2))
 
         for t in eachindex(f.times)
-            f_chunked[t] == f[t]
+            fts_chunked[t] == fts[t]
         end
 
         max_fts, min_fts = extrema(fts)
 
         # Test cyclic time interpolation with update_field_time_series!
-        for time in Time.(collect(0:0.1:300))
-            @test fts[time] ≤ max_fts
-            @test fts[time] ≥ min_fts
+        times = map(Time, 0:0.1:300)
+        for time in times
+            @test fts_chunked[time] ≤ max_fts
+            @test fts_chunked[time] ≥ min_fts
         end
     end
 
