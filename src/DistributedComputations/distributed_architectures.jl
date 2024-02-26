@@ -210,7 +210,7 @@ function Distributed(child_architecture = CPU();
                      partition = Partition(MPI.Comm_size(communicator)))
 
     if !(MPI.Initialized())
-        @info "MPI has not been initialized, so we are calling MPI.Init()"
+        @info "MPI has not been initialized, so we are calling MPI.Init()."
         MPI.Init()
     end
 

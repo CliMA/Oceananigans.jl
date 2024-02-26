@@ -116,10 +116,9 @@ end
 @inline unsafe_free!(a)          = nothing
 
 # Convert arguments to GPU-compatible types
-
 @inline convert_args(::CPU, args) = args
 @inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
 @inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
-
 end # module
+

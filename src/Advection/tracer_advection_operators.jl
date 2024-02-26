@@ -10,18 +10,20 @@ struct TracerAdvection{N, FT, A, B, C} <: AbstractAdvectionScheme{N, FT}
 end
 
 """
-    function TracerAdvection(; x, y, z)
+    function TracerAdvection(x, y, z)
 
-builds a `TracerAdvection` type with different reconstructions in `x`, `y`, and `z`
+Builds a `TracerAdvection` type with reconstructions schemes `x`, `y`, and `z` to be applied in
+the x, y, and z direction, respectively.
 """
-function TracerAdvection(; x, y, z)
-    Nx = required_halo_size(x)
-    Ny = required_halo_size(y)
-    Nz = required_halo_size(z)
+function TracerAdvection(x_advection, y_advection, z_advection)
+    Hx = required_halo_size(x_advection)
+    Hy = required_halo_size(y_advection)
+    Hz = required_halo_size(z_advection)
 
     FT = eltype(x)
+    H = max(Hx, Hy, Hz)
 
-    return TracerAdvection{max(Nx, Ny, Nz), FT}(x, y, z)
+    return TracerAdvection{H, FT}(x_advection, y_advection, z_advection)
 end
 
 @inline _advective_tracer_flux_x(args...) = advective_tracer_flux_x(args...)
