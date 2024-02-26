@@ -1,4 +1,7 @@
 using Statistics
+import Oceananigans.Fields: conditional_length
+
+@inline conditional_length(ft::FieldTimeSeries) = length(ft) * conditional_length(ft[1])
 
 #####
 ##### Methods
