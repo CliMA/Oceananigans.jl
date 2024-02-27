@@ -1,17 +1,15 @@
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+CUDA_Driver_jll = "4ee394cb-3365-5eb0-8335-949819d2adfc"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
-OpenMPI_jll = "fe0851c0-eecd-5654-98d4-656369965a5c"
+
+[preferences.CUDA_Driver_jll]
+compat = false
 
 [preferences.CUDA_Runtime_jll]
-version = "local"
+version = "12.2"
+local = "true"
 
 [preferences.MPIPreferences]
 _format = "1.0"
-abi = "OpenMPI"
-binary = "system"
-libmpi = "libmpi"
-mpiexec = "mpiexec"
-
-[preferences.OpenMPI_jll]
-libmpi_path = "libmpi"
+binary = "MPItrampoline_jll"

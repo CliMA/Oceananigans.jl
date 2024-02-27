@@ -1,5 +1,4 @@
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Grids: topology
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
@@ -17,7 +16,7 @@ const θ = - 0.5 - 2β
 const γ = 0.088
 const δ = 0.614
 const ϵ = 0.013
-const μ = 1.0 - δ - γ - ϵ
+const μ = 1 - δ - γ - ϵ
 
 # Evolution Kernels
 #
@@ -203,20 +202,20 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
+# Possibly we can optimize this further by passing in Val(Nz) in order to 
+# @unroll the loop over `k`.
 @kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
-    i, j  = @index(Global, NTuple)	
+    i, j  = @index(Global, NTuple)
 
-    # hand unroll first loop
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
     @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
-    @unroll for k in 2:grid.Nz
+    for k in 2:grid.Nz
         @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
         @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 end
 
-# may need to do Val(Nk) since it may not be known at compile
 compute_barotropic_mode!(U, V, grid, u, v) = 
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v)
 
@@ -247,12 +246,11 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j] 
+        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / Hᶠᶜ[i, j]
         v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / Hᶜᶠ[i, j]
     end
 end
 
-# may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs       = free_surface.state
     Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
@@ -350,14 +348,15 @@ function iterate_split_explicit!(free_surface, grid, Δt)
 end
 
 # Calculate RHS for the barotopic time step. 
+# Possibly we can optimize this further by passing in Val(Nz) in order to 
+# @unroll the loop over `k`.
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    i, j  = @index(Global, NTuple)	
+    i, j  = @index(Global, NTuple)
 
-    # hand unroll first loop 	
     @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
     @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
 
-    @unroll for k in 2:grid.Nz	
+    for k in 2:grid.Nz	
         @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
         @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
     end	

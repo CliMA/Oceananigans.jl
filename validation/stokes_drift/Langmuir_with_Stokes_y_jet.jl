@@ -11,13 +11,13 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as Wagner et al. 2021,
+# We use a modest resolution and the same total extent as Wagner et al. (2021),
 
 grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# We utilize the same monochromatic wave parameters as Wagner et al. 2021,
+# We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
 using Oceananigans.BuoyancyModels: g_Earth
 
@@ -141,13 +141,13 @@ wˢ(x, y, z, t) = 2π / grid.Ly *vertical_scale * Uˢ * ( exp(z / vertical_scale
 
 # ### Boundary conditions
 #
-# At the surface at ``z=0``, Wagner et al. 2021 impose
+# At the surface ``z=0``, Wagner et al. (2021) impose
 
 Qᵛ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 v_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
 
-# Wagner et al. 2021 impose a linear buoyancy gradient `N²` at the bottom
+# Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 

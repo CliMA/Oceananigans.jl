@@ -31,13 +31,13 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as Wagner et al. 2021,
+# We use a modest resolution and the same total extent as Wagner et al. (2021),
 
 grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# The surface wave Stokes drift profile prescribed in Wagner et al. 2021,
+# The surface wave Stokes drift profile prescribed in Wagner et al. (2021),
 # corresponds to a 'monochromatic' (that is, single-frequency) wave field.
 #
 # A monochromatic wave field is characterized by its wavelength and amplitude
@@ -59,8 +59,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, include `GPU()` in the
-# constructor for `RectilinearGrid` above.
+# To run this example on the GPU, include `GPU()` in the `RectilinearGrid` constructor above.
 #
 # The Stokes drift profile is
 
@@ -84,18 +83,18 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
 # if the Stokes drift and surface wave field undergoes _forced_ changes in time.
-# In this example, the Stokes drift is constant
-# and thus the time-derivative of the Stokes drift is 0.
+# In this example, the Stokes drift is constant and thus the time-derivative of
+# the Stokes drift is 0.
 
 # ### Boundary conditions
 #
-# At the surface at ``z=0``, Wagner et al. 2021 impose
+# At the surface ``z = 0``, Wagner et al. (2021) impose
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-# Wagner et al. 2021 impose a linear buoyancy gradient `N²` at the bottom
+# Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
@@ -214,7 +213,7 @@ simulation.output_writers[:fields] =
 # ### An "averages" writer
 #
 # We also set up output of time- and horizontally-averaged velocity field and
-# momentum fluxes,
+# momentum fluxes.
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -239,7 +238,7 @@ run!(simulation)
 
 # # Making a neat movie
 #
-# We look at the results by loading data from file with FieldTimeSeries,
+# We look at the results by loading data from file with `FieldTimeSeries`,
 # and plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
