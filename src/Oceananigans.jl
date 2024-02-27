@@ -103,7 +103,7 @@ export
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    AndSchedule, OrSchedule,
+    AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
