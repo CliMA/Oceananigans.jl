@@ -8,7 +8,7 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
 
 import Oceananigans.Models: compute_boundary_tendencies!
 
-using Oceananigans.ImmersedBoundaries: active_map, DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
@@ -38,8 +38,13 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
     maps = grid.interior_active_cells
     
     for (name, map) in zip(keys(maps), maps)
-        if name != :interior && !isnothing(map)
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); only_active_cells = active_map(Val(name)))
+        compute_boundary = (name != :interior) && !isnothing(map) 
+        
+        # If there exists a boundary map, then we compute the boundary contributions
+        if compute_boundary
+            active_boundary_map = active_interior_map(Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
+                                                                     active_cells_map = active_boundary_map)
         end
     end
 

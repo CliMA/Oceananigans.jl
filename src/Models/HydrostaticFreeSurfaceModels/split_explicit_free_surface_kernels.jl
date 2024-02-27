@@ -8,7 +8,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, use_only_active_surface_cells, use_only_active_interior_cells
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
@@ -227,7 +227,7 @@ end
 
 compute_barotropic_mode!(U, V, grid, u, v) = 
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
-            only_active_cells = use_only_active_surface_cells(grid))
+            active_cells_map = active_surface_map(grid))
 
 function initialize_free_surface_state!(state, η, timestepper)
 
@@ -471,7 +471,7 @@ end
 
 setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; only_active_cells = use_only_active_surface_cells(grid))
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
             
 wait_free_surface_communication!(free_surface, arch) = nothing
 

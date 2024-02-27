@@ -105,7 +105,7 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-@inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
+@inline active_cells_work_layout(workgroup, worksize, active_cells_map, grid) = workgroup, worksize
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
@@ -117,15 +117,14 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
-                 only_active_cells = nothing,
+                 active_cells_map = nothing,
                  kwargs...)
-
 
     loop! = configured_kernel(arch, grid, workspec, kernel!;
                               include_right_boundaries,
                               reduced_dimensions,
                               location,
-                              only_active_cells,
+                              active_cells_map,
                               kwargs...)
     
     
@@ -134,22 +133,48 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     return nothing
 end
 
+
+"""
+    configured_kernel(arch, grid, workspec, kernel!; include_right_boundaries=false, reduced_dimensions=(), location=nothing, active_cells_map=nothing, kwargs...)
+
+Configures a kernel with the specified architecture, grid, workspec, and kernel function.
+If `active_cells_map` is provided, the work distribution is adjusted to include only the active cells.
+If the worksize is 0 after adjusting for active cells, the function returns `nothing`.
+
+# Arguments
+============
+
+- `arch`: The architecture on which the kernel will be launched.
+- `grid`: The grid on which the kernel will be executed.
+- `workspec`: The workspec that defines the work distribution.
+- `kernel!`: The kernel function to be executed.
+
+# Keyword Arguments
+====================
+
+- `include_right_boundaries`: A boolean indicating whether to include right boundaries `(N + 1)`. Default is `false`.
+- `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
+- `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
+- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
+                     the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
+"""
+
 function configured_kernel(arch, grid, workspec, kernel!;
                            include_right_boundaries = false,
                            reduced_dimensions = (),
                            location = nothing,
-                           only_active_cells = nothing,
+                           active_cells_map = nothing,
                            kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
-                                    include_right_boundaries,
-                                    reduced_dimensions,
-                                    location)
+                                      include_right_boundaries,
+                                      reduced_dimensions,
+                                      location)
 
     offset = offsets(workspec)
 
-    if !isnothing(only_active_cells) 
-        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
+    if !isnothing(active_cells_map) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, active_cells_map, grid) 
         offset = nothing
 
         # A non active domain! 

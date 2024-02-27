@@ -33,17 +33,17 @@ struct EastMap  end
 struct SouthMap end
 struct NorthMap end
 
-active_map(::Val{:west})  = WestMap()
-active_map(::Val{:east})  = EastMap()
-active_map(::Val{:south}) = SouthMap()
-active_map(::Val{:north}) = NorthMap()
+@inline active_surface_map(::AbstractGrid)      = nothing
+@inline active_surface_map(::ActiveZColumnsIBG) = ZColumnMap()
 
-@inline use_only_active_surface_cells(::AbstractGrid)               = nothing
-@inline use_only_active_surface_cells(::ActiveZColumnsIBG)          = ZColumnMap()
+@inline active_interior_map(::Val{:west})  = WestMap()
+@inline active_interior_map(::Val{:east})  = EastMap()
+@inline active_interior_map(::Val{:south}) = SouthMap()
+@inline active_interior_map(::Val{:north}) = NorthMap()
 
-@inline use_only_active_interior_cells(::AbstractGrid)              = nothing
-@inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
-@inline use_only_active_interior_cells(::DistributedActiveCellsIBG) = InteriorMap()
+@inline active_interior_map(::AbstractGrid)              = nothing
+@inline active_interior_map(::ActiveCellsIBG)            = InteriorMap()
+@inline active_interior_map(::DistributedActiveCellsIBG) = InteriorMap()
 
 """
     active_cells_work_layout(group, size, map_type, grid)
@@ -65,7 +65,7 @@ Compute the work layout for active cells based on the given map type and grid.
 @inline active_cells_work_layout(group, size, ::EastMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
 @inline active_cells_work_layout(group, size, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
 @inline active_cells_work_layout(group, size, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
-@inline active_cells_work_layout(group, size, ::ZColumnMap, grid::ActiveZColumnsIBG)        = min(length(grid.active_z_columns),  256),              length(grid.active_z_columns)
+@inline active_cells_work_layout(group, size, ::ZColumnMap,  grid::ActiveZColumnsIBG)        = min(length(grid.active_z_columns),  256),              length(grid.active_z_columns)
 
 """
     active_linear_index_to_tuple(idx, map, grid)

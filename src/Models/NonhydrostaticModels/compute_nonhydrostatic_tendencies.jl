@@ -3,7 +3,7 @@ using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, ActiveCellsIBG, 
+using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
@@ -28,7 +28,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # interior of the domain
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
-    compute_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = use_only_active_interior_cells(model.grid))
+    compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = active_interior_map(model.grid))
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
@@ -50,7 +50,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_interior_tendency_contributions!(model, kernel_parameters; only_active_cells = nothing)
+function compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -91,16 +91,16 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; only
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters, compute_Gu!, 
-                tendencies.u, grid, only_active_cells, u_kernel_args;
-                only_active_cells)
+                tendencies.u, grid, active_cells_map, u_kernel_args;
+                active_cells_map)
 
         launch!(arch, grid, parameters, compute_Gv!, 
-                tendencies.v, grid, only_active_cells, v_kernel_args;
-                only_active_cells)
+                tendencies.v, grid, active_cells_map, v_kernel_args;
+                active_cells_map)
 
         launch!(arch, grid, parameters, compute_Gw!, 
-                tendencies.w, grid, only_active_cells, w_kernel_args;
-                only_active_cells)
+                tendencies.w, grid, active_cells_map, w_kernel_args;
+                active_cells_map)
     end
 
     start_tracer_kernel_args = (advection, closure)
@@ -120,8 +120,8 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; only
 
         for parameters in kernel_parameters
             launch!(arch, grid, parameters, compute_Gc!, 
-                    c_tendency, grid, only_active_cells, args;
-                    only_active_cells)
+                    c_tendency, grid, active_cells_map, args;
+                    active_cells_map)
         end
     end
 
