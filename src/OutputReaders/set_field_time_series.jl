@@ -75,7 +75,7 @@ function set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
     jldopen(path, "a+") do file
         initialize_file!(file, name, fts)
         maybe_write_property!(file, "timeseries/t/$n", time)
-        maybe_write_property!(file, "timeseries/$name/$n", parent(field))
+        maybe_write_property!(file, "timeseries/$name/$n", Array(parent(field)))
     end
 end
 
