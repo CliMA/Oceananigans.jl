@@ -488,11 +488,15 @@ const XYReducedField = Field{Nothing, Nothing, <:Any}
 
 const XYZReducedField = Field{Nothing, Nothing, Nothing}
 
-const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
-                           YZReducedField, XZReducedField, XYReducedField,
+const ReducedField = Union{XReducedField,
+                           YReducedField,
+                           ZReducedField,
+                           YZReducedField,
+                           XZReducedField,
+                           XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)           = ()
+reduced_dimensions(field::Field)   = ()
 reduced_dimensions(field::XReducedField)   = tuple(1)
 reduced_dimensions(field::YReducedField)   = tuple(2)
 reduced_dimensions(field::ZReducedField)   = tuple(3)
@@ -551,6 +555,24 @@ end
 ##### Field reductions
 #####
 
+const XReducedAbstractField = AbstractField{Nothing}
+const YReducedAbstractField = AbstractField{<:Any, Nothing}
+const ZReducedAbstractField = AbstractField{<:Any, <:Any, Nothing}
+
+const YZReducedAbstractField = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedAbstractField = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedAbstractField = AbstractField{Nothing, Nothing, <:Any}
+
+const XYZReducedAbstractField = AbstractField{Nothing, Nothing, Nothing}
+
+const ReducedAbstractField = Union{XReducedAbstractField,
+                                   YReducedAbstractField,
+                                   ZReducedAbstractField,
+                                   YZReducedAbstractField,
+                                   XZReducedAbstractField,
+                                   XYReducedAbstractField,
+                                   XYZReducedAbstractField}
+
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
@@ -563,12 +585,12 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
+initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
+initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -624,7 +646,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         
         # In-place
         function Base.$(reduction!)(f::Function,
-                                    r::ReducedField,
+                                    r::ReducedAbstractField,
                                     a::AbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
@@ -636,7 +658,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                       kwargs...)
         end
 
-        function Base.$(reduction!)(r::ReducedField,
+        function Base.$(reduction!)(r::ReducedAbstractField,
                                     a::AbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
@@ -689,7 +711,7 @@ end
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
-function Statistics.mean!(f::Function, r::ReducedField, a::AbstractField; condition = nothing, mask = 0)
+function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     n = conditional_length(condition_operand(f, a, condition, mask), dims)
@@ -697,7 +719,7 @@ function Statistics.mean!(f::Function, r::ReducedField, a::AbstractField; condit
     return r
 end
 
-Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
+Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
