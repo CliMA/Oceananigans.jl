@@ -1,4 +1,4 @@
-
+using KernelAbstractions: @index, @kernel
 
 function tracer_advection(Gⁿ, tracers, grid, tracer_advection, velocities; parameters = :xyz)
 
@@ -8,14 +8,20 @@ end
 @kernel function tracer_advection_x(Gⁿ, tracers, grid, tracer_advection, U)
     i, j, k = @index(Global, NTuple)
    
-    # Allocate shared memory of the dimensions of the grid
+    glo_id = @index(Global)
+    loc_id = @index(Local)
 
-    for (c, advection) in zip(tracers, tracer_advection)
+    tracer_flux = @localmem FT (N, grp_size)
+
+    @unroll for tracer_name in tracer_names
+        advection = retrieve_x_advection(tracer_advection, tracer_name)
+
         # calculate fluxes into the shared memory
+        tracer_flux[] = _advective_tracer_flux_x(i, j, k, grid, advection, U, c)
 
-        __syncthreads()
+        @synchronize
         # put div in memory
-
+        Gⁿ[i, j, k] = (tracer_flux[t] - tracer_flux[t-1]) / Vᶜᶜᶜ(i, j, k, grid)
         # exit
     end
 end
