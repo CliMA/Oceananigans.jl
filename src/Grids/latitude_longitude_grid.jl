@@ -239,15 +239,6 @@ function with_precomputed_metrics(grid)
                                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
-
-function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-    N = size
-    
-    λ₁, λ₂ = get_domain_extent(longitude, N[1])
-    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-    φ₁, φ₂ = get_domain_extent(latitude, N[2])
-    @assert -90 <= φ₁ <= φ₂ <= 90
     
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
     if !isnothing(topology)
@@ -290,6 +281,46 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     return topology, size, halo, latitude, longitude, z, precompute_metrics
 end
+
+#=
+function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+    if !isnothing(topology)
+        TX, TY, TZ = validate_topology(topology)
+        Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
+    else # Set default topology according to longitude
+        Nλ, Nφ, Nz = size # using default topology, does not support Flat
+        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+
+        Lλ = λ₂ - λ₁
+        TX = Lλ == 360 ? Periodic : Bounded
+        TY = Bounded
+        TZ = Bounded
+    end
+
+    # Validate longitude and latitude
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
+
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
+    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
+    φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
+
+    if TX == Flat || TY == Flat 
+        precompute_metrics = false
+    end
+
+    longitude = validate_dimension_specification(TX, longitude, :longitude, Nλ, FT)
+    latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
+    z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
+
+    halo = validate_halo(TX, TY, TZ, halo)
+    topology = (TX, TY, TZ)
+
+    return topology, size, halo, latitude, longitude, z, precompute_metrics
+end
+=#
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
