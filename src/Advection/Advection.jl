@@ -29,7 +29,6 @@ using DocStringExtensions
 using Base: @propagate_inbounds
 using Adapt 
 using OffsetArrays
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids
 using Oceananigans.Grids: with_halo, coordinates

@@ -135,7 +135,7 @@ end
         f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[1, j, k] = f₁ / β
 
-        @unroll for i = 2:Nx
+        for i = 2:Nx
             cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
@@ -152,7 +152,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
 
-        @unroll for i = Nx-1:-1:1
+        for i = Nx-1:-1:1
             ϕ[i, j, k] -= t[i+1, j, k] * ϕ[i+1, j, k]
         end
     end
@@ -167,7 +167,7 @@ end
         f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, 1, k] = f₁ / β
 
-        @unroll for j = 2:Ny
+        for j = 2:Ny
             cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
@@ -184,7 +184,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
         end
 
-        @unroll for j = Ny-1:-1:1
+        for j = Ny-1:-1:1
             ϕ[i, j, k] -= t[i, j+1, k] * ϕ[i, j+1, k]
         end
     end
@@ -199,7 +199,7 @@ end
         f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
-        @unroll for k = 2:Nz
+        for k = 2:Nz
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
@@ -215,7 +215,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
-        @unroll for k = Nz-1:-1:1
+        for k = Nz-1:-1:1
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
