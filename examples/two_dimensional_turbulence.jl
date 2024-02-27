@@ -54,7 +54,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50)
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+add_callback!(simulation, progress, IterationInterval(100))
 
 # ## Output
 #
@@ -120,7 +120,7 @@ set_theme!(Theme(fontsize = 24))
 
 @info "Making a neat movie of vorticity and speed..."
 
-fig = Figure(resolution = (800, 500))
+fig = Figure(size = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",

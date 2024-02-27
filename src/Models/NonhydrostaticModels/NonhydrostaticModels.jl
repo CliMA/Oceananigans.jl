@@ -9,9 +9,10 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Grids
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.Solvers
+
 using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 
@@ -33,7 +34,8 @@ PressureSolver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 # fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel currently support more than one stretched direction.")
+PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \
+                                   currently support more than one stretched direction.")
 
 #####
 ##### NonhydrostaticModel definition

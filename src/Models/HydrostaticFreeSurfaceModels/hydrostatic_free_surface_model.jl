@@ -28,7 +28,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF} <: AbstractModel{TS}
-  
+
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
                  clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
@@ -145,7 +145,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
-    
+
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by TKEBasedVerticalDiffusivity, are enforced:
     boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)

@@ -2,7 +2,6 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
-using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
