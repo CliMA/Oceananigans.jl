@@ -1,5 +1,4 @@
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Grids: topology
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
@@ -269,7 +268,6 @@ end
     end
 end
 
-# may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs       = free_surface.state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
@@ -413,6 +411,8 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotopic time step. 
+# Possibly we can optimize this further by passing in Val(Nz) in order to 
+# @unroll the loop over `k`.
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz+1
