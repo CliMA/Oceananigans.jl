@@ -243,9 +243,6 @@ end
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
     if !isnothing(topology)
         TX, TY, TZ = topology
-    else
-        TX, TY, TZ = validate_topology(topology)
-        Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
     else # Set default topology according to longitude
         Nλ, Nφ, Nz = size # using default topology, does not support Flat
         λ₁, λ₂ = get_domain_extent(longitude, Nλ)
