@@ -129,7 +129,10 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::XDirection)
     Nx = size(grid, 1)
     j, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
@@ -161,7 +164,10 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::YDirection)
     Ny = size(grid, 2)
     i, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
@@ -193,7 +199,10 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::ZDirection)
     Nz = size(grid, 3)
     i, j = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)

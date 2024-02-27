@@ -8,6 +8,8 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
 
 import Oceananigans.Models: compute_boundary_tendencies!
 
+using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
+
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
@@ -21,8 +23,30 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
+    compute_boundary_tendency_contributions!(grid, arch, model)
+
+    return nothing
+end
+
+function compute_boundary_tendency_contributions!(grid, arch, model) 
     kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
+    return nothing
+end
+
+function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
+    maps = grid.interior_active_cells
+    
+    for (name, map) in zip(keys(maps), maps)
+        compute_boundary = (name != :interior) && !isnothing(map) 
+        
+        # If there exists a boundary map, then we compute the boundary contributions
+        if compute_boundary
+            active_boundary_map = active_interior_map(Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
+                                                                     active_cells_map = active_boundary_map)
+        end
+    end
 
     return nothing
 end
@@ -37,8 +61,8 @@ function boundary_w_kernel_parameters(grid, arch)
              
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    Oxᴸ = (-Hx, -1)
-    Oyᴸ = (-1, -Hy)
+    Oxᴸ = (-Hx+1, -1)
+    Oyᴸ = (-1, -Hy+1)
     Oxᴿ = (Nx-1, -1)
     Oyᴿ = (-1, Ny-1)
 
