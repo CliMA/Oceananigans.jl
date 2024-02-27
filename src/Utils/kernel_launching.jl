@@ -115,12 +115,12 @@ end
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
 over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
 """
-function launch!(arch, grid, workspec, kernel!, kernel_args...;
+@inline function launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N};
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
                  only_active_cells = nothing,
-                 kwargs...)
+                 kwargs...) where {N}
 
     workgroup, worksize = work_layout(grid, workspec;
                                       include_right_boundaries,
