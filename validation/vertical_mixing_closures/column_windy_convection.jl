@@ -23,7 +23,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0
 catke = CATKEVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
-# Setup simulation
+# Set up simulation
 
 grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
