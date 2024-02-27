@@ -4,6 +4,8 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 ##### `fill_halo_regions!` for tuples of `Field`
 #####
 
+@inline flattened_unique_values(::Tuple{}) = tuple()
+
 """
     flattened_unique_values(a::NamedTuple)
 
