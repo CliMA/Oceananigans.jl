@@ -87,7 +87,7 @@ c = @lift file["timeseries/c/" * string($iter)][1, :, 1]
 
 set_theme!(Theme(fontsize = 30))
 
-fig = Figure(resolution = (1920, 1080))
+fig = Figure(size=(1920, 1080))
 
 c_title = @lift @sprintf("Tracer diffusion on a meridian, t = %.2e", file["timeseries/t/" * string($iter)])
 u_title = @lift @sprintf("Momentum diffusion on a meridian, t = %.2e", file["timeseries/t/" * string($iter)])
