@@ -75,7 +75,8 @@ float_types = (Float32, Float64)
 
 include("utils_for_runtests.jl")
 
-archs = test_architectures()
+#archs = test_architectures()
+archs = [CPU(), GPU()]
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
