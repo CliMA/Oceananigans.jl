@@ -1,6 +1,10 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+#=
+Install Imaginocean.jl from GitHub:
+using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+=#
 using CairoMakie, Imaginocean
 
 # First create a conformal cubed sphere grid.
@@ -80,10 +84,10 @@ ax = Axis(fig[1, 1])
 heatlatlon!(ax, c, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_c_heatlatlon.png", fig)
 
-fig = Figure(size=(1200, 600))
+fig = Figure(resolution = (1200, 600))
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, c, 1; colorrange, colormap)
-save("multi_region_cubed_sphere_c_geo_latlon.png", fig)
+save("multi_region_cubed_sphere_c_geo_heatlatlon.png", fig)
 
 u = XFaceField(grid)
 set!(u, (λ, φ, z) -> φ)
@@ -107,7 +111,7 @@ save("multi_region_cubed_sphere_u_heatlatlon.png", fig)
 fig = Figure(resolution = (1200, 600))
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, u, 1; colorrange, colormap)
-save("multi_region_cubed_sphere_u_geo_latlon.png", fig)
+save("multi_region_cubed_sphere_u_geo_heatlatlon.png", fig)
 =#
 
 fig = Figure()
@@ -124,5 +128,5 @@ save("multi_region_cubed_sphere_v_heatlatlon.png", fig)
 fig = Figure(resolution = (1200, 600))
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, v, 1; colorrange, colormap)
-save("multi_region_cubed_sphere_v_geo_latlon.png", fig)   
+save("multi_region_cubed_sphere_v_geo_heatlatlon.png", fig)
 =#
