@@ -24,8 +24,8 @@ end
 
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = @inbounds advection.bounds[1]
+    upper_limit = @inbounds advection.bounds[2]
 
     cᵢⱼ = @inbounds c[i, j, k]
 
@@ -48,8 +48,8 @@ end
 
 @inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundPreservingScheme, v, c)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = @inbounds advection.bounds[1]
+    upper_limit = @inbounds advection.bounds[2]
 
     cᵢⱼ = @inbounds c[i, j, k]
 
@@ -72,8 +72,8 @@ end
 
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundPreservingScheme, w, c)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = @inbounds advection.bounds[1]
+    upper_limit = @inbounds advection.bounds[2]
 
     cᵢⱼ = @inbounds c[i, j, k]
 
