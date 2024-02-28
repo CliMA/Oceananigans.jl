@@ -13,7 +13,7 @@ using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: AbstractField, Field, flattened_unique_values
+using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 
@@ -21,7 +21,7 @@ import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_timeseries
+using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 
 # A prototype interface for AbstractModel.
 #
@@ -54,8 +54,8 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                                       closure)
 
     any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \
-                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n \
+                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \n \
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 
@@ -114,6 +114,19 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel, 
                                  ShallowWaterModel}
 
+"""
+    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
+
+Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
+"""
+function possible_field_time_series(model::OceananigansModels)
+    forcing = model.forcing
+    model_fields = fields(model)
+    # Note: we may need to include other objects in the tuple below,
+    # such as model.diffusivity_fields
+    return tuple(model_fields, forcing)
+end
+ 
 # Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
 # Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
 # Flatten the resulting tuple by extracting unique values and set! them to the 
@@ -122,8 +135,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     time = Time(clock.time)
 
     possible_fts = possible_field_time_series(model)
-
-    time_series_tuple = extract_field_timeseries(possible_fts)
+    time_series_tuple = extract_field_time_series(possible_fts)
     time_series_tuple = flattened_unique_values(time_series_tuple)
 
     for fts in time_series_tuple
@@ -132,14 +144,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-
-"""
-    possible_field_time_series(model::HydrostaticFreeSurfaceModel)
-
-Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
-"""
-possible_field_time_series(model::OceananigansModels) = tuple(fields(model), model.forcing, model.diffusivity_fields)
-                
+               
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)

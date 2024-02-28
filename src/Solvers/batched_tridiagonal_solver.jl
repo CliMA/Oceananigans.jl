@@ -84,9 +84,14 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-Reference implementation per Numerical Recipes, Press et al. 1992 (§ 2.4). Note that
-a slightly different notation from Press et al. is used for indexing the off-diagonal
-elements; see [`BatchedTridiagonalSolver`](@ref).
+Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
+Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
+
+Reference
+=========
+
+Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian, P. (1992).
+    Numerical recipes: the art of scientific computing. Cambridge University Press
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
@@ -124,13 +129,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::XDirection)
     Nx = size(grid, 1)
     j, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[1, j, k] = f₁ / β
 
-        @unroll for i = 2:Nx
+        for i = 2:Nx
             cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
@@ -147,7 +155,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
 
-        @unroll for i = Nx-1:-1:1
+        for i = Nx-1:-1:1
             ϕ[i, j, k] -= t[i+1, j, k] * ϕ[i+1, j, k]
         end
     end
@@ -156,13 +164,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::YDirection)
     Ny = size(grid, 2)
     i, k = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, 1, k] = f₁ / β
 
-        @unroll for j = 2:Ny
+        for j = 2:Ny
             cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
@@ -179,7 +190,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
         end
 
-        @unroll for j = Ny-1:-1:1
+        for j = Ny-1:-1:1
             ϕ[i, j, k] -= t[i, j+1, k] * ϕ[i, j+1, k]
         end
     end
@@ -188,13 +199,16 @@ end
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction::ZDirection)
     Nz = size(grid, 3)
     i, j = @index(Global, NTuple)
+    solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+end
 
+@inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
-        @unroll for k = 2:Nz
+        for k = 2:Nz
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
@@ -210,7 +224,7 @@ end
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
-        @unroll for k = Nz-1:-1:1
+        for k = Nz-1:-1:1
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end

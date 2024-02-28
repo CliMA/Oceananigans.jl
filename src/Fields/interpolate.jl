@@ -55,8 +55,9 @@ end
 end
 
 #####
-##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-##### Use other methods if a more accurate interpolation is required
+##### Note: interpolation on LatitudeLongitudeGrid assumes a thin shell
+##### (i.e. curvature effects are not incorporated when interpolating).
+##### Use other methods if a more accurate interpolation is required.
 #####
 
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
@@ -69,7 +70,7 @@ end
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
-    λ₀ = @inbounds λnode(1, 1, 1, grid, locs...)
+    λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = λspacings(grid, locs...)
     FT = eltype(grid)
     return convert(FT, (λ - λ₀) / Δλ)
@@ -94,15 +95,15 @@ end
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
-    y₀ = @inbounds ynode(1, 1, 1, grid, locs...)
-    Δy = @inbounds yspacings(grid, locs...)
+    y₀ = ynode(1, 1, 1, grid, locs...)
+    Δy = yspacings(grid, locs...)
     FT = eltype(grid)
     return convert(FT, (y - y₀) / Δy)
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
-    φ₀ = @inbounds φnode(1, 1, 1, grid, locs...)
-    Δφ = @inbounds φspacings(grid, locs...)
+    φ₀ = φnode(1, 1, 1, grid, locs...)
+    Δφ = φspacings(grid, locs...)
     FT = eltype(grid)
     return convert(FT, (φ - φ₀) / Δφ)
 end
@@ -128,8 +129,8 @@ end
 ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
-    z₀ = @inbounds znode(1, 1, 1, grid, locs...)
-    Δz = @inbounds zspacings(grid, locs...)
+    z₀ = znode(1, 1, 1, grid, locs...)
+    Δz = zspacings(grid, locs...)
     return convert(FT, (z - z₀) / Δz)
 end
 
@@ -142,7 +143,7 @@ end
 end
 
 """
-    fractional_indices(x, y, z, loc, grid)
+    fractional_indices(x, y, z, grid, loc...)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
@@ -228,17 +229,17 @@ Note that this is a lower-level `interpolate` method defined for use in CPU/GPU 
 end
 
 """
-    interpolator(ii)
+    interpolator(fractional_idx)
 
-Return an ``interpolator tuple'' from the ``fractional'' index `ii`
+Return an ``interpolator tuple'' from the fractional index `fractional_idx`
 defined as the 3-tuple
 
 ```
 (i⁻, i⁺, ξ)
 ```
 
-where `i⁻` is the index to the left of `ii`, `i⁺` is the index to the
-right of `ii`, and `ξ` is the fractional distance between `ii` and the
+where `i⁻` is the index to the left of `i`, `i⁺` is the index to the
+right of `i`, and `ξ` is the fractional distance between `i` and the
 left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 """
 @inline function interpolator(fractional_idx)
@@ -267,24 +268,24 @@ end
 @inline ϕ₇(ξ, η, ζ) =      ξ  *      η  * (1 - ζ)
 @inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
 
-@inline function _interpolate(data, ix, iy, iz)
+@inline function _interpolate(data, ix, iy, iz, in...)
     # Unpack the "interpolators"
     i⁻, i⁺, ξ = ix
     j⁻, j⁺, η = iy
     k⁻, k⁺, ζ = iz
 
-    return @inbounds ϕ₁(ξ, η, ζ) * data[i⁻, j⁻, k⁻] +
-                     ϕ₂(ξ, η, ζ) * data[i⁻, j⁻, k⁺] +  
-                     ϕ₃(ξ, η, ζ) * data[i⁻, j⁺, k⁻] +
-                     ϕ₄(ξ, η, ζ) * data[i⁻, j⁺, k⁺] +
-                     ϕ₅(ξ, η, ζ) * data[i⁺, j⁻, k⁻] +
-                     ϕ₆(ξ, η, ζ) * data[i⁺, j⁻, k⁺] +
-                     ϕ₇(ξ, η, ζ) * data[i⁺, j⁺, k⁻] +
-                     ϕ₈(ξ, η, ζ) * data[i⁺, j⁺, k⁺]
+    return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
+                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +  
+                     ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
+                     ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
+                     ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
+                     ϕ₆(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁺, in...) +
+                     ϕ₇(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁻, in...) +
+                     ϕ₈(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁺, in...)
 end
 
 """
-    interpolate(field, x, y, z)
+    interpolate(to_node, from_field)
 
 Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
 """

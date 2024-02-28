@@ -61,6 +61,9 @@ arch_array(::CPU, a::CuArray) = Array(a)
 arch_array(::GPU, a::Array)   = CuArray(a)
 arch_array(::GPU, a::CuArray) = a
 
+arch_array(::CPU, a::BitArray) = a
+arch_array(::GPU, a::BitArray) = CuArray(a)
+
 arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
@@ -112,4 +115,10 @@ end
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing
 
+# Convert arguments to GPU-compatible types
+@inline convert_args(::CPU, args) = args
+@inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
+@inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
+
 end # module
+

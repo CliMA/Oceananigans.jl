@@ -97,7 +97,7 @@ zc = znodes(b1)
 zf = znodes(κ1)
 Nt = length(b1.times)
 
-fig = Figure(resolution=(1800, 600))
+fig = Figure(size=(1800, 600))
 
 slider = Slider(fig[2, 1:4], range=1:Nt, startvalue=1)
 n = slider.value

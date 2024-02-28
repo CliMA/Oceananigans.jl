@@ -104,8 +104,8 @@ julia> compute!(density_field)
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 38×38×1 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, 1:1) with eltype Float64 with indices -2:35×-2:35×1:1
-    └── max=1027.7, min=1027.7, mean=1027.7
+└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
+    └── max=1027.81, min=1027.71, mean=1027.76
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to

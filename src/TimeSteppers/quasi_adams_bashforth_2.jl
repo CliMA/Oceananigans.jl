@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -68,7 +69,7 @@ Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 Setting `compute_tendencies=false` will not calculate new tendencies
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false, compute_tendencies = true)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false, compute_tendencies=true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step

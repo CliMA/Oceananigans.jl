@@ -222,7 +222,7 @@ axis_kwargs = (xlabel = L"x / H",
                aspect = Lx / H,
                titlesize = 20)
 
-fig = Figure(resolution = (600, 1100))
+fig = Figure(size = (600, 1100))
 
 ax_s = Axis(fig[2, 1];
             title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
@@ -332,7 +332,7 @@ for i = 1:length(t)
     Nu[i] = χ[1, 1, 1] / χ_diff
 end
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size = (850, 450))
  
 ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)

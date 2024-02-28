@@ -88,7 +88,7 @@ function run_field_reduction_tests(FT, arch)
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(ϕ, dims=dims), mean(ϕ_vals, dims=dims), atol=4ε))
-                               
+
             @test all(isapprox(minimum(sin, ϕ, dims=dims), minimum(sin, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(cos, ϕ, dims=dims), maximum(cos, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(cosh, ϕ, dims=dims), mean(cosh, ϕ_vals, dims=dims), atol=5ε))
@@ -163,6 +163,12 @@ function run_field_interpolation_tests(grid)
             F = Array(F)
             ℑf = Array(ℑf)
             @test all(isapprox.(ℑf, F, atol=tolerance))
+
+            # for the next test we first call fill_halo_regions! on the
+            # original field `f`
+            # note, that interpolate! will call fill_halo_regions! on
+            # the interpolated field after the interpolation
+            fill_halo_regions!(f)
 
             f_copy = deepcopy(f)
             fill!(f_copy, 0)
