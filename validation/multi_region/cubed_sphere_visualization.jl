@@ -1,6 +1,32 @@
 using LinearAlgebra
 using Oceananigans.MultiRegion: getregion
-using CairoMakie
+using CairoMakie, GeoMakie, Imaginocean
+
+function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location, k = 1)
+
+    Nx = grid.Nx
+    Ny = grid.Ny
+
+    interpolated_field = Field{Center, Center, Center}(grid)
+
+    for region in 1:number_of_regions(grid)
+        for j in 1:Ny
+            for i in 1:Nx
+                if location == "fc"
+                    interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i + 1, j, k])
+                elseif location == "cf"
+                    interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i, j + 1, k])
+                elseif location == "ff"
+                    interpolated_field[region][i, j, k] = 0.25(field[region][i, j, k] + field[region][i + 1, j, k]
+                                                               + field[region][i + 1, j + 1, k] + field[region][i, j + 1, k])
+                end
+            end
+        end
+    end
+
+    return interpolated_field
+
+end
 
 function read_big_endian_coordinates(filename, nInterior = 32, Nhalo = 1)
     # Open the file in binary read mode
@@ -396,6 +422,33 @@ function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange =
     ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
     hm_6 = heatmap!(ax_6, parent(getregion(field, 6).data[1:Nx, 1:Ny, k]); colorrange, colormap)
     Colorbar(fig[1, 8], hm_6)
+
+    return fig
+end
+
+function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_colorrange = true, ssh = false,
+                                      cbar_label = "")
+    fig = Figure(resolution = (1350, 650))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
+
+    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+
+    if use_symmetric_colorrange
+        colormap = :balance
+    else
+        colormap = :amp
+    end
+
+    ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, title = title, axis_kwargs...)
+    heatlatlon!(ax, field, k; colorrange, colormap)
+
+    Colorbar(fig[1, 2], limits = limits, colormap = colormap, label = cbar_label, labelsize = 22.5,
+             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+
+    colsize!(fig.layout, 1, Auto(0.8))
+    colgap!(fig.layout, 75)
 
     return fig
 end
