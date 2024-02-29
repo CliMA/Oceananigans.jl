@@ -274,7 +274,7 @@ function initialize_auxiliary_state!(state, η, timestepper)
     return nothing
 end
 
-@kernel function barotropic_split_explicit_corrector_kernel!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
     i, j, k = @index(Global, NTuple)
     k_top   = grid.Nz + 1
     
