@@ -213,12 +213,12 @@ end
     @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
 
     # hand unroll first loop
-    @inbounds U[i, j, 1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
-    @inbounds V[i, j, 1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
-        @inbounds V[i, j, 1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
     end
 end
 
@@ -231,12 +231,12 @@ end
     @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠᶜ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
 
     # hand unroll first loop
-    @inbounds U[i, j, 1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
-    @inbounds V[i, j, 1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
-        @inbounds V[i, j, 1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
     end
 end
 
@@ -279,8 +279,8 @@ end
     k_top   = grid.Nz + 1
     
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j, ktop-1] - U[i, j, ktop-1]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
-        v[i, j, k] = v[i, j, k] + (V̅[i, j, ktop-1] - V[i, j, ktop-1]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
     end
 end
 
