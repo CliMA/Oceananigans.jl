@@ -659,7 +659,7 @@ simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields
 
 run!(simulation)
 
-n_plots = 4
+n_plots = 3
 
 for i_plot in 1:n_plots
     frame_index = round(Int, i_plot * n_frames / n_plots)

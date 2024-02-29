@@ -136,15 +136,18 @@ model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection
 
 set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
-# Specify cfl = c * Δt / min(Δx) = 0.1, so that Δt = 0.1 * min(Δx) / c
+# Specify cfl = c * Δt / min(Δx) = 0.2, so that Δt = 0.2 * min(Δx) / c
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
-c = sqrt(model.free_surface.gravitational_acceleration)
-Δt = 0.1 * min_spacing / c
+c = sqrt(model.free_surface.gravitational_acceleration * H)
+Δt = 0.2 * min_spacing / c
 
 Ntime = 15000
-iteration_interval = 300 # I have been specifying iteration_interval in such a way that Ntime/iteration_interval = 50.
+iteration_interval = 10
 stop_time = Ntime * Δt
+
+@info "Stop time = $(prettytime(stop_time))"
+@info "Number of time steps = $Ntime"
 
 simulation = Simulation(model; Δt, stop_time)
 
@@ -257,7 +260,11 @@ save("c₀.png", fig)
 animation_time = 15 # seconds
 framerate = 5
 n_frames = animation_time * framerate
-save_fields_iteration_interval = floor(Int, stop_time/(Δt * n_frames))
+simulation_time_per_frame = stop_time/n_frames
+# Specify animation_time and framerate in such a way that n_frames is a multiple of n_plots defined below.
+save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
+# Redefine the simulation time per frame.
+simulation_time_per_frame = save_fields_iteration_interval * Δt
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
@@ -266,6 +273,27 @@ simulation.callbacks[:save_c] = Callback(save_c, IterationInterval(save_fields_i
 
 run!(simulation)
 
+n_plots = 3
+
+for i_plot in 1:n_plots
+    frame_index = round(Int, i_plot * n_frames / n_plots)
+    simulation_time = simulation_time_per_frame * frame_index
+    title = "Relative vorticity after $(prettytime(simulation_time*6371e3))"
+    fig = geo_heatlatlon_visualization(grid, interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
+                                                                                            "ff"), title;
+                                       cbar_label = "Relative vorticity (s⁻¹)")
+    save(@sprintf("ζ_%d.png", i_plot), fig)
+    title = "Surface elevation after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; k = grid.Nz + 1, ssh = true,
+                                       cbar_label = "Surface elevation (m)")
+    save(@sprintf("η_%d.png", i_plot), fig)
+    title = "Tracer distribution after $(prettytime(simulation_time*6371e3))"
+    fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title;
+                                       cbar_label = "Tracer level (tracer units m⁻³)")
+    save(@sprintf("c_%d.png", i_plot), fig)
+end
+
+#=
 start_index = 1
 use_symmetric_colorrange = true
 
@@ -275,3 +303,4 @@ create_panel_wise_visualization_animation(grid, ζ_fields, start_index, use_symm
 create_panel_wise_visualization_animation(grid, η_fields, start_index, use_symmetric_colorrange, framerate, "η",
                                           grid.Nz+1, true)
 create_panel_wise_visualization_animation(grid, c_fields, start_index, use_symmetric_colorrange, framerate, "c")
+=#
