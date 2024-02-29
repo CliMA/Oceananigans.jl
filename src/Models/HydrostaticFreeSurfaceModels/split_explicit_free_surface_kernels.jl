@@ -279,8 +279,8 @@ end
     k_top   = grid.Nz + 1
     
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j] - U[i, j]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
-        v[i, j, k] = v[i, j, k] + (V̅[i, j] - V[i, j]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, ktop-1] - U[i, j, ktop-1]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, ktop-1] - V[i, j, ktop-1]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
     end
 end
 
