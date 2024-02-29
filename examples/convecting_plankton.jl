@@ -70,7 +70,7 @@ set_theme!(Theme(fontsize = 24, linewidth=2))
 
 times = range(0, 12hours, length=100)
 
-fig = Figure(resolution = (800, 300))
+fig = Figure(size = (800, 300))
 ax = Axis(fig[1, 1]; xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)")
 
 flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
@@ -161,9 +161,7 @@ simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=2minutes)
 
 # We also add a callback that prints the progress of the simulation,
 
@@ -172,7 +170,7 @@ using Printf
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+add_callback!(simulation, progress, IterationInterval(100))
 
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
@@ -241,7 +239,7 @@ w_lims = (-w_lim, w_lim)
 
 P_lims = (0.95, 1.1)
 
-fig = Figure(resolution = (1200, 1000))
+fig = Figure(size = (1200, 1000))
 
 ax_w = Axis(fig[2, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
 ax_P = Axis(fig[3, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)

@@ -5,7 +5,7 @@ using Oceananigans: fields
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by Le and Moin (1991).
+time-stepping scheme described by [LeMoin1991](@citet).
 """
 struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT

@@ -67,7 +67,7 @@ fig
 
 save("multi_region_cubed_sphere_c_heatlatlon.png", fig)
 
-fig = Figure(resolution = (1200, 600))
+fig = Figure(size=(1200, 600))
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, c; colorrange, colormap)
 fig
@@ -99,7 +99,7 @@ heatlatlon!(ax, u; colorrange, colormap)
 fig
 save("multi_region_cubed_sphere_u_heatlatlon.png", fig)
 
-# fig = Figure(resolution = (1200, 600))
+# fig = Figure(size=(1200, 600))
 # ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 # heatlatlon!(ax, u; colorrange, colormap)
 # fig
@@ -119,7 +119,7 @@ fig
 
 save("multi_region_cubed_sphere_v_heatlatlon.png", fig)
 
-# fig = Figure(resolution = (1200, 600))
+# fig = Figure(size=(1200, 600))
 # ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 # heatlatlon!(ax, v; colorrange, colormap)
 # fig

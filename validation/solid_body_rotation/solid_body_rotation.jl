@@ -162,7 +162,7 @@ function plot_zonal_average_solid_body_rotation(filepath)
 
     zonal_average_u = @lift dropdims(mean(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1], dims=1), dims=1)
 
-    fig = Figure(resolution = (1080, 1080))
+    fig = Figure(size=(1080, 1080))
 
     ax = fig[1, 1] = Axis(fig, xlabel = "U(φ)", ylabel = "φ")
 

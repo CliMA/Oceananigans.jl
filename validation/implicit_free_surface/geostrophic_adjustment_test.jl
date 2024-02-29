@@ -177,7 +177,7 @@ u1 = @lift(interior(data[1][3][$iter], :, mid, 1))
 u2 = @lift(interior(data[2][3][$iter], :, mid, 1))
 u3 = @lift(interior(data[3][3][$iter], :, mid, 1))
 
-fig = Figure(resolution = (1400, 1000))
+fig = Figure(size=(1400, 1000))
 options = (; ylabelsize = 22,
     xlabelsize = 22, xgridstyle = :dash, ygridstyle = :dash, xtickalign = 1,
     xticksize = 10, ytickalign = 1, yticksize = 10, xlabel = "y [m]")
