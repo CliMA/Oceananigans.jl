@@ -22,7 +22,6 @@ function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, val
     return nothing
 end
 
-
 @kernel function _mask_immersed_field!(field, loc, grid, value)
     i, j, k = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)

@@ -178,7 +178,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -187,6 +187,8 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
     Hᶠᶜ :: ℱ𝒞
     "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
     Hᶜᶠ :: 𝒞ℱ
+    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
+    Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -203,6 +205,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+    Hᶜᶜ = Field((Center, Center, Nothing), grid)
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
     sum!(Hᶠᶜ, dz)
@@ -210,11 +213,14 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     dz = GridMetricOperation((Center, Face, Center), Δz, grid)
     sum!(Hᶜᶠ, dz)
 
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
+    sum!(Hᶜᶜ, dz)
+
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
 """

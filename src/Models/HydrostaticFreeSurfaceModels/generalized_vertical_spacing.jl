@@ -8,6 +8,7 @@ using Oceananigans.Utils: getnamewrapper
 using Adapt 
 using Printf
 
+import Oceananigans.Grids: with_halo
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
 import Oceananigans.Advection: ∂t_∂s_grid
 import Oceananigans.Architectures: arch_array
@@ -54,6 +55,48 @@ const GeneralizedSpacingImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:A
 
 const GeneralizedSpacingGrid{D} = Union{GeneralizedSpacingUnderlyingGrid{D}, GeneralizedSpacingImmersedGrid{D}} where D
 
+denomination(grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶠ.denomination
+
+#####
+##### Original grid
+#####
+
+retrieve_static_grid(grid) = grid
+
+function retrieve_static_grid(grid::GeneralizedSpacingGrid)
+
+    Δzᵃᵃᶠ = grid.Δzᵃᵃᶠ.Δr
+    Δzᵃᵃᶜ = grid.Δzᵃᵃᶜ.Δr
+
+    args = []
+    for prop in propertynames(grid)
+        if prop == :Δzᵃᵃᶠ
+            push!(args, Δzᵃᵃᶠ)
+        elseif prop == :Δzᵃᵃᶜ
+            push!(args, Δzᵃᵃᶜ)
+        else
+            push!(args, getproperty(grid, prop))
+        end
+    end
+
+    GridType = getnamewrapper(grid)
+
+    return GridType{TX, TY, TZ}(args...)
+end
+
+#####
+##### Some extensions
+#####
+
+function with_halo(new_halo, grid::GeneralizedSpacingGrid)
+    old_static_grid = retrieve_static_grid(grid)
+    new_static_grid = with_halo(new_halo, old_static_grid)
+    vertical_coordinate = denomination(grid)
+    new_grid = GeneralizedSpacingGrid(new_static_grid, vertical_coordinate)
+
+    return new_grid
+end
+
 #####
 ##### General implementation
 #####
@@ -98,13 +141,6 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 
 @inline Δzᶠᶠᶠ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
 @inline Δzᶠᶠᶜ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
-
-#####
-##### Utility
-#####
-
-bottom_height(i, j, grid) = grid.Lz
-bottom_height(i, j, grid::ImmersedBoundaryGrid) = @inbounds - grid.immersed_boundary.bottom_height[i, j, 1]
 
 ##### 
 ##### Vertical velocity of the Δ-surfaces to be included in the continuity equation

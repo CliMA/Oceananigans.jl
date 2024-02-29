@@ -11,11 +11,13 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+    Hᶜᶠ = Field((Center, Center, Nothing), grid)
 
-    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
-    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
+    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center,   Center))
+    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face,   Center))
+    @apply_regionally calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
 
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
@@ -23,7 +25,7 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
 @inline function calculate_column_height!(height, location)

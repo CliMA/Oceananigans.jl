@@ -13,7 +13,7 @@ grid = RectilinearGrid(size = (300, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid, 
             generalized_vertical_coordinate = ZStar(),
-                         momentum_advection = WENOVectorInvariant(),
+                         momentum_advection = WENO(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
@@ -67,7 +67,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_change = 1.1), IterationInterval(10))
 run!(simulation)
 

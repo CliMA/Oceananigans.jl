@@ -32,10 +32,11 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
-    launch!(architecture(grid), grid, :xy, _update_zstar!, 
-            sⁿ, s⁻, ΔzF, ΔzC, ZeroField(), grid, Val(grid.Nz))
+    fill!(s⁻, 1)
+    fill!(sⁿ, 1)
 
-    fill_halo_regions!((s⁻, sⁿ))
+    launch!(architecture(grid), grid, :xyz, _initialize_zstar!, ΔzF, ΔzC, grid)
+
     fill_halo_regions!((ΔzF, ΔzC))
 
     Δzᵃᵃᶠ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_∂s)
@@ -57,6 +58,12 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     return GridType{TX, TY, TZ}(args...)
 end
 
+@kernel function _initialize_zstar!(ΔzF, ΔzC, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ΔzF[i, j, k] = grid.Δzᵃᵃᶠ[k]
+    @inbounds ΔzC[i, j, k] = grid.Δzᵃᵃᶜ[k]
+end
+
 #####
 ##### ZStar-specific vertical spacings update
 #####
@@ -72,10 +79,12 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     ΔzF  = grid.Δzᵃᵃᶠ.Δ
     ΔzC  = grid.Δzᵃᵃᶜ.Δ
 
+    Hᶜᶜ  = model.free_surface.auxiliary.Hᶜᶜ
+
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_zstar!, sⁿ, s⁻, ΔzF, ΔzC, 
-                         model.free_surface.η, grid, Val(grid.Nz))
+                         model.free_surface.η, Hᶜᶜ, grid, Val(grid.Nz))
     
     # Update scaling time derivative
     update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, model.free_surface)
@@ -83,10 +92,10 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     return nothing
 end
 
-@kernel function _update_zstar!(sⁿ, s⁻, ΔzF, ΔzC, η, grid, ::Val{Nz}) where Nz
+@kernel function _update_zstar!(sⁿ, s⁻, ΔzF, ΔzC, η, Hᶜᶜ, grid, ::Val{Nz}) where Nz
     i, j = @index(Global, NTuple)
-    bottom = bottom_height(i, j, grid)
     @inbounds begin
+        bottom = Hᶜᶜ[i, j, 1]
         h = (bottom + η[i, j, grid.Nz+1]) / bottom
 
         # update current and previous scaling
@@ -112,10 +121,10 @@ end
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline η_surfaceᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, c, c, c) / bottom_height(i, j, grid))
+@inline η_surfaceᶜᶜᶜ(i, j, k, grid, η, Hᶜᶜ) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, c, c, c) / Hᶜᶜ[i, j, 1])
 
-@inline slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η)
-@inline slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η)
+@inline slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
+@inline slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)

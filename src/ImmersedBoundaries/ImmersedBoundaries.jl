@@ -147,8 +147,10 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
                                      adapt(to, ibg.interior_active_cells), 
                                      adapt(to, ibg.active_z_columns))
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+function with_halo(halo, ibg::ImmersedBoundaryGrid)
+    new_grid = with_halo(halo, ibg.underlying_grid)
+    ImmersedBoundaryGrid(new_grid, ibg.immersed_boundary)
+end
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
 # (which requires checking `Center` nodes at N + H and N + H + 1)

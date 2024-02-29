@@ -71,6 +71,8 @@ Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
+
+    @show ib.bottom_height, bottom_field, architecture(grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
