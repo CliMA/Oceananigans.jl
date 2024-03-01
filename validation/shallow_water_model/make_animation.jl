@@ -1,5 +1,4 @@
 using Oceananigans.Grids
-using Oceananigans.Utils: prettytime, hours, day, days, years
 
 using Statistics
 using JLD2
@@ -23,7 +22,7 @@ datadep"quarter_degree_near_global_lat_lon"
 datadep_path = @datadep_str "quarter_degree_near_global_lat_lon/bathymetry-1440x600.jld2"
 file_bathymetry = jldopen(datadep_path)
 
-output_prefix = "/Users/simonesilvestri/global-solution/shallow_water/near_global_shallow_water_1440_600_surface"
+output_prefix = "/home/fpoulin/Software/Oceananigans.jl/validation/shallow_water_model/near_global_shallow_water_1440_600_surface"
 
 filepath = output_prefix * ".jld2"
 
@@ -40,7 +39,9 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
                              latitude = (-Lφ/2, Lφ/2),
                              z = (-Lz, 0))
 
-x, y, z = nodes((Center, Center, Center), grid)
+#x, y, z = nodes((Center, Center, Center), grid)
+x = grid.λᶜᵃᵃ[1:Nx]
+y = grid.φᵃᶜᵃ[1:Ny]
 
 bat3 = file_bathymetry["bathymetry"]
 bat2 = deepcopy(bat3)
