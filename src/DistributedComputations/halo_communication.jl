@@ -142,11 +142,10 @@ end
 # corner passing routine
 function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
     
-    if only_local_halos # No corner filling needed!
-        return nothing
-    end
+    # No corner filling needed!
+    only_local_halos && return nothing
 
-    # This has to be synchronized!!
+    # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
     sync_device!(arch)
 
@@ -246,6 +245,8 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
             sync_device!(arch)
             
             only_local_halos && return nothing
+
+            sync_device!(arch)
                         
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
@@ -278,11 +279,12 @@ for side in [:west, :east, :south, :north]
                                  
             only_local_halos && return nothing
 
+            sync_device!(arch)
+
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
-
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)
 
             return [send_req, recv_req]

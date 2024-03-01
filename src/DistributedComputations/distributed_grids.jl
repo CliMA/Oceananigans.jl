@@ -41,8 +41,9 @@ end
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
-        @warn "The domain size specified in the architecture $(sum(R.sizes)) is inconsistent 
-               with the grid size $N: using the architecture-specified size"
+        @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent  
+               with the grid size: (N = $N != sum(Sizes) = $(sum(R.sizes))). 
+               Using $(R.sizes)..."
     end
     return R.sizes
 end
@@ -65,7 +66,7 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_sz, halo, x, y, z =
+    topology, global_sz, halo, x, y, z = 
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     local_sz = local_size(arch, global_sz)
@@ -76,9 +77,9 @@ function RectilinearGrid(arch::Distributed,
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
-    TX = insert_connected_topology(TX, Rx, ri)
-    TY = insert_connected_topology(TY, Ry, rj)
-    TZ = insert_connected_topology(TZ, Rz, rk)
+    TX = insert_connected_topology(topology[1], Rx, ri)
+    TY = insert_connected_topology(topology[2], Ry, rj)
+    TZ = insert_connected_topology(topology[3], Rz, rk)
     
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
     yl = Ry == 1 ? y : partition_coordinate(y, ny, arch, 2)
@@ -113,12 +114,13 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                radius = R_Earth,
                                halo = (1, 1, 1))
     
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-
-    local_sz = local_size(arch, (Nλ, Nφ, Nz))
+    topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
+                validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+                       
+    local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz
+    Hλ, Hφ, Hz = halo
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 

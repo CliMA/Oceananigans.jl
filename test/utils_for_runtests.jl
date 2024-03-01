@@ -1,13 +1,13 @@
-using Oceananigans
+using Test
 using Statistics
-using KernelAbstractions: @kernel, @index
 using CUDA
-using Test
 using Printf
-using Test
+using MPI
+using KernelAbstractions: @kernel, @index
+
+using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
-using MPI
 
 import Oceananigans.Fields: interior
 
@@ -32,11 +32,11 @@ end
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
         Δ = φ .- φ_c
-        Δ_min      = minimum(Δ)
-        Δ_max      = maximum(Δ)
-        Δ_mean     = mean(Δ)
-        Δ_abs_mean = mean(abs, Δ)
-        Δ_std      = std(Δ)
+        Δ_min       = minimum(Δ)
+        Δ_max       = maximum(Δ)
+        Δ_mean      = mean(Δ)
+        Δ_abs_mean  = mean(abs, Δ)
+        Δ_std       = std(Δ)
         matching    = sum(φ .≈ φ_c)
         grid_points = length(φ_c)
 

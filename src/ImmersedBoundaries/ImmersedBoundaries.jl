@@ -107,7 +107,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
     underlying_grid :: G
     immersed_boundary :: I
     interior_active_cells :: M
-    surface_active_cells :: S
+    active_z_columns :: S
 
     # Internal interface
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
@@ -133,7 +133,7 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
 @inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
-@inline get_ibg_property(ibg::IBG, ::Val{:surface_active_cells})   = getfield(ibg, :surface_active_cells)
+@inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})   = getfield(ibg, :active_z_columns)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
@@ -145,7 +145,7 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), 
                                      adapt(to, ibg.immersed_boundary), 
                                      adapt(to, ibg.interior_active_cells), 
-                                     adapt(to, ibg.surface_active_cells))
+                                     adapt(to, ibg.active_z_columns))
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) =
     ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)

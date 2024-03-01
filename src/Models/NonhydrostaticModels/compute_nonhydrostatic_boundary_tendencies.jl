@@ -28,14 +28,14 @@ function boundary_tendency_kernel_parameters(grid, arch)
     
     Sx  = (Hx, Ny, Nz)
     Sy  = (Nx, Hy, Nz)
-         
+
     Oᴸ  = (0,  0,  0)
     Oxᴿ = (Nx-Hx, 0,     0)
     Oyᴿ = (0,     Ny-Hy, 0)
 
     sizes = (Sx, Sy, Sx,  Sy)
     offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
-        
+
     return boundary_parameters(sizes, offs, grid, arch)
 end
 
@@ -45,7 +45,7 @@ function boundary_p_kernel_parameters(grid, arch)
 
     Sx  = (1, Ny)
     Sy  = (Nx, 1)
-             
+
     Oxᴸ = (-1, 0)
     Oyᴸ = (0, -1)
     Oxᴿ = (Nx, 0)
@@ -53,7 +53,7 @@ function boundary_p_kernel_parameters(grid, arch)
 
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-        
+
     return boundary_parameters(sizes, offs, grid, arch)
 end
 
@@ -65,7 +65,7 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
 
     Sx  = (B+1, Ny, Nz)
     Sy  = (Nx, B+1, Nz)
-        
+
     Oxᴸ = (-1, 0, 0)
     Oyᴸ = (0, -1, 0)
     Oxᴿ = (Nx-B,  0, 0)
@@ -73,7 +73,7 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
 
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-        
+
     return boundary_parameters(sizes, offs, grid, arch)
 end
 
@@ -88,6 +88,7 @@ function boundary_parameters(S, O, grid, arch)
     include_yᴿ = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
     include_side = (include_xᴸ, include_yᴸ, include_xᴿ, include_yᴿ)
+
     return Tuple(KernelParameters(S[i], O[i]) for i in findall(include_side))
 end
 

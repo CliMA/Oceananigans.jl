@@ -340,21 +340,52 @@ end
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
         wb = explicit_buoyancy_flux(i, j, k, grid, closure, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
+        eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
 
         # See `buoyancy_flux`
-        dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
+        dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
 
-        # Implicit TKE flux at solid bottoms (extra damping for TKE near boundaries)
+        # Treat the divergence of TKE flux at solid bottoms implicitly.
+        # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
+        #
+        #       ∂t e = - δ(z + h) ∇ ⋅ Jᵉ + ⋯
+        #       ∂t e = + δ(z + h) Jᵉ / Δz + ⋯
+        #
+        # where δ(z + h) is a δ-function that is 0 everywhere except adjacent to the bottom boundary
+        # at $z = -h$ and Δz is the grid spacing at the bottom
+        #
+        # Thus if
+        #
+        #       Jᵉ ≡ - Cᵂϵ * √e³
+        #          = - (Cᵂϵ * √e) e
+        #
+        # Then the contribution of Jᵉ to the implicit flux is
+        #
+        #       Lᵂ = - Cᵂϵ * √e / Δz.
+        #
         on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
         Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
-        Q_e = - Cᵂϵ * w★[i, j, k] / Δz * on_bottom
+        div_Jᵉ_e = - on_bottom * Cᵂϵ * w[i, j, k] / Δz
 
         # Implicit TKE dissipation
         ω_e = dissipation_rate(i, j, k, grid, closure_ij, tracers, diffusivities)
         
-        diffusivities.Lᵉ[i, j, k] = - ω_e + wb_e + Q_e
+        # The interior contributions to the linear implicit term `L` are defined via
+        #
+        #       ∂t e = Lⁱ e + ⋯,
+        #
+        # So
+        #
+        #       Lⁱ e = wb - ϵ
+        #            = (wb / e - ω) e,
+        #               ↖--------↗
+        #                  = Lⁱ
+        #
+        # where ω = ϵ / e ∼ √e / ℓ.
+        
+        diffusivities.Lᵉ[i, j, k] = wb_e - ω_e + div_Jᵉ_e
     end
 end
 

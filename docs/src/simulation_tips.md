@@ -1,4 +1,4 @@
-# Simulation tips
+# [Simulation tips](@id simulation_tips)
 
 Oceananigans attempts to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,

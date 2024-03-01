@@ -72,7 +72,7 @@ current_figure() #hide
 
 θ = 3 # degrees
 
-# so that ``x`` is the along-slope direction, ``z`` is the across-sloce direction that
+# so that ``x`` is the along-slope direction, ``z`` is the across-slope direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
 ĝ = [sind(θ), 0, cosd(θ)]
@@ -207,7 +207,7 @@ xv, yv, zv = nodes(V)
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-fig = Figure(resolution = (800, 600))
+fig = Figure(size = (800, 600))
 
 axis_kwargs = (xlabel = "Across-slope distance (m)",
                ylabel = "Slope-normal\ndistance (m)",

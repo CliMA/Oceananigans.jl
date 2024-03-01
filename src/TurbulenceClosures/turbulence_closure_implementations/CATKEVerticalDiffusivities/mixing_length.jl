@@ -13,21 +13,21 @@ using ..TurbulenceClosures:
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cˢ   :: FT = 2.4    # Surface distance coefficient for shear length scale
+    Cˢ   :: FT = 1.03   # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
-    Cᶜc  :: FT = 1.5    # Convective mixing length coefficient for tracers
-    Cᶜe  :: FT = 1.2    # Convective mixing length coefficient for TKE
-    Cᵉc  :: FT = 0.2    # Convective penetration mixing length coefficient for tracers
+    Cᶜc  :: FT = 3.72   # Convective mixing length coefficient for tracers
+    Cᶜe  :: FT = 1.40   # Convective mixing length coefficient for TKE
+    Cᵉc  :: FT = 0.841  # Convective penetration mixing length coefficient for tracers
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
-    Cˢᵖ  :: FT = 0.14   # Sheared convective plume coefficient
-    Cˡᵒu :: FT = 0.19   # Shear mixing length coefficient for momentum at low Ri
-    Cʰⁱu :: FT = 0.086  # Shear mixing length coefficient for momentum at high Ri
-    Cˡᵒc :: FT = 0.2    # Shear mixing length coefficient for tracers at low Ri
-    Cʰⁱc :: FT = 0.045  # Shear mixing length coefficient for tracers at high Ri
-    Cˡᵒe :: FT = 1.9    # Shear mixing length coefficient for TKE at low Ri
-    Cʰⁱe :: FT = 0.57   # Shear mixing length coefficient for TKE at high Ri
-    CRiᵟ :: FT = 0.45   # Stability function width 
-    CRi⁰ :: FT = 0.47   # Stability function lower Ri
+    Cˢᵖ  :: FT = 1.02   # Sheared convective plume coefficient
+    Cˡᵒu :: FT = 0.775  # Shear mixing length coefficient for momentum at low Ri
+    Cʰⁱu :: FT = 0.765  # Shear mixing length coefficient for momentum at high Ri
+    Cˡᵒc :: FT = 0.786  # Shear mixing length coefficient for tracers at low Ri
+    Cʰⁱc :: FT = 0.378  # Shear mixing length coefficient for tracers at high Ri
+    Cˡᵒe :: FT = 2.68   # Shear mixing length coefficient for TKE at low Ri
+    Cʰⁱe :: FT = 2.16   # Shear mixing length coefficient for TKE at high Ri
+    CRiᵟ :: FT = 0.421  # Stability function width 
+    CRi⁰ :: FT = 0.261  # Stability function lower Ri
 end
 
 #####
