@@ -79,7 +79,7 @@ Ny = 32
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
         underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                                halo = (3, 3, 3),
+                                                halo = (4, 4, 4),
                                                 latitude = (-80, 80),
                                                 longitude = (-160, 160),
                                                 z = (-1, 0),
