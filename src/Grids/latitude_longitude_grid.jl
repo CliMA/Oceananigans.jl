@@ -239,10 +239,11 @@ function with_precomputed_metrics(grid)
                                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
-    
+
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
     if !isnothing(topology)
-        TX, TY, TZ = topology
+        TX, TY, TZ = validate_topology(topology)
+        Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
     else # Set default topology according to longitude
         Nλ, Nφ, Nz = size # using default topology, does not support Flat
         λ₁, λ₂ = get_domain_extent(longitude, Nλ)
@@ -267,8 +268,6 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
         precompute_metrics = false
     end
 
-    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     longitude = validate_dimension_specification(TX, longitude, :longitude, Nλ, FT)
     latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
     z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
