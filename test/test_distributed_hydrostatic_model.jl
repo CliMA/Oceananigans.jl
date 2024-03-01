@@ -78,49 +78,55 @@ Ny = 32
 
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
-        grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                     halo = (3, 3, 3),
-                                     latitude = (-80, 80),
-                                     longitude = (-160, 160),
-                                     z = (-1, 0),
-                                     radius = 1,
-                                     topology=(Bounded, Bounded, Bounded))
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+                                                halo = (3, 3, 3),
+                                                latitude = (-80, 80),
+                                                longitude = (-160, 160),
+                                                z = (-1, 0),
+                                                radius = 1,
+                                                topology=(Bounded, Bounded, Bounded))
 
-        global_grid = reconstruct_global_grid(grid)
+        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-        # "s" for "serial" computation
-        us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        us = Array(interior(us))
-        vs = Array(interior(vs))
-        ws = Array(interior(ws))
-        cs = Array(interior(cs))
-        ηs = Array(interior(ηs))
+        for grid in (underlying_grid, immersed_grid)
+            global_grid = reconstruct_global_grid(grid)
 
-        @info "  Testing distributed solid body rotation with architecture $arch"
-        u, v, w, c, η = solid_body_rotation_test(grid)
+            # "s" for "serial" computation
+            us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
-        u = Array(interior(u))
-        v = Array(interior(v))
-        w = Array(interior(w))
-        c = Array(interior(c))
-        η = Array(interior(η))
+            us = Array(interior(us))
+            vs = Array(interior(vs))
+            ws = Array(interior(ws))
+            cs = Array(interior(cs))
+            ηs = Array(interior(ηs))
 
-        cpu_arch = cpu_architecture(arch)
+            @info "  Testing distributed solid body rotation with architecture $arch"
+            u, v, w, c, η = solid_body_rotation_test(grid)
 
-        us = partition_global_array(cpu_arch, us, size(u))
-        vs = partition_global_array(cpu_arch, vs, size(v))
-        ws = partition_global_array(cpu_arch, ws, size(w))
-        cs = partition_global_array(cpu_arch, cs, size(c))
-        ηs = partition_global_array(cpu_arch, ηs, size(η))
+            u = Array(interior(u))
+            v = Array(interior(v))
+            w = Array(interior(w))
+            c = Array(interior(c))
+            η = Array(interior(η))
 
-        atol = eps(eltype(grid))
-        rtol = sqrt(eps(eltype(grid)))
+            cpu_arch = cpu_architecture(arch)
 
-        @test all(isapprox(u, us; atol, rtol))
-        @test all(isapprox(v, vs; atol, rtol))
-        @test all(isapprox(w, ws; atol, rtol))
-        @test all(isapprox(c, cs; atol, rtol))
-        @test all(isapprox(η, ηs; atol, rtol))
+            us = partition_global_array(cpu_arch, us, size(u))
+            vs = partition_global_array(cpu_arch, vs, size(v))
+            ws = partition_global_array(cpu_arch, ws, size(w))
+            cs = partition_global_array(cpu_arch, cs, size(c))
+            ηs = partition_global_array(cpu_arch, ηs, size(η))
+
+            atol = eps(eltype(grid))
+            rtol = sqrt(eps(eltype(grid)))
+
+            @test all(isapprox(u, us; atol, rtol))
+            @test all(isapprox(v, vs; atol, rtol))
+            @test all(isapprox(w, ws; atol, rtol))
+            @test all(isapprox(c, cs; atol, rtol))
+            @test all(isapprox(η, ηs; atol, rtol))
+        end
     end
 end
