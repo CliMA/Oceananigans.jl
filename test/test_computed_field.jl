@@ -318,7 +318,7 @@ function compute_tuples_and_namedtuples(model)
 
     compute!(one_c)
     compute!(two_c)
-    compute!(ten_c)
+    compute!(six_c)
 
     at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i,j,k]
     ten_c_op = KernelFunctionOperation{Center, Center, Center}(at_ijk, model.grid, ten_c)
