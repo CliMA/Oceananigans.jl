@@ -267,6 +267,17 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
     end
 end
 
+on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} = 
+    FieldTimeSeries{LX, LY, LZ}(on_architecture(to, data),
+                                on_architecture(to, grid),
+                                on_architecture(to, backend),
+                                on_architecture(to, bcs),
+                                on_architecture(to, indices), 
+                                on_architecture(to, times),
+                                on_architecture(to, path),
+                                on_architecture(to, name),
+                                on_architecture(to, time_indexing))
+
 #####
 ##### Minimal implementation of FieldTimeSeries for use in GPU kernels
 #####
