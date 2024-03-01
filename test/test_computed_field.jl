@@ -611,7 +611,7 @@ for arch in archs
                 @test computations_with_computed_fields(model)
 
                 @info "      Testing computations of Tuples and NamedTuples"
-                compute_tuples_and_namedtuples(model)
+                @test compute_tuples_and_namedtuples(model)
             end
 
             @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin
