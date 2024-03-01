@@ -5,6 +5,8 @@ using Oceananigans.Operators: assumed_field_location, index_and_interp_dependenc
 using Oceananigans.Fields: show_location
 using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
 
+import Oceananigans.Architectures: on_architecture
+
 """
     ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
 
@@ -161,4 +163,11 @@ Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY,
                                   nothing,
                                   Adapt.adapt(to, forcing.field_dependencies_indices),
                                   Adapt.adapt(to, forcing.field_dependencies_interp))
+
+on_architecture(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
+    ContinuousForcing{LX, LY, LZ}(on_architecture(to, forcing.func),
+                                  on_architecture(to, forcing.parameters),
+                                  on_architecture(to, forcing.field_dependencies),
+                                  on_architecture(to, forcing.field_dependencies_indices),
+                                  on_architecture(to, forcing.field_dependencies_interp))
 

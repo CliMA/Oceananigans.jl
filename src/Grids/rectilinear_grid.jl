@@ -399,7 +399,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                       old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
 
-    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
+    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
 
     TX, TY, TZ = topology(old_grid)
 

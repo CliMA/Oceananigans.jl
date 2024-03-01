@@ -32,12 +32,13 @@ using OffsetArrays
 
 using Oceananigans.Grids
 using Oceananigans.Grids: with_halo, coordinates
-using Oceananigans.Architectures: arch_array, architecture, CPU
+using Oceananigans.Architectures: on_architecture, architecture, CPU
 
 using Oceananigans.Operators
 
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size
+import Oceananigans.Architectures: on_architecture
 
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end

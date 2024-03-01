@@ -125,3 +125,12 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            Adapt.adapt(to, deriv.▶),
                            nothing,
                            Adapt.adapt(to, deriv.grid))
+
+"Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
+on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
+    Derivative{LX, LY, LZ}(on_architecture(to, deriv.∂),
+                           on_architecture(to, deriv.arg),
+                           on_architecture(to, deriv.▶),
+                           deriv.abstract_∂,
+                           on_architecture(to, deriv.grid))
+                           

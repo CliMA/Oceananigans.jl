@@ -45,7 +45,7 @@ function set!(u::DistributedField, v::Union{Array, CuArray})
         return u
     else
         try
-            f = arch_array(architecture(u), v)
+            f = on_architecture(architecture(u), v)
             u .= f
             return u
     

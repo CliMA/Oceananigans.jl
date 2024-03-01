@@ -247,7 +247,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
                 times = time_range
             end
 
-            times = arch_array(architecture(grid), times)
+            times = on_architecture(architecture(grid), times)
         end
         
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
@@ -551,7 +551,7 @@ function Field(location, path::String, name::String, iter;
 
     # Change grid to specified architecture?
     grid     = on_architecture(architecture, grid)
-    raw_data = arch_array(architecture, raw_data)
+    raw_data = on_architecture(architecture, raw_data)
     data     = offset_data(raw_data, grid, location, indices)
     
     return Field(location, grid; boundary_conditions, indices, data)

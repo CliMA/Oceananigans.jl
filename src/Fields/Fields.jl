@@ -34,7 +34,7 @@ Build a field from `a` at `loc` and on `grid`.
 """
 @inline function field(loc, a::AbstractArray, grid)
     f = Field(loc, grid)
-    a = arch_array(architecture(grid), a)
+    a = on_architecture(architecture(grid), a)
     try
         copyto!(parent(f), a)
     catch

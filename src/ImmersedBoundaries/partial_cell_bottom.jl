@@ -1,6 +1,6 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Printf
 
 #####

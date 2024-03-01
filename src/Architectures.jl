@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture
 export CPU, GPU, MultiGPU
-export device, architecture, array_type, arch_array, unified_array, device_copy_to!
+export device, architecture, array_type, on_architecture, unified_array, device_copy_to!
 
 using CUDA
 using KernelAbstractions
@@ -56,32 +56,32 @@ child_architecture(arch) = arch
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, a::Array)   = a
-arch_array(::CPU, a::CuArray) = Array(a)
-arch_array(::GPU, a::Array)   = CuArray(a)
-arch_array(::GPU, a::CuArray) = a
+on_architecture(::CPU, a::Array)   = a
+on_architecture(::CPU, a::CuArray) = Array(a)
+on_architecture(::GPU, a::Array)   = CuArray(a)
+on_architecture(::GPU, a::CuArray) = a
 
-arch_array(::CPU, a::BitArray) = a
-arch_array(::GPU, a::BitArray) = CuArray(a)
+on_architecture(::CPU, a::BitArray) = a
+on_architecture(::GPU, a::BitArray) = CuArray(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
-arch_array(::CPU, a::AbstractRange) = a
-arch_array(::CPU, ::Nothing)   = nothing
-arch_array(::CPU, a::Number)   = a
-arch_array(::CPU, a::Function) = a
+on_architecture(::CPU, a::AbstractRange) = a
+on_architecture(::CPU, ::Nothing)   = nothing
+on_architecture(::CPU, a::Number)   = a
+on_architecture(::CPU, a::Function) = a
 
-arch_array(::GPU, a::AbstractRange) = a
-arch_array(::GPU, ::Nothing)   = nothing
-arch_array(::GPU, a::Number)   = a
-arch_array(::GPU, a::Function) = a
+on_architecture(::GPU, a::AbstractRange) = a
+on_architecture(::GPU, ::Nothing)   = nothing
+on_architecture(::GPU, a::Number)   = a
+on_architecture(::GPU, a::Function) = a
 
-arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+on_architecture(arch::CPU, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
+on_architecture(arch::GPU, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
