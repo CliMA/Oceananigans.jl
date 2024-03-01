@@ -424,6 +424,8 @@ Computes `field.data` from `field.operand`.
 """
 compute!(field, time=nothing) = field # fallback
 
+compute!(collection::Union{Tuple, NamedTuple}) = map(compute!, collection)
+
 """
     @compute(exprs...)
 
