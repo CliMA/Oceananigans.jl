@@ -129,5 +129,12 @@ end
 @inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
 @inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
+# Deprecated functions
+
+function arch_array(arch, arr) 
+    @warn "`arch_array` is deprecated. Use `on_architecture` instead"
+    return on_architecture(arch, arr)
+end
+
 end # module
 
