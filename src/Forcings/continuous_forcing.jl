@@ -5,8 +5,6 @@ using Oceananigans.Operators: assumed_field_location, index_and_interp_dependenc
 using Oceananigans.Fields: show_location
 using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
 
-import Oceananigans.Architectures: on_architecture
-
 """
     ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
 

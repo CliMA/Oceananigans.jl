@@ -3,8 +3,6 @@ using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: SumOfArrays
 using Adapt
 
-import Oceananigans.Architectures: on_architecture
-
 maybe_constant_field(u) = u
 maybe_constant_field(u::Number) = ConstantField(u)
 

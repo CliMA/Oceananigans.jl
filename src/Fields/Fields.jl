@@ -14,6 +14,8 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
+import Oceananigans.Architectures: on_architecture
+
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
