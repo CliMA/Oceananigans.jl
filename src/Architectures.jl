@@ -132,7 +132,7 @@ end
 # Deprecated functions
 
 function arch_array(arch, arr) 
-    @warn "`arch_array` is deprecated. Use `on_architecture` instead"
+    @warn "`arch_array` is deprecated. Use `on_architecture` instead."
     return on_architecture(arch, arr)
 end
 
