@@ -427,13 +427,17 @@ function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange =
 end
 
 function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_colorrange = true, ssh = false,
-                                      cbar_label = "")
+                                      cbar_label = "", specify_plot_limits = false, plot_limits = [])
     fig = Figure(resolution = (1350, 650))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
 
-    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+    end
 
     if use_symmetric_colorrange
         colormap = :balance
@@ -444,7 +448,7 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, title = title, axis_kwargs...)
     heatlatlon!(ax, field, k; colorrange, colormap)
 
-    Colorbar(fig[1, 2], limits = limits, colormap = colormap, label = cbar_label, labelsize = 22.5,
+    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
              labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
 
     colsize!(fig.layout, 1, Auto(0.8))

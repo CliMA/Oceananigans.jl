@@ -275,21 +275,47 @@ run!(simulation)
 
 n_plots = 3
 
+ζ_colorrange = zeros(2)
+η_colorrange = zeros(2)
+c_colorrange = zeros(2)
+
+for i_plot in 1:n_plots
+    frame_index = round(Int, i_plot * n_frames / n_plots)
+    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index], true,  false)
+    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], false, true)
+    c_colorrange_at_frame_index = specify_colorrange(grid, c_fields[frame_index], true,  false)
+    if i_plot == 1
+        ζ_colorrange = collect(ζ_colorrange_at_frame_index)
+        η_colorrange = collect(η_colorrange_at_frame_index)
+        c_colorrange = collect(c_colorrange_at_frame_index)
+    else
+        ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
+        ζ_colorrange[2] = -ζ_colorrange[1]
+        η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
+        η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
+        c_colorrange[1] = min(c_colorrange[1], c_colorrange_at_frame_index[1])
+        c_colorrange[2] = -c_colorrange[1]
+    end
+end
+
 for i_plot in 1:n_plots
     frame_index = round(Int, i_plot * n_frames / n_plots)
     simulation_time = simulation_time_per_frame * frame_index
     title = "Relative vorticity after $(prettytime(simulation_time*6371e3))"
     fig = geo_heatlatlon_visualization(grid, interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
                                                                                             "ff"), title;
-                                       cbar_label = "Relative vorticity (s⁻¹)")
+                                       cbar_label = "Relative vorticity (s⁻¹)", specify_plot_limits = true,
+                                       plot_limits = ζ_colorrange)
     save(@sprintf("ζ_%d.png", i_plot), fig)
-    title = "Surface elevation after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; k = grid.Nz + 1, ssh = true,
-                                       cbar_label = "Surface elevation (m)")
+    title = "Surface elevation after $(prettytime(simulation_time*6371e3))"
+    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false, ssh = true,
+                                       cbar_label = "Surface elevation (m)", specify_plot_limits = true,
+                                       plot_limits = η_colorrange)
     save(@sprintf("η_%d.png", i_plot), fig)
     title = "Tracer distribution after $(prettytime(simulation_time*6371e3))"
     fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title;
-                                       cbar_label = "Tracer level (tracer units m⁻³)")
+                                       cbar_label = "Tracer level (tracer units m⁻³)", specify_plot_limits = true,
+                                       plot_limits = c_colorrange)
     save(@sprintf("c_%d.png", i_plot), fig)
 end
 
