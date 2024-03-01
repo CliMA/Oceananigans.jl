@@ -102,7 +102,7 @@ for arch in archs
             cs = Array(interior(cs))
             ηs = Array(interior(ηs))
 
-            @info "  Testing distributed solid body rotation with architecture $arch"
+            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
             u, v, w, c, η = solid_body_rotation_test(grid)
 
             u = Array(interior(u))
