@@ -27,7 +27,7 @@ using Oceananigans: prognostic_fields
     return r
 end
 
-device!(2)
+#device!(2)
 
 #####
 ##### Grid
@@ -155,7 +155,7 @@ Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ 
 Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Advection: VelocityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 νh = 1e+1
@@ -193,7 +193,8 @@ fill_halo_regions!(model.solution.h)
 
 Δt = 20seconds 
 
-simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+#simulation = Simulation(model, Δt = Δt, stop_time = Nyears*365*24*3600)
+simulation = Simulation(model, Δt = Δt, stop_time = 77*60)
 
 start_time = [time_ns()]
 
@@ -213,7 +214,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, TimeInterval(60))
 
 u, v, h = model.solution
 
@@ -221,7 +222,7 @@ u, v, h = model.solution
 ζ = Field(ζ_op)
 compute!(ζ)
 
-save_interval = 1days
+save_interval = 1minutes #1days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
                                                             schedule = TimeInterval(save_interval),
