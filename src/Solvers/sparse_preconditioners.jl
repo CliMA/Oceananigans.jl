@@ -89,11 +89,11 @@ end
 
 abstract type AbstractInversePreconditioner{M} end
 
-function  LinearAlgebra.ldiv!(u, precon::AbstractInversePreconditioner, v)
+function LinearAlgebra.ldiv!(u, precon::AbstractInversePreconditioner, v)
     mul!(u, matrix(precon), v)
 end
 
-function  LinearAlgebra.ldiv!(precon::AbstractInversePreconditioner, v)
+function LinearAlgebra.ldiv!(precon::AbstractInversePreconditioner, v)
     mul!(v, matrix(precon), v)
 end
 

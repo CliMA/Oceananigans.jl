@@ -48,8 +48,8 @@ In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem
 
 ```julia
     Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηₖ₋₁ 
-    - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
-    +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ  = b
+    - ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
+    + ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ  = b
 ```
 
 To have the equation solved at location `{Center, Center, Center}`, the coefficients must be
@@ -185,6 +185,8 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     dims[2] && fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
     dims[3] && fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
 
+    ensure_diagonal_elements_are_nonzero!(coeff_d)
+
     sparse_matrix = spdiagm(0 => coeff_d,
                       posx[1] => coeff_x,       -posx[1] => coeff_x,
                       posx[2] => coeff_bound_x, -posx[2] => coeff_bound_x,
@@ -198,6 +200,17 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     matrix_constructors = constructors(arch, sparse_matrix)
 
     return matrix_constructors, diag, N
+end
+
+function ensure_diagonal_elements_are_nonzero!(coeff_d)
+    m = length(coeff_d)
+    _fill_diagonal!(device(architecture(coeff_d)), 16, m)(coeff_d)
+    return nothing
+end
+
+@kernel function _fill_diagonal!(coeff_d)
+    i = @index(Global, Linear)
+    @inbounds coeff_d[i] = ifelse(coeff_d[i] == 0, 1, coeff_d[i])
 end
 
 @kernel function _initialize_variable_diagonal!(diag, D, N)  

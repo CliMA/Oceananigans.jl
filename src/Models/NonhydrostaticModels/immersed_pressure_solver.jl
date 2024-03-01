@@ -8,17 +8,18 @@ using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ
 using Oceananigans.Utils: launch!
 using Oceananigans.Models.NonhydrostaticModels: PressureSolver, calculate_pressure_source_term_fft_based_solver!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_cell
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Solvers: precondition!
+import Oceananigans.Solvers: precondition!, solve!, build_preconditioner
 import Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 
-struct ImmersedPoissonSolver{R, G, S}
+struct ImmersedPoissonSolver{R, G, S, Z}
     rhs :: R
     grid :: G
     pcg_solver :: S
+    storage :: Z
 end
 
 @kernel function fft_preconditioner_right_hand_side!(preconditioner_rhs, rhs)
@@ -41,6 +42,7 @@ end
 function ImmersedPoissonSolver(grid;
                                preconditioner = nothing,
                                reltol = eps(eltype(grid)),
+                               solver_method = :PreconditionedConjugateGradient,
                                abstol = 0,
                                kw...)
 
@@ -49,6 +51,17 @@ function ImmersedPoissonSolver(grid;
         preconditioner = PressureSolver(arch, grid)
     end
 
+    pcg_solver, rhs, storage = build_implicit_poisson_solver(Val(solver_method), grid; reltol, abstol, preconditioner, kw...)
+
+    return ImmersedPoissonSolver(rhs, grid, pcg_solver, storage)
+end
+
+function build_implicit_poisson_solver(::Val{:PreconditionedConjugateGradient}, grid;
+                                       reltol = eps(eltype(grid)),
+                                       abstol = 0,
+                                       preconditioner = nothing, 
+                                       kw...)
+
     rhs = CenterField(grid)
 
     pcg_solver = PreconditionedConjugateGradientSolver(compute_laplacian!; reltol, abstol,
@@ -56,12 +69,42 @@ function ImmersedPoissonSolver(grid;
                                                        template_field = rhs,
                                                        kw...)
 
-    return ImmersedPoissonSolver(rhs, grid, pcg_solver)
+    return pcg_solver, rhs, nothing
 end
 
-@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★)
+function build_implicit_poisson_solver(::Val{:HeptadiagonalIterativeSolver}, grid;
+                                       reltol = eps(eltype(grid)),
+                                       abstol = 0,
+                                       preconditioner = nothing, 
+                                       kw...)
+
+    N = prod(size(grid))
+
+    right_hand_side = arch_array(architecture(grid), zeros(eltype(grid), N))
+    storage = deepcopy(right_hand_side)
+
+    tolerance  = reltol 
+    coeffs     = compute_poisson_weights(grid)
+
+    pcg_solver = HeptadiagonalIterativeSolver(coeffs; 
+                                              template = right_hand_side, 
+                                              grid, 
+                                              tolerance, 
+                                              preconditioner_method = preconditioner,
+                                              kw...)
+
+    return pcg_solver, right_hand_side, storage
+end
+
+@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★, ::HeptadiagonalIterativeSolver)
+    i, j, k = @index(Global, NTuple)
+    t = i + grid.Nx * (j - 1 + grid.Ny * (k - 1))
+    @inbounds rhs[t] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt * Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @inline laplacianᶜᶜᶜ(i, j, k, grid, ϕ) = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
@@ -82,6 +125,30 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+zero_weight_x(i, j, k, grid) = immersed_cell(i-1, j, k, grid) | immersed_cell(i, j, k, grid)
+zero_weight_y(i, j, k, grid) = immersed_cell(i, j-1, k, grid) | immersed_cell(i, j, k, grid)
+zero_weight_z(i, j, k, grid) = immersed_cell(i, j, k-1, grid) | immersed_cell(i, j, k, grid)
+
+@kernel function _compute_poisson_weights(Ax, Ay, Az, grid)
+    i, j, k = @index(Global, NTuple)
+    Ax[i, j, k] = ifelse(zero_weight_x(i, j, k, grid), 0, Δzᶠᶜᶜ(i, j, k, grid) * Δyᶠᶜᶜ(i, j, k, grid) / Δxᶠᶜᶜ(i, j, k, grid))
+    Ay[i, j, k] = ifelse(zero_weight_y(i, j, k, grid), 0, Δzᶜᶠᶜ(i, j, k, grid) * Δxᶜᶠᶜ(i, j, k, grid) / Δyᶜᶠᶜ(i, j, k, grid))
+    Az[i, j, k] = ifelse(zero_weight_z(i, j, k, grid), 0, Δxᶜᶜᶠ(i, j, k, grid) * Δyᶜᶜᶠ(i, j, k, grid) / Δzᶜᶜᶠ(i, j, k, grid))
+end
+
+function compute_poisson_weights(grid)
+    N = size(grid)
+    Ax = arch_array(architecture(grid), zeros(N...))
+    Ay = arch_array(architecture(grid), zeros(N...))
+    Az = arch_array(architecture(grid), zeros(N...))
+    C  = arch_array(architecture(grid), zeros(grid, N...))
+    D  = arch_array(architecture(grid), zeros(grid, N...))
+
+    launch!(architecture(grid), grid, :xyz, _compute_poisson_weights, Ax, Ay, Az, grid)
+    
+    return (Ax, Ay, Az, C, D)
+end
+
 function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     # TODO: Is this the right criteria?
     min_Δt = eps(typeof(Δt))
@@ -98,16 +165,28 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     end
 
     launch!(arch, grid, :xyz, calculate_pressure_source_term!,
-            rhs, underlying_grid, Δt, U★)
+            rhs, underlying_grid, Δt, U★, solver.pcg_solver)
 
-    mask_immersed_field!(rhs, zero(grid))
+    # mask_immersed_field!(rhs, zero(grid))
+
+    storage = getstorage(pressure, solver.storage, solver.pcg_solver)
 
     # Solve pressure Pressure equation for pressure, given rhs
     # @info "Δt before pressure solve: $(Δt)"
-    solve!(pressure, solver.pcg_solver, rhs)
+    solve!(storage, solver.pcg_solver, rhs)
 
+    reshape_solution!(pressure, storage, solver.pcg_solver)
+    
     return pressure
 end
+
+solve!(storage, solver::HeptadiagonalIterativeSolver, rhs) = solve!(storage, solver, rhs, 1)
+
+getstorage(pressure, storage, solver) = pressure
+getstorage(pressure, storage, solver::HeptadiagonalIterativeSolver) = storage
+
+reshape_solution!(pressure, storage, args...) = nothing
+reshape_solution!(pressure, storage, ::HeptadiagonalIterativeSolver) = set!(pressure, reshape(storage, size(pressure)...))
 
 struct DiagonallyDominantThreeDimensionalPreconditioner end
 
