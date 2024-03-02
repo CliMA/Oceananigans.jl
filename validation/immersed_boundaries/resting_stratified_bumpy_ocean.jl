@@ -72,7 +72,7 @@ v_partial = v[1]
 v_full    = v[2]
 Δv = v_full .- v_partial
 
-fig = Figure(resolution=(1200, 1800))
+fig = Figure(size=(1200, 1800))
 
 partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f", minimum_fractional_Δz)
 ax_bp = Axis(fig[1, 2], title=partial_cell_title)

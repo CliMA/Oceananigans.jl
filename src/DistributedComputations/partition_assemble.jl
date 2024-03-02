@@ -37,14 +37,19 @@ end
 
 # Partitioning (localization of global objects) and assembly (global assembly of local objects)
 # Used for grid constructors (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)
-# which means that we need to repeat the value at the right boundary
-function partition(c::AbstractVector, n, arch, idx)
+# We need to repeat the value at the right boundary
+function partition_coordinate(c::AbstractVector, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     r  = arch.local_index[idx]
-    return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+    # Allow for Face values
+    if r == arch.ranks[idx]
+        return c[1 + sum(nl[1:r-1]) : end]
+    else
+        return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+    end
 end
 
-function partition(c::Tuple, n, arch, idx)
+function partition_coordinate(c::Tuple, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     N  = sum(nl)
     R  = arch.ranks[idx]
@@ -60,14 +65,14 @@ function partition(c::Tuple, n, arch, idx)
 end
 
 """
-    assemble(c::AbstractVector, n, R, r, r1, r2, comm) 
+    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm) 
 
 Builds a linear global coordinate vector given a local coordinate vector `c_local`
 a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
-function assemble(c_local::AbstractVector, n, R, r, r1, r2, comm) 
+function assemble_coordinate(c_local::AbstractVector, n, R, r, r1, r2, comm) 
     nl = concatenate_local_sizes(n, R, r)
 
     c_global = zeros(eltype(c_local), sum(nl)+1)
@@ -83,7 +88,7 @@ function assemble(c_local::AbstractVector, n, R, r, r1, r2, comm)
 end
 
 # Simple case, just take the first and the last core
-function assemble(c::Tuple, n, R, r, r1, r2, comm) 
+function assemble_coordinate(c::Tuple, n, R, r, r1, r2, comm) 
     c_global = zeros(Float64, 2)
 
     if r == 1 && r1 == 1 && r2 == 1

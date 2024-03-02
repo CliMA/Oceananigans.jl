@@ -63,7 +63,7 @@ grid = RectilinearGrid(size = (Nx, Nx, Nz),
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
-fig = Figure(resolution=(1200, 800))
+fig = Figure(size=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 
 lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
@@ -198,7 +198,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+add_callback!(simulation, progress_message, IterationInterval(20))
 
 # We then set up the simulation:
 
@@ -258,7 +258,7 @@ n = Observable(intro)
  Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
 νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
 
-fig = Figure(resolution = (1000, 500))
+fig = Figure(size = (1000, 500))
 
 axis_kwargs = (xlabel="x (m)",
                ylabel="z (m)",

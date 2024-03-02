@@ -45,7 +45,7 @@ end
          zweno = true, 
          bounds = nothing)
                
-Construct a weigthed essentially non-oscillatory advection scheme of order `order`.
+Construct a weighted essentially non-oscillatory advection scheme of order `order`.
 
 Keyword arguments
 =================

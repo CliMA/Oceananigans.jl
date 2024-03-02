@@ -138,7 +138,7 @@ run!(simulation)
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 
 ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
           limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))

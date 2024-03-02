@@ -7,29 +7,37 @@ fields `u`, `v`, and `w`, and may have some fields corresponding to
 the names in `tracer_names`. `tracer_default` is a function that produces
 a default tuple value for each tracer if not included in `initial_tuple`.
 """
-function with_tracers(tracer_names, initial_tuple::NamedTuple, tracer_default; with_velocities=false)
-    solution_values = [] # Array{Any, 1}
-    solution_names = []
+@inline with_tracers(tracer_names, initial_tuple::NamedTuple, tracer_default; with_velocities=false) =
+    with_tracers(tracer_names, initial_tuple::NamedTuple, tracer_default, with_velocities)
+
+@inline function with_tracers(tracer_names::TN, initial_tuple::IT, tracer_default,
+                              with_velocities) where {TN, IT<:NamedTuple}
 
     if with_velocities
-        push!(solution_values, initial_tuple.u)
-        push!(solution_values, initial_tuple.v)
-        push!(solution_values, initial_tuple.w)
+        solution_values = (initial_tuple.u,
+                           initial_tuple.v,
+                           initial_tuple.w)
 
-        append!(solution_names, [:u, :v, :w])
+        solution_names = (:u, :v, :w)
+    else
+        solution_values = tuple()
+        solution_names = tuple()
     end
 
-    for name in tracer_names
-        tracer_elem = name ∈ propertynames(initial_tuple) ?
-                         getproperty(initial_tuple, name) :
-                         tracer_default(tracer_names, initial_tuple)
-
-        push!(solution_values, tracer_elem)
+    next = ntuple(Val(length(tracer_names))) do n
+        Base.@_inline_meta
+        name = tracer_names[n]
+        if name ∈ propertynames(initial_tuple)
+            getproperty(initial_tuple, name)
+        else
+            tracer_default(tracer_names, initial_tuple)
+        end
     end
 
-    append!(solution_names, tracer_names)
+    solution_values = (solution_values..., next...)
+    solution_names = (solution_names..., tracer_names...)
 
-    return NamedTuple{Tuple(solution_names)}(Tuple(solution_values))
+    return NamedTuple{solution_names}(solution_values)
 end
 
 # If the initial tuple is 'nothing', return nothing.
