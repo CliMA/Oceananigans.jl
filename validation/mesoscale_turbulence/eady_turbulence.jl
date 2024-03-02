@@ -220,16 +220,14 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
 # We subtract off any residual mean velocity to avoid exciting domain-scale
 # inertial oscillations. We use a `sum` over the entire `parent` arrays or data
-# to ensure this operation is efficient on the GPU (set `architecture = GPU()`
-# in `NonhydrostaticModel` constructor to run this problem on the GPU if one
-# is available).
+# to ensure this operation is efficient on the GPU.
 
 ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
 model.velocities.u.data.parent .-= ū
 model.velocities.v.data.parent .-= v̄
-nothing # hide
+nothing #hide
 
 # ## Simulation set-up
 #
@@ -292,9 +290,9 @@ u, v, w = model.velocities # unpack velocity `Field`s
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
-                                                        filename = "eady_turbulence.jld2",
-                                                         overwrite_existing = true)
-nothing # hide
+                                                      filename = "eady_turbulence.jld2",
+                                                      overwrite_existing = true)
+nothing #hide
 
 # All that's left is to press the big red button:
 
@@ -326,7 +324,7 @@ function nice_divergent_levels(c, clim, nlevels=31)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
-nothing # hide
+nothing #hide
 
 # Now we're ready to animate.
 
@@ -375,4 +373,4 @@ anim = @animate for (i, t) in enumerate(times)
           title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
 end
 
-mp4(anim, "eady_turbulence.mp4", fps = 8) # hide
+mp4(anim, "eady_turbulence.mp4", fps = 8) #hide

@@ -18,9 +18,12 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
     A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
     `grid` when indexed at `i, j, k`.
     """
-    function FunctionField{LX, LY, LZ}(func::F, grid::G; clock::C=nothing, parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
-        T = eltype(grid)
-        return new{LX, LY, LZ, C, P, F, G, T}(func, grid, clock, parameters)
+    @inline function FunctionField{LX, LY, LZ}(func::F,
+                                               grid::G;
+                                               clock::C=nothing,
+                                               parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
+        FT = eltype(grid)
+        return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
     end
 
     @doc """
@@ -28,7 +31,9 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
 
     Adds `clock` to an existing `FunctionField` and relocates it to `(LX, LY, LZ)` on `grid`.
     """
-    function FunctionField{LX, LY, LZ}(f::FunctionField, grid::G; clock::C=nothing) where {LX, LY, LZ, G, C}
+    @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
+                                               grid::G;
+                                               clock::C=nothing) where {LX, LY, LZ, G, C}
         P = typeof(f.parameters)
         T = eltype(grid)
         F = typeof(f.func)
@@ -46,19 +51,15 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 Returns a stationary `FunctionField` on `grid` and at location `L = (LX, LY, LZ)`,
 where `func` is callable with signature `func(x, y, z)`.
 """
-FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
+@inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
-indices(::FunctionField) = (:, :, :)
+@inline indices(::FunctionField) = (:, :, :)
 
 # Various possibilities for calling FunctionField.func:
-@inline call_func(clock, parameters, func, x, y, z)     = func(x, y, z, clock.time, parameters)
-@inline call_func(::Nothing, parameters, func, x, y, z) = func(x, y, z, parameters)
-@inline call_func(clock, ::Nothing, func, x, y, z)      = func(x, y, z, clock.time)
-@inline call_func(::Nothing, ::Nothing, func, x, y, z)  = func(x, y, z)
-
-# For setting ReducedField
-@inline call_func(::Nothing, ::Nothing, func, x, y)     = func(x, y)
-@inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
+@inline call_func(clock,     parameters, func, x...) = func(x..., clock.time, parameters)
+@inline call_func(clock,     ::Nothing,  func, x...) = func(x..., clock.time)
+@inline call_func(::Nothing, parameters, func, x...) = func(x..., parameters)
+@inline call_func(::Nothing, ::Nothing,  func, x...) = func(x...)
 
 @inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
     call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)

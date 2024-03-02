@@ -307,6 +307,27 @@ function computations_with_computed_fields(model)
     return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
+function compute_tuples_and_namedtuples(model)
+    c = CenterField(model.grid)
+    set!(c, 1)
+
+    one_c = Field(1 * c)
+    two_c = tuple(Field(2 * c))
+    six_c = (; field = Field(6 * c))
+    ten_c = (; field = Field(10 * c))
+
+    compute!(one_c)
+    compute!(two_c)
+    compute!(six_c)
+
+    at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i,j,k]
+    ten_c_op = KernelFunctionOperation{Center, Center, Center}(at_ijk, model.grid, ten_c)
+    ten_c_field = Field(ten_c_op)
+    compute!(ten_c_field)
+
+    return all(interior(one_c) .== 1) & all(interior(two_c[1]) .== 2) & all(interior(six_c.field) .== 6) & all(interior(ten_c.field) .== 10)
+end
+
 for arch in archs
     A = typeof(arch)
     @testset "Computed Fields [$A]" begin
@@ -384,6 +405,14 @@ for arch in archs
                 @test begin
                     @inline trivial_parameterized_kernel_function(i, j, k, grid, μ) = μ
                     op = KernelFunctionOperation{Center, Center, Center}(trivial_parameterized_kernel_function, grid, 0.1)
+                    f = Field(op)
+                    compute!(f)
+                    f isa Field && f.operand === op
+                end
+
+                @test begin
+                    @inline auxiliary_fields_kernel_function(i, j, k, grid, auxiliary_fields) = 1.0
+                    op = KernelFunctionOperation{Center, Center, Center}(auxiliary_fields_kernel_function, grid, model.auxiliary_fields)
                     f = Field(op)
                     compute!(f)
                     f isa Field && f.operand === op
@@ -518,40 +547,42 @@ for arch in archs
                 tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
                 tke_ccc              = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
 
-                @test try compute!(Field(u_prime             )); true; catch; false; end
-                @test try compute!(Field(u_prime_ccc         )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared     )); true; catch; false; end
-                @test try compute!(Field(u_prime_squared_ccc )); true; catch; false; end
-                @test try compute!(Field(horizontal_twice_tke)); true; catch; false; end
-                @test try compute!(Field(horizontal_tke      )); true; catch; false; end
-                @test try compute!(Field(twice_tke           )); true; catch; false; end
-
-                @test try compute!(Field(horizontal_tke_ccc  )); true; catch; false; end
-                @test try compute!(Field(tke                 )); true; catch; false; end
+                compute!(Field(u_prime             ))
+                compute!(Field(u_prime_ccc         ))
+                compute!(Field(u_prime_squared     ))
+                compute!(Field(u_prime_squared_ccc ))
+                compute!(Field(horizontal_twice_tke))
+                compute!(Field(horizontal_tke      ))
+                compute!(Field(twice_tke           ))
+                compute!(Field(horizontal_tke_ccc  ))
 
                 computed_tke = Field(tke_ccc)
-                @test try compute!(computed_tke); true; catch; false; end
-                @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
+                    @test_broken try compute!(computed_tke); true; catch; false end
+                    @test_broken try compute!(Field(tke)); true; catch; false; end
                     @test_broken try compute!(tke_window); true; catch; false; end
+                    @test_broken all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
                     @test_broken all(interior(tke_window) .== 9/2)
-                else
+                else                    
+                    @test try compute!(computed_tke); true; catch; false end
+                    @test try compute!(Field(tke)); true; catch; false; end
                     @test try compute!(tke_window); true; catch; false; end
+                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
                     @test all(interior(tke_window) .== 9/2)
                 end
 
                 # Computations along slices
                 tke_xy = Field(tke_ccc, indices=(:, :, 2))
-                @test try compute!(tke_xy); true; catch; false; end
-                @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-
                 tke_xz = Field(tke_ccc, indices=(2:3, 2, 2:3))
                 tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3))
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
+                    @test_broken try compute!(tke_xy); true; catch; false; end
+                    @test_broken all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+    
                     @test_broken try compute!(tke_xz); true; catch; false; end
                     @test_broken all(interior(tke_xz) .== 9/2)
 
@@ -561,6 +592,9 @@ for arch in archs
                     @test_broken try compute!(tke_x); true; catch; false; end
                     @test_broken all(interior(tke_x) .== 9/2)
                 else
+                    @test try compute!(tke_xy); true; catch; false; end
+                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+    
                     @test try compute!(tke_xz); true; catch; false; end
                     @test all(interior(tke_xz) .== 9/2)
 
@@ -575,6 +609,9 @@ for arch in archs
             @testset "Computations with Fields [$A, $G]" begin
                 @info "      Testing computations with Field [$A, $G]..."
                 @test computations_with_computed_fields(model)
+
+                @info "      Testing computations of Tuples and NamedTuples"
+                @test compute_tuples_and_namedtuples(model)
             end
 
             @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin

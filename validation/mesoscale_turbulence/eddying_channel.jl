@@ -315,7 +315,7 @@ end
 
 using CairoMakie
 
-fig = Figure(resolution = (2000, 1000))
+fig = Figure(size=(2000, 1000))
 ax_b = fig[1:5, 1] = LScene(fig)
 ax_ζ = fig[1:5, 2] = LScene(fig)
 

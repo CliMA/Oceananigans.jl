@@ -61,7 +61,7 @@ Private = false
 ## Distributed
 
 ```@autodocs
-Modules = [Oceananigans.Distributed]
+Modules = [Oceananigans.DistributedComputations]
 Private = false
 ```
 
@@ -90,13 +90,6 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.ImmersedBoundaries]
-Private = false
-```
-
-## Lagrangian particle tracking
-
-```@autodocs
-Modules = [Oceananigans.LagrangianParticleTracking]
 Private = false
 ```
 
@@ -133,6 +126,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Models.ShallowWaterModels]
+Private = false
+```
+
+### Lagrangian particle tracking
+
+```@autodocs
+Modules = [Oceananigans.Models.LagrangianParticleTracking]
 Private = false
 ```
 
@@ -181,7 +181,7 @@ Private = false
 ## Stokes drift
 
 ```@autodocs
-Modules = [Oceananigans.StokesDrift]
+Modules = [Oceananigans.StokesDrifts]
 Private = false
 ```
 

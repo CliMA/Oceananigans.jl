@@ -30,7 +30,7 @@ problem for the pressure ``p^{n+1}`` with the boundary condition
   \boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} p^{n+1} |_{\partial\Omega} = 0 \, .
 ```
 
-[Orszag86](@cite) and [Brown01](@cite) raise an important issue regarding these fractional step 
+[Orszag86](@citet) and [Brown01](@citet) raise an important issue regarding these fractional step 
 methods, which is that "*while the velocity can be reliably computed to second-order accuracy 
 in time and space, the pressure is typically only first-order accurate in the ``L_\infty``-norm.*" 
 The numerical boundary conditions must be carefully accounted for to ensure the second-order 

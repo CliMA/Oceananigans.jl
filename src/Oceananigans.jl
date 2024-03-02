@@ -4,10 +4,6 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.8"
-    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
-end
-
 export
     # Architectures
     CPU, GPU, 
@@ -29,11 +25,14 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
+    # Distributed
+    Distributed, Partition,
+
     # Advection schemes
     Centered, CenteredSecondOrder, CenteredFourthOrder, 
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
+    VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
 
     # Boundary conditions
     BoundaryCondition,
@@ -57,7 +56,7 @@ export
     BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift,
+    UniformStokesDrift, StokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -91,12 +90,11 @@ export
     PrescribedVelocityFields,
 
     # Time stepping
-    Clock, TimeStepWizard, time_step!,
+    Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, iteration, stopwatch,
+    Simulation, run!, Callback, add_callback!, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    erroring_NaNChecker!,
     TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
@@ -105,7 +103,7 @@ export
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    AndSchedule, OrSchedule,
+    AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -114,11 +112,15 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
-    ConformalCubedSphereGrid,
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+
+    # Units
+    Time
     
 using Printf
 using Logging
@@ -203,30 +205,36 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
+include("OutputReaders/OutputReaders.jl")
+include("DistributedComputations/DistributedComputations.jl")
+
+# TODO: move here
+#include("ImmersedBoundaries/ImmersedBoundaries.jl")
+#include("Distributed/Distributed.jl")
+#include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
-include("StokesDrift.jl")
+include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
+# TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("Distributed/Distributed.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
+# include("DistributedComputations/DistributedComputations.jl")
+
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
-include("CubedSpheres/CubedSpheres.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -241,22 +249,20 @@ using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .BuoyancyModels
-using .StokesDrift
+using .StokesDrifts
 using .TurbulenceClosures
-using .LagrangianParticleTracking
 using .Solvers
+using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
-using .Distributed
+using .DistributedComputations
 using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
-using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
-using .CubedSpheres
 
 function __init__()
     threads = Threads.nthreads()
@@ -264,7 +270,7 @@ function __init__()
         @info "Oceananigans will use $threads threads"
 
         # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4*threads)
+        FFTW.set_num_threads(4threads)
     end
 
     if CUDA.has_cuda()

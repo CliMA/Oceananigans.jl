@@ -32,7 +32,7 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 struct GPU <: AbstractArchitecture end
 
 #####
-##### These methods are extended in Distributed.jl
+##### These methods are extended in DistributedComputations.jl
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
@@ -61,17 +61,30 @@ arch_array(::CPU, a::CuArray) = Array(a)
 arch_array(::GPU, a::Array)   = CuArray(a)
 arch_array(::GPU, a::CuArray) = a
 
+arch_array(::CPU, a::BitArray) = a
+arch_array(::GPU, a::BitArray) = CuArray(a)
+
 arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
 arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
-arch_array(arch, a::AbstractRange) = a
-arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch, ::Nothing)   = nothing
-arch_array(arch, a::Number)   = a
-arch_array(arch, a::Function) = a
+arch_array(::CPU, a::AbstractRange) = a
+arch_array(::CPU, ::Nothing)   = nothing
+arch_array(::CPU, a::Number)   = a
+arch_array(::CPU, a::Function) = a
+
+arch_array(::GPU, a::AbstractRange) = a
+arch_array(::GPU, ::Nothing)   = nothing
+arch_array(::GPU, a::Number)   = a
+arch_array(::GPU, a::Function) = a
+
+arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+
+cpu_architecture(::CPU) = CPU()
+cpu_architecture(::GPU) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
@@ -86,7 +99,7 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
-## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArrat, offset::Int) is 1)
+## GPU to GPU copy of contiguous data
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
     n = length(src)
     context!(context(src)) do
@@ -102,4 +115,10 @@ end
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
 @inline unsafe_free!(a)          = nothing
 
+# Convert arguments to GPU-compatible types
+@inline convert_args(::CPU, args) = args
+@inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
+@inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
+
 end # module
+
