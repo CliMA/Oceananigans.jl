@@ -141,7 +141,8 @@ for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    background_u = BackgroundField((x, y, z, t) -> 0)
+    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."
@@ -156,12 +157,12 @@ for arch in archs
         clock = model.clock
         α = 0.12
         test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t, grid; clock, parameters=α)
-        function_field_outputs = (; αt = test_function_field)
+        function_and_background_fields = (; αt = test_function_field, background_u = model.background_fields.velocities.u)
 
         u, v, w = model.velocities
         operation_outputs= (u_op = 1 * u, v_op = 1 * v, w_op = 1 * w)
 
-        vanilla_outputs = merge(model.velocities, function_field_outputs, operation_outputs)
+        vanilla_outputs = merge(model.velocities, function_and_background_fields, operation_outputs)
 
         simulation.output_writers[:velocities] = JLD2OutputWriter(model, vanilla_outputs,
                                                                   schedule = IterationInterval(1),
@@ -190,7 +191,7 @@ for arch in archs
                                                                     overwrite_existing = true)
 
 
-        simulation.output_writers[:sliced_func_fields] = JLD2OutputWriter(model, function_field_outputs,
+        simulation.output_writers[:sliced_func_fields] = JLD2OutputWriter(model, function_and_background_fields,
                                                                           schedule = TimeInterval(1),
                                                                           indices = (1:2, 1:4, :),
                                                                           with_halos = false,
@@ -263,7 +264,7 @@ for arch in archs
 
         test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
         test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
-        test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt",), (2, 4, 4))
+        test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
         
         #####
         ##### File splitting
