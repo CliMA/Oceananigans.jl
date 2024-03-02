@@ -190,13 +190,13 @@ for arch in archs
                                                                     overwrite_existing = true)
 
 
-        simulation.output_writers[:sliced_ops] = JLD2OutputWriter(model, func_outputs,
-                                                                  schedule = TimeInterval(1),
-                                                                  indices = (1:2, 1:4, :),
-                                                                  with_halos = false,
-                                                                  dir = ".",
-                                                                  filename = "sliced_funcs_jld2_test.jld2",
-                                                                  overwrite_existing = true)
+        simulation.output_writers[:sliced_func_fields] = JLD2OutputWriter(model, function_field_outputs,
+                                                                          schedule = TimeInterval(1),
+                                                                          indices = (1:2, 1:4, :),
+                                                                          with_halos = false,
+                                                                          dir = ".",
+                                                                          filename = "sliced_func_fields_jld2_test.jld2",
+                                                                          overwrite_existing = true)
 
 
 
@@ -234,13 +234,13 @@ for arch in archs
 
         FT = typeof(u₁)
 
-        @test FT(u₀) == u₁ 
-        @test FT(v₀) == v₁ 
+        @test FT(u₀) == u₁
+        @test FT(v₀) == v₁
         @test FT(w₀) == w₁
 
-        @test FT(u₀_op) == u₁_op 
-        @test FT(v₀_op) == v₁_op 
-        @test FT(w₀_op) == w₁_op
+        @test FT(u₀) == u₁_op
+        @test FT(v₀) == v₁_op
+        @test FT(w₀) == w₁_op
 
         @test FT(αt₀) == α * t₀
         @test FT(αt₁) == α * t₁
@@ -249,24 +249,21 @@ for arch in archs
         ##### Field slicing
         #####
 
-        function test_field_slicing(test_file_name, sizes...)
+        function test_field_slicing(test_file_name, variables, sizes...)
             file = jldopen(test_file_name)
 
-            u₁ = file["timeseries/u/0"]
-            v₁ = file["timeseries/v/0"]
-            w₁ = file["timeseries/w/0"]
+            for (i, variable) in enumerate(variables)
+                var₁ = file["timeseries/$variable/0"]
+                @test size(var₁) == sizes[i]
+            end
 
             close(file)
-
             rm(test_file_name)
-
-            @test size(u₁) == sizes[1]
-            @test size(v₁) == sizes[2]
-            @test size(w₁) == sizes[3]
         end
 
-        test_field_slicing("sliced_jld2_test.jld2", (2, 4, 4), (2, 4, 4), (2, 4, 5))
-        test_field_slicing("sliced_funcs_jld2_test.jld2", (4, 4, 4), (4, 4, 4), (4, 4, 5))
+        test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
+        test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
+        test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt",), (2, 4, 4))
         
         #####
         ##### File splitting
