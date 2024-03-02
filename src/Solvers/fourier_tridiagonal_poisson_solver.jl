@@ -1,5 +1,6 @@
 using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimensions
+
 import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T} 
@@ -18,11 +19,11 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
     Nx = size(grid, 1)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    @unroll for i in 2:Nx-1
-        D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+    @inbounds D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
+    for i in 2:Nx-1
+        @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
     end
-    D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
+    @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 end 
 
 @kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
@@ -30,24 +31,24 @@ end
     Ny = size(grid, 2)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    @unroll for j in 2:Ny-1
-        D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+    @inbounds D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
+    for j in 2:Ny-1
+        @inbounds D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
     end
-    D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
-end 
+    @inbounds D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
+end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λy, ::ZDirection)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-    @unroll for k in 2:Nz-1
-        D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+    @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
+    for k in 2:Nz-1
+        @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
-    D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
-end 
+    @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+end
 
 
 stretched_direction(::YZRegularRG) = XDirection()
@@ -63,9 +64,9 @@ extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     irreg_dim = stretched_dimensions(grid)[1]
 
-    regular_top1, regular_top2 = Tuple( el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
-    regular_siz1, regular_siz2 = Tuple( el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
-    regular_ext1, regular_ext2 = Tuple( el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
+    regular_top1, regular_top2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
+    regular_siz1, regular_siz2 = Tuple(el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
+    regular_ext1, regular_ext2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
 
     topology(grid, irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
@@ -98,7 +99,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     tridiagonal_direction = stretched_direction(grid)
     launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
-    
+
     # Set up batched tridiagonal solver
     btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
 
@@ -157,16 +158,15 @@ end
 
 @kernel function multiply_by_stretched_spacing!(a, grid::YZRegularRG)
     i, j, k = @index(Global, NTuple)
-    a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
+    @inbounds a[i, j, k] *= Δxᶜᵃᵃ(i, j, k, grid)
 end
 
 @kernel function multiply_by_stretched_spacing!(a, grid::XZRegularRG)
     i, j, k = @index(Global, NTuple)
-    a[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
+    @inbounds a[i, j, k] *= Δyᵃᶜᵃ(i, j, k, grid)
 end
 
 @kernel function multiply_by_stretched_spacing!(a, grid::XYRegularRG)
     i, j, k = @index(Global, NTuple)
-    a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
+    @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
-

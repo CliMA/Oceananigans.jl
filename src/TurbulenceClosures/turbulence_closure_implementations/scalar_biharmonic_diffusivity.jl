@@ -57,7 +57,7 @@ When prescribing the viscosities or diffusivities as functions, depending on the
 * `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
                                      a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
 
-* `discrete_form = true`: 
+* `discrete_form = true`:
   * with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz`
                                                         either `Face()` or `Center()`.
   * with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
@@ -103,5 +103,9 @@ end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
 
-adapt_structure(to, closure::ScalarBiharmonicDiffusivity) = ScalarBiharmonicDiffusivity(adapt(closure.ν),
-                                                                                        adapt(closure.κ))
+function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+    ν = Adapt.adapt(to, closure.ν)
+    κ = Adapt.adapt(to, closure.κ)
+    return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+end
+

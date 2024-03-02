@@ -95,7 +95,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) = 
+                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
