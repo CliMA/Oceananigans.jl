@@ -96,12 +96,12 @@ function build_implicit_poisson_solver(::Val{:HeptadiagonalIterativeSolver}, gri
     return pcg_solver, right_hand_side, storage
 end
 
-@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★, args...)
+@kernel function _calculate_pressure_source_term!(rhs, grid, Δt, U★, ::Val{false})
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★, ::HeptadiagonalIterativeSolver)
+@kernel function _calculate_pressure_source_term!(rhs, grid, Δt, U★, ::Val{true})
     i, j, k = @index(Global, NTuple)
     t = i + grid.Nx * (j - 1 + grid.Ny * (k - 1))
     @inbounds rhs[t] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt * Vᶜᶜᶜ(i, j, k, grid)
@@ -149,6 +149,9 @@ function compute_poisson_weights(grid)
     return (Ax, Ay, Az, C, D)
 end
 
+linear_rhs(solver) = Val(false)
+linear_rhs(::HeptadiagonalIterativeSolver) = Val(true)
+
 function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     # TODO: Is this the right criteria?
     min_Δt = eps(typeof(Δt))
@@ -164,8 +167,10 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
         underlying_grid = grid
     end
 
-    launch!(arch, grid, :xyz, calculate_pressure_source_term!,
-            rhs, underlying_grid, Δt, U★, solver.pcg_solver)
+    linear_rhs_kernel = linear_rhs(solver.pcg_solver)
+
+    launch!(arch, grid, :xyz, _calculate_pressure_source_term!,
+            rhs, underlying_grid, Δt, U★, linear_rhs_kernel)
 
     # mask_immersed_field!(rhs, zero(grid))
 
