@@ -56,7 +56,7 @@ child_architecture(arch) = arch
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-# Fallback
+# Fallback 
 on_architecture(arch, a) = a
 
 # Tupled implementation
@@ -78,16 +78,6 @@ on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
 on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
-
-on_architecture(::CPU, a::AbstractRange) = a
-on_architecture(::CPU, ::Nothing)   = nothing
-on_architecture(::CPU, a::Number)   = a
-on_architecture(::CPU, a::Function) = a
-
-on_architecture(::GPU, a::AbstractRange) = a
-on_architecture(::GPU, ::Nothing)   = nothing
-on_architecture(::GPU, a::Number)   = a
-on_architecture(::GPU, a::Function) = a
 
 on_architecture(arch::CPU, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 on_architecture(arch::GPU, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
