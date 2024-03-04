@@ -25,8 +25,8 @@ end
     u = velocities.u
     v = velocities.v
 
-    To reconstruct the shear production term "conservatively" (ie approximately corresponding
-    to dissipatation of mean kinetic energy):
+    # To reconstruct the shear production term "conservatively" (ie approximately corresponding
+    # to dissipatation of mean kinetic energy):
     κᵘ = diffusivities.κᵘ
     return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
            ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
