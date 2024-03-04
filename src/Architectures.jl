@@ -1,7 +1,7 @@
 module Architectures
 
-export AbstractArchitecture
-export CPU, GPU, MultiGPU
+export AbstractArchitecture, AbstractSerialArchitecture
+export CPU, GPU
 export device, architecture, array_type, on_architecture, unified_array, device_copy_to!
 
 using CUDA
