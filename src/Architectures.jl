@@ -2,7 +2,8 @@ module Architectures
 
 export AbstractArchitecture, AbstractSerialArchitecture
 export CPU, GPU
-export device, architecture, array_type, on_architecture, unified_array, device_copy_to!
+export device, architecture, unified_array, device_copy_to!
+export array_type, on_architecture, arch_array
 
 using CUDA
 using KernelAbstractions
@@ -127,7 +128,6 @@ end
 @inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 # Deprecated functions
-
 function arch_array(arch, arr) 
     @warn "`arch_array` is deprecated. Use `on_architecture` instead."
     return on_architecture(arch, arr)
