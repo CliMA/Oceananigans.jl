@@ -28,8 +28,6 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
-operation_corner_points = "default" # Choose operation_corner_points to be "default", "average", "CCW", or "CW".
-
 function fill_paired_halo_regions!(fields, signed=true)
 
     field₁, field₂ = fields
