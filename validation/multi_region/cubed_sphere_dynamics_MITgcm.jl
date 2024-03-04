@@ -462,17 +462,30 @@ for passes in 1:3
     fill_halo_regions!(model.free_surface.η)
 end
 
-Δt =  600
+Δt = 600
 stop_time = 10*86400 # 10 days, close to revolution period = 11.58 days
+
+Ntime = round(Int, stop_time/Δt)
+
+print_output_to_jld2_file = true
+if print_output_to_jld2_file
+    Ntime = 500
+    stop_time = Ntime * Δt
+end
+
+@info "Stop time = $(prettytime(stop_time))"
+@info "Number of time steps = $Ntime"
+
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
+progress_message_iteration_interval = 10
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.u),
                                 prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(6))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
 u_fields = Field[]
 save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
@@ -480,92 +493,17 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
-eta_fields = Field[]
-save_eta(sim) = push!(eta_fields, deepcopy(sim.model.free_surface.η))
-
 ζ = Field{Face, Face, Center}(grid)
-
-ζ_fields = Field[]
-Δζ_fields = Field[]
 
 @apply_regionally begin
     params = KernelParameters(total_size(ζ[1]), offset)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-u₀ = deepcopy(simulation.model.velocities.u)
-v₀ = deepcopy(simulation.model.velocities.v)
-ζ₀ = deepcopy(ζ)
+ζ_fields = Field[]
+Δζ_fields = Field[]
 
-# Plot the relative difference of the grid metrics with halos.
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶜᶜᵃ_relative_difference)
-save("λᶜᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶠᶠᵃ_relative_difference)
-save("λᶠᶠᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶜᶜᵃ_relative_difference)
-save("φᶜᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶠᶠᵃ_relative_difference)
-save("φᶠᶠᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶠᶜᵃ_relative_difference)
-save("Δxᶠᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶜᶠᵃ_relative_difference)
-save("Δxᶜᶠᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶠᶜᵃ_relative_difference)
-save("Δyᶠᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶜᶠᵃ_relative_difference)
-save("Δyᶜᶠᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶜᵃ_relative_difference)
-save("Azᶜᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶜᵃ_relative_difference)
-save("Azᶠᶜᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶠᵃ_relative_difference)
-save("Azᶜᶠᵃ_relative_difference_with_halos.png", fig)
-
-fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶠᵃ_relative_difference)
-save("Azᶠᶠᵃ_relative_difference_with_halos.png", fig)
-
-# Plot the initial velocity field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, u₀)
-save("u₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, u₀)
-save("u₀.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, v₀)
-save("v₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, v₀)
-save("v₀.png", fig)
-
-# Plot the initial surface elevation field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, simulation.model.free_surface.η, grid.Nz+1, true, true)
-save("η₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, simulation.model.free_surface.η, grid.Nz+1, true, true)
-save("η₀.png", fig)
-
-# Plot the initial vorticity field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, ζ₀)
-save("ζ₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ζ₀)
-save("ζ₀.png", fig)
-
-function save_vorticity(sim)
+function save_ζ(sim)
     Hx, Hy, Hz = halo_size(grid)
 
     fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
@@ -591,13 +529,162 @@ function save_vorticity(sim)
     push!(Δζ_fields, Δζ_field)
 end
 
-save_fields_iteration_interval = 12
+η_fields = Field[]
+save_η(sim) = push!(η_fields, deepcopy(sim.model.free_surface.η))
+
+u₀ = deepcopy(simulation.model.velocities.u)
+v₀ = deepcopy(simulation.model.velocities.v)
+ζ₀ = deepcopy(ζ)
+
+η₀ = deepcopy(simulation.model.free_surface.η)
+for region in 1:number_of_regions(grid)
+    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+        η₀[region][i, j, k] -= Lz
+    end
+end
+
+if compare_old_and_new_code_metrics
+
+    # Plot the relative difference of the grid metrics with halos.
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶜᶜᵃ_relative_difference)
+    save("λᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶠᶠᵃ_relative_difference)
+    save("λᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶜᶜᵃ_relative_difference)
+    save("φᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶠᶠᵃ_relative_difference)
+    save("φᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶠᶜᵃ_relative_difference)
+    save("Δxᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶜᶠᵃ_relative_difference)
+    save("Δxᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶠᶜᵃ_relative_difference)
+    save("Δyᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶜᶠᵃ_relative_difference)
+    save("Δyᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶜᵃ_relative_difference)
+    save("Azᶜᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶜᵃ_relative_difference)
+    save("Azᶠᶜᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶠᵃ_relative_difference)
+    save("Azᶜᶠᵃ_relative_difference_with_halos.png", fig)
+
+    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶠᵃ_relative_difference)
+    save("Azᶠᶠᵃ_relative_difference_with_halos.png", fig)
+
+end
+
+# Plot the initial velocity field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, u₀)
+save("u₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u₀)
+save("u₀.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v₀)
+save("v₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v₀)
+save("v₀.png", fig)
+
+# Plot the initial vorticity field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, ζ₀)
+save("ζ₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, ζ₀)
+save("ζ₀.png", fig)
+
+# Plot the initial surface elevation field after model definition.
+
+fig = panel_wise_visualization_with_halos(grid, η₀, grid.Nz+1, true, true)
+save("η₀_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, η₀, grid.Nz+1, true, true)
+save("η₀.png", fig)
+
+animation_time = 15 # seconds
+framerate = 5
+n_frames = animation_time * framerate
+simulation_time_per_frame = stop_time/n_frames
+# Specify animation_time and framerate in such a way that n_frames is a multiple of n_plots defined below.
+save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
+# Redefine the simulation time per frame.
+simulation_time_per_frame = save_fields_iteration_interval * Δt
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_eta] = Callback(save_eta, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_vorticity] = Callback(save_vorticity, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
+simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
+
+for i_field in 1:length(η_fields)
+    for region in 1:number_of_regions(grid)
+        for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+            η_fields[i_field][region][i, j, k] -= Lz
+        end
+    end
+end
+
+n_plots = 3
+
+ζ_colorrange = zeros(2)
+η_colorrange = zeros(2)
+
+for i_plot in 1:n_plots
+    frame_index = round(Int, i_plot * n_frames / n_plots)
+    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index], true, false)
+    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], true, true)
+    if i_plot == 1
+        ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
+        η_colorrange[:] = collect(η_colorrange_at_frame_index)
+    else
+        ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
+        ζ_colorrange[2] = -ζ_colorrange[1]
+        η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
+        η_colorrange[2] = -η_colorrange[1]
+    end
+end
+
+for i_plot in 1:n_plots
+    frame_index = round(Int, i_plot * n_frames / n_plots)
+    simulation_time = simulation_time_per_frame * frame_index
+    title = "Relative vorticity after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid,
+                                       interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
+                                                                                      "ff"), title;
+                                       cbar_label = "Relative vorticity (s⁻¹)", specify_plot_limits = true,
+                                       plot_limits = ζ_colorrange)
+    save(@sprintf("ζ_%d.png", i_plot), fig)
+    title = "Surface elevation after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
+                                       cbar_label = "Surface elevation (m)", specify_plot_limits = true,
+                                       plot_limits = η_colorrange)
+    save(@sprintf("η_%d.png", i_plot), fig)
+end
+
+if print_output_to_jld2_file
+    jldopen("cubed_sphere_solid_body_rotation_output.jld2", "w") do file
+        for region in 1:6
+            file["u/" * string(region)]  =  u_fields[end][region][:, :, 1]
+            file["v/" * string(region)]  =  v_fields[end][region][:, :, 1]
+            file["ζ/" * string(region)]  =  ζ_fields[end][region][:, :, 1]
+            file["η/" * string(region)]  =  η_fields[end][region][:, :, 1+1]
+        end
+    end
+end
 
 #=
 fig = panel_wise_visualization(grid, Δζ_fields[end])

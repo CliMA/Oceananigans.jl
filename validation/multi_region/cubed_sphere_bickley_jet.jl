@@ -143,8 +143,13 @@ c = sqrt(model.free_surface.gravitational_acceleration * H)
 Δt = 0.2 * min_spacing / c
 
 Ntime = 15000
-iteration_interval = 10
 stop_time = Ntime * Δt
+
+print_output_to_jld2_file = true
+if print_output_to_jld2_file
+    Ntime = 500
+    stop_time = Ntime * Δt
+end
 
 @info "Stop time = $(prettytime(stop_time))"
 @info "Number of time steps = $Ntime"
@@ -152,12 +157,13 @@ stop_time = Ntime * Δt
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
+progress_message_iteration_interval = 10
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|c|: %.3f, wall time: %s\n",
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
                                 maximum(abs, model.free_surface.η), maximum(abs, model.tracers.c),
                                 prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(iteration_interval))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
 u_fields = Field[]
 save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
@@ -273,6 +279,14 @@ simulation.callbacks[:save_c] = Callback(save_c, IterationInterval(save_fields_i
 
 run!(simulation)
 
+for i_field in 1:length(η_fields)
+    for region in 1:number_of_regions(grid)
+        for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+            η_fields[i_field][region][i, j, k] -= H
+        end
+    end
+end
+
 n_plots = 3
 
 ζ_colorrange = zeros(2)
@@ -285,9 +299,9 @@ for i_plot in 1:n_plots
     η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], false, true)
     c_colorrange_at_frame_index = specify_colorrange(grid, c_fields[frame_index], true,  false)
     if i_plot == 1
-        ζ_colorrange = collect(ζ_colorrange_at_frame_index)
-        η_colorrange = collect(η_colorrange_at_frame_index)
-        c_colorrange = collect(c_colorrange_at_frame_index)
+        ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
+        η_colorrange[:] = collect(η_colorrange_at_frame_index)
+        c_colorrange[:] = collect(c_colorrange_at_frame_index)
     else
         ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
         ζ_colorrange[2] = -ζ_colorrange[1]
@@ -317,6 +331,18 @@ for i_plot in 1:n_plots
                                        cbar_label = "Tracer level (tracer units m⁻³)", specify_plot_limits = true,
                                        plot_limits = c_colorrange)
     save(@sprintf("c_%d.png", i_plot), fig)
+end
+
+if print_output_to_jld2_file
+    jldopen("cubed_sphere_bickley_jet_output.jld2", "w") do file
+        for region in 1:6
+            file["u/" * string(region)]  =  u_fields[end][region][:, :, 1]
+            file["v/" * string(region)]  =  v_fields[end][region][:, :, 1]
+            file["ζ/" * string(region)]  =  ζ_fields[end][region][:, :, 1]
+            file["η/" * string(region)]  =  η_fields[end][region][:, :, 1+1]
+            file["c/" * string(region)]  =  c_fields[end][region][:, :, 1]
+        end
+    end
 end
 
 #=

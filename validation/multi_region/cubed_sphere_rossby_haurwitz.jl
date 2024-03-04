@@ -487,13 +487,20 @@ end
 # Compute amount of time needed for a 45° rotation.
 angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
 stop_time = deg2rad(360) / abs(angular_velocity)
-@info "Stop time = $(prettytime(stop_time))"
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
 c = sqrt(model.free_surface.gravitational_acceleration * H)
 Δt = 0.2 * min_spacing / c
 
 Ntime = round(Int, stop_time/Δt)
+
+print_output_to_jld2_file = true
+if print_output_to_jld2_file
+    Ntime = 500
+    stop_time = Ntime * Δt
+end
+
+@info "Stop time = $(prettytime(stop_time))"
 @info "Number of time steps = $Ntime"
 
 gravity_wave_speed = sqrt(g * H)
@@ -511,12 +518,13 @@ end
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
+progress_message_iteration_interval = 10
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.u),
                                 prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
 u_fields = Field[]
 save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
@@ -659,6 +667,14 @@ simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields
 
 run!(simulation)
 
+for i_field in 1:length(η_fields)
+    for region in 1:number_of_regions(grid)
+        for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+            η_fields[i_field][region][i, j, k] -= H
+        end
+    end
+end
+
 n_plots = 3
 
 ζ_colorrange = zeros(2)
@@ -666,16 +682,16 @@ n_plots = 3
 
 for i_plot in 1:n_plots
     frame_index = round(Int, i_plot * n_frames / n_plots)
-    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index], true,  false)
-    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], false, true)
+    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index], true, false)
+    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], true, true)
     if i_plot == 1
-        ζ_colorrange = collect(ζ_colorrange_at_frame_index)
-        η_colorrange = collect(η_colorrange_at_frame_index)
+        ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
+        η_colorrange[:] = collect(η_colorrange_at_frame_index)
     else
         ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
         ζ_colorrange[2] = -ζ_colorrange[1]
         η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
-        η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
+        η_colorrange[2] = -η_colorrange[1]
     end
 end
 
@@ -690,10 +706,21 @@ for i_plot in 1:n_plots
                                        plot_limits = ζ_colorrange)
     save(@sprintf("ζ_%d.png", i_plot), fig)
     title = "Surface elevation after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false, ssh = true,
+    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
                                        cbar_label = "Surface elevation (m)", specify_plot_limits = true,
                                        plot_limits = η_colorrange)
     save(@sprintf("η_%d.png", i_plot), fig)
+end
+
+if print_output_to_jld2_file
+    jldopen("cubed_sphere_rossby_haurwitz_output.jld2", "w") do file
+        for region in 1:6
+            file["u/" * string(region)]  =  u_fields[end][region][:, :, 1]
+            file["v/" * string(region)]  =  v_fields[end][region][:, :, 1]
+            file["ζ/" * string(region)]  =  ζ_fields[end][region][:, :, 1]
+            file["η/" * string(region)]  =  η_fields[end][region][:, :, 1+1]
+        end
+    end
 end
 
 #=
