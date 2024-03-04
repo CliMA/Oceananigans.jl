@@ -25,31 +25,34 @@ end
     u = velocities.u
     v = velocities.v
 
-    # To reconstruct the shear production term "conservatively" (ie approximately corresponding
-    # to dissipatation of mean kinetic energy):
-    # κᵘ = diffusivities.κᵘ
-    # return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
-    #        ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
+    To reconstruct the shear production term "conservatively" (ie approximately corresponding
+    to dissipatation of mean kinetic energy):
+    κᵘ = diffusivities.κᵘ
+    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
+           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
 
+    #=
     # Non-conservative reconstruction of shear production:
     closure = getclosure(i, j, closure)
     κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
+    =#
 
     return κᵘ * S²
 end
 
 # To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
 # of mean potential energy):
-# @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-#     κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
-#     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-#     return - κᶜ * N²
-# end
-# 
-# @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
-#     ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
+    κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return - κᶜ * N²
+end
+ 
+@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
+    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
+#=
 # Non-conservative reconstruction of buoyancy flux:
 @inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     closure = getclosure(i, j, closure)
@@ -57,6 +60,7 @@ end
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶜ * N²
 end
+=#
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
     explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
