@@ -17,19 +17,26 @@ Abstract supertype for architectures supported by Oceananigans.
 abstract type AbstractArchitecture end
 
 """
+    AbstractSerialArchitecture
+
+Abstract supertype for serial architectures supported by Oceananigans.
+"""
+abstract type AbstractSerialArchitecture <: AbstractArchitecture end
+
+"""
     CPU <: AbstractArchitecture
 
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractArchitecture end
+struct CPU <: AbstractSerialArchitecture end
 
 """
     GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractArchitecture end
+struct GPU <: AbstractSerialArchitecture end
 
 #####
 ##### These methods are extended in DistributedComputations.jl

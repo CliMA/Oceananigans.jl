@@ -873,7 +873,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
                                                     conformal_mapping)
 end
 
-function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalShellGrid)
+function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
 
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
