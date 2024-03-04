@@ -1,24 +1,19 @@
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
    
-Nx, Ny = 48, 128
+Nx, Ny = 50, 128
 Lx, Ly = 2π,   10
 H₀     = 10
-α, β   = 0.1, -0.025
+α, β   = 0.1,  0.1
 Lb, Hb = α * Ly, β * H₀
 
-f, g, U  = 1, 1, -1
+f, g, U  = 1, 1, -1.0
 Δη = f * U / g 
 
 grid = RectilinearGrid(size = ( Nx, Ny),
                           x = (  0, Lx),
                           y = (-Ly, Ly),
                    topology = (Periodic, Bounded, Flat))
-
-model = ShallowWaterModel(; grid, coriolis = FPlane(f=f), 
-                gravitational_acceleration = g,
-                               timestepper = :RungeKutta3,
-                        momentum_advection = WENO())
 
 η(x, y) = Δη * tanh(y)
 b(x, y) = Hb * tanh(y/Lb)
@@ -33,6 +28,15 @@ small_amplitude = 1e-4
 uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 ū̄h(x, y) = ū(x, y) * h̄(x, y)
+
+bathymetry(x,y) = -b(x,y)
+
+model = ShallowWaterModel(; grid, coriolis = FPlane(f=f), 
+                gravitational_acceleration = g,
+                               timestepper = :RungeKutta3,
+                        momentum_advection = WENO(),
+                                bathymetry = bathymetry
+                        )
 
 set!(model, uh = ū̄h, h = h̄)
 
@@ -127,8 +131,8 @@ end
 
 close(ds)
 
-ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
-#ds2 = NCDataset("shallow_water_Bickley_jet_perturbation_norm.nc", "r")
+#ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
+ds2 = NCDataset("shallow_water_Bickley_jet_perturbation_norm.nc", "r")
 
      t = ds2["time"][:]
 norm_v = ds2["perturbation_norm"][:]
@@ -143,7 +147,7 @@ linear_fit_polynomial = fit(t[I], log.(norm_v[I]), 1, var = :t)
 
 constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
 
-best_fit = @. exp(0.8*constant + slope * t)
+best_fit = @. exp(0.95*constant + slope * t)
 
 fig2 = Figure()
 Axis(fig2[1,1], yscale = log10, xlabel = "time", ylabel = "norm(v)", title = "growth of perturbation norm")
