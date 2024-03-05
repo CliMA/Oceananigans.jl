@@ -220,17 +220,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     LXs₁    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
     LYs₁    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
 
-    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :φᶠᶜᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
-    # LXs₁    = (:Center, :Face,   :Face,   :Face,  :Center, :Face,   :Face,   :Face, :Center, :Face,   :Face )
-    # LYs₁    = (:Center, :Center, :Center, :Face,  :Center, :Center, :Center, :Face, :Center, :Center, :Face )
-
     fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
     LXs₂    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
     LYs₂    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
-
-    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
-    # LXs₂    = (:Center, :Center, :Center, :Face,  :Center, :Center, :Center, :Face, :Center, :Center, :Face )
-    # LYs₂    = (:Center, :Face,   :Face,   :Face,  :Center, :Face,   :Face,   :Face, :Center, :Face,   :Face )
 
     for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
         expr = quote
