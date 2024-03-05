@@ -262,9 +262,6 @@ const SynchronizedDistributed = Distributed{<:Any, true}
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
 
-# We do not support switching from distributed and serial through `on_architecture`.
-# We only support moving a type from CPU to GPU and the other way around
-on_architecture(arch::Distributed, A) = on_architecture(child_architecture(arch), A)
 zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
 array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
