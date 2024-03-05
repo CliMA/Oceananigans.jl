@@ -2,17 +2,17 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
    
 Nx, Ny = 50, 128
-Lx, Ly = 2π,   10
+Lx, Ly = 2π, 20
 H₀     = 10
 α, β   = 0.1, -0.1
-Lb, Hb = α * Ly, β * H₀
+Lb, Hb = α * Ly /2, β * H₀
 
 f, g, U  = 1, 1, 1
 Δη = -f * U / g 
 
 grid = RectilinearGrid(size = ( Nx, Ny),
                           x = (  0, Lx),
-                          y = (-Ly, Ly),
+                          y = (-Ly/2, Ly/2),
                    topology = (Periodic, Bounded, Flat))
 
 η(x, y) =   Δη * tanh(y)
