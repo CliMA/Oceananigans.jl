@@ -32,7 +32,7 @@ model = ShallowWaterModel(; grid, coriolis = FPlane(f=f),
                 gravitational_acceleration = g,
                                timestepper = :RungeKutta3,
                         momentum_advection = WENO(),
-                                bathymetry = bathymetry
+                                bathymetry = b
                         )
 
 set!(model, uh = ū̄h, h = h̄)
