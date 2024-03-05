@@ -206,4 +206,3 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     end
     return nothing
 end
-
