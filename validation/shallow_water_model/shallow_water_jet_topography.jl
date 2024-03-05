@@ -46,8 +46,8 @@ v = vh / h
 
 using CairoMakie
 
-x = grid.xᶜᵃᵃ[1:Nx]
-y = grid.yᵃᶜᵃ[1:Ny]
+x = xnodes(grid, Center())
+y = ynodes(grid, Center())
 
 fig = Figure()
 Axis(fig[1,1], xlabel = "y", ylabel = "depth", title = "Geostrophic State")
