@@ -5,13 +5,12 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           size_summary,
                           total_length,
                           topology
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 
 using CubedSphere
 using Distances
 
 import Oceananigans.Grids: grid_name
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
