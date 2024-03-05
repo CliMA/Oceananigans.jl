@@ -26,8 +26,6 @@ uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 ū̄h(x, y) = ū(x, y) * h̄(x, y)
 
-bathymetry(x,y) = b(x,y)
-
 model = ShallowWaterModel(; grid, coriolis = FPlane(f=f), 
                 gravitational_acceleration = g,
                                timestepper = :RungeKutta3,
