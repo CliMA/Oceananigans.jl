@@ -74,8 +74,9 @@ on_architecture(arch, nt::NamedTuple)  = NamedTuple{keys(nt)}(on_architecture(ar
 
 # On architecture for array types
 on_architecture(::CPU, a::Array)   = a
-on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::GPU, a::Array)   = CuArray(a)
+
+on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::GPU, a::CuArray) = a
 
 on_architecture(::CPU, a::BitArray) = a
