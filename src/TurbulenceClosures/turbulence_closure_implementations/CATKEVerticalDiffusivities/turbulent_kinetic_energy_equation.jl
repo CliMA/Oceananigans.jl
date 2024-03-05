@@ -21,24 +21,38 @@ end
 @inline ν_∂z_u²ᶠᶜᶠ(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
 @inline ν_∂z_v²ᶜᶠᶠ(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
+@inline uk_ν_∂z_uᶠᶜᶠ(i, j, k, grid, ν, u, ku) = @inbounds u[i, j, ku] * ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)
+@inline vk_ν_∂z_vᶜᶠᶠ(i, j, k, grid, ν, v, kv) = @inbounds v[i, j, kv] * ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)
+
+@inline u_ν_∂z_uᶠᶜᶜ(i, j, k, grid, ν, u) = ∂zᶠᶜᶜ(i, j, k, grid, uk_ν_∂z_uᶠᶜᶠ, ν, u, k)
+@inline v_ν_∂z_vᶜᶠᶜ(i, j, k, grid, ν, v) = ∂zᶜᶠᶜ(i, j, k, grid, vk_ν_∂z_vᶜᶠᶠ, ν, v, k)
+
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     u = velocities.u
     v = velocities.v
 
-    # To reconstruct the shear production term "conservatively" (ie approximately corresponding
-    # to dissipatation of mean kinetic energy):
+    # To reconstruct the shear production term in an "approximately conservative" manner
+    # (ie respecting the spatial discretization and using a stencil commensurate with the
+    # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
+    # the temporal discretization. Note that also respecting the temporal discretization, would
+    # require storing the velocity field at n and n+1):
     κᵘ = diffusivities.κᵘ
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
-           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
+
+    return ℑxᶜᵃᵃ(i, j, k, grid, u_ν_∂z_uᶠᶜᶜ, κᵘ, u) + 
+           ℑyᵃᶜᵃ(i, j, k, grid, v_ν_∂z_vᶜᶠᶜ, κᵘ, v)
 
     #=
-    # Non-conservative reconstruction of shear production:
+    # Non-conservative reconstructions of shear production:
+    # return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
+    #        ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
+    
+    # or
+    
     closure = getclosure(i, j, closure)
     κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
-    =#
-
     return κᵘ * S²
+    =#
 end
 
 # To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
