@@ -131,8 +131,8 @@ Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ
                                          Adapt.adapt(to, gm.grid))
 
 on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-                                         GridMetricOperation{LX, LY, LZ}(on_architecture(to, gm.metric),
-                                                                         on_architecture(to, gm.grid))
+    GridMetricOperation{LX, LY, LZ}(on_architecture(to, gm.metric),
+                                    on_architecture(to, gm.grid))
                                 
 
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
