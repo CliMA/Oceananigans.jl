@@ -18,11 +18,16 @@ parenttuple(obj) = Tuple(f.data.parent for f in obj)
 @inline datatuple(obj::NamedTuple) = NamedTuple{propertynames(obj)}(datatuple(o) for o in obj)
 @inline datatuples(objs...) = (datatuple(obj) for obj in objs)
 
-macro constprop(setting)
-    if isa(setting, QuoteNode)
-        setting = setting.value
+if VERSION < v"1.7.0"
+    macro constprop(setting)
     end
-    setting === :aggressive && return Expr(:meta, :aggressive_constprop)
-    setting === :none && return Expr(:meta, :no_constprop)
-    throw(ArgumentError("@constprop $setting not supported"))
+else
+    macro constprop(setting)
+        if isa(setting, QuoteNode)
+            setting = setting.value
+        end
+        setting === :aggressive && return Expr(:meta, :aggressive_constprop)
+        setting === :none && return Expr(:meta, :no_constprop)
+        throw(ArgumentError("@constprop $setting not supported"))
+    end
 end

@@ -6,6 +6,7 @@ import Oceananigans.Grids: required_halo_size
 struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
+
     ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
 end
 

@@ -99,6 +99,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
+    step_lagrangian_particles!(model, first_stage_Δt)
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -107,12 +108,12 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
+    step_lagrangian_particles!(model, second_stage_Δt)
     rk3_substep!(model, Δt, γ², ζ²)
 
     calculate_pressure_correction!(model, second_stage_Δt)
@@ -121,12 +122,12 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, second_stage_Δt)
 
     #
     # Third stage
     #
     
+    step_lagrangian_particles!(model, third_stage_Δt)
     rk3_substep!(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)
@@ -134,7 +135,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model, callbacks; compute_tendencies)
-    step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
 end
