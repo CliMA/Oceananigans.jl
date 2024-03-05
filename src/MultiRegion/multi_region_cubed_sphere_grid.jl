@@ -10,7 +10,6 @@ using CubedSphere
 using Distances
 
 import Oceananigans.Grids: grid_name
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: second_pass_of_fill_halo_regions!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
 
@@ -455,5 +454,3 @@ end
 radius(mrg::ConformalCubedSphereGrid) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGrid) = "ConformalCubedSphereGrid"
-
-second_pass_of_fill_halo_regions!(::ConformalCubedSphereGrid, velocities, args...) = fill_halo_regions!(velocities, args...)
