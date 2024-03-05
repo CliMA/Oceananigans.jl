@@ -70,7 +70,7 @@ on_architecture(arch, a) = a
 # Tupled implementation
 on_architecture(arch, t::Tuple{}) = ()
 on_architecture(arch, t::Tuple)   = Tuple(on_architecture(arch, elem) for elem in t)
-on_architecture(arch, nt::NamedTuple)  = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
+on_architecture(arch, nt::NamedTuple) = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
 
 # On architecture for array types
 on_architecture(::CPU, a::Array)   = a
