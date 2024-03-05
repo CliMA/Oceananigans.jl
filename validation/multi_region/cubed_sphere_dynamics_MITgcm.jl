@@ -200,7 +200,7 @@ jldopen("new_code_metrics.jld2", "w") do file
     end
 end
 
-compare_old_and_new_code_metrics = true
+compare_old_and_new_code_metrics = false
 
 if compare_old_and_new_code_metrics
 
