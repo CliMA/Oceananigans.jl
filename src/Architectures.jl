@@ -72,8 +72,8 @@ on_architecture(arch::AbstractSerialArchitecture, t::Tuple) = Tuple(on_architect
 on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
 
 # On architecture for array types
-on_architecture(::CPU, a::Array)   = a
-on_architecture(::GPU, a::Array)   = CuArray(a)
+on_architecture(::CPU, a::Array) = a
+on_architecture(::GPU, a::Array) = CuArray(a)
 
 on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::GPU, a::CuArray) = a
@@ -81,11 +81,11 @@ on_architecture(::GPU, a::CuArray) = a
 on_architecture(::CPU, a::BitArray) = a
 on_architecture(::GPU, a::BitArray) = CuArray(a)
 
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
