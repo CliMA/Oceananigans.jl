@@ -26,7 +26,7 @@ hydrostatic pressure) to the current model state. If `callbacks` are provided (i
 they are called in the end.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-    update_state!(model, model.grid, callbacks; compute_tendencies)
+         update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function fill_paired_halo_regions!(fields, signed=true)
 
