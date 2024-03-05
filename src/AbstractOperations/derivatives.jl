@@ -118,7 +118,7 @@ compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 ##### GPU capabilities
 #####
 
-"Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `Derivative` to work on the GPU."
 Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
     Derivative{LX, LY, LZ}(Adapt.adapt(to, deriv.∂),
                            Adapt.adapt(to, deriv.arg),
@@ -126,7 +126,6 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            nothing,
                            Adapt.adapt(to, deriv.grid))
 
-"Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
     Derivative{LX, LY, LZ}(on_architecture(to, deriv.∂),
                            on_architecture(to, deriv.arg),
