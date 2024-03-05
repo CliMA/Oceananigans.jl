@@ -4,32 +4,29 @@ using Oceananigans.Models: ShallowWaterModel
 Nx, Ny = 50, 128
 Lx, Ly = 2π,   10
 H₀     = 10
-α, β   = 0.1,  0.1
+α, β   = 0.1, -0.1
 Lb, Hb = α * Ly, β * H₀
 
-f, g, U  = 1, 1, -1.0
-Δη = f * U / g 
+f, g, U  = 1, 1, 1
+Δη = -f * U / g 
 
 grid = RectilinearGrid(size = ( Nx, Ny),
                           x = (  0, Lx),
                           y = (-Ly, Ly),
                    topology = (Periodic, Bounded, Flat))
 
-η(x, y) = Δη * tanh(y)
-b(x, y) = Hb * tanh(y/Lb)
+η(x, y) =   Δη * tanh(y)
+b(x, y) = - H₀ + Hb * tanh(y/Lb)  # FJP: sign in front of Hb?
 
-h̄(x, y) = H₀ + η(x, y) + b(x, y)
-ū(x, y) = - U * sech(y)^2
-#ωb(x, y) = - 2 * U * sech(y)^2 * tanh(y)
-
-small_amplitude = 1e-4
+h̄(x, y) = η(x, y) - b(x, y)
+ū(x, y) =  U * sech(y)^2
  
- uⁱ(x, y) = ū(x, y) + small_amplitude * exp(-y^2) * randn()
+ uⁱ(x, y) = ū(x, y) + 1e-4 * exp(-y^2) * randn()
 uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 ū̄h(x, y) = ū(x, y) * h̄(x, y)
 
-bathymetry(x,y) = -b(x,y)
+bathymetry(x,y) = b(x,y)
 
 model = ShallowWaterModel(; grid, coriolis = FPlane(f=f), 
                 gravitational_acceleration = g,
@@ -54,9 +51,9 @@ y = grid.yᵃᶜᵃ[1:Ny]
 
 fig = Figure()
 Axis(fig[1,1], xlabel = "y", ylabel = "depth", title = "Geostrophic State")
-lines!(y, -H₀ .+ h[ 1,1:Ny,1] .- b.(0,y), linewidth=4, linestyle = :solid, color=:blue, label="η(y)")
+lines!(y,  h[ 1,1:Ny,1] .+ b.(0,y), linewidth=4, linestyle = :solid, color=:blue, label="η(y)")
 lines!(y,  0*y, linewidth=2, linestyle = :dash, color=:blue, label="0")
-lines!(y, -H₀ .+ 0*y .+ b.(0,y), linewidth=4, color=:black, label="b(y)")
+lines!(y,  b.(0,y), linewidth=4, color=:black, label="b(y)")
 lines!(y, -H₀ .+ 0*y, linewidth=2, linestyle = :dash, color=:black, label="H₀")
 axislegend(position = :lt)
 
