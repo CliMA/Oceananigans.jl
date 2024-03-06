@@ -29,16 +29,15 @@ end
                                  scheme = ActiveCellEnstrophyConserving())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
-By default, `rotation_rate` is assumed to be Earth's.
 
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConserving()` (default), `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()`.
+- `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()`  (default).
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                                       rotation_rate = Ω_Earth,
-                                      scheme :: S = EnergyConserving(FT)) where S
+                                      scheme :: S = ActiveCellEnstrophyConserving()) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 end
