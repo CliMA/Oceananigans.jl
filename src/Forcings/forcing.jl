@@ -1,7 +1,7 @@
 """
     Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=false)
 
-Returns a forcing function added to the tendency of an Oceananigans model field.
+Return a `Forcing` `func`tion, which can be added to the tendency of an Oceananigans model field.
 
 If `discrete_form=false` (the default), and neither `parameters` nor `field_dependencies`
 are provided, then `func` must be callable with the signature
@@ -160,3 +160,14 @@ function Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=
         return ContinuousForcing(func; parameters=parameters, field_dependencies=field_dependencies)
     end
 end
+
+# Support the (simple) that forcing data is loaded in an array:
+@inline array_forcing_func(i, j, k, grid, clock, fields, a) = @inbounds a[i, j, k]
+
+"""
+    Forcing(array::AbstractArray)
+
+Return a `Forcing` by `array`, which can be added to the tendency of an Oceananigans model field.
+"""
+Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, parameters=array)
+
