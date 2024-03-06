@@ -3,8 +3,6 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.ShallowWaterModels
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-CUDA.allowscalar(true)
-
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, coriolis=coriolis,
