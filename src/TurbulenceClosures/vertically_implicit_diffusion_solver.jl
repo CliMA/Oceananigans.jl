@@ -62,6 +62,8 @@ end
     wᵏ⁺¹   = @inbounds w[i, j, k+1]
     Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
     Δzᶠₖ₊₁ = Δz(i, j, k+1, grid, ℓx, ℓy, f)
+
+    # centered second order vertical advection is hardcoded
     du     = - Δt * (κᵏ⁺¹ / Δzᶠₖ₊₁  - wᵏ⁺¹ / 2) / Δzᶜₖ
 
     # This conditional ensures the diagonal is correct
@@ -89,6 +91,8 @@ end
     wᵏ   = @inbounds w[i, j, k]
     Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    
+    # centered second order vertical advection is hardcoded
     dl   = - Δt * (κᵏ / Δzᶠₖ + wᵏ / 2) / Δzᶜₖ
 
     # This conditional ensures the diagonal is correct: the lower diagonal does not
