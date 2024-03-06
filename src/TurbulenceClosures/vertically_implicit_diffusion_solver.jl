@@ -103,15 +103,6 @@ end
 ##### Note: these coefficients are specific to vertically-bounded grids (and so is
 ##### the BatchedTridiagonalSolver).
 
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
-    closure_ij = getclosure(i, j, closure)  
-    νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
-    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
-    return ifelse(k < 1, zero(grid), du)
-end
-
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, w, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
@@ -119,16 +110,6 @@ end
     Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return ifelse(k < 1, zero(grid), du)
-end
-
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
-    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
-    closure_ij = getclosure(i, j, closure)  
-    νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
-    Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
-    return ifelse(k < 1, zero(grid), dl)
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, w, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
