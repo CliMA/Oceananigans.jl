@@ -1,7 +1,7 @@
 """
     Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=false)
 
-Return a `Forcing` `func`tion, which can be added to the tendency of an Oceananigans model field.
+Return a `Forcing` `func`tion, which can be added to the tendency of a model field.
 
 If `discrete_form=false` (the default), and neither `parameters` nor `field_dependencies`
 are provided, then `func` must be callable with the signature
