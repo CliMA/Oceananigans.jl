@@ -44,7 +44,7 @@ const c = Center()
 const f = Face()
 
 # Tracers and horizontal velocities at cell centers in z
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     closure_ij = getclosure(i, j, closure)
     κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
     Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
@@ -55,7 +55,20 @@ const f = Face()
     return ifelse(k > grid.Nz-1, zero(grid), du)
 end
 
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+# Tracers and horizontal velocities at cell centers in z
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, w, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+    closure_ij = getclosure(i, j, closure)
+    κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
+    wᵏ⁺¹   = @inbounds w[i, j, k+1]
+    Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₊₁ = Δz(i, j, k+1, grid, ℓx, ℓy, f)
+    du     = - Δt * (κᵏ⁺¹ / Δzᶠₖ₊₁  - wᵏ⁺¹ / 2) / Δzᶜₖ
+
+    # This conditional ensures the diagonal is correct
+    return ifelse(k > grid.Nz-1, zero(grid), du)
+end
+
+@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
     κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
@@ -69,13 +82,28 @@ end
     return ifelse(k′ < 1, zero(grid), dl)
 end
 
+@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, w, id, ℓx, ℓy, ::Center, clock, Δt, κz)
+    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
+    closure_ij = getclosure(i, j, closure)  
+    κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
+    wᵏ   = @inbounds w[i, j, k]
+    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    dl   = - Δt * (κᵏ / Δzᶠₖ + wᵏ / 2) / Δzᶜₖ
+
+    # This conditional ensures the diagonal is correct: the lower diagonal does not
+    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
+    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
+    return ifelse(k′ < 1, zero(grid), dl)
+end
+
 #####
 ##### Vertical velocity kernel functions (at cell interfaces in z)
 #####
 ##### Note: these coefficients are specific to vertically-bounded grids (and so is
 ##### the BatchedTridiagonalSolver).
 
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
     Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
@@ -84,7 +112,26 @@ end
     return ifelse(k < 1, zero(grid), du)
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, w, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
+    closure_ij = getclosure(i, j, closure)  
+    νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
+    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
+    return ifelse(k < 1, zero(grid), du)
+end
+
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, ::Nothing, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
+    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
+    closure_ij = getclosure(i, j, closure)  
+    νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
+    Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
+    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
+    return ifelse(k < 1, zero(grid), dl)
+end
+
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, w, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ)
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
@@ -95,7 +142,6 @@ end
 end
 
 ### Diagonal terms
-
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
     one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
                               _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
@@ -176,6 +222,7 @@ function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure::Union{AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}, Tuple},
                         diffusivity_fields,
+                        vertical_velocity,
                         tracer_index,
                         clock,
                         Δt; 
@@ -209,6 +256,6 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz; kwargs...)
+                  vi_closure, vi_diffusivity_fields, vertical_velocity, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz; kwargs...)
 end
 

@@ -157,6 +157,12 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                               model.timestepper.Gⁿ[i],
                               model.timestepper.G⁻[i])
 
+        vertical_velocity = if model.advection isa VerticallyImplicitAdvection
+            velocities.w
+        else
+            nothing
+        end
+
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
 
@@ -164,6 +170,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
+                       vertical_velocity,
                        tracer_index,
                        model.clock,
                        stage_Δt(Δt, γⁿ, ζⁿ))

@@ -1,6 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.Advection: VerticallyImplicitAdvection
 
 using Oceananigans.ImmersedBoundaries: active_interior_map, active_surface_map
 
@@ -42,6 +43,12 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
+        vertical_velocity = if model.advection.momentum isa VerticallyImplicitAdvection
+            velocities.w
+        else
+            nothing
+        end
+
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
@@ -52,6 +59,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
+                       vertical_velocity,
                        nothing,
                        model.clock, 
                        Δt)
@@ -74,8 +82,15 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
         G⁻ = model.timestepper.G⁻[tracer_name]
+        advection = model.advection[tracer_name]
         tracer_field = tracers[tracer_name]
         closure = model.closure
+
+        vertical_velocity = if advection isa VerticallyImplicitAdvection
+            velocities.w
+        else
+            nothing
+        end
 
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
@@ -84,6 +99,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.timestepper.implicit_solver,
                        closure,
                        model.diffusivity_fields,
+                       vertical_velocity,
                        Val(tracer_index),
                        model.clock,
                        Δt)
