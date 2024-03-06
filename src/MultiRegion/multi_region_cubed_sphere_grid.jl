@@ -223,28 +223,28 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     LXs₂    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
     LYs₂    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
 
-    for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
+    for (field_1, LX₁, LY₁, field_2, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
         expr = quote
-            $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
-            $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
+            $(Symbol(field_1)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
+            $(Symbol(field_2)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
-                    getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
+                    getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                    getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
                 end
             end
 
             if $(horizontal_topology) == FullyConnected
                 for _ in 1:2
-                    fill_paired_halo_regions!(($(Symbol(field₁)), $(Symbol(field₂))), false)
+                    fill_paired_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), false)
                 end
             end
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
-                    getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
+                    getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                    getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
                 end
             end
         end # quote
