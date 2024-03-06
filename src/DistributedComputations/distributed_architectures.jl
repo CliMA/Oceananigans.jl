@@ -214,7 +214,7 @@ function Distributed(child_architecture = CPU();
         MPI.Init()
     end
 
-    communicator = inothing(communicator) ? MPI.COMM_WORLD : communicator
+    communicator = isnothing(communicator) ? MPI.COMM_WORLD : communicator
     partition    = isnothing(partition) ? Partition(MPI.Comm_size(communicator)) : partition
 
     ranks = size(partition)
