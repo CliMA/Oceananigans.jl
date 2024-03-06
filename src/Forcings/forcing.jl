@@ -161,13 +161,15 @@ function Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=
     end
 end
 
-# Support the (simple) that forcing data is loaded in an array:
+# Support the case that forcing data is loaded in a 3D array:
 @inline array_forcing_func(i, j, k, grid, clock, fields, a) = @inbounds a[i, j, k]
 
 """
     Forcing(array::AbstractArray)
 
 Return a `Forcing` by `array`, which can be added to the tendency of an Oceananigans model field.
+
+Forcing is computed by calling `array[i, j, k]`, so `array` must be 3D with `size(grid)`.
 """
 Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, parameters=array)
 
