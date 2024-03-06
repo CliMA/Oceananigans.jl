@@ -1,8 +1,11 @@
-struct VerticallyImplicitCentered <: AbstractCenteredAdvectionScheme{1, FT} end
+struct VerticallyImplicitCentered{FT} <: AbstractCenteredAdvectionScheme{1, FT} end
 
+VerticallyImplicitCentered(FT = Float64) = VerticallyImplicitCentered{FT}()
+
+# If implicit in the vertical, set explicit tracer fluxes and horizontal momentum fluxes to zero
 _advective_momentum_flux_Wu(i, j, k, grid, ::VerticallyImplicitCentered, args...) = zero(grid) 
 _advective_momentum_flux_Wv(i, j, k, grid, ::VerticallyImplicitCentered, args...) = zero(grid)  
-_advective_tracer_flux_z(i, j, k, grid, ::VerticallyImplicitCentered, args...)    = zero(grid)
+   _advective_tracer_flux_z(i, j, k, grid, ::VerticallyImplicitCentered, args...) = zero(grid)
 
 # second - order centered reconstruction in the horizontal
 @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::VerticallyImplicitCentered, ψ, idx, loc, args...)           = ℑxᶠᵃᵃ(i, j, k, grid, ψ)
