@@ -19,25 +19,25 @@ end
 #####
 
 # Note special attention paid to averaging the vertical grid spacing correctly
-@inline Δz_ν_∂z_u²ᶠᶜᶠ(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * Δzᶠᶜᶠ(i, j, k, grid) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline Δz_ν_∂z_v²ᶜᶠᶠ(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * Δzᶜᶠᶠ(i, j, k, grid) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
+@inline Δz_κᵘ_∂z_u²ᶠᶜᶠ(i, j, k, grid, κᵘ, u) = ℑxᶠᵃᵃ(i, j, k, grid, κᵘ) * Δzᶠᶜᶠ(i, j, k, grid) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
+@inline Δz_κᵘ_∂z_v²ᶜᶠᶠ(i, j, k, grid, κᵘ, v) = ℑyᵃᶠᵃ(i, j, k, grid, κᵘ) * Δzᶜᶠᶠ(i, j, k, grid) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
-@inline ν_∂z_u²ᶠᶜᶜ(i, j, k, grid, ν, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_ν_∂z_u²ᶠᶜᶠ, ν, u) / Δzᶠᶜᶜ(i, j, k, grid) 
-@inline ν_∂z_v²ᶜᶠᶜ(i, j, k, grid, ν, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_ν_∂z_v²ᶜᶠᶠ, ν, v) / Δzᶜᶠᶜ(i, j, k, grid) 
+@inline κᵘ_∂z_u²ᶠᶜᶜ(i, j, k, grid, κᵘ, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_κᵘ_∂z_u²ᶠᶜᶠ, κᵘ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
+@inline κᵘ_∂z_v²ᶜᶠᶜ(i, j, k, grid, κᵘ, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_κᵘ_∂z_v²ᶜᶠᶠ, κᵘ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     u = velocities.u
     v = velocities.v
     κᵘ = diffusivities.κᵘ
 
-    # To reconstruct the shear production term in an "approximately conservative" manner
+    # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
     # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
     # the temporal discretization. Note that also respecting the temporal discretization, would
     # require storing the velocity field at n and n+1):
 
-    return ℑxᶜᵃᵃ(i, j, k, grid, ν_∂z_u²ᶠᶜᶜ, κᵘ, u) +
-           ℑyᵃᵃᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶜ, κᵘ, v)
+    return ℑxᶜᵃᵃ(i, j, k, grid, κᵘ_∂z_u²ᶠᶜᶜ, κᵘ, u) +
+           ℑyᵃᶜᵃ(i, j, k, grid, κᵘ_∂z_v²ᶜᶠᶜ, κᵘ, v)
 
     #=
     # Non-conservative reconstructions of shear production:
