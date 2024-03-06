@@ -227,8 +227,8 @@ end
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz + 1
 
-    @inbounds scalingᶠᶜᶜ = dynamic_column_heightᶠᶜᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
-    @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠᶜ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
+    @inbounds scalingᶠᶜᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
+    @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
@@ -506,7 +506,6 @@ function update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, fs::Spl
     launch!(architecture(grid), grid, parameters, _update_∂t_∂s_split_explicit!, ∂t_∂s, fs.state.U̅, fs.state.V̅, fs.auxiliary.Hᶜᶜ, grid)
     return nothing
 end
-
 
 @kernel function _update_∂t_∂s_split_explicit!(∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
     i, j  = @index(Global, NTuple)
