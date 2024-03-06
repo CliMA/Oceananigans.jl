@@ -26,7 +26,7 @@ end
 """
     HydrostaticSphericalCoriolis([FT=Float64;]
                                  rotation_rate = Ω_Earth,
-                                 scheme = EnergyConserving())
+                                 scheme = ActiveCellEnstrophyConserving())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 By default, `rotation_rate` is assumed to be Earth's.
