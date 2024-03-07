@@ -12,7 +12,6 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 
 include("distributed_architectures.jl")
-include("distributed_on_architecture.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_on_architecture.jl")

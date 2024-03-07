@@ -1,9 +1,21 @@
-import Oceananigans.Architectures: on_architecture
+using CUDA: CuArray
+using OffsetArrays
 
 # We do not support switching from distributed and serial through `on_architecture`.
 # We only support moving a type from CPU to GPU and the other way around
 # TODO: support changing the number of ranks / the partitioning?
-on_architecture(arch::Distributed, A) = on_architecture(child_architecture(arch), A)
+
+# Disambiguation for methods defined in `src/Architectures.jl`
+DisambiguationTypes = Union{Array, 
+                            CuArray, 
+                            BitArray, 
+                            SubArray{<:Any, <:Any, <:CuArray}, 
+                            SubArray{<:Any, <:Any, <:Array},
+                            OffsetArray,
+                            Tuple,
+                            NamedTuple}
+
+on_architecture(arch::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
 
 function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid) 
     child_arch = child_architecture(new_arch)
