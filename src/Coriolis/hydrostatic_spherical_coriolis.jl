@@ -33,7 +33,8 @@ Return a parameter object for Coriolis forces on a sphere rotating at `rotation_
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()`  (default).
+- `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
+- `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()` (default).
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                                       rotation_rate = Ω_Earth,
