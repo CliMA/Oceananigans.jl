@@ -25,8 +25,6 @@ end
 function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
     # Memory layout for Δz spacings should be local in z instead of x
-    ΔzF   =  ZFaceField(grid)
-    ΔzC   = CenterField(grid)
     s⁻    = Field{Center, Center, Nothing}(grid)
     sⁿ    = Field{Center, Center, Nothing}(grid)
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
@@ -35,12 +33,8 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     fill!(s⁻, 1)
     fill!(sⁿ, 1)
 
-    launch!(architecture(grid), grid, :xyz, _initialize_zstar!, ΔzF, ΔzC, grid)
-
-    fill_halo_regions!((ΔzF, ΔzC))
-
-    Δzᵃᵃᶠ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶠ, ΔzF, s⁻, sⁿ, ∂t_∂s)
-    Δzᵃᵃᶜ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶜ, ΔzC, s⁻, sⁿ, ∂t_∂s)
+    Δzᵃᵃᶠ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶠ, nothing, s⁻, sⁿ, ∂t_∂s)
+    Δzᵃᵃᶜ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶜ, nothing, s⁻, sⁿ, ∂t_∂s)
 
     args = []
     for prop in propertynames(grid)
@@ -65,6 +59,13 @@ end
 end
 
 #####
+##### ZStar-specific vertical spacing functions
+#####
+
+@inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacing) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sⁿ[i, j, 1]
+@inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacing) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sⁿ[i, j, 1]
+
+#####
 ##### ZStar-specific vertical spacings update
 #####
 
@@ -75,15 +76,11 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     sⁿ = grid.Δzᵃᵃᶠ.sⁿ
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
-    # Generalized vertical spacing
-    ΔzF  = grid.Δzᵃᵃᶠ.Δ
-    ΔzC  = grid.Δzᵃᵃᶜ.Δ
-
     Hᶜᶜ  = model.free_surface.auxiliary.Hᶜᶜ
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_zstar!, sⁿ, s⁻, ΔzF, ΔzC, 
+    launch!(architecture(grid), grid, parameters, _update_zstar!, sⁿ, s⁻, 
                          model.free_surface.η, Hᶜᶜ, grid, Val(grid.Nz))
     
     # Update scaling time derivative
@@ -92,7 +89,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     return nothing
 end
 
-@kernel function _update_zstar!(sⁿ, s⁻, ΔzF, ΔzC, η, Hᶜᶜ, grid, ::Val{Nz}) where Nz
+@kernel function _update_zstar!(sⁿ, s⁻, η, Hᶜᶜ, grid, ::Val{Nz}) where Nz
     i, j = @index(Global, NTuple)
     @inbounds begin
         bottom = Hᶜᶜ[i, j, 1]
@@ -101,11 +98,6 @@ end
         # update current and previous scaling
         s⁻[i, j, 1] = sⁿ[i, j, 1]
         sⁿ[i, j, 1] = h
-       
-        @unroll for k in 1:Nz+1
-            ΔzF[i, j, k] = h * Δzᶜᶜᶠ_reference(i, j, k, grid)
-            ΔzC[i, j, k] = h * Δzᶜᶜᶜ_reference(i, j, k, grid)
-        end
     end
 end
 

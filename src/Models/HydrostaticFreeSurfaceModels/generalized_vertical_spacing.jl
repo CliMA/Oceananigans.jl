@@ -115,14 +115,14 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δzᶜᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶠ.Δ[i, j, k]
 @inline Δzᶜᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.Δ[i, j, k]
 
-@inline Δzᶜᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.Δ)
-@inline Δzᶜᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
+@inline Δzᶜᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶜᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
-@inline Δzᶠᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.Δ)
-@inline Δzᶠᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
+@inline Δzᶠᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶠᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
-@inline Δzᶠᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶠ.Δ)
-@inline Δzᶠᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, grid.Δzᵃᵃᶜ.Δ)
+@inline Δzᶠᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶠᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
 @inline Δz_reference(i, j, k, Δz::Number) = Δz
 @inline Δz_reference(i, j, k, Δz::AbstractVector) = Δz[k]
