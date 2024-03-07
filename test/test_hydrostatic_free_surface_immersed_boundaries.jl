@@ -65,7 +65,7 @@ using Oceananigans.TurbulenceClosures
 
             bathymetry = zeros(Nx, Ny) .- 4000
             view(bathymetry, 31:34, 43:47) .= 0
-            bathymetry = arch_array(arch, bathymetry)
+            bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 

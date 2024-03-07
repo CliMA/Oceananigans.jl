@@ -5,6 +5,7 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
@@ -412,6 +413,19 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
 ==(a::Field, b::Field) = interior(a) == interior(b)
+
+#####
+##### Move Fields between architectures
+#####
+
+on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+                      on_architecture(arch, data),
+                      on_architecture(arch, bcs),
+                      on_architecture(arch, indices),
+                      on_architecture(arch, op),
+                      on_architecture(arch, status),
+                      on_architecture(arch, buffers))
 
 #####
 ##### Interface for field computations

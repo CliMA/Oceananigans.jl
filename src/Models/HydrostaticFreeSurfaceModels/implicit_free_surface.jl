@@ -81,6 +81,14 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
                         nothing, nothing, nothing, nothing)
 
+on_architecture(to, free_surface::ImplicitFreeSurface) =
+    ImplicitFreeSurface(on_architecture(to, free_surface.η), 
+                        on_architecture(to, free_surface.gravitational_acceleration),
+                        on_architecture(to, free_surface.barotropic_volume_flux),
+                        on_architecture(to, free_surface.implicit_step_solver),
+                        on_architecture(to, free_surface.solver_methods),
+                        on_architecture(to, free_surface.solver_settings))
+
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
     η = FreeSurfaceDisplacementField(velocities, free_surface, grid)

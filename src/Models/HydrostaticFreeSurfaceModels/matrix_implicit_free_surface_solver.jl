@@ -48,7 +48,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
-    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
+    right_hand_side = on_architecture(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
     storage = deepcopy(right_hand_side)
     
@@ -112,11 +112,11 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     Nx, Ny = grid.Nx, grid.Ny
 
-    C     = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Ax    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Ay    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Az    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
+    C     = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    diag  = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ax    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ay    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Az    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ

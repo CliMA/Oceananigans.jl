@@ -85,6 +85,13 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
                         Adapt.adapt(to, scheme.buffer_scheme),
                         Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
+on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
+    UpwindBiased{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                        on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                        on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                        on_architecture(to, scheme.buffer_scheme),
+                        on_architecture(to, scheme.advecting_velocity_scheme))
+
 # Useful aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
 
