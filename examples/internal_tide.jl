@@ -48,20 +48,20 @@ bottom(x) = - H + hill(x)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
-# The hill is small; here's how it looks (note that we don't plot all the way to the ocean surface).
+# Let's see how the domain with the bathymetry looks.
 
-xC = xnodes(grid, Center())
-bottom_boundary = grid.immersed_boundary.bottom_height[1:Nx, 1]
+x = xnodes(grid, Center())
+bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
 
 using CairoMakie
 
-fig = Figure(resolution = (700, 200))
+fig = Figure(size = (700, 200))
 ax = Axis(fig[1, 1],
           xlabel="x [km]",
           ylabel="z [m]",
           limits=((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz, 0)))
 
-lines!(ax, xC/1e3, bottom_boundary)
+lines!(ax, x/1e3, bottom_boundary)
 
 fig
 
@@ -147,8 +147,7 @@ using Printf
 
 wall_clock = Ref(time_ns())
 
-function print_progress(sim)
-
+function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
     msg = @sprintf("iteration: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
@@ -162,7 +161,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(200))
+add_callback!(simulation, progress, name=:progress, IterationInterval(200))
 nothing #hide
 
 # ## Diagnostics/Output
@@ -239,7 +238,7 @@ axis_kwargs = (xlabel = "x [km]",
 ulim = maximum(abs, u′_t[end])
 wlim = maximum(abs, w_t[end])
 
-fig = Figure(resolution = (700, 900))
+fig = Figure(size = (700, 900))
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
