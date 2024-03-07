@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Architectures
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid, AbstractUnderlyingGrid
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -237,6 +237,9 @@ As well as
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
+# Underlying grids are never immersed!                                                                
+@inline immersed_peripheral_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
+@inline   immersed_inactive_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
 
 #####
 ##### Utilities

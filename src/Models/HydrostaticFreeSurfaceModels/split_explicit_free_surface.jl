@@ -4,7 +4,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-using Oceananigans.ImmersedBoundaries: peripheral_node, c, f
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, c, f
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
@@ -208,7 +208,7 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
     calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
-    
+
     kernel_parameters = :xy
 
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
@@ -221,6 +221,7 @@ function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     arch  = architecture(grid)
     param = KernelParameters((Nx+2Hx, Ny+2Hy), (-Hx, -Hy))
 
+    @show param
     launch!(arch, grid, param, _compute_column_height!, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     return nothing
@@ -230,9 +231,9 @@ end
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
     @inbounds for k in 1:Nz
-        Hᶠᶜ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, f, c, c), 0, Δzᶠᶜᶜ(i, j, k, grid))
-        Hᶜᶠ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, c, f, c), 0, Δzᶜᶠᶜ(i, j, k, grid))
-        Hᶜᶜ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, c, c, c), 0, Δzᶜᶜᶜ(i, j, k, grid))
+        Hᶠᶜ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, f, c, c), 0, Δzᶠᶜᶜ_reference(i, j, k, grid))
+        Hᶜᶠ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, c, f, c), 0, Δzᶜᶠᶜ_reference(i, j, k, grid))
+        Hᶜᶜ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, c, c, c), 0, Δzᶜᶜᶜ_reference(i, j, k, grid))
     end
 end
 
