@@ -158,6 +158,7 @@ end
 @inline dynamic_column_heightᶠᶜ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
 
+# Non-linear free surface implementation
 @inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑxᶠᵃᵃ(i, j, k, grid, η)
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑyᵃᶠᵃ(i, j, k, grid, η)
 
@@ -189,7 +190,7 @@ end
         hᶠᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η)
         hᶜᶠ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶜᶠ, η)
 
-        # ∂τ(U) = - ∇η + G
+        # ∂τ(U) = - gH∇η + G
         U[i, j, k_top-1] +=  Δτ * (- g * hᶠᶜ * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
         V[i, j, k_top-1] +=  Δτ * (- g * hᶜᶠ * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
                           
@@ -209,16 +210,13 @@ end
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
-    @inbounds scalingᶠᶜᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
-    @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
-
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid)
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid)
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid)
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid)
     end
 end
 
@@ -227,16 +225,13 @@ end
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz + 1
 
-    @inbounds scalingᶠᶜᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
-    @inbounds scalingᶜᶠᶜ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
-
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) * scalingᶠᶜᶜ
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) * scalingᶜᶠᶜ
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) 
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) 
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) * scalingᶠᶜᶜ
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) * scalingᶜᶠᶜ
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) 
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) 
     end
 end
 
@@ -279,8 +274,8 @@ end
     k_top   = grid.Nz + 1
     
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
-        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ[i, j, 1]
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ[i, j, 1]
     end
 end
 
