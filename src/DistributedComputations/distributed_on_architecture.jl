@@ -11,7 +11,9 @@ DisambiguationTypes = Union{Array,
                             BitArray, 
                             SubArray{<:Any, <:Any, <:CuArray}, 
                             SubArray{<:Any, <:Any, <:Array},
-                            OffsetArray}
+                            OffsetArray,
+                            Tuple,
+                            NamedTuple}
 
 on_architecture(arch::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
 
