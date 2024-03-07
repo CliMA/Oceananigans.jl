@@ -1,7 +1,6 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # TODO: figure out how to support this
@@ -17,7 +16,6 @@ fetch_output(output, model) = output(model)
 
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
-    mask_immersed_field!(field)
     return parent(field)
 end
 
