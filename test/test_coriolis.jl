@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Coriolis: Ω_Earth
-using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, ActiveCellEnstrophyConserving 
 
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)
@@ -68,7 +68,7 @@ end
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa EnergyConserving # default
+    @test coriolis.scheme isa ActiveCellEnstrophyConserving # default
 end
 
 @testset "Coriolis" begin
