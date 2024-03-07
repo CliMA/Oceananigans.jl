@@ -204,6 +204,16 @@ N²_t = FieldTimeSeries(saved_output_filename, "N²")
 times = u′_t.times
 nothing #hide
 
+# For visualization purposes, we mask the region below the bathymetry with NaNs.
+
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+
+for n in 1:length(times)
+    mask_immersed_field!(u′_t[n], NaN)
+    mask_immersed_field!(w_t[n], NaN)
+    mask_immersed_field!(N²_t[n], NaN)
+end
+
 # We retrieve each field's coordinates and convert from meters to kilometers.
 
 xu,  yu,  zu  = nodes(u′_t[1]) ./ 1e3
