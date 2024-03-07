@@ -86,7 +86,28 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
-    
+
+  - label: "🤺 cpu distributed nonhydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_cpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+
+  - label: "🕺 gpu distributed hydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_gpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+
   - wait
 
   - label: ":chart_with_downwards_trend: build history"
