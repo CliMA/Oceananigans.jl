@@ -22,7 +22,7 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 """
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-Return a FFT-based solver for the Poisson equation,
+Return an FFT-based solver for the Poisson equation,
 
 ```math
 ∇²φ = b

@@ -307,6 +307,27 @@ function computations_with_computed_fields(model)
     return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
+function compute_tuples_and_namedtuples(model)
+    c = CenterField(model.grid)
+    set!(c, 1)
+
+    one_c = Field(1 * c)
+    two_c = tuple(Field(2 * c))
+    six_c = (; field = Field(6 * c))
+    ten_c = (; field = Field(10 * c))
+
+    compute!(one_c)
+    compute!(two_c)
+    compute!(six_c)
+
+    at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i,j,k]
+    ten_c_op = KernelFunctionOperation{Center, Center, Center}(at_ijk, model.grid, ten_c)
+    ten_c_field = Field(ten_c_op)
+    compute!(ten_c_field)
+
+    return all(interior(one_c) .== 1) & all(interior(two_c[1]) .== 2) & all(interior(six_c.field) .== 6) & all(interior(ten_c.field) .== 10)
+end
+
 for arch in archs
     A = typeof(arch)
     @testset "Computed Fields [$A]" begin
@@ -588,6 +609,9 @@ for arch in archs
             @testset "Computations with Fields [$A, $G]" begin
                 @info "      Testing computations with Field [$A, $G]..."
                 @test computations_with_computed_fields(model)
+
+                @info "      Testing computations of Tuples and NamedTuples"
+                @test compute_tuples_and_namedtuples(model)
             end
 
             @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin

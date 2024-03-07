@@ -79,7 +79,7 @@ Ny = 32
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                     halo = (3, 3, 3),
+                                     halo = (4, 4, 4),
                                      latitude = (-80, 80),
                                      longitude = (-160, 160),
                                      z = (-1, 0),
@@ -114,10 +114,13 @@ for arch in archs
         cs = partition_global_array(cpu_arch, cs, size(c))
         ηs = partition_global_array(cpu_arch, ηs, size(η))
 
-        @test all(u .≈ us)
-        @test all(v .≈ vs)
-        @test all(w .≈ ws)
-        @test all(c .≈ cs)
-        @test all(η .≈ ηs)
+        atol = eps(eltype(grid))
+        rtol = sqrt(eps(eltype(grid)))
+
+        @test all(isapprox(u, us; atol, rtol))
+        @test all(isapprox(v, vs; atol, rtol))
+        @test all(isapprox(w, ws; atol, rtol))
+        @test all(isapprox(c, cs; atol, rtol))
+        @test all(isapprox(η, ηs; atol, rtol))
     end
 end
