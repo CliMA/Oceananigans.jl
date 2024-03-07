@@ -385,3 +385,20 @@ end
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
                              free_surface.gravitational_acceleration, nothing)
+
+for Type in (:SplitExplicitFreeSurface, 
+             :SplitExplicitSettings, 
+             :SplitExplicitState, 
+             :SplitExplicitAuxiliaryFields,
+             :FixedTimeStepSize,
+             :FixedSubstepNumber)
+    
+    @eval begin
+        function on_architecture(to, settings::$Type) 
+            args = Tuple(on_architecture(to, prop) for prop in propertynames(settings))
+            return SplitExplicitState(args...)
+        end
+    end
+end
+                
+            

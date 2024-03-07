@@ -111,7 +111,13 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),
                              Adapt.adapt(to, velocities.w),
-                             nothing)
+                             nothing) # Why are parameters not passed here? They probably should...
+
+on_architecture(to, velocities::PrescribedVelocityFields) =
+    PrescribedVelocityFields(on_architecture(to, velocities.u),
+                             on_architecture(to, velocities.v),
+                             on_architecture(to, velocities.w),
+                             on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where

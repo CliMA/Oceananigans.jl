@@ -229,6 +229,14 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                               Adapt.adapt(to, scheme.divergence_scheme),
                               Adapt.adapt(to, scheme.upwinding))
 
+on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
+    VectorInvariant{N, FT, M}(on_architecture(to, scheme.vorticity_scheme),
+                              on_architecture(to, scheme.vorticity_stencil),
+                              on_architecture(to, scheme.vertical_scheme),
+                              on_architecture(to, scheme.kinetic_energy_gradient_scheme),
+                              on_architecture(to, scheme.divergence_scheme),
+                              on_architecture(to, scheme.upwinding))
+
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v) +
                                                                 vertical_advection_U(i, j, k, grid, scheme, U) +
                                                                     bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
