@@ -1,6 +1,6 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface, calculate_column_height!
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
 
@@ -13,11 +13,7 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
     Hᶜᶠ = Field((Center, Center, Nothing), grid)
 
-    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center,   Center))
-    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face,   Center))
-    @apply_regionally calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+    @apply_regionally calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
@@ -26,12 +22,6 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
-end
-
-@inline function calculate_column_height!(height, location)
-    dz = GridMetricOperation(location, Δz, height.grid)
-    sum!(height, dz)
-    return nothing
 end
 
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))

@@ -4,7 +4,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-
+using Oceananigans.ImmersedBoundaries: peripheral_node, c, f
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
@@ -200,27 +200,40 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = Field{Face,   Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face,   Nothing}(grid)
 
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
+    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
+    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
-    dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    sum!(Hᶠᶜ, dz)
-
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶠ, dz)
-
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶜ, dz)
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
-
+    calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    
     kernel_parameters = :xy
 
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+end
+
+function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    arch  = architecture(grid)
+    param = KernelParameters((Nx+2Hx, Ny+2Hy), (-Hx, -Hy))
+
+    launch!(arch, grid, param, _compute_column_height!, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+
+    return nothing
+end
+
+@kernel function _compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    i, j = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    @inbounds for k in 1:Nz
+        Hᶠᶜ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, f, c, c), 0, Δzᶠᶜᶜ(i, j, k, grid))
+        Hᶜᶠ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, c, f, c), 0, Δzᶜᶠᶜ(i, j, k, grid))
+        Hᶜᶜ[i, j, 1] += ifelse(peripheral_node(i, j, k, grid, c, c, c), 0, Δzᶜᶜᶜ(i, j, k, grid))
+    end
 end
 
 """

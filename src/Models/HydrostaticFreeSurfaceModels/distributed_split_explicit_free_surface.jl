@@ -7,18 +7,14 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = Field{Face,   Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face,   Nothing}(grid)
     
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶠ = Field((Center, Center, Nothing), grid)
+    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
+    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
+    Hᶜᶠ = Field{Center, Center, Nothing}(grid)
 
-    calculate_column_height!(Hᶠᶜ, (Face,   Center, Center))
-    calculate_column_height!(Hᶜᶠ, (Center,   Face, Center))
-    calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+    calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
@@ -30,10 +26,6 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
 end
 
 """Integrate z at locations `location` and set! `height`` with the result"""
-@inline function calculate_column_height!(height, location)
-    dz = GridMetricOperation(location, Δz, height.grid)
-    return sum!(height, dz)
-end
 
 @inline function augmented_kernel_size(grid::DistributedGrid)
     Nx, Ny, _ = size(grid)
