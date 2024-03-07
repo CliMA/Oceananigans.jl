@@ -136,7 +136,6 @@ end
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     storage = solver.storage
     buffer  = solver.buffer
-
     arch    = architecture(storage.xfield.grid)
 
     # Apply forward transforms to b = first(solver.storage).
