@@ -39,13 +39,13 @@ Adapt.adapt_structure(to, coord::GeneralizedVerticalSpacing) =
                                Adapt.adapt(to, coord.sⁿ),
                                Adapt.adapt(to, coord.∂t_∂s))
 
-arch_array(arch, coord::GeneralizedVerticalSpacing) = 
-    GeneralizedVerticalSpacing(coord.denomination,
-                               arch_array(arch, coord.Δr), 
-                               coord.Δ,
-                               coord.s⁻,
-                               coord.sⁿ,
-                               coord.∂t_∂s)
+on_architecture(arch, coord::GeneralizedVerticalSpacing) = 
+    GeneralizedVerticalSpacing(on_architecture(arch, coord.denomination),
+                               on_architecture(arch, coord.Δr), 
+                               on_architecture(arch, coord.Δ),
+                               on_architecture(arch, coord.s⁻),
+                               on_architecture(arch, coord.sⁿ),
+                               on_architecture(arch, coord.∂t_∂s))
 
 const GeneralizedSpacingRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D
 const GeneralizedSpacingLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D

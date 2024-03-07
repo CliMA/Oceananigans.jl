@@ -35,7 +35,7 @@ barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 simulation = Simulation(model; Δt, stop_iteration = 100000, stop_time = 10days) 
 
 field_outputs = if model.grid isa ZStarSpacingGrid
-  merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.Δ))
+  merge(model.velocities, model.tracers, (; sⁿ = model.grid.Δzᵃᵃᶠ.sⁿ))
 else
   merge(model.velocities, model.tracers)
 end
@@ -57,7 +57,7 @@ function progress(sim)
     msg2 = @sprintf("extrema u: %.2e %.2e ", maximum(u), minimum(u))
     msg3 = @sprintf("extrema b: %.2e %.2e ", maximum(b), minimum(b))
     if sim.model.grid isa ZStarSpacingGrid
-      Δz = sim.model.grid.Δzᵃᵃᶠ.Δ
+      Δz = sim.model.grid.Δzᵃᵃᶠ.sⁿ
       msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
       @info msg0 * msg1 * msg2 * msg3 * msg4
     else
@@ -75,7 +75,7 @@ run!(simulation)
 # # Check tracer conservation
 if model.grid isa ZStarSpacingGrid
   b  = FieldTimeSeries("zstar_model.jld2", "b")
-  dz = FieldTimeSeries("zstar_model.jld2", "ΔzF")
+  dz = FieldTimeSeries("zstar_model.jld2", "sⁿ")
 
   init  = sum(b[1] * dz[1]) / sum(dz[1]) 
   drift = []
