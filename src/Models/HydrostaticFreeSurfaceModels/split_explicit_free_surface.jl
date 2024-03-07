@@ -221,7 +221,7 @@ function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     # We compute the heights over all the
     # domain including the halo points!
     arch  = architecture(grid)
-    param = KernelParameters((Nx+2Hx, Ny+2Hy), (-Hx, -Hy))
+    param = KernelParameters((Nx+2Hx-2, Ny+2Hy-2), (-Hx+1, -Hy+1))
 
     launch!(arch, grid, param, _compute_column_height!, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
