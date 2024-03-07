@@ -5,7 +5,7 @@ using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid
 using Printf
 
-grid = RectilinearGrid(size = (300, 20), 
+grid = RectilinearGrid(size = (10, 10), 
                           x = (0, 100kilometers), 
                           z = (-10, 0), 
                        halo = (6, 6),
@@ -13,8 +13,8 @@ grid = RectilinearGrid(size = (300, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid, 
             generalized_vertical_coordinate = ZStar(),
-                         momentum_advection = WENO(),
-                           tracer_advection = WENO(),
+                         momentum_advection = Centered(),
+                           tracer_advection = Centered(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 10))
@@ -32,7 +32,7 @@ barotropic_time_step = grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 1days) 
+simulation = Simulation(model; Δt, stop_iteration = 100000, stop_time = 10days) 
 
 field_outputs = if model.grid isa ZStarSpacingGrid
   merge(model.velocities, model.tracers, (; ΔzF = model.grid.Δzᵃᵃᶠ.Δ))
@@ -67,11 +67,12 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_change = 1.1), IterationInterval(10))
+
 run!(simulation)
 
-# Check tracer conservation
+# # Check tracer conservation
 if model.grid isa ZStarSpacingGrid
   b  = FieldTimeSeries("zstar_model.jld2", "b")
   dz = FieldTimeSeries("zstar_model.jld2", "ΔzF")
