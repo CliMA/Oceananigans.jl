@@ -98,20 +98,20 @@ for arch in archs
             # "s" for "serial" computation
             us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
-            us = Array(interior(us))
-            vs = Array(interior(vs))
-            ws = Array(interior(ws))
-            cs = Array(interior(cs))
-            ηs = Array(interior(ηs))
+            us = interior(on_architecture(CPU(), us))
+            vs = interior(on_architecture(CPU(), vs))
+            ws = interior(on_architecture(CPU(), ws))
+            cs = interior(on_architecture(CPU(), cs))
+            ηs = interior(on_architecture(CPU(), ηs))
 
             @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
             u, v, w, c, η = solid_body_rotation_test(grid)
 
-            u = Array(interior(u))
-            v = Array(interior(v))
-            w = Array(interior(w))
-            c = Array(interior(c))
-            η = Array(interior(η))
+            u = interior(on_architecture(CPU(), u))
+            v = interior(on_architecture(CPU(), v))
+            w = interior(on_architecture(CPU(), w))
+            c = interior(on_architecture(CPU(), c))
+            η = interior(on_architecture(CPU(), η))
 
             cpu_arch = cpu_architecture(arch)
 
