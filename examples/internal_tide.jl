@@ -201,6 +201,9 @@ u′_t = FieldTimeSeries(saved_output_filename, "u′")
  w_t = FieldTimeSeries(saved_output_filename, "w")
 N²_t = FieldTimeSeries(saved_output_filename, "N²")
 
+umax = maximum(abs, u′_t[end])
+wmax = maximum(abs, w_t[end])
+
 times = u′_t.times
 nothing #hide
 
@@ -245,19 +248,16 @@ axis_kwargs = (xlabel = "x [km]",
                limits = ((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz/1e3, 0)), # note conversion to kilometers
                titlesize = 20)
 
-ulim = maximum(abs, u′_t[end])
-wlim = maximum(abs, w_t[end])
-
 fig = Figure(size = (700, 900))
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
-hm_u = heatmap!(ax_u, xu, zu, u′ₙ; colorrange = (-ulim, ulim), colormap = :balance)
+hm_u = heatmap!(ax_u, xu, zu, u′ₙ; colorrange = (-umax, umax), colormap = :balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
 ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wlim, wlim), colormap = :balance)
+hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wmax, wmax), colormap = :balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
