@@ -48,3 +48,4 @@ function fetch_and_convert_output(output, model, writer)
 end
 
 fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
+
