@@ -217,24 +217,40 @@ end
 function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    Ax = Tx == Flat ? 0 : 1
+    Ay = Ty == Flat ? 0 : 1
+
+    arch = architecture(grid)
 
     # We compute the heights over all the
     # domain including the halo points!
-    arch  = architecture(grid)
-    param = KernelParameters((Nx+2Hx-2, Ny+2Hy-2), (-Hx+1, -Hy+1))
-
-    launch!(arch, grid, param, _compute_column_height!, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    # Because of the different locations of the different heights,
+    # to encompass the whole grid, the kernel parameters must be different. 
+    kernel_size   = (Nx+2Hx-2Ax, Ny+2Hy)
+    kernel_offset = (-Hx+Ax, -Hy)
+    paramᶠᶜ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶠᶜ, _compute_column_height!, Hᶠᶜ, grid, f, c, Δzᶠᶜᶜ_reference)
+    
+    kernel_size   = (Nx+2Hx, Ny+2Hy-2Ay)
+    kernel_offset = (-Hx, -Hy+Ay)
+    paramᶜᶠ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶜᶠ, _compute_column_height!, Hᶜᶠ, grid, c, f, Δzᶜᶠᶜ_reference)
+    
+    kernel_size   = (Nx+2Hx, Ny+2Hy)
+    kernel_offset = (-Hx, -Hy)
+    paramᶜᶜ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δzᶜᶜᶜ_reference)
 
     return nothing
 end
 
-@kernel function _compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+@kernel function _compute_column_height!(H, grid, LX, LY, Δz)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
     @inbounds for k in 1:Nz
-        Hᶠᶜ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, f, c, c), 0, Δzᶠᶜᶜ_reference(i, j, k, grid))
-        Hᶜᶠ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, c, f, c), 0, Δzᶜᶠᶜ_reference(i, j, k, grid))
-        Hᶜᶜ[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, c, c, c), 0, Δzᶜᶜᶜ_reference(i, j, k, grid))
+        H[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, LX, LY, c), 0, Δz(i, j, k, grid))
     end
 end
 
