@@ -9,7 +9,7 @@ using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture
 
-mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F} 
+mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T} 
                        grid :: G
                problem_size :: R
         matrix_constructors :: L
@@ -21,7 +21,6 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, 
            iterative_solver :: I
                  state_vars :: ST
                   tolerance :: T
-                previous_Δt :: F
          maximum_iterations :: Int
                     verbose :: Bool
 end
@@ -87,7 +86,6 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       maximum_iterations = prod(size(grid)),
                                       tolerance = 1e-13,
                                       reduced_dim = (false, false, false), 
-                                      placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
                                       preconditioner_settings = nothing,
                                       template = arch_array(architecture(grid), zeros(prod(size(grid)))),
@@ -123,7 +121,6 @@ function HeptadiagonalIterativeSolver(coeffs;
                                         iterative_solver, 
                                         state_vars,
                                         tolerance,
-                                        placeholder_timestep,
                                         maximum_iterations,
                                         verbose)
 end
@@ -292,24 +289,7 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
-function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
-    arch = architecture(solver.matrix)
-    
-    # update matrix and preconditioner if time step changes
-    if Δt != solver.previous_Δt
-        constructors = deepcopy(solver.matrix_constructors)
-        M = prod(solver.problem_size)
-        update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
-        solver.matrix = arch_sparse_matrix(arch, constructors) 
-
-        unsafe_free!(constructors)
-
-        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
-                                                         solver.matrix,
-                                                         solver.preconditioner_settings)
-
-        solver.previous_Δt = Δt
-    end
+function solve!(x, solver::HeptadiagonalIterativeSolver, b)
     
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,

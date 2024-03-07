@@ -15,12 +15,11 @@ The matrix-based implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
-struct MatrixImplicitFreeSurfaceSolver{S, R, T}
-    "The matrix iterative solver"
+struct MatrixImplicitFreeSurfaceSolver{S, R, T, N}
     matrix_iterative_solver :: S
-    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
     storage :: T
+    previous_Δt::N
 end
 
 """
@@ -60,7 +59,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
     solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
 
-    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage, eltype(grid)(-1))
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
@@ -74,8 +73,27 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
     solver  = implicit_free_surface_solver.matrix_iterative_solver
     storage = implicit_free_surface_solver.storage
     
-    solve!(storage, solver, rhs, Δt)
-        
+    arch = architecture(solver.matrix)
+    
+    # update matrix and preconditioner if time step changes
+    if Δt != solver.previous_Δt
+        matrix_solver = solver.matrix_iterative_solver
+        constructors = deepcopy(matrix_solver.matrix_constructors)
+        M = prod(matrix_solver.problem_size)
+        update_diag!(constructors, arch, M, M, matrix_solver.diagonal, Δt, 0)
+        matrix_solver.matrix = arch_sparse_matrix(arch, constructors) 
+
+        unsafe_free!(constructors)
+
+        matrix_solver.preconditioner = build_preconditioner(Val(matrix_solver.preconditioner_method),
+                                                                matrix_solver.matrix,
+                                                                matrix_solver.preconditioner_settings)
+
+        solver.previous_Δt = Δt
+    end
+
+    solve!(storage, solver, rhs)
+
     set!(η, reshape(storage, solver.problem_size...))
 
     return nothing
