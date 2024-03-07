@@ -54,7 +54,7 @@ iter = Observable(1)
 Q = @lift(interior(Qˢ[$iter], :, :, 1))
 τ = @lift(interior(τₓ[$iter], :, :, 1))
 
-fig = Figure(resolution = (800, 300))
+fig = Figure(size=(800, 300))
 ax = Axis(fig[1, 1], title = "Surface heat flux")
 heatmap!(ax, Q, colormap = :thermal, colorrange = (-5e-5, 5e-5))
 ax = Axis(fig[1, 2], title = "Surface wind stress")

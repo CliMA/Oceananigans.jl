@@ -57,7 +57,7 @@ h′ = @lift(file["timeseries/h/" * string($iter)][:, :,       1] .- bat2)
 clims_ζ = @lift 1.1 .* extrema(file["timeseries/ζ/" * string($iter)][:])
 
 title1 = @lift(@sprintf("Vorticity in Shallow Water Model at time = %s", prettytime(file["timeseries/t/" * string($iter)])))
-fig = Figure(resolution = (2000, 600))
+fig = Figure(size=(2000, 600))
 ax = Axis(fig[1,1], xlabel = "longitude", ylabel = "latitude", title=title1)
 heatmap_plot = heatmap!(ax, x, y, ζ′, colormap=:blues, nan_color = :black, colorrange=(-1e-5, 1e-5))
 Colorbar(fig[1,2], heatmap_plot, width=25)
