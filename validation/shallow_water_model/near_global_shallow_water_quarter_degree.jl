@@ -27,13 +27,13 @@ using Oceananigans: prognostic_fields
     return r
 end
 
-device!(2)
+#device!(2)
 
 #####
 ##### Grid
 #####
 
-arch = GPU()
+arch = CPU()
 reference_density = 1029
 
 latitude = (-75, 75)
@@ -156,7 +156,7 @@ Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ 
 Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Advection: VelocityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 νh = 0e+1
@@ -171,7 +171,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 
 model = ShallowWaterModel(grid = grid,
                           gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO(vector_invariant = VorticityStencil()),
+                          momentum_advection = VectorInvariant(),
                           mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
@@ -194,6 +194,7 @@ fill_halo_regions!(model.solution.h)
 
 Δt = 20seconds 
 
+years = 365*24*3600
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]

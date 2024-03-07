@@ -44,11 +44,11 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 
 @inline div_mom_u(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
     + horizontal_advection_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
-    + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
+    + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))       # Bernoulli head term
     
 @inline div_mom_v(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
     + horizontal_advection_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
-    + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
+    + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))       # Bernoulli head term
 
 # Support for no advection
 @inline div_mom_u(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, formulation) where FT = zero(FT)
