@@ -63,10 +63,12 @@ denomination(grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶠ.denomination
 
 retrieve_static_grid(grid) = grid
 
-function retrieve_static_grid(grid::GeneralizedSpacingGrid)
+function retrieve_static_grid(grid::GeneralizedSpacingGrid) 
 
     Δzᵃᵃᶠ = grid.Δzᵃᵃᶠ.Δr
     Δzᵃᵃᶜ = grid.Δzᵃᵃᶜ.Δr
+
+    TX, TY, TZ = topology(grid)
 
     args = []
     for prop in propertynames(grid)

@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid, Δzᶜᶜᶜ_reference
 using Printf
 
 grid = RectilinearGrid(size = (10, 10), 
@@ -12,7 +12,7 @@ grid = RectilinearGrid(size = (10, 10),
                    topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-            generalized_vertical_coordinate = ZStar(),
+            generalized_vertical_coordinate = nothing,
                          momentum_advection = Centered(),
                            tracer_advection = Centered(),
                                    buoyancy = BuoyancyTracer(),
@@ -72,23 +72,25 @@ simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_chang
 
 run!(simulation)
 
-# # Check tracer conservation
-if model.grid isa ZStarSpacingGrid
-  b  = FieldTimeSeries("zstar_model.jld2", "b")
-  dz = FieldTimeSeries("zstar_model.jld2", "sⁿ")
+using Oceananigans.Utils
 
-  init  = sum(b[1] * dz[1]) / sum(dz[1]) 
-  drift = []
-  for t in 1:length(b.times)
-    push!(drift, sum(b[t] * dz[t]) / sum(dz[t]) - init)  
-  end
-else
-  b  = FieldTimeSeries("zstar_model.jld2", "b")
-
-  init  = sum(b[1]) / prod(size(b[1]))
-  drift = []
-  for t in 1:length(b.times)
-
-    push!(drift, sum(b[t]) / prod(size(b[1])) - init)  
-  end
+@kernel function _compute_field!(tmp, s, b)
+  i, j, k = @index(Global, NTuple)
+  @inbounds tmp[i, j, k] = s[i, j, k] * b[i, j, k]
 end
+
+using Oceananigans.Fields: OneField
+
+# # Check tracer conservation
+b = FieldTimeSeries("zstar_model.jld2", "b")
+# s = FieldTimeSeries("zstar_model.jld2", "sⁿ")
+s = OneField()
+tmpfield = CenterField(grid)
+launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s, b[1])
+init  = sum(tmpfield) / 10 # sum(s[1])
+drift = []
+for t in 1:length(b.times)
+  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s, b[t])
+  push!(drift, sum(tmpfield) / 10 - init) 
+end
+
