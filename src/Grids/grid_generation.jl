@@ -1,8 +1,4 @@
 # Utilities to generate a grid with the following inputs
-
-@inline adapt_if_vector(to, var) = var
-@inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
-
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
@@ -76,15 +72,15 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(arch_array(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(arch_array(arch, Δᶠ), -H-1)
+    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H-1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(arch_array(arch, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(arch, C.parent), C.offsets...)
+    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
+    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
     return L, F, C, Δᶠ, Δᶜ
 end
