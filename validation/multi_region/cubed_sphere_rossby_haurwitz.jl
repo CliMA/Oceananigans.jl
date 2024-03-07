@@ -47,7 +47,12 @@ else
     old_code_metrics_JMC = true
     if old_code_metrics_JMC
         Nx, Ny, Nz = 32, 32, 1
-        Nhalo = 1 # For the purpose of comparing metrics, you may choose any integer from 1 to 4.
+        print_jmc_cs32_grid = false
+        if print_jmc_cs32_grid
+            Nhalo = 4
+        else
+            Nhalo = 1 # For the purpose of comparing metrics, you may choose any integer from 1 to 4.
+        end
     else
         Nx, Ny, Nz = 32, 32, 1
         Nhalo = 1
@@ -348,6 +353,24 @@ if compare_old_and_new_code_metrics
             old_Azᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAw.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
             old_Azᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAs.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
             old_Azᶠᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAz.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
+        end
+        if print_jmc_cs32_grid
+            jldopen("jmc_cubed_sphere_32_grid_with_4_halos.jld2", "w") do file
+                for region in 1:6
+                    file["face" * string(region) * "/λᶜᶜᵃ" ] =  old_λᶜᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/λᶠᶠᵃ" ] =  old_λᶠᶠᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/φᶜᶜᵃ" ] =  old_φᶜᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/φᶠᶠᵃ" ] =  old_φᶠᶠᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Δxᶠᶜᵃ"] = old_Δxᶠᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Δxᶜᶠᵃ"] = old_Δxᶜᶠᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Δyᶠᶜᵃ"] = old_Δyᶠᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Δyᶜᶠᵃ"] = old_Δyᶜᶠᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Azᶜᶜᵃ"] = old_Azᶜᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Azᶠᶜᵃ"] = old_Azᶠᶜᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Azᶜᶠᵃ"] = old_Azᶜᶠᵃ_parent[:, :, region]
+                    file["face" * string(region) * "/Azᶠᶠᵃ"] = old_Azᶠᶠᵃ_parent[:, :, region]
+                end
+            end
         end
     else    
         old_file = jldopen("old_code_metrics.jld2")
