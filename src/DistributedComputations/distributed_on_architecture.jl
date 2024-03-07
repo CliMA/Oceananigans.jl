@@ -13,7 +13,7 @@ DisambiguationTypes = Union{Array,
                             SubArray{<:Any, <:Any, <:Array},
                             OffsetArray}
 
-on_architecture(::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
+on_architecture(arch::Distributed, a::DisambiguationTypes) = on_architecture(child_architecture(arch), a)
 
 function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid) 
     child_arch = child_architecture(new_arch)
