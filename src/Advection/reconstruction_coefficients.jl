@@ -243,7 +243,7 @@ end
 
 # Stretched reconstruction coefficients for `Centered` schemes
 @inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
-    cpu_coord = arch_array(CPU(), coord)
+    cpu_coord = on_architecture(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     return s
@@ -251,7 +251,7 @@ end
 
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
 @inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
-    cpu_coord = arch_array(CPU(), coord)
+    cpu_coord = on_architecture(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
     rright = ((order + 1) ÷ 2) - 1
     s = []
@@ -264,7 +264,7 @@ end
 # Stretched reconstruction coefficients for `WENO` schemes
 @inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
 
-    cpu_coord = arch_array(CPU(), coord)
+    cpu_coord = on_architecture(CPU(), coord)
     s = []
     for r in -1:order-1
         push!(s, create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order))
@@ -280,5 +280,5 @@ end
             push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
         end
     end
-    return OffsetArray(arch_array(arch, stencil), -1)
+    return OffsetArray(on_architecture(arch, stencil), -1)
 end

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: arch_array
+using Oceananigans.Utils: on_architecture
 using Oceananigans.Grids: AbstractGrid
 
 abstract type AbstractTimeDiscretization end
