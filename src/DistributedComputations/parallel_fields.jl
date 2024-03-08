@@ -8,7 +8,7 @@ struct ParallelFields{FX, FY, FZ, YZ, XY, C, Comms}
     yzbuff :: YZ # if `nothing` slab decomposition with `Ry == 1`
     xybuff :: XY # if `nothing` slab decomposition with `Rx == 1`
     counts :: C
-    comms :: Comms
+    comms  :: Comms
 end
 
 const SlabYFields = ParallelFields{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
@@ -91,9 +91,9 @@ function TwinGrid(grid::DistributedGrid; free_dimension = :y)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    xG = R[1] == 1 ? x : assemble(x, nx, R[1], ri, rj, rk, arch.communicator)
-    yG = R[2] == 1 ? y : assemble(y, ny, R[2], rj, ri, rk, arch.communicator)
-    zG = R[3] == 1 ? z : assemble(z, nz, R[3], rk, ri, rj, arch.communicator)
+    xG = R[1] == 1 ? x : assemble_coordinate(x, nx, R[1], ri, rj, rk, arch.communicator)
+    yG = R[2] == 1 ? y : assemble_coordinate(y, ny, R[2], rj, ri, rk, arch.communicator)
+    zG = R[3] == 1 ? z : assemble_coordinate(z, nz, R[3], rk, ri, rj, arch.communicator)
 
     child_arch = child_architecture(arch)
 

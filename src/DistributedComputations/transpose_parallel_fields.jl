@@ -94,7 +94,7 @@ unpack_buffer_yz!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_
 
 for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, :xy])
     transpose!      = Symbol(:transpose_, from, :_to_, to, :(!))
-    pack_buffer!    = from == :y ? Symbol(:pack_buffer_, from, to, :(!)) :  Symbol(:pack_buffer_, from, :(!))
+    pack_buffer!    = from == :y ? Symbol(:pack_buffer_, from, to, :(!)) : Symbol(:pack_buffer_, from, :(!))
     unpack_buffer!  = to == :y ? Symbol(:unpack_buffer_, to, from, :(!)) : Symbol(:unpack_buffer_, to, :(!))
     
     buffer = Symbol(buff, :buff)
