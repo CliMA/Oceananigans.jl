@@ -369,6 +369,11 @@ if compare_old_and_new_code_metrics
                     file["face" * string(region) * "/Azᶠᶜᵃ"] = old_Azᶠᶜᵃ_parent[:, :, region]
                     file["face" * string(region) * "/Azᶜᶠᵃ"] = old_Azᶜᶠᵃ_parent[:, :, region]
                     file["face" * string(region) * "/Azᶠᶠᵃ"] = old_Azᶠᶠᵃ_parent[:, :, region]
+                    # Fill the following metrics with their Oceananigans counterparts for now.
+                    file["face" * string(region) * "/Δxᶜᶜᵃ"] = parent(grid[region].Δxᶜᶜᵃ)
+                    file["face" * string(region) * "/Δyᶜᶜᵃ"] = parent(grid[region].Δyᶜᶜᵃ)
+                    file["face" * string(region) * "/Δxᶠᶠᵃ"] = parent(grid[region].Δxᶠᶠᵃ)
+                    file["face" * string(region) * "/Δyᶠᶠᵃ"] = parent(grid[region].Δyᶠᶠᵃ)
                 end
             end
         end
