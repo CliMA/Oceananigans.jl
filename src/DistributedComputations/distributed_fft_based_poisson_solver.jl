@@ -107,9 +107,9 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
         
-    λx = partition(λx, size(storage.xfield.grid, 1), arch, 1)
-    λy = partition(λy, size(storage.xfield.grid, 2), arch, 2)
-    λz = partition(λz, size(storage.xfield.grid, 3), arch, 3)
+    λx = partition_coordinate(λx, size(storage.xfield.grid, 1), arch, 1)
+    λy = partition_coordinate(λy, size(storage.xfield.grid, 2), arch, 2)
+    λz = partition_coordinate(λz, size(storage.xfield.grid, 3), arch, 3)
 
     λx = arch_array(arch, λx)
     λy = arch_array(arch, λy)
