@@ -55,7 +55,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
+                                      free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -81,7 +81,7 @@ Keyword arguments
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-  - `free_surface`: The free surface model.
+  - `free_surface`: The free surface model; by default a [`SplitExplicitFreeSurface`](@ref).
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
@@ -99,7 +99,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
+                                      free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
