@@ -248,6 +248,7 @@ end
     ℓᶜ = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
+
     return min(H, ℓᶜ)
 end
 
@@ -287,6 +288,7 @@ end
     ℓᵉ = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
+
     return min(H, ℓᵉ)
 end
 
