@@ -18,15 +18,15 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
 
     advection_contribution_x! = _calculate_hydrostatic_free_surface_advection_x!(Architectures.device(arch), workgroup_x, worksize)
     advection_contribution_x!(model.timestepper.Gⁿ, grid, model.advection, model.velocities,
-                            model.tracers, halo)
+                              model.tracers, halo)
     
     advection_contribution_y! = _calculate_hydrostatic_free_surface_advection_y!(Architectures.device(arch), workgroup_y, worksize)
     advection_contribution_y!(model.timestepper.Gⁿ, grid, model.advection, model.velocities,
-                            model.tracers, halo)
+                              model.tracers, halo)
 
     advection_contribution_z! = _calculate_hydrostatic_free_surface_advection_z!(Architectures.device(arch), workgroup_z, worksize)
     advection_contribution_z!(model.timestepper.Gⁿ, grid, model.advection, model.velocities,
-                            model.tracers, halo)
+                              model.tracers, halo)
 
     return nothing
 end
@@ -34,18 +34,18 @@ end
 using Oceananigans.Grids: halo_size
 using Base: @propagate_inbounds
 
-struct DisplacedSharedArray{S}
+struct OffsetSharedArray{S}
     s_array :: S
-    i :: Int
-    j :: Int
-    k :: Int
+    i :: Int32
+    j :: Int32
+    k :: Int32
 end
 
-@inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)  = v.s_array[i + v.i, j + v.j, k + v.k]
-@inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i, j, k)
+@inline @propagate_inbounds Base.getindex(v::OffsetSharedArray, i, j, k) = v.s_array[i + v.i, j + v.j, k + v.k]
+@inline @propagate_inbounds Base.setindex!(v::OffsetSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
 
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
+@inline @propagate_inbounds Base.lastindex(v::OffsetSharedArray)      = lastindex(v.s_array)
+@inline @propagate_inbounds Base.lastindex(v::OffsetSharedArray, dim) = lastindex(v.s_array, dim)
 
 @kernel function _calculate_hydrostatic_free_surface_advection_x!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, tracers, halo) where FT
     i,  j,  k  = @index(Global, NTuple)
@@ -53,30 +53,25 @@ end
 
     N = @uniform @groupsize()[1]
 
-    u_shared = @localmem FT (N+2halo[1], 2, 2)
-    v_shared = @localmem FT (N+2halo[1], 2, 2)
-    c_shared = @localmem FT (N+2halo[1], 1, 1)
+    u_shared = @localmem FT (N+2halo[1], 2, 1)
+    v_shared = @localmem FT (N+2halo[1], 2, 1) # This shared memory will hold also the tracers
 
-    us = DisplacedSharedArray(u_shared, - i + halo[1], - j + 1, - k + 1)
-    vs = DisplacedSharedArray(v_shared, - i + halo[1], - j + 1, - k + 1)
-    cs = DisplacedSharedArray(c_shared, - i + halo[1], - j + 1, - k + 1)
+    us = OffsetSharedArray(u_shared, - i + halo[1], - j + 1, - k + 1)
+    vs = OffsetSharedArray(v_shared, - i + halo[1], - j + 1, - k + 1)
+    cs = OffsetSharedArray(c_shared, - i + halo[1], - j + 1, - k + 1)
 
-    @inbounds us[is+halo[1], 1, 1] = velocities.u[i, j, k]
-    @inbounds vs[is+halo[1], 1, 1] = velocities.v[i, j, k]
-    @inbounds us[is+halo[1], 1, 2] = velocities.u[i, j, k+1]
-    @inbounds vs[is+halo[1], 1, 2] = velocities.v[i, j, k+1]
-    @inbounds us[is+halo[1], 2, 1] = velocities.u[i, j+1, k]
-    @inbounds vs[is+halo[1], 2, 1] = velocities.v[i, j+1, k]
-    @inbounds us[is+halo[1], 2, 2] = velocities.u[i, j+1, k+1]
-    @inbounds vs[is+halo[1], 2, 2] = velocities.v[i, j+1, k+1]
+    @inbounds u_shared[is+halo[1], 1, 1] = velocities.u[i, j, k]
+    @inbounds v_shared[is+halo[1], 1, 1] = velocities.v[i, j, k]
+    @inbounds u_shared[is+halo[1], 2, 1] = velocities.u[i, j+1, k]
+    @inbounds v_shared[is+halo[1], 2, 1] = velocities.v[i, j+1, k]
 
     if is <= halo[1]
-        @inbounds us[is, 1, 1] = velocities.u[i - halo[1], j, k]
-        @inbounds vs[is, 1, 1] = velocities.v[i - halo[1], j, k]
+        @inbounds u_shared[is, 1, 1] = velocities.u[i - halo[1], j, k]
+        @inbounds v_shared[is, 1, 1] = velocities.v[i - halo[1], j, k]
     end
     if is >= N - halo[1] + 1
-        @inbounds us[is+2halo[1], 1, 1] = velocities.u[i + halo[1], j, k]
-        @inbounds vs[is+2halo[1], 1, 1] = velocities.v[i + halo[1], j, k]
+        @inbounds u_shared[is+2halo[1], 1, 1] = velocities.u[i + halo[1], j, k]
+        @inbounds v_shared[is+2halo[1], 1, 1] = velocities.v[i + halo[1], j, k]
     end
 
     @synchronize
@@ -86,7 +81,18 @@ end
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
-        advect_tracer_x!(i, j, k, grid, Gⁿ[n+3], advection[n+1], (u = us, v = vs), tracers[n], tracers[n], N, is, halo[1])
+        @inbounds v_shared[is + halo[1], 1, 1] = tracer[i, j, k]
+
+        if is <= halo
+            @inbounds v_shared[is, 1, 1] = tracer[i - halo, j, k]
+        end
+        if is >= N - halo + 1
+            @inbounds v_shared[is + 2halo[1], 1, 1] = tracer[i + halo, j, k]
+        end
+
+        @synchronize
+
+        @inbounds Gⁿ[n+3] = div_Uc_x(i, j, k, grid, advection[n+1], (; u = us), vs)
     end
 end
 
@@ -98,30 +104,25 @@ end
 
     @synchronize
 
-    u_shared = @localmem FT (2, N+2halo[2], 2)
-    v_shared = @localmem FT (2, N+2halo[2], 2)
-    c_shared = @localmem FT (1, N+2halo[2], 1)
+    u_shared = @localmem FT (2, N+2halo[2], 1) # This shared array will contain also tracers
+    v_shared = @localmem FT (2, N+2halo[2], 1)
 
-    us = DisplacedSharedArray(u_shared, - i + 1, - j + halo[2], - k + 1)
-    vs = DisplacedSharedArray(v_shared, - i + 1, - j + halo[2], - k + 1)
-    cs = DisplacedSharedArray(c_shared, - i + 1, - j + halo[2], - k + 1)
+    us = OffsetSharedArray(u_shared, - i + 1, - j + halo[2], - k + 1)
+    vs = OffsetSharedArray(v_shared, - i + 1, - j + halo[2], - k + 1)
+    cs = OffsetSharedArray(c_shared, - i + 1, - j + halo[2], - k + 1)
 
-    @inbounds us[1, js+halo[1], 1] = velocities.u[i, j, k]
-    @inbounds vs[1, js+halo[1], 1] = velocities.v[i, j, k]
-    @inbounds us[2, js+halo[1], 1] = velocities.u[i+1, j, k]
-    @inbounds vs[2, js+halo[1], 1] = velocities.v[i+1, j, k]
-    @inbounds us[1, js+halo[1], 2] = velocities.u[i, j, k+1]
-    @inbounds vs[1, js+halo[1], 2] = velocities.v[i, j, k+1]
-    @inbounds us[2, js+halo[1], 2] = velocities.u[i+1, j, k+1]
-    @inbounds vs[2, js+halo[1], 2] = velocities.v[i+1, j, k+1]
+    @inbounds u_shared[1, js+halo[2], 1] = velocities.u[i, j, k]
+    @inbounds v_shared[1, js+halo[2], 1] = velocities.v[i, j, k]
+    @inbounds u_shared[2, js+halo[2], 1] = velocities.u[i+1, j, k]
+    @inbounds v_shared[2, js+halo[2], 1] = velocities.v[i+1, j, k]
 
     if is <= halo[1]
-        @inbounds us[1, js, 1] = velocities.u[i, j - halo[2], k]
-        @inbounds vs[1, js, 1] = velocities.v[i, j - halo[2], k]
+        @inbounds u_shared[1, js, 1] = velocities.u[i, j - halo[2], k]
+        @inbounds v_shared[1, js, 1] = velocities.v[i, j - halo[2], k]
     end
     if is >= N - halo[1] + 1
-        @inbounds us[1, js+2halo[2], 1] = velocities.u[i, j + halo[2], k]
-        @inbounds vs[1, js+2halo[2], 1] = velocities.v[i, j + halo[2], k]
+        @inbounds u_shared[1, js+2halo[2], 1] = velocities.u[i, j + halo[2], k]
+        @inbounds v_shared[1, js+2halo[2], 1] = velocities.v[i, j + halo[2], k]
     end
 
     @synchronize
@@ -131,7 +132,18 @@ end
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
-        advect_tracer_y!(i, j, k, grid, Gⁿ[n+3], advection[n+1], (u = us, v = vs), tracers[n], tracers[n], N, js, halo[2])
+        @inbounds u_shared[1, js + halo[2], 1] = tracer[n][i, j, k]
+
+        if is <= halo[2]
+            @inbounds u_shared[1, js, 1] = tracer[n][i, j - halo[2], k]
+        end
+        if is >= N - halo[2] + 1
+            @inbounds u_shared[1, js + 2halo[2], 1] = tracer[i, j + halo[2], k]
+        end
+
+        @synchronize
+
+        @inbounds Gⁿ[n+3] = div_Uc_y(i, j, k, grid, advection[n+1], (; v = vs), us)
     end
 end
 
@@ -143,29 +155,31 @@ end
 
     @synchronize
 
-    w_shared = @localmem FT (2, 2, 2)
+    w_shared = @localmem FT (2, 2, N+2halo[3])
     c_shared = @localmem FT (1, 1, N+2halo[3])
 
-    ws = DisplacedSharedArray(w_shared, - i + 1, - j + 1, - k + 1)
-    cs = DisplacedSharedArray(c_shared, - i + 1, - j + 1, - k + halo[3])
+    ws = OffsetSharedArray(w_shared, - i + 1, - j + 1, - k + halo[3])
+    cs = OffsetSharedArray(c_shared, - i + 1, - j + 1, - k + halo[3])
 
-    @inbounds ws[1, 1, ks+halo[3]] = velocities.w[i, j, k]
-    @inbounds ws[2, 1, ks+halo[3]] = velocities.w[i, j, k]
-    @inbounds cs[1, 1, ks+halo[3]] = velocities.u[i, j, k]
+    @inbounds w_shared[1, 1, ks+halo[3]] = velocities.w[i-1, j-1, k]
+    @inbounds w_shared[2, 1, ks+halo[3]] = velocities.w[i, j, k]
+    @inbounds w_shared[1, 2, ks+halo[3]] = velocities.w[i, j, k]
+    @inbounds c_shared[1, 1, ks+halo[3]] = velocities.u[i, j, k]
 
     if ks <= halo[3]
-        @inbounds cs[1, 1, ks] = velocities.u[i, j, k - halo[3]]
+        @inbounds c_shared[1, 1, ks] = velocities.u[i, j, k - halo[3]]
     end
     if ks >= N - halo[3] + 1
-        @inbounds cs[1, 1, ks+2halo[3]] = velocities.u[i, j, k + halo[3]]
+        @inbounds c_shared[1, 1, ks+2halo[3]] = velocities.u[i, j, k + halo[3]]
     end
+
+    @synchronize
     
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_z(i, j, k, grid, advection.momentum, (u = cs, v = cs, w = ws))
     
     cs = velocities.v 
 
-    @inbounds ws[1, 2, ks+halo[3]] = velocities.w[i, j, k]
-    @inbounds cs[1, 1, ks+halo[3]] = velocities.v[i, j, k]
+    @inbounds c_shared[1, 1, ks+halo[3]] = velocities.v[i, j, k]
     
     if ks <= halo[3]
         @inbounds cs[1, 1, ks] = velocities.v[i, j, k - halo[3]]
@@ -190,14 +204,6 @@ end
 
 @inline function advect_tracer_x!(i, j, k, grid, Gⁿ , advection, velocities, cs, tracer, N, is, halo)
 
-    cs = tracer
-    cs[is + halo, 1, 1] = tracer[i, j, k]
-    if is <= halo
-        @inbounds cs[is, 1, 1] = tracer[i - halo, j, k]
-    end
-    if is >= N - halo + 1
-        @inbounds cs[is + 2halo, 1, 1] = tracer[i + halo, j, k]
-    end
 
     @inbounds Gⁿ[i, j, k] -= div_Uc_y(i, j, k, grid, advection, velocities, cs)
 
@@ -246,10 +252,10 @@ end
 
 #     @synchronize
 
-#     us = DisplacedSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
-#     vs = DisplacedSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
-#     ws = DisplacedSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
-#     cs = DisplacedSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
+#     us = OffsetSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
+#     vs = OffsetSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
+#     ws = OffsetSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
+#     cs = OffsetSharedArray(@localmem FT (N+2halo[1], M+2halo[2], O+2halo[3]), 1, 1, 1)
 
 #     @inbounds us[is+halo[1], js+halo[2], ks+halo[3]] = velocities.u[i, j, k]
 #     @inbounds vs[is+halo[1], js+halo[2], ks+halo[3]] = velocities.v[i, j, k]
