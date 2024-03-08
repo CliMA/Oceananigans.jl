@@ -48,10 +48,11 @@ bottom(x) = - H + hill(x)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
-# Let's see how the domain with the bathymetry looks.
+# Let's see how the domain with the bathymetry is.
 
 x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
+top_boundary = 0*x
 
 using CairoMakie
 
@@ -61,7 +62,7 @@ ax = Axis(fig[1, 1],
           ylabel="z [m]",
           limits=((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz, 0)))
 
-lines!(ax, x/1e3, bottom_boundary)
+band!(ax, x/1e3, bottom_boundary, top_boundary, color = :mediumblue)
 
 fig
 
@@ -86,7 +87,7 @@ fig
 # the tidal velocity and tidal forcing amplitudes are related via:
 #
 # ```math
-# U_{\mathrm{tidal}} = \frac{\omega_2}{\omega_2^2 - f^2}F_0
+# U_{\mathrm{tidal}} = \frac{\omega_2}{\omega_2^2 - f^2} F_0
 # ```
 #
 # Now we have the way to find the value of the tidal forcing amplitude that would correspond to a
