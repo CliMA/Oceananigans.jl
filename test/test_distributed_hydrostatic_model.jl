@@ -107,13 +107,13 @@ for arch in archs
             @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
             u, v, w, c, η = solid_body_rotation_test(grid)
 
-            u = interior(on_architecture(CPU(), u))
-            v = interior(on_architecture(CPU(), v))
-            w = interior(on_architecture(CPU(), w))
-            c = interior(on_architecture(CPU(), c))
-            η = interior(on_architecture(CPU(), η))
-
             cpu_arch = cpu_architecture(arch)
+
+            u = interior(on_architecture(cpu_arch, u))
+            v = interior(on_architecture(cpu_arch, v))
+            w = interior(on_architecture(cpu_arch, w))
+            c = interior(on_architecture(cpu_arch, c))
+            η = interior(on_architecture(cpu_arch, η))
 
             us = partition_global_array(cpu_arch, us, size(u))
             vs = partition_global_array(cpu_arch, vs, size(v))
