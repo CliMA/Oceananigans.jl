@@ -5,12 +5,12 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    CˡᵒD  :: FT = 2.52  # Dissipation length scale shear coefficient for low Ri
-    CʰⁱD  :: FT = 0.614 # Dissipation length scale shear coefficient for high Ri
-    CᶜD   :: FT = 2.55  # Dissipation length scale convecting layer coefficient
+    CˡᵒD  :: FT = 2.46  # Dissipation length scale shear coefficient for low Ri
+    CʰⁱD  :: FT = 0.983 # Dissipation length scale shear coefficient for high Ri
+    CᶜD   :: FT = 2.75  # Dissipation length scale convecting layer coefficient
     CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficient
-    Cᵂu★  :: FT = 0.138 # Surface shear-driven TKE flux coefficient
-    CᵂwΔ  :: FT = 0.264 # Surface convective TKE flux coefficient
+    Cᵂu★  :: FT = 0.059 # Surface shear-driven TKE flux coefficient
+    CᵂwΔ  :: FT = 0.572 # Surface convective TKE flux coefficient
     Cᵂϵ   :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
 end
 
