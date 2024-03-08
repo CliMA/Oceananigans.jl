@@ -1,4 +1,5 @@
 import Adapt
+import Oceananigans.Architectures: on_architecture
 
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
@@ -68,6 +69,11 @@ end
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition{Classification}) where Classification =
     BoundaryCondition(Classification(), Adapt.adapt(to, b.condition))
+
+
+# Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
+on_architecture(to, b::BoundaryCondition{Classification}) where Classification =
+    BoundaryCondition(Classification(), on_architecture(to, b.condition))
 
 #####
 ##### Some abbreviations to make life easier.
