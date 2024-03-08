@@ -423,7 +423,7 @@ on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
                       on_architecture(arch, field.indices),
-                      on_architecture(arch, field.op),
+                      on_architecture(arch, field.operand),
                       on_architecture(arch, field.status),
                       on_architecture(arch, field.boundary_buffers))
 
