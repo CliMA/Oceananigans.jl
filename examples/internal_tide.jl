@@ -212,10 +212,8 @@ nothing #hide
 
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-for n in 1:length(times)
-    mask_immersed_field!(u′_t[n], NaN)
-    mask_immersed_field!(w_t[n], NaN)
-    mask_immersed_field!(N²_t[n], NaN)
+for φ_t in (u′_t, w_t, N²_t), n in 1:length(times)
+    mask_immersed_field!(φ_t[n], NaN)
 end
 
 # We retrieve each field's coordinates and convert from meters to kilometers.
