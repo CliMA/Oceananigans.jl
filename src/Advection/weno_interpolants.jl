@@ -117,7 +117,7 @@ for buffer in [2, 3, 4, 5, 6]
             @inline function left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) 
                 r = 0
                 C = coeff_left_p(scheme, Val($stencil), T, dir, i, loc)
-                ntuple(Val($buffer)) do n
+                @unroll for n in 1:$buffer
                     @inbounds r += C[n] * ψ[n]
                 end
                 return r
@@ -125,7 +125,7 @@ for buffer in [2, 3, 4, 5, 6]
             @inline function right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) 
                 r = 0
                 C = coeff_right_p(scheme, Val($stencil), T, dir, i, loc)
-                ntuple(Val($buffer)) do n
+                @unroll for n in 1:$buffer
                     @inbounds r += C[n] * ψ[n]
                 end
                 return r
