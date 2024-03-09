@@ -16,6 +16,8 @@
 # where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
 #
 
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 """ 
 `AbstractSmoothnessStencil`s specifies the polynomials used for diagnosing stencils' smoothness for weno weights 
 calculation in the `VectorInvariant` advection formulation. 
