@@ -4,7 +4,7 @@ using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
