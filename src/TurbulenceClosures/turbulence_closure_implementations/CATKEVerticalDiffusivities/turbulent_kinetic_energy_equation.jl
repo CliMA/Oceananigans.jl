@@ -77,7 +77,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
     wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+    eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
 
     dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
 
@@ -104,7 +104,8 @@ end
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
     σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = ℓ★ / σᴰ
+    #ℓ★ = ℓ★ / σᴰ
+    ℓ★ = ℓ★ * σᴰ
 
     # Dissipation length
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
