@@ -387,8 +387,8 @@ for side in (:left, :right), dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Field, args...)       = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::OffsetArray, args...) = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, true))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Field, args...)       = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, true))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::OffsetArray, args...) = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, false))
             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...)    = @inbounds $(calc_weno_stencil_function(buffer, side, dir))
         end
     end
