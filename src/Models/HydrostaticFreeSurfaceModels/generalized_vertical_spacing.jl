@@ -63,7 +63,13 @@ denomination(grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶠ.denomination
 
 retrieve_static_grid(grid) = grid
 
-function retrieve_static_grid(grid::GeneralizedSpacingGrid) 
+function retrieve_static_grid(grid::GeneralizedSpacingImmersedGrid) 
+    underlying_grid  = retrieve_static_grid(grid.underlying_grid)
+    active_cells_map = !isnothing(grid.interior_active_cells)
+    return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
+end
+
+function retrieve_static_grid(grid::GeneralizedSpacingUnderlyingGrid) 
 
     Δzᵃᵃᶠ = grid.Δzᵃᵃᶠ.Δr
     Δzᵃᵃᶜ = grid.Δzᵃᵃᶜ.Δr
