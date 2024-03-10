@@ -1,4 +1,4 @@
-using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
+using Oceananigans.Grids: metrics_precomputed, pop_flat_elements, grid_name
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size

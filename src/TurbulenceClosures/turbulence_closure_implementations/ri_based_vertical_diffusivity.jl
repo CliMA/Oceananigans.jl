@@ -1,8 +1,10 @@
-using Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+
+import Oceananigans.Architectures: on_architecture
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT

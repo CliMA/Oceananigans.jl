@@ -4,11 +4,11 @@ using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: total_size
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: on_architecture
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
 import Oceananigans.TurbulenceClosures: z_bottom
+import Oceananigans.Architectures: on_architecture
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
