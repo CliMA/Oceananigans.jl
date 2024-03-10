@@ -269,7 +269,6 @@ end
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
-
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
 
@@ -406,8 +405,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
 
 # Adapt
 Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
-    SplitExplicitAuxiliaryFields(nothing, 
-                                 nothing, 
+    SplitExplicitAuxiliaryFields(Adapt.adapt(to, auxiliary.Gᵁ), 
+                                 Adapt.adapt(to, auxiliary.Gⱽ), 
                                  Adapt.adapt(to, auxiliary.Hᶠᶜ),
                                  Adapt.adapt(to, auxiliary.Hᶜᶠ),
                                  Adapt.adapt(to, auxiliary.Hᶜᶜ),
