@@ -52,12 +52,6 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     return GridType{TX, TY, TZ}(args...)
 end
 
-@kernel function _initialize_zstar!(ΔzF, ΔzC, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ΔzF[i, j, k] = Δzᶜᶜᶠ(i, j, k, grid)
-    @inbounds ΔzC[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid)
-end
-
 #####
 ##### ZStar-specific vertical spacing functions
 #####

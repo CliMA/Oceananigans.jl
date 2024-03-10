@@ -156,8 +156,8 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 ##### 
 ##### Vertical velocity of the Δ-surfaces to be included in the continuity equation
 #####
-
-∂t_∂s_grid(i, j, k, grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
+@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
+@inline ∂t_∂s_grid(i, j, k, grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)
