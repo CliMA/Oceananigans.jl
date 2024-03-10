@@ -113,7 +113,7 @@ end
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline η_surfaceᶜᶜᶜ(i, j, k, grid, η, Hᶜᶜ) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, c, c, c) / Hᶜᶜ[i, j, 1])
+@inline η_surfaceᶜᶜᶜ(i, j, k, grid, η, Hᶜᶜ) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, Center(), Center(), Center()) / Hᶜᶜ[i, j, 1])
 
 @inline slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
 @inline slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
