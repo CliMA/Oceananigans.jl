@@ -49,7 +49,7 @@ end
         "langmuir_turbulence.jl",
         "ocean_wind_mixing_and_convection.jl",
         "horizontal_convection.jl",
-        "internal_tide",
+        "internal_tide.jl",
         "convecting_plankton.jl",
         "tilted_bottom_boundary_layer.jl",
         "two_dimensional_turbulence.jl",
