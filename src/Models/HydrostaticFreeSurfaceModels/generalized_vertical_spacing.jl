@@ -90,7 +90,7 @@ end
 ##### Some extensions
 #####
 
-function with_halo(new_halo, grid::GeneralizedSpacingGrid)
+function with_halo(new_halo, grid::GeneralizedSpacingUnderlyingGrid)
     old_static_grid = retrieve_static_grid(grid)
     new_static_grid = with_halo(new_halo, old_static_grid)
     vertical_coordinate = denomination(grid)
@@ -99,15 +99,12 @@ function with_halo(new_halo, grid::GeneralizedSpacingGrid)
     return new_grid
 end
 
-function with_halo(halo, ibg::GeneralizedSpacingImmersedGrid) 
+function with_halo(new_halo, ibg::GeneralizedSpacingImmersedGrid) 
     underlying_grid = ibg.underlying_grid
     immersed_boundary = ibg.immersed_boundary
-    old_static_grid = retrieve_static_grid(underlying_grid)
-    new_static_grid = with_halo(new_halo, underlying_grid)
-    vertical_coordinate = denomination(underlying_grid)
+    new_underlying_grid = with_halo(new_halo, underlying_grid)
     active_cells_map = isnothing(ibg.interior_active_cells)
-    new_grid = GeneralizedSpacingGrid(new_static_grid, vertical_coordinate)
-    new_ibg = ImmersedBoundaryGrid(new_grid, immersed_boundary; active_cells_map)
+    new_ibg = ImmersedBoundaryGrid(new_underlying_grid, immersed_boundary; active_cells_map)
     return new_ibg
 end
 
