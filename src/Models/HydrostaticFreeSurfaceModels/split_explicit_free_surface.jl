@@ -399,8 +399,19 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
+                             nothing, 
+                             Adapt.adapt(to, free_surface.auxiliary),
                              free_surface.gravitational_acceleration, nothing)
+
+# Adapt
+Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
+    SplitExplicitAuxiliaryFields(nothing, 
+                                 nothing, 
+                                 Adapt.adapt(to, auxiliary.Hᶠᶜ),
+                                 Adapt.adapt(to, auxiliary.Hᶜᶠ),
+                                 Adapt.adapt(to, auxiliary.Hᶜᶜ),
+                                 nothing)
 
 for Type in (:SplitExplicitFreeSurface, 
              :SplitExplicitSettings, 
