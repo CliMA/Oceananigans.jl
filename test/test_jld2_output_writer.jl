@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: FunctionField
+
 #####
 ##### JLD2OutputWriter tests
 #####
@@ -139,7 +141,8 @@ for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    background_u = BackgroundField((x, y, z, t) -> 0)
+    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."
@@ -150,8 +153,19 @@ for arch in archs
 
         simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
-        simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                                  schedule = TimeInterval(1),
+        # Flavors of output: functions, AbstractOperations, FunctionFields
+        clock = model.clock
+        α = 0.12
+        test_function_field = FunctionField{Center, Center, Center}((x, y, z, t, α) -> α * t, grid; clock, parameters=α)
+        function_and_background_fields = (; αt = test_function_field, background_u = model.background_fields.velocities.u)
+
+        u, v, w = model.velocities
+        operation_outputs= (u_op = 1 * u, v_op = 1 * v, w_op = 1 * w)
+
+        vanilla_outputs = merge(model.velocities, function_and_background_fields, operation_outputs)
+
+        simulation.output_writers[:velocities] = JLD2OutputWriter(model, vanilla_outputs,
+                                                                  schedule = IterationInterval(1),
                                                                   dir = ".",
                                                                   filename = "vanilla_jld2_test.jld2",
                                                                   indices = (:, :, :),
@@ -166,10 +180,8 @@ for arch in archs
                                                               filename = "sliced_jld2_test.jld2",
                                                               overwrite_existing = true)
 
-        u, v, w = model.velocities
-
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
-
+        
         simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
                                                                     schedule = TimeInterval(1),
                                                                     indices = (1:2, 1:4, :),
@@ -177,6 +189,17 @@ for arch in archs
                                                                     dir = ".",
                                                                     filename = "sliced_funcs_jld2_test.jld2",
                                                                     overwrite_existing = true)
+
+
+        simulation.output_writers[:sliced_func_fields] = JLD2OutputWriter(model, function_and_background_fields,
+                                                                          schedule = TimeInterval(1),
+                                                                          indices = (1:2, 1:4, :),
+                                                                          with_halos = false,
+                                                                          dir = ".",
+                                                                          filename = "sliced_func_fields_jld2_test.jld2",
+                                                                          overwrite_existing = true)
+
+
 
         u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
         v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
@@ -195,38 +218,53 @@ for arch in archs
         v₁ = file["timeseries/v/0"][3, 3, 3]
         w₁ = file["timeseries/w/0"][3, 3, 3]
 
+        # Operations
+        u₁_op = file["timeseries/u_op/0"][3, 3, 3]
+        v₁_op = file["timeseries/v_op/0"][3, 3, 3]
+        w₁_op = file["timeseries/w_op/0"][3, 3, 3]
+
+        # FunctionField
+        αt₀ = file["timeseries/αt/0"][3, 3, 3]
+        αt₁ = file["timeseries/αt/1"][3, 3, 3]
+        t₀ = file["timeseries/t/0"]
+        t₁ = file["timeseries/t/1"]
+
         close(file)
 
         rm("vanilla_jld2_test.jld2")
 
         FT = typeof(u₁)
 
-        @test FT(u₀) == u₁ 
-        @test FT(v₀) == v₁ 
+        @test FT(u₀) == u₁
+        @test FT(v₀) == v₁
         @test FT(w₀) == w₁
+
+        @test FT(u₀) == u₁_op
+        @test FT(v₀) == v₁_op
+        @test FT(w₀) == w₁_op
+
+        @test FT(αt₀) == α * t₀
+        @test FT(αt₁) == α * t₁
 
         #####
         ##### Field slicing
         #####
 
-        function test_field_slicing(test_file_name, sizes...)
+        function test_field_slicing(test_file_name, variables, sizes...)
             file = jldopen(test_file_name)
 
-            u₁ = file["timeseries/u/0"]
-            v₁ = file["timeseries/v/0"]
-            w₁ = file["timeseries/w/0"]
+            for (i, variable) in enumerate(variables)
+                var₁ = file["timeseries/$variable/0"]
+                @test size(var₁) == sizes[i]
+            end
 
             close(file)
-
             rm(test_file_name)
-
-            @test size(u₁) == sizes[1]
-            @test size(v₁) == sizes[2]
-            @test size(w₁) == sizes[3]
         end
 
-        test_field_slicing("sliced_jld2_test.jld2", (2, 4, 4), (2, 4, 4), (2, 4, 5))
-        test_field_slicing("sliced_funcs_jld2_test.jld2", (4, 4, 4), (4, 4, 4), (4, 4, 5))
+        test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
+        test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
+        test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
         
         #####
         ##### File splitting

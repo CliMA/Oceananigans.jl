@@ -221,6 +221,11 @@ end
     TKETopBoundaryConditionParameters(adapt(to, p.top_tracer_boundary_conditions),
                                       adapt(to, p.top_velocity_boundary_conditions))
 
+@inline on_architecture(to, p::TKETopBoundaryConditionParameters) =
+    TKETopBoundaryConditionParameters(on_architecture(to, p.top_tracer_boundary_conditions),
+                                      on_architecture(to, p.top_velocity_boundary_conditions))
+
+
 using Oceananigans.BoundaryConditions: Flux
 const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
 const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
