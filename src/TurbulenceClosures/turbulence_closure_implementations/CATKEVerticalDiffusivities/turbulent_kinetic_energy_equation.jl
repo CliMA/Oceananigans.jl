@@ -77,7 +77,9 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
     wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-    eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
+
+    closure_ij = getclosure(i, j, closure)
+    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
 
     dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
 
