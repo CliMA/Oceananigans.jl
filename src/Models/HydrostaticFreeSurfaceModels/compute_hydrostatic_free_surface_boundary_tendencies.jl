@@ -42,9 +42,8 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
         
         # If there exists a boundary map, then we compute the boundary contributions
         if compute_boundary
-            active_boundary_map = active_interior_map(Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
-                                                                     active_cells_map = active_boundary_map)
+            active_cells_map = active_interior_map(Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
         end
     end
 

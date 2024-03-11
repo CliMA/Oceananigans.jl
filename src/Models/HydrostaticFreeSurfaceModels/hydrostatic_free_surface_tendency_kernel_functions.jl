@@ -7,9 +7,9 @@ using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_dr
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
+#using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_source_term
+using Oceananigans.TurbulenceClosures: closure_source_term
 using Oceananigans.Utils: SumOfArrays
-using KernelAbstractions: @private
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -35,7 +35,7 @@ implicitly during time-stepping.
                                                               free_surface,
                                                               tracers,
                                                               buoyancy,
-                                                              diffusivities,
+                                                              diffusivity_fields,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
                                                               forcings,
@@ -47,8 +47,8 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivity_fields, clock, model_fields, buoyancy)
+             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivity_fields, clock, model_fields)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -74,7 +74,7 @@ implicitly during time-stepping.
                                                               free_surface,
                                                               tracers,
                                                               buoyancy,
-                                                              diffusivities,
+                                                              diffusivity_fields,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
                                                               forcings,
@@ -86,8 +86,8 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivity_fields, clock, model_fields, buoyancy)
+             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivity_fields, clock, model_fields)
              + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
@@ -115,7 +115,7 @@ where `c = C[tracer_index]`.
                                                           free_surface,
                                                           tracers,
                                                           top_tracer_bcs,
-                                                          diffusivities,
+                                                          diffusivity_fields,
                                                           auxiliary_fields,
                                                           forcing,
                                                           clock) where tracer_index
@@ -132,9 +132,10 @@ where `c = C[tracer_index]`.
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivity_fields, val_tracer_index, c, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivity_fields, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + closure_source_term(i, j, k, grid, closure, diffusivity_fields, val_tracer_name, clock, velocities, tracers, buoyancy)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -162,31 +163,3 @@ The tendency is called ``G_η`` and defined via
                        + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
 
-@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
-                                                               val_tracer_index::Val{tracer_index},
-                                                               val_tracer_name,
-                                                               advection,
-                                                               closure,
-                                                               e_immersed_bc,
-                                                               buoyancy,
-                                                               biogeochemistry,
-                                                               velocities,
-                                                               free_surface,
-                                                               tracers,
-                                                               top_tracer_bcs,
-                                                               diffusivities,
-                                                               auxiliary_fields,
-                                                               forcing,
-                                                               clock) where tracer_index
-
-    @inbounds e = tracers[tracer_index]
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
-
-    return ( - div_Uc(i, j, k, grid, advection, velocities, e)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, e, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + shear_production(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             + forcing(i, j, k, grid, clock, model_fields))
-end

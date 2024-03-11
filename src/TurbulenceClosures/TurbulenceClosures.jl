@@ -87,6 +87,9 @@ function buoyancy_flux end
 function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
+#@inline args... = closure, val_tracer_name, clock, velocities, tracers, buoyancy, diffusivities
+@inline closure_source_term(i, j, k, grid, args...) = zero(grid)
+
 #####
 ##### Fallback: flux = 0
 #####

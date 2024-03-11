@@ -1,3 +1,10 @@
+import Oceananigans.TurbulenceClosures: closure_source_term
+
+@inline closure_source_term(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, ::Val{:e}, velocities, tracers, buoyancy) =
+    shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) + 
+       buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) -
+         dissipation(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+
 """
     struct TurbulentKineticEnergyEquation{FT}
 
@@ -25,10 +32,10 @@ end
 @inline κᵘ_∂z_u²ᶠᶜᶜ(i, j, k, grid, κᵘ, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_κᵘ_∂z_u²ᶠᶜᶠ, κᵘ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
 @inline κᵘ_∂z_v²ᶜᶠᶜ(i, j, k, grid, κᵘ, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_κᵘ_∂z_v²ᶜᶠᶠ, κᵘ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
 
-@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
+@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy)
     u = velocities.u
     v = velocities.v
-    κᵘ = diffusivities.κᵘ
+    κᵘ = diffusivity_fields.κᵘ
 
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
@@ -42,7 +49,7 @@ end
     #=
     # Non-conservative reconstructions of shear production:
     closure = getclosure(i, j, closure)
-    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Qᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
     return κᵘ * S²
     =#
@@ -50,32 +57,32 @@ end
 
 # To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
 # of mean potential energy):
-@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
+@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivity_fields)
+    κᶜ = @inbounds diffusivity_fields.κᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶜ * N²
 end
  
-@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
-    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields) =
+    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivity_fields)
 
 #=
 # Non-conservative reconstruction of buoyancy flux:
-@inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
     closure = getclosure(i, j, closure)
-    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Qᵇ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶜ * N²
 end
 =#
 
-@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy) =
+    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, diffusivity_fields, velocities, tracers, buoyancy)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     closure_ij = getclosure(i, j, closure)
@@ -119,10 +126,8 @@ end
     return min(H, ℓᴰ)
 end
 
-@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
-                                  velocities, tracers, buoyancy, diffusivities)
-
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+@inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Qᵇ)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
@@ -142,59 +147,11 @@ end
 end
 
 # Fallbacks for explicit time discretization
-@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...)
+@inline function dissipation(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy)
     eᵢ = @inbounds tracers.e[i, j, k]
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
     return ω * eᵢ
 end
-
-#####
-##### For closure tuples...
-#####
-
-# TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
-
-@inline shear_production(i, j, k, grid, closure, U, C, B, K) = zero(grid)
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, U, C, B, K) =
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1])
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any}, U, C, B, K) =
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
-    shear_production(i, j, k, grid, closures[2], U, C, B, K[2])
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, U, C, B, K) = 
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
-    shear_production(i, j, k, grid, closures[2], U, C, B, K[2]) +
-    shear_production(i, j, k, grid, closures[3], U, C, B, K[3])
-
-@inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(grid)
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, diffusivities[1])
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any, <:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, tracers, buoyancy, diffusivities[1]) +
-    buoyancy_flux(i, j, k, grid, closures[2], velocities, tracers, buoyancy, diffusivities[2])
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, tracers, buoyancy, diffusivities[1]) +
-    buoyancy_flux(i, j, k, grid, closures[2], velocities, tracers, buoyancy, diffusivities[2]) +
-    buoyancy_flux(i, j, k, grid, closures[3], velocities, tracers, buoyancy, diffusivities[3])
-
-# Unlike the above, this fallback for dissipation is generically correct (we only want to compute dissipation once)
-@inline dissipation(i, j, k, grid, closure, args...) = zero(grid)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any}, args...) = dissipation(i, j, k, grid, closures[1], args...)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any, <:Any}, args...) = 
-    dissipation(i, j, k, grid, closures[1], args...) +
-    dissipation(i, j, k, grid, closures[2], args...)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, args...) = 
-    dissipation(i, j, k, grid, closures[1], args...) +
-    dissipation(i, j, k, grid, closures[2], args...) +
-    dissipation(i, j, k, grid, closures[3], args...)
 
 #####
 ##### TKE top boundary condition
