@@ -7,7 +7,6 @@ using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_dr
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-#using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_source_term
 using Oceananigans.TurbulenceClosures: closure_source_term
 using Oceananigans.Utils: SumOfArrays
 

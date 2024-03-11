@@ -78,17 +78,10 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        #=
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model,
-                                                                                 Val(tracer_name),
-                                                                                 model.closure,
-                                                                                 model.diffusivity_fields)
-        =#
-
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
-                     model.closure, # closure
+                     model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
@@ -96,7 +89,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.free_surface,
                      model.tracers,
                      top_tracer_bcs,
-                     model.diffusivity_fields, # diffusivity
+                     model.diffusivity_fields,
                      model.auxiliary_fields,
                      c_forcing,
                      model.clock)
