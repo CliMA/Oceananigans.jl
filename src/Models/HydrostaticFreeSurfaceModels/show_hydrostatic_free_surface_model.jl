@@ -31,6 +31,16 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         end
     end
 
+    if model.advection !== nothing
+        print(io, "├── advection scheme: ", "\n")
+        names = keys(model.advection)
+        for name in names[1:end-1]
+            print(io, "│   ├── " * string(name) * ": " * summary(model.advection[name]), "\n")
+        end
+        name = names[end]
+        print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
+    end
+
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
     else
