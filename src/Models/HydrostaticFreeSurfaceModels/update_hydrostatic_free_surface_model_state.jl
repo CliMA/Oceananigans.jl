@@ -51,7 +51,7 @@ function fill_paired_halo_regions!(fields, signed=true)
     end
     =#
 
-    #-- first pass: only take interior-point value:
+    #-- one pass: only use interior-point values:
     for region in 1:6
 
         if mod(region,2) == 1
@@ -62,11 +62,21 @@ function fill_paired_halo_regions!(fields, signed=true)
             region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
-                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
-                field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
+                field_1[region][1-Hc:0, 1:Nc, k]       .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                #- N + S Halo for field_1:
+                field_1[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
+                field_1[region][1, Nc+1:Nc+Hc, k]      .= reverse(field_1[region_W][1, Nc+1-Hc:Nc, k]) * plmn
+                field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                field_1[region][Nc+1, 1-Hc:0, k]       .= reverse(field_2[region_E][1:Hc, 1, k])
+                #- E + W Halo for field_2:
+                field_2[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_2[region_E][1:Hc, 1:Nc, k]
+                field_2[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field_2[region_N][1:Hc, 1, k]
+                field_2[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
+                field_2[region][1-Hc:0, 1, k]          .=         field_1[region_S][1, Nc+1-Hc:Nc, k] * plmn
                 #- N + S Halo for field_2:
-                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
-                field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                field_2[region][1:Nc, Nc+1:Nc+Hc, k]   .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
+                field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
             #- even face number (2,4,6):
@@ -76,48 +86,21 @@ function fill_paired_halo_regions!(fields, signed=true)
             region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
-                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
-                field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc,  1:Nc, k]
+                field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
+                field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc,  1:Nc, k]
+                #- N + S Halo for field_1:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_1[region_E][1, 1:Hc, k]
+                field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
+                field_1[region][1, 1-Hc:0, k]          .=         field_2[region_W][Nc+1-Hc:Nc, 1, k] * plmn
+                #- E + W Halo for field_2:
+                field_2[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
+                field_2[region][Nc+1:Nc+Hc, 1, k]      .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1, k]) * plmn
+                field_2[region][1-Hc:0, 1:Nc, k]       .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                field_2[region][1-Hc:0, Nc+1, k]       .= reverse(field_1[region_N][1, 1:Hc, k])
                 #- N + S Halo for field_2:
-                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_2[region_N][1:Nc, 1:Hc, k]
-                field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-            end
-        end
-
-    end
-
-    #-- Second pass: fill the remaining halo:
-    iMn = 1 ; iMx = Nc+1   #- filling over this range is neccessary
-    # iMn = 2-Hc ; iMx = Nc+Hc   #- this will also fill corner halos with useless values
-    for region in 1:6
-
-        if mod(region,2) == 1
-            #- odd face number (1,3,5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
-            for k in -Hz+1:Nz+Hz
-                #- N + S Halo for field_1:
-                field_1[region][iMn:iMx, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, iMn:iMx, k], dims=2)' * plmn
-                field_1[region][iMn:iMx, 1-Hc:0, k]     .=         field_1[region_S][iMn:iMx, Nc+1-Hc:Nc, k]
-                #- E + W Halo for field_2:
-                field_2[region][Nc+1:Nc+Hc, iMn:iMx, k] .=         field_2[region_E][1:Hc, iMn:iMx, k]
-                field_2[region][1-Hc:0, iMn:iMx, k]     .= reverse(field_1[region_W][iMn:iMx, Nc+1-Hc:Nc, k], dims=1)' * plmn
-            end
-        else
-            #- even face number (2,4,6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
-            for k in -Hz+1:Nz+Hz
-                #- N + S Halo for field_1:
-                field_1[region][iMn:iMx, Nc+1:Nc+Hc, k] .=         field_1[region_N][iMn:iMx, 1:Hc, k]
-                field_1[region][iMn:iMx, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, iMn:iMx, k], dims=2)' * plmn
-                #- E + W Halo for field_2:
-                field_2[region][Nc+1:Nc+Hc, iMn:iMx, k] .= reverse(field_1[region_E][iMn:iMx, 1:Hc, k], dims=1)' * plmn
-                field_2[region][1-Hc:0, iMn:iMx, k]     .=         field_2[region_W][Nc+1-Hc:Nc, iMn:iMx, k]
+                field_2[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_2[region_N][1:Nc, 1:Hc, k]
+                field_2[region][1:Nc, 1-Hc:0, k]       .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
             end
         end
 
@@ -136,11 +119,11 @@ function fill_paired_halo_regions!(fields, signed=true)
         if Hc > 1
             for k in -Hz+1:Nz+Hz
                 #- NW corner:
-                field_1[region][2-Hc:0, Nc+1,  k] .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
-                field_2[region][0, Nc+2:Nc+Hc, k] .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
+                field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
+                field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
                 #- SE corner:
-                field_1[region][Nc+2:Nc+Hc, 0, k] .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
-                field_2[region][Nc+1, 2-Hc:0,  k] .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
+                field_1[region][Nc+2:Nc+Hc, 0, k]    .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
+                field_2[region][Nc+1, 2-Hc:0,  k]    .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
                 #- NE corner:
                 field_1[region][Nc+2:Nc+Hc, Nc+1, k] .= field_2[region][Nc, Nc+2:Nc+Hc, k]
                 field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
