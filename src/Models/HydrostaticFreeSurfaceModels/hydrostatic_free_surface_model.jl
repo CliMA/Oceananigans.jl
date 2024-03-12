@@ -48,6 +48,9 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
       auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
+default_free_surface(grid, gravitational_acceleration) = SplitExplicitFreeSurface(; grid, cfl = 0.7, gravitational_acceleration)
+default_free_surface(::RectilinearGrid, gravitational_acceleration) = ImplicitFreeSurface(; gravitational_acceleration)
+
 """
     HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(0, 0, 1),
@@ -55,7 +58,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = SplitExplicitFreeSurface(grid; cfl = 0.7),
+                                      free_surface = default_free_surface(grid, gravitational_acceleration),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -81,7 +84,8 @@ Keyword arguments
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-  - `free_surface`: The free surface model; by default a [`SplitExplicitFreeSurface`](@ref).
+  - `free_surface`: The free surface model. The default free-surface solver depends on the
+                    geometry of the `grid`.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
@@ -99,7 +103,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = SplitExplicitFreeSurface(grid; cfl = 0.7),
+                                      free_surface = default_free_surface(grid, gravitational_acceleration),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
