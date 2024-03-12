@@ -97,7 +97,7 @@ bat = -bat
                                               size = (Nx, Ny),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (4, 4),
+                                              halo = (5, 5),
                                               topology = (Periodic, Bounded, Flat),
                                               precompute_metrics = true)
 
@@ -171,7 +171,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 
 model = ShallowWaterModel(grid = grid,
                           gravitational_acceleration = 9.8055,
-                          momentum_advection = VectorInvariant(),
+                          momentum_advection = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO()),
                           mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
