@@ -5,7 +5,7 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           size_summary,
                           total_length,
                           topology
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!, fill_paired_faceface_halo_regions!
 
 using CubedSphere
 using Distances
@@ -257,8 +257,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     for (field_1, field_2) in zip(fields_1, fields_2)
         expr = quote
-            $(Symbol(field_1)) = Field{:Face, :Face, Nothing}($(grid))
-            $(Symbol(field_2)) = Field{:Face, :Face, Nothing}($(grid))
+            $(Symbol(field_1)) = Field{Face, Face, Nothing}($(grid))
+            $(Symbol(field_2)) = Field{Face, Face, Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
