@@ -63,19 +63,19 @@ function Base.show(io::IO, ib::GridFittedBottom)
 end
 
 """
-    ImmersedBoundaryGrid(grid, immersed_boundary::GridFittedBottom)
+    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 
-Return a grid with `GridFittedBottom` immersed boundary (`immersed_boundary`).
+Return a grid with `GridFittedBottom` immersed boundary (`ib`).
 
 Computes `immersed_boundary.bottom_height` and wraps it in a Field.
 """
-function ImmersedBoundaryGrid(grid, immersed_boundary::GridFittedBottom)
+function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, immersed_boundary.bottom_height)
+    set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
-    new_immersed_boundary = GridFittedBottom(bottom_field, immersed_boundary.immersed_condition)
+    new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_immersed_boundary)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
