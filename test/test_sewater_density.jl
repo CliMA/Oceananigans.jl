@@ -22,7 +22,7 @@ function grid_size_value(arch, grid, value)
 
     value_array = fill(value, size(grid))
 
-    return arch_array(arch, value_array)
+    return on_architecture(arch, value_array)
 
 end
 
