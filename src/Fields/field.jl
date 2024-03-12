@@ -5,6 +5,7 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
@@ -414,6 +415,19 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ==(a::Field, b::Field) = interior(a) == interior(b)
 
 #####
+##### Move Fields between architectures
+#####
+
+on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+                      on_architecture(arch, field.data),
+                      on_architecture(arch, field.boundary_conditions),
+                      on_architecture(arch, field.indices),
+                      on_architecture(arch, field.operand),
+                      on_architecture(arch, field.status),
+                      on_architecture(arch, field.boundary_buffers))
+
+#####
 ##### Interface for field computations
 #####
 
@@ -743,15 +757,6 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    # To correctly fill the halo regions of fields with non-default indices, we'd have to
-    # offset indices in the fill halo regions kernels.
-    # For now we punt and don't support filling halo regions on windowed fields.
-    # Note that `FieldBoundaryConditions` _can_ filter boundary conditions in
-    # windowed directions:
-    #
-    #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    #  
-    # which will be useful for implementing halo filling for windowed fields in the future.
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,

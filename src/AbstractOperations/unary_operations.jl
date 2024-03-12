@@ -130,3 +130,9 @@ Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
                                Adapt.adapt(to, unary.grid))
+
+on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    UnaryOperation{LX, LY, LZ}(on_architecture(to, unary.op),
+                               on_architecture(to, unary.arg),
+                               on_architecture(to, unary.▶),
+                               on_architecture(to, unary.grid))

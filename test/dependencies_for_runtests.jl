@@ -39,6 +39,7 @@ using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: on_architecture
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond

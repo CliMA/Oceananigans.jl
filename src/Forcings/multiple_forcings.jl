@@ -5,6 +5,7 @@ struct MultipleForcings{N, F}
 end
 
 Adapt.adapt_structure(to, mf::MultipleForcings) = MultipleForcings(adapt(to, mf.forcings))
+on_architecture(to, mf::MultipleForcings) = MultipleForcings(on_architecture(to, mf.forcings))
 
 Base.getindex(mf::MultipleForcings, i) = mf.forcings[i]
 
