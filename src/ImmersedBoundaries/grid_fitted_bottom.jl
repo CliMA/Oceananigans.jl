@@ -67,7 +67,7 @@ end
 
 Return a grid with `GridFittedBottom` immersed boundary (`ib`).
 
-Computes `immersed_boundary.bottom_height` and wraps it in a Field.
+Computes `ib.bottom_height` and wraps it in a Field.
 """
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
