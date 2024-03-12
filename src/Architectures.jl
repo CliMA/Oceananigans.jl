@@ -1,8 +1,9 @@
 module Architectures
 
-export AbstractArchitecture
-export CPU, GPU, MultiGPU
-export device, architecture, array_type, arch_array, unified_array, device_copy_to!
+export AbstractArchitecture, AbstractSerialArchitecture
+export CPU, GPU
+export device, architecture, unified_array, device_copy_to!
+export array_type, on_architecture, arch_array
 
 using CUDA
 using KernelAbstractions
@@ -17,19 +18,26 @@ Abstract supertype for architectures supported by Oceananigans.
 abstract type AbstractArchitecture end
 
 """
+    AbstractSerialArchitecture
+
+Abstract supertype for serial architectures supported by Oceananigans.
+"""
+abstract type AbstractSerialArchitecture <: AbstractArchitecture end
+
+"""
     CPU <: AbstractArchitecture
 
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractArchitecture end
+struct CPU <: AbstractSerialArchitecture end
 
 """
     GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractArchitecture end
+struct GPU <: AbstractSerialArchitecture end
 
 #####
 ##### These methods are extended in DistributedComputations.jl
@@ -56,32 +64,30 @@ child_architecture(arch) = arch
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, a::Array)   = a
-arch_array(::CPU, a::CuArray) = Array(a)
-arch_array(::GPU, a::Array)   = CuArray(a)
-arch_array(::GPU, a::CuArray) = a
+# Fallback 
+on_architecture(arch, a) = a
 
-arch_array(::CPU, a::BitArray) = a
-arch_array(::GPU, a::BitArray) = CuArray(a)
+# Tupled implementation
+on_architecture(arch::AbstractSerialArchitecture, t::Tuple) = Tuple(on_architecture(arch, elem) for elem in t)
+on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+# On architecture for array types
+on_architecture(::CPU, a::Array) = a
+on_architecture(::GPU, a::Array) = CuArray(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::CPU, a::CuArray) = Array(a)
+on_architecture(::GPU, a::CuArray) = a
 
-arch_array(::CPU, a::AbstractRange) = a
-arch_array(::CPU, ::Nothing)   = nothing
-arch_array(::CPU, a::Number)   = a
-arch_array(::CPU, a::Function) = a
+on_architecture(::CPU, a::BitArray) = a
+on_architecture(::GPU, a::BitArray) = CuArray(a)
 
-arch_array(::GPU, a::AbstractRange) = a
-arch_array(::GPU, ::Nothing)   = nothing
-arch_array(::GPU, a::Number)   = a
-arch_array(::GPU, a::Function) = a
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 
-arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+
+on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
@@ -119,6 +125,12 @@ end
 @inline convert_args(::CPU, args) = args
 @inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
 @inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
+
+# Deprecated functions
+function arch_array(arch, arr) 
+    @warn "`arch_array` is deprecated. Use `on_architecture` instead."
+    return on_architecture(arch, arr)
+end
 
 end # module
 

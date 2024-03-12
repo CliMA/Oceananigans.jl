@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 import Oceananigans.Architectures: architecture
@@ -26,7 +26,7 @@ architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
                              lower_diagonal,
                              diagonal,
                              upper_diagonal,
-                             scratch = arch_array(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             scratch = on_architecture(architecture(grid), zeros(eltype(grid), size(grid)...)),
                              tridiagonal_direction = ZDirection()
                              parameters = nothing)
 
@@ -66,7 +66,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = arch_array(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
+                                  scratch = on_architecture(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 

@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute
 using Oceananigans.BoundaryConditions: fill_halo_regions!

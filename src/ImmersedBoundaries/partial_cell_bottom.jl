@@ -1,6 +1,6 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Printf
 
 #####
@@ -80,6 +80,9 @@ end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height.data),
                                                                      ib.minimum_fractional_cell_height)     
+
+on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height.data),
+                                                               on_architecture(to, ib.minimum_fractional_cell_height))     
 
 """
 
