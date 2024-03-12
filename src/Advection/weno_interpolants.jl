@@ -206,7 +206,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))))
     end
 
     return :($(elem...),)
@@ -216,7 +216,7 @@ end
 @inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
+        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))
     end
 
     return :($(elem...),)
