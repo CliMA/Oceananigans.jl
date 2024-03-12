@@ -37,28 +37,30 @@ end
                              kwargs...)
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
-of oceanic free surface dynamics on `grid` with `gravitational_acceleration`.
+of a free surface dynamics on `grid` with `gravitational_acceleration`.
 
 Keyword Arguments
 =================
+
+- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
               The number of substeps is reduced automatically to the last index of `averaging_weights`
               for which `averaging_weights > 0`.
 
-- `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from the
-         barotropic gravity-wave speed, computed with depth `grid.Lz`. If `fixed_Δt` is provided then the number of
-         `substeps` will adapt to maintain an exact cfl. If not the effective cfl will be always lower than the 
-         specified `cfl` provided that the baroclinic time step `Δt_baroclinic < fixed_Δt`
+- `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from
+         the barotropic gravity-wave speed that corresponds to depth `grid.Lz`. If `fixed_Δt` is provided,
+         then the number of `substeps` adapts to maintain an exact `cfl`. If not, the effective cfl will
+         always be lower than the specified `cfl` provided that the baroclinic time step satisfies
+         `Δt_baroclinic < fixed_Δt`.
 
 !!! info "Needed keyword arguments"
     Either `substeps` _or_ `cfl` need to be prescribed.
 
-- `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided, then
-              the number of substeps will be computed on the fly from the baroclinic time step to maintain a constant cfl.
-
-- `gravitational_acceleration`: the gravitational acceleration (default: `g_Earth`)
+- `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided,
+              then the number of substeps will be computed on the fly from the baroclinic time step to
+              maintain a constant cfl.
 
 - `averaging_kernel`: function of `τ` used to average the barotropic transport `U` and free surface `η`
                       within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
@@ -256,7 +258,7 @@ end
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
-a fixed `Δt_barotopic` based on a CFL condition """
+a fixed `Δt_barotropic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
     Δt_barotropic    :: B
     averaging_kernel :: F
@@ -342,10 +344,10 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings) =
     SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
 
-Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(s.Δt_barotopic)")
+Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substepping)")
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 function reset!(sefs::SplitExplicitFreeSurface)
