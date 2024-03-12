@@ -16,7 +16,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
         Lx = Ly = Lz = 2π
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-        tmp = SplitExplicitFreeSurface(; substeps = 200)
+        tmp = SplitExplicitFreeSurface(grid; substeps = 200)
         sefs = SplitExplicitState(grid, tmp.settings.timestepper)
         sefs = SplitExplicitAuxiliaryFields(grid)
         sefs = SplitExplicitFreeSurface(grid)

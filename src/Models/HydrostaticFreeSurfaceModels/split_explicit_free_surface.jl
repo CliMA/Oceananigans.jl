@@ -32,10 +32,10 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) 
+    SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth, kwargs...) 
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
-of oceanic free surface dynamics with `gravitational_acceleration`.
+of oceanic free surface dynamics on `grid` with `gravitational_acceleration`.
 
 Keyword Arguments
 =================
@@ -52,8 +52,6 @@ Keyword Arguments
 
 !!! info "Needed keyword arguments"
     Either `substeps` _or_ `cfl` (with `grid`) need to be prescribed.
-
-- `grid`: Used to compute the corresponding barotropic surface wave speed.
 
 - `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided, then
               the number of substeps will be computed on the fly from the baroclinic time step to maintain a constant cfl.
@@ -75,9 +73,9 @@ References
 
 Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
-SplitExplicitFreeSurface(FT::DataType = Float64; gravitational_acceleration = g_Earth, kwargs...) = 
+SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
-                             SplitExplicitSettings(FT; gravitational_acceleration, kwargs...))
+                             SplitExplicitSettings(grid; gravitational_acceleration, kwargs...))
                              
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -90,14 +88,19 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-    settings = SplitExplicitSettings(eltype(grid); gravitational_acceleration, substeps = 200))
+                                        settings = SplitExplicitSettings(grid;
+                                                                         gravitational_acceleration,
+                                                                         substeps = 200))
 
     Nz = size(grid, 3)
     η  = ZFaceField(grid, indices = (:, :, Nz+1))
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid, settings.timestepper), SplitExplicitAuxiliaryFields(grid),
-           gravitational_acceleration, settings)
+    return SplitExplicitFreeSurface(η,
+                                    SplitExplicitState(grid, settings.timestepper),
+                                    SplitExplicitAuxiliaryFields(grid),
+                                    gravitational_acceleration,
+                                    settings)
 end
 
 """
@@ -265,11 +268,13 @@ struct FixedSubstepNumber{B, F}
     averaging_weights    :: F
 end
 
-function FixedTimeStepSize(FT::DataType = Float64;
+function FixedTimeStepSize(grid;
                            cfl = 0.7, 
-                           grid, 
-                           averaging_kernel = averaging_shape_function, 
+                           averaging_kernel = averaging_shape_function,
                            gravitational_acceleration = g_Earth)
+
+    FT = eltype(grid)
+
     Δx⁻² = topology(grid)[1] == Flat ? 0 : 1 / minimum_xspacing(grid)^2
     Δy⁻² = topology(grid)[2] == Flat ? 0 : 1 / minimum_yspacing(grid)^2
     Δs   = sqrt(1 / (Δx⁻² + Δy⁻²))
@@ -296,28 +301,22 @@ end
     return Δτ, tuple(averaging_weights...)
 end
 
-function SplitExplicitSettings(FT::DataType=Float64;
+function SplitExplicitSettings(grid;
                                substeps = nothing, 
                                cfl      = nothing,
-                               grid     = nothing,
                                fixed_Δt = nothing,
                                gravitational_acceleration = g_Earth,
                                averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
+
+    FT = eltype(grid)
     
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
         throw(ArgumentError("either specify a cfl or a number of substeps"))
     end
 
-    if !isnothing(grid) && eltype(grid) !== FT
-        throw(ArgumentError("Prescribed FT was different that the one used in `grid`."))
-    end
-
     if !isnothing(cfl)
-        if isnothing(grid)
-            throw(ArgumentError("Need to specify the grid kwarg to calculate the barotropic substeps from the cfl"))
-        end
-        substepping = FixedTimeStepSize(FT; cfl, grid, gravitational_acceleration, averaging_kernel)
+        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
         if isnothing(fixed_Δt)
             return SplitExplicitSettings(substepping, timestepper)
         else

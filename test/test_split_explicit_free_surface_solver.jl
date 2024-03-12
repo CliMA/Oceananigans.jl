@@ -21,7 +21,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo=(1, 1, 1))
 
-            settings = SplitExplicitSettings(eltype(grid); substeps = 200, averaging_kernel = constant_averaging_kernel)
+            settings = SplitExplicitSettings(grid; substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = SplitExplicitFreeSurface(grid; settings)
 
             sefs.η .= 0
@@ -62,7 +62,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 settings = SplitExplicitSettings(; substeps = Nt, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
-                # set!(η, f(x,y))
+                # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
                 U₀(x, y, z) = 0
@@ -77,8 +77,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gⱽ .= 0
 
                 weights = settings.substepping.averaging_weights
-                
-                for i in 1:Nt
+
+                for _ in 1:Nt
                     iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
                 end
                 iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1)) 
@@ -96,7 +96,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
-            settings = SplitExplicitSettings(eltype(grid); substeps = 200, averaging_kernel = constant_averaging_kernel)
+            settings = SplitExplicitSettings(grid; substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = SplitExplicitFreeSurface(grid; settings)
 
             sefs.η .= 0
@@ -190,7 +190,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calc
                 Gᵁ .= gu_c
                 Gⱽ .= gv_c
 
-                settings = SplitExplicitSettings(eltype(grid); substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                settings = SplitExplicitSettings(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = sefs(settings)
 
                 weights = settings.substepping.averaging_weights
