@@ -1,4 +1,5 @@
 include("dependencies_for_runtests.jl")
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings
@@ -19,25 +20,28 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
         tmp = SplitExplicitFreeSurface(grid; substeps = 200)
         sefs = SplitExplicitState(grid, tmp.settings.timestepper)
         sefs = SplitExplicitAuxiliaryFields(grid)
-        sefs = SplitExplicitFreeSurface(grid)
+        sefs = SplitExplicitFreeSurface(grid; substeps = 200)
 
         state = sefs.state
         auxiliary = sefs.auxiliary
         U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
         Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
 
-        u = Field{Face,Center,Center}(grid)
-        v = Field{Center,Face,Center}(grid)
+        u = Field{Face, Center, Center}(grid)
+        v = Field{Center, Face, Center}(grid)
 
         @testset "Average to zero" begin
             # set equal to something else
             η̅ .= U̅ .= V̅ .= 1.0
+
             # now set equal to zero
             initialize_free_surface_state!(sefs.state, sefs.η, sefs.settings.timestepper)
-            # don't forget the ghost points
+
+            # don't forget the halo points
             fill_halo_regions!(η̅)
             fill_halo_regions!(U̅)
             fill_halo_regions!(V̅)
+
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
             @test all(Array(U̅.data.parent .== 0.0))
