@@ -22,7 +22,7 @@ datadep"quarter_degree_near_global_lat_lon"
 datadep_path = @datadep_str "quarter_degree_near_global_lat_lon/bathymetry-1440x600.jld2"
 file_bathymetry = jldopen(datadep_path)
 
-output_prefix = "/home/fpoulin/Software/Oceananigans.jl/validation/shallow_water_model/near_global_shallow_water_1440_600_surface"
+output_prefix = "near_global_shallow_water_1440_600_surface"
 
 filepath = output_prefix * ".jld2"
 

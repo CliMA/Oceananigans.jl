@@ -33,7 +33,7 @@ end
 ##### Grid
 #####
 
-arch = CPU()
+arch = GPU()
 reference_density = 1029
 
 latitude = (-75, 75)
