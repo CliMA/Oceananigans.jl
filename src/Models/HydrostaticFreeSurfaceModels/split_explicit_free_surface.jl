@@ -32,7 +32,7 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth, kwargs...) 
+    SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth, kwargs...)
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 of oceanic free surface dynamics on `grid` with `gravitational_acceleration`.
@@ -172,7 +172,7 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
 end
 
 """
-    SplitExplicitAuxiliaryFields
+    struct SplitExplicitAuxiliaryFields
 
 A type containing auxiliary fields for the split-explicit free surface.
 
@@ -270,7 +270,7 @@ struct FixedSubstepNumber{B, F}
 end
 
 function FixedTimeStepSize(grid;
-                           cfl = 0.7, 
+                           cfl = 0.7,
                            averaging_kernel = averaging_shape_function,
                            gravitational_acceleration = g_Earth)
 
