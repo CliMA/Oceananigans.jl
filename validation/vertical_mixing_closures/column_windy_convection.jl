@@ -6,6 +6,7 @@ using Printf
 using Oceananigans.TurbulenceClosures:
     RiBasedVerticalDiffusivity,
     CATKEVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
     ExplicitTimeDiscretization
 
@@ -19,8 +20,8 @@ Jᵇ = +1e-8      # Surface buoyancy flux (m² s⁻³)
 τˣ = -2e-4      # Surface kinematic momentum flux (m s⁻¹)
 stop_time = 2days
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
 catke = CATKEVerticalDiffusivity()
+tke_dissipation = TKEDissipationVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
 # Set up simulation
@@ -29,20 +30,30 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-#closures_to_run = [catke, ri_based, convective_adjustment]
-closures_to_run = [catke] #, ri_based, convective_adjustment]
+#closures_to_run = [catke, ri_based]
+closures_to_run = [catke, tke_dissipation]
 
 for closure in closures_to_run
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                        tracers = (:b, :e),
+    if closure isa CATKEVerticalDiffusivity
+        tracers = (:b, :e)
+        closure_initial_conditions = (; e=1e-6)
+    elseif closure isa TKEDissipationVerticalDiffusivity
+        tracers = (:b, :k, :ϵ)
+        closure_initial_conditions = (; k=1e-6, ϵ=1e-6)
+    else
+        tracers = :b
+        closure_initial_conditions = NamedTuple()
+    end
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, tracers,
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
                                         
     bᵢ(z) = N² * z
-    set!(model, b=bᵢ, e=1e-6)
+    set!(model; b=bᵢ, closure_initial_conditions...)
 
-    simulation = Simulation(model; Δt=2minutes, stop_time)
+    simulation = Simulation(model; Δt=1minutes, stop_time)
 
     closurename = string(nameof(typeof(closure)))
 
@@ -83,7 +94,13 @@ for closure in closures_to_run
     push!(b_ts, FieldTimeSeries(filepath, "b"))
     push!(u_ts, FieldTimeSeries(filepath, "u"))
     push!(v_ts, FieldTimeSeries(filepath, "v"))
-    push!(e_ts, FieldTimeSeries(filepath, "e"))
+
+    try
+        push!(e_ts, FieldTimeSeries(filepath, "e"))
+    catch
+        push!(e_ts, FieldTimeSeries(filepath, "k"))
+    end
+
     push!(κᶜ_ts, FieldTimeSeries(filepath, "κᶜ"))
     push!(κᵘ_ts, FieldTimeSeries(filepath, "κᵘ"))
 end

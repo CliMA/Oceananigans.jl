@@ -6,7 +6,7 @@ using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.Models: validate_tracer_advection

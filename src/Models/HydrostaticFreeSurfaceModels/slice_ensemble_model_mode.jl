@@ -1,11 +1,11 @@
 using Oceananigans.Grids: Flat, Bounded, y_domain
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo, XYRegularRG
 import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
+import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
