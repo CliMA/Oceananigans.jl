@@ -365,7 +365,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
     auxiliary = free_surface.auxiliary
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
-    
+
     # unpack state quantities, parameters and forcing terms 
     U, V             = state.U,    state.V
     Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
@@ -373,11 +373,11 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
     ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
     η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
-    
-    timestepper      = settings.timestepper
-    
+
+    timestepper = settings.timestepper
+
     parameters = auxiliary.kernel_parameters
-    
+
     free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
@@ -398,7 +398,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
         # To alleviate this penalty we convert first and then we substep!
         converted_η_args = convert_args(arch, η_args)
         converted_U_args = convert_args(arch, U_args)
-            
+
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
             averaging_weight = weights[substep]
@@ -412,7 +412,7 @@ end
 
 # Calculate RHS for the barotopic time step. 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    i, j  = @index(Global, NTuple)	
+    i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
     @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
