@@ -114,12 +114,9 @@ u_forcing = Forcing(tidal_forcing, parameters=(; tidal_forcing_amplitude, ω₂)
 
 # ## Model
 
-# We built a `HydrostaticFreeSurfaceModel` with a `SplitExplicitFreeSurface` solver.
-# We limit our maximum timestep to 3 minutes.
+# We built a `HydrostaticFreeSurfaceModel`:
 
-free_surface = SplitExplicitFreeSurface(grid; cfl = 0.7)
-
-model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                       buoyancy = BuoyancyTracer(),
                                       tracers = :b,
                                       momentum_advection = WENO(),
