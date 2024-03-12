@@ -158,12 +158,12 @@ end
     elem = Vector(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
-        stencil_sum   = Expr(:call, :+, (:(@inbounds C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(@inbounds ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(@inbounds @fastmath C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
+        elem[stencil] = :(@inbounds @fastmath ψ[$stencil] * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(@inbounds ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :(@inbounds @fastmath ψ[$buffer] * ψ[$buffer] * C[$c_idx])
     
     return Expr(:call, :+, elem...)
 end
@@ -171,13 +171,13 @@ end
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline smoothness_sum(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_sum(buffer))
+        @inline smoothness_sum(scheme::WENO{$buffer}, ψ, C) = @inbounds @fastmath $(metaprogrammed_smoothness_sum(buffer))
     end
 
     for stencil in [0, 1, 2, 3, 4, 5]
         @eval begin
-            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, smoothness_coefficients(scheme, Val($stencil)))
-            @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, smoothness_coefficients(scheme, Val($stencil)))
+            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = smoothness_sum(scheme, ψ, smoothness_coefficients(scheme, Val($stencil)))
+            @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = smoothness_sum(scheme, ψ, smoothness_coefficients(scheme, Val($stencil)))
         end
     end
 end
@@ -186,7 +186,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
+        elem[stencil] = :(@inbounds @fastmath (β₁[$stencil] + β₂[$stencil])/2)
     end
 
     return :($(elem...),)
@@ -196,7 +196,7 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(@inbounds @fastmath func(ψ[$stencil], scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
@@ -206,7 +206,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))))
+        elem[stencil] = :(@inbounds @fastmath FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))))
     end
 
     return :($(elem...),)
@@ -216,7 +216,7 @@ end
 @inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))
+        elem[stencil] = :(@inbounds @fastmath FT(coeff(scheme, Val($(stencil-1)))) / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))
     end
 
     return :($(elem...),)
@@ -224,19 +224,19 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds @fastmath $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds @fastmath $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds @fastmath $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds @fastmath abs(β[1] - β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds @fastmath abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds @fastmath abs(β[1] +  3β[2] -   3β[3] -    β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds @fastmath abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds @fastmath abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
