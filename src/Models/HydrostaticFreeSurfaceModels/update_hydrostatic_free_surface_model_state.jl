@@ -126,7 +126,7 @@ function fill_paired_halo_regions!(fields, signed=true)
     return nothing
 end
 
-function fill_paired_halo_regions!(fields, signed=true)
+function fill_paired_faceface_halo_regions!(fields, signed=true)
 
     field_1, field_2 = fields
     grid = field_1.grid

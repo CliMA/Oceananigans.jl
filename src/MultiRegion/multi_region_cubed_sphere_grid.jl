@@ -215,18 +215,18 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
     #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
 
-    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
-    LXs₁    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
-    LYs₁    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
+    fields_1 = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
+    LXs_1    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
+    LYs_1    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
 
-    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
-    LXs₂    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
-    LYs₂    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
+    fields_2 = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
+    LXs_2    = (:Center, :Center, :Center, :Center, :Center, :Center, :Center, :Center)
+    LYs_2    = (:Center, :Face,   :Face,   :Center, :Face,   :Face,   :Center, :Face)
 
-    for (field_1, LX₁, LY₁, field_2, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
+    for (field_1, LX_1, LY_1, field_2, LX_2, LY_2) in zip(fields_1, LXs_1, LYs_1, fields_2, LXs_2, LYs_2)
         expr = quote
-            $(Symbol(field_1)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
-            $(Symbol(field_2)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
+            $(Symbol(field_1)) = Field{$(Symbol(LX_1)), $(Symbol(LY_1)), Nothing}($(grid))
+            $(Symbol(field_2)) = Field{$(Symbol(LX_2)), $(Symbol(LY_2)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
@@ -252,6 +252,39 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
+    fields_1 = (:λᶠᶠᵃ, :Δxᶠᶠᵃ, :Azᶠᶠᵃ)
+    fields_2 = (:φᶠᶠᵃ, :Δyᶠᶠᵃ, :Azᶠᶠᵃ)
+
+    for (field_1, field_2) in zip(fields_1, fields_2)
+        expr = quote
+            $(Symbol(field_1)) = Field{:Face, :Face, Nothing}($(grid))
+            $(Symbol(field_2)) = Field{:Face, :Face, Nothing}($(grid))
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                    getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
+                end
+            end
+
+            if $(horizontal_topology) == FullyConnected
+                for _ in 1:2
+                    fill_paired_faceface_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), false)
+                end
+            end
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                    getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+                end
+            end
+        end # quote
+
+        eval(expr)
+    end
+
+    #=
     " Halo filling for Face-Face coordinates, hardcoded for the default cubed-sphere connectivity. "
     function fill_faceface_coordinates!(grid)
         length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
@@ -369,6 +402,29 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     if horizontal_topology == FullyConnected
         fill_faceface_coordinates!(grid)
         fill_faceface_metrics!(grid)
+    end
+    =#
+
+    CUDA.@allowscalar begin
+
+        for region in (1, 3, 5)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+            getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
+        for region in (2, 4, 6)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
+            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
+            getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
     end
 
     CUDA.@allowscalar begin
