@@ -76,12 +76,13 @@ Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling sy
 SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing, convert(FT, gravitational_acceleration),
                              SplitExplicitSettings(grid; gravitational_acceleration, kwargs...))
-                             
+
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
-    return SplitExplicitFreeSurface(η, SplitExplicitState(grid, free_surface.settings.timestepper),
+    return SplitExplicitFreeSurface(η,
+                                    SplitExplicitState(grid, free_surface.settings.timestepper),
                                     SplitExplicitAuxiliaryFields(grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)
@@ -147,15 +148,15 @@ acts as a filter for `η`. Values with superscripts `m-1` and `m-2` correspond t
 time steps to allow using a higher-order time stepping scheme, e.g., `AdamsBashforth3Scheme`.
 """
 function SplitExplicitState(grid::AbstractGrid, timestepper)
-    
+
     Nz = size(grid, 3)
-    
+
     η̅ = ZFaceField(grid, indices = (:, :, Nz+1))
 
     ηᵐ   = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
-          
+
     U    = XFaceField(grid, indices = (:, :, Nz))
     V    = YFaceField(grid, indices = (:, :, Nz))
 
@@ -163,10 +164,10 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
     Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
     Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
-          
+
     U̅ = XFaceField(grid, indices = (:, :, Nz))
     V̅ = YFaceField(grid, indices = (:, :, Nz))
-    
+
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
 
@@ -245,7 +246,7 @@ auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, i
 auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT 
+@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
 
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
@@ -302,7 +303,7 @@ end
 end
 
 function SplitExplicitSettings(grid;
-                               substeps = nothing, 
+                               substeps = nothing,
                                cfl      = nothing,
                                fixed_Δt = nothing,
                                gravitational_acceleration = g_Earth,
@@ -310,7 +311,7 @@ function SplitExplicitSettings(grid;
                                timestepper = ForwardBackwardScheme())
 
     FT = eltype(grid)
-    
+
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
         throw(ArgumentError("either specify a cfl or a number of substeps"))
     end
@@ -364,19 +365,17 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
                              free_surface.gravitational_acceleration, nothing)
 
-for Type in (:SplitExplicitFreeSurface, 
-             :SplitExplicitSettings, 
+for Type in (:SplitExplicitFreeSurface,
+             :SplitExplicitSettings,
              :SplitExplicitState, 
              :SplitExplicitAuxiliaryFields,
              :FixedTimeStepSize,
              :FixedSubstepNumber)
     
     @eval begin
-        function on_architecture(to, settings::$Type) 
+        function on_architecture(to, settings::$Type)
             args = Tuple(on_architecture(to, prop) for prop in propertynames(settings))
             return SplitExplicitState(args...)
         end
     end
 end
-                
-            
