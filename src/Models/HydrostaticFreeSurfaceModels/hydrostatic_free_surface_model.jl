@@ -48,8 +48,8 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
       auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
-default_free_surface(grid, gravitational_acceleration) = SplitExplicitFreeSurface(; grid, cfl = 0.7, gravitational_acceleration)
-default_free_surface(::RectilinearGrid, gravitational_acceleration) = ImplicitFreeSurface(; gravitational_acceleration)
+default_free_surface(grid, gravitational_acceleration=g_Earth) = SplitExplicitFreeSurface(; grid, cfl = 0.7, gravitational_acceleration)
+default_free_surface(::RectilinearGrid, gravitational_acceleration=g_Earth) = ImplicitFreeSurface(; gravitational_acceleration)
 
 """
     HydrostaticFreeSurfaceModel(; grid,
@@ -103,7 +103,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration),
+                                      free_surface = default_free_surface(grid, g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
