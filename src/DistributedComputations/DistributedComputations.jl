@@ -14,6 +14,7 @@ using Oceananigans.Grids
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
+include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
 include("distributed_fields.jl")

@@ -208,3 +208,9 @@ function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:An
     κ = Adapt.adapt(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
+
+function on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+    ν = on_architecture(to, closure.ν)
+    κ = on_architecture(to, closure.κ)
+    return ScalarDiffusivity{TD, F, N}(ν, κ)
+end
