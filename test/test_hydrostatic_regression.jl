@@ -8,7 +8,7 @@ function show_hydrostatic_test(grid, free_surface, precompute_metrics)
     typeof(grid) <: XRegularLLG ? gx = :regular : gx = :stretched
     typeof(grid) <: YRegularLLG ? gy = :regular : gy = :stretched
     typeof(grid) <: ZRegularLLG ? gz = :regular : gz = :stretched
- 
+
     arch = grid.architecture
     free_surface_str = string(typeof(free_surface).name.wrapper)
 
