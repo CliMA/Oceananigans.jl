@@ -107,9 +107,7 @@ function run_and_analyze(simulation)
     return (ηarr, varr, uarr)
 end
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function, 
-                                                        averaging_cosine_function, 
-                                                        averaging_fixed_function, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function,
                                                         ForwardBackwardScheme,
                                                         AdamsBashforth3Scheme
 
@@ -143,15 +141,15 @@ grid = RectilinearGrid(arch,
         topology = topology)
 
 explicit_free_surface = ExplicitFreeSurface()
-# fft_based_free_surface = ImplicitFreeSurface()
-pcg_free_surface    = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+fft_based_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
+pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
 matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver)
 splitexplicit_free_surface = SplitExplicitFreeSurface(grid,
                                                       substeps = 10, 
-                                                      averaging_weighting_function = averaging_shape_function,
+                                                      averaging_kernel = averaging_shape_function,
                                                       timestepper = AdamsBashforth3Scheme())
 
-free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface] #, matrix_free_surface];
+free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface]
 
 x  = grid.xᶜᵃᵃ[1:grid.Nx]
 xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
