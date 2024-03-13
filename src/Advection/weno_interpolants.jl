@@ -302,14 +302,12 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     @eval begin 
         # The WENO-Z solution here is 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, 
+                                            scheme::WENO{N, FT},  ti, wr, 
                                             ψ, idx, loc, args...) where {N, FT}
                                         
                                             
-            # M   = @uniform @groupsize()[$dir]
-            tix = @index(Local,  NTuple)
-            tix = tix[$dir]
-            wrk = @localmem FT (5, 10)
+            tix = ti[$dir]
+            wrk = wr[$dir]
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -332,14 +330,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, 
+                                            scheme::WENO{N, FT}, ti, wr, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
         
-        
-            # M   = @uniform @groupsize()[$dir]
-            tix = @index(Local,  NTuple)
-            tix = tix[$dir]
-            wrk = @localmem FT (5, 10)
+            tix = ti[$dir]
+            wrk = wr[$dir]
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -362,13 +357,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{N, FT}, 
-                                             ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT}
+                                             scheme::WENO{N, FT}, ti, wr, 
+                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT}
 
-            # M   = @uniform @groupsize()[$dir]
-            tix = @index(Local,  NTuple)
-            tix = tix[$dir]
-            wrk = @localmem FT (5, 10)
+            tix = ti[$dir]
+            wrk = wr[$dir]
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
@@ -395,13 +388,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{N, FT}, 
+                                             scheme::WENO{N, FT}, ti, wr, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            # M   = @uniform @groupsize()[$dir]
-            tix = @index(Local,  NTuple)
-            tix = tix[$dir]
-            wrk = @localmem FT (5, 10)
+            tix = ti[$dir]
+            wrk = wr[$dir]
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)

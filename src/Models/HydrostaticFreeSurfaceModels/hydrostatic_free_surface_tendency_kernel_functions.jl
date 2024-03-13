@@ -43,7 +43,14 @@ implicitly during time-stepping.
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
+    FT = eltype(grid) 
+    M  = @uniform @groupsize()
+    ti = @index(Local, NTuple) 
+    wrkx = @localmem FT (5, M[1])
+    wrky = @localmem FT (5, M[2])
+    wrkz = @localmem FT (5, M[3])
+
+    return ( - U_dot_∇u(i, j, k, grid, advection, velocities, ti, (wrkx, wrky, wrkz))
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
@@ -82,7 +89,14 @@ implicitly during time-stepping.
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+    FT = eltype(grid) 
+    M  = @uniform @groupsize()
+    ti = @index(Local, NTuple) 
+    wrkx = @localmem FT (5, M[1])
+    wrky = @localmem FT (5, M[2])
+    wrkz = @localmem FT (5, M[3])
+
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities, ti, (wrkx, wrky, wrkz))
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
@@ -120,6 +134,13 @@ where `c = C[tracer_index]`.
                                                           forcing,
                                                           clock) where tracer_index
 
+    FT = eltype(grid) 
+    M  = @uniform @groupsize()
+    ti = @index(Local, NTuple) 
+    wrkx = @localmem FT (5, M[1])
+    wrky = @localmem FT (5, M[2])
+    wrkz = @localmem FT (5, M[3])
+
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
@@ -131,7 +152,7 @@ where `c = C[tracer_index]`.
 
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c, ti, (wrkx, wrky, wrkz))
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
