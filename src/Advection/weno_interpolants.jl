@@ -191,30 +191,9 @@ end
     return :($(elem...),)
 end
 
-# ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
-@inline function metaprogrammed_zweno_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε))^2)))
-    end
-
-    return :($(elem...),)
-end
-
-# JSWENO α weights dᵣ / (βᵣ + ε)²
-@inline function metaprogrammed_js_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^2)
-    end
-
-    return :($(elem...),)
-end
-
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds @fastmath $(metaprogrammed_js_alpha_loop(buffer))
+        @inline beta_sum(scheme::WENO{$buffer}, β₁, β₂) = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
     end
 end
 
@@ -337,10 +316,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 β = $beta_loop(scheme, ψ)
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff)
-                
-                α_tot = 1 / sum(α)
-
-                return α .* α_tot
+                return α ./ sum(α)
             end
         end
 
@@ -356,9 +332,8 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 β = beta_sum(scheme, βᵤ, βᵥ)
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff)
-                α_tot = 1 / sum(α)
 
-                return α .* α_tot
+                return α ./ sum(α)
             end
         end
     end
