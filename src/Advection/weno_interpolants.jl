@@ -268,7 +268,7 @@ end
 for side in (:left, :right), dir in (:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ)
     retrieve_stencil = Symbol(side, :_stencil_, dir)
     for buffer in [2, 3, 4, 5, 6]
-        for stencil in [1:buffer]
+        for stencil in [1, 2, 3, 4, 5, 6]
             @eval begin
                 @inline $retrieve_stencil(i, j, k, scheme::WENO{$buffer}, ::Val{$stencil}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false)[stencil])
                 @inline $retrieve_stencil(i, j, k, scheme::WENO{$buffer}, ::Val{$stencil}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true)[stencil])
