@@ -52,7 +52,7 @@ end
 
 """
     NonhydrostaticModel(;           grid,
-                                    clock = Clock{eltype(grid), eltype(grid)}(0, Inf, 0, 1),
+                                    clock = Clock{eltype(grid)}(time = 0),
                                 advection = CenteredSecondOrder(),
                                  buoyancy = nothing,
                                  coriolis = nothing,
@@ -105,7 +105,7 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                                    clock = Clock{eltype(grid), eltype(grid)}(0, Inf, 0, 1),
+                                    clock = Clock{eltype(grid)}(time = 0),
                                 advection = CenteredSecondOrder(),
                                  buoyancy = nothing,
                                  coriolis = nothing,

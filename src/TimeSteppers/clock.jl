@@ -12,8 +12,8 @@ Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-step
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
-mutable struct Clock{T, FT}
-         time :: T
+mutable struct Clock{TT, DT}
+         time :: TT
       last_Δt :: DT
     iteration :: Int
         stage :: Int
@@ -25,12 +25,16 @@ end
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt`.
 """
-Clock(; time::T, last_Δt::FT = Inf, iteration=0, stage=1) where {T, FT} = Clock{T, FT}(time, last_Δt, iteration, stage)
+Clock(; time::TT, last_Δt::DT=Inf, iteration=0, stage=1) where {TT, DT} = Clock{TT, DT}(time, last_Δt, iteration, stage)
+
+Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT = Clock{TT, TT}(time, last_Δt, iteration, stage)
+
+Clock{DT}(; time::AbstractTime, last_Δt=Inf, iteration=0, stage=1) where DT = Clock{AbstractTime, DT}(time, last_Δt, iteration, stage)
 
 Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), last_Δt=$(prettytime(clock.last_Δt)))")
 
-Base.show(io::IO, c::Clock{T}) where T =
-    println(io, "Clock{$T}: time = $(prettytime(c.time)), last_Δt = $(prettytime(c.last_Δt)), iteration = $(c.iteration), stage = $(c.stage)")
+Base.show(io::IO, c::Clock{TT, DT}) where {TT, DT} =
+    println(io, "Clock{$TT, $DT}: time = $(prettytime(c.time)), last_Δt = $(prettytime(c.last_Δt)), iteration = $(c.iteration), stage = $(c.stage)")
 
 next_time(clock, Δt) = clock.time + Δt
 next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
