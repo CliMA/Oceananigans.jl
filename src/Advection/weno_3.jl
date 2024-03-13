@@ -1,11 +1,11 @@
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
-    biased_β  = Symbol(side, :_biased_β)
-    biased_p  = Symbol(side, :_biased_p)
-    coeff     = Symbol(:coeff_, side) 
-    stencil   = Symbol(side, :_stencil_, dir)
-    stencil_u = Symbol(:tangential_, side, :_stencil_u)
-    stencil_v = Symbol(:tangential_, side, :_stencil_v)
+    biased_β     = Symbol(side, :_biased_β)
+    biased_p     = Symbol(side, :_biased_p)
+    coeff        = Symbol(:coeff_, side) 
+    stencil      = Symbol(side, :_stencil_, dir)
+    stencil_u    = Symbol(:tangential_, side, :_stencil_u)
+    stencil_v    = Symbol(:tangential_, side, :_stencil_v)
     weno_substep = Symbol(side, :_weno_substep_, dir)
 
     @eval begin
