@@ -181,20 +181,11 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
-# Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5*(βᵤ[i] + βᵥ[i]) for i in 1:buffer]
-@inline function metaprogrammed_beta_sum(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
+@inline function beta_sum(::Val{buffer}, β₁, β₂) where buffer
+    @unroll for i in 1:buffer
+        @ibounds β₁[i] = (β₁[i] + β₂[i]) / 2
     end
-
-    return :($(elem...),)
-end
-
-for buffer in [2, 3, 4, 5, 6]
-    @eval begin
-        @inline beta_sum(scheme::WENO{$buffer}, β₁, β₂) = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-    end
+    return β₁
 end
 
 @inline function zweno_alpha_loop(scheme::WENO{2, FT}, β, τ, coeff) where FT
@@ -326,12 +317,12 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
                 uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
                 vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-                βᵤ = $beta_loop(scheme, uₛ)
-                βᵥ = $beta_loop(scheme, vₛ)
+                β₁ = $beta_loop(scheme, uₛ)
+                β₂ = $beta_loop(scheme, vₛ)
 
-                β = beta_sum(scheme, βᵤ, βᵥ)
-                τ = global_smoothness_indicator(Val(N), β)
-                α = zweno_alpha_loop(scheme, β, τ, $coeff)
+                β₁ = beta_sum(Val(N), β₁, β₂)
+                τ = global_smoothness_indicator(Val(N), β₁)
+                α = zweno_alpha_loop(scheme, β₁, τ, $coeff)
 
                 return α ./ sum(α)
             end
