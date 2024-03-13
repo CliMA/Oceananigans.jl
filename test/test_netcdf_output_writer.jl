@@ -877,6 +877,7 @@ for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
         test_DateTime_netcdf_output(arch)
+        test_netcdf_file_splitting(arch)
         test_TimeDate_netcdf_output(arch)
         test_thermal_bubble_netcdf_output(arch)
         test_thermal_bubble_netcdf_output_with_halos(arch)
