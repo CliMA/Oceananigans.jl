@@ -268,14 +268,14 @@ for side in [:left, :right]
     β_loop   = Symbol(:β_loop, side)   
     biased_β = Symbol(side, :_biased_β)
     @eval begin
-        @inline function $β_loop(scheme::WENO{2, FT}, ψ)
+        @inline function $β_loop(scheme::WENO{2}, ψ)
             β₀ = $biased_β(ψ[1], scheme, Val(0))
             β₁ = $biased_β(ψ[2], scheme, Val(1))
 
             return (β₀, β₁)
         end
 
-        @inline function $β_loop(scheme::WENO{3, FT}, ψ)
+        @inline function $β_loop(scheme::WENO{3}, ψ)
             β₀ = $biased_β(ψ[1], scheme, Val(0))
             β₁ = $biased_β(ψ[2], scheme, Val(1))
             β₂ = $biased_β(ψ[3], scheme, Val(2))
@@ -283,7 +283,7 @@ for side in [:left, :right]
             return (β₀, β₁, β₂)
         end
 
-        @inline function $β_loop(scheme::WENO{4, FT}, ψ)
+        @inline function $β_loop(scheme::WENO{4}, ψ)
             β₀ = $biased_β(ψ[1], scheme, Val(0))
             β₁ = $biased_β(ψ[2], scheme, Val(1))
             β₂ = $biased_β(ψ[3], scheme, Val(2))
@@ -292,7 +292,7 @@ for side in [:left, :right]
             return (β₀, β₁, β₂, β₃)
         end
 
-        @inline function $β_loop(scheme::WENO{5, FT}, ψ)
+        @inline function $β_loop(scheme::WENO{5}, ψ)
             β₀ = $biased_β(ψ[1], scheme, Val(0))
             β₁ = $biased_β(ψ[2], scheme, Val(1))
             β₂ = $biased_β(ψ[3], scheme, Val(2))
@@ -302,7 +302,7 @@ for side in [:left, :right]
             return (β₀, β₁, β₂, β₃, β₄)
         end
 
-        @inline function $β_loop(scheme::WENO{6, FT}, ψ)
+        @inline function $β_loop(scheme::WENO{6}, ψ)
             β₀ = $biased_β(ψ[1], scheme, Val(0))
             β₁ = $biased_β(ψ[2], scheme, Val(1))
             β₂ = $biased_β(ψ[3], scheme, Val(2))
