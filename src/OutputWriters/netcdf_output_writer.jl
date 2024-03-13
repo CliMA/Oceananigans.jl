@@ -23,7 +23,7 @@ mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     dimensions :: Dict
     overwrite_existing :: Bool
     deflatelevel :: Int
-    previous :: Int
+    part :: Int
     max_filesize :: Float64
     verbose :: Bool
 end
@@ -349,7 +349,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                    dimensions = Dict(),
                            overwrite_existing = nothing,
                                  deflatelevel = 0,
-                                     previous = 1,
+                                         part = 1,
                                  max_filesize = Inf,
                                       verbose = false)
     mkpath(dir)
@@ -399,7 +399,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                               dimensions,
                               overwrite_existing,
                               deflatelevel,
-                              previous,
+                              part,
                               max_filesize,
                               verbose)
 end
@@ -569,15 +569,15 @@ function start_next_file(model, ow::NetCDFOutputWriter)
         "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(ow.max_filesize))."
     end
 
-    if ow.previous == 1
+    if ow.part == 1
         part1_path = replace(ow.filepath, r".nc$" => "_part1.nc")
         verbose && @info "Renaming first part: $(ow.filepath) -> $part1_path"
         mv(ow.filepath, part1_path, force=ow.overwrite_existing)
         ow.filepath = part1_path
     end
 
-    ow.previous += 1
-    ow.filepath = replace(ow.filepath, r"part\d+.nc$" => "part" * string(ow.previous) * ".nc")
+    ow.part += 1
+    ow.filepath = replace(ow.filepath, r"part\d+.nc$" => "part" * string(ow.part) * ".nc")
     ow.overwrite_existing && isfile(ow.filepath) && rm(ow.filepath, force=true)
     verbose && @info "Now writing to: $(ow.filepath)"
 
