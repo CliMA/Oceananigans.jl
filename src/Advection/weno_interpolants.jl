@@ -392,54 +392,7 @@ julia> calc_weno_stencil(2, :right, :x)
 :(((ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -1, j, k], ψ[i + 0, j, k])))
 
 """
-@inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
-    N = buffer * 2
-    if shift != :none
-        N -=1
-    end
-    stencil_full = Vector(undef, buffer)
-    rng = 1:N
-    if shift == :right
-        rng = rng .+ 1
-    end
-    for stencil in 1:buffer
-        stencil_point = Vector(undef, buffer)
-        rngstencil = rng[stencil:stencil+buffer-1]
-        for (idx, n) in enumerate(rngstencil)
-            c = n - buffer - 1
-            if func 
-                stencil_point[idx] =  dir == :x ? 
-                                      :(ψ(i + $c, j, k, args...)) :
-                                      dir == :y ?
-                                      :(ψ(i, j + $c, k, args...)) :
-                                      :(ψ(i, j, k + $c, args...))
-            else    
-                stencil_point[idx] =  dir == :x ? 
-                                      :(ψ[i + $c, j, k]) :
-                                      dir == :y ?
-                                      :(ψ[i, j + $c, k]) :
-                                      :(ψ[i, j, k + $c])
-            end                
-        end
-        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
-    end
-    return :($(stencil_full...),)
-end
-
-# Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
-# where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for side in (:left, :right), dir in (:x, :y, :z)
-    stencil = Symbol(side, :_stencil_, dir)
-
-    for buffer in [2, 3, 4, 5, 6]
-        @eval begin
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true))
-        end
-    end
-end
-
-# @inline function calc_weno_stencil_function(buffer, shift, dir) 
+# @inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
 #     N = buffer * 2
 #     if shift != :none
 #         N -=1
@@ -454,44 +407,21 @@ end
 #         rngstencil = rng[stencil:stencil+buffer-1]
 #         for (idx, n) in enumerate(rngstencil)
 #             c = n - buffer - 1
-#             stencil_point[idx] =  dir == :x ? 
-#                                   :(ψ(i + $c, j, k, args...)) :
-#                                   dir == :y ?
-#                                   :(ψ(i, j + $c, k, args...)) :
-#                                   :(ψ(i, j, k + $c, args...))
+#             if func 
+#                 stencil_point[idx] =  dir == :x ? 
+#                                       :(ψ(i + $c, j, k, args...)) :
+#                                       dir == :y ?
+#                                       :(ψ(i, j + $c, k, args...)) :
+#                                       :(ψ(i, j, k + $c, args...))
+#             else    
+#                 stencil_point[idx] =  dir == :x ? 
+#                                       :(ψ[i + $c, j, k]) :
+#                                       dir == :y ?
+#                                       :(ψ[i, j + $c, k]) :
+#                                       :(ψ[i, j, k + $c])
+#             end                
 #         end
 #         stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
-#     end
-#     return :($(stencil_full...),)
-# end
-
-# @inline function calc_weno_stencil_variable(buffer, shift, dir, field::Bool = false) 
-#     N = buffer * 2
-#     if shift != :none
-#         N -=1
-#     end
-#     stencil_full = Vector(undef, buffer)
-#     rng = 1:N
-#     if shift == :right
-#         rng = rng .+ 1
-#     end
-#     for stencil in 1:buffer
-#         rngstencil = rng[stencil:stencil+buffer-1]
-#         c_min = rngstencil[1] - buffer - 1
-#         c_max = rngstencil[end] - buffer - 1
-#         if field
-#             stencil_full[buffer - stencil + 1] = dir == :x ? 
-#                                                 :(view(ψ.data, i+$c_min:i+$c_max, j, k)) :
-#                                                 dir == :y ? 
-#                                                 :(view(ψ.data, i, j+$c_min:j+$c_max, k)) :
-#                                                 :(view(ψ.data, i, j, k+$c_min:k+$c_max)) 
-#         else
-#             stencil_full[buffer - stencil + 1] = dir == :x ? 
-#                                                 :(view(ψ, i+$c_min:i+$c_max, j, k)) :
-#                                                 dir == :y ? 
-#                                                 :(view(ψ, i, j+$c_min:j+$c_max, k)) :
-#                                                 :(view(ψ, i, j, k+$c_min:k+$c_max)) 
-#         end
 #     end
 #     return :($(stencil_full...),)
 # end
@@ -503,12 +433,82 @@ end
 
 #     for buffer in [2, 3, 4, 5, 6]
 #         @eval begin
-#             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Field, args...)         = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, true))
-#             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::AbstractArray, args...) = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, false))
-#             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...)      = @inbounds $(calc_weno_stencil_function(buffer, side, dir))
+#             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false))
+#             @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true))
 #         end
 #     end
 # end
+
+@inline function calc_weno_stencil_function(buffer, shift, dir) 
+    N = buffer * 2
+    if shift != :none
+        N -=1
+    end
+    stencil_full = Vector(undef, buffer)
+    rng = 1:N
+    if shift == :right
+        rng = rng .+ 1
+    end
+    for stencil in 1:buffer
+        stencil_point = Vector(undef, buffer)
+        rngstencil = rng[stencil:stencil+buffer-1]
+        for (idx, n) in enumerate(rngstencil)
+            c = n - buffer - 1
+            stencil_point[idx] =  dir == :x ? 
+                                  :(ψ(i + $c, j, k, args...)) :
+                                  dir == :y ?
+                                  :(ψ(i, j + $c, k, args...)) :
+                                  :(ψ(i, j, k + $c, args...))
+        end
+        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
+    end
+    return :($(stencil_full...),)
+end
+
+@inline function calc_weno_stencil_variable(buffer, shift, dir, field::Bool = false) 
+    N = buffer * 2
+    if shift != :none
+        N -=1
+    end
+    stencil_full = Vector(undef, buffer)
+    rng = 1:N
+    if shift == :right
+        rng = rng .+ 1
+    end
+    for stencil in 1:buffer
+        rngstencil = rng[stencil:stencil+buffer-1]
+        c_min = rngstencil[1] - buffer - 1
+        c_max = rngstencil[end] - buffer - 1
+        if field
+            stencil_full[buffer - stencil + 1] = dir == :x ? 
+                                                :(view(ψ.data, i+$c_min:i+$c_max, j, k)) :
+                                                dir == :y ? 
+                                                :(view(ψ.data, i, j+$c_min:j+$c_max, k)) :
+                                                :(view(ψ.data, i, j, k+$c_min:k+$c_max)) 
+        else
+            stencil_full[buffer - stencil + 1] = dir == :x ? 
+                                                :(view(ψ, i+$c_min:i+$c_max, j, k)) :
+                                                dir == :y ? 
+                                                :(view(ψ, i, j+$c_min:j+$c_max, k)) :
+                                                :(view(ψ, i, j, k+$c_min:k+$c_max)) 
+        end
+    end
+    return :($(stencil_full...),)
+end
+
+# Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
+# where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
+for side in (:left, :right), dir in (:x, :y, :z)
+    stencil = Symbol(side, :_stencil_, dir)
+
+    for buffer in [2, 3, 4, 5, 6]
+        @eval begin
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Field, args...)         = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, true))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::AbstractArray, args...) = @inbounds $(calc_weno_stencil_variable(buffer, side, dir, false))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...)      = @inbounds $(calc_weno_stencil_function(buffer, side, dir))
+        end
+    end
+end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
