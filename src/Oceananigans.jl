@@ -242,6 +242,7 @@ include("MultiRegion/MultiRegion.jl")
 #####
 
 using .Logger
+using .MyCUDABackend
 using .Architectures
 using .Utils
 using .Advection
