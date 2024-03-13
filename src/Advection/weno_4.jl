@@ -126,7 +126,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(0)))
             α  = @fastmath C / (βU + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
-            glob = β
+            glob = βU
             sol1 = ψ̅ * C
             wei1 = C
             sol2 = ψ̅ * α  
@@ -141,7 +141,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(1)))
             α  = @fastmath C / (βU + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(1))
+            glob += add_global_smoothness(glob, βU, Val(N), Val(1))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -156,7 +156,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(2)))
             α  = @fastmath C / (βU + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(2))
+            glob += add_global_smoothness(glob, βU, Val(N), Val(2))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -171,7 +171,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(3)))
             α  = @fastmath C / (βU + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(3))
+            glob += add_global_smoothness(glob, βU, Val(N), Val(3))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -191,7 +191,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(0)))
             α  = @fastmath C / (βϕ + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
-            glob = β
+            glob = βϕ
             sol1 = ψ̅ * C
             wei1 = C
             sol2 = ψ̅ * α  
@@ -203,7 +203,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(1)))
             α  = @fastmath C / (βϕ + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(1))
+            glob += add_global_smoothness(glob, βϕ, Val(N), Val(1))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -215,7 +215,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(2)))
             α  = @fastmath C / (βϕ + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(2))
+            glob += add_global_smoothness(glob, βϕ, Val(N), Val(2))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -227,7 +227,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(3)))
             α  = @fastmath C / (βϕ + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(3))
+            glob += add_global_smoothness(glob, βϕ, Val(N), Val(3))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
