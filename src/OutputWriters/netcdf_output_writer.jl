@@ -172,6 +172,7 @@ end
                                    dimensions = Dict(),
                            overwrite_existing = false,
                                  deflatelevel = 0,
+                                         part = 1,
                                  max_filesize = Inf,
                                       verbose = false)
 
@@ -220,6 +221,9 @@ Keyword arguments
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
                   and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
+
+- `part`: The starting part number used if `max_filesize` is finite.
+          Default: 1.
 
 - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
                   and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
