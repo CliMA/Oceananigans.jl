@@ -97,7 +97,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
                                   minimum_turbulent_kinetic_energy = 1e-6,
-                                  minimum_convective_buoyancy_flux = 1e-8,
+                                  minimum_convective_buoyancy_flux = 1e-11,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
@@ -121,8 +121,6 @@ function with_tracers(tracer_names, closure::FlavorOfCATKE)
     return closure
 end
 
-@inline viscosity(::FlavorOfCATKE, diffusivity_fields) = diffusivity_fields.κᵘ
-@inline diffusivity(::FlavorOfCATKE, diffusivity_fields, ::Val{id}) where id = diffusivity_fields._tupled_tracer_diffusivity_fields[id]
 
 #####
 ##### Show

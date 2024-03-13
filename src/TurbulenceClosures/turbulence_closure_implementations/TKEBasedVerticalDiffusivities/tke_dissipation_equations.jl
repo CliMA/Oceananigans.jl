@@ -18,29 +18,37 @@ end
 ##### TKE equation
 #####
 
-@inline closure_source_term(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, ::Val{:k}, velocities, tracers, buoyancy) =
-    shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) + 
-       buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) -
-         dissipation(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+@inline function closure_source_term(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, ::Val{:e},
+                                     velocities, tracers, buoyancy)
 
-@inline function shear_production(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, velocities, tracers, buoyancy)
+    P = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+    wb = buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+    ϵ = @inbounds tracers.ϵ[i, j, k]
+
+    return P + wb - ϵ
+end
+
+@inline function shear_production(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields,
+                                  velocities, tracers, buoyancy)
     u = velocities.u
     v = velocities.v
-    κᵘ = diffusivity_fields.κᵘ
-    return shear_production(i, j, k, grid, κᵘ, u, v)
+    κu = diffusivity_fields.κu
+    return shear_production(i, j, k, grid, κu, u, v)
 end
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, velocities, tracers, buoyancy) =
-    explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κᶜ)
+    explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
 
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfKEpsilon{<:VITD}, diffusivity_fields, velocities, tracers, buoyancy)
-    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κᶜ)
-    kⁱʲᵏ = @inbounds tracers.k[i, j, k]
+@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfKEpsilon{<:VITD}, diffusivity_fields,
+                               velocities, tracers, buoyancy)
+
+    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
+    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     closure_ij = getclosure(i, j, closure)
-    kᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
 
-    dissipative_buoyancy_flux = (sign(wb) * sign(kⁱʲᵏ) < 0) & (kⁱʲᵏ > kᵐⁱⁿ)
+    dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
@@ -54,43 +62,55 @@ end
 ##### Dissipation equation
 #####
 
-@inline function closure_source_term(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, ::Val{:ϵ}, velocities, tracers, buoyancy)
-    ϵ = @inbounds tracers.ϵ[i, j, k]
-    k = @inbounds tracers.k[i, j, k]
-    kᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
-    k̃ = min(kᵐⁱⁿ, k)
+@inline function closure_source_term(i, j, k, grid, closure::FlavorOfKEpsilon, diffusivity_fields, ::Val{:ϵ},
+                                     velocities, tracers, buoyancy)
 
-    Pᵏ = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
-    Dᵋ = dissipation_destruction(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
-    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κᶜ)
-
+    ϵⁱʲᵏ = @inbounds tracers.ϵ[i, j, k]
+    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     closure_ij = getclosure(i, j, closure)
-    Cᴾϵ = closure_ij.dissipation_equation.Cᴾϵ 
-    Cᴮϵ = closure_ij.dissipation_equation.Cᴮϵ 
 
-    # Explicit/implicit buoyancy flux term in dissipation equation
-    Bᵋ = dissipation_buoyancy_source(closure_ij, grid, wb, k̃)
+    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+    eˡⁱᵐ = min(eᵐⁱⁿ, eⁱʲᵏ)
 
     # Production of dissipation / reduction of mixing length by shear production of TKE
-    Pᵋ = Cᴾϵ * Pᵏ * ϵ / k̃ 
+    Pᵉ = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+    Cᴾϵ = closure_ij.tke_dissipation_equations.Cᴾϵ 
+    Pᵋ = Cᴾϵ * Pᵉ * ϵⁱʲᵏ / eˡⁱᵐ
 
-    return Pᵋ + Bᵋ - Dᵋ
+    # Production / destruction of dissipation by buoyancy fluxes
+    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
+    ωᴮ = dissipation_buoyancy_transformation_rate(closure_ij, wb, eⁱʲᵏ)
+
+    # Explicit/implicit buoyancy flux term in dissipation equation
+    ωᴰ = dissipation_destruction_rate(closure_ij, ϵⁱʲᵏ, eⁱʲᵏ)
+
+    return Pᵋ + ϵⁱʲᵏ * (ωᴮ - ωᴰ)
 end
 
-@inline dissipation_buoyancy_source(closure::FlavorOfKEpsilon, grid, wb, k) = closure.Cᴮϵ * wb / k
-
-@inline function dissipation_buoyancy_source(closure::FlavorOfKEpsilon{<:VITD}, grid, wb, k)
-    Bᵋ = closure.Cᴮϵ * wb / k
-    return max(zero(grid), Bᵋ)
+@inline function explicit_dissipation_buoyancy_transformation_rate(closure, wb, e)
+    Cᴮϵ = closure.tke_dissipation_equations.Cᴮϵ
+    eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
+    eˡⁱᵐ = min(eᵐⁱⁿ, e)
+    return Cᴮϵ * wb / eˡⁱᵐ
 end
 
-@inline function dissipation_destruction(i, j, k, grid, closure::FlavorOfKEpsilon, velocities, tracers, buoyancy, diffusivity_fields)
-    ϵ = @inbounds tracers.ϵ[i, j, k]
-    closure_ij = getclosure(i, j, closure)
-    Cᵋϵ = closure_ij.dissipation_equation.Cᵋϵ     
-    return Cᵋϵ * ϵ^2
+# Dissipation buoyancy source
+@inline dissipation_buoyancy_transformation_rate(closure::FlavorOfKEpsilon, wb, e) =
+    explicit_dissipation_buoyancy_transformation_rate(closure::FlavorOfKEpsilon, wb, e)
+
+@inline function dissipation_buoyancy_transformation_rate(closure::FlavorOfKEpsilon{<:VITD}, wb, e)
+    ωᴮ = explicit_dissipation_buoyancy_transformation_rate(closure, wb, e)
+    return max(zero(ωᴮ), ωᴮ)
 end
 
-@inline dissipation_destruction(i, j, k, grid, closure::FlavorOfKEpsilon{<:VITD}, args...) = zero(grid)
+@inline function explicit_dissipation_destruction_rate(closure, ϵ, e)
+    Cᵋϵ = closure.tke_dissipation_equations.Cᵋϵ
+    eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
+    eˡⁱᵐ = min(eᵐⁱⁿ, e)
+    return Cᵋϵ *  ϵ / eˡⁱᵐ
+end
 
+# Dissipation destruction
+@inline dissipation_destruction_rate(closure::FlavorOfKEpsilon, ϵ, e) = explicit_dissipation_destruction_rate(closure, ϵ, e)
+@inline dissipation_destruction_rate(closure::FlavorOfKEpsilon{<:VITD}, ϵ, e) = zero(ϵ)
 

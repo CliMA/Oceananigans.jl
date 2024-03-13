@@ -55,7 +55,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
 @inline νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
 
-@inline function shear_production(i, j, k, grid, ν, u, v)
+@inline function shear_production(i, j, k, grid, νₑ, u, v)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
     # loss of mean kinetic energy due to shear production --- but _not_ respecting the 

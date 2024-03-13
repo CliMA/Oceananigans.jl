@@ -31,7 +31,8 @@ coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
 #closures_to_run = [catke, ri_based]
-closures_to_run = [catke, tke_dissipation]
+closures_to_run = [catke, tke_dissipation] #, ri_based]
+#closures_to_run = [catke]
 
 for closure in closures_to_run
 
@@ -39,8 +40,8 @@ for closure in closures_to_run
         tracers = (:b, :e)
         closure_initial_conditions = (; e=1e-6)
     elseif closure isa TKEDissipationVerticalDiffusivity
-        tracers = (:b, :k, :ϵ)
-        closure_initial_conditions = (; k=1e-6, ϵ=1e-6)
+        tracers = (:b, :e, :ϵ)
+        closure_initial_conditions = (; e=1e-6, ϵ=1e-6)
     else
         tracers = :b
         closure_initial_conditions = NamedTuple()
@@ -53,17 +54,21 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model; b=bᵢ, closure_initial_conditions...)
 
-    simulation = Simulation(model; Δt=1minutes, stop_time)
+    Δt = 1e-2
+    #simulation = Simulation(model; Δt, stop_time)
+    simulation = Simulation(model; Δt, stop_iteration=5000)
+    pop!(simulation.callbacks, :nan_checker)
 
     closurename = string(nameof(typeof(closure)))
 
-    diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
-                     κᶜ = model.diffusivity_fields.κᶜ)
+    diffusivities = (κu = model.diffusivity_fields.κu,
+                     κc = model.diffusivity_fields.κc)
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          schedule = TimeInterval(20minutes),
+                                                          #schedule = TimeInterval(20minutes),
+                                                          schedule = IterationInterval(100),
                                                           filename = "windy_convection_" * closurename,
                                                           overwrite_existing = true)
 
@@ -84,8 +89,8 @@ b_ts = []
 u_ts = []
 v_ts = []
 e_ts = []
-κᶜ_ts = []
-κᵘ_ts = []
+κc_ts = []
+κu_ts = []
 
 for closure in closures_to_run
     closurename = string(nameof(typeof(closure)))
@@ -101,13 +106,13 @@ for closure in closures_to_run
         push!(e_ts, FieldTimeSeries(filepath, "k"))
     end
 
-    push!(κᶜ_ts, FieldTimeSeries(filepath, "κᶜ"))
-    push!(κᵘ_ts, FieldTimeSeries(filepath, "κᵘ"))
+    push!(κc_ts, FieldTimeSeries(filepath, "κc"))
+    push!(κu_ts, FieldTimeSeries(filepath, "κu"))
 end
 
 b1 = first(b_ts)
 e1 = first(e_ts)
-κ1 = first(κᶜ_ts)
+κ1 = first(κc_ts)
 @show maximum(e1)
 
 zc = znodes(b1)
@@ -141,8 +146,8 @@ for (i, closure) in enumerate(closures_to_run)
     un  = @lift interior(u_ts[i][$n], 1, 1, :)
     vn  = @lift interior(v_ts[i][$n], 1, 1, :)
     en  = @lift interior(e_ts[i][$n], 1, 1, :)
-    κᶜn = @lift interior(κᶜ_ts[i][$n], 1, 1, :)
-    κᵘn = @lift interior(κᵘ_ts[i][$n], 1, 1, :)
+    κcn = @lift interior(κc_ts[i][$n], 1, 1, :)
+    κun = @lift interior(κu_ts[i][$n], 1, 1, :)
     
     closurename = string(nameof(typeof(closure)))
 
@@ -150,8 +155,8 @@ for (i, closure) in enumerate(closures_to_run)
     lines!(axu, un,  zc, label="u, " * closurename, color=colors[i])
     lines!(axu, vn,  zc, label="v, " * closurename, linestyle=:dash, color=colors[i])
     lines!(axe, en,  zc, label="e, " * closurename, color=colors[i])
-    lines!(axκ, κᶜn, zf, label="κᶜ, " * closurename, color=colors[i])
-    lines!(axκ, κᵘn, zf, label="κᵘ, " * closurename, linestyle=:dash, color=colors[i])
+    lines!(axκ, κcn, zf, label="κc, " * closurename, color=colors[i])
+    lines!(axκ, κun, zf, label="κu, " * closurename, linestyle=:dash, color=colors[i])
 end
 
 axislegend(axb, position=:lb)
@@ -161,7 +166,7 @@ axislegend(axκ, position=:rb)
 
 display(fig)
 
-record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
-    n[] = nn
-end
+# record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
+#     n[] = nn
+# end
 

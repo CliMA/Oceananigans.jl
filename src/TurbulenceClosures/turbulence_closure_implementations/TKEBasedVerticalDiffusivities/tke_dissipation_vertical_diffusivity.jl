@@ -104,15 +104,14 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
 end
 
 function with_tracers(tracer_names, closure::FlavorOfKEpsilon)
-    :k ∈ tracer_names && :ϵ ∈ tracer_names ||
-        throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
+    :e ∈ tracer_names && :ϵ ∈ tracer_names ||
+        throw(ArgumentError("Tracers must contain :e and :ϵ to represent " *
+                            "turbulent kinetic energy and dissipation " *
                             "for `TKEDissipationVerticalDiffusivity`."))
 
     return closure
 end
 
-@inline viscosity(::FlavorOfKEpsilon, diffusivity_fields) = diffusivity_fields.κᵘ
-@inline diffusivity(::FlavorOfKEpsilon, diffusivity_fields, ::Val{id}) where id = diffusivity_fields._tupled_tracer_diffusivity_fields[id]
 
 #####
 ##### Show

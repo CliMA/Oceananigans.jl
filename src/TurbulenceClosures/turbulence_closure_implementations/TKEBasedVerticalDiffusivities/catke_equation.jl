@@ -1,9 +1,14 @@
 import Oceananigans.TurbulenceClosures: closure_source_term
 
-@inline closure_source_term(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, ::Val{:e}, velocities, tracers, buoyancy) =
-    shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) + 
-       buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy) -
-         dissipation(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+@inline function closure_source_term(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, ::Val{:e},
+                                     velocities, tracers, buoyancy)
+
+    P  = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+    wb =    buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+    ϵ  =      dissipation(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
+
+    return P + wb - ϵ
+end
 
 """
     struct CATKEEquation{FT}
@@ -24,27 +29,27 @@ end
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy)
     u = velocities.u
     v = velocities.v
-    κᵘ = diffusivity_fields.κᵘ
-    return shear_production(i, j, k, grid, κᵘ, u, v)
+    κu = diffusivity_fields.κu
+    return shear_production(i, j, k, grid, κu, u, v)
 end
 
 #=
 # Non-conservative reconstruction of buoyancy flux:
 @inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
     closure = getclosure(i, j, closure)
-    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Jᵇ)
+    κc = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Jᵇ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return - κᶜ * N²
+    return - κc * N²
 end
 =#
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy) =
-    explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κᶜ)
+    explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
 
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, diffusivity_fields, velocities, tracers, buoyancy)
-    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κᶜ)
+    wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     closure_ij = getclosure(i, j, closure)
@@ -68,24 +73,22 @@ end
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     Jᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
+    ℓh = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
     σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    #ℓ★ = ℓ★ / σᴰ
-    ℓ★ = ℓ★ * σᴰ
+    ℓ★ = ℓ★ / σᴰ
 
     # Dissipation length
-    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓᴰ = max(ℓ★, ℓʰ)
+    ℓD = max(ℓ★, ℓh)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-
-    return min(H, ℓᴰ)
+    return min(H, ℓD)
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)
