@@ -387,7 +387,21 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
     dataset, outputs = initialize_nc_file!(filepath, outputs, schedule, array_type, indices, with_halos, global_attributes, output_attributes, dimensions, overwrite_existing, deflatelevel, model)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, array_type, indices, with_halos, global_attributes, output_attributes, dimensions, overwrite_existing, deflatelevel, previous, max_filesize, verbose)
+    return NetCDFOutputWriter(filepath,
+                              dataset,
+                              outputs,
+                              schedule,
+                              array_type,
+                              indices,
+                              with_halos,
+                              global_attributes,
+                              output_attributes,
+                              dimensions,
+                              overwrite_existing,
+                              deflatelevel,
+                              previous,
+                              max_filesize,
+                              verbose)
 end
 
 get_default_dimension_attributes(::RectilinearGrid) =
