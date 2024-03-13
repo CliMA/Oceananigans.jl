@@ -1,4 +1,3 @@
-
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β  = Symbol(side, :_biased_β)
@@ -8,6 +7,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     stencil_u = Symbol(:tangential_, side, :_stencil_u)
     stencil_v = Symbol(:tangential_, side, :_stencil_v)
 
+    @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{4, FT}, 
                                             ψ, idx, loc, args...) where {FT}
