@@ -1,6 +1,6 @@
 using Oceananigans.Fields: Field
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
-using KernelAbstractions: @localmem
+using KernelAbstractions: @localmem, @index, @uniform, @groupsize
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -336,7 +336,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         
         
             M = @uniform @groupsize()[$dir]
-
+            tix = @index(Local,  NTuple)
+            tix = tix[$dir]
             wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
@@ -364,7 +365,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             M = @uniform @groupsize()[$dir]
-
+            tix = @index(Local,  NTuple)
+            tix = tix[$dir]
             wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
@@ -396,7 +398,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
             M = @uniform @groupsize()[$dir]
-
+            tix = @index(Local,  NTuple)
+            tix = tix[$dir]
             wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
