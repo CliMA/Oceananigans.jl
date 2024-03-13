@@ -1,3 +1,6 @@
+using Oceananigans.Fields: Field
+using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
 #
@@ -181,11 +184,49 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
-@inline function beta_sum(::Val{buffer}, β₁, β₂) where buffer
-    @unroll for i in 1:buffer
-        @inbounds β₁[i] = (β₁[i] + β₂[i]) / 2
-    end
-    return β₁
+@inline function beta_sum(::Val{2}, βᵤ, βᵥ)
+    β₀ = (βᵤ[1] + βᵥ[1]) / 2
+    β₁ = (βᵤ[2] + βᵥ[2]) / 2
+
+    return (β₀, β₁)
+end
+
+@inline function beta_sum(::Val{3}, βᵤ, βᵥ) 
+    β₀ = (βᵤ[1] + βᵥ[1]) / 2
+    β₁ = (βᵤ[2] + βᵥ[2]) / 2
+    β₂ = (βᵤ[3] + βᵥ[3]) / 2
+
+    return (β₀, β₁, β₂)
+end
+
+@inline function beta_sum(::Val{4}, βᵤ, βᵥ) 
+    β₀ = (βᵤ[1] + βᵥ[1]) / 2
+    β₁ = (βᵤ[2] + βᵥ[2]) / 2
+    β₂ = (βᵤ[3] + βᵥ[3]) / 2
+    β₃ = (βᵤ[4] + βᵥ[4]) / 2
+
+    return (β₀, β₁, β₂, β₃)
+end
+
+@inline function beta_sum(::Val{5}, βᵤ, βᵥ) 
+    β₀ = (βᵤ[1] + βᵥ[1]) / 2
+    β₁ = (βᵤ[2] + βᵥ[2]) / 2
+    β₂ = (βᵤ[3] + βᵥ[3]) / 2
+    β₃ = (βᵤ[4] + βᵥ[4]) / 2
+    β₄ = (βᵤ[5] + βᵥ[5]) / 2
+
+    return (β₀, β₁, β₂, β₃, β₄)
+end
+
+@inline function beta_sum(::Val{6}, βᵤ, βᵥ) 
+    β₀ = (βᵤ[1] + βᵥ[1]) / 2
+    β₁ = (βᵤ[2] + βᵥ[2]) / 2
+    β₂ = (βᵤ[3] + βᵥ[3]) / 2
+    β₃ = (βᵤ[4] + βᵥ[4]) / 2
+    β₄ = (βᵤ[5] + βᵥ[5]) / 2
+    β₅ = (βᵤ[6] + βᵥ[6]) / 2
+
+    return (β₀, β₁, β₂, β₃, β₄, β₅)
 end
 
 @inline function zweno_alpha_loop(scheme::WENO{2, FT}, β, τ, coeff) where FT
@@ -455,8 +496,6 @@ end
 #     return :($(stencil_full...),)
 # end
 
-# using Oceananigans.Fields: Field
-
 # # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
 # for side in (:left, :right), dir in (:x, :y, :z)
@@ -473,8 +512,6 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
-
 @inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
 @inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds @fastmath left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
 @inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
