@@ -237,12 +237,11 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
 @inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
 
-#@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
-@inline ϕ²(i, j, k, grid, ϕ::AbstractArray) = @inbounds ϕ[i, j, k]^2
+@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ², velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ², velocities.v)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     return ∂z_u² + ∂z_v²
 end
 
