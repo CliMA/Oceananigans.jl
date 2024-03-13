@@ -183,7 +183,7 @@ end
 
 @inline function beta_sum(::Val{buffer}, β₁, β₂) where buffer
     @unroll for i in 1:buffer
-        @ibounds β₁[i] = (β₁[i] + β₂[i]) / 2
+        @inbounds β₁[i] = (β₁[i] + β₂[i]) / 2
     end
     return β₁
 end
