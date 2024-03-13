@@ -303,11 +303,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
         
-            wei1 = FT(0)
-            wei2 = FT(0)
-            sol1 = FT(0)
-            sol2 = FT(0)
-            glob = FT(0)
+            wei1 = Ref(FT(0))
+            wei2 = Ref(FT(0))
+            sol1 = Ref(FT(0))
+            sol2 = Ref(FT(0))
+            glob = Ref(FT(0))
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -315,27 +315,25 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob += 1 #add_global_smoothness(glob, β, Val(N), Val(s))
-                sol1 += ψ̅ * C
-                sol2 += ψ̅ * α  
-                wei1 += α
-                wei2 += C
+                glob[] += add_global_smoothness(glob[], β, Val(N), Val(s))
+                sol1[] += ψ̅ * C
+                sol2[] += ψ̅ * α  
+                wei1[] += α
+                wei2[] += C
             end
 
-            glob = glob * glob
-
-            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
         
-            wei1 = FT(0)
-            wei2 = FT(0)
-            sol1 = FT(0)
-            sol2 = FT(0)
-            glob = FT(0)
+            wei1 = Ref(FT(0))
+            wei2 = Ref(FT(0))
+            sol1 = Ref(FT(0))
+            sol2 = Ref(FT(0))
+            glob = Ref(FT(0))
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -343,25 +341,25 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob += 1 # add_global_smoothness(glob, β, Val(N), Val(s))
-                sol1 += ψ̅ * C
-                sol2 += ψ̅ * α  
-                wei1 += α
-                wei2 += C
+                glob[] += add_global_smoothness(glob[], β, Val(N), Val(s))
+                sol1[] += ψ̅ * C
+                sol2[] += ψ̅ * α  
+                wei1[] += α
+                wei2[] += C
             end
 
-            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
+            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
 
-            wei1 = FT(0)
-            wei2 = FT(0)
-            sol1 = FT(0)
-            sol2 = FT(0)
-            glob = FT(0)
+            wei1 = Ref(FT(0))
+            wei2 = Ref(FT(0))
+            sol1 = Ref(FT(0))
+            sol2 = Ref(FT(0))
+            glob = Ref(FT(0))
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
@@ -373,25 +371,25 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (βU + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob += 1 # add_global_smoothness(glob, βU, Val(N), Val(s))
-                sol1 += ψ̅ * C
-                sol2 += ψ̅ * α  
-                wei1 += α
-                wei2 += C
+                glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
+                sol1[] += ψ̅ * C
+                sol2[] += ψ̅ * α  
+                wei1[] += α
+                wei2[] += C
             end
 
-            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
+            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            wei1 = FT(0)
-            wei2 = FT(0)
-            sol1 = FT(0)
-            sol2 = FT(0)
-            glob = FT(0)
+            wei1 = Ref(FT(0))
+            wei2 = Ref(FT(0))
+            sol1 = Ref(FT(0))
+            sol2 = Ref(FT(0))
+            glob = Ref(FT(0))
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -400,14 +398,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (βϕ + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob += 1 # add_global_smoothness(glob, βϕ, Val(N), Val(s))
-                sol1 += ψ̅ * C
-                sol2 += ψ̅ * α  
-                wei1 += α
-                wei2 += C
+                glob[] += add_global_smoothness(glob[], βϕ, Val(N), Val(s))
+                sol1[] += ψ̅ * C
+                sol2[] += ψ̅ * α  
+                wei1[] += α
+                wei2[] += C
             end
 
-            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
+            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
         end
     end
 end
