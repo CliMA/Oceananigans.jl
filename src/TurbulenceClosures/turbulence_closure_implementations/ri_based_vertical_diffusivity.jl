@@ -1,10 +1,11 @@
 using Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
+struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT
     κᶜᵃ :: FT
@@ -13,6 +14,7 @@ struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, Ve
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
+    Ri_horizontal_filtering :: HR
     maximum_diffusivity :: FT
     maximum_viscosity :: FT
 end
@@ -25,12 +27,14 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R,
+                                        Ri_horizontal_filtering::HR,
                                         maximum_diffusivity::FT,
-                                        maximum_viscosity::FT) where {TD, FT, R}
+                                        maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
 
     return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering,
+                                                 Ri_horizontal_filtering,
                                                  maximum_diffusivity,
                                                  maximum_viscosity)
 end
@@ -44,10 +48,15 @@ Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDepen
 Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering" 
 Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering" 
 
+struct FivePointFilter end
+
 """
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                FT = Float64;]
                                Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
+                               Ri_horizontal_filtering = nothing,
+                               maximum_diffusivity = Inf,
+                               maximum_viscosity = Inf,
                                ν₀  = 0.7,
                                κ₀  = 0.5,
                                κᶜᵃ = 1.7,
@@ -79,23 +88,23 @@ Keyword arguments
   `HyperbolicTangentRiDependentTapering()` (default), and
   `ExponentialRiDependentTapering()`.
 
-* `ν₀`: Non-convective viscosity.
+* `ν₀`: Non-convective viscosity (units of kinematic viscosity, typically m² s⁻¹).
 
-* `κ₀`: Non-convective diffusivity for tracers.
+* `κ₀`: Non-convective diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
-* `κᶜᵃ`: Convective adjustment diffusivity for tracers.
+* `κᶜᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
-* `Cᵉⁿ`: Entrainment coefficient for tracers.
+* `Cᵉⁿ`: Entrainment coefficient for tracers (non-dimensional).
 
-* `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity.
+* `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity (non-dimensional).
 
-* `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
+* `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity (non-dimensional).
 
-* `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
+* `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0 (non-dimensional).
 
-* `maximum_diffusivity`: A cap on the diffusivity
+* `maximum_diffusivity`: A limiting maximum tracer diffusivity (units of diffusivity, typically m² s⁻¹).
 
-* `maximum_viscosity`: A cap on viscosity
+* `maximum_viscosity`: A limiting maximum viscosity (units of kinematic viscosity, typically m² s⁻¹).
 
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -182,6 +191,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
             top_tracer_bcs,
             clock)
 
+    fill_halo_regions!(diffusivities.Ri)
+
     launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,
             diffusivities,
@@ -208,18 +219,17 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline taper(::Exp,    x::T, x₀, δ) where T = exp(- max(zero(T), (x - x₀) / δ))
 @inline taper(::Tanh,   x::T, x₀, δ) where T = (one(T) - tanh((x - x₀) / δ)) / 2
 
-@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
+#@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
+@inline ϕ²(i, j, k, grid, ϕ::AbstractArray) = @inbounds ϕ[i, j, k]^2
 
 @inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ², velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ², velocities.v)
     return ∂z_u² + ∂z_v²
 end
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    S² = ∂z_u² + ∂z_v²
+    S² = shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     Ri = N² / S²
 
@@ -272,10 +282,13 @@ end
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
+    κᵉⁿ = zero(grid) #ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
+
+    # Average the Richardson number horizontally
+    # Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
+    Ri = @inbounds diffusivities.Ri[i, j, k]
 
     # Shear mixing diffusivity and viscosity
-    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κᶜ★ = κ₀ * τ
     κᵘ★ = ν₀ * τ
@@ -289,8 +302,8 @@ end
     κᵘ⁺ = κᵘ★
 
     # Limit by specified maximum
-    κᶜ⁺ = max(κᶜ⁺, closure_ij.maximum_diffusivity) 
-    κᵘ⁺ = max(κᵘ⁺, closure_ij.maximum_viscosity) 
+    κᶜ⁺ = min(κᶜ⁺, closure_ij.maximum_diffusivity) 
+    κᵘ⁺ = min(κᵘ⁺, closure_ij.maximum_viscosity) 
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
@@ -315,10 +328,12 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, summary(closure), '\n')
     print(io, "├── Ri_dependent_tapering: ", prettysummary(closure.Ri_dependent_tapering), '\n')
     print(io, "├── κ₀: ", prettysummary(closure.κ₀), '\n')
+    print(io, "├── ν₀: ", prettysummary(closure.ν₀), '\n')
     print(io, "├── κᶜᵃ: ", prettysummary(closure.κᶜᵃ), '\n')
     print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
     print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
     print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')
+    print(io, "├── Riᵟ: ", prettysummary(closure.Riᵟ), '\n')
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
