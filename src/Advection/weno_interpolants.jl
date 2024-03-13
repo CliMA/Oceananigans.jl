@@ -315,7 +315,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                glob += 1 #add_global_smoothness(glob, β, Val(N), Val(s))
                 sol1 += ψ̅ * C
                 sol2 += ψ̅ * α  
                 wei1 += α
@@ -343,7 +343,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                glob += 1 # add_global_smoothness(glob, β, Val(N), Val(s))
                 sol1 += ψ̅ * C
                 sol2 += ψ̅ * α  
                 wei1 += α
@@ -373,7 +373,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (βU + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob = add_global_smoothness(glob, βU, Val(N), Val(s))
+                glob += 1 # add_global_smoothness(glob, βU, Val(N), Val(s))
                 sol1 += ψ̅ * C
                 sol2 += ψ̅ * α  
                 wei1 += α
@@ -400,7 +400,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (βϕ + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                glob = add_global_smoothness(glob, βϕ, Val(N), Val(s))
+                glob += 1 # add_global_smoothness(glob, βϕ, Val(N), Val(s))
                 sol1 += ψ̅ * C
                 sol2 += ψ̅ * α  
                 wei1 += α

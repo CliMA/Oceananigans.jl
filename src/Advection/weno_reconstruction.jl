@@ -138,8 +138,6 @@ Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1)
 
 Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, WF, PP}) where {N, FT, RX, RY, RZ, WF, PP} =
     print(io, summary(a), " \n",
-              " Smoothness formulation: ", "\n",
-              "    └── $(WF ? "Z-weno" : "JS-weno") \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
               " Boundary scheme: ", "\n",
               "    └── ", summary(a.buffer_scheme) , "\n",
