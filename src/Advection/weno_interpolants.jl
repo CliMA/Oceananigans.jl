@@ -327,6 +327,33 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
+                                            scheme::WENO{N, FT}, 
+                                            ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+        
+            wei1 = 0
+            wei2 = 0
+            sol1 = 0
+            sol2 = 0
+            glob = 0
+            @unroll for s in 1:N
+                ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
+                β  = $biased_β(ψs, scheme, Val(s-1))
+                C  = FT($coeff(scheme, Val(s-1)))
+                α  = @inbounds @fastmath C / (β + FT(ε))^2
+                ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, idx) 
+                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                sol1 += ψ̅ * C
+                sol2 += ψ̅ * α  
+                wei1 += α
+                wei2 += C
+            end
+
+            glob = glob * glob
+
+            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+        end
+
+        @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
 
