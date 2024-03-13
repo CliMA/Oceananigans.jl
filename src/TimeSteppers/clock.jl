@@ -14,7 +14,7 @@ either a number or a `DateTime` object.
 """
 mutable struct Clock{T, FT}
          time :: T
-           Δt :: FT
+      last_Δt :: FT
     iteration :: Int
         stage :: Int
 end
@@ -25,12 +25,12 @@ end
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage`.
 """
-Clock(; time::T, Δt::FT = Inf, iteration=0, stage=1) where {T, FT} = Clock{T, FT}(time, Δt, iteration, stage)
+Clock(; time::T, last_Δt::FT = Inf, iteration=0, stage=1) where {T, FT} = Clock{T, FT}(time, last_Δt, iteration, stage)
 
-Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), Δt=$(prettytime(clock.Δt)))")
+Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), last_Δt=$(prettytime(clock.last_Δt)))")
 
 Base.show(io::IO, c::Clock{T}) where T =
-    println(io, "Clock{$T}: time = $(prettytime(c.time)), Δt = $(prettytime(c.Δt)), iteration = $(c.iteration), stage = $(c.stage)")
+    println(io, "Clock{$T}: time = $(prettytime(c.time)), last_Δt = $(prettytime(c.last_Δt)), iteration = $(c.iteration), stage = $(c.stage)")
 
 next_time(clock, Δt) = clock.time + Δt
 next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
@@ -53,7 +53,7 @@ function tick!(clock, Δt; stage=false)
 
     tick_time!(clock, Δt)
 
-    clock.Δt = Δt
+    clock.last_Δt = Δt
 
     if stage # tick a stage update
         clock.stage += 1
