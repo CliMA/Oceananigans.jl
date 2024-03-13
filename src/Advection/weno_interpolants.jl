@@ -304,13 +304,12 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
-        
-                                            
-            scheme.wrk1[i, j, k] = zero(grid)
-            scheme.wrk2[i, j, k] = zero(grid)
-            scheme.wrk3[i, j, k] = zero(grid)
-            scheme.wrk4[i, j, k] = zero(grid)
-            scheme.wrk5[i, j, k] = zero(grid)
+                                                
+            wrk1 = @localmem FT (5, )
+            wrk2 = @localmem FT (5, )
+            wrk3 = @localmem FT (5, )
+            wrk4 = @localmem FT (5, )
+            wrk5 = @localmem FT (5, )
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
