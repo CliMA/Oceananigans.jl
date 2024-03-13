@@ -306,10 +306,10 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             ψ, idx, loc, args...) where {N, FT}
                                         
                                             
-            M   = @uniform @groupsize()[$dir]
+            # M   = @uniform @groupsize()[$dir]
             tix = @index(Local,  NTuple)
             tix = tix[$dir]
-            wrk = @localmem FT (5, M)
+            wrk = @localmem FT (5, 10)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -336,10 +336,10 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
         
         
-            M   = @uniform @groupsize()[$dir]
+            # M   = @uniform @groupsize()[$dir]
             tix = @index(Local,  NTuple)
             tix = tix[$dir]
-            wrk = @localmem FT (5, M)
+            wrk = @localmem FT (5, 10)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -365,10 +365,10 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT}
 
-            M   = @uniform @groupsize()[$dir]
+            # M   = @uniform @groupsize()[$dir]
             tix = @index(Local,  NTuple)
             tix = tix[$dir]
-            wrk = @localmem FT (5, M)
+            wrk = @localmem FT (5, 10)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
@@ -398,10 +398,10 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            M   = @uniform @groupsize()[$dir]
+            # M   = @uniform @groupsize()[$dir]
             tix = @index(Local,  NTuple)
             tix = tix[$dir]
-            wrk = @localmem FT (5, M)
+            wrk = @localmem FT (5, 10)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
