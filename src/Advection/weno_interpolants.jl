@@ -304,12 +304,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
-                                                
-            wrk1 = @localmem FT (5, )
-            wrk2 = @localmem FT (5, )
-            wrk3 = @localmem FT (5, )
-            wrk4 = @localmem FT (5, )
-            wrk5 = @localmem FT (5, )
+                                        
+                                            
+            M = @uniform @groupsize()[$dir]
+
+            wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -317,29 +316,28 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                scheme.wrk1[i, j, k] += add_global_smoothness(β, Val(N), Val(s))
-                scheme.wrk2[i, j, k] += ψ̅ * C
-                scheme.wrk3[i, j, k] += C
-                scheme.wrk4[i, j, k] += ψ̅ * α  
-                scheme.wrk5[i, j, k] += α
+                wrk[1, tix] += add_global_smoothness(β, Val(N), Val(s))
+                wrk[2, tix] += ψ̅ * C
+                wrk[3, tix] += C
+                wrk[4, tix] += ψ̅ * α  
+                wrk[5, tix] += α
             end
 
-            scheme.wrk4[i, j, k] *= scheme.wrk1[i, j, k]
-            scheme.wrk5[i, j, k] *= scheme.wrk1[i, j, k]
+            wrk[4, tix] *= wrk[1, tix]
+            wrk[5, tix] *= wrk[1, tix]
 
             # Is glob squared here?
-            return (scheme.wrk2[i, j, k] + scheme.wrk4[i, j, k]) / (scheme.wrk3[i, j, k] + scheme.wrk5[i, j, k])
+            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
         
-            scheme.wrk1[i, j, k] = zero(grid)
-            scheme.wrk2[i, j, k] = zero(grid)
-            scheme.wrk3[i, j, k] = zero(grid)
-            scheme.wrk4[i, j, k] = zero(grid)
-            scheme.wrk5[i, j, k] = zero(grid)
+        
+            M = @uniform @groupsize()[$dir]
+
+            wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -347,29 +345,27 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                scheme.wrk1[i, j, k] += add_global_smoothness(β, Val(N), Val(s))
-                scheme.wrk2[i, j, k] += ψ̅ * C
-                scheme.wrk3[i, j, k] += C
-                scheme.wrk4[i, j, k] += ψ̅ * α  
-                scheme.wrk5[i, j, k] += α
+                wrk[1, tix] += add_global_smoothness(β, Val(N), Val(s))
+                wrk[2, tix] += ψ̅ * C
+                wrk[3, tix] += C
+                wrk[4, tix] += ψ̅ * α  
+                wrk[5, tix] += α
             end
 
-            scheme.wrk4[i, j, k] *= scheme.wrk1[i, j, k]
-            scheme.wrk5[i, j, k] *= scheme.wrk1[i, j, k]
+            wrk[4, tix] *= wrk[1, tix]
+            wrk[5, tix] *= wrk[1, tix]
 
             # Is glob squared here?
-            return (scheme.wrk2[i, j, k] + scheme.wrk4[i, j, k]) / (scheme.wrk3[i, j, k] + scheme.wrk5[i, j, k])
+            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT}
 
-            scheme.wrk1[i, j, k] = zero(grid)
-            scheme.wrk2[i, j, k] = zero(grid)
-            scheme.wrk3[i, j, k] = zero(grid)
-            scheme.wrk4[i, j, k] = zero(grid)
-            scheme.wrk5[i, j, k] = zero(grid)
+            M = @uniform @groupsize()[$dir]
+
+            wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
@@ -381,29 +377,27 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (βU + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                scheme.wrk1[i, j, k] += add_global_smoothness(βU, Val(N), Val(s))
-                scheme.wrk2[i, j, k] += ψ̅ * C
-                scheme.wrk3[i, j, k] += C
-                scheme.wrk4[i, j, k] += ψ̅ * α  
-                scheme.wrk5[i, j, k] += α
+                wrk[1, tix] += add_global_smoothness(βU, Val(N), Val(s))
+                wrk[2, tix] += ψ̅ * C
+                wrk[3, tix] += C
+                wrk[4, tix] += ψ̅ * α  
+                wrk[5, tix] += α
             end
 
-            scheme.wrk4[i, j, k] *= scheme.wrk1[i, j, k]
-            scheme.wrk5[i, j, k] *= scheme.wrk1[i, j, k]
+            wrk[4, tix] *= wrk[1, tix]
+            wrk[5, tix] *= wrk[1, tix]
 
             # Is glob squared here?
-            return (scheme.wrk2[i, j, k] + scheme.wrk4[i, j, k]) / (scheme.wrk3[i, j, k] + scheme.wrk5[i, j, k])
+            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            scheme.wrk1[i, j, k] = zero(grid)
-            scheme.wrk2[i, j, k] = zero(grid)
-            scheme.wrk3[i, j, k] = zero(grid)
-            scheme.wrk4[i, j, k] = zero(grid)
-            scheme.wrk5[i, j, k] = zero(grid)
+            M = @uniform @groupsize()[$dir]
+
+            wrk = @localmem FT (5, M)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -412,18 +406,18 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (βϕ + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                scheme.wrk1[i, j, k] += add_global_smoothness(βϕ, Val(N), Val(s))
-                scheme.wrk2[i, j, k] += ψ̅ * C
-                scheme.wrk3[i, j, k] += C
-                scheme.wrk4[i, j, k] += ψ̅ * α  
-                scheme.wrk5[i, j, k] += α
+                wrk[1, tix] += add_global_smoothness(βϕ, Val(N), Val(s))
+                wrk[2, tix] += ψ̅ * C
+                wrk[3, tix] += C
+                wrk[4, tix] += ψ̅ * α  
+                wrk[5, tix] += α
             end
 
-            scheme.wrk4[i, j, k] *= scheme.wrk1[i, j, k]
-            scheme.wrk5[i, j, k] *= scheme.wrk1[i, j, k]
+            wrk[4, tix] *= wrk[1, tix]
+            wrk[5, tix] *= wrk[1, tix]
 
             # Is glob squared here?
-            return (scheme.wrk2[i, j, k] + scheme.wrk4[i, j, k]) / (scheme.wrk3[i, j, k] + scheme.wrk5[i, j, k])
+            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
         end
     end
 end
