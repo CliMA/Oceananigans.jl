@@ -181,7 +181,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{4, FT}, tid, wrk, 
+                                             scheme::WENO{4, FT},
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {FT}
 
             ψs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
