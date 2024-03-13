@@ -194,7 +194,6 @@ function tracer_tendency_kernel_function end
 #####
 
 # Basics
-include("MyCUDABackend.jl")
 include("Architectures.jl")
 include("Units.jl")
 include("Grids/Grids.jl")
@@ -242,7 +241,6 @@ include("MultiRegion/MultiRegion.jl")
 #####
 
 using .Logger
-using .MyCUDABackend
 using .Architectures
 using .Utils
 using .Advection
