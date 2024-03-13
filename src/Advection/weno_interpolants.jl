@@ -201,12 +201,12 @@ end
 @inline add_global_smoothness(τ, β, ::Val{5}, ::Val{4}) = τ + 2β
 @inline add_global_smoothness(τ, β, ::Val{5}, ::Val{5}) = τ +  β
 
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{1}) = τ +    β
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{2}) = τ +  36β
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{3}) = τ + 135β
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{4}) = τ - 135β
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{5}) = τ -  36β
-@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{6}) = τ -    β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{1}) = τ +  β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{2}) = τ +  β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{3}) = τ - 8β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{4}) = τ + 8β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{5}) = τ -  β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{6}) = τ -  β
 
 """ 
     calc_weno_stencil(buffer, shift, dir, func::Bool = false)
@@ -303,11 +303,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
         
-            wei1 = 0
-            wei2 = 0
-            sol1 = 0
-            sol2 = 0
-            glob = 0
+            wei1 = FT(0)
+            wei2 = FT(0)
+            sol1 = FT(0)
+            sol2 = FT(0)
+            glob = FT(0)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -331,11 +331,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
         
-            wei1 = 0
-            wei2 = 0
-            sol1 = 0
-            sol2 = 0
-            glob = 0
+            wei1 = FT(0)
+            wei2 = FT(0)
+            sol1 = FT(0)
+            sol2 = FT(0)
+            glob = FT(0)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -357,11 +357,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
 
-            wei1 = 0
-            wei2 = 0
-            sol1 = 0
-            sol2 = 0
-            glob = 0
+            wei1 = FT(0)
+            wei2 = FT(0)
+            sol1 = FT(0)
+            sol2 = FT(0)
+            glob = FT(0)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
@@ -387,11 +387,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            wei1 = 0
-            wei2 = 0
-            sol1 = 0
-            sol2 = 0
-            glob = 0
+            wei1 = FT(0)
+            wei2 = FT(0)
+            sol1 = FT(0)
+            sol2 = FT(0)
+            glob = FT(0)
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
