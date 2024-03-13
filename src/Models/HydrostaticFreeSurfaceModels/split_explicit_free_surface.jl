@@ -32,12 +32,15 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(grid;
-                             gravitational_acceleration = g_Earth,
-                             kwargs...)
+SplitExplicitFreeSurface(gravitational_acceleration = g_Earth,
+                         substeps = nothing,
+                         cfl = nothing,
+                         fixed_Δt = nothing,
+                         averaging_kernel = averaging_shape_function,
+                         timestepper = ForwardBackwardScheme())
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
-of a free surface dynamics on `grid` with `gravitational_acceleration`.
+of a free surface dynamics with `gravitational_acceleration`.
 
 Keyword Arguments
 =================
@@ -77,14 +80,34 @@ References
 
 Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
-function SplitExplicitFreeSurface(grid;
-                                  gravitational_acceleration = g_Earth,
-                                  kwargs...)
 
-    settings = SplitExplicitSettings(grid; gravitational_acceleration, kwargs...)
+function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
+                                  substeps = nothing,
+                                  cfl = nothing,
+                                  fixed_Δt = nothing,
+                                  averaging_kernel = averaging_shape_function,
+                                  timestepper = ForwardBackwardScheme())
 
-    Nz = size(grid, 3)
-    η  = ZFaceField(grid, indices = (:, :, Nz+1))
+    settings_kwargs = (; gravitational_acceleration,
+                         substeps,
+                         cfl,
+                         fixed_Δt,
+                         averaging_kernel,
+                         timestepper)
+
+    return SplitExplicitFreeSurface(nothing,
+                                    nothing,
+                                    nothing,
+                                    gravitational_acceleration,
+                                    settings_kwargs)
+end
+
+# The new constructor is defined later on after the state, settings, auxiliary have been defined
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
+    settings = SplitExplicitSettings(grid; free_surface.settings...)
+
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+
     gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
 
     return SplitExplicitFreeSurface(η,
@@ -92,17 +115,6 @@ function SplitExplicitFreeSurface(grid;
                                     SplitExplicitAuxiliaryFields(grid),
                                     gravitational_acceleration,
                                     settings)
-end
-
-# The new constructor is defined later on after the state, settings, auxiliary have been defined
-function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
-    η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
-
-    return SplitExplicitFreeSurface(η,
-                                    SplitExplicitState(grid, free_surface.settings.timestepper),
-                                    SplitExplicitAuxiliaryFields(grid),
-                                    free_surface.gravitational_acceleration,
-                                    free_surface.settings)
 end
 
 
