@@ -309,7 +309,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 = 0
             glob = 0
             @unroll for s in 1:N
-                ψs = $stencil(i, j, k, scheme, 1, ψ, grid, args...)
+                ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
@@ -336,7 +336,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 = 0
             glob = 0
             @unroll for s in 1:N
-                ψs = $stencil(i, j, k, scheme, s, ψ, grid, u, v, args...)
+                ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
                 us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), u)
                 vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), v)
                 βu = $biased_β(us, scheme, Val(s-1))
@@ -364,8 +364,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 = 0
             glob = 0
             @unroll for s in 1:N
-                ψs = $stencil(i, j, k, scheme, s, ψ, grid, args...)
-                ϕs = $stencil(i, j, k, scheme, s, VI.func, grid, args...)
+                ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
+                ϕs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
                 βϕ = $biased_β(ϕs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (βϕ + FT(ε))^2
