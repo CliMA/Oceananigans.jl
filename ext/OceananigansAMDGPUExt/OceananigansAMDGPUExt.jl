@@ -7,7 +7,6 @@ include("Grids.jl")
 include("Utils.jl")
 include("BoundaryConditions.jl")
 include("Fields.jl")
-include("DistributedComputations.jl")
 include("MultiRegion.jl")
 include("Solvers.jl")
 
@@ -16,7 +15,6 @@ using .Grids
 using .Utils
 using .BoundaryConditions
 using .Fields
-using .DistributedComputations
 using .MultiRegion
 using .Solvers
 
