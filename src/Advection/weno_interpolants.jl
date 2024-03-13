@@ -321,7 +321,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2 += C
             end
 
-            glob = abs(glob)
+            glob = glob * glob
 
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
@@ -351,6 +351,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2 += C
             end
 
+            glob = glob * glob
+
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
@@ -376,6 +378,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei1 += α
                 wei2 += C
             end
+
+            glob = glob * glob
 
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
