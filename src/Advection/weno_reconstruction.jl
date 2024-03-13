@@ -1,6 +1,7 @@
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
+using Oceananigans.Fields: CenterField
 
 struct WENO{N, FT, XT, YT, ZT, PP, CA, SI, W} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     
