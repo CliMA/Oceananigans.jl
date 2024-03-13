@@ -334,18 +334,12 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{7, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
         
-            glob = 0
-            wei1 = 0
-            wei2 = 0
-            sol1 = 0
-            sol2 = 0
-
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
             β  = $biased_β(ψs, scheme, Val(0))
             C  = FT($coeff(scheme, Val(0)))
-            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, βU, Val(N), Val(0))
+            glob = βU
             sol1 = ψ̅ * C
             wei1 = C
             sol2 = ψ̅ * α  
@@ -354,7 +348,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, args...)
             β  = $biased_β(ψs, scheme, Val(1))
             C  = FT($coeff(scheme, Val(1)))
-            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(glob, βU, Val(N), Val(1))
             sol1 += ψ̅ * C
@@ -365,7 +359,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, args...)
             β  = $biased_β(ψs, scheme, Val(2))
             C  = FT($coeff(scheme, Val(2)))
-            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(glob, βU, Val(N), Val(2))
             sol1 += ψ̅ * C
@@ -376,7 +370,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, args...)
             β  = $biased_β(ψs, scheme, Val(3))
             C  = FT($coeff(scheme, Val(3)))
-            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(glob, βU, Val(N), Val(3))
             sol1 += ψ̅ * C
@@ -403,7 +397,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
-                α  = @inbounds @fastmath C / (β + FT(ε))^2
+                α  = @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
@@ -435,7 +429,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 βv = $biased_β(vs, scheme, Val(s-1))
                 βU = 0.5 * (βu + βv)
                 C  = FT($coeff(scheme, Val(s-1)))
-                α  = @inbounds @fastmath C / (βU + FT(ε))^2
+                α  = @fastmath C / (βU + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
@@ -464,7 +458,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 ϕs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
                 βϕ = $biased_β(ϕs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
-                α  = @inbounds @fastmath C / (βϕ + FT(ε))^2
+                α  = @fastmath C / (βϕ + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
