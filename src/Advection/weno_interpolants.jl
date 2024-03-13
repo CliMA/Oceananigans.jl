@@ -329,6 +329,66 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             return 1
         end
 
+
+        @inline function $biased_interpolate(i, j, k, grid, 
+                                            scheme::WENO{7, FT}, 
+                                            ψ, idx, loc, args...) where {N, FT}
+        
+            glob = 0
+            wei1 = 0
+            wei2 = 0
+            sol1 = 0
+            sol2 = 0
+
+            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
+            β  = $biased_β(ψs, scheme, Val(0))
+            C  = FT($coeff(scheme, Val(0)))
+            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
+            glob += add_global_smoothness(glob, βU, Val(N), Val(0))
+            sol1 = ψ̅ * C
+            wei1 = C
+            sol2 = ψ̅ * α  
+            wei2 = α
+
+            ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, args...)
+            β  = $biased_β(ψs, scheme, Val(1))
+            C  = FT($coeff(scheme, Val(1)))
+            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
+            glob += add_global_smoothness(glob, βU, Val(N), Val(1))
+            sol1 += ψ̅ * C
+            wei1 += C
+            sol2 += ψ̅ * α  
+            wei2 += α
+
+            ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, args...)
+            β  = $biased_β(ψs, scheme, Val(2))
+            C  = FT($coeff(scheme, Val(2)))
+            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
+            glob += add_global_smoothness(glob, βU, Val(N), Val(2))
+            sol1 += ψ̅ * C
+            wei1 += C
+            sol2 += ψ̅ * α  
+            wei2 += α
+
+            ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, args...)
+            β  = $biased_β(ψs, scheme, Val(3))
+            C  = FT($coeff(scheme, Val(3)))
+            α  = @inbounds @fastmath C / (β + FT(ε))^2
+            ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
+            glob += add_global_smoothness(glob, βU, Val(N), Val(3))
+            sol1 += ψ̅ * C
+            wei1 += C
+            sol2 += ψ̅ * α  
+            wei2 += α
+
+            # Is glob squared here?
+            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+        end
+
+
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
