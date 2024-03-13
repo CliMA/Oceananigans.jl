@@ -9,7 +9,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
 
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{4, FT}, 
+                                            scheme::WENO{5, FT}, 
                                             ψ, idx, loc, args...) where {FT}
         
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -72,7 +72,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{4, FT}, 
+                                            scheme::WENO{5, FT}, 
                                             ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {FT}
         
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -135,7 +135,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{4, FT}, 
+                                             scheme::WENO{5, FT}, 
                                              ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT}
 
 
@@ -219,7 +219,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{4, FT}, 
+                                             scheme::WENO{5, FT}, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {FT}
 
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
