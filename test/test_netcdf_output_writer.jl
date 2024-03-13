@@ -52,15 +52,17 @@ function test_netcdf_file_splitting(arch)
 
     fake_attributes = Dict("fake_attribute"=>"fake_attribute")
 
+    max_filesize = 200KiB
+
     ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
-                          dir = ".",
-                          filename = "test.nc",
-                          schedule = IterationInterval(1),
-                          array_type = Array{Float64},
-                          with_halos = true,
-                          global_attributes = fake_attributes,
-                          max_filesize = 200KiB,
-                          overwrite_existing = true)
+                            dir = ".",
+                            filename = "test.nc",
+                            schedule = IterationInterval(1),
+                            array_type = Array{Float64},
+                            with_halos = true,
+                            global_attributes = fake_attributes,
+                            max_filesize,
+                            overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
