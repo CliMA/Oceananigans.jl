@@ -73,6 +73,7 @@ function test_netcdf_file_splitting(arch)
     @test filesize("test_part1.nc") > max_filesize
     @test filesize("test_part2.nc") > max_filesize
     @test filesize("test_part3.nc") < max_filesize
+    @test !isfile("test_part4.nc")
 
     for n in string.(1:3)
         filename = "test_part$n.nc"
