@@ -6,9 +6,9 @@ import Base: show
 import Oceananigans.Units: Time
 
 """
-    mutable struct Clock{T<:Number}
+    mutable struct Clock{T, FT}
 
-Keeps track of the current `time`, `iteration` number, and time-stepping `stage`.
+Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
@@ -20,10 +20,10 @@ mutable struct Clock{T, FT}
 end
 
 """
-    Clock(; time, iteration=0, stage=1)
+    Clock(; time, last_Δt = Inf, iteration=0, stage=1)
 
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
-and first time step `stage`.
+and first time step `stage` with `last_Δt`.
 """
 Clock(; time::T, last_Δt::FT = Inf, iteration=0, stage=1) where {T, FT} = Clock{T, FT}(time, last_Δt, iteration, stage)
 
