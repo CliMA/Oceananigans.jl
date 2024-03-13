@@ -320,13 +320,13 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
                 # wei1[] += C
-                sol2 = ψ̅ * α  
-                wei2 = α
+                # sol2 = ψ̅ * α  
+                # wei2 = α
             end
 
             # Is glob squared here?
             # return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
-            return sol2 / wei2
+            return 1
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -348,13 +348,13 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
                 # wei1[] += C
-                sol2 = ψ̅ * α  
-                wei2 = α
+                # sol2 = ψ̅ * α  
+                # wei2 = α
             end
 
             # Is glob squared here?
             # return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
-            return sol2 / wei2
+            return 1
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -380,13 +380,13 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
                 # wei1[] += C
-                sol2 = ψ̅ * α  
-                wei2 = α
+                # sol2 = ψ̅ * α  
+                # wei2 = α
             end
 
             # Is glob squared here?
             # return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
-            return sol2 / wei2
+            return 1
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -409,13 +409,13 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 # glob[] += add_global_smoothness(glob[], βU, Val(N), Val(s))
                 # sol1[] += ψ̅ * C
                 # wei1[] += C
-                sol2 = ψ̅ * α  
-                wei2 = α
+                # sol2 = ψ̅ * α  
+                # wei2 = α
             end
 
             # Is glob squared here?
             # return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
-            return sol2 / wei2
+            return 1
         end
     end
 end
