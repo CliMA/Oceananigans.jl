@@ -381,7 +381,6 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
-
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
