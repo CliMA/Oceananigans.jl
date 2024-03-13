@@ -308,7 +308,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol1 = 0
             sol2 = 0
             glob = 0
-            @unroll for s in 1:N
+            ntuple(Val(N)) do s
+                Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
@@ -335,7 +336,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol1 = 0
             sol2 = 0
             glob = 0
-            @unroll for s in 1:N
+            ntuple(Val(N)) do s
+                Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
@@ -348,9 +350,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2 += C
             end
 
-            glob = glob * glob
-
-            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -362,7 +362,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol1 = 0
             sol2 = 0
             glob = 0
-            @unroll for s in 1:N
+            ntuple(Val(N)) do s
+                Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
                 us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), u)
                 vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), v)
@@ -379,9 +380,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2 += C
             end
 
-            glob = glob * glob
-
-            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -393,7 +392,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol1 = 0
             sol2 = 0
             glob = 0
-            @unroll for s in 1:N
+            ntuple(Val(N)) do s
+                Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 ϕs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
                 βϕ = $biased_β(ϕs, scheme, Val(s-1))
@@ -407,9 +407,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2 += C
             end
 
-            glob = glob * glob
-
-            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+            return (sol1 + sol2 * glob * glob) / (wei1 + wei2 * glob * glob)
         end
     end
 end
