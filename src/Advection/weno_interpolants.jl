@@ -299,6 +299,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     stencil_v = Symbol(:tangential_, side, :_stencil_v)
 
     @eval begin 
+        # The WENO-Z solution here is 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
