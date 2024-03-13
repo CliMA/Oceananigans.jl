@@ -50,9 +50,7 @@ function test_netcdf_file_splitting(arch)
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-    function fake_bc_init(file, model)
-        file["boundary_conditions/fake"] = π
-    end
+    fake_attributes = Dict("fake_attribute"=>"fake_attribute")
 
     ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
@@ -60,6 +58,7 @@ function test_netcdf_file_splitting(arch)
                           schedule = IterationInterval(1),
                           array_type = Array{Float64},
                           with_halos = true,
+                          global_attributes = fake_attributes,
                           max_filesize = 200KiB,
                           overwrite_existing = true)
 
@@ -76,12 +75,15 @@ function test_netcdf_file_splitting(arch)
     for n in string.(1:3)
         filename = "test_part$n.nc"
         ds = NCDataset(filename,"r")
-        @test file["grid/Nx"] == 16
-        @test file["boundary_conditions/fake"] == π
+        dimlength = length(keys(ds.dim))
+        # Test that all files contain the same dimensions.
+        @test dimlength == 7
+        # Test that all files contain the user defined attributes.
+        @test ds.attrib["fake_attribute"] == "fake_attribute"
 
         # Leave test directory clean.
         close(ds)
-        rm(filename)
+        # rm(filename)
     end
 
     return nothing
@@ -722,6 +724,7 @@ function test_netcdf_time_averaging(arch)
 
     for (n, t) in enumerate(ds["time"][2:end])
         averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+        @printf("test, %s , %s", ds["c2"][:, n+1], c̄2(averaging_times))
         @test all(isapprox.(ds["c2"][:, n+1], c̄2(averaging_times), rtol=rtol))
     end
 
