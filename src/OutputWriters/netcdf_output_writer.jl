@@ -389,18 +389,18 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # Ensure we can add any kind of metadata to the global attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
-    dataset, outputs = initialize_nc_file!(filepath,
-                                           outputs,
-                                           schedule,
-                                           array_type,
-                                           indices,
-                                           with_halos,
-                                           global_attributes,
-                                           output_attributes,
-                                           dimensions,
-                                           overwrite_existing,
-                                           deflatelevel,
-                                           model)
+    dataset, outputs, schedule = initialize_nc_file!(filepath,
+                                                     outputs,
+                                                     schedule,
+                                                     array_type,
+                                                     indices,
+                                                     with_halos,
+                                                     global_attributes,
+                                                     output_attributes,
+                                                     dimensions,
+                                                     overwrite_existing,
+                                                     deflatelevel,
+                                                     model)
 
     return NetCDFOutputWriter(filepath,
                               dataset,
@@ -668,7 +668,7 @@ function initialize_nc_file!(filepath,
 
     close(dataset)
 
-    return dataset, outputs
+    return dataset, outputs, schedule
 end
 
 initialize_nc_file!(ow::NetCDFOutputWriter, model) =
