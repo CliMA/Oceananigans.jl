@@ -586,7 +586,18 @@ function start_next_file(model, ow::NetCDFOutputWriter)
     return nothing
 end
 
-function initialize_nc_file!(filepath, outputs, schedule, array_type, indices, with_halos, global_attributes, output_attributes, dimensions, overwrite_existing, deflatelevel, model)
+function initialize_nc_file!(filepath,
+                             outputs,
+                             schedule,
+                             array_type,
+                             indices,
+                             with_halos,
+                             global_attributes,
+                             output_attributes,
+                             dimensions,
+                             overwrite_existing,
+                             deflatelevel,
+                             model)
 
     mode = overwrite_existing ? "c" : "a"
 
