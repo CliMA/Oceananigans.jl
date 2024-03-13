@@ -14,7 +14,7 @@ either a number or a `DateTime` object.
 """
 mutable struct Clock{T, FT}
          time :: T
-      last_Δt :: FT
+      last_Δt :: DT
     iteration :: Int
         stage :: Int
 end
