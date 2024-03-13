@@ -252,7 +252,7 @@ end
     return (α₀, α₁, α₂, α₃, α₄)
 end
 
-@inline function zweno_alpha_loop(scheme::WENO{5, FT}, β, τ, coeff) where FT
+@inline function zweno_alpha_loop(scheme::WENO{6, FT}, β, τ, coeff) where FT
     α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
     α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
     α₂ = @inbounds @fastmath FT(coeff(scheme, Val(2))) * (1 + τ / (β[3] + FT(ε))^2)
