@@ -136,8 +136,8 @@ for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ
 
     for buffer in advection_buffers
         @eval begin
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, tid, wrk, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, tid, wrk, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
         end
     end
 end
