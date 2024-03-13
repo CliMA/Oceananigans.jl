@@ -1,5 +1,6 @@
 using Oceananigans.Fields: Field
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+using KernelAbstractions: @localmem
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -323,7 +324,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2[] += C
             end
 
-            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
+            return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -349,12 +350,16 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2[] += C
             end
 
-            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
+            return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
                                              ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
+
+
+            sol = @localmem FT (5) * 
+            li  = @index(Local, NTuple)
 
             wei1 = Ref(FT(0))
             wei2 = Ref(FT(0))
@@ -379,7 +384,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2[] += C
             end
 
-            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
+            # Is glob squared here?
+            return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -406,7 +412,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 wei2[] += C
             end
 
-            return (sol1[] + sol2[] * glob[] * glob[]) / (wei1[] + wei2[] * glob[] * glob[])
+            return (sol1[] + sol2[] * glob[]) / (wei1[] + wei2[] * glob[])
         end
     end
 end
