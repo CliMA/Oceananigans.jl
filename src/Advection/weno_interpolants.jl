@@ -184,30 +184,11 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline add_global_smoothness(β, ::Val{2}, ::Val{1}) = + β
-@inline add_global_smoothness(β, ::Val{2}, ::Val{2}) = - β
-
-@inline add_global_smoothness(β, ::Val{3}, ::Val{1}) = + β
-@inline add_global_smoothness(β, ::Val{3}, ::Val{2}) = 0
-@inline add_global_smoothness(β, ::Val{3}, ::Val{3}) = - β
-
-@inline add_global_smoothness(β, ::Val{4}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{2}) = + 3β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{3}) = - 3β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{4}) = -  β
-
-@inline add_global_smoothness(β, ::Val{5}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{2}) = + 2β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{3}) = - 6β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{4}) = + 2β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{5}) = +  β
-
-@inline add_global_smoothness(β, ::Val{6}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{2}) = +  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{3}) = - 8β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{4}) = + 8β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] - 3β[3] -  β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] - 6β[3] + 2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] +   β[2] - 8β[3] + 8β[4] - β[5] - β[6])
 
 """ 
     calc_weno_stencil(buffer, shift, dir, func::Bool = false)
@@ -304,62 +285,48 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, tid, wrk, 
                                             ψ, idx, loc, args...) where {N, FT}
-                                        
-                                            
-            tix = tid[$val]
-            ntuple(Val(N)) do s
+                                                                 
+            wrk = ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @inbounds @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                wrk[1, tix] += add_global_smoothness(β, Val(N), Val(s))
-                wrk[2, tix] += ψ̅ * C
-                wrk[3, tix] += C
-                wrk[4, tix] += ψ̅ * α  
-                wrk[5, tix] += α
+                (β, C, α, ψ̅ * C, ψ̅ * α)
             end
 
-            wrk[4, tix] *= wrk[1, tix]
-            wrk[5, tix] *= wrk[1, tix]
-
+            τ = global_smoothness_indicator(Val(N), β)    
+            
             # Is glob squared here?
-            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
+            return (sum(ψ̅C) + sum(ψ̅α) * τ) / (sum(C) + sum(α) * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{N, FT}, tid, wrk, 
-                                            ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+                                            ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT}
         
-            tix = tid[$val]
-            ntuple(Val(N)) do s
+            β, C, α, ψ̅C, ψ̅α = ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (β + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                wrk[1, tix] += add_global_smoothness(β, Val(N), Val(s))
-                wrk[2, tix] += ψ̅ * C
-                wrk[3, tix] += C
-                wrk[4, tix] += ψ̅ * α  
-                wrk[5, tix] += α
+                (β, C, α, ψ̅ * C, ψ̅ * α)
             end
 
-            wrk[4, tix] *= wrk[1, tix]
-            wrk[5, tix] *= wrk[1, tix]
-
+            τ = global_smoothness_indicator(Val(N), β)    
+            
             # Is glob squared here?
-            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
+            return (sum(ψ̅C) + sum(ψ̅α) * τ) / (sum(C) + sum(α) * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, tid, wrk, 
                                              ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT}
 
-            tix = tid[$val]
-            ntuple(Val(N)) do s
+            β, C, α, ψ̅C, ψ̅α = ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
                 us = $stencil_u(i, j, k, scheme, Val(s), Val($val), grid, u)
@@ -370,26 +337,20 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (βU + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                wrk[1, tix] += add_global_smoothness(βU, Val(N), Val(s))
-                wrk[2, tix] += ψ̅ * C
-                wrk[3, tix] += C
-                wrk[4, tix] += ψ̅ * α  
-                wrk[5, tix] += α
+                (βU, C, α, ψ̅ * C, ψ̅ * α)
             end
 
-            wrk[4, tix] *= wrk[1, tix]
-            wrk[5, tix] *= wrk[1, tix]
-
+            τ = global_smoothness_indicator(Val(N), β)    
+            
             # Is glob squared here?
-            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
+            return (sum(ψ̅C) + sum(ψ̅α) * τ) / (sum(C) + sum(α) * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, tid, wrk, 
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            tix = tid[$val]
-            ntuple(Val(N)) do s
+            β, C, α, ψ̅C, ψ̅α = ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
                 ϕs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
@@ -397,18 +358,13 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                 C  = FT($coeff(scheme, Val(s-1)))
                 α  = @fastmath C / (βϕ + FT(ε))^2
                 ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val($val), idx, loc) 
-                wrk[1, tix] += add_global_smoothness(βϕ, Val(N), Val(s))
-                wrk[2, tix] += ψ̅ * C
-                wrk[3, tix] += C
-                wrk[4, tix] += ψ̅ * α  
-                wrk[5, tix] += α
+                (βϕ, C, α, ψ̅ * C, ψ̅ * α)
             end
 
-            wrk[4, tix] *= wrk[1, tix]
-            wrk[5, tix] *= wrk[1, tix]
-
+            τ = global_smoothness_indicator(Val(N), β)    
+            
             # Is glob squared here?
-            return (wrk[2, tix] + wrk[4, tix]) / (wrk[3, tix] + wrk[5, tix])
+            return (sum(ψ̅C) + sum(ψ̅α) * τ) / (sum(C) + sum(α) * τ)
         end
     end
 end
