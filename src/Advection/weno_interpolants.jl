@@ -369,8 +369,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
-                us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), grid, u)
-                vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), grid, v)
+                us = $stencil_u(i, j, k, scheme, Val(s), Val($val), grid, u)
+                vs = $stencil_v(i, j, k, scheme, Val(s), Val($val), grid, v)
                 βu = $biased_β(us, scheme, Val(s-1))
                 βv = $biased_β(vs, scheme, Val(s-1))
                 βU = 0.5 * (βu + βv)
