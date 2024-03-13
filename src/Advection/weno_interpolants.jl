@@ -292,6 +292,7 @@ end
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β  = Symbol(side, :_biased_β)
+    biased_p  = Symbol(side, :_biased_p)
     coeff     = Symbol(:coeff_, side) 
     stencil   = Symbol(side, :_stencil_, dir)
     stencil_u = Symbol(:tangential_, side, :_stencil_u)
@@ -325,9 +326,9 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
-        @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, 
-                                            ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
+        @inline function $biased_interpolate(i, j, k, grid, 
+                                             scheme::WENO{N, FT}, 
+                                             ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
 
             wei1 = 0
             wei2 = 0
@@ -353,9 +354,9 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
-        @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, 
-                                            ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
+        @inline function $biased_interpolate(i, j, k, grid, 
+                                             scheme::WENO{N, FT}, 
+                                             ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
             wei1 = 0
             wei2 = 0
