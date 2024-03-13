@@ -296,6 +296,41 @@ end
 @inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{1}, grid, v) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
 @inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, grid, v) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
 
+function weno_substep(stencil_func, biased_β, coeff, val, s, i, j, k, grid, scheme::WENO{<:Any, FT}, ψ, idx, loc, args...) where FT
+    ψs = stencil_func(i, j, k, scheme, Val(s), ψ, grid, args...)
+    β  = biased_β(ψs, scheme, Val(s-0x1))
+    C  = FT(coeff(scheme, Val(s-0x1)))
+    α  = @fastmath C / (β + FT(ε))^2
+    ψ̅  = biased_p(scheme, Val(s-0x1), ψs, Nothing, Val(val), idx, loc) 
+
+    return β, ψ̅, C, α
+end
+
+function weno_substep(stencil_func, stencil_u, stencil_v, biased_β, coeff, val, s, i, j, k, grid, scheme::WENO{<:Any, FT}, ψ, idx, loc, u, v, args...) where FT
+    ψs = stencil_u(i, j, k, scheme, Val(s), Val(val), grid, u)
+    βu = biased_β(ψs, scheme, Val(s-0x1))
+    ψs = stencil_v(i, j, k, scheme, Val(s), Val(val), grid, v)
+    βu = biased_β(ψs, scheme, Val(s-0x1))
+    βU = 0.5 * (βu + βv)
+    C  = FT(coeff(scheme, Val(s-0x1)))
+    α  = @fastmath C / (βU + FT(ε))^2
+    ψs = stencil_func(i, j, k, scheme, Val(s), ψ, grid, args...)
+    ψ̅  = biased_p(scheme, Val(s-0x1), ψs, Nothing, Val(val), idx, loc) 
+
+    return βU, ψ̅, C, α
+end
+
+function weno_substep(stencil_func, biased_β, coeff, val, s, i, j, k, grid, scheme::WENO{<:Any, FT}, ψ, idx, loc, VI::FunctionStencil, args...) where FT
+    ψs = stencil_func(i, j, k, scheme, Val(s), VI.func, grid, args...)
+    β  = biased_β(ψs, scheme, Val(s-0x1))
+    C  = FT(coeff(scheme, Val(s-0x1)))
+    α  = @fastmath C / (β + FT(ε))^2
+    ψs = stencil_func(i, j, k, scheme, Val(s), ψ, grid, args...)
+    ψ̅  = biased_p(scheme, Val(s-0x1), ψs, Nothing, Val(val), idx, loc) 
+
+    return β, ψ̅, C, α
+end
+
 # for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
 #     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
 #     biased_β  = Symbol(side, :_biased_β)
