@@ -91,4 +91,3 @@ elapsed_time = 1e-9 * (time_ns() - start_time)
 u_2, v_2, w = model_2.velocities
 
 ζ_2 = compute!(Field(∂x(v_2) - ∂y(u_2)))
-

@@ -5,7 +5,9 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!
+using Oceananigans.Fields: replace_horizontal_vector_halos!
+
+import Oceananigans.Solvers: solve!, precondition!, auxiliary_actions!
 import Oceananigans.Architectures: architecture
 
 """
@@ -50,7 +52,14 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
+    
+    u = vertically_integrated_lateral_areas.xᶠᶜᶜ
+    v = vertically_integrated_lateral_areas.yᶜᶠᶜ
+    
+    for _ in 1:3
+        fill_halo_regions!(vertically_integrated_lateral_areas)
+        @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid, signed = false)
+    end
 
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
@@ -134,13 +143,16 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
 
     # Note: because of `fill_halo_regions!` below, we cannot use `PCGImplicitFreeSurface` on a
     # multi-region grid; `fill_halo_regions!` cannot be used within `@apply_regionally`
-    fill_halo_regions!(ηⁿ⁺¹)
 
     launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
             L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     return nothing
 end
+
+ImplicitFreeSurfaceOperation = typeof(implicit_free_surface_linear_operation!)
+
+auxiliary_actions!(::ImplicitFreeSurfaceOperation, L_ηⁿ⁺¹, ηⁿ⁺¹, args...) = fill_halo_regions!(ηⁿ⁺¹)
 
 # Kernels that act on vertically integrated / surface quantities
 @inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᶠ(i, j, k, grid, η)

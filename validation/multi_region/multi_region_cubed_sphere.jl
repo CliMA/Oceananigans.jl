@@ -1,78 +1,93 @@
 using Oceananigans
-
-using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Utils: apply_regionally!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+#=
+Install Imaginocean.jl from GitHub:
+using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
+=#
+using CairoMakie, Imaginocean, JLD2
 
-# install Imaginocean.jl from GitHub
-# using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
-using Imaginocean
+# First create a conformal cubed sphere grid.
 
-using GLMakie
-Makie.inline!(false)
-GLMakie.activate!()
+Nx = 30
+Ny = 30
+Nz = 1
+
+radius = 1
+
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius)
+
+#=
+Let's create a field. We choose a field that lives on the center of the cells. We set the field values to something and 
+see how that looks.
+=#
+
+field = CenterField(grid)
+
+set!(field, (λ, φ, z) -> (sind(3λ) + 1/3 * sind(5λ)) * cosd(3φ)^2)
+
+#=
+2D visualization
+
+We can visualize this field in 2D using a heatmap. Imaginocean.jl has a method called `heatlatlon!` that plots a field 
+that lives on a grid whose native coordinates are latitude and longitude.
+=#
+
+kwargs = (colorrange = (-1, 1), colormap = :balance)
+
+fig = Figure()
+ax = Axis(fig[1, 1], xlabel = "longitude [ᵒ]", ylabel = "latitude [ᵒ]", limits = ((-180, 180), (-90, 90)))
+heatlatlon!(ax, field, 1; kwargs...)
+save("multi_region_cubed_sphere_c0_heatlatlon.png", fig)
+
+#=
+We can do the same but with a `GeoAxis` provided by the GeoMakie.jl package that allows us to easily add coastlines or 
+also use various projections.
+=#
 
 using GeoMakie
 
+fig = Figure()
+ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+heatlatlon!(ax, field, 1; kwargs...)
+save("multi_region_cubed_sphere_c0_geo_heatlatlon.png", fig)
+
 #=
-using Oceananigans.Utils: get_lat_lon_nodes_and_vertices, 
+3D visualization on the sphere
 
-function heatlatlon!(ax::Axis, field, k=1; kwargs...)
-    LX, LY, LZ = location(field)
-
-    grid = field.grid
-    _, (λvertices, φvertices) = get_lat_lon_nodes_and_vertices(grid, LX(), LY(), LZ())
-
-    quad_points = vcat([Point2.(λvertices[:, i, j], φvertices[:, i, j])
-                        for i in axes(λvertices, 2), j in axes(λvertices, 3)]...)
-    quad_faces = vcat([begin; j = (i-1) * 4 + 1; [j j+1  j+2; j+2 j+3 j]; end for i in 1:length(quad_points)÷4]...)
-
-    colors_per_point = vcat(fill.(vec(interior(field, :, :, k)), 4)...)
-
-    mesh!(ax, quad_points, quad_faces; color = colors_per_point, shading = false, kwargs...)
-
-    xlims!(ax, (-180, 180))
-    ylims!(ax, (-90, 90))
-
-    return ax
-end
-
-heatlatlon!(ax::Axis, field::CubedSphereField, k=1; kwargs...) =
-    apply_regionally!(heatlatlon!, ax, field, k; kwargs...)
+To make a 3D visualization on the sphere we first create a 3D axis and then use `heatsphere!` method from 
+Imaginocean.jl.
 =#
 
-Nx, Ny, Nz = 4, 4, 1
-grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, Nz), z=(-1, 0), radius=1, horizontal_direction_halo = 3, 
-                                z_topology=Bounded)
+fig = Figure()
+ax = Axis3(fig[1, 1], aspect = (1, 1, 1), limits = ((-1, 1), (-1, 1), (-1, 1)))
+heatsphere!(ax, field; kwargs...)
+hidedecorations!(ax) # hides the axes labels
+save("multi_region_cubed_sphere_c0_heatsphere.png", fig)
 
 c = CenterField(grid)
-
 set!(c, (λ, φ, z) -> φ)
 colorrange = (-90, 90)
 colormap = :balance
 
-fill_halo_regions!(c)
+for _ in 1:3
+    fill_halo_regions!(c)
+end
 
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
-heatsphere!(ax, c; colorrange, colormap)
-fig
-
+heatsphere!(ax, c, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_c_heatsphere.png", fig)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-heatlatlon!(ax, c; colorrange, colormap)
-fig
-
+heatlatlon!(ax, c, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_c_heatlatlon.png", fig)
 
-fig = Figure(size=(1200, 600))
+fig = Figure(resolution = (1200, 600))
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-heatlatlon!(ax, c; colorrange, colormap)
-fig
-
-save("multi_region_cubed_sphere_c_geo_latlon.png", fig)
+heatlatlon!(ax, c, 1; colorrange, colormap)
+save("multi_region_cubed_sphere_c_geo_heatlatlon.png", fig)
 
 u = XFaceField(grid)
 set!(u, (λ, φ, z) -> φ)
@@ -80,48 +95,68 @@ set!(u, (λ, φ, z) -> φ)
 v = YFaceField(grid)
 set!(v, (λ, φ, z) -> φ)
 
-for _ in 1:2
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-    @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
-end
+fill_paired_halo_regions!((u, v))
 
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
-heatsphere!(ax, u; colorrange, colormap)
-fig
-
+heatsphere!(ax, u, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_u_heatsphere.png", fig)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-heatlatlon!(ax, u; colorrange, colormap)
-fig
+heatlatlon!(ax, u, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_u_heatlatlon.png", fig)
 
-# fig = Figure(size=(1200, 600))
-# ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-# heatlatlon!(ax, u; colorrange, colormap)
-# fig
-# save("multi_region_cubed_sphere_u_geo_latlon.png", fig)
+#=
+fig = Figure(resolution = (1200, 600))
+ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+heatlatlon!(ax, u, 1; colorrange, colormap)
+save("multi_region_cubed_sphere_u_geo_heatlatlon.png", fig)
+=#
 
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
-heatsphere!(ax, v; colorrange, colormap)
-fig
-
+heatsphere!(ax, v, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_v_heatsphere.png", fig)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-heatlatlon!(ax, v; colorrange, colormap)
-fig
-
+heatlatlon!(ax, v, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_v_heatlatlon.png", fig)
 
-# fig = Figure(size=(1200, 600))
-# ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-# heatlatlon!(ax, v; colorrange, colormap)
-# fig
+#=
+fig = Figure(resolution = (1200, 600))
+ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
+heatlatlon!(ax, v, 1; colorrange, colormap)
+save("multi_region_cubed_sphere_v_geo_heatlatlon.png", fig)
+=#
 
-# save("multi_region_cubed_sphere_v_geo_latlon.png", fig)   
+Nx, Ny, Nz = 4, 4, 1
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=1, horizontal_direction_halo = 2,
+                                  z_halo = 1)
+Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+jldopen("cubed-sphere-dynamics_branch_cs_grid.jld2", "w") do file
+    for region in 1:6
+        file["λᶜᶜᵃ/" * string(region)]  =  grid[region].λᶜᶜᵃ
+        file["λᶠᶜᵃ/" * string(region)]  =  grid[region].λᶠᶜᵃ
+        file["λᶜᶠᵃ/" * string(region)]  =  grid[region].λᶜᶠᵃ
+        file["λᶠᶠᵃ/" * string(region)]  =  grid[region].λᶠᶠᵃ
+        file["φᶜᶜᵃ/" * string(region)]  =  grid[region].φᶜᶜᵃ
+        file["φᶠᶜᵃ/" * string(region)]  =  grid[region].φᶠᶜᵃ
+        file["φᶜᶠᵃ/" * string(region)]  =  grid[region].φᶜᶠᵃ
+        file["φᶠᶠᵃ/" * string(region)]  =  grid[region].φᶠᶠᵃ
+        file["Δxᶜᶜᵃ/" * string(region)] = grid[region].Δxᶜᶜᵃ
+        file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
+        file["Δxᶜᶠᵃ/" * string(region)] = grid[region].Δxᶜᶠᵃ
+        file["Δxᶠᶠᵃ/" * string(region)] = grid[region].Δxᶠᶠᵃ
+        file["Δyᶜᶜᵃ/" * string(region)] = grid[region].Δyᶜᶜᵃ
+        file["Δyᶠᶜᵃ/" * string(region)] = grid[region].Δyᶠᶜᵃ
+        file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
+        file["Δyᶠᶠᵃ/" * string(region)] = grid[region].Δyᶠᶠᵃ
+        file["Azᶜᶜᵃ/" * string(region)] = grid[region].Azᶜᶜᵃ
+        file["Azᶠᶜᵃ/" * string(region)] = grid[region].Azᶠᶜᵃ
+        file["Azᶜᶠᵃ/" * string(region)] = grid[region].Azᶜᶠᵃ
+        file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
+    end
+end

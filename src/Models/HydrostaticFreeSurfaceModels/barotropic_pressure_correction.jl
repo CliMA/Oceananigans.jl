@@ -11,14 +11,15 @@ const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSur
 const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
 const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
 
+#=
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
+=#
 
 #####
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
-
+function pressure_correct_velocities!(model::Union{ImplicitFreeSurfaceHFSM, ExplicitFreeSurfaceHFSM}, Δt)
     launch!(model.architecture, model.grid, :xyz,
             _barotropic_pressure_correction,
             model.velocities,
