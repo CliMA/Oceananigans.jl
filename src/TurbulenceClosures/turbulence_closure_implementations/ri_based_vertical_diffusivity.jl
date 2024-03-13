@@ -15,6 +15,7 @@ struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD
     Riᵟ :: FT
     Ri_dependent_tapering :: R
     horizontal_Ri_filter :: HR
+    minimum_entrainment_buoyancy_gradient :: FT
     maximum_diffusivity :: FT
     maximum_viscosity :: FT
 end
@@ -28,6 +29,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R,
                                         horizontal_Ri_filter::HR,
+                                        minimum_entrainment_buoyancy_gradient::FT
                                         maximum_diffusivity::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
@@ -35,6 +37,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
     return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering,
                                                  horizontal_Ri_filter,
+                                                 minimum_entrainment_buoyancy_gradient,
                                                  maximum_diffusivity,
                                                  maximum_viscosity)
 end
@@ -58,6 +61,7 @@ struct FivePointHorizontalFilter end
                                FT = Float64;]
                                Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                horizontal_Ri_filter = nothing,
+                               minimum_entrainment_buoyancy_gradient = 1e-10,
                                maximum_diffusivity = Inf,
                                maximum_viscosity = Inf,
                                ν₀  = 0.7,
@@ -105,6 +109,11 @@ Keyword arguments
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity (non-dimensional).
 
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0 (non-dimensional).
+
+* `minimum_entrainment_buoyancy_gradient`: Minimum buoyancy gradient for application of the entrainment
+                                           diffusvity. If the entrainment buoyancy gradient is less than the
+                                           minimum value, the entrainment diffusivity is 0. Units of 
+                                           buoyancy gradient (typically s⁻²).
 
 * `maximum_diffusivity`: A limiting maximum tracer diffusivity (units of diffusivity, typically m² s⁻¹).
 
@@ -278,6 +287,7 @@ end
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
     Ri_filter = closure_ij.horizontal_Ri_filter
+    N²ᵉⁿ = closure_ij.minimum_entrainment_buoyancy_gradient
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
     # Convection and entrainment
@@ -287,7 +297,7 @@ end
     # Conditions
     # TODO: apply a minimum entrainment buoyancy gradient?
     convecting = N² < 0 # applies regardless of Qᵇ
-    entraining = (N² > 0) & (N²_above < 0) & (Qᵇ > 0)
+    entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Qᵇ > 0)
 
     # Convective adjustment diffusivity
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
