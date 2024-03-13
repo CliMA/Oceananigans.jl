@@ -116,8 +116,23 @@ for buffer in [2, 3, 4, 5, 6]
     
         # left biased and right biased reconstruction value for each stencil
         @eval begin
-            @inline  left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
-            @inline right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
+            @inline function left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) 
+                C = coeff_left_p(scheme, Val($stencil), T, dir, i, loc)
+                r = 0
+                @unroll for idx in 1:$buffer
+                    r += C[idx] * ψ[idx]
+                end
+                return r
+            end
+
+            @inline function right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) 
+                C = coeff_right_p(scheme, Val($stencil), T, dir, i, loc)
+                r = 0
+                @unroll for idx in 1:$buffer
+                    r += C[idx] * ψ[idx]
+                end
+                return r
+            end
         end
     end
 end
