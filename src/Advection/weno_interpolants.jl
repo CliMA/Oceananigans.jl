@@ -65,7 +65,6 @@ end
 
 Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
-const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
 # Optimal values taken from
@@ -121,30 +120,30 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
-@inline smoothness_coefficients(scheme::WENO{2, FT}, ::Val{0}) where FT = @inbounds FT.((1, -2, 1))
-@inline smoothness_coefficients(scheme::WENO{2, FT}, ::Val{1}) where FT = @inbounds FT.((1, -2, 1))
+@inline smoothness_coefficients(::WENO{2, FT}, ::Val{0}) where FT = @inbounds FT.((1, -2, 1))
+@inline smoothness_coefficients(::WENO{2, FT}, ::Val{1}) where FT = @inbounds FT.((1, -2, 1))
 
-@inline smoothness_coefficients(scheme::WENO{3, FT}, ::Val{0}) where FT = @inbounds FT.((10, -31, 11, 25, -19,  4))
-@inline smoothness_coefficients(scheme::WENO{3, FT}, ::Val{1}) where FT = @inbounds FT.((4,  -13, 5,  13, -13,  4))
-@inline smoothness_coefficients(scheme::WENO{3, FT}, ::Val{2}) where FT = @inbounds FT.((4,  -19, 11, 25, -31, 10))
+@inline smoothness_coefficients(::WENO{3, FT}, ::Val{0}) where FT = @inbounds FT.((10, -31, 11, 25, -19,  4))
+@inline smoothness_coefficients(::WENO{3, FT}, ::Val{1}) where FT = @inbounds FT.((4,  -13, 5,  13, -13,  4))
+@inline smoothness_coefficients(::WENO{3, FT}, ::Val{2}) where FT = @inbounds FT.((4,  -19, 11, 25, -31, 10))
 
-@inline smoothness_coefficients(scheme::WENO{4, FT}, ::Val{0}) where FT = @inbounds FT.((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547))
-@inline smoothness_coefficients(scheme::WENO{4, FT}, ::Val{1}) where FT = @inbounds FT.((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267))
-@inline smoothness_coefficients(scheme::WENO{4, FT}, ::Val{2}) where FT = @inbounds FT.((0.267,  -1.642, 1.602, -0.494,  2.843,  - 5.966,  1.922,  3.443,  -2.522, 0.547))
-@inline smoothness_coefficients(scheme::WENO{4, FT}, ::Val{3}) where FT = @inbounds FT.((0.547,  -3.882, 4.642, -1.854,  7.043,  -17.246,  7.042, 11.003,  -9.402, 2.107))
+@inline smoothness_coefficients(::WENO{4, FT}, ::Val{0}) where FT = @inbounds FT.((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547))
+@inline smoothness_coefficients(::WENO{4, FT}, ::Val{1}) where FT = @inbounds FT.((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267))
+@inline smoothness_coefficients(::WENO{4, FT}, ::Val{2}) where FT = @inbounds FT.((0.267,  -1.642, 1.602, -0.494,  2.843,  - 5.966,  1.922,  3.443,  -2.522, 0.547))
+@inline smoothness_coefficients(::WENO{4, FT}, ::Val{3}) where FT = @inbounds FT.((0.547,  -3.882, 4.642, -1.854,  7.043,  -17.246,  7.042, 11.003,  -9.402, 2.107))
 
-@inline smoothness_coefficients(scheme::WENO{5, FT}, ::Val{0}) where FT = @inbounds FT.((1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658)) 
-@inline smoothness_coefficients(scheme::WENO{5, FT}, ::Val{1}) where FT = @inbounds FT.((0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908)) 
-@inline smoothness_coefficients(scheme::WENO{5, FT}, ::Val{2}) where FT = @inbounds FT.((0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)) 
-@inline smoothness_coefficients(scheme::WENO{5, FT}, ::Val{3}) where FT = @inbounds FT.((0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)) 
-@inline smoothness_coefficients(scheme::WENO{5, FT}, ::Val{4}) where FT = @inbounds FT.((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)) 
+@inline smoothness_coefficients(::WENO{5, FT}, ::Val{0}) where FT = @inbounds FT.((1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658)) 
+@inline smoothness_coefficients(::WENO{5, FT}, ::Val{1}) where FT = @inbounds FT.((0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908)) 
+@inline smoothness_coefficients(::WENO{5, FT}, ::Val{2}) where FT = @inbounds FT.((0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)) 
+@inline smoothness_coefficients(::WENO{5, FT}, ::Val{3}) where FT = @inbounds FT.((0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)) 
+@inline smoothness_coefficients(::WENO{5, FT}, ::Val{4}) where FT = @inbounds FT.((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)) 
 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{0}) where FT = @inbounds FT.((0.6150211, -4.7460464, 7.6206736, -6.3394124, 2.7060170, -0.4712740,  9.4851237, -31.1771244, 26.2901672, -11.3206788,  1.9834350, 26.0445372, -44.4003904, 19.2596472, -3.3918804, 19.0757572, -16.6461044, 2.9442256, 3.6480687, -1.2950184, 0.1152561)) 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{1}) where FT = @inbounds FT.((0.1152561, -0.9117992, 1.4742480, -1.2183636, 0.5134574, -0.0880548,  1.9365967,  -6.5224244,  5.5053752,  -2.3510468,  0.4067018,  5.6662212,  -9.7838784,  4.2405032, -0.7408908,  4.3093692,  -3.7913324, 0.6694608, 0.8449957, -0.3015728, 0.0271779)) 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{2}) where FT = @inbounds FT.((0.0271779, -0.2380800, 0.4086352, -0.3462252, 0.1458762, -0.0245620,  0.5653317,  -2.0427884,  1.7905032,  -0.7727988,  0.1325006,  1.9510972,  -3.5817664,  1.5929912, -0.2792660,  1.7195652,  -1.5880404, 0.2863984, 0.3824847, -0.1429976, 0.0139633)) 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{3}) where FT = @inbounds FT.((0.0139633, -0.1429976, 0.2863984, -0.2792660, 0.1325006, -0.0245620,  0.3824847,  -1.5880404,  1.5929912,  -0.7727988,  0.1458762,  1.7195652,  -3.5817664,  1.7905032, -0.3462252,  1.9510972,  -2.0427884, 0.4086352, 0.5653317, -0.2380800, 0.0271779)) 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{4}) where FT = @inbounds FT.((0.0271779, -0.3015728, 0.6694608, -0.7408908, 0.4067018, -0.0880548,  0.8449957,  -3.7913324,  4.2405032,  -2.3510468,  0.5134574,  4.3093692,  -9.7838784,  5.5053752, -1.2183636,  5.6662212,  -6.5224244, 1.4742480, 1.9365967, -0.9117992, 0.1152561)) 
-@inline smoothness_coefficients(scheme::WENO{6, FT}, ::Val{5}) where FT = @inbounds FT.((0.1152561, -1.2950184, 2.9442256, -3.3918804, 1.9834350, -0.4712740,  3.6480687, -16.6461044, 19.2596472, -11.3206788,  2.7060170, 19.0757572, -44.4003904, 26.2901672, -6.3394124, 26.0445372, -31.1771244, 7.6206736, 9.4851237, -4.7460464, 0.6150211)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{0}) where FT = @inbounds FT.((0.6150211, -4.7460464, 7.6206736, -6.3394124, 2.7060170, -0.4712740,  9.4851237, -31.1771244, 26.2901672, -11.3206788,  1.9834350, 26.0445372, -44.4003904, 19.2596472, -3.3918804, 19.0757572, -16.6461044, 2.9442256, 3.6480687, -1.2950184, 0.1152561)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{1}) where FT = @inbounds FT.((0.1152561, -0.9117992, 1.4742480, -1.2183636, 0.5134574, -0.0880548,  1.9365967,  -6.5224244,  5.5053752,  -2.3510468,  0.4067018,  5.6662212,  -9.7838784,  4.2405032, -0.7408908,  4.3093692,  -3.7913324, 0.6694608, 0.8449957, -0.3015728, 0.0271779)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{2}) where FT = @inbounds FT.((0.0271779, -0.2380800, 0.4086352, -0.3462252, 0.1458762, -0.0245620,  0.5653317,  -2.0427884,  1.7905032,  -0.7727988,  0.1325006,  1.9510972,  -3.5817664,  1.5929912, -0.2792660,  1.7195652,  -1.5880404, 0.2863984, 0.3824847, -0.1429976, 0.0139633)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{3}) where FT = @inbounds FT.((0.0139633, -0.1429976, 0.2863984, -0.2792660, 0.1325006, -0.0245620,  0.3824847,  -1.5880404,  1.5929912,  -0.7727988,  0.1458762,  1.7195652,  -3.5817664,  1.7905032, -0.3462252,  1.9510972,  -2.0427884, 0.4086352, 0.5653317, -0.2380800, 0.0271779)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{4}) where FT = @inbounds FT.((0.0271779, -0.3015728, 0.6694608, -0.7408908, 0.4067018, -0.0880548,  0.8449957,  -3.7913324,  4.2405032,  -2.3510468,  0.5134574,  4.3093692,  -9.7838784,  5.5053752, -1.2183636,  5.6662212,  -6.5224244, 1.4742480, 1.9365967, -0.9117992, 0.1152561)) 
+@inline smoothness_coefficients(::WENO{6, FT}, ::Val{5}) where FT = @inbounds FT.((0.1152561, -1.2950184, 2.9442256, -3.3918804, 1.9834350, -0.4712740,  3.6480687, -16.6461044, 19.2596472, -11.3206788,  2.7060170, 19.0757572, -44.4003904, 26.2901672, -6.3394124, 26.0445372, -31.1771244, 7.6206736, 9.4851237, -4.7460464, 0.6150211)) 
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
@@ -186,17 +185,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath (β₁[$stencil] + β₂[$stencil])/2)
-    end
-
-    return :($(elem...),)
-end
-
-# left and right biased_β calculation for scheme and stencil = 0:buffer - 1
-@inline function metaprogrammed_beta_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(@inbounds (β₁[$stencil] + β₂[$stencil])/2)
     end
 
     return :($(elem...),)
@@ -225,9 +214,104 @@ end
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds @fastmath $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds @fastmath $(metaprogrammed_zweno_alpha_loop(buffer))
         @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds @fastmath $(metaprogrammed_js_alpha_loop(buffer))
+    end
+end
+
+@inline function zweno_alpha_loop(scheme::WENO{2, FT}, β, τ, coeff) where FT
+    α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
+    α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
+
+    return (α₀, α₁)
+end
+
+@inline function zweno_alpha_loop(scheme::WENO{3, FT}, β, τ, coeff) where FT
+    α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
+    α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
+    α₂ = @inbounds @fastmath FT(coeff(scheme, Val(2))) * (1 + τ / (β[2] + FT(ε))^2)
+
+    return (α₀, α₁, α₂)
+end
+
+@inline function zweno_alpha_loop(scheme::WENO{4, FT}, β, τ, coeff) where FT
+    α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
+    α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
+    α₂ = @inbounds @fastmath FT(coeff(scheme, Val(2))) * (1 + τ / (β[3] + FT(ε))^2)
+    α₃ = @inbounds @fastmath FT(coeff(scheme, Val(3))) * (1 + τ / (β[4] + FT(ε))^2)
+
+    return (α₀, α₁, α₂, α₃)
+end
+
+@inline function zweno_alpha_loop(scheme::WENO{5, FT}, β, τ, coeff) where FT
+    α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
+    α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
+    α₂ = @inbounds @fastmath FT(coeff(scheme, Val(2))) * (1 + τ / (β[3] + FT(ε))^2)
+    α₃ = @inbounds @fastmath FT(coeff(scheme, Val(3))) * (1 + τ / (β[4] + FT(ε))^2)
+    α₄ = @inbounds @fastmath FT(coeff(scheme, Val(4))) * (1 + τ / (β[5] + FT(ε))^2)
+
+    return (α₀, α₁, α₂, α₃, α₄)
+end
+
+@inline function zweno_alpha_loop(scheme::WENO{5, FT}, β, τ, coeff) where FT
+    α₀ = @inbounds @fastmath FT(coeff(scheme, Val(0))) * (1 + τ / (β[1] + FT(ε))^2)
+    α₁ = @inbounds @fastmath FT(coeff(scheme, Val(1))) * (1 + τ / (β[2] + FT(ε))^2)
+    α₂ = @inbounds @fastmath FT(coeff(scheme, Val(2))) * (1 + τ / (β[3] + FT(ε))^2)
+    α₃ = @inbounds @fastmath FT(coeff(scheme, Val(3))) * (1 + τ / (β[4] + FT(ε))^2)
+    α₄ = @inbounds @fastmath FT(coeff(scheme, Val(4))) * (1 + τ / (β[5] + FT(ε))^2)
+    α₅ = @inbounds @fastmath FT(coeff(scheme, Val(5))) * (1 + τ / (β[6] + FT(ε))^2)
+
+    return (α₀, α₁, α₂, α₃, α₄, α₅)
+end
+
+# left and right biased_β calculation for scheme and stencil = 0:buffer - 1
+for side in [:left, :right]
+    β_loop   = Symbol(:β_loop, side)   
+    biased_β = Symbol(side, :_biased_β)
+    @eval begin
+        @inline function $β_loop(scheme::WENO{2, FT}, ψ)
+            β₀ = $biased_β(ψ[1], scheme, Val(0))
+            β₁ = $biased_β(ψ[2], scheme, Val(1))
+
+            return (β₀, β₁)
+        end
+
+        @inline function $β_loop(scheme::WENO{3, FT}, ψ)
+            β₀ = $biased_β(ψ[1], scheme, Val(0))
+            β₁ = $biased_β(ψ[2], scheme, Val(1))
+            β₂ = $biased_β(ψ[3], scheme, Val(2))
+
+            return (β₀, β₁, β₂)
+        end
+
+        @inline function $β_loop(scheme::WENO{4, FT}, ψ)
+            β₀ = $biased_β(ψ[1], scheme, Val(0))
+            β₁ = $biased_β(ψ[2], scheme, Val(1))
+            β₂ = $biased_β(ψ[3], scheme, Val(2))
+            β₃ = $biased_β(ψ[4], scheme, Val(3))
+
+            return (β₀, β₁, β₂, β₃)
+        end
+
+        @inline function $β_loop(scheme::WENO{5, FT}, ψ)
+            β₀ = $biased_β(ψ[1], scheme, Val(0))
+            β₁ = $biased_β(ψ[2], scheme, Val(1))
+            β₂ = $biased_β(ψ[3], scheme, Val(2))
+            β₃ = $biased_β(ψ[4], scheme, Val(3))
+            β₄ = $biased_β(ψ[5], scheme, Val(4))
+
+            return (β₀, β₁, β₂, β₃, β₄)
+        end
+
+        @inline function $β_loop(scheme::WENO{6, FT}, ψ)
+            β₀ = $biased_β(ψ[1], scheme, Val(0))
+            β₁ = $biased_β(ψ[2], scheme, Val(1))
+            β₂ = $biased_β(ψ[3], scheme, Val(2))
+            β₃ = $biased_β(ψ[4], scheme, Val(3))
+            β₄ = $biased_β(ψ[5], scheme, Val(4))
+            β₅ = $biased_β(ψ[6], scheme, Val(5))
+
+            return (β₀, β₁, β₂, β₃, β₄, β₅)
+        end
     end
 end
 
@@ -241,8 +325,7 @@ end
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     biased_weno_weights = Symbol(side, :_biased_weno_weights)
-    biased_β = Symbol(side, :_biased_β)
-    
+    beta_loop           = Symbol(:β_loop_, side)    
     tangential_stencil_u = Symbol(:tangential_, side, :_stencil_u)
     tangential_stencil_v = Symbol(:tangential_, side, :_stencil_v)
 
@@ -251,11 +334,11 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     @eval begin
         @inline function $biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
             @inbounds begin
-                β = beta_loop(scheme, ψ, $biased_β)
+                β = $beta_loop(scheme, ψ)
                     
                 if scheme isa ZWENO
                     τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
+                    α = zweno_alpha_loop(scheme, β, τ, $coeff)
                 else
                     α = js_alpha_loop(scheme, β, $coeff, FT)
                 end
@@ -272,14 +355,14 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
                 uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
                 vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-                βᵤ = beta_loop(scheme, uₛ, $biased_β)
-                βᵥ = beta_loop(scheme, vₛ, $biased_β)
+                βᵤ = $beta_loop(scheme, uₛ)
+                βᵥ = $beta_loop(scheme, vₛ)
 
                 β  = beta_sum(scheme, βᵤ, βᵥ)
 
                 if scheme isa ZWENO
                     τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
+                    α = zweno_alpha_loop(scheme, β, τ, $coeff)
                 else
                     α = js_alpha_loop(scheme, β, $coeff, FT)
                 end
