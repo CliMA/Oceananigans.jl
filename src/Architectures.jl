@@ -44,7 +44,7 @@ struct GPU <: AbstractSerialArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = MyCUDABackend(; always_inline=true, max_registers=128)
+device(::GPU) = CUDABackendMine(; always_inline=true, max_registers=128)
 
 architecture() = nothing
 architecture(::Number) = nothing
