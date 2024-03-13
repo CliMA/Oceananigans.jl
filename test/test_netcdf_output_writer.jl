@@ -83,7 +83,7 @@ function test_netcdf_file_splitting(arch)
 
         # Leave test directory clean.
         close(ds)
-        # rm(filename)
+        rm(filename)
     end
 
     return nothing
