@@ -19,9 +19,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             grid = RectilinearGrid(arch, FT;
                                    topology, size = (Nx, Ny, Nz),
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
-                                   halo=(1, 1, 1))
+                                   halo = (1, 1, 1))
 
-            sefs = SplitExplicitFreeSurface(grid; substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
 
             sefs.η .= 0
 
@@ -58,7 +58,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(grid; substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
 
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
@@ -80,7 +80,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                     iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
                 end
                 iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1)) 
-    
+
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
                 set!(η, η₀)
@@ -94,7 +94,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
-            sefs = SplitExplicitFreeSurface(grid; substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
 
             sefs.η .= 0
 
@@ -151,7 +151,6 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 @test maximum(abs.(V̅_computed .- V_avg)) < tolerance
             end
 
-            #=
             @testset "Complex Multi-Timestep " begin
                 # Test 3: Testing analytic solution to
                 # ∂ₜη + ∇⋅U̅ = 0
@@ -164,7 +163,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(grid)
+                sefs = SplitExplicitFreeSurface()
                 state = sefs.state
                 auxiliary = sefs.auxiliary
                 U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
@@ -237,7 +236,6 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 @test maximum(abs.(V̅_computed - V̅_exact)) < tolerance
                 @test maximum(abs.(η̅_computed - η̅_exact)) < tolerance
             end
-            =#
         end # end of architecture loop
     end # end of float type loop
 end # end of testset loop

@@ -32,12 +32,12 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 """
-SplitExplicitFreeSurface(gravitational_acceleration = g_Earth,
-                         substeps = nothing,
-                         cfl = nothing,
-                         fixed_Δt = nothing,
-                         averaging_kernel = averaging_shape_function,
-                         timestepper = ForwardBackwardScheme())
+    SplitExplicitFreeSurface(gravitational_acceleration = g_Earth,
+                             substeps = nothing,
+                             cfl = nothing,
+                             fixed_Δt = nothing,
+                             averaging_kernel = averaging_shape_function,
+                             timestepper = ForwardBackwardScheme())
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 of a free surface dynamics with `gravitational_acceleration`.
@@ -80,13 +80,12 @@ References
 
 Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
-
 function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
-                                  substeps = nothing,
-                                  cfl = nothing,
-                                  fixed_Δt = nothing,
-                                  averaging_kernel = averaging_shape_function,
-                                  timestepper = ForwardBackwardScheme())
+                                    substeps = nothing,
+                                    cfl = nothing,
+                                    fixed_Δt = nothing,
+                                    averaging_kernel = averaging_shape_function,
+                                    timestepper = ForwardBackwardScheme())
 
     settings_kwargs = (; gravitational_acceleration,
                          substeps,
@@ -359,7 +358,13 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
+function Base.summary(sefs::SplitExplicitFreeSurface)
+    if sefs.settings isa NamedTuple
+        return string("SplitExplicitFreeSurface")
+    else
+        return string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
+    end
+end
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 function reset!(sefs::SplitExplicitFreeSurface)

@@ -424,7 +424,7 @@ end
     end	
 end
 
-# Calculate RHS for the barotropic time step.
+# Calculate RHS for the barotropic time step.q
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
