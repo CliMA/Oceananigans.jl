@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions
 Install Imaginocean.jl from GitHub:
 using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 =#
-using CairoMakie, Imaginocean
+using CairoMakie, Imaginocean, JLD2
 
 # First create a conformal cubed sphere grid.
 
@@ -130,3 +130,33 @@ ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, v, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_v_geo_heatlatlon.png", fig)
 =#
+
+Nx, Ny, Nz = 4, 4, 1
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=1, horizontal_direction_halo = 2,
+                                  z_halo = 1)
+Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+jldopen("cubed-sphere-dynamics_branch_cs_grid.jld2", "w") do file
+    for region in 1:6
+        file["λᶜᶜᵃ/" * string(region)]  =  grid[region].λᶜᶜᵃ
+        file["λᶠᶜᵃ/" * string(region)]  =  grid[region].λᶠᶜᵃ
+        file["λᶜᶠᵃ/" * string(region)]  =  grid[region].λᶜᶠᵃ
+        file["λᶠᶠᵃ/" * string(region)]  =  grid[region].λᶠᶠᵃ
+        file["φᶜᶜᵃ/" * string(region)]  =  grid[region].φᶜᶜᵃ
+        file["φᶠᶜᵃ/" * string(region)]  =  grid[region].φᶠᶜᵃ
+        file["φᶜᶠᵃ/" * string(region)]  =  grid[region].φᶜᶠᵃ
+        file["φᶠᶠᵃ/" * string(region)]  =  grid[region].φᶠᶠᵃ
+        file["Δxᶜᶜᵃ/" * string(region)] = grid[region].Δxᶜᶜᵃ
+        file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
+        file["Δxᶜᶠᵃ/" * string(region)] = grid[region].Δxᶜᶠᵃ
+        file["Δxᶠᶠᵃ/" * string(region)] = grid[region].Δxᶠᶠᵃ
+        file["Δyᶜᶜᵃ/" * string(region)] = grid[region].Δyᶜᶜᵃ
+        file["Δyᶠᶜᵃ/" * string(region)] = grid[region].Δyᶠᶜᵃ
+        file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
+        file["Δyᶠᶠᵃ/" * string(region)] = grid[region].Δyᶠᶠᵃ
+        file["Azᶜᶜᵃ/" * string(region)] = grid[region].Azᶜᶜᵃ
+        file["Azᶠᶜᵃ/" * string(region)] = grid[region].Azᶠᶜᵃ
+        file["Azᶜᶠᵃ/" * string(region)] = grid[region].Azᶜᶠᵃ
+        file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
+    end
+end
