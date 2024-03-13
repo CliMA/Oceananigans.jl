@@ -40,6 +40,8 @@ import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 import Oceananigans.Architectures: on_architecture
 
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
