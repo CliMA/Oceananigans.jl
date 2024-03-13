@@ -138,7 +138,6 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{5, FT}, 
                                              ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT}
 
-
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, u, v, args...)
             us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
             vs = $stencil_v(i, j, k, scheme, Val(1), Val($val), grid, v)
