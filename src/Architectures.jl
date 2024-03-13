@@ -109,13 +109,13 @@ arch_array(::AbstractArchitecture, a::Number) = a
 arch_array(::AbstractArchitecture, a::Function) = a
 
 arch_array(arch::CPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch::GPU{D}, a::OffsetArray) where D = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch::GPU, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
-cpu_architecture(::GPU{D}) where D = CPU()
+cpu_architecture(::GPU) = CPU()
 
 unified_array(::CPU, a) = a
-unified_array(::GPU{D}, a) where D = a
+unified_array(::GPU, a) = a
 
 function unified_array(::CUDAGPU, arr::AbstractArray) 
     buf = CUDA.Mem.alloc(CUDA.Mem.Unified, sizeof(arr))
