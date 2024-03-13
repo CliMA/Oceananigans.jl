@@ -656,7 +656,6 @@ function initialize_nc_file!(filepath,
 end
 
 initialize_nc_file!(ow::NetCDFOutputWriter, model) =
-initialize_nc_file!(ow::NetCDFOutputWriter, model) =
     initialize_nc_file!(ow.filepath,
                         ow.outputs,
                         ow.schedule,
