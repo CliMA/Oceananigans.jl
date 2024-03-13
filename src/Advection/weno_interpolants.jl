@@ -335,14 +335,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
         @inline function $biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
             @inbounds begin
                 β = $beta_loop(scheme, ψ)
-                    
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
-
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff)
+                
                 α_tot = 1 / sum(α)
 
                 return α .* α_tot
@@ -358,15 +353,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 βᵤ = $beta_loop(scheme, uₛ)
                 βᵥ = $beta_loop(scheme, vₛ)
 
-                β  = beta_sum(scheme, βᵤ, βᵥ)
-
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
-
+                β = beta_sum(scheme, βᵤ, βᵥ)
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff)
                 α_tot = 1 / sum(α)
 
                 return α .* α_tot
