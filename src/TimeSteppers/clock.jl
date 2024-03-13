@@ -12,9 +12,9 @@ Keeps track of the current `time`, `iteration` number, and time-stepping `stage`
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
-mutable struct Clock{T}
+mutable struct Clock{T, FT}
          time :: T
-           Δt :: T
+           Δt :: FT
     iteration :: Int
         stage :: Int
 end
@@ -25,7 +25,7 @@ end
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage`.
 """
-Clock(; time::T, iteration=0, stage=1, Δt = Inf) where T = Clock{T}(time, Δt, iteration, stage)
+Clock(; time::T, Δt::FT = Inf, iteration=0, stage=1) where {T, FT} = Clock{T, FT}(time, Δt, iteration, stage)
 
 Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), Δt=$(prettytime(clock.Δt)))")
 

@@ -50,7 +50,7 @@ end
 
 """
     HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, Inf, 0, 1),
+                                             clock = Clock{eltype(grid), eltype(grid)}(0, Inf, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
@@ -94,7 +94,7 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, Inf, 0, 1),
+                                             clock = Clock{eltype(grid), eltype(grid)}(0, Inf, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
