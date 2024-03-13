@@ -302,7 +302,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     @eval begin 
         # The WENO-Z solution here is 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{N, FT},  tid, wrk, 
+                                            scheme::WENO{N, FT}, tid, wrk, 
                                             ψ, idx, loc, args...) where {N, FT}
                                         
                                             
