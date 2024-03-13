@@ -97,6 +97,12 @@ const ε = 1e-8
 @inline coeff_left(::WENO{6}, ::Val{4}) = 5/77
 @inline coeff_left(::WENO{6}, ::Val{5}) = 1/462
 
+for buffer in [2, 3, 4, 5, 6]
+    for stencil in [0, 1, 2, 3, 4, 5]
+        @eval @inline coeff_right(scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds coeff_left(scheme, Val($(buffer-stencil-1)))
+    end
+end
+
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
 @inline smoothness_coefficients(::WENO{2, FT}, ::Val{0}) where FT = @inbounds FT.((1, -2, 1))
 @inline smoothness_coefficients(::WENO{2, FT}, ::Val{1}) where FT = @inbounds FT.((1, -2, 1))
@@ -159,8 +165,6 @@ for buffer in [2, 3, 4, 5, 6]
 
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
-            @inline   coeff_right(scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds coeff_left(scheme, Val($(buffer-stencil-1)))
-
             # uniform coefficients are independent on direction and location
             @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
             @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
@@ -179,11 +183,30 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds @fastmath abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds @fastmath abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds @fastmath abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds @fastmath abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds @fastmath abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+@inline add_global_smoothness(τ, β, ::Val{2}, ::Val{1}) = τ + β
+@inline add_global_smoothness(τ, β, ::Val{2}, ::Val{2}) = τ - β
+
+@inline add_global_smoothness(τ, β, ::Val{3}, ::Val{1}) = τ + β
+@inline add_global_smoothness(τ, β, ::Val{3}, ::Val{2}) = τ 
+@inline add_global_smoothness(τ, β, ::Val{3}, ::Val{3}) = τ - β
+
+@inline add_global_smoothness(τ, β, ::Val{4}, ::Val{1}) = τ +  β
+@inline add_global_smoothness(τ, β, ::Val{4}, ::Val{2}) = τ + 3β
+@inline add_global_smoothness(τ, β, ::Val{4}, ::Val{3}) = τ - 3β
+@inline add_global_smoothness(τ, β, ::Val{4}, ::Val{4}) = τ -  β
+
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{1}) = τ +  β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{2}) = τ + 2β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{3}) = τ - 6β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{4}) = τ + 2β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{5}) = τ +  β
+
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{1}) = τ +    β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{2}) = τ +  36β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{3}) = τ + 135β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{4}) = τ - 135β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{5}) = τ -  36β
+@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{6}) = τ -    β
 
 """ 
     calc_weno_stencil(buffer, shift, dir, func::Bool = false)
@@ -278,55 +301,81 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, args...) where {N, FT}
         
-            wei = 0
-            sol = 0
+            wei1 = 0
+            wei2 = 0
+            sol1 = 0
+            sol2 = 0
+            glob = 0
             @unroll for s in 1:N
                 ψs = $stencil(i, j, k, scheme, 1, ψ, grid, args...)
                 β  = $biased_β(ψs, scheme, Val(s-1))
-                α  = @inbounds @fastmath FT($coeff(scheme, Val(s-1))) / (β + FT(ε))^2
-                sol += $biased_p(scheme, Val(s-1), ψs, Nothing, idx) * α
-                wei += α
+                C  = FT($coeff(scheme, Val(s-1)))
+                α  = @inbounds @fastmath C / (β + FT(ε))^2
+                ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, idx) 
+                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                sol1 += ψ̅ * C
+                sol2 += ψ̅ * α  
+                wei1 += α
+                wei2 += C
             end
 
-            return sol / wei
+            glob = abs(glob)
+
+            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
                                             ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
 
-            wei = 0
-            sol = 0
+            wei1 = 0
+            wei2 = 0
+            sol1 = 0
+            sol2 = 0
+            glob = 0
             @unroll for s in 1:N
                 ψs = $stencil(i, j, k, scheme, s, ψ, grid, u, v, args...)
                 us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), u)
                 vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), v)
                 βu = $biased_β(us, scheme, Val(s-1))
                 βv = $biased_β(vs, scheme, Val(s-1))
-                α  = @inbounds @fastmath FT($coeff(scheme, Val(s-1))) / (0.5 * (βu + βv) + FT(ε))^2
-                sol += $biased_p(scheme, Val(s-1), ψs, Nothing, idx) * α
-                wei += α
+                C  = FT($coeff(scheme, Val(s-1)))
+                α  = @inbounds @fastmath C / (0.5 * (βu + βv) + FT(ε))^2
+                ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, idx) 
+                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                sol1 += ψ̅ * C
+                sol2 += ψ̅ * α  
+                wei1 += α
+                wei2 += C
             end
 
-            return sol / wei
+            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
                                             scheme::WENO{N, FT}, 
-                                            ψ, idx, loc,VI::FunctionStencil, args...) where {N, FT}
+                                            ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT}
 
-            wei = 0
-            sol = 0
+            wei1 = 0
+            wei2 = 0
+            sol1 = 0
+            sol2 = 0
+            glob = 0
             @unroll for s in 1:N
                 ψs = $stencil(i, j, k, scheme, s, ψ, grid, args...)
                 ϕs = $stencil(i, j, k, scheme, s, VI.func, grid, args...)
                 βϕ = $biased_β(ϕs, scheme, Val(s-1))
-                α  = @inbounds @fastmath FT($coeff(scheme, Val(s-1))) / (βϕ + FT(ε))^2
-                sol += $biased_p(scheme, Val(s-1), ψs, Nothing, idx) * α
-                wei += α
+                C  = FT($coeff(scheme, Val(s-1)))
+                α  = @inbounds @fastmath C / (βϕ + FT(ε))^2
+                ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, idx) 
+                glob = add_global_smoothness(glob, β, Val(N), Val(s))
+                sol1 += ψ̅ * C
+                sol2 += ψ̅ * α  
+                wei1 += α
+                wei2 += C
             end
 
-            return sol / wei
+            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
         end
     end
 end
