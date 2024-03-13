@@ -280,15 +280,15 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
-@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
-@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
-@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
+@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{1}, grid, u) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
+@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{2}, grid, u) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
+@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{1}, grid, v) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
+@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{2}, grid, v) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
 
-@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
-@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
-@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
-@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
+@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{1}, grid, u) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
+@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{2}, grid, u) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, grid, u)
+@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{1}, grid, v) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
+@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, grid, v) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
 
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
@@ -369,8 +369,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ntuple(Val(N)) do s
                 Base.@_inline_meta
                 ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
-                us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), u)
-                vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), v)
+                us = $stencil_u(i, j, k, scheme, Val(s-1), Val($val), grid, u)
+                vs = $stencil_v(i, j, k, scheme, Val(s-1), Val($val), grid, v)
                 βu = $biased_β(us, scheme, Val(s-1))
                 βv = $biased_β(vs, scheme, Val(s-1))
                 βU = 0.5 * (βu + βv)
