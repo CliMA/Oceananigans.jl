@@ -94,7 +94,6 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{3, FT}, tid, wrk,
                                              ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT}
 
-
             ψs = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
             βu = $biased_β(ψs, scheme, Val(0))
             ψs = $stencil_v(i, j, k, scheme, Val(1), Val($val), grid, v)

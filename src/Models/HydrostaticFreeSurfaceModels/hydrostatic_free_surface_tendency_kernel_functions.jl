@@ -25,7 +25,7 @@ The tendency for ``u`` is called ``G_u`` and defined via
 where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
-@inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, tid, wrk, 
+@inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, 
                                                               advection,
                                                               coriolis,
                                                               closure,
@@ -42,7 +42,7 @@ implicitly during time-stepping.
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇u(i, j, k, grid, advection, velocities, tid, wrk)
+    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
@@ -64,7 +64,7 @@ The tendency for ``v`` is called ``G_v`` and defined via
 where `p_n` is the part of the barotropic kinematic pressure that's treated 
 implicitly during time-stepping.
 """
-@inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, tid, wrk, 
+@inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, 
                                                               advection,
                                                               coriolis,
                                                               closure,
@@ -81,7 +81,7 @@ implicitly during time-stepping.
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities, tid, wrk)
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
@@ -102,7 +102,7 @@ The tendency is called ``G_c`` and defined via
 
 where `c = C[tracer_index]`. 
 """
-@inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid, tid, wrk, 
+@inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid, 
                                                           val_tracer_index::Val{tracer_index},
                                                           val_tracer_name,
                                                           advection,
@@ -130,7 +130,7 @@ where `c = C[tracer_index]`.
 
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c, tid, wrk)
+    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
