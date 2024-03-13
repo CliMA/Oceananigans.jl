@@ -138,14 +138,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{5, FT}, tid, wrk,
                                              ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT}
 
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, u, v, args...)
-            us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
-            vs = $stencil_v(i, j, k, scheme, Val(1), Val($val), grid, v)
-            βu = $biased_β(us, scheme, Val(0))
-            βv = $biased_β(vs, scheme, Val(0))
+            ψs = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
+            βu = $biased_β(ψs, scheme, Val(0))
+            ψs = $stencil_v(i, j, k, scheme, Val(1), Val($val), grid, v)
+            βv = $biased_β(ψs, scheme, Val(0))
             βU = 0.5 * (βu + βv)
             C  = FT($coeff(scheme, Val(0)))
             α  = @fastmath C / (βU + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
             glob = βU
             sol1 = ψ̅ * C
@@ -153,14 +153,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 = ψ̅ * α  
             wei2 = α
 
-            ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, u, v, args...)
-            us = $stencil_u(i, j, k, scheme, Val(2), Val($val), grid, u)
-            vs = $stencil_v(i, j, k, scheme, Val(2), Val($val), grid, v)
-            βu = $biased_β(us, scheme, Val(1))
-            βv = $biased_β(vs, scheme, Val(1))
+            ψs = $stencil_u(i, j, k, scheme, Val(2), Val($val), grid, u)
+            βu = $biased_β(ψs, scheme, Val(1))
+            ψs = $stencil_v(i, j, k, scheme, Val(2), Val($val), grid, v)
+            βv = $biased_β(ψs, scheme, Val(1))
             βU = 0.5 * (βu + βv)
             C  = FT($coeff(scheme, Val(1)))
             α  = @fastmath C / (βU + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βU, Val(5), Val(1))
             sol1 += ψ̅ * C
@@ -168,14 +168,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, u, v, args...)
-            us = $stencil_u(i, j, k, scheme, Val(3), Val($val), grid, u)
-            vs = $stencil_v(i, j, k, scheme, Val(3), Val($val), grid, v)
-            βu = $biased_β(us, scheme, Val(2))
-            βv = $biased_β(vs, scheme, Val(2))
+            ψs = $stencil_u(i, j, k, scheme, Val(3), Val($val), grid, u)
+            βu = $biased_β(ψs, scheme, Val(2))
+            ψs = $stencil_v(i, j, k, scheme, Val(3), Val($val), grid, v)
+            βv = $biased_β(ψs, scheme, Val(2))
             βU = 0.5 * (βu + βv)
             C  = FT($coeff(scheme, Val(2)))
             α  = @fastmath C / (βU + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βU, Val(5), Val(2))
             sol1 += ψ̅ * C
@@ -183,14 +183,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, u, v, args...)
-            us = $stencil_u(i, j, k, scheme, Val(4), Val($val), grid, u)
-            vs = $stencil_v(i, j, k, scheme, Val(4), Val($val), grid, v)
-            βu = $biased_β(us, scheme, Val(3))
-            βv = $biased_β(vs, scheme, Val(3))
+            ψs = $stencil_u(i, j, k, scheme, Val(4), Val($val), grid, u)
+            βu = $biased_β(ψs, scheme, Val(3))
+            ψs = $stencil_v(i, j, k, scheme, Val(4), Val($val), grid, v)
+            βv = $biased_β(ψs, scheme, Val(3))
             βU = 0.5 * (βu + βv)
             C  = FT($coeff(scheme, Val(3)))
             α  = @fastmath C / (βU + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βU, Val(5), Val(3))
             sol1 += ψ̅ * C
@@ -198,14 +198,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(5), ψ, grid, u, v, args...)
-            us = $stencil_u(i, j, k, scheme, Val(5), Val($val), grid, u)
-            vs = $stencil_v(i, j, k, scheme, Val(5), Val($val), grid, v)
-            βu = $biased_β(us, scheme, Val(4))
-            βv = $biased_β(vs, scheme, Val(4))
+            ψs = $stencil_u(i, j, k, scheme, Val(5), Val($val), grid, u)
+            βu = $biased_β(ψs, scheme, Val(4))
+            ψs = $stencil_v(i, j, k, scheme, Val(5), Val($val), grid, v)
+            βv = $biased_β(ψs, scheme, Val(4))
             βU = 0.5 * (βu + βv)
             C  = FT($coeff(scheme, Val(4)))
             α  = @fastmath C / (βU + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(5), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(4), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βU, Val(5), Val(4))
             sol1 += ψ̅ * C
@@ -221,11 +221,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                              scheme::WENO{5, FT}, tid, wrk,
                                              ψ, idx, loc, VI::FunctionStencil, args...) where {FT}
 
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            βϕ = $biased_β(ϕs, scheme, Val(0))
+            ψs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
+            βϕ = $biased_β(ψs, scheme, Val(0))
             C  = FT($coeff(scheme, Val(0)))
             α  = @fastmath C / (βϕ + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(0), ψs, Nothing, Val($val), idx, loc) 
             glob = βϕ
             sol1 = ψ̅ * C
@@ -233,11 +233,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 = ψ̅ * α  
             wei2 = α
 
-            ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, args...)
-            ϕs = $stencil(i, j, k, scheme, Val(2), VI.func, grid, args...)
-            βϕ = $biased_β(ϕs, scheme, Val(1))
+            ψs = $stencil(i, j, k, scheme, Val(2), VI.func, grid, args...)
+            βϕ = $biased_β(ψs, scheme, Val(1))
             C  = FT($coeff(scheme, Val(1)))
             α  = @fastmath C / (βϕ + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(2), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βϕ, Val(5), Val(1))
             sol1 += ψ̅ * C
@@ -245,11 +245,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, args...)
-            ϕs = $stencil(i, j, k, scheme, Val(3), VI.func, grid, args...)
-            βϕ = $biased_β(ϕs, scheme, Val(2))
+            ψs = $stencil(i, j, k, scheme, Val(3), VI.func, grid, args...)
+            βϕ = $biased_β(ψs, scheme, Val(2))
             C  = FT($coeff(scheme, Val(2)))
             α  = @fastmath C / (βϕ + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(3), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βϕ, Val(5), Val(2))
             sol1 += ψ̅ * C
@@ -257,11 +257,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, args...)
-            ϕs = $stencil(i, j, k, scheme, Val(4), VI.func, grid, args...)
-            βϕ = $biased_β(ϕs, scheme, Val(3))
+            ψs = $stencil(i, j, k, scheme, Val(4), VI.func, grid, args...)
+            βϕ = $biased_β(ψs, scheme, Val(3))
             C  = FT($coeff(scheme, Val(3)))
             α  = @fastmath C / (βϕ + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(4), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βϕ, Val(5), Val(3))
             sol1 += ψ̅ * C
@@ -269,11 +269,11 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             sol2 += ψ̅ * α  
             wei2 += α
 
-            ψs = $stencil(i, j, k, scheme, Val(5), ψ, grid, args...)
-            ϕs = $stencil(i, j, k, scheme, Val(5), VI.func, grid, args...)
-            βϕ = $biased_β(ϕs, scheme, Val(4))
+            ψs = $stencil(i, j, k, scheme, Val(5), VI.func, grid, args...)
+            βϕ = $biased_β(ψs, scheme, Val(4))
             C  = FT($coeff(scheme, Val(4)))
             α  = @fastmath C / (βϕ + FT(ε))^2
+            ψs = $stencil(i, j, k, scheme, Val(5), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(4), ψs, Nothing, Val($val), idx, loc) 
             glob += add_global_smoothness(βϕ, Val(5), Val(4))
             sol1 += ψ̅ * C
