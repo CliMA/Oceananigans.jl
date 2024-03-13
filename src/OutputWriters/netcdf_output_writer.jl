@@ -352,7 +352,6 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                      previous = 1,
                                  max_filesize = Inf,
                                       verbose = false)
-                                
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
