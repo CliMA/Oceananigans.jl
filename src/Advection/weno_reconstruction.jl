@@ -158,7 +158,7 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT}) where {N, FT, XT, YT,
                  Adapt.adapt(to, scheme.buffer_scheme),
                  Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT, WF}) where {N, FT, XT, YT, ZT} =
+on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     WENO{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
                 on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
                 on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
