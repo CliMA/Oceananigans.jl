@@ -472,7 +472,7 @@ every time an output is written to the file.
 function write_output!(ow::NetCDFOutputWriter, model)
     # TODO allow user to split by number of snapshots, rathern than filesize.
     # Start a new file if the filesize exceeds max_filesize
-    filesize(ow.filepath) >= ow.max_filesize && start_next_file(model, ow)
+    filesize(ow.filepath) ≥ ow.max_filesize && start_next_file(model, ow)
 
     ow.dataset = open(ow)
 
