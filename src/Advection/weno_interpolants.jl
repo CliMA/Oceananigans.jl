@@ -201,12 +201,12 @@ end
 @inline add_global_smoothness(τ, β, ::Val{5}, ::Val{4}) = τ + 2β
 @inline add_global_smoothness(τ, β, ::Val{5}, ::Val{5}) = τ +  β
 
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{1}) = τ +    β
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{2}) = τ +  36β
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{3}) = τ + 135β
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{4}) = τ - 135β
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{5}) = τ -  36β
-@inline add_global_smoothness(τ, β, ::Val{5}, ::Val{6}) = τ -    β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{1}) = τ +    β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{2}) = τ +  36β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{3}) = τ + 135β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{4}) = τ - 135β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{5}) = τ -  36β
+@inline add_global_smoothness(τ, β, ::Val{6}, ::Val{6}) = τ -    β
 
 """ 
     calc_weno_stencil(buffer, shift, dir, func::Bool = false)
@@ -265,7 +265,7 @@ end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for side in (:left, :right), dir in (:x, :y, :z)
+for side in (:left, :right), dir in (:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ)
     retrieve_stencil = Symbol(side, :_stencil_, dir)
     for buffer in [2, 3, 4, 5, 6]
         for stencil in [1:buffer]
@@ -279,20 +279,21 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath left_stencil_y(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath left_stencil_y(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath left_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath left_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
 
-@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath right_stencil_x(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath right_stencil_y(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath right_stencil_x(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath right_stencil_y(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{1}, u) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, scheme, stencil, ::Val{2}, u) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{1}, v) = @inbounds @fastmath right_stencil_xᶠᵃᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, v) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, v)
 
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β  = Symbol(side, :_biased_β)
     coeff     = Symbol(:coeff_, side) 
+    stencil   = Symbol(side, :_stencil_, dir)
     stencil_u = Symbol(:tangential_, side, :_stencil_u)
     stencil_v = Symbol(:tangential_, side, :_stencil_v)
 
