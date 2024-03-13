@@ -237,13 +237,13 @@ on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                               on_architecture(to, scheme.divergence_scheme),
                               on_architecture(to, scheme.upwinding))
 
-@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U, ti, wrk) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v, ti, wrk) +
-                                                                         vertical_advection_U(i, j, k, grid, scheme, U, ti, wrk) +
-                                                                             bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
+@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U, tid, wrk) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v, tid, wrk) +
+                                                                          vertical_advection_U(i, j, k, grid, scheme, U, tid, wrk) +
+                                                                              bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v, tid, wrk)
 
-@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U, ti, wrk) = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v, ti, wrk) +
-                                                                         vertical_advection_V(i, j, k, grid, scheme, U, ti, wrk) +
-                                                                             bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v, ti, wrk)
+@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U, tid, wrk) = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v, tid, wrk) +
+                                                                          vertical_advection_V(i, j, k, grid, scheme, U, tid, wrk) +
+                                                                              bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v, tid, wrk)
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
 for bias in (:_left_biased, :_right_biased, :_symmetric)
@@ -296,7 +296,7 @@ end
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U, tid, wrk) 
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v, tid, wrk)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, U.w, U.u, ti, wrk)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, U.w, U.u, tid, wrk)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end

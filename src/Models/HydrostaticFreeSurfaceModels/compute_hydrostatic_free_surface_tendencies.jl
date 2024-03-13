@@ -16,6 +16,9 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_tuple
 
+using KernelAbstractions: @private, @uniform, @groupsize, @index, @localmem
+
+
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -230,25 +233,53 @@ end
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 #####
@@ -258,25 +289,53 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple)     
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
 @kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
+
+    M    = @uniform @groupsize()
+    tid  = @index(Local, NTuple) 
+    wrkx = @localmem Float64 (5, M[1])
+    wrky = @localmem Float64 (5, M[2])
+    wrkz = @localmem Float64 (5, M[3])
+
+    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, tid, (wrkx, wrky, wrkz), args...)
 end
 
 #####
