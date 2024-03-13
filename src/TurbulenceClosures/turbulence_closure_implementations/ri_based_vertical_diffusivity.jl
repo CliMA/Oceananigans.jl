@@ -14,7 +14,7 @@ struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
-    Ri_horizontal_filtering :: HR
+    horizontal_Ri_filter :: HR
     maximum_diffusivity :: FT
     maximum_viscosity :: FT
 end
@@ -27,14 +27,14 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R,
-                                        Ri_horizontal_filtering::HR,
+                                        horizontal_Ri_filter::HR,
                                         maximum_diffusivity::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
 
     return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering,
-                                                 Ri_horizontal_filtering,
+                                                 horizontal_Ri_filter,
                                                  maximum_diffusivity,
                                                  maximum_viscosity)
 end
@@ -48,13 +48,16 @@ Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDepen
 Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering" 
 Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering" 
 
-struct FivePointFilter end
+# Horizontal filtering for the Richardson number
+struct FivePointHorizontalFilter end
+@inline filter_horizontally(i, j, k, grid, ::Nothing, ϕ) = @inbounds ϕ[i, j, k]
+@inline filter_horizontally(i, j, k, grid, ::FivePointHorizontalFilter, ϕ) = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ϕ)
 
 """
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                FT = Float64;]
                                Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                               Ri_horizontal_filtering = nothing,
+                               horizontal_Ri_filter = nothing,
                                maximum_diffusivity = Inf,
                                maximum_viscosity = Inf,
                                ν₀  = 0.7,
@@ -95,6 +98,7 @@ Keyword arguments
 * `κᶜᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
 * `Cᵉⁿ`: Entrainment coefficient for tracers (non-dimensional).
+         Set `Cᵉⁿ = 0` to turn off the penetrative entrainment diffusivity.
 
 * `Cᵃᵛ`: Time-averaging coefficient for viscosity and diffusivity (non-dimensional).
 
@@ -106,6 +110,9 @@ Keyword arguments
 
 * `maximum_viscosity`: A limiting maximum viscosity (units of kinematic viscosity, typically m² s⁻¹).
 
+* `horizontal_Ri_filter`: Horizontal filter to apply to Ri, which can help allievaite noise for
+                          some simulations. The default is `nothing`, or no filtering. The other
+                          option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
@@ -191,7 +198,9 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
             top_tracer_bcs,
             clock)
 
-    fill_halo_regions!(diffusivities.Ri)
+    # Use `only_local_halos` to ensure that no communication occurs during
+    # this call to fill_halo_regions!
+    fill_halo_regions!(diffusivities.Ri; only_local_halos=true)
 
     launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,
@@ -253,6 +262,7 @@ end
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
 end
 
+
 @inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
                                                   velocities, tracers, buoyancy, tracer_bcs, clock)
 
@@ -267,6 +277,7 @@ end
     Ri₀ = closure_ij.Ri₀
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
+    Ri_filter = closure_ij.horizontal_Ri_filter
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
     # Convection and entrainment
@@ -282,11 +293,10 @@ end
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉⁿ = zero(grid) #ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
 
-    # Average the Richardson number horizontally
-    # Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
-    Ri = @inbounds diffusivities.Ri[i, j, k]
+    # (Potentially) apply a horizontal filter to the Richardson number
+    Ri = filter_horizontally(i, j, k, grid, Ri_filter, diffusivities.Ri)
 
     # Shear mixing diffusivity and viscosity
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
@@ -337,4 +347,4 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
-    
+
