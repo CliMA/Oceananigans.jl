@@ -29,7 +29,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         Riᵟ::FT,
                                         Ri_dependent_tapering::R,
                                         horizontal_Ri_filter::HR,
-                                        minimum_entrainment_buoyancy_gradient::FT
+                                        minimum_entrainment_buoyancy_gradient::FT,
                                         maximum_diffusivity::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
