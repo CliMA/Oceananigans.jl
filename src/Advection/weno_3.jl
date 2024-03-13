@@ -28,7 +28,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(1)))
             α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(1), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(1))
+            glob += add_global_smoothness(glob, β, Val(3), Val(1))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
@@ -39,7 +39,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             C  = FT($coeff(scheme, Val(2)))
             α  = @fastmath C / (β + FT(ε))^2
             ψ̅  = $biased_p(scheme, Val(2), ψs, Nothing, Val($val), idx, loc) 
-            glob += add_global_smoothness(glob, β, Val(N), Val(2))
+            glob += add_global_smoothness(glob, β, Val(3), Val(2))
             sol1 += ψ̅ * C
             wei1 += C
             sol2 += ψ̅ * α  
