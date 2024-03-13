@@ -123,15 +123,8 @@ function WENO(FT::DataType=Float64;
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
-    wrk1 = CenterField(grid)
-    wrk2 = CenterField(grid)
-    wrk3 = CenterField(grid)
-    wrk4 = CenterField(grid)
-    wrk5 = CenterField(grid)
-
     return WENO{N, FT}(weno_coefficients..., 
-                       bounds, buffer_scheme, advecting_velocity_scheme,
-                       wrk1, wrk2, wrk3, wrk4, wrk5)
+                       bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
