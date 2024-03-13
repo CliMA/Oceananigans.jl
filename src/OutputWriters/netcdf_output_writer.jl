@@ -656,4 +656,16 @@ function initialize_nc_file!(filepath,
 end
 
 initialize_nc_file!(ow::NetCDFOutputWriter, model) =
-    initialize_nc_file!(ow.filepath, ow.outputs, ow.schedule, ow.array_type, ow.indices, ow.with_halos, ow.global_attributes, ow.output_attributes, ow.dimensions, ow.overwrite_existing, ow.deflatelevel, model)
+initialize_nc_file!(ow::NetCDFOutputWriter, model) =
+    initialize_nc_file!(ow.filepath,
+                        ow.outputs,
+                        ow.schedule,
+                        ow.array_type,
+                        ow.indices,
+                        ow.with_halos,
+                        ow.global_attributes,
+                        ow.output_attributes,
+                        ow.dimensions,
+                        ow.overwrite_existing,
+                        ow.deflatelevel,
+                        model)
