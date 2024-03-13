@@ -158,12 +158,12 @@ end
     elem = Vector(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
-        stencil_sum   = Expr(:call, :+, (:(@inbounds @fastmath C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(@inbounds @fastmath ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
+        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(@inbounds @fastmath ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
     
     return Expr(:call, :+, elem...)
 end
@@ -196,7 +196,7 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(func(ψ[$stencil], scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
@@ -206,7 +206,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))))
+        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))))
     end
 
     return :($(elem...),)
@@ -216,7 +216,7 @@ end
 @inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath FT(coeff(scheme, Val($(stencil-1)))) / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))
+        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) / Base.literal_pow(^, β[$stencil] + FT(ε), Val(2)))
     end
 
     return :($(elem...),)
@@ -364,15 +364,15 @@ end
 # Parallel to the interpolation direction! (same as left/right stencil)
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds @fastmath left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds @fastmath left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds @fastmath left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
 
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds @fastmath right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds @fastmath right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds @fastmath right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds @fastmath right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_stencil_sum(buffer)
