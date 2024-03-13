@@ -355,11 +355,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                              scheme::WENO{N, FT}, 
-                                             ψ, idx, loc, VI::VelocityStencil, u, v) where {N, FT}
-
-
-            sol = @localmem FT (5) * 
-            li  = @index(Local, NTuple)
+                                             ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             wei1 = Ref(FT(0))
             wei2 = Ref(FT(0))
