@@ -259,7 +259,10 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 else
                     α = js_alpha_loop(scheme, β, $coeff, FT)
                 end
-                return α ./ sum(α)
+
+                α_tot = 1 / sum(α)
+
+                return α .* α_tot
             end
         end
 
@@ -280,7 +283,10 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 else
                     α = js_alpha_loop(scheme, β, $coeff, FT)
                 end
-                return α ./ sum(α)
+
+                α_tot = 1 / sum(α)
+
+                return α .* α_tot
             end
         end
     end
