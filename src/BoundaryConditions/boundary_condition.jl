@@ -93,14 +93,14 @@ const DCBC = BoundaryCondition{<:DistributedCommunication}
 # More readable BC constructors for the public API.
                 PeriodicBoundaryCondition() = BoundaryCondition(Periodic,                 nothing)
                   NoFluxBoundaryCondition() = BoundaryCondition(Flux,                     nothing)
-            ImpenetrableBoundaryCondition() = BoundaryCondition(Open,                     nothing)
+            ImpenetrableBoundaryCondition() = BoundaryCondition(Open{nothing},                     nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication, nothing)
 DistributedCommunicationBoundaryCondition() = BoundaryCondition(DistributedCommunication, nothing)
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
+                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open{nothing}, val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication, val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication, val; kwargs...)
 
