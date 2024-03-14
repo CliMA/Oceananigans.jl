@@ -34,12 +34,12 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
-                                                 Ri_dependent_tapering,
-                                                 horizontal_Ri_filter,
-                                                 minimum_entrainment_buoyancy_gradient,
-                                                 maximum_diffusivity,
-                                                 maximum_viscosity)
+    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
+                                                     Ri_dependent_tapering,
+                                                     horizontal_Ri_filter,
+                                                     minimum_entrainment_buoyancy_gradient,
+                                                     maximum_diffusivity,
+                                                     maximum_viscosity)
 end
 
 # Ri-dependent tapering flavor
@@ -126,6 +126,8 @@ Keyword arguments
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
+                                    horizontal_Ri_filter = nothing,
+                                    minimum_entrainment_buoyancy_gradient = 1e-10,
                                     maximum_diffusivity = Inf,
                                     maximum_viscosity = Inf,
                                     ν₀  = 0.7,
@@ -154,6 +156,8 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                           convert(FT, Ri₀),
                                           convert(FT, Riᵟ),
                                           Ri_dependent_tapering,
+                                          horizontal_Ri_filter,
+                                          convert(FT, minimum_entrainment_buoyancy_gradient),
                                           convert(FT, maximum_diffusivity),
                                           convert(FT, maximum_viscosity))
 end
