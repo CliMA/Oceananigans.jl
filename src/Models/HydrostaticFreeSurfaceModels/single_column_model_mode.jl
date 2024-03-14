@@ -59,7 +59,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFS
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, Δt, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 

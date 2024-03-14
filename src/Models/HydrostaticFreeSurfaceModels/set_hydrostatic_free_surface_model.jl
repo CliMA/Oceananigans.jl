@@ -60,7 +60,7 @@ model.velocities.u
         @apply_regionally set!(ϕ, value)
     end
 
-    update_state!(model)
+    update_state!(model, 1.0)
 
     return nothing
 end

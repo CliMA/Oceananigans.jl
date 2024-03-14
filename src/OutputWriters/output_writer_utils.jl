@@ -6,6 +6,7 @@ using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instanti
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: GeneralizedSpacingGrid, retrieve_static_grid
 
 #####
 ##### Output writer utilities
@@ -48,6 +49,11 @@ function saveproperty!(file, address, grid::DistributedGrid)
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
+function saveproperty!(file, address, grid::GeneralizedSpacingGrid) 
+    static_grid = retrieve_static_grid(grid)
+    saveproperty!(file, address, static_grid)
+end
+
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
@@ -87,6 +93,11 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
+end
+
+function serializeproperty!(file, address, grid::GeneralizedSpacingGrid) 
+    static_grid = retrieve_static_grid(grid)
+    serializeproperty!(file, address, static_grid)
 end
 
 function serializeproperty!(file, address, p::FieldBoundaryConditions)

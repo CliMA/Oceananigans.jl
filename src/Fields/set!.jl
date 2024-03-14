@@ -2,7 +2,7 @@ using CUDA
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
-using Oceananigans.Grids: on_architecture, node_names
+using Oceananigans.Grids: node_names
 using Oceananigans.Architectures: device, GPU, CPU
 using Oceananigans.Utils: work_layout
 
@@ -40,7 +40,7 @@ function set!(u::Field, f::Function)
     # Form a FunctionField from `f`
     f_field = field(location(u), f, cpu_grid)
 
-    # Try to set the FuncitonField to cpu_u
+    # Try to set the FunctionField to cpu_u
     try
         set!(cpu_u, f_field)
     catch err

@@ -1,4 +1,4 @@
-struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -19,29 +19,31 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ
-    Δzᵃᵃᶜ :: FZ
+    Δzᵃᵃᶠ :: FZF 
+    Δzᵃᵃᶜ :: FZC
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
 
-    RectilinearGrid{TX, TY, TZ}(arch::Arch,
-                                Nx, Ny, Nz,
-                                Hx, Hy, Hz,
-                                Lx :: FT, Ly :: FT, Lz :: FT,
-                                Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                 xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                 yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                 zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
-                                                                 TX, TY, TZ,
-                                                                 FX, VX, FY,
-                                                                 VY, FZ, VZ} =
-        new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                          Hx, Hy, Hz, Lx, Ly, Lz, 
-                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+    function RectilinearGrid{TX, TY, TZ}(arch::Arch,
+                                         Nx, Ny, Nz,
+                                         Hx, Hy, Hz,
+                                         Lx::FT, Ly::FT, Lz::FT,
+                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                          Δzᵃᵃᶠ :: FZF, Δzᵃᵃᶜ :: FZC,
+                                          zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
+                                                                          TX, TY, TZ,
+                                                                          FX, VX, FY,
+                                                                          VY, FZF, FZC, VZ}
+                                                                                           
+        return new{FT, TX, TY, TZ, FX, FY, FZF, FZC, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
+                                                                       Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                                                       Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+    end
 end
 
 const RG = RectilinearGrid

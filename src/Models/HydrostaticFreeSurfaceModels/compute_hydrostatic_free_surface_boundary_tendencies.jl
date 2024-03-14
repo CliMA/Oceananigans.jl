@@ -11,7 +11,7 @@ import Oceananigans.Models: compute_boundary_tendencies!
 using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
+function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel, Δt)
     grid = model.grid
     arch = architecture(grid)
 
@@ -19,8 +19,8 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     p_parameters = boundary_p_kernel_parameters(grid, arch)
     κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
-    # We need new values for `w`, `p` and `κ`
-    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
+    # We need new values for `w`, `p` and `κ`    
+    compute_auxiliaries!(model, Δt; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
     compute_boundary_tendency_contributions!(grid, arch, model)

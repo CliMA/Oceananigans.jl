@@ -108,9 +108,6 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
                                             column_map)
 end
 
-with_halo(halo, ibg::ActiveCellsIBG) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map = true)
-
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)
 @inline active_column(i, j, k, grid, column) = column[i, j, k] != 0
 

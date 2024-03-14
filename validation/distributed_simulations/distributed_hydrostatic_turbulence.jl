@@ -66,7 +66,7 @@ end
 Nx = 32
 Ny = 32
 
-arch = Distributed(CPU(), partition = Partition(2, 2)) 
+arch = Distributed(CPU(), partition = Partition(2)) 
 
 # Run the simulation
 run_simulation(Nx, Ny, arch)

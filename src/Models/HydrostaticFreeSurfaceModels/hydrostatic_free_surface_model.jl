@@ -65,6 +65,7 @@ end
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
+                               vertical_coordinate = Z(),
                                   auxiliary_fields = NamedTuple(),
     )
 
@@ -91,30 +92,42 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `vertical_coordinate`: choice between the default `ZCoordinate` and the free-surface following `ZStarSpacing`
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, 0, 1),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                          coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple()
+                                      clock = Clock{eltype(grid)}(0, 0, 1),
+                         momentum_advection = CenteredSecondOrder(),
+                           tracer_advection = CenteredSecondOrder(),
+                                   buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                   coriolis = nothing,
+                               free_surface = ImplicitFreeSurface(gravitational_acceleration = g_Earth),
+                        forcing::NamedTuple = NamedTuple(),
+                                    closure = nothing,
+            boundary_conditions::NamedTuple = NamedTuple(),
+                                    tracers = (:T, :S),
+              particles::ParticlesOrNothing = nothing,
+      biogeochemistry::AbstractBGCOrNothing = nothing,
+                                 velocities = nothing,
+                                   pressure = nothing,
+                         diffusivity_fields = nothing,
+            generalized_vertical_coordinate = nothing,
+                           auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
+    # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
+    # if !isnothing(generalized_vertical_coordinate) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
+    #   throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
+    # end
+
+    grid = !isnothing(free_surface) ? GeneralizedSpacingGrid(grid, generalized_vertical_coordinate) : grid
+    
+    if grid isa GeneralizedSpacingGrid
+      auxiliary_fields = merge(auxiliary_fields, (; s⁻ = grid.Δzᵃᵃᶠ.s⁻, sⁿ = grid.Δzᵃᵃᶠ.sⁿ, ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s))
+    end
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
@@ -192,7 +205,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
-    update_state!(model)
+    update_state!(model, 1.0)
 
     return model
 end

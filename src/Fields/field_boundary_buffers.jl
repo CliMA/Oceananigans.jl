@@ -1,5 +1,4 @@
 using Oceananigans.BoundaryConditions: MCBC, DCBC
-using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
