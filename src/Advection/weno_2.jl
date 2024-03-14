@@ -15,21 +15,20 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             ψ, idx, loc, args...) where {FT}
         
             β, ψ̅, C, α = $weno_substep(i, j, k, 1, grid, scheme, $val, ψ, idx, loc, args...)
-            glob = β
-            sol1 = ψ̅ * C
-            wei1 = C
-            sol2 = ψ̅ * α  
-            wei2 = α
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
             β, ψ̅, C, α = $weno_substep(i, j, k, 2, grid, scheme, $val, ψ, idx, loc, args...)
-            glob += add_global_smoothness(β, Val(2), Val(1))
-            sol1 += ψ̅ * C
-            wei1 += C
-            sol2 += ψ̅ * α  
-            wei2 += α
+            τ  += add_global_smoothness(β, Val(2), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            # Is glob squared here?
-            return (sol1 + sol2 * glob) / (wei1 + wei2 * glob)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end
 end
