@@ -53,6 +53,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
+            τ = abs(τ)
+
             return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end

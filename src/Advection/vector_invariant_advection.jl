@@ -327,6 +327,10 @@ end
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
+# Fallback for centered advection schemes
+@inline upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v) = @inbounds u[i, j, k] * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) 
+@inline upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v) = @inbounds v[i, j, k] * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) 
+
 #####
 ##### Horizontal advection 4 formulations:
 #####  1. Energy conservative         
