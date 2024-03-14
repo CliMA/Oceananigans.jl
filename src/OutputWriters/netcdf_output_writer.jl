@@ -42,31 +42,31 @@ netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
 
 native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz) =
-    Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
-         "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
-         "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
-         "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
-         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
-         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+    Dict(first(xdim(Center())) => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         first(xdim(Face()))   => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         first(ydim(Center())) => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         first(ydim(Face()))   => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         first(zdim(Center())) => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         first(zdim(Face()))   => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
 native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
-    Dict("xC" => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
-         "xF" => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
-         "yC" => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
-         "yF" => parent(φnodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
-         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
-         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+    Dict(first(xdim(Center())) => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
+         first(xdim(Face()))   => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
+         first(ydim(Center())) => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
+         first(ydim(Face()))   => parent(φnodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
+         first(zdim(Center())) => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
+         first(zdim(Face()))   => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict("xC" => (Center(), Center(), Center()),
-                "xF" => (Face(),   Center(), Center()),
-                "yC" => (Center(), Center(), Center()),
-                "yF" => (Center(), Face(),   Center()),
-                "zC" => (Center(), Center(), Center()),
-                "zF" => (Center(), Center(), Face()  ))
+    locs = Dict(first(xdim(Center())) => (Center(), Center(), Center()),
+                first(xdim(Face()))   => (Face(),   Center(), Center()),
+                first(ydim(Center())) => (Center(), Center(), Center()),
+                first(ydim(Face()))   => (Center(), Face(),   Center()),
+                first(zdim(Center())) => (Center(), Center(), Center()),
+                first(zdim(Face()))   => (Center(), Center(), Face()  ))
 
     topo = map(instantiate, topology(grid))
 
@@ -80,26 +80,38 @@ function default_dimensions(output, grid, indices, with_halos)
     return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
+drop_output_dims(output, data) = data # fallback
+drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
+drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
+
+include("grid_metric_output_netcdf.jl")
+
 const default_rectilinear_dimension_attributes = Dict(
-    "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-    "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-    "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-    "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("long_name" => "Time", "units" => "s"),
-    "particle_id" => Dict("long_name" => "Particle ID")
+    first(xdim(Center()))       => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+    first(xdim(Face()))         => Dict("longname" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+    first(ydim(Center()))       => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+    first(ydim(Face()))         => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+    first(zdim(Center()))       => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    first(zdim(Face()))         => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "Δ" * first(xdim(Center())) => Dict("longname" => "Spacings around cell centers in the x-direction.", "units" => "m"),
+    "Δ" * first(xdim(Face()))   => Dict("longname" => "Spacings around cell faces in the x-direction.",   "units" => "m"),
+    "Δ" * first(ydim(Center())) => Dict("longname" => "Spacings around cell centers in the y-direction.", "units" => "m"),
+    "Δ" * first(ydim(Face()))   => Dict("longname" => "Spacings around cell faces in the y-direction.",   "units" => "m"),
+    "Δ" * first(zdim(Center())) => Dict("longname" => "Spacings around cell centers in the z-direction.", "units" => "m"),
+    "Δ" * first(zdim(Face()))   => Dict("longname" => "Spacings around cell faces in the z-direction.",   "units" => "m"),
+    "time"                      => Dict("longname" => "Time", "units" => "s"),
+    "particle_id"               => Dict("longname" => "Particle ID")
 )
 
 const default_curvilinear_dimension_attributes = Dict(
-    "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
-    "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
-    "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
-    "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
-    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("long_name" => "Time", "units" => "s"),
-    "particle_id" => Dict("long_name" => "Particle ID")
+    first(xdim(Center())) => Dict("longname" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+    first(xdim(Face()))   => Dict("longname" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+    first(ydim(Center())) => Dict("longname" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+    first(ydim(Face()))   => Dict("longname" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
+    first(zdim(Center())) => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+    first(zdim(Face()))   => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "time"        => Dict("longname" => "Time", "units" => "s"),
+    "particle_id" => Dict("longname" => "Particle ID")
 )
 
 const default_output_attributes = Dict(
@@ -332,6 +344,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                    array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
+                           with_grid_spacings = true,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -387,6 +400,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     dims = default_dimensions(outputs, model.grid, indices, with_halos)
+    grid_spacings = default_grid_spacings(outputs, model.grid)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
@@ -397,7 +411,16 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=default_dimension_attributes[dim_name])
+                   compression=compression, attrib=default_dimension_attributes[dim_name])
+
+        end
+        if with_grid_spacings
+            for (spacing_name, spacing_array) in grid_spacings
+                dim_name = chop(spacing_name, head=1, tail=0)
+                @show spacing_name dim_name spacing_array
+                defVar(dataset, spacing_name, array_type(spacing_array), (dim_name,),
+                       deflatelevel=deflatelevel, attrib=default_dimension_attributes[spacing_name])
+            end
         end
 
         # DateTime and TimeDate are both <: AbstractTime
@@ -538,10 +561,6 @@ function write_output!(ow::NetCDFOutputWriter, model)
 
     return nothing
 end
-
-drop_output_dims(output, data) = data # fallback
-drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
-drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
 
 #####
 ##### Show
