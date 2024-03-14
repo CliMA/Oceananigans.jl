@@ -27,7 +27,7 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
     auxiliary :: ℱ
     "Gravitational acceleration"
     gravitational_acceleration :: 𝒫
-    "Settings for the split-explicit scheme (`NamedTuple`)"
+    "Settings for the split-explicit scheme"
     settings :: ℰ
 end
 
@@ -80,34 +80,36 @@ References
 
 Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
-function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
-                                    substeps = nothing,
-                                    cfl = nothing,
-                                    fixed_Δt = nothing,
-                                    averaging_kernel = averaging_shape_function,
-                                    timestepper = ForwardBackwardScheme())
+function SplitExplicitFreeSurface(grid=nothing;
+                                  gravitational_acceleration = g_Earth,
+                                  substeps = nothing,
+                                  cfl = nothing,
+                                  fixed_Δt = nothing,
+                                  averaging_kernel = averaging_shape_function,
+                                  timestepper = ForwardBackwardScheme())
 
-    settings_kwargs = (; gravitational_acceleration,
-                         substeps,
-                         cfl,
-                         fixed_Δt,
-                         averaging_kernel,
-                         timestepper)
+    settings = SplitExplicitSettings(grid;
+                                     gravitational_acceleration,
+                                     substeps,
+                                     cfl,
+                                     fixed_Δt,
+                                     averaging_kernel,
+                                     timestepper)
 
     return SplitExplicitFreeSurface(nothing,
                                     nothing,
                                     nothing,
                                     gravitational_acceleration,
-                                    settings_kwargs)
+                                    settings)
 end
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
-    settings = SplitExplicitSettings(grid; free_surface.settings...)
+    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 
     η = free_surface_displacement_field(velocities, free_surface, grid)
 
-    gravitational_acceleration = convert(eltype(grid), gravitational_acceleration)
+    gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid, settings.timestepper),
@@ -242,8 +244,9 @@ A type containing settings for the split-explicit free surface.
 $(FIELDS)
 """
 struct SplitExplicitSettings{𝒩, 𝒮}
-    substepping :: 𝒩 # Either `FixedSubstepNumber` or `FixedTimeStepSize`"
-    timestepper :: 𝒮 # time-stepping scheme
+    substepping :: 𝒩              # Either `FixedSubstepNumber` or `FixedTimeStepSize`"
+    timestepper :: 𝒮              # time-stepping scheme
+    settings_kwargs :: NamedTuple # kwargs to reproduce current settings
 end
 
 struct AdamsBashforth3Scheme end
@@ -315,7 +318,7 @@ end
     return Δτ, tuple(averaging_weights...)
 end
 
-function SplitExplicitSettings(grid;
+function SplitExplicitSettings(grid = nothing;
                                gravitational_acceleration = g_Earth,
                                substeps = nothing,
                                cfl = nothing,
@@ -323,16 +326,35 @@ function SplitExplicitSettings(grid;
                                averaging_kernel = averaging_shape_function,
                                timestepper = ForwardBackwardScheme())
 
-    FT = eltype(grid)
+    settings_kwargs = (; gravitational_acceleration,
+                         substeps,
+                         cfl,
+                         fixed_Δt,
+                         averaging_kernel,
+                         timestepper)
+
+    if !isnothing(grid)
+        FT = eltype(grid)
+    else
+        # this is a fallback and only used via the outer constructor,
+        # in case no grid is provided; when afterwards the free surfade
+        # is materialized via materialize_free_surface
+        # FT becomes eltype(grid)
+        FT = Float64
+    end
 
     if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
         throw(ArgumentError("either specify a cfl or a number of substeps"))
     end
 
     if !isnothing(cfl)
+        if isnothing(grid)
+            throw(ArgumentError(string("Need to provide the grid to calculate the barotropic substeps from the cfl. ",
+                                "For example, SplitExplicitFreeSurface(grid, cfl=0.7, ...)")))
+        end
         substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
         if isnothing(fixed_Δt)
-            return SplitExplicitSettings(substepping, timestepper)
+            return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
         else
             substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
         end
@@ -341,7 +363,7 @@ function SplitExplicitSettings(grid;
     fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
     substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
 
-    return SplitExplicitSettings(substepping, timestepper)
+    return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
 end
 
 # Convenience Functions for grabbing free surface
@@ -358,13 +380,8 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
-function Base.summary(sefs::SplitExplicitFreeSurface)
-    if sefs.settings isa NamedTuple
-        return string("SplitExplicitFreeSurface")
-    else
-        return string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
-    end
-end
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
+
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 function reset!(sefs::SplitExplicitFreeSurface)
