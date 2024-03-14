@@ -62,7 +62,7 @@ Keyword Arguments
 !!! info "Needed keyword arguments"
     Either `substeps` _or_ `cfl` need to be prescribed.
     
-    When `clf` is prescribed then `grid` is also required as a positional argument.
+    When `cfl` is prescribed then `grid` is also required as a positional argument.
 
 - `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided,
               then the number of substeps will be computed on the fly from the baroclinic time step to
