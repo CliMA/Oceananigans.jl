@@ -14,17 +14,17 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
     for arch in archs
         FT = Float64
         topology = (Periodic, Periodic, Bounded)
-        Nx = Ny = 16 * 8
-        Nz = 32
-        Nx = 128
-        Ny = 64
+        Nx, Ny, Nz = 128, 64, 32
         Lx = Ly = Lz = 2π
+
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
         tmp = SplitExplicitFreeSurface(substeps = 200)
+
         sefs = SplitExplicitState(grid, tmp.settings.timestepper)
         sefs = SplitExplicitAuxiliaryFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
+        sefs = materialize_free_surface(sefs, nothing, grid)
 
         state = sefs.state
         auxiliary = sefs.auxiliary
@@ -110,13 +110,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             # Test 4: Test Barotropic Correction
             FT = Float64
             topology = (Periodic, Periodic, Bounded)
-            Nx = 128
-            Ny = 64
-            Nz = 32
+            Nx, Ny, Nz = 128, 64, 32
             Lx = Ly = Lz = 2π
+
             grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-            sefs = SplitExplicitFreeSurface(cfl=0.7)
+            sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
+            sefs = materialize_free_surface(sefs, nothing, grid)
 
             state = sefs.state
             auxiliary = sefs.auxiliary

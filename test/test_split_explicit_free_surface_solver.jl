@@ -1,10 +1,15 @@
 include("dependencies_for_runtests.jl")
-using Oceananigans.Models.HydrostaticFreeSurfaceModels
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: constant_averaging_kernel
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps, calculate_adaptive_settings
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings, iterate_split_explicit!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
+                                                        calculate_adaptive_settings,
+                                                        constant_averaging_kernel,
+                                                        materialize_free_surface,
+                                                        SplitExplicitFreeSurface,
+                                                        SplitExplicitState,
+                                                        SplitExplicitAuxiliaryFields,
+                                                        SplitExplicitSettings,
+                                                        iterate_split_explicit!
 
 @testset "Split-Explicit Dynamics" begin
 
@@ -22,6 +27,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                                    halo = (1, 1, 1))
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = materialize_free_surface(sefs, nothing, grid)
 
             sefs.η .= 0
 
@@ -59,6 +65,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                sefs = materialize_free_surface(sefs, nothing, grid)
 
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
@@ -95,6 +102,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             end
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = materialize_free_surface(sefs, nothing, grid)
 
             sefs.η .= 0
 
@@ -129,7 +137,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
                 
                 for step in 1:Nsubsteps
-                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
+                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1))
                 end
 
                 U_computed = Array(deepcopy(interior(U)))
@@ -163,7 +171,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface()
+                sefs = SplitExplicitFreeSurface(substeps=200)
+                sefs = materialize_free_surface(sefs, nothing, grid)
+
                 state = sefs.state
                 auxiliary = sefs.auxiliary
                 U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
@@ -171,7 +181,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
                 η = sefs.η
                 g = sefs.gravitational_acceleration
 
-                # set!(η, f(x,y)) k² = ω²
+                # set!(η, f(x, y)) k² = ω²
                 gu_c = 1
                 gv_c = 2
                 η₀(x, y, z) = sin(kx * x) * sin(ky * y) + 1
@@ -192,9 +202,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
                 weights = settings.substepping.averaging_weights
                 for i in 1:Nt
-                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1)) 
+                    iterate_split_explicit!(sefs, grid, Δτ, weights, Val(1))
                 end
-                iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1)) 
+                iterate_split_explicit!(sefs, grid, Δτ_end, weights, Val(1))
 
                 η_mean_after = mean(Array(interior(η)))
 
