@@ -10,8 +10,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
 
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{4, FT}, 
-                                            ψ, idx, loc, args...) where {FT}
+                                            scheme::WENO{4}, 
+                                            ψ, idx, loc, args...) 
         
             β, ψ̅, C, α = $weno_substep(i, j, k, 1, grid, scheme, $val, ψ, idx, loc, args...)
             τ  = β

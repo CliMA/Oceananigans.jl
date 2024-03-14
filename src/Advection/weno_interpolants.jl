@@ -277,8 +277,8 @@ for side in (:left, :right), dir in (:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ)
     for buffer in [2, 3, 4, 5, 6]
         for stencil in 1:buffer
             @eval begin
-                @inline $retrieve_stencil(i, j, k, scheme::WENO{$buffer}, ::Val{$stencil}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false)[stencil])
-                @inline $retrieve_stencil(i, j, k, scheme::WENO{$buffer}, ::Val{$stencil}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true)[stencil])
+                @inline $retrieve_stencil(i, j, k, ::WENO{$buffer}, ::Val{$stencil}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false)[stencil])
+                @inline $retrieve_stencil(i, j, k, ::WENO{$buffer}, ::Val{$stencil}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true)[stencil])
             end
         end
     end
@@ -297,7 +297,7 @@ end
 @inline tangential_right_stencil_v(i, j, k, scheme, stencil, ::Val{2}, grid, v) = @inbounds @fastmath right_stencil_yᵃᶠᵃ(i, j, k, scheme, stencil, ℑxᶠᵃᵃ, grid, v)
 
 
-for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
+for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
     weno_substep = Symbol(side, :_weno_substep_, dir)
     biased_β     = Symbol(side, :_biased_β)
     biased_p     = Symbol(side, :_biased_p)
@@ -307,26 +307,26 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     stencil_v    = Symbol(:tangential_, side, :_stencil_v)
 
     @eval begin
-        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT}, val, ψ, idx, loc, args...) where FT
+        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT, XT, YT, ZT}, val, ψ, idx, loc, args...) where {FT, XT, YT, ZT}
             
-            # Retrieve stencil `s`
+            # # Retrieve stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
 
-            # Calculate smoothness of stencil `s`
+            # # Calculate smoothness of stencil `s`
             β  = $biased_β(ψs, scheme, Val(s-1))
 
-            # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-            C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (β + FT(ε))^2
+            # # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
+            # C  = FT($coeff(scheme, Val(s-1)))
+            # α  = @fastmath C / (β + FT(ε))^2
 
-            # Reconstruction of `ψ` from stencil `s`
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val(val), idx, loc) 
+            # # Reconstruction of `ψ` from stencil `s`
+            # ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-            return β, ψ̅, C, α
+            return 1, 1, 1, 1 #β, ψ̅, C, α
         end
 
         # If the smoothness stencil is not used (aka it's a `DefaultStencil`) use the same formulation as above
-        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil,args...) where FT
+        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT, XT, YT, ZT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {FT, XT, YT, ZT}
             
             # Retrieve stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -339,14 +339,14 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             α  = @fastmath C / (β + FT(ε))^2
             
             # Reconstruction of `ψ` from stencil `s`
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val(val), idx, loc) 
+            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
             return β, ψ̅, C, α
         end
 
         # Using velocity interpolated at `(Face, Face, Center)` to assess smoothness. 
         # Can be used only for `(Face, Face, Center)` variables like vorticity
-        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where FT
+        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT, XT, YT, ZT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
             
             # Retrieve x-velocity stencil `s`
             ψs = $stencil_u(i, j, k, scheme, Val(s), Val(val), grid, u)
@@ -361,21 +361,21 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             βv = $biased_β(ψs, scheme, Val(s-1))
             
             # total smoothness
-            βU = (βu + βv) / 2
+            βvelocity = (βu + βv) / 2
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (βU + FT(ε))^2
+            α  = @fastmath C / (βvelocity + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val(val), idx, loc) 
+            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-            return βU, ψ̅, C, α
+            return βvelocity, ψ̅, C, α
         end
 
         # The smoothness is assessed using the stencil calculated from the function `VI.func(i, j, k, grid, args...)`
-        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where FT
+        function $weno_substep(i, j, k, s, grid, scheme::WENO{<:Any, FT, XT, YT, ZT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
             
             # Retrieve smoothness stencil ϕ at `s`
             ψs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
@@ -389,7 +389,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, Nothing, Val(val), idx, loc) 
+            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
             return β, ψ̅, C, α
         end
