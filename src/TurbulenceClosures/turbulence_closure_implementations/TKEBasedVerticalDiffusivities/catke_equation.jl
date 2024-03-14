@@ -78,17 +78,18 @@ end
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
-    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = ℓ★ / σᴰ
 
     # Dissipation length
     ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓD = max(ℓ★, ℓh)
+    ℓ★ = max(ℓ★, ℓh)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(H, ℓD)
+    ℓ★ = min(ℓ★, H)
+
+    σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    return ℓ★ / σ
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)
