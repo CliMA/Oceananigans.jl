@@ -32,7 +32,7 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(grid=nothing;
+    SplitExplicitFreeSurface(grid = nothing;
                              gravitational_acceleration = g_Earth,
                              substeps = nothing,
                              cfl = nothing,
@@ -50,8 +50,8 @@ Keyword Arguments
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
               timestep. Note that some averaging functions do not require substepping until `2Δt`.
-              The number of substeps is reduced automatically to the last index of `averaging_weights`
-              for which `averaging_weights > 0`.
+              The number of substeps is reduced automatically to the last index of `averaging_kernel`
+              for which `averaging_kernel > 0`.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from
          the barotropic gravity-wave speed that corresponds to depth `grid.Lz`. If `fixed_Δt` is provided,
@@ -68,11 +68,15 @@ Keyword Arguments
               then the number of substeps will be computed on the fly from the baroclinic time step to
               maintain a constant cfl.
 
-- `averaging_kernel`: function of `τ` used to average the barotropic transport `U` and free surface `η`
-                      within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
-                      with the baroclinic time step `t + Δt` located at `τ = 1`. This function should be
-                      centered at `τ = 1`, that is, ``∑ (aₘ m /M) = 1``. By default the averaging kernel
-                      described by [Shchepetkin2005](@citet) is chosen.
+- `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
+                      `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
+                      with the baroclinic time step `t + Δt` located at `τ = 1`. The `averaging_kernel`
+                      function should be centered at `τ = 1`, that is, ``∑ (aₘ m / M) = 1``, where the
+                      the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
+                      to the two consecutive baroclinic timesteps between which the barotropic timestepping
+                      occurs and ``M_*`` corresponds to the last barotropic time step for which the
+                      `averaging_kernel > 0`. By default, the averaging kernel described by [Shchepetkin2005](@citet)
+                      is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
   * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
@@ -83,7 +87,7 @@ References
 
 Shchepetkin, A. F., & McWilliams, J. C. (2005). The regional oceanic modeling system (ROMS): a split-explicit, free-surface, topography-following-coordinate oceanic model. Ocean Modelling, 9(4), 347-404.
 """
-function SplitExplicitFreeSurface(grid=nothing;
+function SplitExplicitFreeSurface(grid = nothing;
                                   gravitational_acceleration = g_Earth,
                                   substeps = nothing,
                                   cfl = nothing,
