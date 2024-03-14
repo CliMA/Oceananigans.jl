@@ -13,6 +13,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
                                             scheme::WENO{5},
                                             ψ, idx, loc, args...) 
         
+            # Stencil S₀
             β, ψ̅, C, α = $weno_substep(i, j, k, 1, grid, scheme, $val, ψ, idx, loc, args...)
             τ  = β
             ψ̂₁ = ψ̅ * C
@@ -20,6 +21,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
+            # Stencil S₁
             β, ψ̅, C, α = $weno_substep(i, j, k, 2, grid, scheme, $val, ψ, idx, loc, args...)
             τ  += add_global_smoothness(β, Val(5), Val(1))
             ψ̂₁ += ψ̅ * C
@@ -27,6 +29,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
+            # Stencil S₂
             β, ψ̅, C, α = $weno_substep(i, j, k, 3, grid, scheme, $val, ψ, idx, loc, args...)
             τ  += add_global_smoothness(β, Val(5), Val(2))
             ψ̂₁ += ψ̅ * C
@@ -34,6 +37,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
+            # Stencil S₃
             β, ψ̅, C, α = $weno_substep(i, j, k, 4, grid, scheme, $val, ψ, idx, loc, args...)
             τ  += add_global_smoothness(β, Val(5), Val(3))
             ψ̂₁ += ψ̅ * C
@@ -41,6 +45,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
+            # Stencil S₄
             β, ψ̅, C, α = $weno_substep(i, j, k, 5, grid, scheme, $val, ψ, idx, loc, args...)
             τ  += add_global_smoothness(β, Val(5), Val(4))
             ψ̂₁ += ψ̅ * C
@@ -48,7 +53,6 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            # Is glob squared here?
             return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end
