@@ -51,7 +51,7 @@ end
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
-function default_free_surface(grid, gravitational_acceleration=g_Earth)
+function default_free_surface(grid; gravitational_acceleration=g_Earth)
     if is_horizontally_regular(grid)
         return ImplicitFreeSurface(; gravitational_acceleration)
     else
@@ -66,7 +66,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration),
+                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -114,7 +114,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = default_free_surface(grid, g_Earth),
+                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                            tracers = (:T, :S),
                                       forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,

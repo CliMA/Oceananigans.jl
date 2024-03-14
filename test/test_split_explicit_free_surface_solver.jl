@@ -96,8 +96,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
                 η_exact = Array(deepcopy(interior(η)))
 
                 @test maximum(abs.(U_computed - U_exact)) < 1e-3
-                @show maximum(abs.(η_computed))
-                @show maximum(abs.(η_exact))
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
