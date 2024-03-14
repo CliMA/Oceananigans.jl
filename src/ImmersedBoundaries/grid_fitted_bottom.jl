@@ -34,7 +34,19 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 """
     GridFittedBottom(bottom_height, [immersed_condition=CenterImmersedCondition()])
 
-Return an immersed boundary with an irregular bottom fit to the underlying grid.
+Return a bottom immersed boundary.
+
+Keyword Arguments
+=================
+
+* `bottom_height`: an array or function that gives the height of the
+                   bottom in absolute ``z`` coordinates.
+
+* `immersed_condition`: determine whether the part of the domain that is 
+                        immersed are all the cell centers that lie below
+                        `bottom_height` (`CenterImmersedCondition()`; default)
+                        or all the cell faces that lie below `bottom_height`
+                        (`InterfaceImmersedCondition()`).
 """
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
