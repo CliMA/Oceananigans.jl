@@ -93,7 +93,10 @@ Keyword arguments
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `free_surface`: The free surface model. The default free-surface solver depends on the
-                    geometry of the `grid`.
+                    geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
+                    regularly spaced in the horizontal the default is an `ImplicitFreeSurface`
+                    solver with `solver_method = :FFTBasedPoissonSolver`. In all other cases,
+                    the default is a `SplitExplicitFreeSurface`.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
