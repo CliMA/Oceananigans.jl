@@ -110,7 +110,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                     settings)
 end
 
-# The new constructor is defined later on after the state, settings, auxiliary have been defined
+# Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 

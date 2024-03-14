@@ -59,6 +59,7 @@ end
     return (Ax, Ay)
 end
 
+# Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
 
         settings  = free_surface.settings 

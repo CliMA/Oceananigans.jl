@@ -25,7 +25,7 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
 
 on_architecture(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(on_architecture(to, free_surface.η), 
+    ExplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration))
 
 #####
