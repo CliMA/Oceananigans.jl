@@ -213,11 +213,11 @@ end
     ℓ★ = stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    ℓ★ = min(ℓ★, H)
-
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    return σ * ℓ★
+    ℓ★ = σ * ℓ★
+
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(ℓ★, H)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -234,11 +234,11 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓ★ = max(ℓ★, ℓh)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    ℓ★ = min(ℓ★, H)
-
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    return σ * ℓ★
+    ℓ★ = σ * ℓ★
+
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(ℓ★, H)
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -249,17 +249,17 @@ end
 
     Cˡᵒ = closure.mixing_length.Cˡᵒe
     Cʰⁱ = closure.mixing_length.Cʰⁱe
-    ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
     ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓ★ = max(ℓ★, ℓh)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    ℓ★ = min(ℓ★, H)
-
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    return σ * ℓ★
+    ℓ★ = σ * ℓ★
+
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(ℓ★, H)
 end
 
 Base.summary(::CATKEMixingLength) = "CATKEMixingLength"

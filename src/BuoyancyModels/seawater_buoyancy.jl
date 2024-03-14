@@ -192,6 +192,9 @@ interfaces in `y` and cell centers in `x` and `z`.
         - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᶜᶠᶜ(i, j, k, grid, S) )
 end
 
+const f = Face()
+const c = Center()
+
 """
     ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
@@ -213,9 +216,12 @@ interfaces in `z` and cell centers in `x` and `y`.
 """
 @inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
-    return b.gravitational_acceleration * (
-           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * ∂zᶜᶜᶠ(i, j, k, grid, T)
-        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * ∂zᶜᶜᶠ(i, j, k, grid, S) )
+    g = b.gravitational_acceleration
+
+    α = thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+
+    return g * (α * ∂zᶜᶜᶠ(i, j, k, grid, T) - β * ∂zᶜᶜᶠ(i, j, k, grid, S))
 end
 
 #####

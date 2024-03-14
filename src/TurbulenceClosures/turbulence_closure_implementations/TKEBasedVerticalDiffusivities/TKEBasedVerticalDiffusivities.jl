@@ -17,7 +17,7 @@ using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCon
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
-using Oceananigans.Grids: inactive_cell
+using Oceananigans.Grids: inactive_cell, peripheral_node
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -52,8 +52,46 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline Δz_νₑ_∂z_u²ᶠᶜᶠ(i, j, k, grid, νₑ, u) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * Δzᶠᶜᶠ(i, j, k, grid) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
 @inline Δz_νₑ_∂z_v²ᶜᶠᶠ(i, j, k, grid, νₑ, v) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * Δzᶜᶠᶠ(i, j, k, grid) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
-@inline νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
-@inline νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
+const c = Center()
+const f = Face()
+
+# A particular kind of reconstruction that ignores peripheral nodes
+@inline function ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
+    k⁺ = k + 1
+    k⁻ = k
+
+    f⁺ = fᵃᵃᶠ(i, j, k⁺, grid, args...)
+    f⁻ = fᵃᵃᶠ(i, j, k⁻, grid, args...)
+
+    p⁺ = peripheral_node(i, j, k⁺, grid, c, c, f)
+    p⁻ = peripheral_node(i, j, k⁻, grid, c, c, f)
+
+    f⁺ = ifelse(p⁺, f⁻, f⁺)
+    f⁻ = ifelse(p⁻, f⁺, f⁻)
+
+    return (f⁺ + f⁻) / 2
+end
+
+@inline νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
+@inline νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
+
+#@inline function νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, v) / Δzᶠᶜᶜ(i, j, k, grid) 
+#@inline function νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
+
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    S² = ∂z_u² + ∂z_v²
+
+    Ri = N² / S²
+
+    # Check for NaN
+    return ifelse(N² == 0, zero(grid), Ri)
+end
+
+@inline Riᶜᶜᶜ(i, j, k, grid, args...) = ℑbzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, args...)
 
 @inline function shear_production(i, j, k, grid, νₑ, u, v)
     # Reconstruct the shear production term in an "approximately conservative" manner
@@ -74,8 +112,8 @@ end
     return - κᶜ * N²
 end
 
-@inline explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, κᶜ) =
-    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, κᶜ)
+@inline explicit_buoyancy_flux(i, j, k, grid, args...) = ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, args...)
+#@inline explicit_buoyancy_flux(i, j, k, grid, args...) = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, args...)
 
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     eᵢ = @inbounds e[i, j, k]
@@ -108,25 +146,6 @@ end
 #####
 ##### Richardson number
 #####
-
-@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    S² = ∂z_u² + ∂z_v²
-
-    Ri = N² / S²
-
-    # Check for NaN
-    return ifelse(N² == 0, zero(grid), Ri)
-end
-
-const c = Center()
-const f = Face()
 
 @inline clip(x) = max(zero(x), x)
 

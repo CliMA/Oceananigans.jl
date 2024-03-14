@@ -31,8 +31,8 @@ coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
 #closures_to_run = [catke, ri_based]
-closures_to_run = [catke, tke_dissipation] #, ri_based]
-#closures_to_run = [catke]
+#closures_to_run = [catke, tke_dissipation] #, ri_based]
+closures_to_run = [catke]
 
 for closure in closures_to_run
 
@@ -54,9 +54,8 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model; b=bᵢ, closure_initial_conditions...)
 
-    Δt = 1e-2
-    #simulation = Simulation(model; Δt, stop_time)
-    simulation = Simulation(model; Δt, stop_iteration=5000)
+    Δt = 5minutes
+    simulation = Simulation(model; Δt, stop_time)
     pop!(simulation.callbacks, :nan_checker)
 
     closurename = string(nameof(typeof(closure)))

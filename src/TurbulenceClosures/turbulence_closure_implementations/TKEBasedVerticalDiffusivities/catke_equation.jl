@@ -85,11 +85,11 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓ★ = max(ℓ★, ℓh)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    ℓ★ = min(ℓ★, H)
-
     σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    return ℓ★ / σ
+    ℓ★ = ℓ★ / σ
+
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(ℓ★, H)
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)
