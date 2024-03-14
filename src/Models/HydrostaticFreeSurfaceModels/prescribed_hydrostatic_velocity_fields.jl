@@ -98,9 +98,9 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-FreeSurface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
