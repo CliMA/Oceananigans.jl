@@ -85,22 +85,22 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
-            architecture (CPU/GPU) that the model is solve is inferred from the architecture
-            of the grid.
+            architecture (CPU/GPU) that the model is solved is inferred from the architecture
+            of the `grid`.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
-  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `free_surface`: The free surface model. The default free-surface solver depends on the
                     geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
                     regularly spaced in the horizontal the default is an `ImplicitFreeSurface`
                     solver with `solver_method = :FFTBasedPoissonSolver`. In all other cases,
                     the default is a `SplitExplicitFreeSurface`.
-  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
@@ -115,10 +115,10 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
                                       free_surface = default_free_surface(grid, g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
+                                           tracers = (:T, :S),
+                                      forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
                      particles::ParticlesOrNothing = nothing,
              biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
