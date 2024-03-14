@@ -26,8 +26,14 @@ Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iter
 and first time step `stage` with `last_Δt`.
 """
 Clock(; time::TT, last_Δt::DT=Inf, iteration=0, stage=1) where {TT, DT} = Clock{TT, DT}(time, last_Δt, iteration, stage)
-Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT = Clock{TT, TT}(time, last_Δt, iteration, stage)
-Clock{DT}(; time::AbstractTime, last_Δt=Inf, iteration=0, stage=1) where DT = Clock{AbstractTime, DT}(time, last_Δt, iteration, stage)
+# TODO: when supporting DateTime, this function will have to be extended
+time_step_type(TT) = TT
+
+function Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT
+    DT = time_step_type(TT)
+    last_Δt = convert(DT, last_Δt)
+    return Clock{TT, DT}(time, last_Δt, iteration, stage)
+end
 
 Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), last_Δt=$(prettytime(clock.last_Δt)))")
 
