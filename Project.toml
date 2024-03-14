@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.90.8"
+version = "0.90.11"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -46,7 +46,7 @@ OceananigansEnzymeExt = "Enzyme"
 
 [compat]
 AMDGPU = "0.8.3"
-Adapt = "3"
+Adapt = "3, 4"
 CUDA = "4.1.1, 5"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
@@ -65,7 +65,7 @@ KernelAbstractions = "0.9"
 LinearAlgebra = "1.9"
 Logging = "1.9"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
-NCDatasets = "0.12.10, 0.13.1"
+NCDatasets = "0.12.10, 0.13.1, 0.14"
 OffsetArrays = "1.4"
 OrderedCollections = "1.1"
 PencilArrays = "0.16, 0.17, 0.18, 0.19"

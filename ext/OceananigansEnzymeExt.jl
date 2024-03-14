@@ -228,7 +228,7 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  include_right_boundaries = false,
                                                  reduced_dimensions = (),
                                                  location = nothing,
-                                                 only_active_cells = nothing,
+                                                 active_cells_map = nothing,
                                                  kwargs...) where N
 
 
@@ -239,8 +239,8 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
 
     offset = Oceananigans.Utils.offsets(workspec.val)
 
-    if !isnothing(only_active_cells) 
-        workgroup, worksize = Oceananigans.Utils.active_cells_work_layout(workgroup, worksize, only_active_cells, grid.val) 
+    if !isnothing(active_cells_map) 
+        workgroup, worksize = Oceananigans.Utils.active_cells_work_layout(workgroup, worksize, active_cells_map, grid.val) 
         offset = nothing
     end
 
@@ -286,7 +286,7 @@ function EnzymeCore.EnzymeRules.reverse(config::EnzymeCore.EnzymeRules.ConfigWid
                                                  include_right_boundaries = false,
                                                  reduced_dimensions = (),
                                                  location = nothing,
-                                                 only_active_cells = nothing,
+                                                 active_cells_map = nothing,
                                                  kwargs...) where N
 
   subrets = if tape !== nothing

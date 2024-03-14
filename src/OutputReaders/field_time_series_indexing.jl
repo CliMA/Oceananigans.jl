@@ -78,7 +78,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     arch = architecture(fts)
     file = jldopen(fts.path)
     iter = keys(file["timeseries/t"])[n]
-    raw_data = arch_array(arch, file["timeseries/$(fts.name)/$iter"])
+    raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
     # Wrap Field

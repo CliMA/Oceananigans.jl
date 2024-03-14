@@ -68,7 +68,7 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     Ex = length(closure_vector)
     closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
 
-    return arch_array(arch, closure_vector)
+    return on_architecture(arch, closure_vector)
 end
 
 # Note: computing diffusivities at cell centers for now.

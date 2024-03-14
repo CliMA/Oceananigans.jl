@@ -75,7 +75,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
         bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
+        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
         offset_bottom_array = dropdims(bottom_field.data, dims=3)

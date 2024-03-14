@@ -140,7 +140,6 @@ Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) =
                           Adapt.adapt(to, scheme.δu²_stencil),
                           Adapt.adapt(to, scheme.δv²_stencil))
 
-
 Base.show(io::IO, a::VelocityUpwinding) =
     print(io, summary(a), " \n",
             "KE gradient and Divergence flux cross terms reconstruction: ", "\n",

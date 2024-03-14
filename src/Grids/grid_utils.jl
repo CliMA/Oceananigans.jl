@@ -459,7 +459,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     arch = architecture(data)
 
     # bring to CPU
-    map(a -> arch_array(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data)
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -484,7 +484,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
     # return to data's original architecture 
-    map(a -> arch_array(arch, a), offset_array)
+    map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
 end

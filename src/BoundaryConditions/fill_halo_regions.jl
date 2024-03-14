@@ -1,7 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils
 using Oceananigans.Grids: architecture
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Base
 

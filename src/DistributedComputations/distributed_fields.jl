@@ -39,16 +39,19 @@ end
 function set!(u::DistributedField, v::AbstractArray)
     gsize = global_size(architecture(u), size(u))
 
-    if size(v) == size(u)
-        f = arch_array(architecture(u), v)
-        u .= f
-        return u
-    elseif size(v) == gsize
+    if size(v) == gsize
         f = partition_global_array(architecture(u), v, size(u))
         u .= f
         return u
     else
-        throw(ArgumentError("ERROR: DimensionMismatch: array could not be set to match destination field"))
+        try
+            f = on_architecture(architecture(u), v)
+            u .= f
+            return u
+    
+        catch
+            throw(ArgumentError("ERROR: DimensionMismatch: array could not be set to match destination field"))
+        end
     end
 end
 
