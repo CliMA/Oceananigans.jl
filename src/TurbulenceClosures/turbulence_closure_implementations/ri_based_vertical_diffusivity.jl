@@ -119,7 +119,7 @@ Keyword arguments
 
 * `maximum_viscosity`: A limiting maximum viscosity (units of kinematic viscosity, typically m² s⁻¹).
 
-* `horizontal_Ri_filter`: Horizontal filter to apply to Ri, which can help allievaite noise for
+* `horizontal_Ri_filter`: Horizontal filter to apply to Ri, which can help alleviate noise for
                           some simulations. The default is `nothing`, or no filtering. The other
                           option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
