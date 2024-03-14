@@ -416,9 +416,9 @@ for Type in (:SplitExplicitFreeSurface,
              :FixedSubstepNumber)
     
     @eval begin
-        function on_architecture(to, settings::$Type)
-            args = Tuple(on_architecture(to, prop) for prop in propertynames(settings))
-            return SplitExplicitState(args...)
+        function on_architecture(to, fs::$Type)
+            args = Tuple(on_architecture(to, prop) for prop in propertynames(fs))
+            return $Type(args...)
         end
     end
 end
