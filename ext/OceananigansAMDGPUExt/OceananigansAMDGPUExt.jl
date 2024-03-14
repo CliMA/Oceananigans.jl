@@ -3,7 +3,6 @@ module OceananigansAMDGPUExt
 using AMDGPU
 
 include("Architectures.jl")
-include("Grids.jl")
 include("Utils.jl")
 include("BoundaryConditions.jl")
 include("Fields.jl")
@@ -11,7 +10,6 @@ include("MultiRegion.jl")
 include("Solvers.jl")
 
 using .Architectures
-using .Grids
 using .Utils
 using .BoundaryConditions
 using .Fields
