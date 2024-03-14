@@ -55,7 +55,7 @@ function default_free_surface(grid; gravitational_acceleration=g_Earth)
     if is_horizontally_regular(grid)
         return ImplicitFreeSurface(; gravitational_acceleration)
     else
-        return SplitExplicitFreeSurface(; cfl = 0.7, gravitational_acceleration)
+        return SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
     end
 end
 
