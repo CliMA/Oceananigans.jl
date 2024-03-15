@@ -314,14 +314,14 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
 
             # Calculate smoothness of stencil `s`
-            β  = $biased_β(ψs, scheme, Val(s-1))
+            β = $biased_β(ψs, scheme, Val(s-1))
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-            C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (β + FT(ε))^2
+            C = FT($coeff(scheme, Val(s-1)))
+            α = @fastmath C / (β + FT(ε))^2
 
             # Reconstruction of `ψ` from stencil `s`
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
             return β, ψ̅, C, α
         end
@@ -333,14 +333,14 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
             
             # Calculate smoothness of stencil `s`
-            β  = $biased_β(ψs, scheme, Val(s-1))
+            β = $biased_β(ψs, scheme, Val(s-1))
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-            C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (β + FT(ε))^2
+            C = FT($coeff(scheme, Val(s-1)))
+            α = @fastmath C / (β + FT(ε))^2
             
             # Reconstruction of `ψ` from stencil `s`
-            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
             return β, ψ̅, C, α
         end
@@ -362,17 +362,17 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             βv = $biased_β(ψs, scheme, Val(s-1))
             
             # total smoothness
-            βvelocity = (βu + βv) / 2
+            βᵁ = (βu + βv) / 2
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-            C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (βvelocity + FT(ε))^2
+            C = FT($coeff(scheme, Val(s-1)))
+            α = @fastmath C / (βᵁ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-            return βvelocity, ψ̅, C, α
+            return βᵁ, ψ̅, C, α
         end
 
         # The smoothness is assessed using the stencil calculated from the function `VI.func(i, j, k, grid, args...)`
@@ -382,17 +382,17 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             ψs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
 
             # Calculate `ϕ` smoothness at `s`
-            β  = $biased_β(ψs, scheme, Val(s-1))
+            βᵠ = $biased_β(ψs, scheme, Val(s-1))
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C / (β + FT(ε))^2
+            α  = @fastmath C / (βᵠ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-            return β, ψ̅, C, α
+            return βᵠ, ψ̅, C, α
         end
     end
 end
