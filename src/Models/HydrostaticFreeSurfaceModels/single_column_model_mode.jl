@@ -146,4 +146,3 @@ end
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end
-

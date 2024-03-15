@@ -121,14 +121,14 @@ on_architecture(to, velocities::PrescribedVelocityFields) =
 
 # If the model only tracks particles... do nothing but that!!!
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
-                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 
-function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...) 
+function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     model.timestepper.previous_Δt = Δt
     tick!(model.clock, Δt)
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) = 
+update_state!(model::OnlyParticleTrackingModel, callbacks) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]

@@ -1,6 +1,8 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
+                                                        SplitExplicitSettings,
+                                                        SplitExplicitState
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
@@ -43,9 +45,11 @@ end
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
 
+    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
+
     switch_device!(grid.devices[1])
     old_halos = halo_size(getregion(grid, 1))
-    Nsubsteps = length(free_surface.settings.substepping.averaging_weights)
+    Nsubsteps = length(settings.substepping.averaging_weights)
 
     new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)         
     new_grid  = with_halo(new_halos, grid)

@@ -49,7 +49,7 @@ minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 @inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
 
-# The default free surface solver; see Models.HydrostaticFreeSurfaceModels
+# the default free surface solver; see Models.HydrostaticFreeSurfaceModels
 default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
