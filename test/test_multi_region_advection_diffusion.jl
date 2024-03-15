@@ -99,9 +99,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
-function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, field_name = :c) 
-    κ, m = 1, 2 # diffusivity and cosine wavenumber
-
+function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)
     if architecture(grid) isa GPU
         devices = (0, 0)
     else
@@ -116,6 +114,7 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
                                         tracers = :c,
                                         buoyancy=nothing)
 
+    m = 2 # cosine wavenumber
     initial_condition(x, y, z) = cos(m * x)
 
     f = fields(model)[field_name]
@@ -227,7 +226,7 @@ for arch in archs
             for closure in [diff₂, diff₄]
 
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
-                fs = Array(interior(fs));
+                fs = Array(interior(fs))
 
                 for regions in [2], P in partitioning
                     @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
