@@ -7,7 +7,7 @@ using Oceananigans.Units
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
-using Oceananigans.Architectures: on_architecture
+#using Oceananigans.Architectures: on_architecture
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
@@ -38,7 +38,7 @@ latitude = (-75, 75)
 # 0.25 degree resolution
 Nx = 1440
 Ny = 600
-Nz = 48
+Nz = 4
 
 const Nyears  = 1
 const Nmonths = 12 
@@ -94,7 +94,7 @@ T★ = file_temp["field"]
 S★ = file_salt["field"] 
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
-bathymetry = on_architecture(arch, bathymetry)
+#bathymetry = on_architecture(arch, bathymetry)
 
 # Stretched faces taken from ECCO Version 4 (50 levels in the vertical)
 z_faces = file_z_faces["z_faces"][3:end]
@@ -104,14 +104,14 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (3, 3, 3),
+                                              halo = (4, 4, 4),
                                               z = z_faces,
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 3))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 3))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(1), devices = (0))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(1), devices = (0))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -242,7 +242,8 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
-                                    closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
+                                    closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
+                                    #closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
                                     tracer_advection = WENO(underlying_mrg))
