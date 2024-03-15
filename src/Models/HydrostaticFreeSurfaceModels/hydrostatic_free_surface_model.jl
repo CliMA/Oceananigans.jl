@@ -9,8 +9,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: halo_size
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
@@ -48,16 +47,11 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
       auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
-is_horizontally_regular(grid) = false
-is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
+    ImplicitFreeSurface(; gravitational_acceleration)
 
-function default_free_surface(grid; gravitational_acceleration=g_Earth)
-    if is_horizontally_regular(grid)
-        return ImplicitFreeSurface(; gravitational_acceleration)
-    else
-        return SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
-    end
-end
+default_free_surface(grid; gravitational_acceleration=g_Earth) =
+    SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
     HydrostaticFreeSurfaceModel(; grid,

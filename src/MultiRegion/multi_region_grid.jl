@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Grids: minimum_spacing, destantiate
 
@@ -47,6 +48,10 @@ minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 
 @inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
+
+# The default free surface solver; see Models.HydrostaticFreeSurfaceModels
+default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
+    ImplicitFreeSurface(; gravitational_acceleration)
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2),
