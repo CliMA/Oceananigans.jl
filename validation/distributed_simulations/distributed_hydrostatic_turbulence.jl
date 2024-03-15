@@ -23,7 +23,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
-                                        free_surface = SplitExplicitFreeSurface(substeps=10),
+                                        free_surface = SplitExplicitFreeSurface(grid, substeps=10),
                                         tracer_advection = WENO(),
                                         buoyancy = nothing,
                                         coriolis = FPlane(f = 1),

@@ -90,8 +90,8 @@ on_architecture(to, free_surface::ImplicitFreeSurface) =
                         on_architecture(to, free_surface.solver_settings))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
@@ -111,13 +111,11 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
                                free_surface.solver_settings)
 end
 
-is_horizontally_regular(grid) = false
-is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
-function build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
-    return build_implicit_step_solver(Val(default_method), grid, settings, gravitational_acceleration)
-end
+build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -141,7 +139,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     # Compute right hand side of implicit free surface equation
     @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
     fill_halo_regions!(∫ᶻQ)
-    
+
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -157,7 +155,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
-    
+
     foreach(mask_immersed_field!, velocities)
 
     # Compute barotropic volume flux. Blocking.
