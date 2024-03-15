@@ -56,7 +56,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     old_halos = halo_size(getregion(grid, 1))
     Nsubsteps = calculate_substeps(settings.substepping)
 
-    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)         
+    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
     new_grid  = with_halo(new_halos, grid)
 
     η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
