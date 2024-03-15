@@ -74,7 +74,7 @@ end
 """
     solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
 
-Solves the "generalized" Poisson equation,
+Solve the "generalized" Poisson equation,
 
 ```math
 (∇² + m) ϕ = b,

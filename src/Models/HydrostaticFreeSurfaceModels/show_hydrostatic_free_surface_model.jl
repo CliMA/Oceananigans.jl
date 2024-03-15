@@ -27,7 +27,7 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         end
 
         if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
-            print(io, "│   └── substepping: $(model.free_surface.settings.substepping)", "\n")
+            print(io, "│   └── substepping: $(summary(model.free_surface.settings.substepping))", "\n")
         end
     end
 
