@@ -75,7 +75,7 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
     storage = implicit_free_surface_solver.storage
     
     solve!(storage, solver, rhs, Δt)
-        
+
     set!(η, reshape(storage, solver.problem_size...))
 
     return nothing
@@ -92,7 +92,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     launch!(arch, grid, :xy,
             implicit_linearized_free_surface_right_hand_side!,
             rhs, grid, g, Δt, ∫ᶻQ, η)
-    
+
     return nothing
 end
 
@@ -130,8 +130,8 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
+          Ay[i, j, 1] = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
+          Ax[i, j, 1] = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
+        diag[i, j, 1] = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end
