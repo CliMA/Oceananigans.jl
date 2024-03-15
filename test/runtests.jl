@@ -24,8 +24,6 @@ CUDA.allowscalar() do
     # Core Oceananigans
     @show group
     if group == :unit || group == :all
-        @info "hi from CI"
-        @show group
         @testset "Unit tests" begin
             include("test_grids.jl")
             include("test_operators.jl")
