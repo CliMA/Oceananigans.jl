@@ -22,7 +22,6 @@ CUDA.allowscalar() do
     end
 
     # Core Oceananigans
-    @show group
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
