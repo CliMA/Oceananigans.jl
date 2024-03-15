@@ -298,16 +298,17 @@ end
 
 
 for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
-    weno_substep = Symbol(side, :_weno_substep_, dir)
-    biased_β     = Symbol(side, :_biased_β)
-    biased_p     = Symbol(side, :_biased_p)
-    coeff        = Symbol(:coeff_, side) 
-    stencil      = Symbol(side, :_stencil_, dir)
-    stencil_u    = Symbol(:tangential_, side, :_stencil_u)
-    stencil_v    = Symbol(:tangential_, side, :_stencil_v)
+    weno_interpolant = Symbol(side, :_weno_interpolant_, dir)
+    biased_β         = Symbol(side, :_biased_β)
+    biased_p         = Symbol(side, :_biased_p)
+    coeff            = Symbol(:coeff_, side) 
+    stencil          = Symbol(side, :_stencil_, dir)
+    stencil_u        = Symbol(:tangential_, side, :_stencil_u)
+    stencil_v        = Symbol(:tangential_, side, :_stencil_v)
 
     @eval begin
-        @inline function $weno_substep(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
+        # Standard weno reconstruction at `i, j, k` for stencil `s` where `1 ≤ s ≤ N`
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
             
             # Retrieve stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -326,7 +327,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
         end
 
         # If the smoothness stencil is not used (aka it's a `DefaultStencil`) use the same formulation as above
-        @inline function $weno_substep(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
             
             # Retrieve stencil `s`
             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
@@ -346,7 +347,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
         # Using velocity interpolated at `(Face, Face, Center)` to assess smoothness. 
         # Can be used only for `(Face, Face, Center)` variables like vorticity
-        @inline function $weno_substep(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
             
             # Retrieve x-velocity stencil `s`
             ψs = $stencil_u(i, j, k, scheme, Val(s), Val(val), grid, u)
@@ -375,7 +376,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
         end
 
         # The smoothness is assessed using the stencil calculated from the function `VI.func(i, j, k, grid, args...)`
-        @inline function $weno_substep(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
             
             # Retrieve smoothness stencil ϕ at `s`
             ψs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
