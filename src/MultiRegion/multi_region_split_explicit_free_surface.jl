@@ -3,7 +3,8 @@ using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
                                                         SplitExplicitSettings,
                                                         SplitExplicitState,
-                                                        FixedSubstepNumber, FixedTimeStepSize
+                                                        FixedSubstepNumber, FixedTimeStepSize,
+                                                        calculate_substeps
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
@@ -51,8 +52,9 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
         throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialized SplitExplicitFreeSurface using substeps kwarg"))
 
     switch_device!(grid.devices[1])
+
     old_halos = halo_size(getregion(grid, 1))
-    Nsubsteps = length(settings.substepping.averaging_weights)
+    Nsubsteps = calculate_substeps(settings.substepping)
 
     new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)         
     new_grid  = with_halo(new_halos, grid)
