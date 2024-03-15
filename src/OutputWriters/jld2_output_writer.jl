@@ -2,14 +2,22 @@ using Printf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
-using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
+using Oceananigans.Utils: TimeInterval, prettykeys
 using Oceananigans.Fields: boundary_conditions, indices
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+update_file_splitting_schedule!(schedule, filepath) = nothing
+update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) = schedule.path = filepath
+
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -17,7 +25,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     init :: IF
     including :: IN
     part :: Int
-    max_filesize :: Float64
+    file_splitting :: FS
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
@@ -32,7 +40,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                           indices = (:, :, :),
                        with_halos = false,
                        array_type = Array{Float64},
-                     max_filesize = Inf,
+                   file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
@@ -80,10 +88,12 @@ Keyword arguments
 
 ## File management
 
-- `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
-                  and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
-                  Defaults to `Inf`.
-
+- `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
+                    `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
+                    split the output file when its size exceeds `sz`. Another example is 
+                    `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
+                    simulation time. The default incurs no splitting.
+                    
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
@@ -100,7 +110,7 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
              Default: `false`.
 
-- `part`: The starting part number used if `max_filesize` is finite.
+- `part`: The starting part number used when file splitting.
           Default: 1.
 
 - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
@@ -163,7 +173,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                indices = (:, :, :),
                             with_halos = false,
                             array_type = Array{Float64},
-                          max_filesize = Inf,
+                        file_splitting = NoFileSplitting(),
                     overwrite_existing = false,
                                   init = noinit,
                              including = default_included_properties(model),
@@ -174,6 +184,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
+    update_file_splitting_schedule!(schedule, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
     
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
@@ -185,7 +196,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
+                            including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -271,9 +282,9 @@ function write_output!(writer::JLD2OutputWriter, model)
 
         verbose && @info "Fetching time: $(prettytime(tc))"
 
-        # Start a new file if the filesize exceeds max_filesize
-        filesize(path) >= writer.max_filesize && start_next_file(model, writer)
-        path = writer.filepath # we might have a new path...
+        # Start a new file if the file_splitting(model) is true
+        writer.file_splitting(model) && start_next_file(model, writer)
+        update_file_splitting_schedule!(schedule, writer.filepath)
 
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
@@ -311,9 +322,10 @@ end
 
 function start_next_file(model, writer::JLD2OutputWriter)
     verbose = writer.verbose
-    sz = filesize(writer.filepath)
+   
     verbose && @info begin
-        "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(writer.max_filesize))."
+        schedule_type = summary(writer.file_splitting)
+        "Splitting output because $(schedule_type) has been actuated."
     end
 
     if writer.part == 1
@@ -346,5 +358,7 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
-              "└── max filesize: ", pretty_filesize(ow.max_filesize))
+              "├── file_splitting: ", summary(ow.file_splitting), "\n",
+              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end
+

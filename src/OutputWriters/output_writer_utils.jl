@@ -6,10 +6,38 @@ using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instanti
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Utils: AbstractSchedule
 
 #####
 ##### Output writer utilities
 #####
+
+mutable struct FileSizeLimit <: AbstractSchedule
+    size_limit :: Float64
+    path :: String
+end
+
+"""
+    FileSizeLimit(size_limit [, path=""])
+
+Return a schedule that actuates when the file at `path` exceeds
+the `size_limit`.
+
+The `path` is automatically added and updated when `FileSizeLimit` is
+used with an output writer, and should not be provided manually.
+"""
+FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
+
+(fsl::FileSizeLimit)(model) = filesize(fsl.path) >= fsl.size_limit
+
+function Base.summary(fsl::FileSizeLimit)
+    current_size_str = pretty_filesize(filesize(fsl.path))
+    size_limit_str = pretty_filesize(fsl.size_limit)
+    return string("FileSizeLimit(size_limit=", size_limit_str,
+                              ", path=", fsl.path, " (", current_size_str, ")")
+end
+
+Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 
 """
     ext(ow)
