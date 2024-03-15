@@ -12,6 +12,11 @@ if test_file != :none
     group = :none
 end
 
+
+#####
+##### Run tests!
+#####
+
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
