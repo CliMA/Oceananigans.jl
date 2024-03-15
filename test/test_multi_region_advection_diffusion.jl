@@ -108,10 +108,18 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
 
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
-                                        coriolis = nothing,
-                                        closure = closure,
+    # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
+    # halo region in the horizontal. Because the extented halo regio size cannot exceed
+    # the grid's interior size we pick here the number of substeps taking the grid's
+    # size into consideration.
+    substeps = Int(round(maximum(size(grid)) .* 0.8))
+    free_surface = SplitExplicitFreeSurface(; substeps)
+
+    model = HydrostaticFreeSurfaceModel(; grid = mrg,
+                                        free_surface,
+                                        closure,
                                         tracers = :c,
+                                        coriolis = nothing,
                                         buoyancy=nothing)
 
     m = 2 # cosine wavenumber
@@ -124,7 +132,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     update_state!(model)
 
     # Step forward with small time-step relative to diffusive time-scale
-    Δt = 1e-6 * grid.Lz^2 / κ
+    Δt = 1e-6 * grid.Lz^2 / closure.κ
     for _ = 1:10
         time_step!(model, Δt)
     end
@@ -132,8 +140,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     return f
 end
 
-Nx = 32
-Ny = 32
+Nx = Ny = 32
 
 partitioning = [XPartition]
 
@@ -222,16 +229,16 @@ for arch in archs
         diff₂ = ScalarDiffusivity(ν = 1, κ = 1)
         diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
 
-        for fieldname in [:u, :v, :c]
-            for closure in [diff₂, diff₄]
+        for field_name in (:u, :v, :c)
+            for closure in (diff₂, diff₄)
 
-                fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
+                fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
                 fs = Array(interior(fs))
 
-                for regions in [2], P in partitioning
-                    @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
+                for regions in (2,), P in partitioning
+                    @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
 
-                    f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)
+                    f = diffusion_cosine_test(grid; closure, P, field_name, regions)
                     f = interior(reconstruct_global_field(f))
 
                     @test all(f .≈ fs)
