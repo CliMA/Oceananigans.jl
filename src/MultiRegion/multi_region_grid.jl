@@ -51,7 +51,7 @@ minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 
 # the default free surface solver; see Models.HydrostaticFreeSurfaceModels
 default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
-    SplitExplicitFreeSurface(substeps=200, gravitational_acceleration)
+    SplitExplicitFreeSurface(; substeps=200, gravitational_acceleration)
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2),
