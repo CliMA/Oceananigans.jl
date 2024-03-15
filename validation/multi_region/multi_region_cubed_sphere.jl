@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_cubed_sphere_halo_regions!
 #=
 Install Imaginocean.jl from GitHub:
 using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
@@ -99,7 +99,7 @@ set!(u, (λ, φ, z) -> φ)
 v = YFaceField(grid)
 set!(v, (λ, φ, z) -> φ)
 
-fill_paired_halo_regions!((u, v))
+fill_cubed_sphere_halo_regions!((u, v), (Face(), Center()), (Center(), Face()))
 
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
@@ -167,14 +167,14 @@ end
 
 cubed_sphere_dynamics_branch_cs_grid_file = jldopen("cubed-sphere-dynamics_branch_cs_grid.jld2")
 
-λᶜᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-λᶠᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-λᶜᶠᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-λᶠᶠᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶜᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶠᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶜᶠᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶠᶠᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
+λᶜᶜᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+λᶠᶜᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+λᶜᶠᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+λᶠᶠᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+φᶜᶜᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+φᶠᶜᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+φᶜᶠᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
+φᶠᶠᵃ_difference  = zeros(Nx+2Hx, Ny+2Hy, 6)
 Δxᶜᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
 Δxᶠᶜᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)
 Δxᶜᶠᵃ_difference = zeros(Nx+2Hx, Ny+2Hy, 6)

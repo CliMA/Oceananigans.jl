@@ -28,8 +28,121 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
          update_state!(model, model.grid, callbacks; compute_tendencies)
 
-function fill_paired_halo_regions!(fields, signed=true)
+function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
+    grid = field.grid
 
+    if !(grid isa ConformalCubedSphereGrid)
+        return
+    end
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
+    Nc = Nx ; Hc = Hx
+
+    #-- one pass: only use interior-point values:
+    for region in 1:6
+
+        if mod(region,2) == 1
+            #- odd face number (1,3,5):
+            region_E = mod(region + 0, 6) + 1
+            region_N = mod(region + 1, 6) + 1
+            region_W = mod(region + 3, 6) + 1
+            region_S = mod(region + 4, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field:
+                field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
+                field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                #- N + S Halo for field:
+                field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+                field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            end
+        else
+            #- even face number (2,4,6):
+            region_E = mod(region + 1, 6) + 1
+            region_N = mod(region + 0, 6) + 1
+            region_W = mod(region + 4, 6) + 1
+            region_S = mod(region + 3, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field:
+                field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
+                field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                #- N + S Halo for field:
+                field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
+                field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            end
+        end
+
+    end
+
+    return nothing
+end
+
+function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Center, <:Center}, ::Tuple{<:Center, <:Center}, signed=true)
+    field_1, field_2 = fields
+    grid = field_1.grid
+
+    if !(grid isa ConformalCubedSphereGrid)
+        return
+    end
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    signed ? plmn = -1 : plmn = 1
+    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
+    Nc = Nx ; Hc = Hx
+
+    #-- one pass: only use interior-point values:
+    for region in 1:6
+
+        if mod(region,2) == 1
+            #- odd face number (1,3,5):
+            region_E = mod(region + 0, 6) + 1
+            region_N = mod(region + 1, 6) + 1
+            region_W = mod(region + 3, 6) + 1
+            region_S = mod(region + 4, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field_1:
+                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
+                field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                #- N + S Halo for field_1:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
+                field_1[region][1:Nc, 1-Hc:0, k]     .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                #- E + W Halo for field_2:
+                field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_2[region_E][1:Hc, 1:Nc, k]
+                field_2[region][1-Hc:0, 1:Nc, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
+                #- N + S Halo for field_2:
+                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
+                field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            end
+        else
+            #- even face number (2,4,6):
+            region_E = mod(region + 1, 6) + 1
+            region_N = mod(region + 0, 6) + 1
+            region_W = mod(region + 4, 6) + 1
+            region_S = mod(region + 3, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field_1:
+                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
+                field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                #- N + S Halo for field_1:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_1[region_N][1:Nc, 1:Hc, k]
+                field_1[region][1:Nc, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
+                #- E + W Halo for field_2:
+                field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
+                field_2[region][1-Hc:0, 1:Nc, k]     .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                #- N + S Halo for field_2:
+                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_2[region_N][1:Nc, 1:Hc, k]
+                field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            end
+        end
+
+    end
+
+    return nothing
+end
+
+function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Center}, ::Tuple{<:Center, <:Face}, signed=true)
     field_1, field_2 = fields
     grid = field_1.grid
 
@@ -126,8 +239,7 @@ function fill_paired_halo_regions!(fields, signed=true)
     return nothing
 end
 
-function fill_paired_faceface_halo_regions!(fields, signed=true)
-
+function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Face}, ::Tuple{<:Face, <:Face}, signed=true)
     field_1, field_2 = fields
     grid = field_1.grid
 
@@ -212,7 +324,6 @@ function fill_paired_faceface_halo_regions!(fields, signed=true)
 end
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
-
     @apply_regionally mask_immersed_model_fields!(model, grid)
     
     # Update possible FieldTimeSeries used in the model
@@ -251,8 +362,7 @@ end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
                                                                   p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                  κ_parameters = tuple(:xyz)) 
-    
+                                                                  κ_parameters = tuple(:xyz))
     grid = model.grid
     closure = model.closure
     diffusivity = model.diffusivity_fields
