@@ -38,7 +38,7 @@ latitude = (-75, 75)
 # 0.25 degree resolution
 Nx = 1440
 Ny = 600
-Nz = 4
+Nz = 48
 
 const Nyears  = 1
 const Nmonths = 12 
@@ -273,7 +273,8 @@ fill_halo_regions!(S)
 
 Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+year = 365*24*3600
+simulation = Simulation(model, Δt = Δt, stop_time = Nyears*year)
 
 start_time = [time_ns()]
 
