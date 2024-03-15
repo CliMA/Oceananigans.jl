@@ -72,6 +72,13 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            clock = Adapt.adapt(to, f.clock),
                            parameters = Adapt.adapt(to, f.parameters))
 
+
+on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
+    FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
+                              on_architecture(to, f.grid),
+                              clock = on_architecture(to, f.clock),
+                              parameters = on_architecture(to, f.parameters))
+
 Base.show(io::IO, field::FunctionField) =
     print(io, "FunctionField located at ", show_location(field), "\n",
           "├── func: $(prettysummary(field.func))", "\n",

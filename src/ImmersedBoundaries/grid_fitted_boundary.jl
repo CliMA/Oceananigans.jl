@@ -36,4 +36,3 @@ on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(comp
 on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
-
