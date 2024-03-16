@@ -50,6 +50,8 @@ function test_jld2_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
+    max_filesize = FileSizeLimit(200KiB)
+
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
                           filename = "test.jld2",
@@ -58,7 +60,7 @@ function test_jld2_file_splitting(arch)
                           including = [:grid],
                           array_type = Array{Float64},
                           with_halos = true,
-                          file_splitting = FileSizeLimit(200KiB),
+                          file_splitting = max_filesize,
                           overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
