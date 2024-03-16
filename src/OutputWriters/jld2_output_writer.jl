@@ -92,7 +92,7 @@ Keyword arguments
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
                     split the output file when its size exceeds `sz`. Another example is 
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
-                    simulation time. The default incurs no splitting.
+                    simulation time. The default incurs no splitting (`NoFileSplitting()`).
                     
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
