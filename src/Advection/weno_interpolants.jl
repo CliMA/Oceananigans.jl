@@ -368,102 +368,102 @@ end
 @inline new_stencil_right_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ, args...) where N = @inbounds (ψ[i, j, k-4], ψs[1:N-1]...)
 @inline new_stencil_right_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ, args...) where N = @inbounds (ψ[i, j, k-5], ψs[1:N-1]...)
 
-# for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
-#     weno_interpolant = Symbol(side, :_weno_interpolant_, dir)
-#     biased_β         = Symbol(side, :_biased_β)
-#     biased_p         = Symbol(side, :_biased_p)
-#     coeff            = Symbol(:coeff_, side) 
-#     stencil          = Symbol(side, :_stencil_, dir)
-#     stencil_u        = Symbol(:tangential_, side, :_stencil_u)
-#     stencil_v        = Symbol(:tangential_, side, :_stencil_v)
+for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
+    weno_interpolant = Symbol(side, :_weno_interpolant_, dir)
+    biased_β         = Symbol(side, :_biased_β)
+    biased_p         = Symbol(side, :_biased_p)
+    coeff            = Symbol(:coeff_, side) 
+    stencil          = Symbol(side, :_stencil_, dir)
+    stencil_u        = Symbol(:tangential_, side, :_stencil_u)
+    stencil_v        = Symbol(:tangential_, side, :_stencil_v)
 
-#     @eval begin
-#         # Standard weno reconstruction at `i, j, k` for stencil `s` where `1 ≤ s ≤ N`
-#         @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
+    @eval begin
+        # Standard weno reconstruction at `i, j, k` for stencil `s` where `1 ≤ s ≤ N`
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
             
-#             # Retrieve stencil `s`
-#             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
+            # Retrieve stencil `s`
+            ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
 
-#             # Calculate smoothness of stencil `s`
-#             β = $biased_β(ψs, scheme, Val(s-1))
+            # Calculate smoothness of stencil `s`
+            β = $biased_β(ψs, scheme, Val(s-1))
 
-#             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-#             C = FT($coeff(scheme, Val(s-1)))
-#             α = C / (β + FT(ε))^2
+            # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
+            C = FT($coeff(scheme, Val(s-1)))
+            α = C / (β + FT(ε))^2
 
-#             # Reconstruction of `ψ` from stencil `s`
-#             ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            # Reconstruction of `ψ` from stencil `s`
+            ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-#             return β, ψ̅, C, α
-#         end
+            return β, ψ̅, C, α
+        end
 
-#         # If the smoothness stencil is not used (aka it's a `DefaultStencil`) use the same formulation as above
-#         @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
+        # If the smoothness stencil is not used (aka it's a `DefaultStencil`) use the same formulation as above
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
             
-#             # Retrieve stencil `s`
-#             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
+            # Retrieve stencil `s`
+            ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
             
-#             # Calculate smoothness of stencil `s`
-#             β = $biased_β(ψs, scheme, Val(s-1))
+            # Calculate smoothness of stencil `s`
+            β = $biased_β(ψs, scheme, Val(s-1))
             
-#             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-#             C = FT($coeff(scheme, Val(s-1)))
-#             α = C / (β + FT(ε))^2
+            # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
+            C = FT($coeff(scheme, Val(s-1)))
+            α = C / (β + FT(ε))^2
             
-#             # Reconstruction of `ψ` from stencil `s`
-#             ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            # Reconstruction of `ψ` from stencil `s`
+            ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-#             return β, ψ̅, C, α
-#         end
+            return β, ψ̅, C, α
+        end
 
-#         # Using velocity interpolated at `(Face, Face, Center)` to assess smoothness. 
-#         # Can be used only for `(Face, Face, Center)` variables like vorticity
-#         @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
+        # Using velocity interpolated at `(Face, Face, Center)` to assess smoothness. 
+        # Can be used only for `(Face, Face, Center)` variables like vorticity
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, ::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
             
-#             # Retrieve x-velocity stencil `s`
-#             ψs = $stencil_u(i, j, k, scheme, Val(s), Val(val), grid, u)
+            # Retrieve x-velocity stencil `s`
+            ψs = $stencil_u(i, j, k, scheme, Val(s), Val(val), grid, u)
             
-#             # Calculate x-velocity smoothness at stencil `s`
-#             βu = $biased_β(ψs, scheme, Val(s-1))
+            # Calculate x-velocity smoothness at stencil `s`
+            βu = $biased_β(ψs, scheme, Val(s-1))
 
-#             # Retrieve y-velocity stencil `s`
-#             ψs = $stencil_v(i, j, k, scheme, Val(s), Val(val), grid, v)
+            # Retrieve y-velocity stencil `s`
+            ψs = $stencil_v(i, j, k, scheme, Val(s), Val(val), grid, v)
             
-#             # Calculate y-velocity smoothness at stencil `s`
-#             βv = $biased_β(ψs, scheme, Val(s-1))
+            # Calculate y-velocity smoothness at stencil `s`
+            βv = $biased_β(ψs, scheme, Val(s-1))
             
-#             # total smoothness
-#             βᵁ = (βu + βv) / 2
+            # total smoothness
+            βᵁ = (βu + βv) / 2
             
-#             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-#             C = FT($coeff(scheme, Val(s-1)))
-#             α = C / (βᵁ + FT(ε))^2
+            # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
+            C = FT($coeff(scheme, Val(s-1)))
+            α = C / (βᵁ + FT(ε))^2
 
-#             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-#             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
-#             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, u, v, args...)
+            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-#             return βᵁ, ψ̅, C, α
-#         end
+            return βᵁ, ψ̅, C, α
+        end
 
-#         # The smoothness is assessed using the stencil calculated from the function `VI.func(i, j, k, grid, args...)`
-#         @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+        # The smoothness is assessed using the stencil calculated from the function `VI.func(i, j, k, grid, args...)`
+        @inline function $weno_interpolant(i, j, k, s, grid, scheme::WENO{N, FT, XT, YT, ZT}, val, ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
             
-#             # Retrieve smoothness stencil ϕ at `s`
-#             ψs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
+            # Retrieve smoothness stencil ϕ at `s`
+            ψs = $stencil(i, j, k, scheme, Val(s), VI.func, grid, args...)
 
-#             # Calculate `ϕ` smoothness at `s`
-#             βᵠ = $biased_β(ψs, scheme, Val(s-1))
+            # Calculate `ϕ` smoothness at `s`
+            βᵠ = $biased_β(ψs, scheme, Val(s-1))
 
-#             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
-#             C  = FT($coeff(scheme, Val(s-1)))
-#             α  = C / (βᵠ + FT(ε))^2
+            # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
+            C  = FT($coeff(scheme, Val(s-1)))
+            α  = C / (βᵠ + FT(ε))^2
 
-#             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-#             ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
-#             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψs = $stencil(i, j, k, scheme, Val(s), ψ, grid, args...)
+            ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
 
-#             return βᵠ, ψ̅, C, α
-#         end
-#     end
-# end
+            return βᵠ, ψ̅, C, α
+        end
+    end
+end

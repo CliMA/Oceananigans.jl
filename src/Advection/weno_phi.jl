@@ -1,3 +1,26 @@
+@inline function ϕ_reconstruction_stencil(buffer, shift, dir)
+    N = buffer * 2
+    order = shift == :symmetric ? N : N - 1
+    if shift != :symmetric
+        N = N .- 1
+    end
+    rng = 1:N
+    if shift == :right
+        rng = rng .+ 1
+    end
+    stencil_full = Vector(undef, N)
+    coeff = Symbol(:coeff, order, :_, shift)
+    for (idx, n) in enumerate(rng)
+        c = n - buffer - 1
+        stencil_full[idx] = dir == :x ?
+                            :(VI.func(i + $c, j, k, grid, args...)) :
+                            dir == :y ?
+                            :(VI.func(i, j + $c, k, grid, args...)) :
+                            :(VI.func(i, j, k + $c, grid, args...))
+    end
+    return :($(stencil_full...),)
+end
+
 for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β           = Symbol(side, :_biased_β)
@@ -12,26 +35,19 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{2, FT, XT, YT, ZT},
                                             ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
-        
-            # Stencil S₀
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ,       grid, args...)
 
+            # All stencils
+            ψs = $(ϕ_reconstruction_stencil(2, side, dir))
+            
             # Calculate x-velocity smoothness at stencil `s`
-            β₀ = $biased_β(ϕs, scheme, Val(0))
+            β₀ = $biased_β(ψs[2:3], scheme, Val(0))
+            β₁ = $biased_β(ψs[1:2], scheme, Val(1))
+                
+            ψs = $(ψ_reconstruction_stencil(2, side, dir, true))
             
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
-            
-            # Stencil S₁
-            ϕs = $new_stencil(i, j, k, scheme, Val(2), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₁ = $biased_β(ϕs, scheme, Val(1))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
+            ψ₀ = $biased_p(scheme, Val(0), ψs[2:3], $CT, Val($val), idx, loc) 
+            ψ₁ = $biased_p(scheme, Val(1), ψs[1:2], $CT, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(2), (β₀, β₁))
 
@@ -45,36 +61,20 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{3, FT, XT, YT, ZT},
                                             ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
         
-            # Stencil S₀
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ,       grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₀ = $biased_β(ϕs, scheme, Val(0))
+            ψs = $(ϕ_reconstruction_stencil(3, side, dir))
             
+            # Calculate x-velocity smoothness at stencil `s`
+            β₀ = $biased_β(ψs[3:5], scheme, Val(0))
+            β₁ = $biased_β(ψs[2:4], scheme, Val(1))
+            β₂ = $biased_β(ψs[1:3], scheme, Val(2))
+
+            ψs = $(ψ_reconstruction_stencil(3, side, dir, true))
+
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
+            ψ₀ = $biased_p(scheme, Val(0), ψs[3:5], $CT, Val($val), idx, loc) 
+            ψ₁ = $biased_p(scheme, Val(1), ψs[2:4], $CT, Val($val), idx, loc) 
+            ψ₂ = $biased_p(scheme, Val(2), ψs[1:3], $CT, Val($val), idx, loc) 
             
-            # Stencil S₁
-            ϕs = $new_stencil(i, j, k, scheme, Val(2), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₁ = $biased_β(ϕs, scheme, Val(1))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₂
-            ϕs = $new_stencil(i, j, k, scheme, Val(3), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(3), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₂ = $biased_β(ϕs, scheme, Val(2))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₂ = $biased_p(scheme, Val(2), ψs, $CT, Val($val), idx, loc) 
-
             τ = global_smoothness_indicator(Val(3), (β₀, β₁, β₂))
 
             α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
@@ -85,48 +85,24 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{4, FT, XT, YT, ZT},
-                                             ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
+                                    scheme::WENO{4, FT, XT, YT, ZT},
+                                    ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
         
-            # Stencil S₀
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ,       grid, args...)
+            ψs = $(ϕ_reconstruction_stencil(4, side, dir))
 
             # Calculate x-velocity smoothness at stencil `s`
-            β₀ = $biased_β(ϕs, scheme, Val(0))
+            β₀ = $biased_β(ψs[4:7], scheme, Val(0))
+            β₁ = $biased_β(ψs[3:6], scheme, Val(1))
+            β₂ = $biased_β(ψs[2:5], scheme, Val(2))
+            β₃ = $biased_β(ψs[1:4], scheme, Val(3))
+            
+            ψs = $(ψ_reconstruction_stencil(4, side, dir, true))
             
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
-            
-            # Stencil S₁
-            ϕs = $new_stencil(i, j, k, scheme, Val(2), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₁ = $biased_β(ϕs, scheme, Val(1))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₂
-            ϕs = $new_stencil(i, j, k, scheme, Val(3), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(3), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₂ = $biased_β(ϕs, scheme, Val(2))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₂ = $biased_p(scheme, Val(2), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₃
-            ϕs = $new_stencil(i, j, k, scheme, Val(4), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(4), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₃ = $biased_β(ϕs, scheme, Val(3))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₃ = $biased_p(scheme, Val(3), ψs, $CT, Val($val), idx, loc) 
+            ψ₀ = $biased_p(scheme, Val(0), ψs[4:7], $CT, Val($val), idx, loc) 
+            ψ₁ = $biased_p(scheme, Val(1), ψs[3:6], $CT, Val($val), idx, loc) 
+            ψ₂ = $biased_p(scheme, Val(2), ψs[2:5], $CT, Val($val), idx, loc) 
+            ψ₃ = $biased_p(scheme, Val(3), ψs[1:4], $CT, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(4), (β₀, β₁, β₂, β₃))
 
@@ -142,55 +118,23 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{5, FT, XT, YT, ZT},
                                             ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
         
-            # Stencil S₀
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ,       grid, args...)
+            ψs = $(ϕ_reconstruction_stencil(5, side, dir))
 
             # Calculate x-velocity smoothness at stencil `s`
-            β₀ = $biased_β(ϕs, scheme, Val(0))
-            
+            β₀ = $biased_β(ψs[5:9], scheme, Val(0))
+            β₁ = $biased_β(ψs[4:8], scheme, Val(1))
+            β₂ = $biased_β(ψs[3:7], scheme, Val(2))
+            β₃ = $biased_β(ψs[2:6], scheme, Val(3))
+            β₄ = $biased_β(ψs[1:5], scheme, Val(4))
+
+            ψs = $(ψ_reconstruction_stencil(5, side, dir, true))
+
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
-            
-            # Stencil S₁
-            ϕs = $new_stencil(i, j, k, scheme, Val(2), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₁ = $biased_β(ϕs, scheme, Val(1))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₂
-            ϕs = $new_stencil(i, j, k, scheme, Val(3), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(3), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₂ = $biased_β(ϕs, scheme, Val(2))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₂ = $biased_p(scheme, Val(2), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₃
-            ϕs = $new_stencil(i, j, k, scheme, Val(4), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(4), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₃ = $biased_β(ϕs, scheme, Val(3))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₃ = $biased_p(scheme, Val(3), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₄
-            ϕs = $new_stencil(i, j, k, scheme, Val(5), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(5), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₄ = $biased_β(ϕs, scheme, Val(4))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₄ = $biased_p(scheme, Val(4), ψs, $CT, Val($val), idx, loc) 
+            ψ₀ = $biased_p(scheme, Val(0), ψs[5:9], $CT, Val($val), idx, loc) 
+            ψ₁ = $biased_p(scheme, Val(1), ψs[4:8], $CT, Val($val), idx, loc) 
+            ψ₂ = $biased_p(scheme, Val(2), ψs[3:7], $CT, Val($val), idx, loc) 
+            ψ₃ = $biased_p(scheme, Val(3), ψs[2:6], $CT, Val($val), idx, loc) 
+            ψ₄ = $biased_p(scheme, Val(4), ψs[1:5], $CT, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(5), (β₀, β₁, β₂, β₃, β₄))
 
@@ -207,65 +151,25 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{6, FT, XT, YT, ZT},
                                             ψ, idx, loc, VI::FunctionStencil, args...) where {FT, XT, YT, ZT}
         
-            # Stencil S₀
-            ϕs = $stencil(i, j, k, scheme, Val(1), VI.func, grid, args...)
-            ψs = $stencil(i, j, k, scheme, Val(1), ψ,       grid, args...)
+            ψs = $(ϕ_reconstruction_stencil(6, side, dir))
 
             # Calculate x-velocity smoothness at stencil `s`
-            β₀ = $biased_β(ϕs, scheme, Val(0))
-            
+            β₀ = $biased_β(ψs[6:11], scheme, Val(0))
+            β₁ = $biased_β(ψs[5:10], scheme, Val(1))
+            β₂ = $biased_β(ψs[4:9],  scheme, Val(2))
+            β₃ = $biased_β(ψs[3:8],  scheme, Val(3))
+            β₄ = $biased_β(ψs[2:7],  scheme, Val(4))
+            β₅ = $biased_β(ψs[1:6],  scheme, Val(4))
+
+            ψs = $(ψ_reconstruction_stencil(6, side, dir, true))
+
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
-            
-            # Stencil S₁
-            ϕs = $new_stencil(i, j, k, scheme, Val(2), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₁ = $biased_β(ϕs, scheme, Val(1))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₂
-            ϕs = $new_stencil(i, j, k, scheme, Val(3), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(3), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₂ = $biased_β(ϕs, scheme, Val(2))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₂ = $biased_p(scheme, Val(2), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₃
-            ϕs = $new_stencil(i, j, k, scheme, Val(4), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(4), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₃ = $biased_β(ϕs, scheme, Val(3))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₃ = $biased_p(scheme, Val(3), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₄
-            ϕs = $new_stencil(i, j, k, scheme, Val(5), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(5), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₄ = $biased_β(ϕs, scheme, Val(4))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₄ = $biased_p(scheme, Val(4), ψs, $CT, Val($val), idx, loc) 
-
-            # Stencil S₄
-            ϕs = $new_stencil(i, j, k, scheme, Val(6), ϕs, VI.func, grid, args...)
-            ψs = $new_stencil(i, j, k, scheme, Val(6), ψs, ψ, grid, args...)
-
-            # Calculate x-velocity smoothness at stencil `s`
-            β₅ = $biased_β(ϕs, scheme, Val(5))
-    
-            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₅ = $biased_p(scheme, Val(5), ψs, $CT, Val($val), idx, loc) 
+            ψ₀ = $biased_p(scheme, Val(0), ψs[6:11], $CT, Val($val), idx, loc) 
+            ψ₁ = $biased_p(scheme, Val(1), ψs[5:10], $CT, Val($val), idx, loc) 
+            ψ₂ = $biased_p(scheme, Val(2), ψs[4:9],  $CT, Val($val), idx, loc) 
+            ψ₃ = $biased_p(scheme, Val(3), ψs[3:8],  $CT, Val($val), idx, loc) 
+            ψ₄ = $biased_p(scheme, Val(4), ψs[2:7],  $CT, Val($val), idx, loc) 
+            ψ₅ = $biased_p(scheme, Val(5), ψs[1:6],  $CT, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(6), (β₀, β₁, β₂, β₃, β₄, β₅))
 
@@ -274,7 +178,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
             α₃ = FT($coeff(scheme, Val(3))) * (1 + τ / (β₃ + FT(ε))^2)
             α₄ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
-            α₅ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
+            α₅ = FT($coeff(scheme, Val(5))) * (1 + τ / (β₅ + FT(ε))^2)
 
             return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃ + ψ₄ * α₄ + ψ₅ * α₅) / (α₀ + α₁ + α₂ + α₃ + α₄ + α₅)
         end
