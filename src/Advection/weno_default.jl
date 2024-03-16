@@ -201,5 +201,75 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃ + ψ₄ * α₄) / (α₀ + α₁ + α₂ + α₃ + α₄)
         end
+
+        @inline function $biased_interpolate(i, j, k, grid, 
+                                            scheme::WENO{6, FT, XT, YT, ZT},
+                                            ψ, idx, loc, args...) where {FT, XT, YT, ZT}
+        
+            # Stencil S₀
+            ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₀ = $biased_β(ψs, scheme, Val(0))
+            
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₀ = $biased_p(scheme, Val(0), ψs, $CT, Val($val), idx, loc) 
+            
+            # Stencil S₁
+            ψs = $new_stencil(i, j, k, scheme, Val(2), ψs, ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₁ = $biased_β(ψs, scheme, Val(1))
+    
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₁ = $biased_p(scheme, Val(1), ψs, $CT, Val($val), idx, loc) 
+
+            # Stencil S₂
+            ψs = $new_stencil(i, j, k, scheme, Val(3), ψs, ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₂ = $biased_β(ψs, scheme, Val(2))
+    
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₂ = $biased_p(scheme, Val(2), ψs, $CT, Val($val), idx, loc) 
+
+            # Stencil S₃
+            ψs = $new_stencil(i, j, k, scheme, Val(4), ψs, ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₃ = $biased_β(ψs, scheme, Val(3))
+    
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₃ = $biased_p(scheme, Val(3), ψs, $CT, Val($val), idx, loc) 
+
+            # Stencil S₄
+            ψs = $new_stencil(i, j, k, scheme, Val(5), ψs, ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₄ = $biased_β(ψs, scheme, Val(4))
+    
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₄ = $biased_p(scheme, Val(4), ψs, $CT, Val($val), idx, loc) 
+
+            # Stencil S₄
+            ψs = $new_stencil(i, j, k, scheme, Val(6), ψs, ψ, grid, args...)
+
+            # Calculate x-velocity smoothness at stencil `s`
+            β₅ = $biased_β(ψs, scheme, Val(5))
+    
+            # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
+            ψ₅ = $biased_p(scheme, Val(5), ψs, $CT, Val($val), idx, loc) 
+
+            τ = global_smoothness_indicator(Val(6), (β₀, β₁, β₂, β₃, β₄, β₅))
+
+            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
+            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
+            α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
+            α₃ = FT($coeff(scheme, Val(3))) * (1 + τ / (β₃ + FT(ε))^2)
+            α₄ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
+            α₅ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
+
+            return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃ + ψ₄ * α₄ + ψ₅ * α₅) / (α₀ + α₁ + α₂ + α₃ + α₄ + α₅)
+        end
     end
 end
