@@ -1,39 +1,3 @@
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i-2, j, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i-3, j, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i-4, j, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i-5, j, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i-6, j, k, grid, args...), ψs[1:N-1]...)
-
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j-2, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j-3, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j-4, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j-5, k, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j-6, k, grid, args...), ψs[1:N-1]...)
-
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j, k-2, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j, k-3, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j, k-4, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j, k-5, grid, args...), ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ::Function, grid, args...) where N = @inbounds (ψ(i, j, k-6, grid, args...), ψs[1:N-1]...)
-
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψ, args...) where N = @inbounds (ψ[i-2, j, k], ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψ, args...) where N = @inbounds (ψ[i-3, j, k], ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψ, args...) where N = @inbounds (ψ[i-4, j, k], ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ, args...) where N = @inbounds (ψ[i-5, j, k], ψs[1:N-1]...)
-@inline new_stencil_left_xᶠᵃᵃ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ, args...) where N = @inbounds (ψ[i-6, j, k], ψs[1:N-1]...)
-
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψ, args...) where N = @inbounds (ψ[i, j-2, k], ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψ, args...) where N = @inbounds (ψ[i, j-3, k], ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψ, args...) where N = @inbounds (ψ[i, j-4, k], ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψ, args...) where N = @inbounds (ψ[i, j-5, k], ψs[1:N-1]...)
-@inline new_stencil_left_yᵃᶠᵃ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψ, args...) where N = @inbounds (ψ[i, j-6, k], ψs[1:N-1]...)
-
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{2}, ψs, ψargs...) where N = @inbounds (ψ[i, j, k-2], ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{3}, ψs, ψargs...) where N = @inbounds (ψ[i, j, k-3], ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{4}, ψs, ψargs...) where N = @inbounds (ψ[i, j, k-4], ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{5}, ψs, ψargs...) where N = @inbounds (ψ[i, j, k-5], ψs[1:N-1]...)
-@inline new_stencil_left_zᵃᵃᶠ(i, j, k, ::WENO{N}, ::Val{6}, ψs, ψargs...) where N = @inbounds (ψ[i, j, k-6], ψs[1:N-1]...)
-
 for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3])
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β           = Symbol(side, :_biased_β)
@@ -42,12 +6,12 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     stencil            = Symbol(side, :_stencil_, dir)
     stencil_u          = Symbol(:tangential_, side, :_stencil_u)
     stencil_v          = Symbol(:tangential_, side, :_stencil_v)
-    new_stencil        = Symbol(:new_stencil_, side, dir)
+    new_stencil        = Symbol(:new_stencil_, side, :_, dir)
 
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{2},
-                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) 
+                                            scheme::WENO{2, FT},
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where FT
         
             # Stencil S₀
             us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
@@ -88,8 +52,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{3},
-                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) 
+                                            scheme::WENO{3, FT},
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where FT
         
             # Stencil S₀
             us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
@@ -146,8 +110,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                    scheme::WENO{4},
-                                    ψ, idx, loc, ::VelocityStencil, u, v, args...) 
+                                             scheme::WENO{4, FT},
+                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where FT
         
             # Stencil S₀
             us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)
@@ -220,8 +184,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{5},
-                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) 
+                                             scheme::WENO{5, FT},
+                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where FT
         
             # Stencil S₀
             us = $stencil_u(i, j, k, scheme, Val(1), Val($val), grid, u)

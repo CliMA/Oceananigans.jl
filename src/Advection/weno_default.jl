@@ -6,12 +6,25 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
     stencil            = Symbol(side, :_stencil_, dir)
     stencil_u          = Symbol(:tangential_, side, :_stencil_u)
     stencil_v          = Symbol(:tangential_, side, :_stencil_v)
-    new_stencil        = Symbol(:new_stencil_, side, dir)
+    new_stencil        = Symbol(:new_stencil_, side, :_, dir)
 
     @eval begin
+
+        # Fallback for DefaultStencil formulations and disambiguation
+        @inline $biased_interpolate(i, j, k, grid, scheme::WENO{2}, ψ, idx, loc, ::DefaultStencil, args...) = 
+                                    $biased_interpolate(i, j, k, grid, scheme, ψ, idx, loc, args...)
+        @inline $biased_interpolate(i, j, k, grid, scheme::WENO{3}, ψ, idx, loc, ::DefaultStencil, args...) = 
+                                    $biased_interpolate(i, j, k, grid, scheme, ψ, idx, loc, args...)
+        @inline $biased_interpolate(i, j, k, grid, scheme::WENO{4}, ψ, idx, loc, ::DefaultStencil, args...) = 
+                                    $biased_interpolate(i, j, k, grid, scheme, ψ, idx, loc, args...)
+        @inline $biased_interpolate(i, j, k, grid, scheme::WENO{5}, ψ, idx, loc, ::DefaultStencil, args...) = 
+                                    $biased_interpolate(i, j, k, grid, scheme, ψ, idx, loc, args...)
+        @inline $biased_interpolate(i, j, k, grid, scheme::WENO{6}, ψ, idx, loc, ::DefaultStencil, args...) = 
+                                    $biased_interpolate(i, j, k, grid, scheme, ψ, idx, loc, args...)
+
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{2},
-                                            ψ, idx, loc, VI::FunctionStencil, args...) 
+                                            scheme::WENO{2, FT},
+                                            ψ, idx, loc, args...) where FT
         
             # Stencil S₀
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -40,8 +53,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{3},
-                                            ψ, idx, loc, VI::FunctionStencil, args...) 
+                                            scheme::WENO{3, FT},
+                                            ψ, idx, loc, args...) where FT
         
             # Stencil S₀
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -80,8 +93,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                    scheme::WENO{4},
-                                    ψ, idx, loc, VI::FunctionStencil, args...) 
+                                    scheme::WENO{4, FT},
+                                    ψ, idx, loc, args...) where FT
         
             # Stencil S₀
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -117,7 +130,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             β₃ = $biased_β(ψs, scheme, Val(3))
     
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₃ = $biased_p(scheme, Val(3), ψs, Nothing, Val(val), idx, loc) 
+            ψ₃ = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(4), (β₀, β₁, β₂, β₃))
 
@@ -130,8 +143,8 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                            scheme::WENO{5},
-                                            ψ, idx, loc, VI::FunctionStencil, args...) 
+                                            scheme::WENO{5, FT},
+                                            ψ, idx, loc, args...) where FT
         
             # Stencil S₀
             ψs = $stencil(i, j, k, scheme, Val(1), ψ, grid, args...)
@@ -167,7 +180,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             β₃ = $biased_β(ψs, scheme, Val(3))
     
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₃ = $biased_p(scheme, Val(3), ψs, Nothing, Val(val), idx, loc) 
+            ψ₃ = $biased_p(scheme, Val(3), ψs, Nothing, Val($val), idx, loc) 
 
             # Stencil S₄
             ψs = $new_stencil(i, j, k, scheme, Val(5), ψs, ψ, grid, args...)
@@ -176,7 +189,7 @@ for side in [:left, :right], (dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃ�
             β₄ = $biased_β(ψs, scheme, Val(4))
     
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
-            ψ₄ = $biased_p(scheme, Val(4), ψs, Nothing, Val(val), idx, loc) 
+            ψ₄ = $biased_p(scheme, Val(4), ψs, Nothing, Val($val), idx, loc) 
 
             τ = global_smoothness_indicator(Val(5), (β₀, β₁, β₂, β₃, β₄))
 
