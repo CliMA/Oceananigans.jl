@@ -58,7 +58,7 @@ function test_jld2_file_splitting(arch)
                           including = [:grid],
                           array_type = Array{Float64},
                           with_halos = true,
-                          max_filesize = 200KiB,
+                          file_splitting = FileSizeLimit(200KiB),
                           overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
