@@ -190,30 +190,30 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] - 6β[3] + 2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] +   β[2] - 8β[3] + 8β[4] - β[5] - β[6])
 
-# @inline add_global_smoothness(β, ::Val{2}, ::Val{1}) = + β
-# @inline add_global_smoothness(β, ::Val{2}, ::Val{2}) = - β
+@inline add_global_smoothness(β, ::Val{2}, ::Val{1}) = + β
+@inline add_global_smoothness(β, ::Val{2}, ::Val{2}) = - β
 
-# @inline add_global_smoothness(β, ::Val{3}, ::Val{1}) = + β
-# @inline add_global_smoothness(β, ::Val{3}, ::Val{2}) = 0
-# @inline add_global_smoothness(β, ::Val{3}, ::Val{3}) = - β
+@inline add_global_smoothness(β, ::Val{3}, ::Val{1}) = + β
+@inline add_global_smoothness(β, ::Val{3}, ::Val{2}) = 0
+@inline add_global_smoothness(β, ::Val{3}, ::Val{3}) = - β
 
-# @inline add_global_smoothness(β, ::Val{4}, ::Val{1}) = +  β
-# @inline add_global_smoothness(β, ::Val{4}, ::Val{2}) = + 3β
-# @inline add_global_smoothness(β, ::Val{4}, ::Val{3}) = - 3β
-# @inline add_global_smoothness(β, ::Val{4}, ::Val{4}) = -  β
+@inline add_global_smoothness(β, ::Val{4}, ::Val{1}) = +  β
+@inline add_global_smoothness(β, ::Val{4}, ::Val{2}) = + 3β
+@inline add_global_smoothness(β, ::Val{4}, ::Val{3}) = - 3β
+@inline add_global_smoothness(β, ::Val{4}, ::Val{4}) = -  β
 
-# @inline add_global_smoothness(β, ::Val{5}, ::Val{1}) = +  β
-# @inline add_global_smoothness(β, ::Val{5}, ::Val{2}) = + 2β
-# @inline add_global_smoothness(β, ::Val{5}, ::Val{3}) = - 6β
-# @inline add_global_smoothness(β, ::Val{5}, ::Val{4}) = + 2β
-# @inline add_global_smoothness(β, ::Val{5}, ::Val{5}) = +  β
+@inline add_global_smoothness(β, ::Val{5}, ::Val{1}) = +  β
+@inline add_global_smoothness(β, ::Val{5}, ::Val{2}) = + 2β
+@inline add_global_smoothness(β, ::Val{5}, ::Val{3}) = - 6β
+@inline add_global_smoothness(β, ::Val{5}, ::Val{4}) = + 2β
+@inline add_global_smoothness(β, ::Val{5}, ::Val{5}) = +  β
 
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{1}) = +  β
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{2}) = +  β
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{3}) = - 8β
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{4}) = + 8β
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
-# @inline add_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{1}) = +  β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{2}) = +  β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{3}) = - 8β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{4}) = + 8β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
+@inline add_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
 
 """ 
     calc_weno_stencil(buffer, shift, dir, func::Bool = false)
