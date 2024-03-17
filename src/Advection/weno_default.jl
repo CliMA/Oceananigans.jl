@@ -41,11 +41,12 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
     weno_interpolant   = Symbol(side, :_weno_interpolant_, dir)
     ψ_reconstruction   = Symbol(:ψ_reconstruction_, side, :_, dir)
 
+    for N in [2, 3, 4, 5, 6]
+        @eval @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ, args...)           = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir))
+        @eval @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ::Function, args...) = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir, true))
+    end
+
     @eval begin
-        for N in [2, 3, 4, 5, 6]
-            @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ, args...)           = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir))
-            @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ::Function, args...) = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir, true))
-        end
 
         # Fallback for DefaultStencil formulations and disambiguation
         @inline $biased_interpolate(i, j, k, grid, scheme::WENO{2}, ψ, idx, loc, ::DefaultStencil, args...) = 
