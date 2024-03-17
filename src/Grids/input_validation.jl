@@ -75,22 +75,23 @@ function validate_halo(TX, TY, TZ, size, ::Nothing)
     return validate_halo(TX, TY, TZ, size, halo)
 end
 
+coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
+
 function validate_halo(TX, TY, TZ, size, halo)
     halo = tupleit(halo)
     validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ))
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
-    dims = (:x, :y, :z)
+
     for i in 1:3
-        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(dims[i])"))
+        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(coordinate_name(i))"))
     end
-    # !all(halo .≤ size) && error("halo size must be ≤ grid size")
+
     return halo
 end
 
-coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
-
 function validate_dimension_specification(T, ξ, dir, N, FT)
 
+    @show dir
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
     all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
