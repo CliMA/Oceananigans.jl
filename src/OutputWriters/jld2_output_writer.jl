@@ -10,7 +10,10 @@ default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
 update_file_splitting_schedule!(schedule, filepath) = nothing
-update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) = schedule.path = filepath
+
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+    schedule.path = filepath
+end 
 
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
@@ -184,7 +187,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
-    update_file_splitting_schedule!(schedule, filepath)
+    update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
     
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
@@ -258,18 +261,17 @@ end
 function write_output!(writer::JLD2OutputWriter, model)
 
     verbose = writer.verbose
-    path = writer.filepath
     current_iteration = model.clock.iteration
 
     # Some logic to handle writing to existing files
-    if iteration_exists(path, current_iteration)
+    if iteration_exists(writer.filepath, current_iteration)
 
         if writer.overwrite_existing
             # Something went wrong, so we remove the file and re-initialize it.
-            rm(path, force=true)
+            rm(writer.filepath, force=true)
             initialize_jld2_file!(writer, model)
         else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
-            @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+            @warn "Iteration $current_iteration was found in $writer.filepath. Skipping output writing (for now...)"
         end
 
     else # ok let's do this
@@ -284,14 +286,13 @@ function write_output!(writer::JLD2OutputWriter, model)
 
         # Start a new file if the file_splitting(model) is true
         writer.file_splitting(model) && start_next_file(model, writer)
-        update_file_splitting_schedule!(schedule, writer.filepath)
-
+        update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
 
-        start_time, old_filesize = time_ns(), filesize(path)
-        jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-        end_time, new_filesize = time_ns(), filesize(path)
+        start_time, old_filesize = time_ns(), filesize(writer.filepath)
+        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                                   prettytime((end_time - start_time) / 1e9),
