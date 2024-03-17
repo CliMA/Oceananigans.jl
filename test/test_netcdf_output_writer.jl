@@ -52,7 +52,7 @@ function test_netcdf_file_splitting(arch)
 
     fake_attributes = Dict("fake_attribute"=>"fake_attribute")
 
-    max_filesize = FileSizeLimit(200KiB)
+    filesizelimit = FileSizeLimit(200KiB)
 
     ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
                             dir = ".",
@@ -61,7 +61,7 @@ function test_netcdf_file_splitting(arch)
                             array_type = Array{Float64},
                             with_halos = true,
                             global_attributes = fake_attributes,
-                            file_splitting = max_filesize,
+                            file_splitting = filesizelimit,
                             overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
@@ -70,9 +70,9 @@ function test_netcdf_file_splitting(arch)
     run!(simulation)
 
     # Test that files has been split according to size as expected.
-    @test filesize("test_part1.nc") > max_filesize
-    @test filesize("test_part2.nc") > max_filesize
-    @test filesize("test_part3.nc") < max_filesize
+    @test filesize("test_part1.nc") > filesizelimit.size_limit
+    @test filesize("test_part2.nc") > filesizelimit.size_limit
+    @test filesize("test_part3.nc") < filesizelimit.size_limit
     @test !isfile("test_part4.nc")
 
     for n in string.(1:3)
