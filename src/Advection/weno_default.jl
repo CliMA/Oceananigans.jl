@@ -67,7 +67,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             # All stencils
             ψs = $ψ_reconstruction(i, j, k, grid, scheme, ψ, args...)
             
-            β, ψ̅, C, α = $weno_interpolant(ψs[2:3], 1, scheme, $val, idx, loc, args...)
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:3], 1, scheme, $val, idx, loc)
             τ  = β
             ψ̂₁ = ψ̅ * C
             w₁ = C
@@ -75,7 +75,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             w₂ = α
 
             # Stencil S₁
-            β, ψ̅, C, α = $weno_interpolant(ψs[1:2], 2, scheme, $val, idx, loc, args...)
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:2], 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(2), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
