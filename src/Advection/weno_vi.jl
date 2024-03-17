@@ -76,6 +76,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
     stencil_u          = Symbol(:tangential_, side, :_stencil_u)
     stencil_v          = Symbol(:tangential_, side, :_stencil_v)
     new_stencil        = Symbol(:new_stencil_, side, :_, dir)
+    weno_interpolant   = Symbol(side, :_weno_interpolant_, dir)
 
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
