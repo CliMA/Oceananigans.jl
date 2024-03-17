@@ -154,7 +154,8 @@ end
         ωᴮ = explicit_dissipation_buoyancy_transformation_rate(closure_ij, wb, eⁱʲᵏ)
         ωᴮ = min(zero(ωᴮ), ωᴮ) # implicit contribution
 
-        ωᴰ = explicit_dissipation_destruction_rate(closure_ij, ϵⁱʲᵏ, eⁱʲᵏ)
+        #ωᴰ = explicit_dissipation_destruction_rate(closure_ij, ϵⁱʲᵏ, eⁱʲᵏ)
+        ωᴰ = explicit_dissipation_destruction_rate(closure_ij, ϵ⁺, eⁱʲᵏ)
 
         diffusivity_fields.Lϵ[i, j, k] = ωᴮ - ωᴰ
     end
@@ -169,8 +170,11 @@ end
 
 @inline function κuᶜᶜᶠ(i, j, k, grid, closure::FlavorOfKEpsilon, tracers)
     ϵ = @inbounds tracers.ϵ[i, j, k]
+    ϵ = clip(ϵ)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓu = w★^3 / ϵ
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓu = min(ℓu, H)
     κu = ℓu * w★
     κu_max = closure.maximum_viscosity
     return min(κu, κu_max)
@@ -178,8 +182,11 @@ end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure::FlavorOfKEpsilon, tracers)
     ϵ = @inbounds tracers.ϵ[i, j, k]
+    ϵ = clip(ϵ)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓc = w★^3 / ϵ
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓc = min(ℓc, H)
     κc = ℓc * w★
     κc_max = closure.maximum_tracer_diffusivity
     return min(κc, κc_max)
@@ -187,8 +194,11 @@ end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure::FlavorOfKEpsilon, tracers)
     ϵ = @inbounds tracers.ϵ[i, j, k]
+    ϵ = clip(ϵ)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓe = w★^3 / ϵ
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓe = min(ℓe, H)
     κe = ℓe * w★
     κe_max = closure.maximum_tke_diffusivity
     return min(κe, κe_max)
@@ -196,8 +206,11 @@ end
     
 @inline function κϵᶜᶜᶠ(i, j, k, grid, closure::FlavorOfKEpsilon, tracers)
     ϵ = @inbounds tracers.ϵ[i, j, k]
+    ϵ = clip(ϵ)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓϵ = w★^3 / ϵ
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓϵ = min(ℓϵ, H)
     κϵ = ℓϵ * w★
     κϵ_max = closure.maximum_dissipation_diffusivity
     return min(κϵ, κϵ_max)

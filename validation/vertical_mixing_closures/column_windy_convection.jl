@@ -32,7 +32,7 @@ b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
 #closures_to_run = [catke, ri_based]
 #closures_to_run = [catke, tke_dissipation] #, ri_based]
-closures_to_run = [catke]
+closures_to_run = [tke_dissipation]
 
 for closure in closures_to_run
 
@@ -41,6 +41,7 @@ for closure in closures_to_run
         closure_initial_conditions = (; e=1e-6)
     elseif closure isa TKEDissipationVerticalDiffusivity
         tracers = (:b, :e, :ϵ)
+        #closure_initial_conditions = (; e=1e-6) #, ϵ=1e-6)
         closure_initial_conditions = (; e=1e-6, ϵ=1e-6)
     else
         tracers = :b
@@ -54,8 +55,9 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model; b=bᵢ, closure_initial_conditions...)
 
-    Δt = 5minutes
-    simulation = Simulation(model; Δt, stop_time)
+    Δt = 1.0 #1minutes
+    #simulation = Simulation(model; Δt, stop_time)
+    simulation = Simulation(model; Δt, stop_iteration=100) #stop_time)
     pop!(simulation.callbacks, :nan_checker)
 
     closurename = string(nameof(typeof(closure)))
@@ -67,13 +69,13 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           #schedule = TimeInterval(20minutes),
-                                                          schedule = IterationInterval(100),
+                                                          schedule = IterationInterval(1),
                                                           filename = "windy_convection_" * closurename,
                                                           overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
                                  ", max(b): ", maximum(model.tracers.b))
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
     @info "Running a simulation of $model..."
 

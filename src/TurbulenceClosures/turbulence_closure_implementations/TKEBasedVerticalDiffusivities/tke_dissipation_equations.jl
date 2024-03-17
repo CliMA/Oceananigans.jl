@@ -24,6 +24,7 @@ end
     P = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
     wb = buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
     ϵ = @inbounds tracers.ϵ[i, j, k]
+    ϵ = clip(ϵ)
 
     return P + wb - ϵ
 end
@@ -84,7 +85,10 @@ end
     # Explicit/implicit buoyancy flux term in dissipation equation
     ωᴰ = dissipation_destruction_rate(closure_ij, ϵⁱʲᵏ, eⁱʲᵏ)
 
-    return Pᵋ + ϵⁱʲᵏ * (ωᴮ - ωᴰ)
+    #return Pᵋ + ϵⁱʲᵏ * ωᴮ - ϵⁱʲᵏ * ωᴰ
+    #return Pᵋ + ϵⁱʲᵏ * ωᴮ - ϵⁱʲᵏ * ωᴰ
+    #return - ϵⁱʲᵏ * ωᴰ
+    return 0 #Pᵋ
 end
 
 @inline function explicit_dissipation_buoyancy_transformation_rate(closure, wb, e)
@@ -107,7 +111,7 @@ end
     Cᵋϵ = closure.tke_dissipation_equations.Cᵋϵ
     eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
     eˡⁱᵐ = min(eᵐⁱⁿ, e)
-    return Cᵋϵ *  ϵ / eˡⁱᵐ
+    return 1e-6 * Cᵋϵ *  ϵ / eˡⁱᵐ
 end
 
 # Dissipation destruction
