@@ -15,9 +15,9 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 0.814  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scaligm
-    Cᶜc  :: FT = 7.39   # Convective mixing length coefficient for tracers
+    Cᶜc  :: FT = 10.0 #7.39   # Convective mixing length coefficient for tracers
     Cᶜe  :: FT = 7.35   # Convective mixing length coefficient for TKE
-    Cᵉc  :: FT = 1.29   # Convective penetration mixing length coefficient for tracers
+    Cᵉc  :: FT = 0.0 #1.29   # Convective penetration mixing length coefficient for tracers
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
     Cˢᵖ  :: FT = 0.584  # Sheared convective plume coefficient
     Cˡᵒu :: FT = 0.759  # Shear mixing length coefficient for momentum at low Ri
@@ -101,88 +101,98 @@ end
 @inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
 
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
+                                            velocities, tracers, buoyancy, Jᵇ, hc)
 
     u = velocities.u
     v = velocities.v
 
-    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
-    w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
-    S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
-    N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    w★  = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    S²  = shearᶜᶜᶠ(i, j, k, grid, u, v)
+    N²  = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺ = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    Jᵇˢ  = @inbounds Jᵇ[i, j, 1]
 
     # "Convective length"
-    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
-    ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
+    # ℓʰ ∼ boundary layer depth according to Deardorff scaling
+    # Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    # Jᵇⁱʲ  = @inbounds Jᵇ[i, j, 1]
+    # w★³ = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
+    # ℓʰ = Cᶜ * w★³ / (Jᵇⁱʲ + Jᵇᵋ)
+    # ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    # H = total_depthᶜᶜᵃ(i, j, grid)
+    # ℓʰ = max(ℓʰ, H)
 
-    # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+    ℓʰ = @inbounds Cᶜ * hc[i, j, 1]
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
+    Sp = sqrt(S²) * w★² / (Jᵇˢ + Jᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
     # end ensure non-negativity
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
+    ℓʰ = clip(ϵˢᵖ * ℓʰ)
 
     # "Entrainment length"
-    # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    # Ensures that w′b′ ~ Jᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Jᵇˢ / (w★ * N² + Jᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
-    
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
 
-    ℓ = ifelse(convecting, ℓᶜ,
+    # Figure out which mixing length applies
+    convecting = (Jᵇˢ > Jᵇᵋ) & (N² < 0)
+    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺ < 0)
+
+    ℓ = ifelse(convecting, ℓʰ,
         ifelse(entraining, ℓᵉ, zero(grid)))
 
     return ifelse(isnan(ℓ), zero(grid), ℓ)
 end
 
 @inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
+                                            velocities, tracers, buoyancy, Jᵇ, hc)
 
     u = velocities.u
     v = velocities.v
 
-    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
-    w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
-    S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
-    N²       = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+    w★  = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
+    w★³ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
+    S²  = shearᶜᶜᶜ(i, j, k, grid, u, v)
+    N²  = ℑzᵃᵃᶜ(i, j, k,   grid, ∂z_b, buoyancy, tracers)
+    N²⁺ = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    Jᵇˢ  = @inbounds Jᵇ[i, j, 1]
 
     # "Convective length"
-    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
-    ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
+    # ℓʰ ∼ boundary layer depth according to Deardorff scaling, w★ ~ (ℓ * Jᵇ)^(1/3)
+    # wlim = (|z| * Jᵇ_min)^(1/3) ?
+    # Jᵇ  = @inbounds surface_buoyancy_flux[i, j, 1]
+    # ℓʰ = Cᶜ * w★³ / (Jᵇ + Jᵇᵋ)
+    # ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    # H = total_depthᶜᶜᵃ(i, j, grid)
+    # ℓʰ = max(ℓʰ, H)
 
-    # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+    ℓʰ = @inbounds Cᶜ * hc[i, j, 1]
+
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
-    ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
+    Sp = sqrt(S²) * w★² / (Jᵇˢ + Jᵇᵋ)    # Sp = "Sheared convection number"
+    ϵˢᵖ = max(zero(grid), 1 - Cˢᵖ * Sp) # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
-    # end ensure non-negativity
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
+    ℓʰ = ϵˢᵖ * ℓʰ
 
     # "Entrainment length"
-    # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
-    ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
+    # Ensures that w′b′ ~ Jᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Jᵇˢ / (w★ * N² + Jᵇᵋ)
+    ℓᵉ = ϵˢᵖ * ℓᵉ
     
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+    # Figure out which mixing length applies
+    convecting = (Jᵇˢ > Jᵇᵋ) & (N² < 0)
+    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺ < 0)
 
-    ℓ = ifelse(convecting, ℓᶜ,
+    ℓ = ifelse(convecting, ℓʰ,
         ifelse(entraining, ℓᵉ, zero(grid)))
 
     return ifelse(isnan(ℓ), zero(grid), ℓ)
@@ -206,7 +216,7 @@ end
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
-@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
 
@@ -220,11 +230,11 @@ end
     return min(ℓ★, H)
 end
 
-@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
     Cᶜ  = closure.mixing_length.Cᶜc
     Cᵉ  = closure.mixing_length.Cᵉc
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓh = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓh = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ, hc)
 
     Cˡᵒ = closure.mixing_length.Cˡᵒc
     Cʰⁱ = closure.mixing_length.Cʰⁱc
@@ -241,11 +251,11 @@ end
     return min(ℓ★, H)
 end
 
-@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
     Cᶜ  = closure.mixing_length.Cᶜe
     Cᵉ  = closure.mixing_length.Cᵉe
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓh  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓh  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ, hc)
 
     Cˡᵒ = closure.mixing_length.Cˡᵒe
     Cʰⁱ = closure.mixing_length.Cʰⁱe

@@ -16,8 +16,8 @@ Lz = 256        # Extent of vertical domain
 Nz = Int(Lz/Δz) # Vertical resolution
 f₀ = 1e-4       # Coriolis parameter (s⁻¹)
 N² = 1e-6       # Buoyancy gradient (s⁻²)
-Jᵇ = +1e-8      # Surface buoyancy flux (m² s⁻³)
-τˣ = -2e-4      # Surface kinematic momentum flux (m s⁻¹)
+Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
+τˣ = -2e-6      # Surface kinematic momentum flux (m s⁻¹)
 stop_time = 2days
 
 catke = CATKEVerticalDiffusivity()
@@ -30,9 +30,9 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-#closures_to_run = [catke, ri_based]
+closures_to_run = [catke] #, ri_based]
 #closures_to_run = [catke, tke_dissipation] #, ri_based]
-closures_to_run = [tke_dissipation]
+#closures_to_run = [tke_dissipation]
 
 for closure in closures_to_run
 
@@ -55,9 +55,9 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model; b=bᵢ, closure_initial_conditions...)
 
-    Δt = 1.0 #1minutes
-    #simulation = Simulation(model; Δt, stop_time)
-    simulation = Simulation(model; Δt, stop_iteration=100) #stop_time)
+    Δt = 5minutes
+    simulation = Simulation(model; Δt, stop_time)
+    #simulation = Simulation(model; Δt, stop_iteration=100) #stop_time)
     pop!(simulation.callbacks, :nan_checker)
 
     closurename = string(nameof(typeof(closure)))
@@ -68,14 +68,14 @@ for closure in closures_to_run
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          #schedule = TimeInterval(20minutes),
-                                                          schedule = IterationInterval(1),
+                                                          schedule = TimeInterval(20minutes),
+                                                          #schedule = IterationInterval(1),
                                                           filename = "windy_convection_" * closurename,
                                                           overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
                                  ", max(b): ", maximum(model.tracers.b))
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
     @info "Running a simulation of $model..."
 

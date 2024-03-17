@@ -43,8 +43,8 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
                              maximum_tracer_diffusivity = Inf,
                              maximum_tke_diffusivity = Inf,
                              maximum_viscosity = Inf,
-                             minimum_turbulent_kinetic_energy = 1e-6,
-                             minimum_convective_buoyancy_flux = 1e-8,
+                             minimum_turbulent_kinetic_energy = 1e-15,
+                             minimum_convective_buoyancy_flux = 1e-15,
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
@@ -96,27 +96,28 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   maximum_tracer_diffusivity = Inf,
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
-                                  minimum_turbulent_kinetic_energy = 1e-6,
-                                  minimum_convective_buoyancy_flux = 1e-11,
-                                  negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
+                                  minimum_turbulent_kinetic_energy = 1e-15,
+                                  minimum_convective_buoyancy_flux = 1e-15,
+                                  negative_turbulent_kinetic_energy_damping_time_scale = 1.0) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
     return CATKEVerticalDiffusivity{TD}(mixing_length,
                                         turbulent_kinetic_energy_equation,
-                                        FT(maximum_tracer_diffusivity),
-                                        FT(maximum_tke_diffusivity),
-                                        FT(maximum_viscosity),
-                                        FT(minimum_turbulent_kinetic_energy),
-                                        FT(minimum_convective_buoyancy_flux),
-                                        FT(negative_turbulent_kinetic_energy_damping_time_scale))
+                                        convert(FT, maximum_tracer_diffusivity),
+                                        convert(FT, maximum_tke_diffusivity),
+                                        convert(FT, maximum_viscosity),
+                                        convert(FT, minimum_turbulent_kinetic_energy),
+                                        convert(FT, minimum_convective_buoyancy_flux),
+                                        convert(FT, negative_turbulent_kinetic_energy_damping_time_scale))
 end
 
 function with_tracers(tracer_names, closure::FlavorOfCATKE)
-    :e ∈ tracer_names ||
-        throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
-                            "for `CATKEVerticalDiffusivity`."))
+    msg = "Tracers must contain :e to represent turbulent kinetic energy " *
+          "for `CATKEVerticalDiffusivity`."
+
+    :e ∈ tracer_names || throw(ArgumentError(msg))
 
     return closure
 end

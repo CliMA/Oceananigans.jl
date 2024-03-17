@@ -17,13 +17,13 @@ Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) s
 isotropic turbulence and diapycnal mixing.
 """
 Base.@kwdef struct CATKEEquation{FT}
-    CˡᵒD  :: FT = 2.46  # Dissipation length scale shear coefficient for low Ri
-    CʰⁱD  :: FT = 0.983 # Dissipation length scale shear coefficient for high Ri
-    CᶜD   :: FT = 2.75  # Dissipation length scale convecting layer coefficient
-    CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficient
-    Cᵂu★  :: FT = 0.059 # Surface shear-driven TKE flux coefficient
-    CᵂwΔ  :: FT = 0.572 # Surface convective TKE flux coefficient
-    Cᵂϵ   :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
+    CˡᵒD :: FT = 2.46  # Dissipation length scale shear coefficient for low Ri
+    CʰⁱD :: FT = 0.983 # Dissipation length scale shear coefficient for high Ri
+    CᶜD  :: FT = 2.75  # Dissipation length scale convecting layer coefficient
+    CᵉD  :: FT = 0.0   # Dissipation length scale penetration layer coefficient
+    Cᵂu★ :: FT = 0.059 # Surface shear-driven TKE flux coefficient
+    CᵂwΔ :: FT = 0.572 # Surface convective TKE flux coefficient
+    Cᵂϵ  :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
 end
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy)
@@ -54,26 +54,28 @@ const VITD = VerticallyImplicitTimeDiscretization
 
     closure_ij = getclosure(i, j, closure)
     eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+    eˡⁱᵐ = max(eⁱʲᵏ, eᵐⁱⁿ)
 
     dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
     # the explicit buoyancy flux.
-    return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
+    wb = max(wb, zero(grid)) 
+
+    return wb
 end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
-                                             buoyancy, surface_buoyancy_flux)
+                                             buoyancy, Jᵇ, hc)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    Jᵇ = surface_buoyancy_flux
-    ℓh = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
+    ℓh = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ, hc)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
@@ -93,10 +95,10 @@ end
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields.Jᵇ)
-    e = tracers.e
-    FT = eltype(grid)
-    eᵢ = @inbounds e[i, j, k]
+    Jᵇ = diffusivity_fields.Jᵇ
+    hc = diffusivity_fields.hc
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
+    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
@@ -106,10 +108,10 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    ω_numerical = 1 / closure.negative_turbulent_kinetic_energy_damping_time_scale
-    ω_physical = sqrt(abs(eᵢ)) / ℓᴰ
+    ωn = 1 / closure.negative_turbulent_kinetic_energy_damping_time_scale
+    ωp = sqrt(abs(eⁱʲᵏ)) / ℓᴰ
 
-    return ifelse(eᵢ < 0, ω_numerical, ω_physical)
+    return ifelse(eⁱʲᵏ < 0, ωn, ωp)
 end
 
 # Fallbacks for explicit time discretization
@@ -165,7 +167,6 @@ end
 
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
-    FT = eltype(grid)
     Jᵘ = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
     Jᵛ = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
     return sqrt(sqrt(Jᵘ^2 + Jᵛ^2))
