@@ -10,14 +10,6 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
-update_file_splitting_schedule!(schedule, filepath) = nothing
-update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) = schedule.path = filepath
-
-struct NoFileSplitting end
-(::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
-Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-
 mutable struct NetCDFOutputWriter{D, O, T, A, FS} <: AbstractOutputWriter
     filepath :: String
     dataset :: D
@@ -372,9 +364,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
 
-    update_file_splitting_schedule!(schedule, filepath)
-
-    @info file_splitting
+    update_file_splitting_schedule!(file_splitting, filepath)
 
     if isnothing(overwrite_existing)
         if isfile(filepath)
@@ -502,9 +492,8 @@ every time an output is written to the file.
 """
 function write_output!(ow::NetCDFOutputWriter, model)
     # Start a new file if the file_splitting(model) is true
-    @info ow.file_splitting(model)
     ow.file_splitting(model) && start_next_file(model, ow)
-    update_file_splitting_schedule!(schedule, ow.filepath)
+    update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
     ow.dataset = open(ow)
 

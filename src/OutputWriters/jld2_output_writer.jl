@@ -9,17 +9,6 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-update_file_splitting_schedule!(schedule, filepath) = nothing
-
-function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
-    schedule.path = filepath
-end 
-
-struct NoFileSplitting end
-(::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
-Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-
 mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O

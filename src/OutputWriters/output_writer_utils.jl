@@ -39,6 +39,18 @@ end
 
 Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 
+# Update schedule based on user input
+update_file_splitting_schedule!(schedule, filepath) = nothing
+
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+    schedule.path = filepath
+end 
+
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+
 """
     ext(ow)
 
