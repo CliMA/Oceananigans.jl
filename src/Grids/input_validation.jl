@@ -79,7 +79,11 @@ function validate_halo(TX, TY, TZ, size, halo)
     halo = tupleit(halo)
     validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ))
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
-    !all(halo .≤ size) && error("halo size must be ≤ grid size is all non-Flat dimensions")
+    dims = (:x, :y, :z)
+    for i in 1:3
+        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(dims[i])"))
+    end
+    # !all(halo .≤ size) && error("halo size must be ≤ grid size")
     return halo
 end
 
