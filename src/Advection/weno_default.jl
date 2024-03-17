@@ -144,7 +144,6 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant(ψs[1:4], 4, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(4), Val(3))
@@ -196,7 +195,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             w₂ += α
 
             # Stencil S₁
-            β, ψ̅, C, α = $weno_interpolant(ψs[1:5], 4, scheme, $val, idx, loc)
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:5], 5, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(4))
             ψ̂₁ += ψ̅ * C
             w₁ += C
@@ -246,7 +245,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             w₂ += α
 
             # Stencil S₁
-            β, ψ̅, C, α = $weno_interpolant(ψs[2:7], 4, scheme, $val, idx, loc)
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:7], 5, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(6), Val(4))
             ψ̂₁ += ψ̅ * C
             w₁ += C
@@ -254,7 +253,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             w₂ += α
 
             # Stencil S₁
-            β, ψ̅, C, α = $weno_interpolant(ψs[1:6], 4, scheme, $val, idx, loc)
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:6], 6, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(6), Val(5))
             ψ̂₁ += ψ̅ * C
             w₁ += C
