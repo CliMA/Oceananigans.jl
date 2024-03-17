@@ -177,7 +177,7 @@ function Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT}
     msg11 = !(kscheme isa WENO) ? "" :  "└── smoothness δx_u² : $(a.upwinding.δu²_stencil)\n"
     msg12 = !(kscheme isa WENO) ? "" :  "└── smoothness δy_v² : $(a.upwinding.δv²_stencil)\n"
 
-    return print(io, summary(a), msg1, msg2, msg3, msg4, msg5, msg6, msg7, msg8, msg9, msg10, msg11, msg12)
+    return print(io, summary(a), "\n", msg1, msg2, msg3, msg4, msg5, msg6, msg7, msg8, msg9, msg10, msg11, msg12)
 end
 
 #####

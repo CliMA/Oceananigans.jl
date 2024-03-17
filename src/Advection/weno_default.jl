@@ -39,8 +39,13 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
     stencil_v          = Symbol(:tangential_, side, :_stencil_v)
     new_stencil        = Symbol(:new_stencil_, side, :_, dir)
     weno_interpolant   = Symbol(side, :_weno_interpolant_, dir)
+    ψ_reconstruction   = Symbol(:ψ_reconstruction_, side, :_, dir)
 
     @eval begin
+        for N in [2, 3, 4, 5, 6]
+            @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ, args...)           = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir))
+            @inline $ψ_reconstruction(i, j, k, grid, ::WENO{$N}, ψ::Function, args...) = @inbounds $(ψ_reconstruction_stencil(buffer, side, dir, true))
+        end
 
         # Fallback for DefaultStencil formulations and disambiguation
         @inline $biased_interpolate(i, j, k, grid, scheme::WENO{2}, ψ, idx, loc, ::DefaultStencil, args...) = 
@@ -59,7 +64,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             ψ, idx, loc, args...) where {FT, XT, YT, ZT}
 
             # All stencils
-            ψs = $(ψ_reconstruction_stencil(2, side, dir))
+            ψs = $ψ_reconstruction(i, j, k, grid, scheme, ψ, args...)
             
             β, ψ̅, C, α = $weno_interpolant(ψs[2:3], 1, scheme, $val, idx, loc, args...)
             τ  = β
@@ -85,7 +90,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{3, FT, XT, YT, ZT},
                                             ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
-            ψs = $(ψ_reconstruction_stencil(3, side, dir))
+            ψs = $ψ_reconstruction(i, j, k, grid, scheme, ψ, args...)
             
             β, ψ̅, C, α = $weno_interpolant(ψs[3:5], 1, scheme, $val, idx, loc)
             τ  = β
@@ -161,7 +166,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{5, FT, XT, YT, ZT},
                                             ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
-            ψs = $(ψ_reconstruction_stencil(5, side, dir))
+            ψs = $ψ_reconstruction(i, j, k, grid, scheme, ψ, args...)
 
             β, ψ̅, C, α = $weno_interpolant(ψs[5:9], 1, scheme, $val, idx, loc)
             τ  = β
@@ -211,7 +216,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
                                             scheme::WENO{6, FT, XT, YT, ZT},
                                             ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
-            ψs = $(ψ_reconstruction_stencil(6, side, dir))
+            ψs = $ψ_reconstruction(i, j, k, grid, scheme, ψ, args...)
             
             β, ψ̅, C, α = $weno_interpolant(ψs[6:11], 1, scheme, $val, idx, loc)
             τ  = β
