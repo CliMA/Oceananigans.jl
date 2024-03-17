@@ -81,7 +81,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{2, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
 
             # All stencils
             us = $(u_reconstruction_stencil(2, side, dir))
@@ -110,7 +110,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{3, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
         
             # All stencils
             us = $(u_reconstruction_stencil(3, side, dir))
@@ -147,7 +147,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                     scheme::WENO{4, FT, XT, YT, ZT},
-                                    ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+                                    ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
         
             # All stencils
             us = $(u_reconstruction_stencil(4, side, dir))
@@ -192,7 +192,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{5, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
         
             # All stencils
             us = $(u_reconstruction_stencil(5, side, dir))
@@ -245,7 +245,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{6, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
         
             # All stencils
             us = $(u_reconstruction_stencil(6, side, dir))
