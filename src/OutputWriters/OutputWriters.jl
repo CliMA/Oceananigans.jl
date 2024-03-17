@@ -2,9 +2,8 @@ module OutputWriters
 
 export
     JLD2OutputWriter, NetCDFOutputWriter, written_names,
-    Checkpointer, WindowedTimeAverage,
-    TimeInterval, IterationInterval, WallTimeInterval, 
-    AveragedTimeInterval, FileSizeLimit
+    Checkpointer, WindowedTimeAverage, FileSizeLimit,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
 using CUDA
 
