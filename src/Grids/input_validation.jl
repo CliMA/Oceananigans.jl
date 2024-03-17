@@ -21,9 +21,9 @@ topological_tuple_length(TX, TY, TZ) = sum(T === Flat ? 0 : 1 for T in (TX, TY, 
 
 """Validate that an argument tuple is the right length and has elements of type `argtype`."""
 function validate_tupled_argument(arg, argtype, argname, len=3; greater_than=0)
-    length(arg) == len        || throw(ArgumentError("length($argname) must be $len."))
-    all(isa.(arg, argtype))   || throw(ArgumentError("$argname=$arg must contain $(argtype)s."))
-    all(arg .> greater_than)  || throw(ArgumentError("Elements of $argname=$arg must be > $(greater_than)!"))
+    length(arg) == len       || throw(ArgumentError("length($argname) must be $len."))
+    all(isa.(arg, argtype))  || throw(ArgumentError("$argname=$arg must contain $(argtype)s."))
+    all(arg .> greater_than) || throw(ArgumentError("Elements of $argname=$arg must be > $(greater_than)!"))
     return nothing
 end
 
@@ -49,18 +49,21 @@ function validate_size(TX, TY, TZ, sz)
     return inflate_tuple(TX, TY, TZ, sz, default=1)
 end
 
-# Note that the default halo size is specified to be 1 in the following function.
-# This is easily changed but many of the tests will fail so this situation needs to be 
+# Note that if provided with halo=nothing, the default halo size is default_halo_size.
+# While this is easily changed, many of the tests will fail so this situation needs to be 
 # cleaned up.
-function validate_halo(TX, TY, TZ, ::Nothing)
-    halo = Tuple(3 for i = 1:topological_tuple_length(TX, TY, TZ))
-    return validate_halo(TX, TY, TZ, halo)
+function validate_halo(TX, TY, TZ, size, ::Nothing)
+    default_halo_size = 3
+    halo = Tuple(default_halo_size for _ = 1:topological_tuple_length(TX, TY, TZ))
+    return validate_halo(TX, TY, TZ, size, halo)
 end
 
-function validate_halo(TX, TY, TZ, halo)
+function validate_halo(TX, TY, TZ, size, halo)
     halo = tupleit(halo)
     validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ))
-    return inflate_tuple(TX, TY, TZ, halo, default=0)
+    halo = inflate_tuple(TX, TY, TZ, halo, default=0)
+    !all(halo .≤ size) && error("halo size must be ≤ grid size is all non-Flat dimensions")
+    return halo
 end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
