@@ -4,7 +4,9 @@ using Oceananigans: tupleit
 ##### Some validation tools
 #####
 
-# Tuple inflation for topologies with Flat dimensions
+# Tuple inflation/deflation for topologies with Flat dimensions
+
+"adds tup element with `default` value for flat dimensions"
 inflate_tuple(TX, TY, TZ, tup; default) = tup
 
 inflate_tuple(::Type{Flat}, TY, TZ, tup; default) = tuple(default, tup[1], tup[2])
@@ -16,6 +18,19 @@ inflate_tuple(::Type{Flat}, TY, ::Type{Flat}, tup; default) = (default, tup[1], 
 inflate_tuple(::Type{Flat}, ::Type{Flat}, TZ, tup; default) = (default, default, tup[1])
 
 inflate_tuple(::Type{Flat}, ::Type{Flat}, ::Type{Flat}, tup; default) = (default, default, default)
+
+"removes tup elements that correspond to flat dimensions"
+deflate_tuple(TX, TY, TZ, tup) = tup
+
+deflate_tuple(::Type{Flat}, TY, TZ, tup) = tuple(tup[2], tup[3])
+deflate_tuple(TY, ::Type{Flat}, TZ, tup) = tuple(tup[1], tup[3])
+deflate_tuple(TY, TZ, ::Type{Flat}, tup) = tuple(tup[1], tup[2])
+
+deflate_tuple(TX, ::Type{Flat}, ::Type{Flat}, tup) = (tup[1],)
+deflate_tuple(::Type{Flat}, TY, ::Type{Flat}, tup) = (tup[2],)
+deflate_tuple(::Type{Flat}, ::Type{Flat}, TZ, tup) = (tup[3],)
+
+deflate_tuple(::Type{Flat}, ::Type{Flat}, ::Type{Flat}, tup) = ()
 
 topological_tuple_length(TX, TY, TZ) = sum(T === Flat ? 0 : 1 for T in (TX, TY, TZ))
 
@@ -49,12 +64,14 @@ function validate_size(TX, TY, TZ, sz)
     return inflate_tuple(TX, TY, TZ, sz, default=1)
 end
 
-# Note that if provided with halo=nothing, the default halo size is default_halo_size.
-# While this is easily changed, many of the tests will fail so this situation needs to be 
+# Note that if provided with halo=nothing, the default halo size for coord i
+# is the min(default_halo_size, size[i]).
+# While this is easy to change, many of tests might fail so this situation needs to be
 # cleaned up.
 function validate_halo(TX, TY, TZ, size, ::Nothing)
     default_halo_size = 3
-    halo = Tuple(default_halo_size for _ = 1:topological_tuple_length(TX, TY, TZ))
+    halo = min.(size, Tuple(default_halo_size for _ = 1:3))
+    halo = deflate_tuple(TX, TY, TZ, halo)
     return validate_halo(TX, TY, TZ, size, halo)
 end
 
