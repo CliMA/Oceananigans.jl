@@ -91,7 +91,6 @@ end
 
 function validate_dimension_specification(T, ξ, dir, N, FT)
 
-    @show dir
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
     all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
