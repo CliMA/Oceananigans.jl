@@ -80,187 +80,227 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
     @eval begin
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{2, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
-        
-            ψs  = $(u_reconstruction_stencil(2, side, dir))
-            βu₀ = $biased_β(ψs[2:3], scheme, Val(0))
-            βu₁ = $biased_β(ψs[1:2], scheme, Val(1))
-            
-            ψs  = $(v_reconstruction_stencil(2, side, dir))
-            βv₀ = $biased_β(ψs[2:3], scheme, Val(0))
-            βv₁ = $biased_β(ψs[1:2], scheme, Val(1))
+                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
 
+            # All stencils
+            us = $(u_reconstruction_stencil(2, side, dir))
+            vs = $(v_reconstruction_stencil(2, side, dir))
             ψs = $(ζ_reconstruction_stencil(2, side, dir))
-            ψ₀ = $biased_p(scheme, Val(0), ψs[2:3], $CT, Val($val), idx, loc) 
-            ψ₁ = $biased_p(scheme, Val(1), ψs[1:2], $CT, Val($val), idx, loc) 
-        
-            β₀ = (βu₀ + βv₀) / 2
-            β₁ = (βu₁ + βv₁) / 2
-    
-            τ = global_smoothness_indicator(Val(2), (β₀, β₁))
+            
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:3], us[2:3], vs[2:3], 1, scheme, $val, idx, loc, args...)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
-            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
-            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:2], us[1:2], vs[1:2], 2, scheme, $val, idx, loc, args...)
+            τ  += add_global_smoothness(β, Val(2), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            return (ψ₀ * α₀ + ψ₁ * α₁) / (α₀ + α₁)
+            τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
                                             scheme::WENO{3, FT, XT, YT, ZT},
-                                            ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
-            
-            ψs  = $(u_reconstruction_stencil(3, side, dir))
-            βu₀ = $biased_β(ψs[3:5], scheme, Val(0))
-            βu₁ = $biased_β(ψs[2:4], scheme, Val(1))
-            βu₂ = $biased_β(ψs[1:3], scheme, Val(2))
-            
-            ψs  = $(v_reconstruction_stencil(3, side, dir))
-            βv₀ = $biased_β(ψs[3:5], scheme, Val(0))
-            βv₁ = $biased_β(ψs[2:4], scheme, Val(1))
-            βv₂ = $biased_β(ψs[1:3], scheme, Val(2))
-
+                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
+        
+            # All stencils
+            us = $(u_reconstruction_stencil(3, side, dir))
+            vs = $(v_reconstruction_stencil(3, side, dir))
             ψs = $(ζ_reconstruction_stencil(3, side, dir))
-            ψ₀ = $biased_p(scheme, Val(0), ψs[3:5], $CT, Val($val), idx, loc) 
-            ψ₁ = $biased_p(scheme, Val(1), ψs[2:4], $CT, Val($val), idx, loc) 
-            ψ₂ = $biased_p(scheme, Val(2), ψs[1:3], $CT, Val($val), idx, loc) 
 
-            β₀ = (βu₀ + βv₀) / 2
-            β₁ = (βu₁ + βv₁) / 2
-            β₂ = (βu₂ + βv₂) / 2
+            β, ψ̅, C, α = $weno_interpolant(ψs[3:5], us[3:5], vs[3:5], 1, scheme, $val, idx, loc)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
-            τ = global_smoothness_indicator(Val(3), (β₀, β₁, β₂))
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:4], us[2:4], vs[2:4], 2, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(3), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
-            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
-            α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:3], us[1:3], vs[1:3], 3, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(3), Val(2))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂) / (α₀ + α₁ + α₂)
+            τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{4, FT, XT, YT, ZT},
-                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
+                                    scheme::WENO{4, FT, XT, YT, ZT},
+                                    ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
         
-            ψs  = $(u_reconstruction_stencil(4, side, dir))
-            βu₀ = $biased_β(ψs[4:7], scheme, Val(0))
-            βu₁ = $biased_β(ψs[3:6], scheme, Val(1))
-            βu₂ = $biased_β(ψs[2:5], scheme, Val(2))
-            βu₃ = $biased_β(ψs[1:4], scheme, Val(3))
-            
-            ψs  = $(v_reconstruction_stencil(4, side, dir))
-            βv₀ = $biased_β(ψs[4:7], scheme, Val(0))
-            βv₁ = $biased_β(ψs[3:6], scheme, Val(1))
-            βv₂ = $biased_β(ψs[2:5], scheme, Val(2))
-            βv₃ = $biased_β(ψs[1:4], scheme, Val(3))
-
+            # All stencils
+            us = $(u_reconstruction_stencil(4, side, dir))
+            vs = $(v_reconstruction_stencil(4, side, dir))
             ψs = $(ζ_reconstruction_stencil(4, side, dir))
-            ψ₀ = $biased_p(scheme, Val(0), ψs[4:7], $CT, Val($val), idx, loc) 
-            ψ₁ = $biased_p(scheme, Val(1), ψs[3:6], $CT, Val($val), idx, loc) 
-            ψ₂ = $biased_p(scheme, Val(2), ψs[2:5], $CT, Val($val), idx, loc) 
-            ψ₃ = $biased_p(scheme, Val(3), ψs[1:4], $CT, Val($val), idx, loc) 
 
-            β₀ = (βu₀ + βv₀) / 2
-            β₁ = (βu₁ + βv₁) / 2
-            β₂ = (βu₂ + βv₂) / 2
-            β₃ = (βu₃ + βv₃) / 2
+            β, ψ̅, C, α = $weno_interpolant(ψs[4:7], us[4:7], vs[4:7], 1, scheme, $val, idx, loc)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
-            τ = global_smoothness_indicator(Val(4), (β₀, β₁, β₂, β₃))
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[3:6], us[3:6], vs[3:6], 2, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(4), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
-            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
-            α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
-            α₃ = FT($coeff(scheme, Val(3))) * (1 + τ / (β₃ + FT(ε))^2)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:5], us[2:5], vs[2:5], 3, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(4), Val(2))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃) / (α₀ + α₁ + α₂ + α₃)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:4], us[1:4], vs[1:4], 4, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(4), Val(3))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{5, FT, XT, YT, ZT},
-                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
+                                            scheme::WENO{5, FT, XT, YT, ZT},
+                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
         
-            ψs  = $(u_reconstruction_stencil(5, side, dir))
-            βu₀ = $biased_β(ψs[5:9], scheme, Val(0))
-            βu₁ = $biased_β(ψs[4:8], scheme, Val(1))
-            βu₂ = $biased_β(ψs[3:7], scheme, Val(2))
-            βu₃ = $biased_β(ψs[2:6], scheme, Val(3))
-            βu₄ = $biased_β(ψs[1:5], scheme, Val(4))
-            
-            ψs  = $(v_reconstruction_stencil(5, side, dir))
-            βv₀ = $biased_β(ψs[5:9], scheme, Val(0))
-            βv₁ = $biased_β(ψs[4:8], scheme, Val(1))
-            βv₂ = $biased_β(ψs[3:7], scheme, Val(2))
-            βv₃ = $biased_β(ψs[2:6], scheme, Val(3))
-            βv₄ = $biased_β(ψs[1:5], scheme, Val(4))
-
+            # All stencils
+            us = $(u_reconstruction_stencil(5, side, dir))
+            vs = $(v_reconstruction_stencil(5, side, dir))
             ψs = $(ζ_reconstruction_stencil(5, side, dir))
-            ψ₀ = $biased_p(scheme, Val(0), ψs[5:9], $CT, Val($val), idx, loc) 
-            ψ₁ = $biased_p(scheme, Val(1), ψs[4:8], $CT, Val($val), idx, loc) 
-            ψ₂ = $biased_p(scheme, Val(2), ψs[3:7], $CT, Val($val), idx, loc) 
-            ψ₃ = $biased_p(scheme, Val(3), ψs[2:6], $CT, Val($val), idx, loc) 
-            ψ₄ = $biased_p(scheme, Val(4), ψs[1:5], $CT, Val($val), idx, loc) 
 
-            β₀ = (βu₀ + βv₀) / 2
-            β₁ = (βu₁ + βv₁) / 2
-            β₂ = (βu₂ + βv₂) / 2
-            β₃ = (βu₃ + βv₃) / 2
-            β₄ = (βu₄ + βv₄) / 2
-    
-            τ = global_smoothness_indicator(Val(5), (β₀, β₁, β₂, β₃, β₄))
+            β, ψ̅, C, α = $weno_interpolant(ψs[5:9], us[5:9], vs[5:9], 1, scheme, $val, idx, loc)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
-            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
-            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
-            α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
-            α₃ = FT($coeff(scheme, Val(3))) * (1 + τ / (β₃ + FT(ε))^2)
-            α₄ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[4:8], us[4:8], vs[4:8], 2, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃ + ψ₄ * α₄) / (α₀ + α₁ + α₂ + α₃ + α₄)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[3:7], us[3:7], vs[3:7], 3, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(2))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:6], us[2:6], vs[2:6], 4, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(3))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:5], us[1:5], vs[1:5], 5, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(4))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
-                                             scheme::WENO{6, FT, XT, YT, ZT},
-                                             ψ, idx, loc, ::VelocityStencil, u, v, args...) where {FT, XT, YT, ZT}
+                                            scheme::WENO{6, FT, XT, YT, ZT},
+                                            ψ, idx, loc, ::VelocityStencil, args...) where {FT, XT, YT, ZT}
         
-            ψs  = $(u_reconstruction_stencil(6, side, dir))
-            βu₀ = $biased_β(ψs[6:11], scheme, Val(0))
-            βu₁ = $biased_β(ψs[5:10], scheme, Val(1))
-            βu₂ = $biased_β(ψs[4:9],  scheme, Val(2))
-            βu₃ = $biased_β(ψs[3:8],  scheme, Val(3))
-            βu₄ = $biased_β(ψs[2:7],  scheme, Val(4))
-            βu₅ = $biased_β(ψs[1:6],  scheme, Val(5))
-
-            ψs  = $(v_reconstruction_stencil(6, side, dir))
-            βv₀ = $biased_β(ψs[6:11], scheme, Val(0))
-            βv₁ = $biased_β(ψs[5:10], scheme, Val(1))
-            βv₂ = $biased_β(ψs[4:9],  scheme, Val(2))
-            βv₃ = $biased_β(ψs[3:8],  scheme, Val(3))
-            βv₄ = $biased_β(ψs[2:7],  scheme, Val(4))
-            βv₅ = $biased_β(ψs[1:6],  scheme, Val(5))
-
+            # All stencils
+            us = $(u_reconstruction_stencil(6, side, dir))
+            vs = $(v_reconstruction_stencil(6, side, dir))
             ψs = $(ζ_reconstruction_stencil(6, side, dir))
-            ψ₀ = $biased_p(scheme, Val(0), ψs[6:11], $CT, Val($val), idx, loc) 
-            ψ₁ = $biased_p(scheme, Val(1), ψs[5:10], $CT, Val($val), idx, loc) 
-            ψ₂ = $biased_p(scheme, Val(2), ψs[4:9],  $CT, Val($val), idx, loc) 
-            ψ₃ = $biased_p(scheme, Val(3), ψs[3:8],  $CT, Val($val), idx, loc) 
-            ψ₄ = $biased_p(scheme, Val(4), ψs[2:7],  $CT, Val($val), idx, loc) 
-            ψ₅ = $biased_p(scheme, Val(5), ψs[1:6],  $CT, Val($val), idx, loc) 
 
-            β₀ = (βu₀ + βv₀) / 2
-            β₁ = (βu₁ + βv₁) / 2
-            β₂ = (βu₂ + βv₂) / 2
-            β₃ = (βu₃ + βv₃) / 2
-            β₄ = (βu₄ + βv₄) / 2
-            β₅ = (βu₅ + βv₅) / 2
+            β, ψ̅, C, α = $weno_interpolant(ψs[6:11], us[6:11], vs[6:11], 1, scheme, $val, idx, loc)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
 
-            τ = global_smoothness_indicator(Val(6), (β₀, β₁, β₂, β₃, β₄, β₅))
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[5:10], us[5:10], vs[5:10], 2, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(6), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            α₀ = FT($coeff(scheme, Val(0))) * (1 + τ / (β₀ + FT(ε))^2)
-            α₁ = FT($coeff(scheme, Val(1))) * (1 + τ / (β₁ + FT(ε))^2)
-            α₂ = FT($coeff(scheme, Val(2))) * (1 + τ / (β₂ + FT(ε))^2)
-            α₃ = FT($coeff(scheme, Val(3))) * (1 + τ / (β₃ + FT(ε))^2)
-            α₄ = FT($coeff(scheme, Val(4))) * (1 + τ / (β₄ + FT(ε))^2)
-            α₅ = FT($coeff(scheme, Val(5))) * (1 + τ / (β₅ + FT(ε))^2)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[4:9], us[4:9], vs[4:9], 3, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(6), Val(2))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
 
-            return (ψ₀ * α₀ + ψ₁ * α₁ + ψ₂ * α₂ + ψ₃ * α₃ + ψ₄ * α₄ + ψ₅ * α₅) / (α₀ + α₁ + α₂ + α₃ + α₄ + α₅)
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[3:8], us[3:8], vs[3:8], 4, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(6), Val(3))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[2:7], us[2:7], vs[2:7], 5, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(6), Val(4))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant(ψs[1:6], us[1:6], vs[1:6], 6, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(6), Val(5))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end
 end
