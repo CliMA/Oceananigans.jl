@@ -260,7 +260,7 @@ function write_output!(writer::JLD2OutputWriter, model)
             rm(writer.filepath, force=true)
             initialize_jld2_file!(writer, model)
         else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
-            @warn "Iteration $current_iteration was found in $writer.filepath. Skipping output writing (for now...)"
+            @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing (for now...)"
         end
 
     else # ok let's do this
