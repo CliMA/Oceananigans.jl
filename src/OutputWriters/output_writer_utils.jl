@@ -44,6 +44,7 @@ update_file_splitting_schedule!(schedule, filepath) = nothing
 
 function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
     schedule.path = filepath
+    return nothing
 end 
 
 struct NoFileSplitting end
