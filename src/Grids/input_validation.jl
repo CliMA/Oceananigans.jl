@@ -69,8 +69,9 @@ end
 # While this is easy to change, many of tests might fail so this situation needs to be
 # cleaned up.
 function validate_halo(TX, TY, TZ, size, ::Nothing)
-    default_halo_size = 3
-    halo = min.(size, Tuple(default_halo_size for _ = 1:3))
+    maximum_halo = size
+    default_halo = (3, 3, 3)
+    halo = map(min, default_halo, maximum_halo)
     halo = deflate_tuple(TX, TY, TZ, halo)
     return validate_halo(TX, TY, TZ, size, halo)
 end
