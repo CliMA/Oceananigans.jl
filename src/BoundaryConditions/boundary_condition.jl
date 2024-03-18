@@ -67,13 +67,13 @@ function BoundaryCondition(Classification::DataType, condition::Function;
 end
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-Adapt.adapt_structure(to, b::BoundaryCondition{Classification}) where Classification =
-    BoundaryCondition(Classification(), Adapt.adapt(to, b.condition))
+Adapt.adapt_structure(to, b::BoundaryCondition) =
+    BoundaryCondition(Adapt.adapt(b.classifction), Adapt.adapt(to, b.condition))
 
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-on_architecture(to, b::BoundaryCondition{Classification}) where Classification =
-    BoundaryCondition(Classification(), on_architecture(to, b.condition))
+on_architecture(to, b::BoundaryCondition) =
+    BoundaryCondition(on_architecture(to, b.classification), on_architecture(to, b.condition))
 
 #####
 ##### Some abbreviations to make life easier.
@@ -93,14 +93,14 @@ const DCBC = BoundaryCondition{<:DistributedCommunication}
 # More readable BC constructors for the public API.
                 PeriodicBoundaryCondition() = BoundaryCondition(Periodic,                 nothing)
                   NoFluxBoundaryCondition() = BoundaryCondition(Flux,                     nothing)
-            ImpenetrableBoundaryCondition() = BoundaryCondition(Open{nothing},                     nothing)
+            ImpenetrableBoundaryCondition() = BoundaryCondition(Open{Nothing},                     nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication, nothing)
 DistributedCommunicationBoundaryCondition() = BoundaryCondition(DistributedCommunication, nothing)
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open{nothing}, val; kwargs...)
+                    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open{Nothing}, val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication, val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication, val; kwargs...)
 
@@ -124,9 +124,6 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 # Support for Ref boundary conditions
 const NumberRef = Base.RefValue{<:Number}
 @inline getbc(bc::BC{<:Any, <:NumberRef}, args...) = bc.condition[]
-
-Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
-                                                                     Adapt.adapt(to, bc.condition))
 
 #####
 ##### Validation with topology
