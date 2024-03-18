@@ -50,13 +50,6 @@ const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, diffusivity_fields, velocities, tracers, buoyancy)
     wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
-    eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-
-    closure_ij = getclosure(i, j, closure)
-    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
-    eˡⁱᵐ = max(eⁱʲᵏ, eᵐⁱⁿ)
-
-    dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
@@ -82,16 +75,8 @@ end
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
-    # Dissipation length
-    ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
-    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓ★ = max(ℓ★, ℓh)
-
     σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = ℓ★ / σ
-
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(ℓ★, H)
+    return max(ℓ★, ℓh) / σ
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivity_fields)

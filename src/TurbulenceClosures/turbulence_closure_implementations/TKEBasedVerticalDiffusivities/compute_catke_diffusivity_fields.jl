@@ -92,14 +92,14 @@ end
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
-    closure_ij = getclosure(i, j, closure)
+    closure = getclosure(i, j, closure)
     Jᵇ = diffusivity_fields.Jᵇ
     hc = diffusivity_fields.hc
 
     @inbounds begin
-        κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ, hc)
-        κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ, hc)
-        κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ, hc)
+        κu★ = κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
+        κc★ = κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
+        κe★ = κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
 
         on_periphery = peripheral_node(i, j, k, grid, c, c, f)
         within_inactive = inactive_node(i, j, k, grid, c, c, f)
@@ -111,16 +111,13 @@ end
         diffusivity_fields.κu[i, j, k] = κu★
         diffusivity_fields.κc[i, j, k] = κc★
         diffusivity_fields.κe[i, j, k] = κe★
-        #diffusivity_fields.κe[i, j, k] = κc★
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
         wb = explicit_buoyancy_flux(i, j, k, grid, tracers, buoyancy, diffusivity_fields.κc)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-        eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
-        eˡⁱᵐ = max(eⁱʲᵏ, eᵐⁱⁿ)
-
-        wb_e = wb / eˡⁱᵐ
+        wb_e = wb / eⁱʲᵏ
+        wb_e = ifelse(isnan(wb_e), zero(grid), wb_e)
         wb_e = min(wb_e, zero(grid))
 
         # Treat the divergence of TKE flux at solid bottoms implicitly.
@@ -143,13 +140,12 @@ end
         #
         on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
-        Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
-        e⁺ = clip(eⁱʲᵏ)
-        w★ = sqrt(e⁺)
+        Cᵂϵ = closure.turbulent_kinetic_energy_equation.Cᵂϵ
+        w★ = sqrt(abs(eⁱʲᵏ))
         div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
 
         # Implicit TKE dissipation
-        ω = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivity_fields)
+        ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivity_fields)
         
         # The interior contributions to the linear implicit term `L` are defined via
         #

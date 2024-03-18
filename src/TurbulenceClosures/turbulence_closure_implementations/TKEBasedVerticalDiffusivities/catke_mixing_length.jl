@@ -53,17 +53,17 @@ end
 @inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = clip(N²)
+    N²⁺ = clip(N²) # so we can compute sqrt(N²⁺)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
-    return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
+    return ifelse(N²⁺ == 0, convert(FT, Inf), w★ / sqrt(N²⁺))
 end
 
 @inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²⁺ = clip(N²)
+    N²⁺ = clip(N²) # so we can compute sqrt(N²⁺)
     w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
-    return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
+    return ifelse(N²⁺ == 0, convert(FT, Inf), w★ / sqrt(N²⁺))
 end
 
 @inline function stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
@@ -106,12 +106,12 @@ end
     u = velocities.u
     v = velocities.v
 
-    w★  = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
-    S²  = shearᶜᶜᶠ(i, j, k, grid, u, v)
-    N²  = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
-    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    w★   = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    w★²  = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    S²   = shearᶜᶜᶠ(i, j, k, grid, u, v)
+    N²   = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺¹ = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    Jᵇᵋ  = closure.minimum_convective_buoyancy_flux
     Jᵇˢ  = @inbounds Jᵇ[i, j, 1]
 
     # "Convective length"
@@ -141,7 +141,7 @@ end
 
     # Figure out which mixing length applies
     convecting = (Jᵇˢ > Jᵇᵋ) & (N² < 0)
-    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺ < 0)
+    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺¹ < 0)
 
     ℓ = ifelse(convecting, ℓʰ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -155,13 +155,13 @@ end
     u = velocities.u
     v = velocities.v
 
-    w★  = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
-    w★³ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
-    S²  = shearᶜᶜᶜ(i, j, k, grid, u, v)
-    N²  = ℑzᵃᵃᶜ(i, j, k,   grid, ∂z_b, buoyancy, tracers)
-    N²⁺ = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
-    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    w★   = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    w★²  = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
+    w★³  = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
+    S²   = shearᶜᶜᶜ(i, j, k, grid, u, v)
+    N²   = ℑzᵃᵃᶜ(i, j, k,   grid, ∂z_b, buoyancy, tracers)
+    N²⁺¹ = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+    Jᵇᵋ  = closure.minimum_convective_buoyancy_flux
     Jᵇˢ  = @inbounds Jᵇ[i, j, 1]
 
     # "Convective length"
@@ -174,7 +174,6 @@ end
     # ℓʰ = max(ℓʰ, H)
 
     ℓʰ = @inbounds Cᶜ * hc[i, j, 1]
-
 
     # Model for shear-convection interaction
     Sp = sqrt(S²) * w★² / (Jᵇˢ + Jᵇᵋ)    # Sp = "Sheared convection number"
@@ -190,7 +189,7 @@ end
     
     # Figure out which mixing length applies
     convecting = (Jᵇˢ > Jᵇᵋ) & (N² < 0)
-    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺ < 0)
+    entraining = (Jᵇˢ > Jᵇᵋ) & (N² > 0) & (N²⁺¹ < 0)
 
     ℓ = ifelse(convecting, ℓʰ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -219,15 +218,10 @@ end
 @inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
-
     ℓ★ = stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
-    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * ℓ★
-
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(ℓ★, H)
+    return σ * ℓ★
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
@@ -240,15 +234,8 @@ end
     Cʰⁱ = closure.mixing_length.Cʰⁱc
     ℓ★ = stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
-    ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
-    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓ★ = max(ℓ★, ℓh)
-
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * ℓ★
-
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(ℓ★, H)
+    return σ * max(ℓ★, ℓh)
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ, hc)
@@ -261,15 +248,8 @@ end
     Cʰⁱ = closure.mixing_length.Cʰⁱe
     ℓ★ = stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
-    ℓh = ifelse(isnan(ℓh), zero(grid), ℓh)
-    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓ★ = max(ℓ★, ℓh)
-
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
-    ℓ★ = σ * ℓ★
-
-    H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(ℓ★, H)
+    return σ * max(ℓ★, ℓh)
 end
 
 Base.summary(::CATKEMixingLength) = "CATKEMixingLength"

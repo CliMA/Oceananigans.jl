@@ -16,11 +16,14 @@ Lz = 256        # Extent of vertical domain
 Nz = Int(Lz/Δz) # Vertical resolution
 f₀ = 1e-4       # Coriolis parameter (s⁻¹)
 N² = 1e-6       # Buoyancy gradient (s⁻²)
-Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
-τˣ = -2e-6      # Surface kinematic momentum flux (m s⁻¹)
+Jᵇ = +5e-8      # Surface buoyancy flux (m² s⁻³)
+τˣ = -2e-4      # Surface kinematic momentum flux (m s⁻¹)
 stop_time = 2days
 
-catke = CATKEVerticalDiffusivity()
+using JLD2
+@load "optimal_closure.jld2"
+
+catke = closure #CATKEVerticalDiffusivity()
 tke_dissipation = TKEDissipationVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
@@ -138,7 +141,7 @@ axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
 xlims!(axb, -grid.Lz * N², 0)
 xlims!(axu, -0.1, 0.1)
 xlims!(axe, -1e-4, 2e-4)
-xlims!(axκ, -1e-1, 5e-1)
+xlims!(axκ, -1e-1, 5e0)
 
 colors = [:black, :blue, :red, :orange]
 

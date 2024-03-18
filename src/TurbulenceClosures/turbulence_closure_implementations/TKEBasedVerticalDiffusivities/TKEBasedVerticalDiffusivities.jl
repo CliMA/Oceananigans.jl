@@ -116,9 +116,10 @@ end
 #@inline explicit_buoyancy_flux(i, j, k, grid, args...) = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, args...)
 
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
-    eᵢ = @inbounds e[i, j, k]
+    eⁱʲᵏ = @inbounds e[i, j, k]
     eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
-    return sqrt(max(eᵐⁱⁿ, eᵢ))
+    e⁺ = max(eᵐⁱⁿ, eⁱʲᵏ)
+    return sqrt(e⁺)
 end
 
 #####
