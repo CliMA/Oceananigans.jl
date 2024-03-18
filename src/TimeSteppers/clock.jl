@@ -74,4 +74,6 @@ function tick!(clock, Δt; stage=false)
 end
 
 "Adapt `Clock` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, clock::Clock) = (time=clock.time, last_Δt=clock.last_Δt, iteration=clock.iteration, stage=clock.stage)
+Adapt.adapt_structure(to, clock::Clock) =
+    (time=clock.time, last_Δt=clock.last_Δt, iteration=clock.iteration, stage=clock.stage)
+
