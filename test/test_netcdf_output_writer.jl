@@ -68,9 +68,9 @@ function test_netcdf_file_splitting(arch)
     run!(simulation)
 
     # Test that files has been split according to size as expected.
-    @test filesize("test_part1.nc") > filesizelimit.size_limit
-    @test filesize("test_part2.nc") > filesizelimit.size_limit
-    @test filesize("test_part3.nc") < filesizelimit.size_limit
+    @test filesize("test_part1.nc") > 200KiB
+    @test filesize("test_part2.nc") > 200KiB
+    @test filesize("test_part3.nc") < 200KiB
     @test !isfile("test_part4.nc")
 
     for n in string.(1:3)

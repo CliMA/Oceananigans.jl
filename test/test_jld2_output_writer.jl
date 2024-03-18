@@ -67,9 +67,9 @@ function test_jld2_file_splitting(arch)
     run!(simulation)
 
     # Test that files has been split according to size as expected.
-    @test filesize("test_part1.jld2") > filesizelimit.size_limit
-    @test filesize("test_part2.jld2") > filesizelimit.size_limit
-    @test filesize("test_part3.jld2") < filesizelimit.size_limit
+    @test filesize("test_part1.jld2") > 200KiB
+    @test filesize("test_part2.jld2") > 200KiB
+    @test filesize("test_part3.jld2") < 200KiB
 
     for n in string.(1:3)
         filename = "test_part$n.jld2"
