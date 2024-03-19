@@ -33,7 +33,7 @@ end
 ##### Grid
 #####
 
-arch = GPU()
+arch = CPU()
 reference_density = 1029
 
 latitude = (-75, 75)
@@ -90,7 +90,6 @@ end
 bat = file_bathymetry["bathymetry"]
 boundary = Int.(bat .> 0)
 bat[ bat .> 0 ] .= 0 
-bat = -bat
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
@@ -112,6 +111,15 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.ImmersedBoundaries: inactive_node
+
+# Custom immersed interpolators
+@inline ı(i, j, k, grid, f::Function, args...) = f(i, j, k, grid, args...)
+@inline ı(i, j, k, grid, ϕ)                    = ϕ[i, j, k]
+
+# Defining Interpolation operators for the immersed boundaries
+@inline ℑxᶠᶜᶜ(i, j, k, ibg::IBG{FT}, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, c, c), ı(i-1, j, k, ibg, args...), ifelse(inactive_node(i-1, j, k, ibg, c, c, c), ı(i, j, k, ibg, args...), ℑxᶠᵃᵃ(i, j, k, ibg, args...)))
+@inline ℑyᶜᶠᶜ(i, j, k, ibg::IBG{FT}, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, c, c), ı(i, j-1, k, ibg, args...), ifelse(inactive_node(i, j-1, k, ibg, c, c, c), ı(i, j, k, ibg, args...), ℑyᵃᶠᵃ(i, j, k, ibg, args...)))
 
 @inline function boundary_stress_u(i, j, k, grid, clock, fields, p)
     time = clock.time
@@ -123,7 +131,7 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int = ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
+    h_int = ℑxᶠᶜᶜ(i, j, k, grid, fields.h)
     if h_int > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / h_int
     else
@@ -141,7 +149,7 @@ end
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int =  ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
+    h_int =  ℑyᶜᶠᶜ(i, j, k, grid, fields.h)
     if h_int > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / h_int
     else
@@ -157,7 +165,6 @@ Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ 
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil
-using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 νh = 0e+1
 
@@ -182,7 +189,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
+h_init = deepcopy(1e1 .- bat) 
 set!(model, h=h_init)
 fill_halo_regions!(model.solution.h)
 
