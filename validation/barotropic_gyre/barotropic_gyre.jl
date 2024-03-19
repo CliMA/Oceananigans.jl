@@ -5,9 +5,7 @@ using Oceananigans.Grids
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
-using Oceananigans.Advection:
-    EnergyConservingScheme,
-    EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -36,14 +34,14 @@ underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 
 ## bathymetry = zeros(Nx, Ny) .- 4000
 ## view(bathymetry, 31:34, 43:47) .= 0
-## bathymetry = arch_array(arch, bathymetry)
+## bathymetry = on_architecture(arch, bathymetry)
 ## grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry) )
 grid = underlying_grid
 
 free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 # free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
-coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme())
+coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving())
 
 @show surface_wind_stress_parameters = (τ₀ = 1e-4,
                                         Lφ = grid.Ly,

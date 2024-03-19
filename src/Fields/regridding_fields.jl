@@ -1,9 +1,8 @@
 using KernelAbstractions: @kernel, @index
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind
+using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
 
 using Base: ForwardOrdering
 
@@ -78,6 +77,7 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
 end
 
 function regrid_in_z!(a, target_grid, source_grid, b)
+    location(a, 3) == Center || throw(ArgumentError("Can only regrid fields in z with Center z-locations."))
     arch = architecture(a)
     source_z_faces = znodes(source_grid, f)
     launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
@@ -86,16 +86,18 @@ function regrid_in_z!(a, target_grid, source_grid, b)
 end
 
 function regrid_in_y!(a, target_grid, source_grid, b)
+    location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
-    source_y_faces = ynodes(source_grid, f)
+    source_y_faces = nodes(source_grid, c, f, c)[2]
     Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
     launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
     return a
 end
 
 function regrid_in_x!(a, target_grid, source_grid, b)
+    location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
-    source_x_faces = xnodes(source_grid, f)
+    source_x_faces = nodes(source_grid, f, c, c)[1]
     Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
     launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
     return a
@@ -138,8 +140,8 @@ end
 
     fo = ForwardOrdering()
 
-    @unroll for k = 1:target_grid.Nz
-        @inbounds target_field[i, j, k] = 0
+    @inbounds for k = 1:target_grid.Nz
+        target_field[i, j, k] = 0
 
         z₋ = znode(i, j, k,   target_grid, c, c, f)
         z₊ = znode(i, j, k+1, target_grid, c, c, f)
@@ -154,11 +156,11 @@ end
             # lies entirely within the source cell j₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
             # the target cell concentration is equal to the source concentration.
-            @inbounds target_field[i, j, k] = source_field[i_src, j_src, k₊_src]
+            target_field[i, j, k] = source_field[i_src, j_src, k₊_src]
         else
             # Add contribution from all full cells in the integration range
-            @unroll for k_src = k₋_src:k₊_src-1
-                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            for k_src = k₋_src:k₊_src-1
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
             zk₋_src = znode(i_src, j_src, k₋_src, source_grid, c, c, f)
@@ -167,16 +169,16 @@ end
             # Add contribution to integral from fractional left part of the source field,
             # if that region is a part of the grid.
             if k₋_src > 1
-                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₋_src - 1] * (zk₋_src - z₋)
+                target_field[i, j, k] += source_field[i_src, j_src, k₋_src - 1] * (zk₋_src - z₋)
             end
 
             # Add contribution to integral from fractional right part of the source field, if that
             # region is part of the grid.
             if k₊_src < source_grid.Nz+1
-                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
+                target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
             end
 
-            @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
         end
     end
 end
@@ -193,11 +195,11 @@ end
 
     fo = ForwardOrdering()
 
-    @unroll for j = 1:target_grid.Ny
-        @inbounds target_field[i, j, k] = 0
+    @inbounds for j = 1:target_grid.Ny
+        target_field[i, j, k] = 0
 
-        y₋ = ynode(i, j,   k, target_grid, c, f, c)
-        y₊ = ynode(i, j+1, k, target_grid, c, f, c)
+        y₋ = ηnode(i, j,   k, target_grid, c, f, c)
+        y₊ = ηnode(i, j+1, k, target_grid, c, f, c)
 
         # Integrate source field from y₋ to y₊
         j₋_src = searchsortedfirst(source_y_faces, y₋, 1, Ny_source+1, fo)
@@ -209,15 +211,15 @@ end
             # lies entirely within the source cell j₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
             # the target cell concentration is equal to the source concentration.
-            @inbounds target_field[i, j, k] = source_field[i_src, j₊_src, k_src]
+            target_field[i, j, k] = source_field[i_src, j₊_src, k_src]
         else
             # Add contribution from all full cells in the integration range
-            @unroll for j_src = j₋_src:j₊_src-1
-                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            for j_src = j₋_src:j₊_src-1
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
-            yj₋_src = ynode(i_src, j₋_src, k_src, source_grid, c, f, c)
-            yj₊_src = ynode(i_src, j₊_src, k_src, source_grid, c, f, c)
+            yj₋_src = ηnode(i_src, j₋_src, k_src, source_grid, c, f, c)
+            yj₊_src = ηnode(i_src, j₊_src, k_src, source_grid, c, f, c)
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
@@ -225,25 +227,25 @@ end
             if j₋_src > 1
                 j_left = j₋_src - 1
 
-                x₁ = xnode(i_src,  source_grid, f)
-                x₂ = xnode(i⁺_src, source_grid, f)
-                Az_left = fractional_horizontal_area(source_grid, x₁, x₂, y₋, yj₋_src)
+                ξ₁ = ξnode(i_src,  j_left, k_src, source_grid, f, c, c)
+                ξ₂ = ξnode(i⁺_src, j_left, k_src, source_grid, f, c, c)
+                Az_left = fractional_horizontal_area(source_grid, ξ₁, ξ₂, y₋, yj₋_src)
 
-                @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
             end
 
             # Similar to above, add contribution to integral from fractional right part.
             if j₊_src < source_grid.Ny+1
                 j_right = j₊_src
 
-                x₁ = xnode(i_src,  source_grid, f)
-                x₂ = xnode(i⁺_src, source_grid, f)
-                Az_right = fractional_horizontal_area(source_grid, x₁, x₂, yj₊_src, y₊)
+                ξ₁ = ξnode(i_src,  j_right, k_src, source_grid, f, c, c)
+                ξ₂ = ξnode(i⁺_src, j_right, k_src, source_grid, f, c, c)
+                Az_right = fractional_horizontal_area(source_grid, ξ₁, ξ₂, yj₊_src, y₊)
 
-                @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
             end
 
-            @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
     end
 end
@@ -260,18 +262,18 @@ end
 
     fo = ForwardOrdering()
 
-    @unroll for i = 1:target_grid.Nx
-        @inbounds target_field[i, j, k] = 0
+    @inbounds for i = 1:target_grid.Nx
+        target_field[i, j, k] = 0
 
-        # Integrate source field from x₋ to x₊
-        x₋ = xnode(i,   j, k, target_grid, f, c, c)
-        x₊ = xnode(i+1, j, k, target_grid, f, c, c)
+        # Integrate source field from ξ₋ to ξ₊
+        ξ₋ = ξnode(i,   j, k, target_grid, f, c, c)
+        ξ₊ = ξnode(i+1, j, k, target_grid, f, c, c)
 
         # The first face on the source grid that appears inside the target cell
-        i₋_src = searchsortedfirst(source_x_faces, x₋, 1, Nx_source+1, fo)
+        i₋_src = searchsortedfirst(source_x_faces, ξ₋, 1, Nx_source+1, fo)
 
         # The last face on the source grid that appears inside the target cell
-        i₊_src = searchsortedfirst(source_x_faces, x₊, 1, Nx_source+1, fo) - 1
+        i₊_src = searchsortedfirst(source_x_faces, ξ₊, 1, Nx_source+1, fo) - 1
 
         if i₊_src < i₋_src
             # If the "last" face on the source grid is equal to or left
@@ -279,20 +281,20 @@ end
             # lies entirely within the source cell i₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
             # the target cell concentration is equal to the source concentration.
-            @inbounds target_field[i, j, k] = source_field[i₊_src, j_src, k_src]
+            target_field[i, j, k] = source_field[i₊_src, j_src, k_src]
         else
             # Otherwise, our job is a little bit harder and we have to carefully, conservatively
             # sum up all the contributions from the source field to the target cell.
             
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
-            @unroll for i_src = i₋_src:i₊_src-1
-                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            for i_src = i₋_src:i₊_src-1
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
     
             # Next, we add contributions from the "fractional" source cells on the right
             # and left of the target cell.
-            xi₋_src = xnode(i₋_src, j_src, k_src, source_grid, f, c, c)
-            xi₊_src = xnode(i₊_src, j_src, k_src, source_grid, f, c, c)
+            ξi₋_src = ξnode(i₋_src, j_src, k_src, source_grid, f, c, c)
+            ξi₊_src = ξnode(i₊_src, j_src, k_src, source_grid, f, c, c)
     
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
@@ -300,25 +302,26 @@ end
             if i₋_src > 1
                 i_left = i₋_src - 1
                 
-                y₁ = ynode(j_src,  source_grid, f) 
-                y₂ = ynode(j⁺_src, source_grid, f) 
-                Az_left = fractional_horizontal_area(source_grid, x₋, xi₋_src, y₁, y₂)
+                η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
+                η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
+                Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
 
-                @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
             end
-    
+
+                
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
 
-                y₁ = ynode(j_src,  source_grid, f)
-                y₂ = ynode(j⁺_src, source_grid, f)
-                Az_right = fractional_horizontal_area(source_grid, xi₊_src, x₊, y₁, y₂)
+                η₁ = ηnode(i_right, j_src,  k_src, source_grid, c, f, c)
+                η₂ = ηnode(i_right, j⁺_src, k_src, source_grid, c, f, c)
+                Az_right = fractional_horizontal_area(source_grid, ξi₊_src, ξ₊, η₁, η₂)
 
-                @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
             end
     
-            @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
     end
 end
@@ -334,4 +337,3 @@ end
 
 @inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * (hack_sind(φ₂) - hack_sind(φ₁))
 @inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * deg2rad(λ₂ - λ₁)
-

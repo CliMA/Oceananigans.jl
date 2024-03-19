@@ -45,7 +45,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * advection of background momentum by resolved velocity: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} 
   \boldsymbol{\nabla} \right ) \boldsymbol{V}``,
 * Coriolis: ``\boldsymbol{f} \times \boldsymbol{v}``,
-* the effective background rotation rate due to surface waves: ``\left ( \boldsymbol{\nabla} \times 
+* the effective background rotation rate due to surface waves: ``- \left ( \boldsymbol{\nabla} \times 
   \boldsymbol{u}^S \right ) \times \boldsymbol{v}``,
 * kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
 * buoyant acceleration: ``b``,

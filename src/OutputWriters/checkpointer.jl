@@ -5,7 +5,7 @@ using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set!
+import Oceananigans.Fields: set! 
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -18,12 +18,15 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 """
-    Checkpointer(model; schedule,
+    Checkpointer(model;
+                 schedule,
                  dir = ".",
                  prefix = "checkpoint",
                  overwrite_existing = false,
+                 verbose = false,
                  cleanup = false,
-                 additional_kwargs...)
+                 properties = [:grid, :clock, :coriolis,
+                               :buoyancy, :closure, :timestepper, :particles])
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -31,8 +34,8 @@ The `model.clock.iteration` is included in the filename to distinguish between m
 To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
 that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
 
-Note that extra model `properties` can be safely specified, but removing crucial properties
-such as `:velocities` will make restoring from the checkpoint impossible.
+Note that extra model `properties` can be specified, but removing crucial properties
+such as `:timestepper` will render restoring from the checkpoint impossible.
 
 The checkpointer attempts to serialize as much of the model to disk as possible,
 but functions or objects containing functions cannot be serialized at this time.
@@ -44,7 +47,7 @@ Keyword arguments
 
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
-- `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
+- `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
 
 - `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
@@ -54,10 +57,9 @@ Keyword arguments
 - `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
              Default: `false`.
 
-- `properties`: List of model properties to checkpoint. This list must contain
-                `[:grid, :architecture, :timestepper, :particles]`.
-                Default: [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure,
-                          :velocities, :tracers, :timestepper, :particles]
+- `properties`: List of model properties to checkpoint. This list _must_ contain
+                `:grid`, `:timestepper`, and `:particles`.
+                Default: `[:grid, :timestepper, :particles, :clock, :coriolis, :buoyancy, :closure]`
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -65,11 +67,11 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = [:architecture, :grid, :clock, :coriolis,
-                                    :buoyancy, :closure, :timestepper, :particles])
+                      properties = [:grid, :timestepper, :particles, :clock,
+                                    :coriolis, :buoyancy, :closure])
 
-    # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :timestepper, :particles)
+    # Certain properties are required for `set!` to pickup from a checkpoint.
+    required_properties = (:grid, :timestepper, :particles)
 
     for rp in required_properties
         if rp ∉ properties
@@ -202,16 +204,15 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-
         model.grid == checkpointed_grid ||
-             error("The grid associated with $filepath and model.grid are not the same!")
+             @warn "The grid associated with $filepath and model.grid are not the same!"
 
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
-            if string(name) ∈ keys(file) # Test if variable exist in checkpoint
-                parent_data = file["$name/data"]
+            if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
+                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
                 copyto!(model_field.data.parent, parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
@@ -264,4 +265,3 @@ function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, m
     timestepper.previous_Δt = file["timestepper/previous_Δt"]
     return nothing
 end
-            

@@ -285,4 +285,4 @@ anim = @animate for i in 5:120
     channel_plot(u, b)
 end
 
-mp4(anim, "zonally_averaged_abernathey_channel.mp4", fps = 8) # hide
+mp4(anim, "zonally_averaged_abernathey_channel.mp4", fps = 8) #hide

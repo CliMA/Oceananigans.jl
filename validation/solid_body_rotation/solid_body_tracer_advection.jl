@@ -18,9 +18,7 @@ using Oceananigans.Grids
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
-using Oceananigans.Advection:
-    EnergyConservingScheme,
-    EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -165,7 +163,7 @@ function visualize_solid_body_tracer_advection(filepath)
     y = @. sind(λ_azimuthal) * sind(ϕ_azimuthal)
     z = @. cosd(ϕ_azimuthal)
 
-    fig = Figure(resolution = (1080, 1080))
+    fig = Figure(size=(1080, 1080))
 
     titles = ["c", "d", "e"]
 

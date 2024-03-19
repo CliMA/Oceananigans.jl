@@ -1,21 +1,19 @@
 module OutputReaders
 
+export FieldDataset
+export FieldTimeSeries
 export InMemory, OnDisk
-export FieldTimeSeries, FieldDataset
-
-abstract type AbstractDataBackend end
-
-struct InMemory <: AbstractDataBackend end
-struct OnDisk <: AbstractDataBackend end
-
-struct OnDiskData
-    path :: String
-    name :: String
-end
-
-Base.summary(odd::OnDiskData) = "OnDiskData($(odd.path), $(odd.name))"
+export Cyclical, Linear, Clamp
 
 include("field_time_series.jl")
+include("field_time_series_indexing.jl")
+include("set_field_time_series.jl")
+include("field_time_series_reductions.jl")
+include("show_field_time_series.jl")
+include("extract_field_time_series.jl")
+
+# Experimental
 include("field_dataset.jl")
 
 end # module
+

@@ -4,8 +4,15 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
-# Define default indices
-default_indices(n) = Tuple(Colon() for i=1:n)
+# Define default indices in a type-stable way
+@inline default_indices(N::Int) = default_indices(Val(N))
+
+@inline function default_indices(::Val{N}) where N
+    ntuple(Val(N)) do n
+        Base.@_inline_meta
+        Colon()
+    end
+end
 
 const BoundedTopology = Union{Bounded, LeftConnected}
 
@@ -64,7 +71,7 @@ Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length
 Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
 Center cells have the location (Center, Center, Center).
 """
-Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 
 """
     halo_size(grid)
@@ -75,14 +82,19 @@ domain in (x, y, z).
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 halo_size(grid, d) = halo_size(grid)[d]
 
-Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
+@inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
-Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
 
-function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
-    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
 end
 
 Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
@@ -115,12 +127,12 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -219,254 +231,13 @@ parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
-@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, Face(), Center(), Center(); with_halos=true), 1)[1:size(grid, 1)+1])
-@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, Center(), Face(), Center(); with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, Center(), Center(), Face(); with_halos=true), 3)[1:size(grid, 3)+1])
+const c = Center()
+const f = Face()
 
-#####
-##### << Nodes >>
-#####
-
-xnodes(grid, ::Nothing; kwargs...) = 1:1
-ynodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
-
-"""
-    xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline xnodes(grid, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
-
-"""
-    ynodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
-
-"""
-    znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest znodes
-julia> using Oceananigans
-
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                            topology=(Periodic, Periodic, Bounded));
-
-julia> zC = znodes(horz_periodic_grid, Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
--1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
-```
-"""
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
-
-"""
-    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
-
-"""
-    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
-
-"""
-    nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
-    nodes(grid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-
-Return a 3-tuple of views over the interior nodes of the `grid`'s
-native coordinates at the locations in `loc=(ℓx, ℓy, ℓz)` in `x, y, z`.
-
-If `reshape=true`, the views are reshaped to 3D arrays with non-singleton
-dimensions 1, 2, 3 for `x, y, z`, respectively. These reshaped arrays can then
-be used in broadcast operations with 3D fields or arrays.
-
-For `RectilinearGrid`s the native coordinates are `x, y, z`; for curvilinear grids,
-like `LatitudeLongitudeGrid` or `OrthogonalSphericalShellGrid` the native coordinates
-are `λ, φ, z`.
-
-See [`xnodes`](@ref), [`ynodes`](@ref), [`znodes`](@ref), [`λnodes`](@ref), and [`φnodes`](@ref).
-"""
-nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
-
-
-#####
-##### << Spacings >>
-#####
-
-# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
-function xspacing end
-function yspacing end
-function zspacing end
-
-"""
-    xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest xspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
-
-julia> xspacings(grid, Center(), Face(), Center())
-16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
-      1.0950562585518518e6
-      1.1058578920188267e6
-      1.1112718969963323e6
-      1.1112718969963323e6
-      1.1058578920188267e6
-      1.0950562585518518e6
-      1.0789196210678827e6
-      1.0575265956426917e6
-      1.0309814069457315e6
- 999413.38046802
- 962976.3124613502
- 921847.720658409
- 876227.979424229
- 826339.3435524226
- 772424.8654621692
- 714747.2110712599
-```
-"""
-@inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
-
-
-"""
-    yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest yspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> yspacings(grid, Center(), Center(), Center())
-222389.85328911748
-```
-"""
-@inline yspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = yspacings(grid, ℓy; with_halos)
-
-"""
-    zspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest zspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> zspacings(grid, Center(), Center(), Center())
-10.0
-```
-"""
-@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
-
-destantiate(::Face)   = Face
-destantiate(::Center) = Center
-
-function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
-    spacing = eval(Symbol(dir, :spacing))
-    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
-
-    return minimum(Δ)
-end
-
-"""
-    minimum_xspacing(grid, ℓx, ℓy, ℓz)
-    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_xspacing(grid, Center(), Center(), Center())
-0.5
-```
-"""
-minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
-minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
-"""
-    minimum_yspacing(grid, ℓx, ℓy, ℓz)
-    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_yspacing(grid, Center(), Center(), Center())
-0.25
-```
-"""
-minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
-minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
-
-"""
-    minimum_zspacing(grid, ℓx, ℓy, ℓz)
-    minimum_zspacing(grid) = minimum_zspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_zspacing(grid, Center(), Center(), Center())
-0.125
-```
-"""
-minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
-minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
+# What's going on here?
+@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
+@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
+@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### Convenience functions
@@ -496,22 +267,19 @@ end
 ##### Directions (for tilted domains)
 #####
 
-struct ZDirection end
-
-Base.summary(::ZDirection) = "ZDirection()"
-Base.show(io::IO, zdir::ZDirection) = print(io, summary(zdir))
-
-struct NegativeZDirection end
-
-Base.summary(::NegativeZDirection) = "NegativeZDirection()"
-Base.show(io::IO, zdir::NegativeZDirection) = print(io, summary(zdir))
-
 -(::NegativeZDirection) = ZDirection()
 -(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils
 #####
+
+Base.summary(::XDirection) = "XDirection()"
+Base.summary(::YDirection) = "YDirection()"
+Base.summary(::ZDirection) = "ZDirection()"
+Base.summary(::NegativeZDirection) = "NegativeZDirection()"
+
+Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
@@ -557,7 +325,8 @@ Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, 
 The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
 are the triangle's inner angles.
 
-It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
+It has been known since the time of Euler and Lagrange that
+``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
 ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
 
 References
@@ -588,7 +357,7 @@ If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical tria
 that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
 triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
 On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
-that ``P`` above  the same as the volume defined by the vectors `a`, `b`, and `c`, that is
+that ``P`` above is the same as the volume defined by the vectors `a`, `b`, and `c`, that is
 ``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
 
 References
@@ -610,42 +379,120 @@ end
 Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
 `a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
 non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
-overlapping, we compute the area of the quadrilateral as half the sum of the areas of all four potential
-triangles.
+overlapping, we compute the area of the quadrilateral as the half the sum of the areas of all four potential
+triangles formed by `a₁`, `a₂`, `a₃`, and `a₄`.
 """
 spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
     1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
            spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
 
 """
-    hav(x)
+    add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
-Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
+Add halos of size `halo_sz :: NTuple{3}{Int}` to `data` that corresponds to
+size `sz :: NTuple{3}{Int}`, location `loc :: NTuple{3}`, and topology
+`topo :: NTuple{3}`.
+
+Setting the keyword `warning = false` will spare you from warnings regarding
+the size of `data` being too big or too small for the `loc`, `topo`, and `sz`
+provided.
+
+Example
+=======
+
+```julia
+julia> using Oceananigans
+
+julia> using Oceananigans.Grids: add_halos, total_length
+
+julia> Nx, Ny, Nz = (3, 3, 1);
+
+julia> loc = (Face, Center, Nothing);
+
+julia> topo = (Bounded, Periodic, Bounded);
+
+julia> data = rand(total_length(loc[1](), topo[1](), Nx, 0), total_length(loc[2](), topo[2](), Ny, 0))
+4×3 Matrix{Float64}:
+ 0.771924  0.998196   0.48775
+ 0.499878  0.470224   0.669928
+ 0.254603  0.73885    0.0821657
+ 0.997512  0.0440224  0.726334
+
+julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
+6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+ 0.0  0.0  0.771924  0.998196   0.48775    0.0  0.0
+ 0.0  0.0  0.499878  0.470224   0.669928   0.0  0.0
+ 0.0  0.0  0.254603  0.73885    0.0821657  0.0  0.0
+ 0.0  0.0  0.997512  0.0440224  0.726334   0.0  0.0
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+
+ julia> data = rand(8, 2)
+8×2 Matrix{Float64}:
+ 0.910064  0.491983
+ 0.597547  0.775168
+ 0.711421  0.519057
+ 0.697258  0.450122
+ 0.300358  0.510102
+ 0.865862  0.579322
+ 0.196049  0.217199
+ 0.799729  0.822402
+
+julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
+┌ Warning: data has larger size than expected in first dimension; some data is lost
+└ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:650
+┌ Warning: data has smaller size than expected in second dimension; rest of entries are filled with zeros.
+└ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:655
+6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+ 0.0  0.0  0.0       0.0       0.0  0.0  0.0
+ 0.0  0.0  0.910064  0.491983  0.0  0.0  0.0
+ 0.0  0.0  0.597547  0.775168  0.0  0.0  0.0
+ 0.0  0.0  0.711421  0.519057  0.0  0.0  0.0
+ 0.0  0.0  0.697258  0.450122  0.0  0.0  0.0
+ 0.0  0.0  0.0       0.0       0.0  0.0  0.0
+```
 """
-hav(x) = sin(x/2)^2
+function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
-"""
-    central_angle((φ₁, λ₁), (φ₂, λ₂))
+    Nx, Ny, Nz = size(data)
 
-Compute the central angle (in radians) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
+    arch = architecture(data)
 
-References
-==========
-- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
-"""
-function central_angle((φ₁, λ₁), (φ₂, λ₂))
-    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
+    # bring to CPU
+    map(a -> on_architecture(CPU(), a), data)
 
-    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
+    nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
+                 total_length(loc[2](), topo[2](), sz[2], 0),
+                 total_length(loc[3](), topo[3](), sz[3], 0)
+
+    if warnings
+        Nx > nx && @warn("data has larger size than expected in first dimension; some data is lost")
+        Ny > ny && @warn("data has larger size than expected in second dimension; some data is lost")
+        Nz > nz && @warn("data has larger size than expected in third dimension; some data is lost")
+
+        Nx < nx && @warn("data has smaller size than expected in first dimension; rest of entries are filled with zeros.")
+        Ny < ny && @warn("data has smaller size than expected in second dimension; rest of entries are filled with zeros.")
+        Nz < nz && @warn("data has smaller size than expected in third dimension; rest of entries are filled with zeros.")
+    end
+
+    offset_array = dropdims(new_data(eltype(data), CPU(), loc, topo, sz, halo_sz), dims=3)
+
+    nx = minimum((nx, Nx))
+    ny = minimum((ny, Ny))
+    nz = minimum((nz, Nz))
+
+    offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
+
+    # return to data's original architecture 
+    map(a -> on_architecture(arch, a), offset_array)
+
+    return offset_array
 end
 
-"""
-    central_angle_degrees((φ₁, λ₁), (φ₂, λ₂))
+function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; warnings=true)
+    Nx, Ny = size(data)
+    return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
+end
 
-Compute the central angle (in degrees) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
+grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 
-See also [`central_angle`](@ref).
-"""
-central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))

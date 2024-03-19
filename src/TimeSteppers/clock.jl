@@ -3,6 +3,7 @@ using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
 
 import Base: show
+import Oceananigans.Units: Time
 
 """
     mutable struct Clock{T<:Number}
@@ -35,6 +36,8 @@ next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int
 
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
+
+Time(clock::Clock) = Time(clock.time)
 
 # Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t

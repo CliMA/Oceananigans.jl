@@ -22,7 +22,7 @@ using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 

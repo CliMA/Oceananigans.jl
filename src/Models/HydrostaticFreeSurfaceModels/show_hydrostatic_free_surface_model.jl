@@ -27,8 +27,18 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         end
 
         if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
-            print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", "\n")
+            print(io, "│   └── substepping: $(summary(model.free_surface.settings.substepping))", "\n")
         end
+    end
+
+    if model.advection !== nothing
+        print(io, "├── advection scheme: ", "\n")
+        names = keys(model.advection)
+        for name in names[1:end-1]
+            print(io, "│   ├── " * string(name) * ": " * summary(model.advection[name]), "\n")
+        end
+        name = names[end]
+        print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
     end
 
     if isnothing(model.particles)

@@ -17,7 +17,7 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 validate_fft_implicit_solver_grid(grid) = 
-    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
+    grid isa XYZRegularRG || grid isa XYRegularRG ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
 validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
@@ -58,7 +58,7 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RectilinearGrid(architecture(grid);
+    horizontal_grid = RectilinearGrid(architecture(grid), eltype(grid);
                                       topology = (TX, TY, Flat),
                                       size = sz,
                                       halo = halo,
@@ -113,4 +113,3 @@ end
     δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Lz * Δt * Az)
 end
-

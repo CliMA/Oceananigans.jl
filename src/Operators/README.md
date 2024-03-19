@@ -37,7 +37,7 @@ As a result, the interpolation of a quantity `c` from a cell `i` to face `i` (wh
 ```
 Conversely, the interpolation of a quantity `u` from a face `i` to cell `i` is given by
 ```
-ℑxᶠᵃᵃ(u)ᵢ = (uᵢ₊₁ + uᵢ) / 2
+ℑxᶜᵃᵃ(u)ᵢ = (uᵢ₊₁ + uᵢ) / 2
 ```
 The `ℑ` (`\Im`) symbol indicates that an interpolation is being performed. For example, `ℑx`
 indicates that the interpolation is performed along the x-dimension.

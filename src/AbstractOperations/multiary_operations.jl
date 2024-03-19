@@ -20,7 +20,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-indices(Π::MultiaryOperation) = interpolate_indices(Π.args...; loc_operation = location(Π))
+indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
 function _multiary_operation(L, op, args, Largs, grid)
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
@@ -151,3 +151,9 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
                                   Adapt.adapt(to, multiary.▶),
                                   Adapt.adapt(to, multiary.grid))
 
+on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
+                                  on_architecture(to, multiary.args),
+                                  on_architecture(to, multiary.▶),
+                                  on_architecture(to, multiary.grid))
+                                  

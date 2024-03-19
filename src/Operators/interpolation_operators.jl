@@ -94,9 +94,7 @@ using Oceananigans.Grids: Flat
 ##### Support for Flat Earths
 #####
 
-const XFlatGrid = AG{<:Any, Flat}
-const YFlatGrid = AG{<:Any, <:Any, Flat}
-const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]

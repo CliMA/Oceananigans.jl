@@ -29,7 +29,7 @@ end
 # Recompute location of binary operation
 @inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
-indices(β::BinaryOperation) = interpolate_indices(β.a, β.b; loc_operation = location(β))
+indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(β), β.a, β.b)
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
@@ -216,3 +216,12 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
                                 Adapt.adapt(to, binary.grid))
+
+
+on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    BinaryOperation{LX, LY, LZ}(on_architecture(to, binary.op),
+                                on_architecture(to, binary.a),
+                                on_architecture(to, binary.b),
+                                on_architecture(to, binary.▶a),
+                                on_architecture(to, binary.▶b),
+                                on_architecture(to, binary.grid))

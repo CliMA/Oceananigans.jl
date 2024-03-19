@@ -30,9 +30,9 @@ grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
 #
 # and the width of the stratification layer, ``h``.
 
-shear_flow(x, y, z, t) = tanh(z)
+shear_flow(x, z, t) = tanh(z)
 
-stratification(x, y, z, t, p) = p.h * p.Ri * tanh(z / p.h)
+stratification(x, z, t, p) = p.h * p.Ri * tanh(z / p.h)
 
 U = BackgroundField(shear_flow)
 
@@ -48,18 +48,18 @@ zC = znodes(grid, Center())
 
 Ri, h = B.parameters
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size = (850, 450))
  
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
-lines!(ax, shear_flow.(0, 0, zC, 0), zC; linewidth = 3)
+lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
 ax = Axis(fig[1, 2], xlabel = "B(z)")
-lines!(ax, [stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
+lines!(ax, [stratification(0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
 
 ax = Axis(fig[1, 3], xlabel = "Ri(z)")
 lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, color = :black) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # In unstable flows it is often useful to determine the dominant spatial structure of the
@@ -151,9 +151,10 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
 # it becomes nonlinear.
 
-# Here, we take ``\Delta \tau = 15``.
+# Here, we take ``\Delta \tau = 15``. We also set `verbose=false` so that `run!(simulation)`
+# is a little quieter.
 
-simulation = Simulation(model, Δt=0.1, stop_iteration=150)
+simulation = Simulation(model, Δt=0.1, stop_iteration=150, verbose=false)
 
 # Now some helper functions that will be used during for the power method algorithm.
 #
@@ -201,7 +202,7 @@ function grow_instability!(simulation, energy)
 
     return growth_rate
 end
-nothing # hide
+nothing #hide
 
 # Finally, we write a function that rescales the state. The rescaling is done via computing the
 # kinetic energy and then rescaling all flow fields so that the kinetic energy assumes a targetted value.
@@ -236,7 +237,7 @@ Check if the growth rate has converged. If the array `σ` has at least 2 element
 relative difference between ``σ[end]`` and ``σ[end-1]``.
 """
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
-nothing # hide
+nothing #hide
 
 # and the main function that performs the power method iteration.
 
@@ -271,7 +272,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
     return σ, power_method_data
 end
-nothing # hide
+nothing #hide
 
 # # Eigenplotting
 #
@@ -285,7 +286,6 @@ perturbation_vorticity = Field(∂z(u) - ∂x(w))
 xω, yω, zω = nodes(perturbation_vorticity)
 xb, yb, zb = nodes(b)
 
-
 # # Rev your engines...
 #
 # We initialize the power iteration with random noise and rescale to have a `target_kinetic_energy`
@@ -293,7 +293,7 @@ xb, yb, zb = nodes(b)
 using Random, Statistics
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
-noise(x, y, z) = randn()
+noise(x, z) = randn()
 set!(model, u=noise, w=noise, b=noise)
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
 growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
@@ -307,7 +307,7 @@ growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturba
 
 n = Observable(1)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -347,7 +347,6 @@ scatter!(ax_σ, σₙ; color = :blue)
 frames = 1:length(power_method_data)
 
 record(fig, "powermethod.mp4", frames, framerate=1) do i
-       @info "Plotting frame $i of $(frames[end])..."
        n[] = i
 end
 
@@ -416,7 +415,7 @@ n = Observable(1)
 ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
 bₙ = @lift interior(b_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -475,7 +474,7 @@ n = Observable(1)
 Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
 Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -518,8 +517,7 @@ scatter!(ax_KE, KE_point;
 axislegend(ax_KE; position = :rb)
 
 record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    n[] = i
 end
 nothing #hide
 

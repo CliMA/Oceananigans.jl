@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Coriolis: Ω_Earth
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.Coriolis: Ω_Earth, ActiveCellEnstrophyConserving
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)
@@ -21,9 +21,9 @@ end
 
 function instantiate_constant_coriolis_2(FT)
     coriolis = ConstantCartesianCoriolis(FT, f=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
-    @test coriolis.fx ≈ FT(10*√(1/3))
-    @test coriolis.fy ≈ FT(10*√(1/3))
-    @test coriolis.fz ≈ FT(10*√(1/3))
+    @test coriolis.fx ≈ FT(10 * √(1/3))
+    @test coriolis.fy ≈ FT(10 * √(1/3))
+    @test coriolis.fz ≈ FT(10 * √(1/3))
 end
 
 function instantiate_betaplane_1(FT)
@@ -49,26 +49,26 @@ end
 function instantiate_ntbetaplane_2(FT)
     Ω, φ, R = π, 17, ℯ
     coriolis = NonTraditionalBetaPlane(FT, rotation_rate=Ω, latitude=φ, radius=R)
-    @test coriolis.fz ≈ FT(+2Ω*sind(φ))
-    @test coriolis.fy ≈ FT(+2Ω*cosd(φ))
-    @test coriolis.β  ≈ FT(+2Ω*cosd(φ)/R)
-    @test coriolis.γ  ≈ FT(-4Ω*sind(φ)/R)
+    @test coriolis.fz ≈ FT(+ 2Ω * sind(φ))
+    @test coriolis.fy ≈ FT(+ 2Ω * cosd(φ))
+    @test coriolis.β  ≈ FT(+ 2Ω * cosd(φ) / R)
+    @test coriolis.γ  ≈ FT(- 4Ω * sind(φ) / R)
 end
 
 function instantiate_hydrostatic_spherical_coriolis1(FT)
-    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnergyConservingScheme())
-    @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.scheme isa EnergyConservingScheme
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
+    @test coriolis.rotation_rate == FT(Ω_Earth) # default
+    @test coriolis.scheme isa EnergyConserving
 
-    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConservingScheme())
-    @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.scheme isa EnstrophyConservingScheme
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
+    @test coriolis.rotation_rate == FT(Ω_Earth) # default
+    @test coriolis.scheme isa EnstrophyConserving
 end
 
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa EnergyConservingScheme # default
+    @test coriolis.scheme isa ActiveCellEnstrophyConserving # default
 end
 
 @testset "Coriolis" begin

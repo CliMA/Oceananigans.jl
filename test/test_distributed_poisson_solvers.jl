@@ -25,8 +25,8 @@ MPI.Init()
 
 # to initialize MPI.
 
-using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
+using Oceananigans.DistributedComputations: reconstruct_global_grid, Partition
+using Oceananigans.DistributedComputations: ZXYPermutation, ZYXPermutation
 
 @kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
     i, j, k = @index(Global, NTuple)
@@ -59,23 +59,22 @@ function random_divergent_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
-    
+
     return R
 end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
-    topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
+    arch = Distributed(CPU(), partition=Partition(ranks...))
+    local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, (Periodic, Periodic, Periodic))
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
     ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
     R   = random_divergent_source_term(local_grid)
-    
+
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -109,4 +108,3 @@ end
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
 end
-

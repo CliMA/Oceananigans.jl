@@ -65,12 +65,12 @@ using Oceananigans.TurbulenceClosures
 
             bathymetry = zeros(Nx, Ny) .- 4000
             view(bathymetry, 31:34, 43:47) .= 0
-            bathymetry = arch_array(arch, bathymetry)
+            bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
             free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-            coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme())
+            coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving())
 
             surface_wind_stress_parameters = (τ₀ = 1e-4,
                                               Lφ = grid.Ly,

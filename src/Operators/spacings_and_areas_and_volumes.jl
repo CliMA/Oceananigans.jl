@@ -1,16 +1,17 @@
 using Oceananigans.Grids: Center, Face
 
-const RG   = RectilinearGrid
-const RGX  = XRegRectilinearGrid
-const RGY  = YRegRectilinearGrid
-const RGZ  = ZRegRectilinearGrid
+const RG  = RectilinearGrid
+const RGX = XRegularRG
+const RGY = YRegularRG
+const RGZ = ZRegularRG
 
-const OSSG = OrthogonalSphericalShellGrid
+const OSSG  = OrthogonalSphericalShellGrid
+const OSSGZ = ZRegOrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
-const LLGX = XRegLatLonGrid
-const LLGY = YRegLatLonGrid
-const LLGZ = ZRegLatLonGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -52,10 +53,10 @@ The operators in this file fall into three categories:
 #####
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid) =  nothing
-@inline Δxᶜᵃᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
+@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
+@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
 
 const ZRG = Union{LLGZ, RGZ}
 
@@ -65,8 +66,11 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = grid.Δz
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -101,15 +105,15 @@ end
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶜᵃ[j]
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶠᵃᵃ
-@inline Δxᶜᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶜᵃᵃ
-@inline Δyᵃᶠᵃ(i, j, k, grid::RGY) =  @inbounds grid.Δyᵃᶠᵃ
-@inline Δyᵃᶜᵃ(i, j, k, grid::RGY) =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
 #####
 ##### LatitudeLongitudeGrid
@@ -253,7 +257,7 @@ for LX in (:Center, :Face)
 
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
-                volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
             end
 
             for op in (:Δ, :A), dir in (:x, :y, :z)
@@ -261,9 +265,10 @@ for LX in (:Center, :Face)
                 metric = Symbol(op, dir, location_code(LXe, LYe, LZe))
 
                 @eval begin
-                    $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
             end
         end
     end
 end
+

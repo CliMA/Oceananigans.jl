@@ -7,6 +7,10 @@ using Logging
 
 using CUDA
 using MPI
+
+MPI.versioninfo()
+MPI.Initialized() || MPI.Init()
+
 using JLD2
 using FFTW
 using OffsetArrays
@@ -29,12 +33,13 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: on_architecture
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
@@ -60,7 +65,7 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :ConvectiveAdjustmentVerticalDiffusivity
+    :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
 #####

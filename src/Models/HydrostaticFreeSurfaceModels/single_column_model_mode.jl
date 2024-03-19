@@ -1,6 +1,7 @@
 using CUDA: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
@@ -8,8 +9,9 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo
+import Oceananigans.Models: validate_tracer_advection
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
+import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
@@ -24,10 +26,12 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(free_surface::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 
 function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
@@ -42,11 +46,18 @@ validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
 
+compute_w_from_continuity!(velocities, arch, ::SingleColumnGrid; kwargs...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields, arch, ::SingleColumnGrid; kwargs...) = nothing
+
 #####
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
+
+# Disambiguation
+compute_free_surface_tendency!(::SingleColumnGrid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
 
 # Fast state update and halo filling
 
@@ -58,13 +69,15 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
+    compute_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
+
+    update_biogeochemical_state!(model.biogeochemistry, model)
 
     return nothing
 end
@@ -133,4 +146,3 @@ end
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end
-

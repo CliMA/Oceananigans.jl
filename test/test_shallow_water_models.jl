@@ -65,7 +65,7 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
 
     field = model.velocities[fieldname]
 
-    interior(field) .= arch_array(architecture(grid), cos.(m * ξ))
+    interior(field) .= on_architecture(architecture(grid), cos.(m * ξ))
     update_state!(model)
 
     # Step forward with small time-step relative to diff. time-scale
@@ -160,7 +160,7 @@ end
 
             x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
-            uh₀(x, y, z) = x * y^2
+            uh₀(x, y) = x * y^2
             uh_answer = @. x * y^2
 
             h₀ = rand(size(grid)...)
@@ -236,8 +236,7 @@ end
                 @info "Testing ShallowWaterModels with ImmersedBoundaryGrid [$arch]"
 
                 # Gaussian bump of width "1"
-                bump(x, y, z) = y < exp(-x^2)
-
+                bump(x, y) = y < exp(-x^2)
                 grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
                 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 
