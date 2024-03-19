@@ -69,7 +69,7 @@ end
 
 Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
-const ε = 1e-8
+const ε = 1e-6
 
 # Optimal values taken from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
@@ -249,11 +249,11 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C = FT($coeff(scheme, Val(s-1)))
-            α = @fastmath C * rcp(β + FT(ε))^2
+            α = C * rcp(β + FT(ε))^2
 
             # Reconstruction of `ψ` from stencil `s`
             ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
-
+            
             return β, ψ̅, C, α
         end
 
@@ -271,7 +271,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C = FT($coeff(scheme, Val(s-1)))
-            α = @fastmath C * rcp(βᵁ + FT(ε))^2
+            α = C / (βᵁ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
@@ -287,7 +287,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C  = FT($coeff(scheme, Val(s-1)))
-            α  = @fastmath C * rcp(βᵠ + FT(ε))^2
+            α  = C / (βᵠ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
