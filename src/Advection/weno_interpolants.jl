@@ -134,19 +134,19 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(beta_value(ψ[$stencil], Val($buffer), Val($(stencil-1))))
+        elem[stencil] = 1 # :(beta_value(ψ[$stencil], Val($buffer), Val($(stencil-1))))
     end
 
     return :($(elem...),)
 end
 
-# ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / βᵣ))ᵖ)
+# ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / βᵣ)ᵖ)
 @inline function metaprogrammed_alpha_loop(buffer, side)
     elem = Vector(undef, buffer)
 
     for stencil = 1:buffer
-        coeff = eval(Symbol(:coeff_, side, :_, buffer, stencil - 1))
-        elem[stencil] = :($coeff * (1 + (τ / β[$stencil])^2))
+        coeff   = eval(Symbol(:coeff_, side, :_, buffer, stencil - 1))
+        elem[stencil] = :($coeff * (β[$stencil]^2 + τ^2))
     end
 
     return :($(elem...),)
@@ -161,11 +161,11 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] + 3β[2] - 3β[3] -  β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] +  β[2] - 8β[3] + 8β[4] - β[5] - β[6])
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds @fastmath abs(β[1] - β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds @fastmath abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds @fastmath abs(β[1] + 3β[2] - 3β[3] -  β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds @fastmath abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds @fastmath abs(β[1] +  β[2] - 8β[3] + 8β[4] - β[5] - β[6])
 
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for side in (:left, :right)
@@ -193,7 +193,7 @@ for side in (:left, :right)
                     ψ  = $tangential_stencil_u(i, j, k, scheme, dir, u)
                     β₁ = beta_loop(ψ, Val($N))
                     ψ  = $tangential_stencil_v(i, j, k, scheme, dir, v)
-                    β₁ = beta_loop(ψ, Val($N))
+                    β₂ = beta_loop(ψ, Val($N))
                     β  = @fastmath $(metaprogrammed_beta_sum(N))
                     τ  = global_smoothness_indicator(Val($N), β)
                     α  = @fastmath $(metaprogrammed_alpha_loop(N, side))

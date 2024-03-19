@@ -21,12 +21,12 @@ const coeff_left_52 = 60
 const coeff_left_53 = 40
 const coeff_left_54 = 1
 
-const coeff_left_60 = 1/77
-const coeff_left_61 = 25/154
-const coeff_left_62 = 100/231
-const coeff_left_63 = 25/77
-const coeff_left_64 = 5/77
-const coeff_left_65 = 1/462
+const coeff_left_60 = 6
+const coeff_left_61 = 75
+const coeff_left_62 = 200
+const coeff_left_63 = 150
+const coeff_left_64 = 30
+const coeff_left_65 = 1
 
 for buffer in [2, 3, 4, 5, 6]
     for stencil in 0:buffer - 1
