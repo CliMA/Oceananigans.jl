@@ -37,8 +37,12 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
-    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
-    Nc = Nx ; Hc = Hx
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
 
     #-- one pass: only use interior-point values:
     for region in 1:6
@@ -87,8 +91,12 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Face, <:Face})
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
-    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
-    Nc = Nx ; Hc = Hx
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
 
     #-- one pass: only use interior-point values:
     for region in 1:6
@@ -149,8 +157,12 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Center, <:Center}, ::
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
-    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
-    Nc = Nx ; Hc = Hx
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
 
     #-- one pass: only use interior-point values:
     for region in 1:6
@@ -213,8 +225,12 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Center}, ::Tu
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
-    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
-    Nc = Nx ; Hc = Hx
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
 
     #-- one pass: only use interior-point values:
     for region in 1:6
@@ -274,8 +290,6 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Center}, ::Tu
     #-- Add one valid field_1, field_2 value next to the corner, that allows
     #   to compute vorticity on a wider stencil (e.g., vort3(0,1) & (1,0)).
     for region in 1:6
-        # println("region=",region,", size(field_1)=",size(field_1[region][:,:,1]),
-        #                          ", size(field_2)=",size(field_2[region][:,:,1]))
         for k in -Hz+1:Nz+Hz
             #- SW corner:
             field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
@@ -310,8 +324,12 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Face}, ::Tupl
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
-    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
-    Nc = Nx ; Hc = Hx
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
 
     #-- one pass: only use interior-point values:
     for region in 1:6
