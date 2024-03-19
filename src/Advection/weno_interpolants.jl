@@ -136,21 +136,11 @@ end
     return Expr(:call, :+, elem...)
 end
 
-# Smoothness indicators for stencil `stencil` for left and right biased reconstruction
-for buffer in [2, 3, 4, 5, 6]
-    for stencil in 0:buffer - 1
-        @eval begin
-            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds @fastmath $(metaprogrammed_smoothness_sum(buffer, stencil))
-            @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds @fastmath $(metaprogrammed_smoothness_sum(buffer, stencil))
-        end
-    end
-end
-
 # Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5*(βᵤ[i] + βᵥ[i]) for i in 1:buffer]
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath (β₁[$stencil] + β₂[$stencil])/2)
+        elem[stencil] = :((β₁[$stencil] + β₂[$stencil])/2)
     end
     return :($(elem...),)
 end
@@ -159,7 +149,7 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds @fastmath func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :($(metaprogrammed_smoothness_sum(buffer, stencil-1)))
     end
 
     return :($(elem...),)
@@ -175,13 +165,6 @@ end
     end
 
     return :($(elem...),)
-end
-
-for buffer in [2, 3, 4, 5, 6]
-    @eval begin
-        @inline  beta_sum(scheme::WENO{$buffer}, β₁, β₂)  = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-        @inline beta_loop(scheme::WENO{$buffer}, ψ, func) = @inbounds @fastmath $(metaprogrammed_beta_loop(buffer))
-    end
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
@@ -205,7 +188,7 @@ for side in (:left, :right)
         @eval begin
             @inline function $biased_weno_weights(ψ, scheme::WENO{$N}, args...) 
                 @inbounds begin
-                    β = beta_loop(scheme, ψ, $biased_β)
+                    β = @fastmath $(metaprogrammed_beta_loop(N))
                     τ = global_smoothness_indicator(Val($N), β)
                     α = @fastmath $(metaprogrammed_alpha_loop(N, side))
                     return α ./ sum(α)
@@ -216,12 +199,12 @@ for side in (:left, :right)
                 @inbounds begin
                     i, j, k = ijk
                 
-                    U  = $tangential_stencil_u(i, j, k, scheme, dir, u)
-                    βᵤ = beta_loop(scheme, U, $biased_β)
-                    U  = $tangential_stencil_v(i, j, k, scheme, dir, v)
-                    βᵥ = beta_loop(scheme, U, $biased_β)
+                    ψ  = $tangential_stencil_u(i, j, k, scheme, dir, u)
+                    β₁ = @fastmath $(metaprogrammed_beta_loop(N))
+                    ψ  = $tangential_stencil_v(i, j, k, scheme, dir, v)
+                    β₂ = @fastmath $(metaprogrammed_beta_loop(N))
                     
-                    β  = beta_sum(scheme, βᵤ, βᵥ)
+                    β  = @fastmath $(metaprogrammed_beta_sum(N))
                     τ  = global_smoothness_indicator(Val($N), β)
                     α  = @fastmath $(metaprogrammed_alpha_loop(N, side))
                     return α ./ sum(α)
