@@ -12,22 +12,40 @@ using ..TurbulenceClosures:
 
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
+# Base.@kwdef struct CATKEMixingLength{FT}
+#     Cˢ   :: FT = 0.814  # Surface distance coefficient for shear length scale
+#     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scaligm
+#     Cᶜc  :: FT = 10.0 #7.39   # Convective mixing length coefficient for tracers
+#     Cᶜe  :: FT = 7.35   # Convective mixing length coefficient for TKE
+#     Cᵉc  :: FT = 0.0 #1.29   # Convective penetration mixing length coefficient for tracers
+#     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
+#     Cˢᵖ  :: FT = 0.584  # Sheared convective plume coefficient
+#     Cˡᵒu :: FT = 0.759  # Shear mixing length coefficient for momentum at low Ri
+#     Cʰⁱu :: FT = 0.816  # Shear mixing length coefficient for momentum at high Ri
+#     Cˡᵒc :: FT = 0.874  # Shear mixing length coefficient for tracers at low Ri
+#     Cʰⁱc :: FT = 0.348  # Shear mixing length coefficient for tracers at high Ri
+#     Cˡᵒe :: FT = 5.88   # Shear mixing length coefficient for TKE at low Ri
+#     Cʰⁱe :: FT = 7.39   # Shear mixing length coefficient for TKE at high Ri
+#     CRiᵟ :: FT = 0.620  # Stability function width 
+#     CRi⁰ :: FT = 0.233  # Stability function lower Ri
+# end
+
 Base.@kwdef struct CATKEMixingLength{FT}
-    Cˢ   :: FT = 0.814  # Surface distance coefficient for shear length scale
-    Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scaligm
-    Cᶜc  :: FT = 10.0 #7.39   # Convective mixing length coefficient for tracers
-    Cᶜe  :: FT = 7.35   # Convective mixing length coefficient for TKE
-    Cᵉc  :: FT = 0.0 #1.29   # Convective penetration mixing length coefficient for tracers
-    Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
-    Cˢᵖ  :: FT = 0.584  # Sheared convective plume coefficient
-    Cˡᵒu :: FT = 0.759  # Shear mixing length coefficient for momentum at low Ri
-    Cʰⁱu :: FT = 0.816  # Shear mixing length coefficient for momentum at high Ri
-    Cˡᵒc :: FT = 0.874  # Shear mixing length coefficient for tracers at low Ri
-    Cʰⁱc :: FT = 0.348  # Shear mixing length coefficient for tracers at high Ri
-    Cˡᵒe :: FT = 5.88   # Shear mixing length coefficient for TKE at low Ri
-    Cʰⁱe :: FT = 7.39   # Shear mixing length coefficient for TKE at high Ri
-    CRiᵟ :: FT = 0.620  # Stability function width 
-    CRi⁰ :: FT = 0.233  # Stability function lower Ri
+    Cˢ   :: FT = 1.0 # Surface distance coefficient for shear length scale
+    Cᵇ   :: FT = Inf # Bottom distance coefficient for shear length scaligm
+    Cᶜc  :: FT = 0.0 # Convective mixing length coefficient for tracers
+    Cᶜe  :: FT = 0.0 # Convective mixing length coefficient for TKE
+    Cᵉc  :: FT = 0.0 # Convective penetration mixing length coefficient for tracers
+    Cᵉe  :: FT = 0.0 # Convective penetration mixing length coefficient for TKE
+    Cˢᵖ  :: FT = 0.0 # Sheared convective plume coefficient
+    Cˡᵒu :: FT = 1.0 # Shear mixing length coefficient for momentum at low Ri
+    Cʰⁱu :: FT = 1.0 # Shear mixing length coefficient for momentum at high Ri
+    Cˡᵒc :: FT = 1.0 # Shear mixing length coefficient for tracers at low Ri
+    Cʰⁱc :: FT = 1.0 # Shear mixing length coefficient for tracers at high Ri
+    Cˡᵒe :: FT = 1.0 # Shear mixing length coefficient for TKE at low Ri
+    Cʰⁱe :: FT = 1.0 # Shear mixing length coefficient for TKE at high Ri
+    CRiᵟ :: FT = 0.0 # Stability function width 
+    CRi⁰ :: FT = 0.0 # Stability function lower Ri
 end
 
 #####

@@ -187,7 +187,6 @@ function instantiated_location end
 function tupleit end
 function fields end
 function prognostic_fields end
-function tracer_tendency_kernel_function end
 
 #####
 ##### Include all the submodules

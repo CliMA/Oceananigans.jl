@@ -46,3 +46,4 @@ end
 
     return KernelParameters((Sx, Sy), (Ox, Oy))
 end
+

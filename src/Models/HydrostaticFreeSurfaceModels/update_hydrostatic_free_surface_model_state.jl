@@ -61,14 +61,17 @@ function mask_immersed_model_fields!(model, grid)
             mask_immersed_field!(field)
         end
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask = inactive_node)
+
+    Nz = size(grid, 3)
+    mask_immersed_field_xy!(η, k=Nz+1, mask = inactive_node)
 
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
-                                                                  p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                  κ_parameters = tuple(:xyz))
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel;
+                              w_parameters = tuple(w_kernel_parameters(model.grid)),
+                              p_parameters = tuple(p_kernel_parameters(model.grid)),
+                              κ_parameters = tuple(:xyz))
 
     grid = model.grid
     closure = model.closure
@@ -81,5 +84,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
                                      grid, model.buoyancy, model.tracers; 
                                      parameters = ppar)
     end
+
     return nothing
 end
+

@@ -1,6 +1,3 @@
-import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
-
 using Oceananigans.Utils: work_layout, KernelParameters
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
@@ -8,8 +5,6 @@ using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCall
 using Oceananigans.Biogeochemistry: update_tendencies!
 
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
-
 import Oceananigans.Models: complete_communication_and_compute_boundary!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
@@ -186,16 +181,16 @@ function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, veloci
     args = Tuple(args)
 
     # Velocity fields
-    for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
+    for f in (:u, :v)
+        apply_flux_bcs!(Gⁿ[f], velocities[f], arch, args)
     end
 
     # Free surface
     apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
 
     # Tracer fields
-    for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
+    for f in propertynames(tracers)
+        apply_flux_bcs!(Gⁿ[f], tracers[f], arch, args)
     end
 
     return nothing

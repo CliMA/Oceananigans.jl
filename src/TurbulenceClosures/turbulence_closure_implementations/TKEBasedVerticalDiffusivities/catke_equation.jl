@@ -3,6 +3,7 @@ import Oceananigans.TurbulenceClosures: closure_source_term
 @inline function closure_source_term(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, ::Val{:e},
                                      velocities, tracers, buoyancy)
 
+    closure = getclosure(i, j, closure)
     P  = shear_production(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
     wb =    buoyancy_flux(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
     ϵ  =      dissipation(i, j, k, grid, closure, diffusivity_fields, velocities, tracers, buoyancy)
@@ -16,14 +17,24 @@ end
 Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) scales associated with
 isotropic turbulence and diapycnal mixing.
 """
+# Base.@kwdef struct CATKEEquation{FT}
+#     CˡᵒD :: FT = 2.46  # Dissipation length scale shear coefficient for low Ri
+#     CʰⁱD :: FT = 0.983 # Dissipation length scale shear coefficient for high Ri
+#     CᶜD  :: FT = 2.75  # Dissipation length scale convecting layer coefficient
+#     CᵉD  :: FT = 0.0   # Dissipation length scale penetration layer coefficient
+#     Cᵂu★ :: FT = 0.059 # Surface shear-driven TKE flux coefficient
+#     CᵂwΔ :: FT = 0.572 # Surface convective TKE flux coefficient
+#     Cᵂϵ  :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
+# end
+
 Base.@kwdef struct CATKEEquation{FT}
-    CˡᵒD :: FT = 2.46  # Dissipation length scale shear coefficient for low Ri
-    CʰⁱD :: FT = 0.983 # Dissipation length scale shear coefficient for high Ri
-    CᶜD  :: FT = 2.75  # Dissipation length scale convecting layer coefficient
-    CᵉD  :: FT = 0.0   # Dissipation length scale penetration layer coefficient
-    Cᵂu★ :: FT = 0.059 # Surface shear-driven TKE flux coefficient
-    CᵂwΔ :: FT = 0.572 # Surface convective TKE flux coefficient
-    Cᵂϵ  :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
+    CˡᵒD :: FT = 1.0 # Dissipation length scale shear coefficient for low Ri
+    CʰⁱD :: FT = 1.0 # Dissipation length scale shear coefficient for high Ri
+    CᶜD  :: FT = 0.0 # Dissipation length scale convecting layer coefficient
+    CᵉD  :: FT = 0.0 # Dissipation length scale penetration layer coefficient
+    Cᵂu★ :: FT = 0.0 # Surface shear-driven TKE flux coefficient
+    CᵂwΔ :: FT = 0.0 # Surface convective TKE flux coefficient
+    Cᵂϵ  :: FT = 0.0 # Dissipative near-bottom TKE flux coefficient
 end
 
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, diffusivity_fields, velocities, tracers, buoyancy)

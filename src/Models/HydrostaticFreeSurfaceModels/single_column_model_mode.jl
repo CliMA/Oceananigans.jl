@@ -37,7 +37,7 @@ function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid,
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZeroField()
-    return (u=u, v=v, w=w)
+    return (; u, v, w)
 end
 
 validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
@@ -61,16 +61,11 @@ compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFS
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies=true)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-
-    # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
-
-    # Calculate diffusivities
     compute_diffusivities!(model.diffusivity_fields, model.closure, model)
-
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     for callback in callbacks
@@ -78,6 +73,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
+    compute_tendencies && compute_tendencies!(model, callbacks)
 
     return nothing
 end
@@ -116,22 +112,6 @@ validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 end
 
 #####
-##### CATKEVerticalDiffusivity helpers
-#####
-
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
-    hydrostatic_turbulent_kinetic_energy_tendency
-
-@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
-                                                               val_tracer_index::Val{tracer_index},
-                                                               advection,
-                                                               closure_array::CATKEVDArray, args...) where tracer_index
-
-    @inbounds closure = closure_array[i, j]
-    return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)
-end
-
-#####
 ##### Arrays of Coriolises
 #####
 
@@ -146,3 +126,4 @@ end
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end
+

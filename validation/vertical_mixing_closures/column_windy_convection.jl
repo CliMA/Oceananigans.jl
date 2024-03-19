@@ -10,6 +10,8 @@ using Oceananigans.TurbulenceClosures:
     ConvectiveAdjustmentVerticalDiffusivity,
     ExplicitTimeDiscretization
 
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEMixingLength
+
 # Parameters
 Δz = 4          # Vertical resolution
 Lz = 256        # Extent of vertical domain
@@ -23,7 +25,9 @@ stop_time = 2days
 using JLD2
 @load "optimal_closure.jld2"
 
-catke = closure #CATKEVerticalDiffusivity()
+#catke = closure #CATKEVerticalDiffusivity()
+mixing_length = CATKEMixingLength(Cᶜc=100.0, Cˢᵖ=0.1)
+catke = CATKEVerticalDiffusivity(; mixing_length)
 tke_dissipation = TKEDissipationVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
@@ -65,10 +69,17 @@ for closure in closures_to_run
 
     closurename = string(nameof(typeof(closure)))
 
-    diffusivities = (κu = model.diffusivity_fields.κu,
-                     κc = model.diffusivity_fields.κc)
+    κu = model.diffusivity_fields.κu
+    κc = model.diffusivity_fields.κc
 
-    outputs = merge(model.velocities, model.tracers, diffusivities)
+    u, v, w = model.velocities
+    b = model.tracers.b
+    uw = κu * ∂z(u)
+    vw = κu * ∂z(v)
+    wb = κc * ∂z(b)
+
+    auxiliaries = (; κu, κc, uw, vw, wb)
+    outputs = merge(model.velocities, model.tracers, auxiliaries)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           schedule = TimeInterval(20minutes),
@@ -77,6 +88,7 @@ for closure in closures_to_run
                                                           overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
+                                 ", extrema(e): ", minimum(model.tracers.e), ", ", maximum(model.tracers.e),
                                  ", max(b): ", maximum(model.tracers.b))
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
@@ -95,6 +107,7 @@ v_ts = []
 e_ts = []
 κc_ts = []
 κu_ts = []
+wb_ts = []
 
 for closure in closures_to_run
     closurename = string(nameof(typeof(closure)))
@@ -112,6 +125,7 @@ for closure in closures_to_run
 
     push!(κc_ts, FieldTimeSeries(filepath, "κc"))
     push!(κu_ts, FieldTimeSeries(filepath, "κu"))
+    push!(wb_ts, FieldTimeSeries(filepath, "wb"))
 end
 
 b1 = first(b_ts)
@@ -123,7 +137,7 @@ zc = znodes(b1)
 zf = znodes(κ1)
 Nt = length(b1.times)
 
-fig = Figure(size=(1800, 600))
+fig = Figure(size=(1600, 600))
 
 slider = Slider(fig[2, 1:4], range=1:Nt, startvalue=1)
 n = slider.value
@@ -137,11 +151,13 @@ axb = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z (m)")
 axu = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z (m)")
 axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)")
 axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
+axwb = Axis(fig[1, 5], xlabel=diffusivities_label, ylabel="z (m)")
 
 xlims!(axb, -grid.Lz * N², 0)
 xlims!(axu, -0.1, 0.1)
 xlims!(axe, -1e-4, 2e-4)
 xlims!(axκ, -1e-1, 5e0)
+xlims!(axwb, -Jᵇ, Jᵇ)
 
 colors = [:black, :blue, :red, :orange]
 
@@ -152,6 +168,7 @@ for (i, closure) in enumerate(closures_to_run)
     en  = @lift interior(e_ts[i][$n], 1, 1, :)
     κcn = @lift interior(κc_ts[i][$n], 1, 1, :)
     κun = @lift interior(κu_ts[i][$n], 1, 1, :)
+    wbn = @lift interior(wb_ts[i][$n], 1, 1, :)
     
     closurename = string(nameof(typeof(closure)))
 
@@ -161,12 +178,14 @@ for (i, closure) in enumerate(closures_to_run)
     lines!(axe, en,  zc, label="e, " * closurename, color=colors[i])
     lines!(axκ, κcn, zf, label="κc, " * closurename, color=colors[i])
     lines!(axκ, κun, zf, label="κu, " * closurename, linestyle=:dash, color=colors[i])
+    lines!(axwb, wbn, zf, label="wb, " * closurename, color=colors[i])
 end
 
 axislegend(axb, position=:lb)
 axislegend(axu, position=:rb)
 axislegend(axe, position=:rb)
 axislegend(axκ, position=:rb)
+axislegend(axwb, position=:rb)
 
 display(fig)
 
