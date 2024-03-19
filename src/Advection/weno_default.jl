@@ -30,6 +30,7 @@
 end
 
 for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
+    biased_interpolate_new = Symbol(:new_inner_, side, :_biased_interpolate_, dir)
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_, dir)
     biased_β           = Symbol(side, :_biased_β)
     biased_p           = Symbol(side, :_biased_p)
@@ -159,6 +160,85 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             w₂ += α
 
             τ = abs(τ)
+
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+        end
+
+        @inline function $biased_interpolate_new(i, j, k, grid, 
+                                            scheme::WENO{5, FT, XT, YT, ZT},
+                                            ψ, idx, loc, args...) where {FT, XT, YT, ZT}
+        
+            # All stencils
+            ψ₀ = @inbounds ψ[i - 1, j, k]
+            ψ₁ = @inbounds ψ[i,     j, k]
+            ψ₂ = @inbounds ψ[i + 1, j, k]
+            ψ₃ = @inbounds ψ[i + 2, j, k]
+            ψ₄ = @inbounds ψ[i + 3, j, k]
+
+            β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 1, scheme, $val, idx, loc)
+            τ  = β
+            ψ̂₁ = ψ̅ * C
+            w₁ = C
+            ψ̂₂ = ψ̅ * α  
+            w₂ = α
+
+            ψ₀ = @inbounds ψ[i - 2, j, k]
+            ψ₁ = ψ₀
+            ψ₂ = ψ₁
+            ψ₃ = ψ₂
+            ψ₄ = ψ₃
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 2, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(1))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            ψ₀ = @inbounds ψ[i - 3, j, k]
+            ψ₁ = ψ₀
+            ψ₂ = ψ₁
+            ψ₃ = ψ₂
+            ψ₄ = ψ₃
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 3, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(2))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            ψ₀ = @inbounds ψ[i - 4, j, k]
+            ψ₁ = ψ₀
+            ψ₂ = ψ₁
+            ψ₃ = ψ₂
+            ψ₄ = ψ₃
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 4, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(3))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            ψ₀ = @inbounds ψ[i - 5, j, k]
+            ψ₁ = ψ₀
+            ψ₂ = ψ₁
+            ψ₃ = ψ₂
+            ψ₄ = ψ₃
+
+            # Stencil S₁
+            β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 5, scheme, $val, idx, loc)
+            τ  += add_global_smoothness(β, Val(5), Val(4))
+            ψ̂₁ += ψ̅ * C
+            w₁ += C
+            ψ̂₂ += ψ̅ * α  
+            w₂ += α
+
+            τ = τ * τ
 
             return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
