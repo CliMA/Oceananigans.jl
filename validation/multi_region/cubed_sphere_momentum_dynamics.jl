@@ -36,12 +36,12 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 # to manually determine the streamfunction within halo regions. This allows us
 # to avoid having to fill_halo_regions correctly for a Face, Face, Center field.
 for region in 1:number_of_regions(grid)
-    i₀ = -3
-    i⁺ = Nx + 4
-    j₀ = -3
-    j⁺ = Ny + 4
-    k₀ = -3
-    k⁺ = Nz + 4
+    i₀ = 1 - grid.Hx
+    i⁺ = Nx + grid.Hx
+    j₀ = 1 - grid.Hy
+    j⁺ = Ny + grid.Hy
+    k₀ = 1 - grid.Hz
+    k⁺ = Nz + grid.Hy
 
     for k in k₀:k⁺, j=j₀:j⁺, i=i₀:i⁺
         λ = λnode(i, j, k, grid[region], Face(), Face(), Center())

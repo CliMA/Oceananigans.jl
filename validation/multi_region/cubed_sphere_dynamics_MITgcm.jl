@@ -291,29 +291,29 @@ if compare_old_and_new_code_metrics
     if overwrite_grid_metrics_from_old_code
         if old_code_metrics_JMC
             for region in 1:6
-                grid[region].λᶜᶜᵃ[:,:]  =  old_λᶜᶜᵃ_parent[:, :, region]
-                grid[region].λᶠᶠᵃ[:,:]  =  old_λᶠᶠᵃ_parent[:, :, region]
-                grid[region].φᶜᶜᵃ[:,:]  =  old_φᶜᶜᵃ_parent[:, :, region]
-                grid[region].φᶠᶠᵃ[:,:]  =  old_φᶠᶠᵃ_parent[:, :, region]
-                grid[region].Δxᶠᶜᵃ[:,:] = old_Δxᶠᶜᵃ_parent[:, :, region]
-                grid[region].Δxᶜᶠᵃ[:,:] = old_Δxᶜᶠᵃ_parent[:, :, region]
-                grid[region].Δyᶠᶜᵃ[:,:] = old_Δyᶠᶜᵃ_parent[:, :, region]
-                grid[region].Δyᶜᶠᵃ[:,:] = old_Δyᶜᶠᵃ_parent[:, :, region]
-                grid[region].Azᶜᶜᵃ[:,:] = old_Azᶜᶜᵃ_parent[:, :, region]
-                grid[region].Azᶠᶜᵃ[:,:] = old_Azᶠᶜᵃ_parent[:, :, region]
-                grid[region].Azᶜᶠᵃ[:,:] = old_Azᶜᶠᵃ_parent[:, :, region]
-                grid[region].Azᶠᶠᵃ[:,:] = old_Azᶠᶠᵃ_parent[:, :, region]
+                grid[region].λᶜᶜᵃ[:, :]  =  old_λᶜᶜᵃ_parent[:, :, region]
+                grid[region].λᶠᶠᵃ[:, :]  =  old_λᶠᶠᵃ_parent[:, :, region]
+                grid[region].φᶜᶜᵃ[:, :]  =  old_φᶜᶜᵃ_parent[:, :, region]
+                grid[region].φᶠᶠᵃ[:, :]  =  old_φᶠᶠᵃ_parent[:, :, region]
+                grid[region].Δxᶠᶜᵃ[:, :] = old_Δxᶠᶜᵃ_parent[:, :, region]
+                grid[region].Δxᶜᶠᵃ[:, :] = old_Δxᶜᶠᵃ_parent[:, :, region]
+                grid[region].Δyᶠᶜᵃ[:, :] = old_Δyᶠᶜᵃ_parent[:, :, region]
+                grid[region].Δyᶜᶠᵃ[:, :] = old_Δyᶜᶠᵃ_parent[:, :, region]
+                grid[region].Azᶜᶜᵃ[:, :] = old_Azᶜᶜᵃ_parent[:, :, region]
+                grid[region].Azᶠᶜᵃ[:, :] = old_Azᶠᶜᵃ_parent[:, :, region]
+                grid[region].Azᶜᶠᵃ[:, :] = old_Azᶜᶠᵃ_parent[:, :, region]
+                grid[region].Azᶠᶠᵃ[:, :] = old_Azᶠᶠᵃ_parent[:, :, region]
             end
         else
             for region in 1:6
-                grid[region].Δxᶠᶜᵃ[:,:] = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Δxᶜᶠᵃ[:,:] = old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Δyᶠᶜᵃ[:,:] = old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Δyᶜᶠᵃ[:,:] = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Azᶜᶜᵃ[:,:] = old_file["Azᶜᶜᵃ/" * string(region)][:, :]
-                grid[region].Azᶠᶜᵃ[:,:] = old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Azᶜᶠᵃ[:,:] = old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Azᶠᶠᵃ[:,:] = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
+                grid[region].Δxᶠᶜᵃ[:, :] = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+                grid[region].Δxᶜᶠᵃ[:, :] = old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+                grid[region].Δyᶠᶜᵃ[:, :] = old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+                grid[region].Δyᶜᶠᵃ[:, :] = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+                grid[region].Azᶜᶜᵃ[:, :] = old_file["Azᶜᶜᵃ/" * string(region)][:, :]
+                grid[region].Azᶠᶜᵃ[:, :] = old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
+                grid[region].Azᶜᶠᵃ[:, :] = old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
+                grid[region].Azᶠᶠᵃ[:, :] = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
             end
         end
     end
@@ -475,8 +475,8 @@ fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 for region in 1:number_of_regions(grid)
 
     for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
-        model.velocities.u[region][i,j,k] = u[region][i, j, k]
-        model.velocities.v[region][i,j,k] = v[region][i, j, k]
+        model.velocities.u[region][i, j, k] = u[region][i, j, k]
+        model.velocities.v[region][i, j, k] = v[region][i, j, k]
     end
 
     for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
