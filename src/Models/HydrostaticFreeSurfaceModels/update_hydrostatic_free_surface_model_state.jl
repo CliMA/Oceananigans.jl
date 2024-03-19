@@ -78,6 +78,66 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
     return nothing
 end
 
+function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Face, <:Face})
+    grid = field.grid
+
+    if !(grid isa ConformalCubedSphereGrid)
+        return
+    end
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    #- will not work if (Nx,Hx) and (Ny,Hy) are not equal
+    Nc = Nx ; Hc = Hx
+
+    #-- one pass: only use interior-point values:
+    for region in 1:6
+
+        if mod(region,2) == 1
+            #- odd face number (1,3,5):
+            region_E = mod(region + 0, 6) + 1
+            region_N = mod(region + 1, 6) + 1
+            region_W = mod(region + 3, 6) + 1
+            region_S = mod(region + 4, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field:
+                field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
+                field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                field[region][1-Hc:0, 1, k]          .=         field[region_S][1, Nc+1-Hc:Nc, k]
+                #- N + S Halo for field:
+                field[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+                if Hc > 1
+                    field[region][1, Nc+2:Nc+Hc, k]   = reverse(field[region_W][1, Nc+2-Hc:Nc, k])
+                end
+                field[region][1:Nc, 1-Hc:0, k]       .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                field[region][Nc+1, 1-Hc:0, k]        = reverse(field[region_E][2:Hc+1, 1, k])
+            end
+        else
+            #- even face number (2,4,6):
+            region_E = mod(region + 1, 6) + 1
+            region_N = mod(region + 0, 6) + 1
+            region_W = mod(region + 4, 6) + 1
+            region_S = mod(region + 3, 6) + 1
+            for k in -Hz+1:Nz+Hz
+                #- E + W Halo for field:
+                field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
+                if Hc > 1
+                    field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
+                end
+                field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                #- N + S Halo for field:
+                field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
+                field[region][Nc+1, Nc+1:Nc+Hc, k]    =         field[region_E][1, 1:Hc, k]
+                field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+                field[region][1, 1-Hc:0, k]           =         field[region_W][Nc+1-Hc:Nc, 1, k]
+            end
+        end
+
+    end
+
+    return nothing
+end
+
 function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Center, <:Center}, ::Tuple{<:Center, <:Center}, signed=true)
     field_1, field_2 = fields
     grid = field_1.grid

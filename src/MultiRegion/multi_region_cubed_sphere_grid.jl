@@ -307,35 +307,61 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    fields_1 = (:λᶠᶠᵃ, :Δxᶠᶠᵃ, :Azᶠᶠᵃ)
-    fields_2 = (:φᶠᶠᵃ, :Δyᶠᶠᵃ, :Azᶠᶠᵃ)
+    fields = (:λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
+    LXs    = (:Face, :Face, :Face)
+    LYs    = (:Face, :Face, :Face)
 
-    for (field_1, field_2) in zip(fields_1, fields_2)
+    for (field, LX, LY) in zip(fields, LXs, LYs)
         expr = quote
-            $(Symbol(field_1)) = Field{Face, Face, Nothing}($(grid))
-            $(Symbol(field_2)) = Field{Face, Face, Nothing}($(grid))
+            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
-                    getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
+                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
                 end
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Face()), (Face(), Face()), false)
+                fill_cubed_sphere_halo_regions!($(Symbol(field)), (Face(), Face()))
             end
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
-                    getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
                 end
             end
         end # quote
 
         eval(expr)
     end
+
+    field_1 = :Δxᶠᶠᵃ
+    field_2 = :Δyᶠᶠᵃ
+
+    expr = quote
+        $(Symbol(field_1)) = Field{Face, Face, Nothing}($(grid))
+        $(Symbol(field_2)) = Field{Face, Face, Nothing}($(grid))
+
+        CUDA.@allowscalar begin
+            for region in 1:number_of_regions($(grid))
+                getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
+            end
+        end
+
+        if $(horizontal_topology) == FullyConnected
+            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Face()), (Face(), Face()), false)
+        end
+
+        CUDA.@allowscalar begin
+            for region in 1:number_of_regions($(grid))
+                getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+            end
+        end
+    end # quote
+
+    eval(expr)
 
     CUDA.@allowscalar begin
 
