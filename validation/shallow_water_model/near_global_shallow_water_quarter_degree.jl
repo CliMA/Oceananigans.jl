@@ -88,7 +88,7 @@ end
 τʸ = on_architecture(arch, τʸ)
 
 bat = file_bathymetry["bathymetry"]
-boundary = Int.(bat .> 0)
+boundary = Int.(bat .>= 0)
 bat[ bat .> 0 ] .= 0 
 
 # A spherical domain
@@ -111,7 +111,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
-using Oceananigans.ImmersedBoundaries: inactive_node
+using Oceananigans.ImmersedBoundaries: inactive_node, c, IBG
 
 # Custom immersed interpolators
 @inline ı(i, j, k, grid, f::Function, args...) = f(i, j, k, grid, args...)
@@ -212,7 +212,7 @@ function progress(sim)
     u = sim.model.solution.u
     h = sim.model.solution.h
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e m, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration, maximum(abs, u), minimum(h),
                     prettytime(wall_time))
