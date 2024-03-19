@@ -1,5 +1,5 @@
-@inline getvalue(ψ, i, j, k, args...) = @inbounds ψ[i, j, k]
-@inline getvalue(ψ::Function, i, j, k, args...) = ψ(i, j, k, args...)
+@inline getvalue(ψ, i, j, k, grid, args...) = @inbounds ψ[i, j, k]
+@inline getvalue(ψ::Function, i, j, k, grid, args...) = ψ(i, j, k, grid, args...)
 
 #####
 ##### STENCILS IN X
@@ -179,11 +179,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 2, scheme, $val, idx, loc)
@@ -193,11 +193,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i - 2 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i - 2 - $add, j, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 3, scheme, $val, idx, loc)
@@ -207,11 +207,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i - 3 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i - 3 - $add, j, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 4, scheme, $val, idx, loc)
@@ -221,11 +221,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i - 4 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i - 4 - $add, j, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 5, scheme, $val, idx, loc)
@@ -280,8 +280,8 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 2, scheme, $val, idx, loc)
@@ -312,9 +312,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 2, scheme, $val, idx, loc)
@@ -324,9 +324,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 3, scheme, $val, idx, loc)
@@ -358,10 +358,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 2, scheme, $val, idx, loc)
@@ -371,10 +371,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 3, scheme, $val, idx, loc)
@@ -384,10 +384,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 4, scheme, $val, idx, loc)
@@ -420,11 +420,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 2, scheme, $val, idx, loc)
@@ -434,11 +434,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 3, scheme, $val, idx, loc)
@@ -448,11 +448,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 4, scheme, $val, idx, loc)
@@ -462,11 +462,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j - 4 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j - 4 - $add, k, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 5, scheme, $val, idx, loc)
@@ -521,8 +521,8 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 2, scheme, $val, idx, loc)
@@ -553,9 +553,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 2, scheme, $val, idx, loc)
@@ -565,9 +565,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 3, scheme, $val, idx, loc)
@@ -599,10 +599,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 2, scheme, $val, idx, loc)
@@ -612,10 +612,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 3, scheme, $val, idx, loc)
@@ -625,10 +625,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
+            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 4, scheme, $val, idx, loc)
@@ -661,11 +661,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 2, scheme, $val, idx, loc)
@@ -675,11 +675,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 3, scheme, $val, idx, loc)
@@ -689,11 +689,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 4, scheme, $val, idx, loc)
@@ -703,11 +703,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = getvalue(ψ, i, j, k - 4 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
+            ψ₀ = getvalue(ψ, i, j, k - 4 - $add, grid, args...)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 5, scheme, $val, idx, loc)

@@ -30,15 +30,15 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
+            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
             
-            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
             u₁ = u₀
+            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
             
-            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
             v₁ = v₀
-
+            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(1))
@@ -76,18 +76,18 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
-
-            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
-
-            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
-
+            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(1))
@@ -96,18 +96,18 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
-
-            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
-
-            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
-
+            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(2))
@@ -148,21 +148,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(4), Val(1))
@@ -171,21 +171,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(4), Val(2))
@@ -194,21 +194,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 3 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i - 3 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 3 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i - 3 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 3 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i - 3 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 4, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(4), Val(3))
@@ -252,24 +252,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 1 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i - 1 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(1))
@@ -278,24 +278,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 2 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 2 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i - 2 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(2))
@@ -304,24 +304,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 3 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i - 3 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 3 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i - 3 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 3 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i - 3 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 4, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(3))
@@ -330,24 +330,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i - 4 - $add, j, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i - 4 - $add, j, k, grid, u)
+            ψ₀ = ψ(i - 4 - $add, j, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i - 4 - $add, j, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i - 4 - $add, j, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i - 4 - $add, j, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 5, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(4))
@@ -395,15 +395,15 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             ψ₁ = ψ₀
+            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             
-            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
             u₁ = u₀
+            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
             
-            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
             v₁ = v₀
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(1))
@@ -441,18 +441,18 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(1))
@@ -461,18 +461,18 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(2))
@@ -513,21 +513,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(4), Val(1))
@@ -536,21 +536,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(2))
@@ -559,21 +559,21 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 4, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(3), Val(2))
@@ -581,7 +581,6 @@ for (side, add) in zip([:left, :right], (-1, 0))
             w₁ += C
             ψ̂₂ += ψ̅ * α  
             w₂ += α
-
 
             τ = τ^2
 
@@ -618,24 +617,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 2, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(1))
@@ -644,24 +643,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 3, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(2))
@@ -670,24 +669,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 4, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(3))
@@ -696,24 +695,24 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 4 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 4 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 4 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 4 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 4 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 4 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 5, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(5), Val(4))
@@ -760,26 +759,26 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
             ψ₅ = ψ₄
+            ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
 
-            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
             u₅ = u₄
+            u₀ = ℑyᵃᶠᵃ(i, j - 1 - $add, k, grid, u)
 
-            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
             v₅ = v₄
+            v₀ = ℑxᶠᵃᵃ(i, j - 1 - $add, k, grid, v)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 2, scheme, $val, idx, loc)
@@ -789,26 +788,26 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
             ψ₅ = ψ₄
+            ψ₀ = ψ(i, j - 2 - $add, k, grid, u, v)
 
-            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
             u₅ = u₄
+            u₀ = ℑyᵃᶠᵃ(i, j - 2 - $add, k, grid, u)
 
-            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
             v₅ = v₄
+            v₀ = ℑxᶠᵃᵃ(i, j - 2 - $add, k, grid, v)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 3, scheme, $val, idx, loc)
@@ -818,26 +817,26 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
             ψ₅ = ψ₄
+            ψ₀ = ψ(i, j - 3 - $add, k, grid, u, v)
 
-            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
             u₅ = u₄
+            u₀ = ℑyᵃᶠᵃ(i, j - 3 - $add, k, grid, u)
 
-            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
             v₅ = v₄
+            v₀ = ℑxᶠᵃᵃ(i, j - 3 - $add, k, grid, v)
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 4, scheme, $val, idx, loc)
@@ -847,27 +846,27 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 4 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
             ψ₅ = ψ₄
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 4 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 4 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
             u₅ = u₄
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 4 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 4 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
             v₅ = v₄
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 4 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 5, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(6), Val(4))
@@ -876,27 +875,27 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = ψ(i, j - 5 - $add, k, grid, u, v)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
             ψ₄ = ψ₃
             ψ₅ = ψ₄
-
-            u₀ = ℑyᵃᶠᵃ(i, j - 5 - $add, k, grid, u)
+            ψ₀ = ψ(i, j - 5 - $add, k, grid, u, v)
+            
             u₁ = u₀
             u₂ = u₁
             u₃ = u₂
             u₄ = u₃
             u₅ = u₄
-
-            v₀ = ℑxᶠᵃᵃ(i, j - 5 - $add, k, grid, v)
+            u₀ = ℑyᵃᶠᵃ(i, j - 5 - $add, k, grid, u)
+            
             v₁ = v₀
             v₂ = v₁
             v₃ = v₂
             v₄ = v₃
             v₅ = v₄
-
+            v₀ = ℑxᶠᵃᵃ(i, j - 5 - $add, k, grid, v)
+            
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 6, scheme, $val, idx, loc)
             τ  += add_global_smoothness(β, Val(6), Val(5))
