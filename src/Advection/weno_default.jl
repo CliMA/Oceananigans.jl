@@ -1,33 +1,3 @@
-@inline function ψ_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
-    N = buffer * 2
-    order = shift == :symmetric ? N : N - 1
-    if shift != :symmetric
-        N = N .- 1
-    end
-    rng = 1:N
-    if shift == :right
-        rng = rng .+ 1
-    end
-    stencil_full = Vector(undef, N)
-    coeff = Symbol(:coeff, order, :_, shift)
-    for (idx, n) in enumerate(rng)
-        c = n - buffer - 1
-        if func
-            stencil_full[idx] = dir == :x ?
-                                :(ψ(i + $c, j, k, grid, args...)) :
-                                dir == :y ?
-                                :(ψ(i, j + $c, k, grid, args...)) :
-                                :(ψ(i, j, k + $c, grid, args...))
-        else
-            stencil_full[idx] = dir == :x ?
-                                :(ψ[i + $c, j, k]) :
-                                dir == :y ?
-                                :(ψ[i, j + $c, k]) :
-                                :(ψ[i, j, k + $c])
-        end
-    end
-    return :($(stencil_full...),)
-end
 
 for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [1, 2, 3], [:XT, :YT, :ZT])
     biased_interpolate_new = Symbol(:new_inner_, side, :_biased_interpolate_, dir)
