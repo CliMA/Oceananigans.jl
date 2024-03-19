@@ -134,7 +134,7 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = 1 # :(beta_value(ψ[$stencil], Val($buffer), Val($(stencil-1))))
+        elem[stencil] = :(beta_value(ψ[$stencil], Val($buffer), Val($(stencil-1))))
     end
 
     return :($(elem...),)
