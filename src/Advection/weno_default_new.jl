@@ -50,7 +50,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -95,7 +95,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -156,7 +156,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -235,7 +235,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
     end
 end
@@ -291,7 +291,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -336,7 +336,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -397,7 +397,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -476,7 +476,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
     end
 end
@@ -532,7 +532,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -577,7 +577,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -638,7 +638,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -717,7 +717,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
 
             τ = τ * τ
 
-            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
         end
     end
 end
