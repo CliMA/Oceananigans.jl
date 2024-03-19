@@ -64,8 +64,8 @@ end
     δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
     δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
     
-    ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
-    ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+    ∂Kᴸ = (δKuᴸ + δKvˢ) * Δxᶠᶜᶜ(i, j, k, grid)
+    ∂Kᴿ = (δKuᴿ + δKvˢ) * Δxᶠᶜᶜ(i, j, k, grid)
 
     return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
 end
@@ -81,8 +81,8 @@ end
     δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
     δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
     
-    ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
-    ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
+    ∂Kᴸ = (δKvᴸ + δKuˢ) * Δyᶜᶠᶜ(i, j, k, grid) 
+    ∂Kᴿ = (δKvᴿ + δKuˢ) * Δyᶜᶠᶜ(i, j, k, grid)
 
     return ifelse(v̂ > 0, ∂Kᴸ, ∂Kᴿ)
 end

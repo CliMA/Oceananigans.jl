@@ -6,7 +6,7 @@
 
  The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
  """
-@inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
+@inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) * Azᶠᶠᶜ(i, j, k, grid)
 
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.

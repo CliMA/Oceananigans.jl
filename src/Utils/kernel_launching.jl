@@ -309,3 +309,19 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
+
+using KernelAbstractions: Kernel, backend, mkcontext, workgroupsize, launch_config, workgroupsize
+using CUDA: launch_configuration, registers, @cuda, CUDABackend
+
+function retrieve_kernel(obj::Kernel{CUDABackend}, args...; ndrange=nothing, workgroupsize=nothing)
+    back = backend(obj)
+
+    ndrange, workgroupsize, iterspace, dynamic = launch_config(obj, ndrange, workgroupsize)
+    # this might not be the final context, since we may tune the workgroupsize
+    ctx = mkcontext(obj, ndrange, iterspace)
+    maxthreads = nothing
+
+    kernel = @cuda launch=false always_inline=back.always_inline maxthreads=maxthreads obj.f(ctx, args...)
+
+    return kernel
+end
