@@ -113,4 +113,3 @@ end
     δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Lz * Δt * Az)
 end
-

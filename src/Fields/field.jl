@@ -420,12 +420,12 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 
 on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
     Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
-                      on_architecture(arch, data),
-                      on_architecture(arch, bcs),
-                      on_architecture(arch, indices),
-                      on_architecture(arch, op),
-                      on_architecture(arch, status),
-                      on_architecture(arch, buffers))
+                      on_architecture(arch, field.data),
+                      on_architecture(arch, field.boundary_conditions),
+                      on_architecture(arch, field.indices),
+                      on_architecture(arch, field.operand),
+                      on_architecture(arch, field.status),
+                      on_architecture(arch, field.boundary_buffers))
 
 #####
 ##### Interface for field computations
