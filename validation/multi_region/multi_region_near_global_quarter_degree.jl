@@ -289,10 +289,10 @@ function progress(sim)
 
     @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u), #maximum(abs, η),
+                    sim.model.clock.iteration, maximum(abs, u),
                     prettytime(wall_time))
 
-    start_time[1] = time_ns()
+    start_time[1] = time_ns() 
 
     return nothing
 end
@@ -304,13 +304,18 @@ T = model.tracers.T
 S = model.tracers.S
 η = model.free_surface.η
 
-output_fields = (; u, v, T, S, η)
-save_interval = 5days
+output_fields = (; u, v, T, S)#, η)   #FJP: how outpout η?
+save_interval = 1days
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1year),
-                                                        prefix = output_prefix * "_checkpoint",
-                                                        overwrite_existing = true)
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, output_fields,
+                                                            schedule = TimeInterval(save_interval),
+                                                            filename = output_prefix * "_surface",
+                                                            overwrite_existing = true)
+
+#simulation.output_writers[:checkpointer] = Checkpointer(model,
+#                                                        schedule = TimeInterval(save_interval),
+#                                                        prefix = output_prefix * "_checkpoint",
+#                                                        overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
