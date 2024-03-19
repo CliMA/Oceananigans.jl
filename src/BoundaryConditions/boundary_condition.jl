@@ -68,7 +68,7 @@ end
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
-    BoundaryCondition(Adapt.adapt(b.classifction), Adapt.adapt(to, b.condition))
+    BoundaryCondition(Adapt.adapt(b.classification), Adapt.adapt(to, b.condition))
 
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
