@@ -1,3 +1,6 @@
+@inline getvalue(ψ, i, j, k, args...) = @inbounds ψ[i, j, k]
+@inline getvalue(ψ::Function, i, j, k, args...) = ψ(i, j, k, args...)
+
 #####
 ##### STENCILS IN X
 #####
@@ -26,8 +29,8 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i     - $add, j, k]
-            ψ₁ = @inbounds ψ[i + 1 - $add, j, k]
+            ψ₀ = getvalue(ψ, i     - $add, j, k, grid, args...)
+            ψ₁ = getvalue(ψ, i + 1 - $add, j, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 1, scheme, $val, idx, loc)
             τ  = β
@@ -36,7 +39,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i - 1 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
 
             # Stencil S₁
@@ -57,9 +60,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i     - $add, j, k]
-            ψ₁ = @inbounds ψ[i + 1 - $add, j, k]
-            ψ₂ = @inbounds ψ[i + 2 - $add, j, k]
+            ψ₀ = getvalue(ψ, i     - $add, j, k, grid, args...)
+            ψ₁ = getvalue(ψ, i + 1 - $add, j, k, grid, args...)
+            ψ₂ = getvalue(ψ, i + 2 - $add, j, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 1, scheme, $val, idx, loc)
             τ  = β
@@ -68,7 +71,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i - 1 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -80,7 +83,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 2 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 2 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -102,10 +105,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i     - $add, j, k]
-            ψ₁ = @inbounds ψ[i + 1 - $add, j, k]
-            ψ₂ = @inbounds ψ[i + 2 - $add, j, k]
-            ψ₃ = @inbounds ψ[i + 3 - $add, j, k]
+            ψ₀ = getvalue(ψ, i     - $add, j, k, grid, args...)
+            ψ₁ = getvalue(ψ, i + 1 - $add, j, k, grid, args...)
+            ψ₂ = getvalue(ψ, i + 2 - $add, j, k, grid, args...)
+            ψ₃ = getvalue(ψ, i + 3 - $add, j, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 1, scheme, $val, idx, loc)
             τ  = β
@@ -114,7 +117,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i - 1 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -127,7 +130,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 2 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 2 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -140,7 +143,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 3 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 3 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -163,11 +166,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i     - $add, j, k]
-            ψ₁ = @inbounds ψ[i + 1 - $add, j, k]
-            ψ₂ = @inbounds ψ[i + 2 - $add, j, k]
-            ψ₃ = @inbounds ψ[i + 3 - $add, j, k]
-            ψ₄ = @inbounds ψ[i + 4 - $add, j, k]
+            ψ₀ = getvalue(ψ, i     - $add, j, k, grid, args...)
+            ψ₁ = getvalue(ψ, i + 1 - $add, j, k, grid, args...)
+            ψ₂ = getvalue(ψ, i + 2 - $add, j, k, grid, args...)
+            ψ₃ = getvalue(ψ, i + 3 - $add, j, k, grid, args...)
+            ψ₄ = getvalue(ψ, i + 4 - $add, j, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 1, scheme, $val, idx, loc)
             τ  = β
@@ -176,7 +179,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i - 1 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 1 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -190,7 +193,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 2 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 2 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -204,7 +207,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 3 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 3 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -218,7 +221,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i - 4 - $add, j, k]
+            ψ₀ = getvalue(ψ, i - 4 - $add, j, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -267,8 +270,8 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j - $add, k]
-            ψ₁ = @inbounds ψ[i, j + 1 - $add, k]
+            ψ₀ = getvalue(ψ, i, j     - $add, k, grid, args...)
+            ψ₁ = getvalue(ψ, i, j + 1 - $add, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 1, scheme, $val, idx, loc)
             τ  = β
@@ -277,7 +280,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j - 1 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
 
             # Stencil S₁
@@ -298,9 +301,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j     - $add, k]
-            ψ₁ = @inbounds ψ[i, j + 1 - $add, k]
-            ψ₂ = @inbounds ψ[i, j + 2 - $add, k]
+            ψ₀ = getvalue(ψ, i, j     - $add, k, grid, args...)
+            ψ₁ = getvalue(ψ, i, j + 1 - $add, k, grid, args...)
+            ψ₂ = getvalue(ψ, i, j + 2 - $add, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 1, scheme, $val, idx, loc)
             τ  = β
@@ -309,7 +312,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j - 1 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -321,7 +324,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 2 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -343,10 +346,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j     - $add, k]
-            ψ₁ = @inbounds ψ[i, j + 1 - $add, k]
-            ψ₂ = @inbounds ψ[i, j + 2 - $add, k]
-            ψ₃ = @inbounds ψ[i, j + 3 - $add, k]
+            ψ₀ = getvalue(ψ, i, j     - $add, k, grid, args...)
+            ψ₁ = getvalue(ψ, i, j + 1 - $add, k, grid, args...)
+            ψ₂ = getvalue(ψ, i, j + 2 - $add, k, grid, args...)
+            ψ₃ = getvalue(ψ, i, j + 3 - $add, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 1, scheme, $val, idx, loc)
             τ  = β
@@ -355,7 +358,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j - 1 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -368,7 +371,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 2 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -381,7 +384,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 3 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -404,11 +407,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j     - $add, k]
-            ψ₁ = @inbounds ψ[i, j + 1 - $add, k]
-            ψ₂ = @inbounds ψ[i, j + 2 - $add, k]
-            ψ₃ = @inbounds ψ[i, j + 3 - $add, k]
-            ψ₄ = @inbounds ψ[i, j + 4 - $add, k]
+            ψ₀ = getvalue(ψ, i, j     - $add, k, grid, args...)
+            ψ₁ = getvalue(ψ, i, j + 1 - $add, k, grid, args...)
+            ψ₂ = getvalue(ψ, i, j + 2 - $add, k, grid, args...)
+            ψ₃ = getvalue(ψ, i, j + 3 - $add, k, grid, args...)
+            ψ₄ = getvalue(ψ, i, j + 4 - $add, k, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 1, scheme, $val, idx, loc)
             τ  = β
@@ -417,7 +420,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j - 1 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 1 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -431,7 +434,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 2 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 2 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -445,7 +448,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 3 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 3 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -459,7 +462,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j - 4 - $add, k]
+            ψ₀ = getvalue(ψ, i, j - 4 - $add, k, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -508,8 +511,8 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j, k     - $add]
-            ψ₁ = @inbounds ψ[i, j, k + 1 - $add]
+            ψ₀ = getvalue(ψ, i, j, k     - $add, grid, args...)
+            ψ₁ = getvalue(ψ, i, j, k + 1 - $add, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 1, scheme, $val, idx, loc)
             τ  = β
@@ -518,7 +521,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j, k - 1 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
 
             # Stencil S₁
@@ -539,9 +542,9 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j, k     - $add]
-            ψ₁ = @inbounds ψ[i, j, k + 1 - $add]
-            ψ₂ = @inbounds ψ[i, j, k + 2 - $add]
+            ψ₀ = getvalue(ψ, i, j, k     - $add, grid, args...)
+            ψ₁ = getvalue(ψ, i, j, k + 1 - $add, grid, args...)
+            ψ₂ = getvalue(ψ, i, j, k + 2 - $add, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), 1, scheme, $val, idx, loc)
             τ  = β
@@ -550,7 +553,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j, k - 1 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -562,7 +565,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 2 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
 
@@ -584,10 +587,10 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j, k     - $add]
-            ψ₁ = @inbounds ψ[i, j, k + 1 - $add]
-            ψ₂ = @inbounds ψ[i, j, k + 2 - $add]
-            ψ₃ = @inbounds ψ[i, j, k + 3 - $add]
+            ψ₀ = getvalue(ψ, i, j, k     - $add, grid, args...)
+            ψ₁ = getvalue(ψ, i, j, k + 1 - $add, grid, args...)
+            ψ₂ = getvalue(ψ, i, j, k + 2 - $add, grid, args...)
+            ψ₃ = getvalue(ψ, i, j, k + 3 - $add, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), 1, scheme, $val, idx, loc)
             τ  = β
@@ -596,7 +599,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j, k - 1 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -609,7 +612,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 2 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -622,7 +625,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 3 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -645,11 +648,11 @@ for (side, add) in zip([:left, :right], (-1, 0))
                                              ψ, idx, loc, args...) where {FT, XT, YT, ZT}
         
             # All stencils
-            ψ₀ = @inbounds ψ[i, j, k     - $add]
-            ψ₁ = @inbounds ψ[i, j, k + 1 - $add]
-            ψ₂ = @inbounds ψ[i, j, k + 2 - $add]
-            ψ₃ = @inbounds ψ[i, j, k + 3 - $add]
-            ψ₄ = @inbounds ψ[i, j, k + 4 - $add]
+            ψ₀ = getvalue(ψ, i, j, k     - $add, grid, args...)
+            ψ₁ = getvalue(ψ, i, j, k + 1 - $add, grid, args...)
+            ψ₂ = getvalue(ψ, i, j, k + 2 - $add, grid, args...)
+            ψ₃ = getvalue(ψ, i, j, k + 3 - $add, grid, args...)
+            ψ₄ = getvalue(ψ, i, j, k + 4 - $add, grid, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 1, scheme, $val, idx, loc)
             τ  = β
@@ -658,7 +661,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ = ψ̅ * α  
             w₂ = α
 
-            ψ₀ = @inbounds ψ[i, j, k - 1 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 1 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -672,7 +675,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 2 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 2 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -686,7 +689,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 3 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 3 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
@@ -700,7 +703,7 @@ for (side, add) in zip([:left, :right], (-1, 0))
             ψ̂₂ += ψ̅ * α  
             w₂ += α
 
-            ψ₀ = @inbounds ψ[i, j, k - 4 - $add]
+            ψ₀ = getvalue(ψ, i, j, k - 4 - $add, grid, args...)
             ψ₁ = ψ₀
             ψ₂ = ψ₁
             ψ₃ = ψ₂
