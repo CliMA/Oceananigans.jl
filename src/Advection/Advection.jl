@@ -40,6 +40,8 @@ import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 import Oceananigans.Architectures: on_architecture
 
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
@@ -65,6 +67,11 @@ include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
+include("weno_2.jl")
+include("weno_3.jl")
+include("weno_4.jl")
+include("weno_5.jl")
+include("weno_6.jl")
 include("stretched_weno_smoothness.jl")
 include("multi_dimensional_reconstruction.jl")
 include("vector_invariant_upwinding.jl")
