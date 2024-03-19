@@ -88,6 +88,9 @@ end
 τʸ = on_architecture(arch, τʸ)
 
 bat = file_bathymetry["bathymetry"]
+# Do not allow regions shallower than 10 meters depth
+bat[bat .> -10] = 0
+
 boundary = Int.(bat .>= 0)
 bat[ bat .> 0 ] .= 0 
 
