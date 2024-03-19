@@ -1,10 +1,9 @@
-
-## STENCILS IN X
+#####
+##### STENCILS IN X
+#####
 
 for (side, add) in zip([:left, :right], (-1, 0))
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_xᶠᵃᵃ)
-    biased_β           = Symbol(side, :_biased_β)
-    biased_p           = Symbol(side, :_biased_p)
     coeff              = Symbol(:coeff_, side) 
     weno_interpolant   = Symbol(side, :_weno_interpolant_xᶠᵃᵃ)
     val = 1
@@ -297,13 +296,12 @@ for (side, add) in zip([:left, :right], (-1, 0))
     end
 end
 
-## STENCILS IN Y
+#####
+##### STENCILS IN Y
+#####
 
 for (side, add) in zip([:left, :right], (-1, 0))
     biased_interpolate = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
-    biased_β           = Symbol(side, :_biased_β)
-    biased_p           = Symbol(side, :_biased_p)
-    coeff              = Symbol(:coeff_, side) 
     weno_interpolant   = Symbol(side, :_weno_interpolant_yᵃᶠᵃ)
     val = 2
     
