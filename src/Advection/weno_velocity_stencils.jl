@@ -25,10 +25,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₁ = ψ₀
             ψ₀ = ψ(i - 1 - $add, j, k, grid, u, v)
@@ -70,10 +69,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₂ = ψ₁
             ψ₁ = ψ₀
@@ -140,10 +138,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₃ = ψ₂
             ψ₂ = ψ₁
@@ -241,10 +238,9 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₄ = ψ₃
             ψ₃ = ψ₂
@@ -380,10 +376,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₁ = ψ₀
             ψ₀ = ψ(i, j - 1 - $add, k, grid, u, v)
@@ -425,10 +420,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₂ = ψ₁
             ψ₁ = ψ₀
@@ -495,10 +489,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₃ = ψ₂
             ψ₂ = ψ₁
@@ -596,10 +589,9 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₄ = ψ₃
             ψ₃ = ψ₂
@@ -734,10 +726,9 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ = ψ̅ * C
-            w₁ = C
-            ψ̂₂ = ψ̅ * α  
-            w₂ = α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₅ = ψ₄
             ψ₄ = ψ₃
