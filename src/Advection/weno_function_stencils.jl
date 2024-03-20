@@ -59,9 +59,9 @@ for (side, add) in zip([:left, :right], (1, 0))
         
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (ϕ₀, ϕ₁, ϕ₂), 1, scheme, $val, idx, loc)
             τ  = β
-            ψ̂₁ += ψ̅ * α  
-            ψ̂₂ += ψ̅ * C
-            w₁ += α
+            ψ̂₁ = ψ̅ * α  
+            ψ̂₂ = ψ̅ * C
+            w₁ = α
 
             ψ₂ = ψ₁
             ψ₁ = ψ₀
