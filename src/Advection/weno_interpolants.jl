@@ -69,7 +69,7 @@ end
 
 Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
-const ε = 1e-6
+const ε = 1e-8
 
 # Optimal values taken from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
@@ -184,30 +184,30 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline add_global_smoothness(β, ::Val{2}, ::Val{1}) = + β
-@inline add_global_smoothness(β, ::Val{2}, ::Val{2}) = - β
+@inline add_to_global_smoothness(β, ::Val{2}, ::Val{1}) = + β
+@inline add_to_global_smoothness(β, ::Val{2}, ::Val{2}) = - β
 
-@inline add_global_smoothness(β, ::Val{3}, ::Val{1}) = + β
-@inline add_global_smoothness(β, ::Val{3}, ::Val{2}) = 0
-@inline add_global_smoothness(β, ::Val{3}, ::Val{3}) = - β
+@inline add_to_global_smoothness(β, ::Val{3}, ::Val{1}) = + β
+@inline add_to_global_smoothness(β, ::Val{3}, ::Val{2}) = 0
+@inline add_to_global_smoothness(β, ::Val{3}, ::Val{3}) = - β
 
-@inline add_global_smoothness(β, ::Val{4}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{2}) = + 3β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{3}) = - 3β
-@inline add_global_smoothness(β, ::Val{4}, ::Val{4}) = -  β
+@inline add_to_global_smoothness(β, ::Val{4}, ::Val{1}) = +  β
+@inline add_to_global_smoothness(β, ::Val{4}, ::Val{2}) = + 3β
+@inline add_to_global_smoothness(β, ::Val{4}, ::Val{3}) = - 3β
+@inline add_to_global_smoothness(β, ::Val{4}, ::Val{4}) = -  β
 
-@inline add_global_smoothness(β, ::Val{5}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{2}) = + 2β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{3}) = - 6β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{4}) = + 2β
-@inline add_global_smoothness(β, ::Val{5}, ::Val{5}) = +  β
+@inline add_to_global_smoothness(β, ::Val{5}, ::Val{1}) = +  β
+@inline add_to_global_smoothness(β, ::Val{5}, ::Val{2}) = + 2β
+@inline add_to_global_smoothness(β, ::Val{5}, ::Val{3}) = - 6β
+@inline add_to_global_smoothness(β, ::Val{5}, ::Val{4}) = + 2β
+@inline add_to_global_smoothness(β, ::Val{5}, ::Val{5}) = +  β
 
-@inline add_global_smoothness(β, ::Val{6}, ::Val{1}) = +  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{2}) = +  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{3}) = - 8β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{4}) = + 8β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
-@inline add_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{1}) = +  β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{2}) = +  β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{3}) = - 8β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{4}) = + 8β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
+@inline add_to_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
 
 # Reciprocal!
 let (jlf, f) = (:div_arcp, :div)
@@ -249,7 +249,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C = FT($coeff(scheme, Val(s-1)))
-            α = C * rcp(β + FT(ε))^2
+            α = C * rcp(β + FT(ε))^2 
 
             # Reconstruction of `ψ` from stencil `s`
             ψ̅ = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
@@ -271,7 +271,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C = FT($coeff(scheme, Val(s-1)))
-            α = C / (βᵁ + FT(ε))^2
+            α = C * rcp(β + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
@@ -287,7 +287,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C  = FT($coeff(scheme, Val(s-1)))
-            α  = C / (βᵠ + FT(ε))^2
+            α  = C * rcp(β + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 

@@ -41,7 +41,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(1))
+            τ  += add_to_global_smoothness(β, Val(3), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -49,7 +49,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -90,7 +90,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(1))
+            τ  += add_to_global_smoothness(β, Val(3), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -110,7 +110,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(2))
+            τ  += add_to_global_smoothness(β, Val(3), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -118,7 +118,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -165,7 +165,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(4), Val(1))
+            τ  += add_to_global_smoothness(β, Val(4), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -188,7 +188,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(4), Val(2))
+            τ  += add_to_global_smoothness(β, Val(4), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -211,7 +211,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 4, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(4), Val(3))
+            τ  += add_to_global_smoothness(β, Val(4), Val(3))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -219,7 +219,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -272,7 +272,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(1))
+            τ  += add_to_global_smoothness(β, Val(5), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -298,7 +298,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(2))
+            τ  += add_to_global_smoothness(β, Val(5), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -324,7 +324,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 4, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(3))
+            τ  += add_to_global_smoothness(β, Val(5), Val(3))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -350,7 +350,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 5, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(4))
+            τ  += add_to_global_smoothness(β, Val(5), Val(4))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -358,7 +358,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end
 end
@@ -406,7 +406,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), (u₀, u₁), (v₀, v₁), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(1))
+            τ  += add_to_global_smoothness(β, Val(3), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -414,7 +414,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -455,7 +455,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(1))
+            τ  += add_to_global_smoothness(β, Val(3), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -475,7 +475,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂), (u₀, u₁, u₂), (v₀, v₁, v₂), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(2))
+            τ  += add_to_global_smoothness(β, Val(3), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -483,7 +483,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -530,7 +530,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(4), Val(1))
+            τ  += add_to_global_smoothness(β, Val(4), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -553,7 +553,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(2))
+            τ  += add_to_global_smoothness(β, Val(3), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -576,7 +576,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃), (u₀, u₁, u₂, u₃), (v₀, v₁, v₂, v₃), 4, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(3), Val(2))
+            τ  += add_to_global_smoothness(β, Val(3), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -584,7 +584,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -637,7 +637,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(1))
+            τ  += add_to_global_smoothness(β, Val(5), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -663,7 +663,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(2))
+            τ  += add_to_global_smoothness(β, Val(5), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -689,7 +689,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 4, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(3))
+            τ  += add_to_global_smoothness(β, Val(5), Val(3))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -715,7 +715,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), (u₀, u₁, u₂, u₃, u₄), (v₀, v₁, v₂, v₃, v₄), 5, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(5), Val(4))
+            τ  += add_to_global_smoothness(β, Val(5), Val(4))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -723,7 +723,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
 
         @inline function $biased_interpolate(i, j, k, grid, 
@@ -782,7 +782,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 2, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(6), Val(1))
+            τ  += add_to_global_smoothness(β, Val(6), Val(1))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -811,7 +811,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 3, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(6), Val(2))
+            τ  += add_to_global_smoothness(β, Val(6), Val(2))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -840,7 +840,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 4, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(6), Val(3))
+            τ  += add_to_global_smoothness(β, Val(6), Val(3))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -869,7 +869,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 5, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(6), Val(4))
+            τ  += add_to_global_smoothness(β, Val(6), Val(4))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -898,7 +898,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             
             # Stencil S₁
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄, ψ₅), (u₀, u₁, u₂, u₃, u₄, u₅), (v₀, v₁, v₂, v₃, v₄, v₅), 6, scheme, $val, idx, loc)
-            τ  += add_global_smoothness(β, Val(6), Val(5))
+            τ  += add_to_global_smoothness(β, Val(6), Val(5))
             ψ̂₁ += ψ̅ * C
             w₁ += C
             ψ̂₂ += ψ̅ * α  
@@ -906,7 +906,7 @@ for (side, add) in zip([:left, :right], (1, 0))
 
             τ = τ^2
 
-            return (ψ̂₁ + ψ̂₂ * τ) * rcp(w₁ + w₂ * τ)
+            return (ψ̂₁ + ψ̂₂ * τ) / (w₁ + w₂ * τ)
         end
     end
 end
