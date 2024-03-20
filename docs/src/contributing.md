@@ -36,11 +36,11 @@ Discussions are recommended for asking questions about (for example) the user in
 
 * Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
 
-* Write your code with love and care. In particular, conform to existing Oceananigans style and formatting conventions. For example, we love verbose and explicit variable names, use `TitleCase` for types, `snake_case` for objects, and always.put.spaces.after.commas. For formatting decisions we loosely follow the [YASGuide](https://github.com/jrevels/YASGuide). It's worth few extra minutes of our time to leave future generations with well-written, readable code.
+* Write your code with love and care. In particular, conform to existing Oceananigans style and formatting conventions. For example, we love verbose and explicit variable names, use `TitleCase` for types, `snake_case` for objects, and always,put,spaces.after.commas,or.periods. For formatting decisions we loosely follow the [YASGuide](https://github.com/jrevels/YASGuide). It's worth few extra minutes of our time to leave future generations with well-written, readable code.
 
 ## What is a "collaborator" and how can I become one?
 
-* Collaborators have permissions to review pull requests and  status allows a contributor to review pull requests in addition to opening them. Collaborators can also create branches in the main Oceananigans repository.
+* Collaborators have permissions to review pull requests and status allows a contributor to review pull requests in addition to opening them. Collaborators can also create branches in the main Oceananigans repository.
 
 * We ask that new contributors try their hand at forking Oceananigans, and opening and merging a pull request before requesting collaborator status.
 
@@ -122,12 +122,17 @@ Oceananigans or by requesting something you think is missing.
 
 * Create the development environment by opening Julia via `julia --project` then
   typing in `] instantiate`. This will install all the dependencies in the Project.toml
-  file.
+  file. Your development environment is now ready!
 
-* You can test to make sure Oceananigans works by typing in `] test`. Doing so will run all
-  the tests (and this can take a while).
+* You can test to make sure Oceananigans works by typing in `] test`. (This is equivalent to
+  `using Pkg; Pkg.test()`.) Doing so will run all the tests (and this can take a while).
+  Alternatively, you can run only one test script file by providing its name as an environment
+  variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
 
-Your development environment is now ready!
+  ```
+  $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
+  ```
+
 
 ## Pull Requests
 
