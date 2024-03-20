@@ -489,6 +489,7 @@ for (side, add) in zip([:left, :right], (1, 0))
             ψ₁ = getvalue(i, j, k + 1 - $add, grid, ψ, args...)
 
             β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁), 1, scheme, $val, idx, loc)
+            τ  = β
             ψ̂₁ = ψ̅ * α  
             ψ̂₂ = ψ̅ * C
             w₁ = α
