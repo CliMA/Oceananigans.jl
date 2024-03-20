@@ -271,7 +271,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
             
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C = FT($coeff(scheme, Val(s-1)))
-            α = C * rcp(β + FT(ε))^2
+            α = C * rcp(βᵁ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
@@ -287,7 +287,7 @@ for side in [:left, :right], (dir, val, CT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :z
 
             # Calculate the `α` coefficient of stencil `s` following a WENO-JS formulation
             C  = FT($coeff(scheme, Val(s-1)))
-            α  = C * rcp(β + FT(ε))^2
+            α  = C * rcp(βᵠ + FT(ε))^2
 
             # Retrieve stencil `s` and reconstruct `ψ` from stencil `s`
             ψ̅  = $biased_p(scheme, Val(s-1), ψs, $CT, Val(val), idx, loc) 
