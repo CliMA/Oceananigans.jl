@@ -135,6 +135,9 @@ heatlatlon!(ax, v, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_v_geo_heatlatlon.png", fig)
 =#
 
+# Comparison of 4x4 cubed sphere grid coordinates and metrics relative to their counterparts from the
+# cubed-sphere-dynamics branch adopting a two-pass halo-filling approach
+
 Nx, Ny, Nz = 4, 4, 1
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=1, horizontal_direction_halo = 2,
                                   z_halo = 1)
@@ -234,6 +237,8 @@ jldopen("cs_grid_difference.jld2", "w") do file
 end
 
 close(cubed_sphere_dynamics_branch_cs_grid_file)
+
+# Comparison of 32x32 cubed sphere grid coordinates and metrics relative to their counterparts from MITgcm
 
 Nx, Ny, Nz = 32, 32, 1
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=6370e3, horizontal_direction_halo = 4,
