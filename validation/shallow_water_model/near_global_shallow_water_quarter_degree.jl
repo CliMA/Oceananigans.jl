@@ -33,7 +33,7 @@ end
 ##### Grid
 #####
 
-arch = CPU()
+arch = GPU()
 reference_density = 1029
 
 latitude = (-75, 75)
@@ -89,7 +89,7 @@ end
 
 bat = file_bathymetry["bathymetry"]
 # Do not allow regions shallower than 10 meters depth
-bat[bat .> -10] .= 0
+bat[bat .> -100] .= 0
 
 boundary = Int.(bat .>= 0)
 bat[ bat .> 0 ] .= 0 
@@ -169,7 +169,7 @@ Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil
 
-νh = 0e+1
+νh = 1e+1
 
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -233,7 +233,7 @@ u, v, h = model.solution
 ζ = Field(ζ_op)
 compute!(ζ)
 
-save_interval = 1days
+save_interval = 30minutes #1days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
                                                             schedule = TimeInterval(save_interval),
