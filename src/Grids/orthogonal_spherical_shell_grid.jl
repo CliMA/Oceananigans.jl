@@ -777,25 +777,17 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     ii = interior_indices(loc[1](), topo[1](), N[1])
     jj = interior_indices(loc[2](), topo[2](), N[2])
 
-    interior_data = on_architecture(arch, file[field_name][ii, jj])
+    data = on_architecture(arch, file[field_name])
+    data = convert.(FT, data)
 
-    underlying_data = zeros(FT, arch,
-                            total_length(loc[1](), topo[1](), N[1], H[1]),
-                            total_length(loc[2](), topo[2](), N[2], H[2]))
-
-    ip = interior_parent_indices(loc[1](), topo[1](), N[1], H[1])
-    jp = interior_parent_indices(loc[2](), topo[2](), N[2], H[2])
-
-    view(underlying_data, ip, jp) .= interior_data
-
-    return offset_data(underlying_data, loc[1:2], topo[1:2], N[1:2], H[1:2])
+    return offset_data(data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
 function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       panel, Nz, z,
-                                      topology = (Bounded, Bounded, Bounded),
+                                      topology = (FullyConnected, FullyConnected, Bounded),
                                         radius = R_Earth,
-                                          halo = (1, 1, 1),
+                                          halo = (4, 4, 4),
                                       rotation = nothing)
 
     TX, TY, TZ = topology
@@ -817,7 +809,10 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
 
     file = jldopen(filepath, "r")["face$panel"]
 
-    Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
+    Nξ, Nη = size(file["λᶠᶠᵃ"])
+    Hξ, Hη = halo[1], halo[2]
+    Nξ -= 2Hξ
+    Nη -= 2Hη
 
     N = (Nξ, Nη, Nz)
     H = halo

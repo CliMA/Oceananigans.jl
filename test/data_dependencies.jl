@@ -3,8 +3,8 @@ using DataDeps
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 dd = DataDep("cubed_sphere_32_grid",
-    "Conformal cubed sphere grid with 32×32 grid points on each face",
-    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2"
+    "Conformal cubed sphere grid with 32×32 grid points on each panel and 4×4 halo points",
+    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ncc-sb/add-cs32-grid-with-4-halos/cubed_sphere_grids/cs32_with_halos/cubed_sphere_32_grid_with_4_halos.jld2"
 )
 
 DataDeps.register(dd)
@@ -37,4 +37,3 @@ dh = DataDep("regression_test_data",
 DataDeps.register(dh)
 
 datadep"regression_test_data"
-
