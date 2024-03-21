@@ -7,11 +7,15 @@ using Oceananigans.Fields: Field
 function time_step_with_forcing_array(arch)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
-    Fu = on_architecture(arch, ones(eltype(grid), size(grid)))
-    Fv = on_architecture(arch, 2 * ones(eltype(grid), size(grid)))
-    Fw = on_architecture(arch, ones(eltype(grid), size(grid)))
+    Fu = XFaceField(grid)
+    Fv = YFaceField(grid)
+    Fw = ZFaceField(grid)
 
-    model = NonhydrostaticModel(grid=grid, forcing=(u=Fu, v=Fv, w=Fw))
+    set!(Fu, (x, y, z) -> 1)
+    set!(Fv, (x, y, z) -> 1)
+    set!(Fw, (x, y, z) -> 1)
+
+    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
