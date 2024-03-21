@@ -239,7 +239,6 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     kernel_parameters = :xy
-
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
