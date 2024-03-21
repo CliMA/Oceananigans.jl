@@ -39,6 +39,7 @@ using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: on_architecture
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
@@ -56,8 +57,6 @@ Logging.global_logger(OceananigansLogger())
 ##### Testing parameters
 #####
 
-float_types = (Float32, Float64)
-
 closures = (
     :ScalarDiffusivity,
     :ScalarBiharmonicDiffusivity,
@@ -67,15 +66,5 @@ closures = (
     :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
-#####
-##### Run tests!
-#####
-
-float_types = (Float32, Float64)
-
 include("utils_for_runtests.jl")
 
-archs = test_architectures()
-
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
-test_file = get(ENV, "TEST_FILE", :none) |> Symbol
