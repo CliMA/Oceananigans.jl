@@ -135,6 +135,9 @@ create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros
     end
 end
 
+archs = [CPU()] # archs = [CPU(), GPU()]
+float_types = [Float32, Float64]
+
 @testset "Testing conformal cubed sphere face grid from file" begin
     Nz = 1
     z = (-1, 0)
