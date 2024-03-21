@@ -209,7 +209,8 @@ end
 @inline add_to_global_smoothness(β, ::Val{6}, ::Val{5}) = -  β
 @inline add_to_global_smoothness(β, ::Val{6}, ::Val{6}) = -  β
 
-# Reciprocal!
+# Reciprocal implementation from Valentin Churavy copied from
+# https://github.com/JuliaGPU/CUDA.jl/blob/668b79c6378aa9443faf27d1efa3c117e0701077/perf/volumerhs.jl#L40
 let (jlf, f) = (:div_arcp, :div)
     for (T, llvmT) in ((:Float32, "float"), (:Float64, "double"))
         ir = """
