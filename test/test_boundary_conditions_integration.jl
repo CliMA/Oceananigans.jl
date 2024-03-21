@@ -127,19 +127,19 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Value),
                                                         south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Open),
-                                                         west  = simple_function_bc(Open))
+                                                         east  = simple_function_bc(Open{Nothing}),
+                                                         west  = simple_function_bc(Open{Nothing}))
 
         v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
-                                                        north  = simple_function_bc(Open),
-                                                        south  = simple_function_bc(Open),
+                                                        north  = simple_function_bc(Open{Nothing}),
+                                                        south  = simple_function_bc(Open{Nothing}),
                                                          east  = simple_function_bc(Value),
                                                          west  = simple_function_bc(Value))
 
 
-        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
-                                                        top    = simple_function_bc(Open),
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open{Nothing}),
+                                                        top    = simple_function_bc(Open{Nothing}),
                                                         north  = simple_function_bc(Value),
                                                         south  = simple_function_bc(Value),
                                                          east  = simple_function_bc(Value),
@@ -203,7 +203,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
+            for boundary_condition in test_boundary_conditions(Open{Nothing}, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
