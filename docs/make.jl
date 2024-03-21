@@ -21,7 +21,6 @@ end
     CairoMakie.activate!(type = "svg")
 
     using Oceananigans
-    using Oceananigans.Units
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
@@ -175,7 +174,7 @@ format = Documenter.HTML(collapselevel = 1,
                          prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
-                         size_threshold = 1MiB,
+                         size_threshold = 2^20,
                          assets = String["assets/citations.css"])
 
 makedocs(sitename = "Oceananigans.jl",
