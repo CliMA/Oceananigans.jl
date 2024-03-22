@@ -69,6 +69,7 @@ function test_jld2_file_splitting(arch)
     @test filesize("test_part1.jld2") > 200KiB
     @test filesize("test_part2.jld2") > 200KiB
     @test filesize("test_part3.jld2") < 200KiB
+    @test !isfile("test_part4.jld2")
 
     for n in string.(1:3)
         filename = "test_part$n.jld2"
