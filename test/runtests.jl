@@ -1,5 +1,22 @@
 include("dependencies_for_runtests.jl")
 
+float_types = (Float32, Float64)
+archs = test_architectures()
+
+group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_file = get(ENV, "TEST_FILE", :none) |> Symbol
+
+# if we are testing just a single file then group = :none
+# to skip the full test suite
+if test_file != :none
+    group = :none
+end
+
+
+#####
+##### Run tests!
+#####
+
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin

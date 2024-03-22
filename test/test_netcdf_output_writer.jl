@@ -45,6 +45,53 @@ function test_DateTime_netcdf_output(arch)
     return nothing
 end
 
+function test_netcdf_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+    fake_attributes = Dict("fake_attribute"=>"fake_attribute")
+
+    max_filesize = 200KiB
+
+    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+                            dir = ".",
+                            filename = "test.nc",
+                            schedule = IterationInterval(1),
+                            array_type = Array{Float64},
+                            with_halos = true,
+                            global_attributes = fake_attributes,
+                            max_filesize,
+                            overwrite_existing = true)
+
+    push!(simulation.output_writers, ow)
+
+    # 531 KiB of output will be written which should get split into 3 files.
+    run!(simulation)
+
+    # Test that files has been split according to size as expected.
+    @test filesize("test_part1.nc") > max_filesize
+    @test filesize("test_part2.nc") > max_filesize
+    @test filesize("test_part3.nc") < max_filesize
+    @test !isfile("test_part4.nc")
+
+    for n in string.(1:3)
+        filename = "test_part$n.nc"
+        ds = NCDataset(filename,"r")
+        dimlength = length(keys(ds.dim))
+        # Test that all files contain the same dimensions.
+        @test dimlength == 7
+        # Test that all files contain the user defined attributes.
+        @test ds.attrib["fake_attribute"] == "fake_attribute"
+
+        # Leave test directory clean.
+        close(ds)
+        rm(filename)
+    end
+
+    return nothing
+end
+
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
@@ -835,6 +882,7 @@ for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
         test_DateTime_netcdf_output(arch)
+        test_netcdf_file_splitting(arch)
         test_TimeDate_netcdf_output(arch)
         test_thermal_bubble_netcdf_output(arch)
         test_thermal_bubble_netcdf_output_with_halos(arch)
