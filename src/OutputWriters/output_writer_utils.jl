@@ -28,7 +28,7 @@ used with an output writer, and should not be provided manually.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
 
-(fsl::FileSizeLimit)(model) = filesize(fsl.path) >= fsl.size_limit
+(fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
 
 function Base.summary(fsl::FileSizeLimit)
     current_size_str = pretty_filesize(filesize(fsl.path))
