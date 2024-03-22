@@ -235,3 +235,65 @@ for (side, add) in zip([:left, :right], (1, 0)), (dir, loc, val) in zip((:x, :y,
         end
     end
 end
+
+
+#= Metaprogrammed implementation (to finish)
+
+@inline function $biased_interpolate(i, j, k, grid, 
+                                        scheme::WENO{$N},
+                                        ψ, idx, loc, args...) 
+
+    # All stencils
+    $(retrieve_initial_stencil(N, dir, add))
+
+    β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), 1, scheme, $val, idx, loc)
+    τ  = β
+    ψ̂₁ = ψ̅ * α  
+    ψ̂₂ = ψ̅ * C
+    w₁ = α
+
+    @unroll for s in 2:$N
+        $(update_stencil(N, dir, - s + 1, add))  
+        β, ψ̅, C, α = $weno_interpolant((ψ₀, ψ₁, ψ₂, ψ₃, ψ₄), s, scheme, $val, idx, loc)
+        τ  += add_to_global_smoothness(β, Val($N), Val(s))
+        ψ̂₁ += ψ̅ * α  
+        ψ̂₂ += ψ̅ * C
+        w₁ += α
+    end
+
+    τ = τ * τ
+
+    return (ψ̂₁ * τ + ψ̂₂) / (w₁ * τ + 1)
+end
+
+# TO finish
+stencil(N) = :($(Symbol(:ψ, i) for i in 1:N))
+
+function retrieve_initial_stencil(N, dir, add)
+    expr = []
+    get_shifted_value = Symbol(:get_shifted_value_, dir)    
+    for i in 0:N-1
+        ψ = Symbol(:ψ, i)
+        push!(expr, :($ψ = $get_shifted_value(i, j, k, grid, $i - $add, ψ, args...)))
+    end
+    eblk = Expr(:block, expr...)
+
+    return eblk
+end
+
+function update_stencil(N, dir, newval, add)
+    expr = []
+    get_shifted_value = Symbol(:get_shifted_value_, dir)    
+    for i in N-1:-1:1
+        ψ  = Symbol(:ψ, i)
+        ψp = Symbol(:ψ, i-1)
+        push!(expr, :($ψ = $ψp))
+    end
+    ψ  = :ψ0
+    push!(expr, :($ψ = $get_shifted_value(i, j, k, grid, $newval - $add, ψ, args...)))
+    eblk = Expr(:block, expr...)
+
+    return eblk
+end
+
+=#
