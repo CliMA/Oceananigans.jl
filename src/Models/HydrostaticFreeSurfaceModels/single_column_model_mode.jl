@@ -1,4 +1,4 @@
-using CUDA: @allowscalar
+using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme

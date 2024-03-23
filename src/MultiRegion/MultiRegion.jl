@@ -15,6 +15,7 @@ using Oceananigans.Utils
 
 using Adapt
 using CUDA
+using GPUArraysCore
 using DocStringExtensions
 using OffsetArrays
 
@@ -63,7 +64,7 @@ end
 struct YPartition{N} <: AbstractPartition
     div :: N
 
-    function YPartition(sizes) 
+    function YPartition(sizes)
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end
@@ -90,4 +91,4 @@ include("multi_region_split_explicit_free_surface.jl")
 include("multi_region_models.jl")
 include("multi_region_output_writers.jl")
 
-end #module
+end # module

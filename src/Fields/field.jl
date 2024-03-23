@@ -2,6 +2,7 @@ using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
+using GPUArraysCore
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
@@ -701,7 +702,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             Base.$(reduction!)(identity, r, conditioned_c, init=false)
 
             if dims isa Colon
-                return CUDA.@allowscalar first(r)
+                return GPUArraysCore.@allowscalar first(r)
             else
                 return r
             end
@@ -740,7 +741,7 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
-    return CUDA.@allowscalar sqrt(r[1])
+    return GPUArraysCore.@allowscalar sqrt(r[1])
 end
 
 function Base.isapprox(a::AbstractField, b::AbstractField; kw...)

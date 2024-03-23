@@ -2,11 +2,11 @@
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
-get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::AbstractVector, N) = GPUArraysCore.@allowscalar (coord[1], coord[N+1])
 
 get_face_node(coord::Nothing, i) = 1
 get_face_node(coord::Function, i) = coord(i)
-get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
+get_face_node(coord::AbstractVector, i) = GPUArraysCore.@allowscalar coord[i]
 
 const AT = AbstractTopology
 

@@ -6,7 +6,7 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU, CUDAGPU, ROCmGPU,
 
     # Logging
     OceananigansLogger,
@@ -121,7 +121,7 @@ export
 
     # Units
     Time
-    
+
 using Printf
 using Logging
 using Statistics
@@ -209,9 +209,9 @@ include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
-#include("MultiRegion/MultiRegion.jl")
+# include("ImmersedBoundaries/ImmersedBoundaries.jl")
+# include("Distributed/Distributed.jl")
+# include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -223,7 +223,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
 
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

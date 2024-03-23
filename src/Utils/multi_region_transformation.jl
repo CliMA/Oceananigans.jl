@@ -4,7 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 import Base: length
 
-const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
+const CUDAGPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
 ##### 
 ##### Multi Region Object
@@ -52,14 +52,15 @@ end
 ##### Multi region functions
 #####
 
+
 @inline getdevice(a, i)                     = nothing
-@inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
-@inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
+@inline getdevice(cu::CUDAGPUVar, i)        = CUDA.device(cu)
+@inline getdevice(oa::OffsetArray, i)       = getdevice(oa.parent)
 @inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
 @inline getdevice(a)               = nothing
-@inline getdevice(cu::GPUVar)      = CUDA.device(cu)
-@inline getdevice(cu::OffsetArray) = getdevice(cu.parent)
+@inline getdevice(cu::CUDAGPUVar)  = CUDA.device(cu)
+@inline getdevice(oa::OffsetArray) = getdevice(oa.parent)
 
 @inline switch_device!(a)                        = nothing
 @inline switch_device!(dev::Int)                 = CUDA.device!(dev)
@@ -182,7 +183,7 @@ end
 
 @inline sync_device!(::Nothing)  = nothing
 @inline sync_device!(::CPU)      = nothing
-@inline sync_device!(::GPU)      = CUDA.synchronize()
+@inline sync_device!(::CUDAGPU)  = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
 
 

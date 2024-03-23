@@ -555,13 +555,13 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### Enzyme extension tests
+##### Extension tests
 #####
 
-  - label: "👺 gpu Enzyme extension tests"
+  - label: "👺 gpu extension tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "enzyme"
+      TEST_GROUP: "extensions"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -569,10 +569,10 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
 
-  - label: "👹 cpu Enzyme extension tests"
+  - label: "👹 cpu extensions tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "enzyme"
+      TEST_GROUP: "extension"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"

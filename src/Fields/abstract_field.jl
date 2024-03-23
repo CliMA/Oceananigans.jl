@@ -1,5 +1,4 @@
 using Base: @propagate_inbounds
-using CUDA
 using Adapt
 using OffsetArrays
 using Statistics
@@ -90,4 +89,3 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
-

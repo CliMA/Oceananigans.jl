@@ -2,7 +2,7 @@
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "04d395caf937b0921325a77873167e8baa293a99"
+project_hash = "a2557da83f3afc1a780adf1717d5509c3ea2ac00"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -20,6 +20,7 @@ version = "1.5.0"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
+
 git-tree-sha1 = "e2a9873379849ce2ac9f9fa34b0e37bde5d5fe0a"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 version = "4.0.2"

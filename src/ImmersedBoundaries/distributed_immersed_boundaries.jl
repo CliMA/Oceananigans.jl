@@ -37,10 +37,10 @@ function scatter_local_grids(arch::Distributed, global_grid::ImmersedBoundaryGri
 end
 
 """
-    function resize_immersed_boundary!(ib, grid)
+    resize_immersed_boundary!(ib, grid)
 
 If the immersed condition is an `OffsetArray`, resize it to match 
-the total size of `grid`
+the total size of `grid`.
 """
 resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
 resize_immersed_boundary(ib::GridFittedBoundary, grid)       = ib
@@ -59,7 +59,7 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
         mask = compute_mask(grid, ib)
         return getnamewrapper(ib)(mask)
     end
-    
+
     return ib
 end
 
@@ -82,6 +82,6 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
 
         return getnamewrapper(ib)(offset_bottom_array)
     end
-    
+
     return ib
 end
