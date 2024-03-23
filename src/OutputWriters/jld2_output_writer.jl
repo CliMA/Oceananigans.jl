@@ -317,7 +317,7 @@ function start_next_file(model, writer::JLD2OutputWriter)
 
     verbose && @info begin
         schedule_type = summary(writer.file_splitting)
-        "Splitting output because $(schedule_type) has been actuated."
+        "Splitting output because $(schedule_type) is activated."
     end
 
     if writer.part == 1

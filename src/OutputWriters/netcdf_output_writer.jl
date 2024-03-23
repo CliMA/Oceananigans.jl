@@ -594,7 +594,7 @@ function start_next_file(model, ow::NetCDFOutputWriter)
 
     verbose && @info begin
         schedule_type = summary(ow.file_splitting)
-        "Splitting output because $(schedule_type) has been actuated."
+        "Splitting output because $(schedule_type) is activated."
     end
 
     if ow.part == 1
