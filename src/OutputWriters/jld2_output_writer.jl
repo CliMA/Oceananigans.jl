@@ -54,7 +54,7 @@ Keyword arguments
 ## Filenaming
 
 - `filename` (required): Descriptive filename. `".jld2"` is appended to `filename` in the file path
-                        if `filename` does not end in `".jld2"`.
+                         if `filename` does not end in `".jld2"`.
 
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
@@ -140,7 +140,8 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── 3 outputs: (u, v, w)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 27.4 KiB
 ```
 
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
@@ -157,7 +158,8 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 17.5 KiB
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
@@ -178,7 +180,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     filepath = joinpath(dir, filename)
     update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
-    
+
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
@@ -186,7 +188,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
-    
+
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
                             including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
@@ -312,7 +314,7 @@ end
 
 function start_next_file(model, writer::JLD2OutputWriter)
     verbose = writer.verbose
-   
+
     verbose && @info begin
         schedule_type = summary(writer.file_splitting)
         "Splitting output because $(schedule_type) has been actuated."
@@ -331,7 +333,7 @@ function start_next_file(model, writer::JLD2OutputWriter)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)
-    
+
     return nothing
 end
 
@@ -351,4 +353,3 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
               "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end
-
