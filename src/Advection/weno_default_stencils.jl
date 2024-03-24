@@ -407,7 +407,7 @@ for (side, add) in zip([:left, :right], (1, 0)), (dir, loc, val) in zip((:x, :y,
                                                 ψ, idx, loc, ::VelocityStencil, u, v, args...) 
             
                 𝓊 = ℑyᵃᶠᵃ_u
-                𝓋 = ℑyᵃᶠᵃ_v
+                𝓋 = ℑxᶠᵃᵃ_v
 
                 # All stencils
                 $(retrieve_velocity_stencil(N, dir, add, :ψ))

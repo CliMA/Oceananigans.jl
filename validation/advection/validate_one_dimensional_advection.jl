@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.Advection: AbstractCenteredAdvectionScheme, AbstractUpwindBiasedAdvectionScheme, VelocityStencil, VorticityStencil
+using Oceananigans.Advection: AbstractCenteredAdvectionScheme, AbstractUpwindBiasedAdvectionScheme, VelocityStencil
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation
 using JLD2
 using OffsetArrays
@@ -58,7 +58,7 @@ Z = -0.7
 a = 0.5
 α = 10
 
-@inline function c₀_1D(x, y, z) 
+@inline function c₀_1D(x, y) 
     if x <= -0.6 && x >= -0.8
         return 1/6*(G(x, β, Z-δ) + 4*G(x, β, Z) + G(x, β, Z+δ))
     elseif x <= -0.2 && x >= -0.4
@@ -78,8 +78,8 @@ Schemes = [:Centered, :UpwindBiased, :WENO]
 @inline grid_or_not(::Nothing) = -1
 
 # # Checking the accuracy of different schemes with different settings
-buffers = [2, 3]
-for (gr, grid) in enumerate([grid_str])
+buffers = [2, 3, 4, 5, 6]
+for (gr, grid) in enumerate([grid_reg])
     
     @info "testing grid number $gr"
 
@@ -92,7 +92,7 @@ for (gr, grid) in enumerate([grid_str])
     c_real = CenterField(grid)
     formulation = ConservativeFormulation()
     
-    for Scheme in [Schemes[2]]
+    for Scheme in [Schemes[3]]
         for buffer in buffers, gr in (nothing, grid)
 
             scheme     = eval(Scheme)(gr, order = advection_order(buffer, eval(Scheme)))
@@ -124,7 +124,7 @@ for (gr, grid) in enumerate([grid_str])
                 solution[(buffer, Int(i), grid_or_not(gr))] = csim
             end
 
-            c_sol(x, y, z) = @. c₀_1D(x - model.clock.time + 2, y, z)
+            c_sol(x, y) = @. c₀_1D(x - model.clock.time + 2, y)
             set!(c_real, c_sol)
         end
 
