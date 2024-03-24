@@ -3,8 +3,6 @@
 using Oceananigans
 using Oceananigans.Grids
 
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
-
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
@@ -13,11 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-
-using Oceananigans.Utils: prettytime, hours, day, days, years
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
-
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
+using Oceananigans.Units
 
 using Statistics
 using JLD2
