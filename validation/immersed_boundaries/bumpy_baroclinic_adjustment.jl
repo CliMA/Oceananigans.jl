@@ -132,7 +132,7 @@ ct = FieldTimeSeries(filepath, "c")
 t = ζt.times
 Nt = length(t)
 
-fig = Figure(resolution=(1800, 600))
+fig = Figure(size=(1800, 600))
 
 axζ = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)") #, title="Vorticity at surface")
 axb = Axis(fig[1, 2], xlabel="x (km)", ylabel="y (km)") #, title="Buoyancy at surface")

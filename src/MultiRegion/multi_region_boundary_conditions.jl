@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Architectures: arch_array, device_copy_to!
+using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.DistributedComputations: communication_side

@@ -1,32 +1,31 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
+                                                        SplitExplicitSettings,
+                                                        SplitExplicitState
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
 function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
-    
+
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
 
     @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
     @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    @apply_regionally calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
     @apply_regionally kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
-    
+
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
 @inline function calculate_column_height!(height, location)
@@ -43,7 +42,10 @@ end
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
 @inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[2] + 1, - halo_size(grid)[2] + 1)
 
-function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
+# Internal function for HydrostaticFreeSurfaceModel
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
+
+    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 
     switch_device!(grid.devices[1])
     old_halos = halo_size(getregion(grid, 1))
@@ -55,7 +57,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
     η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
 
     return SplitExplicitFreeSurface(η,
-                                    SplitExplicitState(new_grid),
+                                    SplitExplicitState(new_grid, free_surface.settings.timestepper),
                                     SplitExplicitAuxiliaryFields(new_grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)

@@ -49,6 +49,7 @@ end
         "langmuir_turbulence.jl",
         "ocean_wind_mixing_and_convection.jl",
         "horizontal_convection.jl",
+        "internal_tide.jl",
         "convecting_plankton.jl",
         "tilted_bottom_boundary_layer.jl",
         "two_dimensional_turbulence.jl",
@@ -81,6 +82,7 @@ example_pages = [
     "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
     "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
     "Internal wave"                    => "generated/internal_wave.md",
+    "Internal tide by a seamount"      => "generated/internal_tide.md",
     "Convecting plankton"              => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
@@ -106,6 +108,7 @@ model_setup_pages = [
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
     "Lagrangian particles" => "model_setup/lagrangian_particles.md",
     "Diagnostics" => "model_setup/diagnostics.md",
+    "Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
     "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
@@ -171,7 +174,7 @@ format = Documenter.HTML(collapselevel = 1,
                          prettyurls = get(ENV, "CI", nothing) == "true",
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
-                         size_threshold = 819200,
+                         size_threshold = 2^20,
                          assets = String["assets/citations.css"])
 
 makedocs(sitename = "Oceananigans.jl",

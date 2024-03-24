@@ -157,7 +157,7 @@ n = Observable(1)
 
 Θₙ = @lift tracer_fields[$n]
 
-fig = Figure(resolution = (1600, 1200), fontsize=30)
+fig = Figure(size=(1600, 1200), fontsize=30)
 ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
 

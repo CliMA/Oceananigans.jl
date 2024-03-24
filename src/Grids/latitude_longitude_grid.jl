@@ -186,8 +186,11 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+    topology, size, halo, latitude, longitude, z, precompute_metrics =
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+
+    Nλ, Nφ, Nz = size
+    Hλ, Hφ, Hz = halo
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -237,38 +240,42 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-    Nλ, Nφ, Nz = N = size
-    
-    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-    @assert -90 <= φ₁ <= φ₂ <= 90
-    
+function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
     if !isnothing(topology)
-        TX, TY, TZ = topology
-        Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-        Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
-    else
-        Lλ = λ₂ - λ₁
+        TX, TY, TZ = validate_topology(topology)
+        Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
+    else # Set default topology according to longitude
+        Nλ, Nφ, Nz = size # using default topology, does not support Flat
+        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
 
+        Lλ = λ₂ - λ₁
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
         TZ = Bounded
     end
 
+    # Validate longitude and latitude
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
+
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
+    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
+    φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
+
     if TX == Flat || TY == Flat 
         precompute_metrics = false
     end
 
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
+    longitude = validate_dimension_specification(TX, longitude, :longitude, Nλ, FT)
+    latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
+    z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
 
-    longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)
-    latitude  = validate_dimension_specification(TY, latitude,  :y, Nφ, FT)
-    z         = validate_dimension_specification(TZ, z,         :z, Nz, FT)
+    halo = validate_halo(TX, TY, TZ, halo)
+    topology = (TX, TY, TZ)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ), precompute_metrics
+    return topology, size, halo, latitude, longitude, z, precompute_metrics
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
@@ -339,7 +346,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
     return new_grid
 end
 
-function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
+function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
@@ -347,7 +354,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongi
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
                       old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
 
-    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
+    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
 
     TX, TY, TZ = topology(old_grid)
 
@@ -430,10 +437,10 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶜᵃ) - 1 
+@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2 
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
@@ -545,7 +552,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     for metric in grid_metrics
         parentM        = Symbol(metric, :_parent)
         @eval $parentM = zeros($FT, $metric_size...)
-        @eval $metric  = OffsetArray(arch_array($arch, $parentM), $offsets...)
+        @eval $metric  = OffsetArray(on_architecture($arch, $parentM), $offsets...)
     end
 
     if grid isa YRegularLLG
@@ -554,8 +561,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ

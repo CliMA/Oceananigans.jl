@@ -61,7 +61,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ```
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
-                                                 grid::G, 
+                                                 grid::G,
                                                  arguments...) where {LX, LY, LZ, K, G}
         T = eltype(grid)
         D = typeof(arguments)
@@ -79,6 +79,11 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),
                                         Tuple(Adapt.adapt(to, a) for a in κ.arguments)...)
+
+on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
+                                        on_architecture(to, κ.grid),
+                                        Tuple(on_architecture(to, a) for a in κ.arguments)...)
 
 Base.show(io::IO, kfo::KernelFunctionOperation) =
     print(io,

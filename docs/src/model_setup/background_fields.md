@@ -56,7 +56,7 @@ model.background_fields.velocities.u
 FunctionField located at (Face, Center, Center)
 ├── func: U (generic function with 1 method)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── clock: Clock(time=0 seconds, iteration=0)
+├── clock: Clock(time=0 seconds, iteration=0, last_Δt=Inf days)
 └── parameters: nothing
 ```
 
@@ -80,7 +80,7 @@ U_field = BackgroundField(U, parameters=parameters.α)
 B_field = BackgroundField(B, parameters=parameters)
 
 # output
-BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Float64}}}
+BackgroundField{typeof(B), @NamedTuple{α::Float64, N::Float64, f::Float64}}
 ├── func: B (generic function with 1 method)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
@@ -99,6 +99,6 @@ model.background_fields.tracers.b
 FunctionField located at (Center, Center, Center)
 ├── func: B (generic function with 1 method)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── clock: Clock(time=0 seconds, iteration=0)
+├── clock: Clock(time=0 seconds, iteration=0, last_Δt=Inf days)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```

@@ -1,9 +1,8 @@
-using Oceananigans.Architectures: architecture, arch_array
+using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
-using Oceananigans.Utils: use_only_active_interior_cells
 
 struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -14,6 +13,8 @@ struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, Ve
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
+    maximum_diffusivity :: FT
+    maximum_viscosity :: FT
 end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
@@ -23,10 +24,15 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         Cᵃᵛ::FT,
                                         Ri₀::FT,
                                         Riᵟ::FT,
-                                        Ri_dependent_tapering::R) where {TD, FT, R}
+                                        Ri_dependent_tapering::R,
+                                        maximum_diffusivity::FT,
+                                        maximum_viscosity::FT) where {TD, FT, R}
+                                       
 
     return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
-                                                 Ri_dependent_tapering)
+                                                 Ri_dependent_tapering,
+                                                 maximum_diffusivity,
+                                                 maximum_viscosity)
 end
 
 # Ri-dependent tapering flavor
@@ -86,10 +92,17 @@ Keyword arguments
 * `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
 
 * `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
+
+* `maximum_diffusivity`: A cap on the diffusivity
+
+* `maximum_viscosity`: A cap on viscosity
+
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
+                                    maximum_diffusivity = Inf,
+                                    maximum_viscosity = Inf,
                                     ν₀  = 0.7,
                                     κ₀  = 0.5,
                                     κᶜᵃ = 1.7,
@@ -108,9 +121,16 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     TD = typeof(time_discretization)
 
-    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜᵃ), FT(Cᵉⁿ),
-                                          FT(Cᵃᵛ), FT(Ri₀), FT(Riᵟ),
-                                          Ri_dependent_tapering)
+    return RiBasedVerticalDiffusivity{TD}(convert(FT, ν₀),
+                                          convert(FT, κ₀),
+                                          convert(FT, κᶜᵃ),
+                                          convert(FT, Cᵉⁿ),
+                                          convert(FT, Cᵃᵛ),
+                                          convert(FT, Ri₀),
+                                          convert(FT, Riᵟ),
+                                          Ri_dependent_tapering,
+                                          convert(FT, maximum_diffusivity),
+                                          convert(FT, maximum_viscosity))
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
@@ -244,8 +264,9 @@ end
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
 
     # Conditions
+    # TODO: apply a minimum entrainment buoyancy gradient?
     convecting = N² < 0 # applies regardless of Qᵇ
-    entraining = (N²_above < 0) & (!convecting) & (Qᵇ > 0)
+    entraining = (N² > 0) & (N²_above < 0) & (Qᵇ > 0)
 
     # Convective adjustment diffusivity
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
@@ -267,6 +288,10 @@ end
     κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
     κᵘ⁺ = κᵘ★
 
+    # Limit by specified maximum
+    κᶜ⁺ = max(κᶜ⁺, closure_ij.maximum_diffusivity) 
+    κᵘ⁺ = max(κᵘ⁺, closure_ij.maximum_viscosity) 
+
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
     within_inactive = inactive_node(i, j, k, grid, c, c, f)
@@ -276,6 +301,7 @@ end
     # Update by averaging in time
     @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
     @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
+
     return nothing
 end
 
@@ -293,6 +319,7 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
     print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
     print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')
-    print(io, "└── Riᵟ: ", prettysummary(closure.Riᵟ))
+    print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
+    print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
     

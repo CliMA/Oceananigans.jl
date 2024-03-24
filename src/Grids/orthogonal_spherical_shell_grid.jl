@@ -589,13 +589,13 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     # convert to
     coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
-    coordinate_arrays = map(a -> arch_array(architecture, a), coordinate_arrays)
+    coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
-    metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
+    metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
 
     conformal_mapping = (; ξ, η, rotation)
 
@@ -777,7 +777,7 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     ii = interior_indices(loc[1](), topo[1](), N[1])
     jj = interior_indices(loc[2](), topo[2](), N[2])
 
-    interior_data = arch_array(arch, file[field_name][ii, jj])
+    interior_data = on_architecture(arch, file[field_name][ii, jj])
 
     underlying_data = zeros(FT, arch,
                             total_length(loc[1](), topo[1](), N[1], H[1]),
@@ -873,7 +873,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
                                                     conformal_mapping)
 end
 
-function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalShellGrid)
+function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
 
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
@@ -902,9 +902,9 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
                         :Azᶜᶠᵃ,
                         :Azᶠᶠᵃ)
 
-    grid_spacing_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in grid_spacings)
-    coordinate_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in coordinates)
-    horizontal_area_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_areas)
+    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
+    coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
+    horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
 
     TX, TY, TZ = topology(grid)
 

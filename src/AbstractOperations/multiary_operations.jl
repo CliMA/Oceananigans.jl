@@ -151,3 +151,9 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
                                   Adapt.adapt(to, multiary.▶),
                                   Adapt.adapt(to, multiary.grid))
 
+on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
+                                  on_architecture(to, multiary.args),
+                                  on_architecture(to, multiary.▶),
+                                  on_architecture(to, multiary.grid))
+                                  
