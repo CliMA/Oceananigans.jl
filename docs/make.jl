@@ -33,18 +33,18 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures thats
     # docs built using extra workers is as efficient as possible.
     example_scripts = [
-        "shallow_water_Bickley_jet.jl",
-        "baroclinic_adjustment.jl",
-        "kelvin_helmholtz_instability.jl",
-        "langmuir_turbulence.jl",
-        "ocean_wind_mixing_and_convection.jl",
-        "horizontal_convection.jl",
         "internal_tide.jl",
-        "convecting_plankton.jl",
+        "shallow_water_Bickley_jet.jl",
+        "kelvin_helmholtz_instability.jl",
+        "horizontal_convection.jl",
+        "langmuir_turbulence.jl",
+        "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
+        "convecting_plankton.jl",
+        "ocean_wind_mixing_and_convection.jl",
         "two_dimensional_turbulence.jl",
-        "internal_wave.jl",
         "one_dimensional_diffusion.jl",
+        "internal_wave.jl",
     ]
 
     @info string("Executing the examples using ", Distributed.nprocs(), " processes")
