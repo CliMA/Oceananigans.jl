@@ -71,7 +71,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
+└── file size: 14.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -86,7 +86,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
+└── file size: 14.8 KiB
 ```
 
 ```jldoctest netcdf1
