@@ -2,16 +2,6 @@ using Distributed
 Distributed.addprocs(2)
 
 @everywhere begin
-    pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
-
-    using Pkg
-    Pkg.activate(joinpath(@__DIR__, ".."))
-    Pkg.instantiate()
-    Pkg.activate(@__DIR__)
-    Pkg.instantiate()
-end
-
-@everywhere begin
     using Documenter
     using DocumenterCitations
     using Literate
@@ -38,7 +28,7 @@ end
     #####
 
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
-    const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
+    const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
     # The examples that take longer to run should be first. This ensures thats
     # docs built using extra workers is as efficient as possible.
@@ -79,18 +69,18 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "generated/internal_wave.md",
-    "Internal tide by a seamount"      => "generated/internal_tide.md",
-    "Convecting plankton"              => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "generated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"        => "generated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "generated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "generated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
+    "Internal wave"                    => "literated/internal_wave.md",
+    "Internal tide by a seamount"      => "literated/internal_tide.md",
+    "Convecting plankton"              => "literated/convecting_plankton.md",
+    "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
+    "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"            => "literated/horizontal_convection.md",
+    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
 ]
 
 model_setup_pages = [
