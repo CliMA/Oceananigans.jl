@@ -160,6 +160,7 @@ CUDA.allowscalar() do
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
@@ -168,6 +169,12 @@ CUDA.allowscalar() do
         archs = test_architectures() 
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_nonhydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        archs = test_architectures() 
+        include("test_nonhydrostatic_regression.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all

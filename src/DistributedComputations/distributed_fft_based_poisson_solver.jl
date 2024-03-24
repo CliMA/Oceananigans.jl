@@ -1,27 +1,23 @@
-import PencilFFTs
-using PencilArrays: Permutation
-
 import FFTW 
+
+using CUDA: @allowscalar
+using Oceananigans.Grids: YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Fields: interior
 
-struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
+struct DistributedFFTBasedPoissonSolver{P, F, L, λ, B, S}
     plan :: P
     global_grid :: F
     local_grid :: L
     eigenvalues :: λ
+    buffer :: B
     storage :: S
-    input_permutation :: I
 end
 
 architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
-
-infer_transform(grid, d) = infer_transform(topology(grid, d)())
-infer_transform(::Periodic) = PencilFFTs.Transforms.FFT!()
-infer_transform(::Bounded)  = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
-infer_transform(::Flat)     = PencilFFTs.Transforms.NoTransform!()
 
 """
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
@@ -32,7 +28,7 @@ Return an FFT-based solver for the Poisson equation,
 ∇²φ = b
 ```
 
-on `Distributed`itectures.
+for `Distributed` architectures.
 
 Supported configurations
 ========================
@@ -94,116 +90,119 @@ _both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transform
 is similar to the two-dimensional case. It remains somewhat of a mystery why this
 succeeds (i.e., why the last transform is correctly decomposed).
 """
-function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
-    arch = architecture(local_grid)
-    Rx, Ry, Rz = arch.ranks
-    communicator = arch.communicator
+    validate_global_grid(global_grid)
+    FT = Complex{eltype(local_grid)}
 
+    storage = ParallelFields(CenterField(local_grid), FT)
     # We don't support distributing anything in z.
-    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
+    architecture(local_grid).ranks[3] == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
-    gNx, gNy, gNz = size(global_grid)
+    arch = architecture(storage.xfield.grid)
 
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
-    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
+    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
+    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
+    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
+        
+    λx = partition_coordinate(λx, size(storage.xfield.grid, 1), arch, 1)
+    λy = partition_coordinate(λy, size(storage.xfield.grid, 2), arch, 2)
+    λz = partition_coordinate(λz, size(storage.xfield.grid, 3), arch, 3)
 
-    # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
-    λx = dropdims(λx, dims=(2, 3))
-    λy = dropdims(λy, dims=(1, 3))
-    λz = dropdims(λz, dims=(1, 2))
+    λx = arch_array(arch, λx)
+    λy = arch_array(arch, λy)
+    λz = arch_array(arch, λz)
 
-    unpermuted_eigenvalues = (λx, λy, λz)
+    eigenvalues = (λx, λy, λz)
 
-    # First we check if we can do a two-dimensional decomposition
-    if gNz >= Rx 
-        input_permutation = Permutation(3, 1, 2)
-        permuted_size = (gNz, gNx, gNy)
-        processors_per_dimension = (Rx, Ry)
-    elseif gNz >= Ry
-        input_permutation = Permutation(3, 2, 1)
-        permuted_size = (gNz, gNy, gNx)
-        processors_per_dimension = (Ry, Rx)
+    plan   = plan_distributed_transforms(global_grid, storage, planner_flag)
+    
+    # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
+    buffer_x = child_architecture(arch) isa GPU && TX == Bounded ? arch_array(arch, zeros(FT, size(storage.xfield)...)) : nothing
+    buffer_z = child_architecture(arch) isa GPU && TZ == Bounded ? arch_array(arch, zeros(FT, size(storage.zfield)...)) : nothing
+    # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
+    buffer_y = child_architecture(arch) isa GPU ? arch_array(arch, zeros(FT, size(storage.yfield)...)) : nothing 
 
-    else # it has to be a one-dimensional decomposition
+    buffer = (; x = buffer_x, y = buffer_y, z = buffer_z)
 
-        Rx > 1 && Ry > 1 &&
-            throw(ArgumentError("DistributedFFTBasedPoissonSolver requires either " *
-                                "(i) Nz > Rx, (ii) Nz > Ry, (iii) Rx = 1, _or_ (iv) Ry = 1."))
-
-        if Rx == 1 # x-local, y-distributed
-            permuted_size = (gNz, gNx, gNy)
-            input_permutation = Permutation(3, 1, 2)
-            processors_per_dimension = (1, Ry)
-        else # Ry == 1, y-local, x-distributed
-            permuted_size = (gNz, gNy, gNx)
-            input_permutation = Permutation(3, 2, 1)
-            processors_per_dimension = (1, Rx)
-        end
-    end
-
-    transforms = Tuple(infer_transform(global_grid, d) for d in Tuple(input_permutation))
-    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
-
-    # Allocate memory for in-place FFT + transpositions
-    storage = PencilFFTs.allocate_input(plan)
-
-    # Permute the λ appropriately
-    permuted_eigenvalues = Tuple(unpermuted_eigenvalues[d] for d in Tuple(input_permutation))
-    eigenvalues = PencilFFTs.localgrid(last(storage), permuted_eigenvalues)
-
-    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage, input_permutation)
+    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, buffer, storage)
 end
 
-# solve! requires that `b` in `A x = b` (the right hand side)
-# was computed and stored in first(solver.storage) prior to calling `solve!(x, solver)`.
+# solve! requires that `b` in `A x = b` (the right hand side) 
+# is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
-    arch = architecture(solver.global_grid)
-    multi_arch = architecture(solver.local_grid)
+    storage = solver.storage
+    buffer  = solver.buffer
+    arch    = architecture(storage.xfield.grid)
 
     # Apply forward transforms to b = first(solver.storage).
-    solver.plan * solver.storage
-
+    solver.plan.forward.z!(parent(storage.zfield), buffer.z)
+    transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
+    transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
+    solver.plan.forward.x!(parent(storage.xfield), buffer.x)
+    
     # Solve the discrete Poisson equation in wavenumber space
     # for x̂. We solve for x̂ in place, reusing b̂.
-    x̂ = b̂ = last(solver.storage)
     λ = solver.eigenvalues
-    @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
+    x̂ = b̂ = parent(storage.xfield)
+
+    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
-    if MPI.Comm_rank(multi_arch.communicator) == 0
-        # This is an assumption: we *hope* PencilArrays allocates in this way
-        parent(x̂)[1, 1, 1] = 0
+    if arch.local_rank == 0
+        @allowscalar x̂[1, 1, 1] = 0
     end
 
-    # Apply backward transforms to x̂ = last(solver.storage).
-    solver.plan \ solver.storage
-
-    # xc is the backward transform of x̂.
-    xc = first(solver.storage)
+    # Apply backward transforms to x̂ = parent(storage.xfield).
+    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
+    transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
+    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
+    transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
+    solver.plan.backward.z!(parent(storage.zfield), buffer.z) # last backwards transform is in z
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
-            copy_permuted_real_component!, x, parent(xc), solver.input_permutation)
+            _copy_real_component!, x, parent(storage.zfield))
 
     return x
 end
 
-const ZXYPermutation = Permutation{(3, 1, 2), 3}
-const ZYXPermutation = Permutation{(3, 2, 1), 3}
-
-@kernel function copy_permuted_real_component!(ϕ, ϕc, ::ZXYPermutation)
+@kernel function _solve_poisson!(x̂, b̂, λx, λy, λz)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[k, i, j])
+    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k])
 end
 
-@kernel function copy_permuted_real_component!(ϕ, ϕc, ::ZYXPermutation)
+@kernel function _copy_real_component!(ϕ, ϕc)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[k, j, i])
+    @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
+end
+
+# TODO: bring up to speed the PCG to remove this error
+validate_global_grid(global_grid) = 
+        throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
+
+function validate_global_grid(global_grid::RectilinearGrid) 
+    TX, TY, TZ = topology(global_grid)
+
+    if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
+        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
+                             TZ Periodic requires also TY and TX to be Periodic,
+                             while TY Periodic requires also TX to be Periodic. 
+                             Please rotate the domain to obtain the required topology"))
+    end
+    
+    # TODO: Allow stretching in z by rotating the underlying data in order to 
+    # have just 4 transposes as opposed to 8    
+    if !(global_grid isa YZRegularRG) 
+        throw(ArgumentError("Only stretching on the X direction is supported with distributed grids at the moment. 
+                             Please rotate the domain to have the stretching in X"))
+    end
+
+    return nothing
 end
 
