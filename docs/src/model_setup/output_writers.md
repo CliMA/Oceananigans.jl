@@ -249,6 +249,7 @@ time `interval`. The ``t_i`` specify both the end of the averaging window and th
 Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 days,
 
 ```jldoctest averaged_time_interval
+using Oceananigans
 using Oceananigans.Units
 
 schedule = AveragedTimeInterval(4days, window=1day)
