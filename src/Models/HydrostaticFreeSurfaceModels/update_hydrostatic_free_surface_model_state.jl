@@ -9,6 +9,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Utils: Iterate, Reference
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -28,6 +29,7 @@ they are called in the end.
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
          update_state!(model, model.grid, callbacks; compute_tendencies)
 
+#=
 function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
     grid = field.grid
 
@@ -80,6 +82,106 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
     end
 
     return nothing
+end
+=#
+
+function find_neighbors(region)
+    if mod(region,2) == 1
+        #- odd face number (1,3,5):
+        region_E = mod(region + 0, 6) + 1
+        region_N = mod(region + 1, 6) + 1
+        region_W = mod(region + 3, 6) + 1
+        region_S = mod(region + 4, 6) + 1
+    else
+        #- even face number (2,4,6):
+        region_E = mod(region + 1, 6) + 1
+        region_N = mod(region + 0, 6) + 1
+        region_W = mod(region + 4, 6) + 1
+        region_S = mod(region + 3, 6) + 1
+    end
+    return region_E, region_N, region_W, region_S
+end
+
+function fill_cubed_sphere_halo_regions!(arch, grid, field, ::Tuple{<:Center, <:Center})
+    if !(grid isa ConformalCubedSphereGrid)
+        return
+    end
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
+    Nc = Nx
+
+    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
+    Hc = Hx
+
+    multiregion_field = Reference(field.data.regional_objects)
+    region = Iterate(1:6)
+
+    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(arch, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_east_west_halo_regions!, field,
+                multiregion_field, region, Hc, Nc)
+    end
+
+    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(arch, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_north_south_halo_regions!, field,
+                multiregion_field, region, Nc, Hc)
+    end
+end
+
+@kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region, Hc,
+                                                                                Nc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighbors(region)
+    #- E + W Halo for field:
+    if mod(region,2) == 1
+        #=
+        field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
+        field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+        =#
+        @inbounds begin
+            field[Nc+i, j, k] = multiregion_field[region_E][i, j, k]
+            field[i-Hc, j, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+        end
+    else
+        #=
+        field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
+        field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+        =#
+        @inbounds begin
+            field[Nc+i, j, k] = multiregion_field[region_E][Nc+1-j, i, k]
+            field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+        end
+    end
+end
+
+@kernel function _fill_cubed_sphere_center_center_field_north_south_halo_regions!(field, multiregion_field, region, Nc,
+                                                                                  Hc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighbors(region)
+    #- N + S Halo for field:
+    if mod(region,2) == 1
+        @inbounds begin
+            #=
+            field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+            field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            =#
+            field[i, Nc+j, k] = multiregion_field[region_N][j, Nc+1-i, k]
+            field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
+        end
+    else
+        @inbounds begin
+            #=
+            field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
+            field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            =#
+            field[i, Nc+j, k] = multiregion_field[region_N][j, i, k]
+            field[i, j-Hc, k] = multiregion_field[region_S][Nc+j-Hc, Nc+1-i, k]
+        end
+    end
 end
 
 function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Face, <:Face})

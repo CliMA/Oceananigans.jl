@@ -140,7 +140,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius
                                   z_halo = 1)
 Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-jldopen("cs-grid-metrics_branch_cs_grid.jld2", "w") do file
+jldopen("cubed-sphere-kernels_branch_cs_grid.jld2", "w") do file
     for region in 1:6
         file["λᶜᶜᵃ/" * string(region)]  =  grid[region].λᶜᶜᵃ
         file["λᶠᶜᵃ/" * string(region)]  =  grid[region].λᶠᶜᵃ

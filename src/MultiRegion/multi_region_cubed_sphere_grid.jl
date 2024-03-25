@@ -226,7 +226,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(Symbol(field)), (Center(), Center()))
+                fill_cubed_sphere_halo_regions!($(arch), $(grid), $(Symbol(field)), (Center(), Center()))
             end
 
             CUDA.@allowscalar begin
