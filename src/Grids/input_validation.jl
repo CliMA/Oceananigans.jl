@@ -83,7 +83,7 @@ function validate_halo(TX, TY, TZ, size, halo)
     validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ))
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
 
-    for i in 1:3
+    for i in 1:2
         !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(coordinate_name(i))"))
     end
 
