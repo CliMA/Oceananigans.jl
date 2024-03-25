@@ -1,5 +1,4 @@
-using Oceananigans.Architectures: architecture, on_architecture
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
@@ -360,4 +359,3 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
-

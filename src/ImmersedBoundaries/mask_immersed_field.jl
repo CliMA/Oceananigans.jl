@@ -1,6 +1,5 @@
 using KernelAbstractions: @kernel, @index
 using Statistics
-using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(T::Type) = T()
