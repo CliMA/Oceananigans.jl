@@ -162,10 +162,16 @@ You can preview how the Documentation will look like after merging by building t
 locally. From the main directory of your local repository call
 
 ```
+julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+```
+
+to instantiate the documentation environment and then
+
+```
 JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
 
-and then open `docs/build/index.html` in your favorite browser. Providing the environment variable 
+If the documentation built is successful, you can open `docs/build/index.html` in your favorite browser.Providing the environment variable 
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 
