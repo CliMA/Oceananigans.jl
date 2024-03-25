@@ -144,14 +144,13 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
 end
 
 Nx = Ny = 32
-Nz = 3 # because we need Hz = 3
 
 partitioning = [XPartition]
 
 for arch in archs
 
     grid_rect = RectilinearGrid(arch,
-                                size = (Nx, Ny, Nz),
+                                size = (Nx, Ny, 1),
                                 halo = (3, 3, 3),
                                 topology = (Periodic, Bounded, Bounded),
                                 x = (0, 1),
@@ -159,7 +158,7 @@ for arch in archs
                                 z = (0, 1))
 
     grid_lat = LatitudeLongitudeGrid(arch,
-                                     size = (Nx, Ny, Nz),
+                                     size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
                                      latitude = (-80, 80),
                                      longitude = (-180, 180),
@@ -181,15 +180,15 @@ for arch in archs
                 c = interior(reconstruct_global_field(c))
                 e = interior(reconstruct_global_field(e))
 
-                @test all(c .≈ cs)
-                @test all(e .≈ es)
+                @test all(isapprox(c, cs, atol=1e-20, rtol=1e-15))
+                @test all(isapprox(e, es, atol=1e-20, rtol=1e-15))
             end
         end
     end
 
     @testset "Testing multi region solid body rotation" begin
         grid = LatitudeLongitudeGrid(arch,
-                                     size = (Nx, Ny, Nz),
+                                     size = (Nx, Ny, 1),
                                      halo = (3, 3, 3),
                                      latitude = (-80, 80),
                                      longitude = (-160, 160),
@@ -215,17 +214,17 @@ for arch in archs
             c = interior(reconstruct_global_field(c))
             η = interior(reconstruct_global_field(η))
 
-            @test all(isapprox(u, us, atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(v, vs, atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(w, ws, atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
-            @test all(isapprox(η, ηs, atol=1e-20, rtol = 1e-15))
+            @test all(isapprox(u, us, atol=1e-20, rtol=1e-15))
+            @test all(isapprox(v, vs, atol=1e-20, rtol=1e-15))
+            @test all(isapprox(w, ws, atol=1e-20, rtol=1e-15))
+            @test all(isapprox(c, cs, atol=1e-20, rtol=1e-15))
+            @test all(isapprox(η, ηs, atol=1e-20, rtol=1e-15))
         end
     end
 
     @testset "Testing multi region gaussian diffusion" begin
         grid  = RectilinearGrid(arch,
-                                size = (Nx, Ny, Nz),
+                                size = (Nx, Ny, 1),
                                 halo = (3, 3, 3),
                                 topology = (Bounded, Bounded, Bounded),
                                 x = (0, 1),
@@ -247,7 +246,7 @@ for arch in archs
                     f = diffusion_cosine_test(grid; closure, P, field_name, regions)
                     f = interior(reconstruct_global_field(f))
 
-                    @test all(f .≈ fs)
+                    @test all(isapprox(f, fs, atol=1e-20, rtol=1e-15))
                 end
             end
         end
