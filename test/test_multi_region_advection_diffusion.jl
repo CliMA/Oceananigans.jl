@@ -8,7 +8,7 @@ Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
-function Δ_min(grid) 
+function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
     return min(Δx_min, Δy_min)
@@ -22,6 +22,16 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
         devices = nothing
     end
 
+    if grid isa RectilinearGrid
+        L = 0.1
+    else
+        L = 24 # degrees
+    end
+
+    # Tracer patch parameters
+    cᵢ(x, y, z) = Gaussian(x, 0, L)
+    eᵢ(x, y, z) = Gaussian(x, y, L)
+
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
@@ -34,16 +44,6 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
                                         buoyancy = nothing,
                                         closure  = nothing)
 
-    if model.grid isa RectilinearGrid
-        L = 0.1
-    else
-        L = 24 # degrees
-    end
-
-    # Tracer patch parameters
-    cᵢ(x, y, z) = Gaussian(x, 0, L)
-    eᵢ(x, y, z) = Gaussian(x, y, L)
-
     set!(model, c=cᵢ, e=eᵢ)
 
     # Time-scale for tracer advection across the smallest grid cell; 0.1 is maximum velocity
@@ -51,7 +51,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     Δt = 0.1advection_time_scale
 
-    for _ in 1:6
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
@@ -92,7 +92,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
     Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
 
-    for _ in 1:6
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
@@ -109,7 +109,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
-    # halo region in the horizontal. Because the extented halo regio size cannot exceed
+    # halo region in the horizontal. Because the extented halo region size cannot exceed
     # the grid's interior size we pick here the number of substeps taking the grid's
     # size into consideration.
     free_surface = SplitExplicitFreeSurface(substeps = 8)
@@ -131,12 +131,10 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     end
     eval(expr)
 
-    update_state!(model)
-
     # Step forward with small time-step relative to diffusive time-scale
-    Δt = 1e-6 * grid.Lz^2 / closure.κ
+    Δt = 1e-6 * cell_diffusion_timescale(model)
 
-    for _ = 1:6
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
@@ -148,7 +146,6 @@ Nx = Ny = 32
 partitioning = [XPartition]
 
 for arch in archs
-
     grid_rect = RectilinearGrid(arch,
                                 size = (Nx, Ny, 1),
                                 halo = (3, 3, 3),
@@ -168,12 +165,13 @@ for arch in archs
     @testset "Testing multi region tracer advection" begin
         for grid in (grid_rect, grid_lat)
 
-            cs, es = solid_body_tracer_advection_test(grid)
+            # on a single grid
+            cs, es = solid_body_tracer_advection_test(grid, regions=1)
 
             cs = Array(interior(cs))
             es = Array(interior(es))
 
-            for regions in [2], P in partitioning
+            for regions in (2,), P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
                 c, e = solid_body_tracer_advection_test(grid; P=P, regions=regions)
 
@@ -196,7 +194,8 @@ for arch in archs
                                      radius = 1,
                                      topology=(Bounded, Bounded, Bounded))
 
-        us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
+        # on a single grid
+        us, vs, ws, cs, ηs = solid_body_rotation_test(grid, regions=1)
 
         us = Array(interior(us))
         vs = Array(interior(vs))
@@ -204,7 +203,7 @@ for arch in archs
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
 
-        for regions in [2], P in partitioning
+        for regions in (2,), P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
 
@@ -237,11 +236,12 @@ for arch in archs
         for field_name in (:u, :v, :c)
             for closure in (diff₂, diff₄)
 
+                # on a single grid
                 fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
                 fs = Array(interior(fs))
 
                 for regions in (2,), P in partitioning
-                    @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
+                    @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) on $arch"
 
                     f = diffusion_cosine_test(grid; closure, P, field_name, regions)
                     f = interior(reconstruct_global_field(f))
