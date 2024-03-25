@@ -793,9 +793,9 @@ end
 
 function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       panel, Nz, z,
-                                      topology = (FullyConnected, FullyConnected, Bounded),
+                                      topology = (Bounded, Bounded, Bounded),
                                         radius = R_Earth,
-                                          halo = (4, 4, 4),
+                                          halo = (1, 1, 1),
                                       rotation = nothing)
 
     TX, TY, TZ = topology
@@ -817,10 +817,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
 
     file = jldopen(filepath, "r")["face$panel"]
 
-    Nξ, Nη = size(file["λᶠᶠᵃ"])
-    Hξ, Hη = halo[1], halo[2]
-    Nξ -= 2Hξ
-    Nη -= 2Hη
+    Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
 
     N = (Nξ, Nη, Nz)
     H = halo
