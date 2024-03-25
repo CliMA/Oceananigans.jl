@@ -36,9 +36,9 @@ end
 
 function run_tracer_conservation_test(grid, scheme)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid, tracers = :c, 
+    model = HydrostaticFreeSurfaceModel(grid = grid, tracers = :c,
                                         free_surface = ExplicitFreeSurface(),
-                                        tracer_advection = scheme, 
+                                        tracer_advection = scheme,
                                         buoyancy = nothing,
                                         coriolis = nothing)
 
@@ -55,7 +55,7 @@ function run_tracer_conservation_test(grid, scheme)
 
     wave_speed = sqrt(model.free_surface.gravitational_acceleration)
     dt = 0.1 / wave_speed
-    for i in 1:10
+    for _ in 1:10
         time_step!(model, dt)
     end
 
@@ -100,15 +100,15 @@ for arch in archs
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
-    
+
         c = CenterField(ibg)
         set!(c, 1)
         mask_immersed_field!(c)
         fill_halo_regions!(c)
-    
+
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-            
+
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)
         end
@@ -149,10 +149,9 @@ for arch in archs
 
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-            
+
             @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_momentum_interpolation_test(u, v, ibg, scheme)
         end
     end
 end
-

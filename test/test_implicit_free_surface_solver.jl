@@ -6,7 +6,6 @@ using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
-    FreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
     MatrixImplicitFreeSurfaceSolver, 
@@ -15,7 +14,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     implicit_free_surface_linear_operation!
 
 using Oceananigans.Grids: with_halo
-
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
