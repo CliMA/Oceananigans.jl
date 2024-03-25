@@ -24,12 +24,6 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
-    if grid isa RectilinearGrid
-        L = 0.1
-    else
-        L = 24
-    end
-
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
@@ -39,6 +33,12 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure  = nothing)
+
+    if model.grid isa RectilinearGrid
+        L = 0.1
+    else
+        L = 24 # degrees
+    end
 
     # Tracer patch parameters
     cᵢ(x, y, z) = Gaussian(x, 0, L)
@@ -51,7 +51,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     Δt = 0.1advection_time_scale
 
-    for _ in 1:10
+    for _ in 1:6
         time_step!(model, Δt)
     end
 
@@ -90,9 +90,9 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    @show Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
+    Δt = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
 
-    for _ in 1:10
+    for _ in 1:6
         time_step!(model, Δt)
     end
 
@@ -112,8 +112,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     # halo region in the horizontal. Because the extented halo regio size cannot exceed
     # the grid's interior size we pick here the number of substeps taking the grid's
     # size into consideration.
-    substeps = Int(round(maximum(size(grid)) .* 0.8))
-    free_surface = SplitExplicitFreeSurface(; substeps)
+    free_surface = SplitExplicitFreeSurface(substeps = 8)
 
     model = HydrostaticFreeSurfaceModel(; grid = mrg,
                                         free_surface,
@@ -122,32 +121,37 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
                                         coriolis = nothing,
                                         buoyancy=nothing)
 
-    m = 2 # cosine wavenumber
-    initial_condition(x, y, z) = cos(m * x)
+    initial_condition(x, y, z) = cos(2x)
 
-    f = fields(model)[field_name]
+    expr = quote
+        # we use set!(model, ...) so that initialize!(model) is called
+        # initialize!(model) is required for SplitExplicitFreeSurface
+        # so that the barotropic transport is initialized
+        set!($model, $field_name = $initial_condition)
+    end
+    eval(expr)
 
-    @apply_regionally set!(f, initial_condition)
-    
     update_state!(model)
 
     # Step forward with small time-step relative to diffusive time-scale
     Δt = 1e-6 * grid.Lz^2 / closure.κ
-    for _ = 1:10
+
+    for _ = 1:6
         time_step!(model, Δt)
     end
 
-    return f
+    return fields(model)[field_name]
 end
 
 Nx = Ny = 32
+Nz = 3 # because we need Hz = 3
 
 partitioning = [XPartition]
 
 for arch in archs
 
     grid_rect = RectilinearGrid(arch,
-                                size = (Nx, Ny, 1),
+                                size = (Nx, Ny, Nz),
                                 halo = (3, 3, 3),
                                 topology = (Periodic, Bounded, Bounded),
                                 x = (0, 1),
@@ -155,7 +159,7 @@ for arch in archs
                                 z = (0, 1))
 
     grid_lat = LatitudeLongitudeGrid(arch,
-                                     size = (Nx, Ny, 1),
+                                     size = (Nx, Ny, Nz),
                                      halo = (3, 3, 3),
                                      latitude = (-80, 80),
                                      longitude = (-180, 180),
@@ -163,7 +167,7 @@ for arch in archs
                                      radius = 1)
 
     @testset "Testing multi region tracer advection" begin
-        for grid in [grid_rect, grid_lat]
+        for grid in (grid_rect, grid_lat)
 
             cs, es = solid_body_tracer_advection_test(grid)
 
@@ -184,7 +188,8 @@ for arch in archs
     end
 
     @testset "Testing multi region solid body rotation" begin
-        grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+        grid = LatitudeLongitudeGrid(arch,
+                                     size = (Nx, Ny, Nz),
                                      halo = (3, 3, 3),
                                      latitude = (-80, 80),
                                      longitude = (-160, 160),
@@ -219,7 +224,8 @@ for arch in archs
     end
 
     @testset "Testing multi region gaussian diffusion" begin
-        grid  = RectilinearGrid(arch, size = (Nx, Ny, 1),
+        grid  = RectilinearGrid(arch,
+                                size = (Nx, Ny, Nz),
                                 halo = (3, 3, 3),
                                 topology = (Bounded, Bounded, Bounded),
                                 x = (0, 1),
