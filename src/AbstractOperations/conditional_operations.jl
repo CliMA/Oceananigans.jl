@@ -1,6 +1,6 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
-using Oceananigans.Architectures: on_architecture
+import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
