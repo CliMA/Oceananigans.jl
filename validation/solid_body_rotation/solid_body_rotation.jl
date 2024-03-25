@@ -27,7 +27,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Statistics
 using JLD2
