@@ -6,7 +6,7 @@ using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instanti
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: GeneralizedSpacingGrid, retrieve_static_grid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractVerticalSpacingGrid, retrieve_static_grid
 
 #####
 ##### Output writer utilities
@@ -49,7 +49,7 @@ function saveproperty!(file, address, grid::DistributedGrid)
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
-function saveproperty!(file, address, grid::GeneralizedSpacingGrid) 
+function saveproperty!(file, address, grid::AbstractVerticalSpacingGrid) 
     static_grid = retrieve_static_grid(grid)
     saveproperty!(file, address, static_grid)
 end
@@ -95,7 +95,7 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
-function serializeproperty!(file, address, grid::GeneralizedSpacingGrid) 
+function serializeproperty!(file, address, grid::AbstractVerticalSpacingGrid) 
     static_grid = retrieve_static_grid(grid)
     serializeproperty!(file, address, static_grid)
 end
