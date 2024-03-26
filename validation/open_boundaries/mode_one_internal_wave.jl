@@ -42,9 +42,12 @@ w_boundaries = FieldBoundaryConditions(east = OpenBoundaryCondition(w_east),
 b_boundaries = FieldBoundaryConditions(east = OpenBoundaryCondition(b_east),
                                        west = OpenBoundaryCondition(b_west))
 
-sponge_thickness = λ/2
+const sponge_thickness = λ/2
 
-mask(x, z) = ((sponge_thickness - x) / sponge_thickness) * (x < sponge_thickness) + ((x - grid.Lx + sponge_thickness) / sponge_thickness) * (x > grid.Lx - sponge_thickness)
+left_sponge(x)  = ((sponge_thickness - x) / sponge_thickness) * (x < sponge_thickness)
+right_sponge(x) = ((x - grid.Lx + sponge_thickness) / sponge_thickness) * (x > grid.Lx - sponge_thickness)
+
+mask(x, z) = left_sponge(x) + right_sponge(x)
 
 cₚ = ω/k
 
