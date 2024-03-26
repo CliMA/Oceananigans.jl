@@ -6,7 +6,7 @@
 """ free-surface following vertical coordinate """
 struct ZStar end
 
-struct ZStarSpacing{R, S} <: AbstractVerticalSpacing
+struct ZStarSpacing{R, S} <: AbstractVerticalSpacing{R}
     Δr :: R
     sⁿ :: S
     s⁻ :: S
