@@ -100,7 +100,7 @@ end
 ##### Tracer advection operators
 #####
     
-@inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c) 
+@inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c)
 
     @inbounds ũ = U[i, j, k]
     cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)

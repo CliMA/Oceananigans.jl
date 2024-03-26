@@ -9,7 +9,6 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
 using Oceananigans.Utils: SumOfArrays
-using KernelAbstractions: @private
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -26,7 +25,7 @@ The tendency for ``u`` is called ``G_u`` and defined via
 where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
-@inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
+@inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, 
                                                               advection,
                                                               coriolis,
                                                               closure,
@@ -62,10 +61,10 @@ The tendency for ``v`` is called ``G_v`` and defined via
 ∂_t v = G_v - ∂_y p_n
 ```
 
-where `p_n` is the part of the barotropic kinematic pressure that's treated
+where `p_n` is the part of the barotropic kinematic pressure that's treated 
 implicitly during time-stepping.
 """
-@inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
+@inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, 
                                                               advection,
                                                               coriolis,
                                                               closure,
@@ -103,7 +102,7 @@ The tendency is called ``G_c`` and defined via
 
 where `c = C[tracer_index]`. 
 """
-@inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
+@inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid, 
                                                           val_tracer_index::Val{tracer_index},
                                                           val_tracer_name,
                                                           advection,

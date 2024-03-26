@@ -108,9 +108,9 @@ Vector Invariant, Dimension-by-dimension reconstruction
  └── smoothness δv²: FunctionStencil f = v_smoothness      
 ```
 """
-function VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
+function VectorInvariant(; vorticity_scheme  = EnstrophyConserving(),
                            vorticity_stencil = VelocityStencil(),
-                           vertical_scheme = EnergyConserving(),
+                           vertical_scheme   = EnergyConserving(),
                            divergence_scheme = vertical_scheme,
                            kinetic_energy_gradient_scheme = divergence_scheme,
                            upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
@@ -152,15 +152,33 @@ const VectorInvariantVelocityVerticalUpwinding  = VectorInvariant{<:Any, <:Any, 
 Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
 Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
 
-Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
-    print(io, summary(a), " \n",
-              " Vorticity flux scheme: ", "\n",
-              " $(a.vorticity_scheme isa WENO ? "├" : "└")── $(summary(a.vorticity_scheme))",
-              " $(a.vorticity_scheme isa WENO ? "\n └── smoothness ζ: $(a.vorticity_stencil)\n" : "\n")",
-              " Vertical advection / Divergence flux scheme: ", "\n",
-              " $(a.vertical_scheme isa WENO ? "├" : "└")── $(summary(a.vertical_scheme))",
-              "$(a.vertical_scheme isa AbstractUpwindBiasedAdvectionScheme ? 
-              "\n └── upwinding treatment: $(a.upwinding)" : "")")
+function Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} 
+
+    δscheme = a.divergence_scheme
+    vscheme = a.vertical_scheme
+    ζscheme = a.vorticity_scheme
+    kscheme = a.kinetic_energy_gradient_scheme
+    
+    msg1 = " Vorticity flux scheme: \n"
+    msg2 = "└── $(summary(ζscheme)) \n"
+    msg3 = " Kinetic energy gradient flux scheme: \n"
+    msg4 = "└── $(summary(kscheme)) \n"
+    msg5 = " Vertical advection scheme: \n"
+    msg6 = "└── $(summary(vscheme)) \n"
+    msg7 = (a.vertical_scheme isa EnergyConserving) ? "" : " Divergence flux scheme: \n"
+    msg8 = isempty(msg7) ? "" : "└── $(summary(a.divergence_scheme)) \n"
+
+    upwinding = (δscheme isa WENO) || (kscheme isa WENO)  || (ζscheme isa WENO)
+
+    msg9  = upwinding ? " WENO smoothness stencils: \n" : ""
+    msg10 = !(ζscheme isa WENO) ? "" :  "└── smoothness ζ: $(a.vorticity_stencil)\n"
+    msg11 = !(δscheme isa WENO) ? "" :  "└── smoothness δx_U : $(a.upwinding.δU_stencil)\n"
+    msg12 = !(δscheme isa WENO) ? "" :  "└── smoothness δy_V : $(a.upwinding.δV_stencil)\n"
+    msg11 = !(kscheme isa WENO) ? "" :  "└── smoothness δx_u² : $(a.upwinding.δu²_stencil)\n"
+    msg12 = !(kscheme isa WENO) ? "" :  "└── smoothness δy_v² : $(a.upwinding.δv²_stencil)\n"
+
+    return print(io, summary(a), "\n", msg1, msg2, msg3, msg4, msg5, msg6, msg7, msg8, msg9, msg10, msg11, msg12)
+end
 
 #####
 ##### Convenience for WENO Vector Invariant
@@ -309,6 +327,10 @@ end
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
+# Fallback for centered advection schemes
+@inline upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v) = @inbounds u[i, j, k] * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) 
+@inline upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v) = @inbounds v[i, j, k] * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, flux_div_xyᶜᶜᶜ, u, v) 
+
 #####
 ##### Horizontal advection 4 formulations:
 #####  1. Energy conservative         
@@ -346,7 +368,7 @@ end
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
 
     Sζ = scheme.vorticity_stencil
 
