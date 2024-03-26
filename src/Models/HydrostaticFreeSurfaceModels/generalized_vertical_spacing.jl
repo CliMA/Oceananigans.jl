@@ -24,13 +24,13 @@ at timestep `n-1` and `n` and it's time derivative.
 """
 abstract type AbstractVerticalSpacing{R} end
 
-const GeneralizedSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing} 
-const GeneralizedSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing}
+const AbstractVerticalSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing} 
+const AbstractVerticalSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing}
 
-const GeneralizedSpacingUnderlyingGrid = Union{GeneralizedSpacingRG, GeneralizedSpacingLLG}
-const GeneralizedSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid}
+const AbstractVerticalSpacingUnderlyingGrid = Union{AbstractVerticalSpacingRG, AbstractVerticalSpacingLLG}
+const AbstractVerticalSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacingUnderlyingGrid}
 
-const GeneralizedSpacingGrid = Union{GeneralizedSpacingUnderlyingGrid, GeneralizedSpacingImmersedGrid} 
+const AbstractVerticalSpacingGrid = Union{AbstractVerticalSpacingUnderlyingGrid, AbstractVerticalSpacingImmersedGrid} 
 
 #####
 ##### Original grid
@@ -38,7 +38,7 @@ const GeneralizedSpacingGrid = Union{GeneralizedSpacingUnderlyingGrid, Generaliz
 
 retrieve_static_grid(grid) = grid
 
-function retrieve_static_grid(grid::GeneralizedSpacingImmersedGrid) 
+function retrieve_static_grid(grid::AbstractVerticalSpacingImmersedGrid) 
     underlying_grid  = retrieve_static_grid(grid.underlying_grid)
     active_cells_map = !isnothing(grid.interior_active_cells)
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
@@ -47,7 +47,7 @@ end
 reference_Δzᵃᵃᶠ(grid) = grid.Δzᵃᵃᶠ
 reference_Δzᵃᵃᶜ(grid) = grid.Δzᵃᵃᶜ
 
-function retrieve_static_grid(grid::GeneralizedSpacingUnderlyingGrid) 
+function retrieve_static_grid(grid::AbstractVerticalSpacingUnderlyingGrid) 
 
     Δzᵃᵃᶠ = reference_Δzᵃᵃᶠ(grid)
     Δzᵃᵃᶜ = reference_Δzᵃᵃᶜ(grid)
@@ -74,7 +74,7 @@ end
 ##### Some extensions
 #####
 
-function with_halo(new_halo, grid::GeneralizedSpacingUnderlyingGrid)
+function with_halo(new_halo, grid::AbstractVerticalSpacingUnderlyingGrid)
     old_static_grid = retrieve_static_grid(grid)
     new_static_grid = with_halo(new_halo, old_static_grid)
     vertical_coordinate = denomination(grid)
@@ -83,7 +83,7 @@ function with_halo(new_halo, grid::GeneralizedSpacingUnderlyingGrid)
     return new_grid
 end
 
-function with_halo(new_halo, ibg::GeneralizedSpacingImmersedGrid) 
+function with_halo(new_halo, ibg::AbstractVerticalSpacingImmersedGrid) 
     underlying_grid = ibg.underlying_grid
     immersed_boundary = ibg.immersed_boundary
     new_underlying_grid = with_halo(new_halo, underlying_grid)
@@ -107,14 +107,14 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 # TODO: make z-direction local in memory by not using Fields
 # TODO: make it work with partial cells 
 
-@inline Δzᶜᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶜᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
+@inline Δzᶜᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
-@inline Δzᶠᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶠᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ)
+@inline Δzᶠᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶠᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
-@inline Δzᶠᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶠᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
+@inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
+@inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
 @inline Δz_reference(i, j, k, Δz::Number) = Δz
 @inline Δz_reference(i, j, k, Δz::AbstractVector) = Δz[k]
@@ -167,7 +167,7 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
     end
 end
 
-ab2_step_tracer_field!(tracer_field, grid::GeneralizedSpacingGrid, Δt, χ, Gⁿ, G⁻) =
+ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ, Gⁿ, G⁻) =
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_generalized_spacing!, 
             tracer_field, 
             grid.Δzᵃᵃᶠ.sⁿ, 
@@ -176,12 +176,12 @@ ab2_step_tracer_field!(tracer_field, grid::GeneralizedSpacingGrid, Δt, χ, Gⁿ
 
 const EmptyTuples = Union{NamedTuple{(),Tuple{}}, Tuple{}}
 
-scale_tracers!(::EmptyTuples, ::GeneralizedSpacingGrid; kwargs...) = nothing
+scale_tracers!(::EmptyTuples, ::AbstractVerticalSpacingGrid; kwargs...) = nothing
 
 tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
 tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
 
-function scale_tracers!(tracers, grid::GeneralizedSpacingGrid; parameters = :xy) 
+function scale_tracers!(tracers, grid::AbstractVerticalSpacingGrid; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
     launch!(architecture(grid), grid, parameters, _scale_tracers, tracers, grid.Δzᵃᵃᶠ.sⁿ, 
             Val(grid.Hz), Val(grid.Nz))

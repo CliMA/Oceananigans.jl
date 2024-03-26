@@ -80,6 +80,9 @@ end
 ##### ZStar-specific vertical spacing functions
 #####
 
+reference_Δzᵃᵃᶠ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.Δr
+reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
+
 @inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sⁿ[i, j, 1]
 @inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sⁿ[i, j, 1]
 
