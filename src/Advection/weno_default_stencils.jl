@@ -242,7 +242,7 @@
 #
 function stencil(N, v)
     expr = []
-    for i in 0:N
+    for i in 0:N-1
         vs = Symbol(v, i)
         push!(expr, vs)
     end
