@@ -27,7 +27,7 @@ using Oceananigans: prognostic_fields
     return r
 end
 
-device!(2)
+#device!(2)
 
 #####
 ##### Grid
@@ -88,16 +88,18 @@ end
 τʸ = on_architecture(arch, τʸ)
 
 bat = file_bathymetry["bathymetry"]
-boundary = Int.(bat .> 0)
+# Do not allow regions shallower than 10 meters depth
+bat[bat .> -100] .= 0
+
+boundary = Int.(bat .>= 0)
 bat[ bat .> 0 ] .= 0 
-bat = -bat
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
                                               size = (Nx, Ny),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (4, 4),
+                                              halo = (5, 5),
                                               topology = (Periodic, Bounded, Flat),
                                               precompute_metrics = true)
 
@@ -112,6 +114,15 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.ImmersedBoundaries: inactive_node, c, IBG
+
+# Custom immersed interpolators
+@inline ı(i, j, k, grid, f::Function, args...) = f(i, j, k, grid, args...)
+@inline ı(i, j, k, grid, ϕ)                    = ϕ[i, j, k]
+
+# Defining Interpolation operators for the immersed boundaries
+@inline ℑxᶠᶜᶜ(i, j, k, ibg::IBG{FT}, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, c, c), ı(i-1, j, k, ibg, args...), ifelse(inactive_node(i-1, j, k, ibg, c, c, c), ı(i, j, k, ibg, args...), ℑxᶠᵃᵃ(i, j, k, ibg, args...)))
+@inline ℑyᶜᶠᶜ(i, j, k, ibg::IBG{FT}, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, c, c), ı(i, j-1, k, ibg, args...), ifelse(inactive_node(i, j-1, k, ibg, c, c, c), ı(i, j, k, ibg, args...), ℑyᵃᶠᵃ(i, j, k, ibg, args...)))
 
 @inline function boundary_stress_u(i, j, k, grid, clock, fields, p)
     time = clock.time
@@ -123,7 +134,7 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int = ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
+    h_int = ℑxᶠᶜᶜ(i, j, k, grid, fields.h)
     if h_int > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / h_int
     else
@@ -141,7 +152,7 @@ end
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int =  ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
+    h_int =  ℑyᶜᶠᶜ(i, j, k, grid, fields.h)
     if h_int > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / h_int
     else
@@ -156,10 +167,9 @@ Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ 
 Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
+using Oceananigans.Advection: VelocityStencil
 
-νh = 0e+1
+νh = 1e+1
 
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -171,7 +181,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 
 model = ShallowWaterModel(grid = grid,
                           gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO(vector_invariant = VorticityStencil()),
+                          momentum_advection = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO()),
                           mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
@@ -182,7 +192,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
+h_init = deepcopy(1e1 .- bat) 
 set!(model, h=h_init)
 fill_halo_regions!(model.solution.h)
 
@@ -194,6 +204,7 @@ fill_halo_regions!(model.solution.h)
 
 Δt = 20seconds 
 
+years = 365*24*3600
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
@@ -204,7 +215,7 @@ function progress(sim)
     u = sim.model.solution.u
     h = sim.model.solution.h
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e m, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration, maximum(abs, u), minimum(h),
                     prettytime(wall_time))
@@ -222,7 +233,7 @@ u, v, h = model.solution
 ζ = Field(ζ_op)
 compute!(ζ)
 
-save_interval = 1days
+save_interval = 30minutes #1days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
                                                             schedule = TimeInterval(save_interval),
