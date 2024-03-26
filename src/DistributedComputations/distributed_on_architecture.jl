@@ -1,5 +1,6 @@
 using CUDA: CuArray
 using OffsetArrays
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Architectures: on_architecture
 
