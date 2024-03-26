@@ -32,10 +32,10 @@ Grids.coordinate_summary(Δ::ZStarSpacing, name) =
 const ZStarSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing}
 const ZStarSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing} 
 
-const ZStarSpacingUnderlyingGrid = Union{GeneralizedSpacingRG, GeneralizedSpacingLLG}
-const ZStarSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid} 
+const ZStarSpacingUnderlyingGrid = Union{ZStarSpacingRG, ZStarSpacingLLG}
+const ZStarSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarSpacingUnderlyingGrid} 
 
-const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, GeneralizedSpacingImmersedGrid}
+const ZStarSpacingGrid = Union{ZStarSpacingUnderlyingGrid, ZStarSpacingImmersedGrid}
 
 function GeneralizedSpacingGrid(grid::ImmersedBoundaryGrid, ::ZStar)
     underlying_grid  = GeneralizedSpacingGrid(grid.underlying_grid, ZStar())
