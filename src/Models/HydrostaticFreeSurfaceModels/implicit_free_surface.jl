@@ -149,7 +149,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
-    fill_halo_regions!(η)
+    fill_halo_regions!(η, model.clock, fields(model))
 
     return nothing
 end

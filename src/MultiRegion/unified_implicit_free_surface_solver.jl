@@ -105,7 +105,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     @apply_regionally redistribute_lhs!(η, storage, arch, grid, Iterate(1:length(grid)), grid.partition)
 
-    fill_halo_regions!(η)
+    fill_halo_regions!(η, model.clock, fields(model))
 
     return nothing
 end
