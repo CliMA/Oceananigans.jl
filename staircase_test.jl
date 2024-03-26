@@ -18,12 +18,6 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = (0, 1),
                        topology = (Bounded, Periodic, Bounded))
 
-# function slope(x, y, n_steps, step_width, Lz, Lx)
-#     tanh_centers = range(0, stop=Lx, length=n_steps+1)[2:end-1]
-
-#     return sum([(tanh(1 / step_width * (x - center))) / (2*n_steps) for center in tanh_centers]) + 1 / 2
-# end
-
 slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 10
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(slope))
@@ -33,7 +27,7 @@ model = NonhydrostaticModel(; grid,
                             pressure_solver = ImmersedPoissonSolver(grid, 
                                                                     solver_method = :HeptadiagonalIterativeSolver,
                                                                     reltol = 1e-8,
-                                                                    preconditioner = "FFT",
+                                                                    preconditioner = :ILUFactorization,
                                                                     verbose = true),
                             advection = WENO(),
                             coriolis = FPlane(f=0.1),

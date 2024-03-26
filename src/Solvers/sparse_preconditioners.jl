@@ -7,6 +7,8 @@ using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
 
+using KrylovPreconditioners
+
 import LinearAlgebra.ldiv!
 
 """
@@ -78,11 +80,13 @@ build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_precon
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
-        throw(ArgumentError("the ILU factorization is not available on the GPU! choose another method"))
+        return KrylovPreconditioners.kp_ilu0(A)
     else
         return ilu(A, τ = settings.τ)
     end
 end
+
+build_preconditioner(::Val{:ICFactorization}, A, setting) = KrylovPreconditioners.kp_ic0(A)
 
 @inline architecture(::CuSparseMatrixCSC) = GPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
