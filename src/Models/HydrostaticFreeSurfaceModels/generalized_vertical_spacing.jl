@@ -14,7 +14,7 @@ import Oceananigans.Advection: ∂t_∂s_grid
 import Oceananigans.Architectures: arch_array
 
 """
-    GeneralizedVerticalSpacing{D, R, S, Z} 
+    AbstractVerticalSpacing{R} 
 
 spacings for a generalized vertical coordinate system. The reference (non-moving) spacings are stored in `Δr`. 
 `Δ` contains the spacings associated with the moving coordinate system.
@@ -22,40 +22,15 @@ spacings for a generalized vertical coordinate system. The reference (non-moving
 at timestep `n-1` and `n` and it's time derivative.
 `denomination` contains the "type" of generalized vertical coordinate (the only one implemented is `ZStar`)
 """
-struct GeneralizedVerticalSpacing{D, R, Z, S, SN, ST}
-  denomination :: D  # The type of generalized coordinate
-            Δr :: R  # Reference _non moving_ vertical coordinate (one-dimensional)
-             Δ :: Z  # moving vertical coordinate (three-dimensional)
-            s⁻ :: S  # scaling term = ∂Δ/∂Δr at the start of the time step
-            sⁿ :: SN # scaling term = ∂Δ/∂Δr at the end of the time step
-         ∂t_∂s :: ST # Time derivative of the vertical coordinate scaling 
-end
+abstract type AbstractVerticalSpacing{R} end
 
-Adapt.adapt_structure(to, coord::GeneralizedVerticalSpacing) = 
-    GeneralizedVerticalSpacing(coord.denomination, 
-                               Adapt.adapt(to, coord.Δr),
-                               Adapt.adapt(to, coord.Δ),
-                               Adapt.adapt(to, coord.s⁻),
-                               Adapt.adapt(to, coord.sⁿ),
-                               Adapt.adapt(to, coord.∂t_∂s))
+const GeneralizedSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing} 
+const GeneralizedSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalSpacing}
 
-on_architecture(arch, coord::GeneralizedVerticalSpacing) = 
-    GeneralizedVerticalSpacing(on_architecture(arch, coord.denomination),
-                               on_architecture(arch, coord.Δr), 
-                               on_architecture(arch, coord.Δ),
-                               on_architecture(arch, coord.s⁻),
-                               on_architecture(arch, coord.sⁿ),
-                               on_architecture(arch, coord.∂t_∂s))
+const GeneralizedSpacingUnderlyingGrid = Union{GeneralizedSpacingRG, GeneralizedSpacingLLG}
+const GeneralizedSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid}
 
-const GeneralizedSpacingRG{D}  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D
-const GeneralizedSpacingLLG{D} = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GeneralizedVerticalSpacing{D}} where D
-
-const GeneralizedSpacingUnderlyingGrid{D} = Union{GeneralizedSpacingRG{D}, GeneralizedSpacingLLG{D}} where D
-const GeneralizedSpacingImmersedGrid{D} = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid{D}} where D
-
-const GeneralizedSpacingGrid{D} = Union{GeneralizedSpacingUnderlyingGrid{D}, GeneralizedSpacingImmersedGrid{D}} where D
-
-denomination(grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶠ.denomination
+const GeneralizedSpacingGrid = Union{GeneralizedSpacingUnderlyingGrid, GeneralizedSpacingImmersedGrid} 
 
 #####
 ##### Original grid
@@ -69,10 +44,13 @@ function retrieve_static_grid(grid::GeneralizedSpacingImmersedGrid)
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
 end
 
+reference_Δzᵃᵃᶠ(grid) = grid.Δzᵃᵃᶠ
+reference_Δzᵃᵃᶜ(grid) = grid.Δzᵃᵃᶜ
+
 function retrieve_static_grid(grid::GeneralizedSpacingUnderlyingGrid) 
 
-    Δzᵃᵃᶠ = grid.Δzᵃᵃᶠ.Δr
-    Δzᵃᵃᶜ = grid.Δzᵃᵃᶜ.Δr
+    Δzᵃᵃᶠ = reference_Δzᵃᵃᶠ(grid)
+    Δzᵃᵃᶜ = reference_Δzᵃᵃᶜ(grid)
 
     TX, TY, TZ = topology(grid)
 
@@ -129,9 +107,6 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 # TODO: make z-direction local in memory by not using Fields
 # TODO: make it work with partial cells 
 
-@inline Δzᶜᶜᶠ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶠ.Δ[i, j, k]
-@inline Δzᶜᶜᶜ(i, j, k, grid::GeneralizedSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.Δ[i, j, k]
-
 @inline Δzᶜᶠᶠ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
 @inline Δzᶜᶠᶜ(i, j, k, grid::GeneralizedSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
@@ -144,8 +119,8 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δz_reference(i, j, k, Δz::Number) = Δz
 @inline Δz_reference(i, j, k, Δz::AbstractVector) = Δz[k]
 
-@inline Δz_reference(i, j, k, Δz::GeneralizedVerticalSpacing{<:Any, <:Number}) = Δz.Δr
-@inline Δz_reference(i, j, k, Δz::GeneralizedVerticalSpacing) = Δz.Δr[k]
+@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing{<:Number}) = Δz.Δr
+@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing) = Δz.Δr[k]
 
 @inline Δzᶜᶜᶠ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶠ)
 @inline Δzᶜᶜᶜ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶜ)
@@ -162,8 +137,8 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 ##### 
 ##### Vertical velocity of the Δ-surfaces to be included in the continuity equation
 #####
+
 @inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
-@inline ∂t_∂s_grid(i, j, k, grid::GeneralizedSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)

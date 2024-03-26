@@ -6,12 +6,36 @@
 """ free-surface following vertical coordinate """
 struct ZStar end
 
-const ZStarSpacing = GeneralizedVerticalSpacing{<:ZStar}
+struct ZStarSpacing{R, S} <: AbstractVerticalSpacing
+    Δr :: R
+    sⁿ :: S
+    s⁻ :: S
+ ∂t_∂s :: S
+end
+
+Adapt.adapt_structure(to, coord::ZStarSpacing) = 
+            ZStarSpacing(Adapt.adapt(to, coord.Δr),
+                         Adapt.adapt(to, coord.s⁻),
+                         Adapt.adapt(to, coord.sⁿ),
+                         Adapt.adapt(to, coord.∂t_∂s))
+
+on_architecture(arch, coord::ZStarSpacing) = 
+            ZStarSpacing(on_architecture(arch, coord.Δr), 
+                         on_architecture(arch, coord.s⁻),
+                         on_architecture(arch, coord.sⁿ),
+                         on_architecture(arch, coord.∂t_∂s))
 
 Grids.coordinate_summary(Δ::ZStarSpacing, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
 
-const ZStarSpacingGrid = GeneralizedSpacingGrid{<:ZStar}
+
+const ZStarSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing}
+const ZStarSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing} 
+
+const ZStarSpacingUnderlyingGrid = Union{GeneralizedSpacingRG, GeneralizedSpacingLLG}
+const ZStarSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GeneralizedSpacingUnderlyingGrid} 
+
+const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, GeneralizedSpacingImmersedGrid}
 
 function GeneralizedSpacingGrid(grid::ImmersedBoundaryGrid, ::ZStar)
     underlying_grid  = GeneralizedSpacingGrid(grid.underlying_grid, ZStar())
@@ -33,8 +57,8 @@ function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::
     fill!(s⁻, 1)
     fill!(sⁿ, 1)
 
-    Δzᵃᵃᶠ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶠ, nothing, s⁻, sⁿ, ∂t_∂s)
-    Δzᵃᵃᶜ = GeneralizedVerticalSpacing(ZStar(), grid.Δzᵃᵃᶜ, nothing, s⁻, sⁿ, ∂t_∂s)
+    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, s⁻, sⁿ, ∂t_∂s)
+    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, s⁻, sⁿ, ∂t_∂s)
 
     args = []
     for prop in propertynames(grid)
@@ -58,6 +82,8 @@ end
 
 @inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sⁿ[i, j, 1]
 @inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sⁿ[i, j, 1]
+
+@inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 
 #####
 ##### ZStar-specific vertical spacings update
