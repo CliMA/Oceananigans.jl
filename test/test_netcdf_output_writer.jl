@@ -919,17 +919,17 @@ end
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
-        # test_DateTime_netcdf_output(arch)
-        # test_netcdf_file_splitting_size(arch)
+        test_DateTime_netcdf_output(arch)
+        test_netcdf_file_splitting_size(arch)
         test_netcdf_file_splitting_time(arch)
-        # test_TimeDate_netcdf_output(arch)
-        # test_thermal_bubble_netcdf_output(arch)
-        # test_thermal_bubble_netcdf_output_with_halos(arch)
-        # test_netcdf_function_output(arch)
-        # test_netcdf_output_alignment(arch)
-        # test_netcdf_spatial_average(arch)
-        # test_netcdf_time_averaging(arch)
-        # test_netcdf_vertically_stretched_grid_output(arch)
-        # test_netcdf_regular_lat_lon_grid_output(arch)
+        test_TimeDate_netcdf_output(arch)
+        test_thermal_bubble_netcdf_output(arch)
+        test_thermal_bubble_netcdf_output_with_halos(arch)
+        test_netcdf_function_output(arch)
+        test_netcdf_output_alignment(arch)
+        test_netcdf_spatial_average(arch)
+        test_netcdf_time_averaging(arch)
+        test_netcdf_vertically_stretched_grid_output(arch)
+        test_netcdf_regular_lat_lon_grid_output(arch)
     end
 end
