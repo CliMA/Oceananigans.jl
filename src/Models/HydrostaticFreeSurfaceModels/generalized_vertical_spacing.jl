@@ -78,7 +78,7 @@ function with_halo(new_halo, grid::AbstractVerticalSpacingUnderlyingGrid)
     old_static_grid = retrieve_static_grid(grid)
     new_static_grid = with_halo(new_halo, old_static_grid)
     vertical_coordinate = denomination(grid)
-    new_grid = GeneralizedSpacingGrid(new_static_grid, vertical_coordinate)
+    new_grid = generalized_spacing_grid(new_static_grid, vertical_coordinate)
 
     return new_grid
 end
@@ -96,7 +96,7 @@ end
 ##### General implementation
 #####
 
-GeneralizedSpacingGrid(grid, coord) = grid
+generalized_spacing_grid(grid, coord) = grid
 update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 
 ##### 

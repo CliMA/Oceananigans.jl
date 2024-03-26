@@ -37,8 +37,8 @@ const ZStarSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:A
 
 const ZStarSpacingGrid = Union{ZStarSpacingUnderlyingGrid, ZStarSpacingImmersedGrid}
 
-function GeneralizedSpacingGrid(grid::ImmersedBoundaryGrid, ::ZStar)
-    underlying_grid  = GeneralizedSpacingGrid(grid.underlying_grid, ZStar())
+function generalized_spacing_grid(grid::ImmersedBoundaryGrid, ::ZStar)
+    underlying_grid  = generalized_spacing_grid(grid.underlying_grid, ZStar())
     active_cells_map = !isnothing(grid.interior_active_cells)
 
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
@@ -46,7 +46,7 @@ end
 
 # Replacing the z-coordinate with a moving vertical coordinate, defined by its reference spacing,
 # the actual vertical spacing and a scaling
-function GeneralizedSpacingGrid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
+function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
     # Memory layout for Δz spacings should be local in z instead of x
     s⁻    = Field{Center, Center, Nothing}(grid)
