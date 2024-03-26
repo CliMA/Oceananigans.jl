@@ -38,7 +38,7 @@ end
 
 function solid_body_rotation_test(grid)
 
-    free_surface = SplitExplicitFreeSurface(; substeps = 5, gravitational_acceleration = 1)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 5, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = HydrostaticFreeSurfaceModel(; grid,
