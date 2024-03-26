@@ -86,7 +86,14 @@ function build_preconditioner(::Val{:ILUFactorization},  A, settings)
     end
 end
 
-build_preconditioner(::Val{:ICFactorization}, A, setting) = KrylovPreconditioners.kp_ic0(A)
+function build_preconditioner(::Val{:ICFactorization}, A, setting)
+    if architecture(A) isa GPU 
+        return KrylovPreconditioners.kp_ic0(A)
+    else
+        @warn "incomplete Choleski on CPUs is not yet implemented, using an Incomplete LU factorization"
+        return ilu(A, τ = 0.001)
+    end
+end
 
 @inline architecture(::CuSparseMatrixCSC) = GPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
