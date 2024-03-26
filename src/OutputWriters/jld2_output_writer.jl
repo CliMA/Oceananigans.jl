@@ -83,7 +83,7 @@ Keyword arguments
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
                     split the output file when its size exceeds `sz`. Another example is 
-                    `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
+                    `file_splitting = FileTimeSplit(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
                     
 - `overwrite_existing`: Remove existing files if their filenames conflict.
@@ -276,7 +276,7 @@ function write_output!(writer::JLD2OutputWriter, model)
         verbose && @info "Fetching time: $(prettytime(tc))"
 
         # Start a new file if the file_splitting(model) is true
-        writer.file_splitting(model) && start_next_file(model, writer)
+        writer.file_splitting(model,writer) && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."

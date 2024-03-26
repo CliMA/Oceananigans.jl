@@ -225,7 +225,7 @@ Keyword arguments
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
           `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
           split the output file when its size exceeds `sz`. Another example is 
-          `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
+          `file_splitting = FileTimeSplit(30days)`, which will split files every 30 days of
           simulation time. The default incurs no splitting (`NoFileSplitting()`).
 
 ## Miscellaneous keywords
@@ -500,7 +500,7 @@ every time an output is written to the file.
 """
 function write_output!(ow::NetCDFOutputWriter, model)
     # Start a new file if the file_splitting(model) is true
-    ow.file_splitting(model) && start_next_file(model, ow)
+    ow.file_splitting(model,ow) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
     ow.dataset = open(ow)
