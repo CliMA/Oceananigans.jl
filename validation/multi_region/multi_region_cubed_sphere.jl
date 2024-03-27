@@ -155,58 +155,23 @@ cs_grid_MITgcm = ConformalCubedSphereGrid(grid_filepath;
                                           panel_halo = (4, 4, 1),
                                           radius = 6370e3)
 
-λᶜᶜᵃ_difference_MITgcm  = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-λᶠᶠᵃ_difference_MITgcm  = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-φᶜᶜᵃ_difference_MITgcm  = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-φᶠᶠᵃ_difference_MITgcm  = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δxᶜᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δxᶠᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δxᶜᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δxᶠᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δyᶜᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δyᶠᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δyᶜᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Δyᶠᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Azᶜᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Azᶠᶜᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Azᶜᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
-Azᶠᶠᵃ_difference_MITgcm = OffsetArray(zeros(Nx+2Hx, Ny+2Hy, 6), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1:6)
+vars = (:λᶜᶜᵃ, :λᶠᶠᵃ, :φᶜᶜᵃ, :φᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ,
+        :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+var_diffs = Tuple(Symbol(string(var) * "_difference_MITgcm") for var in vars)
+
+for var_diff in var_diffs
+    eval(:($var_diff = zeros(Nx+2Hx, Ny+2Hy, 6)))
+end
 
 jldopen("cs_grid_difference_with_MITgcm.jld2", "w") do file
-    for region in 1:6
-        #=
-        λᶜᶜᵃ_difference_MITgcm[:, :, region]  =  cs_grid[region].λᶜᶜᵃ -  OffsetArray(cs_grid_MITgcm[region].λᶜᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        λᶠᶠᵃ_difference_MITgcm[:, :, region]  =  cs_grid[region].λᶠᶠᵃ -  OffsetArray(cs_grid_MITgcm[region].λᶠᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        φᶜᶜᵃ_difference_MITgcm[:, :, region]  =  cs_grid[region].φᶜᶜᵃ -  OffsetArray(cs_grid_MITgcm[region].φᶜᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        φᶠᶠᵃ_difference_MITgcm[:, :, region]  =  cs_grid[region].φᶠᶠᵃ -  OffsetArray(cs_grid_MITgcm[region].φᶠᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δxᶜᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δxᶜᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Δxᶜᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δxᶠᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δxᶠᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Δxᶠᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δxᶜᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δxᶜᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Δxᶜᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δxᶠᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δxᶠᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Δxᶠᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δyᶜᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δyᶜᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Δyᶜᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δyᶠᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δyᶠᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Δyᶠᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δyᶜᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δyᶜᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Δyᶜᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Δyᶠᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Δyᶠᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Δyᶠᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Azᶜᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Azᶜᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Azᶜᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Azᶠᶜᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Azᶠᶜᵃ - OffsetArray(cs_grid_MITgcm[region].Azᶠᶜᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Azᶜᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Azᶜᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Azᶜᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        Azᶠᶠᵃ_difference_MITgcm[:, :, region] = cs_grid[region].Azᶠᶠᵃ - OffsetArray(cs_grid_MITgcm[region].Azᶠᶠᵃ[1:end-Hx, 1:end-Hy], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-        =#
-        file["λᶜᶜᵃ_difference_MITgcm/" * string(region)]  =  λᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["λᶠᶠᵃ_difference_MITgcm/" * string(region)]  =  λᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["φᶜᶜᵃ_difference_MITgcm/" * string(region)]  =  φᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["φᶠᶠᵃ_difference_MITgcm/" * string(region)]  =  φᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶜᶜᵃ_difference_MITgcm/" * string(region)] = Δxᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶠᶜᵃ_difference_MITgcm/" * string(region)] = Δxᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶜᶠᵃ_difference_MITgcm/" * string(region)] = Δxᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶠᶠᵃ_difference_MITgcm/" * string(region)] = Δxᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶜᶜᵃ_difference_MITgcm/" * string(region)] = Δyᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶠᶜᵃ_difference_MITgcm/" * string(region)] = Δyᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶜᶠᵃ_difference_MITgcm/" * string(region)] = Δyᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶠᶠᵃ_difference_MITgcm/" * string(region)] = Δyᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["Azᶜᶜᵃ_difference_MITgcm/" * string(region)] = Azᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["Azᶠᶜᵃ_difference_MITgcm/" * string(region)] = Azᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Azᶜᶠᵃ_difference_MITgcm/" * string(region)] = Azᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Azᶠᶠᵃ_difference_MITgcm/" * string(region)] = Azᶠᶠᵃ_difference_MITgcm[:, :, region]
+    for panel in 1:6
+        for var_diff in var_diffs
+            var_diff_name = string(var_diff)
+            expr = quote
+                $file[$var_diff_name * "/" * string($panel)] = $var_diff[:, :, $panel]
+            end
+            eval(expr)
+        end
     end
 end
