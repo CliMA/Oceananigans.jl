@@ -166,9 +166,11 @@ end
 
 jldopen("cs_grid_difference_with_MITgcm.jld2", "w") do file
     for panel in 1:6
-        for var_diff in var_diffs
+        for (counter, var) in enumerate(vars)
+            var_diff = var_diffs[counter]
             var_diff_name = string(var_diff)
             expr = quote
+                $var_diff[:, :, $panel] = $cs_grid[$panel].$var - $cs_grid_MITgcm[$panel].$var
                 $file[$var_diff_name * "/" * string($panel)] = $var_diff[:, :, $panel]
             end
             eval(expr)
