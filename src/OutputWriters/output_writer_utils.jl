@@ -45,40 +45,6 @@ end
 
 Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 
-
-mutable struct FileTimeSplit <: AbstractSchedule
-    interval :: Float64
-    path :: String
-end
-
-"""
-    FileTimeSplit(time_split [, path=""])
-
-Return a schedule that actuates when the file at `path` exceeds
-the `time_split`.
-
-The `path` is automatically added and updated when `FileTimeSplit` is
-used with an output writer, and should not be provided manually.
-"""
-FileTimeSplit(time_split) = FileTimeSplit(time_split, "")
-
-function (fts::FileTimeSplit)(model,writer) 
-    split_file = false
-    if model.clock.iteration ≠ 0
-        split_file = (model.clock.iteration/ writer.schedule.interval) % (fts.interval/ writer.schedule.interval) == 0
-    end
-    return split_file
-end
-
-function Base.summary(fts::FileTimeSplit)
-    current_size_str = pretty_filesize(filesize(fts.path))
-    time_split_str = pretty_filesize(fts.time_split)
-    return string("FileTimeSplit(time_split=", time_split_str,
-                              ", path=", fts.path, " (", current_size_str, ")")
-end
-
-Base.show(io::IO, fts::FileSizeLimit) = print(io, summary(fts))
-
 # Update schedule based on user input
 update_file_splitting_schedule!(schedule, filepath) = nothing
 

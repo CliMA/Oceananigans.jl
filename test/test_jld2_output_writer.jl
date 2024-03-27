@@ -104,7 +104,7 @@ function test_jld2_file_splitting_time(arch)
                           including = [:grid],
                           array_type = Array{Float64},
                           with_halos = true,
-                          file_splitting = FileTimeSplit(3seconds),
+                          file_splitting = TimeInterval(3seconds),
                           overwrite_existing = true)
 
     push!(simulation.output_writers, ow)

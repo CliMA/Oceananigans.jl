@@ -104,7 +104,7 @@ function test_netcdf_file_splitting_time(arch)
                             array_type = Array{Float64},
                             with_halos = true,
                             global_attributes = fake_attributes,
-                            file_splitting = FileTimeSplit(4seconds),
+                            file_splitting = TimeInterval(4seconds),
                             overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
@@ -123,9 +123,9 @@ function test_netcdf_file_splitting_time(arch)
 
         # Leave test directory clean.
         close(ds)
-        # rm(filename)
+        rm(filename)
     end
-    # rm("test_part4.nc")
+    rm("test_part4.nc")
 
     return nothing
 end
