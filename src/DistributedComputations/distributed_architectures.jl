@@ -204,15 +204,18 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                     communicator = MPI.COMM_WORLD,
+                     communicator = nothing,
                      devices = nothing, 
                      synchronized_communication = false,
-                     partition = Partition(MPI.Comm_size(communicator)))
+                     partition = nothing)
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
         MPI.Init()
     end
+
+    communicator = isnothing(communicator) ? MPI.COMM_WORLD : communicator
+    partition    = isnothing(partition) ? Partition(MPI.Comm_size(communicator)) : partition
 
     ranks = size(partition)
     Rx, Ry, Rz = ranks

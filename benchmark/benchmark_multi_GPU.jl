@@ -12,7 +12,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Oceananigans.MultiRegion
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
