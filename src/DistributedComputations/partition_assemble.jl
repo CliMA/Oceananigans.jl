@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: on_architecture
+import Oceananigans.Architectures: on_architecture
 
 all_reduce(op, val, arch::Distributed) = 
     MPI.Allreduce(val, op, arch.communicator)
