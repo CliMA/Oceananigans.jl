@@ -144,8 +144,8 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   maximum_tracer_diffusivity = Inf,
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
-                                  minimum_turbulent_kinetic_energy = 1e-6,
-                                  minimum_convective_buoyancy_flux = 1e-8,
+                                  minimum_turbulent_kinetic_energy = 1e-15,
+                                  minimum_convective_buoyancy_flux = 1e-15,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
@@ -195,7 +195,7 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    return ifelse(N² ≤ 0, zero(grid), Ri)
+    return ifelse(N² == 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
