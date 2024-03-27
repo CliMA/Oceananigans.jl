@@ -18,8 +18,8 @@ end
 ##### Kernel functions
 #####
 
-outer_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
-inner_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
+outer_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :closure_source_term]
+inner_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :closure_source_term]
 
 diffusive_fluxes = [:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z]
 

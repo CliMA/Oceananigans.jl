@@ -1,6 +1,3 @@
-import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
-
 using Oceananigans.Utils: work_layout, KernelParameters
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
@@ -8,8 +5,6 @@ using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCall
 using Oceananigans.Biogeochemistry: update_tendencies!
 
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
-
 import Oceananigans.Models: complete_communication_and_compute_boundary!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
@@ -54,23 +49,6 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-
-@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
-@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
-
-function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
-    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
-
-    if isnothing(catke_index)
-        return compute_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
-    else
-        catke_closure = closures[catke_index]
-        catke_diffusivity_fields = diffusivity_fields[catke_index]
-        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
-    end
-end
-
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
     values = Tuple(tracers[c].boundary_conditions.top for c in names)
@@ -95,15 +73,10 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model,
-                                                                                 Val(tracer_name),
-                                                                                 model.closure,
-                                                                                 model.diffusivity_fields)
-
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
-                     closure,
+                     model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
@@ -111,14 +84,14 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.free_surface,
                      model.tracers,
                      top_tracer_bcs,
-                     diffusivity,
+                     model.diffusivity_fields,
                      model.auxiliary_fields,
                      c_forcing,
                      model.clock)
 
         for parameters in kernel_parameters
             launch!(arch, grid, parameters,
-                    tendency_kernel!,
+                    compute_hydrostatic_free_surface_Gc!, # tendency_kernel!,
                     c_tendency,
                     grid,
                     active_cells_map,
@@ -208,16 +181,16 @@ function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, veloci
     args = Tuple(args)
 
     # Velocity fields
-    for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
+    for f in (:u, :v)
+        apply_flux_bcs!(Gⁿ[f], velocities[f], arch, args)
     end
 
     # Free surface
     apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
 
     # Tracer fields
-    for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args)
+    for f in propertynames(tracers)
+        apply_flux_bcs!(Gⁿ[f], tracers[f], arch, args)
     end
 
     return nothing
@@ -288,3 +261,4 @@ end
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end
+
