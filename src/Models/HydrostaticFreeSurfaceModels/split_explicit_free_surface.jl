@@ -367,6 +367,26 @@ function SplitExplicitSettings(FT::DataType=Float64;
     return SplitExplicitSettings(substepping, timestepper)
 end
 
+#=
+# mass_flux_weights = similar(averaging_weights)
+#
+# M = searchsortedfirst(τᶠ, 1) - 1
+#
+# averaging_weights ./= sum(averaging_weights)
+#
+# for i in substeps:-1:1
+#     mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
+# end
+#
+# mass_flux_weights ./= sum(mass_flux_weights)
+#
+# return SplitExplicitSettings(substeps,
+#                              averaging_weights,
+#                              mass_flux_weights,
+#                              Δτ,
+#                              timestepper)
+=#
+
 # Convenience Functions for grabbing free surface
 free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 

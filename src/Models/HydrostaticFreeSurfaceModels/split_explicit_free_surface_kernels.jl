@@ -241,6 +241,33 @@ compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅) =
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅; 
             active_cells_map = active_surface_map(grid))
 
+@kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
+    i, j, k = @index(Global, NTuple)
+    k_top   = grid.Nz + 1
+    
+    @inbounds begin
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ[i, j, 1]
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ[i, j, 1]
+    end
+end
+
+function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
+    sefs       = free_surface.state
+    U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
+    Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
+    arch       = architecture(grid)
+
+    # take out "bad" barotropic mode, 
+    # !!!! reusing U and V for this storage since last timestep doesn't matter
+    compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
+    # add in "good" barotropic mode
+
+    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
+            u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
+
+    return nothing
+end
+
 function initialize_free_surface_state!(state, η, timestepper)
 
     parent(state.U) .= parent(state.U̅)
@@ -267,34 +294,6 @@ function initialize_auxiliary_state!(state, η, timestepper)
     parent(state.ηᵐ)   .= parent(η)
     parent(state.ηᵐ⁻¹) .= parent(η)
     parent(state.ηᵐ⁻²) .= parent(η)
-
-    return nothing
-end
-
-@kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
-    i, j, k = @index(Global, NTuple)
-    k_top   = grid.Nz + 1
-    
-    @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ[i, j, 1]
-        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ[i, j, 1]
-    end
-end
-
-function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
-    sefs       = free_surface.state
-    U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
-    Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
-    arch       = architecture(grid)
-
-
-    # take out "bad" barotropic mode, 
-    # !!!! reusing U and V for this storage since last timestep doesn't matter
-    compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
-    # add in "good" barotropic mode
-
-    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
-            u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
 
     return nothing
 end
