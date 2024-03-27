@@ -364,7 +364,6 @@ end
 
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     eᵢ = @inbounds e[i, j, k]
-    #eᵢ = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, e)
     eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
     return sqrt(max(eᵐⁱⁿ, eᵢ))
 end
