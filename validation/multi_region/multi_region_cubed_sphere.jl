@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_cubed_sphere_halo_regions!
+using Oceananigans.MultiRegion: fill_cubed_sphere_halo_regions!
 #=
 Install Imaginocean.jl from GitHub:
 using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
@@ -145,8 +145,8 @@ Hx, Hy, Hz = cs_grid.Hx, cs_grid.Hy, cs_grid.Hz
 using DataDeps
 cs32_4 = DataDep("cubed_sphere_32_grid_with_4_halos",
                  "Conformal cubed sphere grid with 32×32 cells on each face and 4 halos on each side",
-                 "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ncc-sb/add-cs32-grid-with-4-halos/cubed_sphere_grids/cs32_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2",
-                 "356b4ec09dbf9817e96ee6b6f1d6ec3acd53e689bc105e436497898830145e2a")
+                 "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs32_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2",
+                 "fbe684cb560c95ecae627b23784e449aa083a1e6e029dcda32cbfecfc0e26721")
 DataDeps.register(cs32_4)
 grid_filepath = datadep"cubed_sphere_32_grid_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2"
 cs_grid_MITgcm = ConformalCubedSphereGrid(grid_filepath;

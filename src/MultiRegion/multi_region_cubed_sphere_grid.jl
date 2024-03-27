@@ -5,7 +5,7 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           size_summary,
                           total_length,
                           topology
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_cubed_sphere_halo_regions!
+using Oceananigans.MultiRegion: fill_cubed_sphere_halo_regions!
 
 using CubedSphere
 using Distances
