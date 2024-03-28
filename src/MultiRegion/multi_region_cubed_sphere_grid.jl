@@ -11,8 +11,6 @@ using Distances
 
 import Oceananigans.Grids: grid_name
 
-fill_cubed_sphere_halo_regions!() = nothing
-
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
 """
@@ -206,11 +204,11 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch,
-                                                                                           partition,
-                                                                                           connectivity,
-                                                                                           region_grids,
-                                                                                           devices)
+    grid = MultiRegionGrid{FT, region_topology...}(arch,
+                                                   partition,
+                                                   connectivity,
+                                                   region_grids,
+                                                   devices)
 
     fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ )
     LXs    = (:Center, :Center, :Center)
