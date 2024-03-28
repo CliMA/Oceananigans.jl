@@ -210,9 +210,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                    region_grids,
                                                    devices)
 
-    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ )
-    LXs    = (:Center, :Center, :Center)
-    LYs    = (:Center, :Center, :Center)
+    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ , :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
+    LXs    = (:Center, :Center, :Center, :Face, :Face, :Face )
+    LYs    = (:Center, :Center, :Center, :Face, :Face, :Face )
 
     for (field, LX, LY) in zip(fields, LXs, LYs)
         expr = quote
@@ -299,34 +299,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                 for region in 1:number_of_regions($(grid))
                     getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
                     getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
-                end
-            end
-        end # quote
-
-        eval(expr)
-    end
-
-    fields = (:λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
-    LXs    = (:Face, :Face, :Face)
-    LYs    = (:Face, :Face, :Face)
-
-    for (field, LX, LY) in zip(fields, LXs, LYs)
-        expr = quote
-            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
-                end
-            end
-
-            if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(Symbol(field)))
-            end
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
                 end
             end
         end # quote
