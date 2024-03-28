@@ -28,10 +28,7 @@ on_architecture(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration))
 
-#####
-##### Interface to HydrostaticFreeSurfaceModel
-#####
-
+# Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
