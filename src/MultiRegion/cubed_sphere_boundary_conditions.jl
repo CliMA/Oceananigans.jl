@@ -238,6 +238,11 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
         end
     end
 
+    # While filling the halos of paired grid coordinates and metrics, we always set signed = false. This is because
+    # these paired quantities are not the horizontal components of a vector, such as zonal and meridional velocity
+    # components, and therefore, sign reversal does not apply when these components are swapped. In practice, we only
+    # use signed = true while filling the halos of velocities, in which case we need the velocity halos adjacent to the
+    # corners to compute vorticity, which in turn is used in the prognostic momentum equations.
     if signed
         #-- Add one valid field_1, field_2 value next to the corner, that allows to compute vorticity on a wider stencil
         # (e.g., vort3(0,1) & (1,0)).
