@@ -6,10 +6,10 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           total_length,
                           topology
 
-import Oceananigans.Grids: grid_name
-
 using CubedSphere
 using Distances
+
+import Oceananigans.Grids: grid_name
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
@@ -204,59 +204,33 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch,
-                                                                                           partition,
-                                                                                           connectivity,
-                                                                                           region_grids,
-                                                                                           devices)
+    grid = MultiRegionGrid{FT, region_topology...}(arch,
+                                                   partition,
+                                                   connectivity,
+                                                   region_grids,
+                                                   devices)
 
-    # TODO: Use fill_halo_regions! for the Face-Face-Any fields.
-    #       Need to add the Face-Face-Any coords/metric fiels in the tuples below and then abolish
-    #       the use of fill_faceface_coordinates!(grid) and fill_faceface_metrics!(grid)
+    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ )
+    LXs    = (:Center, :Center, :Center)
+    LYs    = (:Center, :Center, :Center)
 
-    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :Azᶜᶜᵃ,  :Azᶠᶜᵃ)
-    LXs₁    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
-    LYs₁    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
-
-    # fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δxᶜᶠᵃ,  :Δxᶠᶠᵃ, :λᶜᶜᵃ,   :λᶠᶜᵃ,   :λᶜᶠᵃ,   :λᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶠᶜᵃ,  :Azᶠᶠᵃ)
-    # LXs₁    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
-    # LYs₁    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
-
-    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :Azᶜᶜᵃ,  :Azᶜᶠᵃ)
-    LXs₂    = (:Center, :Center, :Face,   :Center, :Center, :Face,   :Center, :Center)
-    LYs₂    = (:Center, :Face,   :Center, :Center, :Face,   :Center, :Center, :Face)
-
-    # fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δyᶠᶜᵃ,  :Δyᶠᶠᵃ, :φᶜᶜᵃ,   :φᶜᶠᵃ,   :φᶠᶜᵃ,   :φᶠᶠᵃ, :Azᶜᶜᵃ,  :Azᶜᶠᵃ,  :Azᶠᶠᵃ)
-    # LXs₂    = (:Center, :Center, :Face,   :Face,  :Center, :Center, :Face,   :Face, :Center, :Center, :Face )
-    # LYs₂    = (:Center, :Face,   :Center, :Face,  :Center, :Face,   :Center, :Face, :Center, :Face,   :Face )
-
-    for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
+    for (field, LX, LY) in zip(fields, LXs, LYs)
         expr = quote
-            $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
-            $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
+            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
-                    getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
+                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
                 end
             end
 
             if $(horizontal_topology) == FullyConnected
-                for _ in 1:2
-                    fill_halo_regions!($(Symbol(field₁)))
-                    fill_halo_regions!($(Symbol(field₂)))
-
-                    @apply_regionally replace_horizontal_vector_halos!((; u = $(Symbol(field₁)),
-                                                                          v = $(Symbol(field₂)),
-                                                                          w = nothing), $(grid), signed=false)
-                end
+                fill_cubed_sphere_halo_regions!($(Symbol(field)))
             end
 
             CUDA.@allowscalar begin
                 for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
-                    getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
+                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
                 end
             end
         end # quote
@@ -264,123 +238,150 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    " Halo filling for Face-Face coordinates, hardcoded for the default cubed-sphere connectivity. "
-    function fill_faceface_coordinates!(grid)
-        length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
+    field_1 = :Δxᶜᶜᵃ
+    LX_1    = :Center
+    LY_1    = :Center
 
-        CUDA.allowscalar() do
-            getregion(grid, 1).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 1).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 3).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 1).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).λᶠᶠᵃ[1, 1:Ny]
+    field_2 = :Δyᶜᶜᵃ
+    LX_2    = :Center
+    LY_2    = :Center
 
-            getregion(grid, 3).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 3).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 5).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 3).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).λᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 5).φᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).φᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 5).λᶠᶠᵃ[2:Nx+1, Ny+1] = reshape(reverse(getregion(grid, 1).λᶠᶠᵃ[1:1, 1:Ny]), (Ny, 1))
-            getregion(grid, 5).φᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).φᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).λᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).λᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 2).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).λᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 4).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).λᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 6).φᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).φᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).λᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).λᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).φᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).φᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).λᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).λᶠᶠᵃ[1:Nx, 1:1])
-
-            for region in (1, 3, 5)
-                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
-                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
-            end
-
-            for region in (2, 4, 6)
-                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
-                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
-            end
-        end
-
-        return nothing
-    end
-
-    " Halo filling for Face-Face metrics, hardcoded for the default cubed-sphere connectivity. "
-    function fill_faceface_metrics!(grid)
-        length(grid.partition) != 6 && error("only works for CubedSpherePartition(R = 1) at the moment")
+    expr = quote
+        $(Symbol(field_1)) = Field{$(Symbol(LX_1)), $(Symbol(LY_1)), Nothing}($(grid))
+        $(Symbol(field_2)) = Field{$(Symbol(LX_2)), $(Symbol(LY_2)), Nothing}($(grid))
 
         CUDA.@allowscalar begin
-            getregion(grid, 1).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 3).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 1).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 1).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 2).Azᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 3).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 5).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 3).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 3).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 4).Azᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 5).Δxᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Δyᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Δyᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Δxᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Azᶠᶠᵃ[2:Nx+1, Ny+1] = reverse(getregion(grid, 1).Azᶠᶠᵃ[1:1, 1:Ny])'
-            getregion(grid, 5).Δxᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Δxᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).Δyᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Δyᶠᶠᵃ[1, 1:Ny]
-            getregion(grid, 5).Azᶠᶠᵃ[Nx+1, 1:Ny]   = getregion(grid, 6).Azᶠᶠᵃ[1, 1:Ny]
-
-            getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 3).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 2).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 2).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 4).Azᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 4).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 5).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 4).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 4).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 6).Azᶠᶠᵃ[1:Nx, 1:1])
-
-            getregion(grid, 6).Δxᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Δxᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Δyᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Δyᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Azᶠᶠᵃ[1:Nx, Ny+1]   = getregion(grid, 1).Azᶠᶠᵃ[1:Nx, 1]
-            getregion(grid, 6).Δxᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Δyᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).Δyᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Δxᶠᶠᵃ[1:Nx, 1:1])
-            getregion(grid, 6).Azᶠᶠᵃ[Nx+1, 2:Ny+1] = reverse(getregion(grid, 2).Azᶠᶠᵃ[1:Nx, 1:1])
-
-            for region in (1, 3, 5)
-                getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
-                getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
-                getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
-            end
-
-            for region in (2, 4, 6)
-                getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
-                getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
-                getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+            for region in 1:number_of_regions($(grid))
+                getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
             end
         end
 
-        return nothing
+        if $(horizontal_topology) == FullyConnected
+            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), signed = false)
+        end
+
+        CUDA.@allowscalar begin
+            for region in 1:number_of_regions($(grid))
+                getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+            end
+        end
+    end # quote
+
+    eval(expr)
+
+    fields_1 = (:Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ )
+    LXs_1    = (:Face,   :Face,   :Face,   :Face,   :Face  )
+    LYs_1    = (:Center, :Center, :Center, :Center, :Center)
+
+    fields_2 = (:Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ )
+    LXs_2    = (:Center, :Center, :Center, :Center, :Center)
+    LYs_2    = (:Face,   :Face,   :Face,   :Face,   :Face  )
+
+    for (field_1, LX_1, LY_1, field_2, LX_2, LY_2) in zip(fields_1, LXs_1, LYs_1, fields_2, LXs_2, LYs_2)
+        expr = quote
+            $(Symbol(field_1)) = Field{$(Symbol(LX_1)), $(Symbol(LY_1)), Nothing}($(grid))
+            $(Symbol(field_2)) = Field{$(Symbol(LX_2)), $(Symbol(LY_2)), Nothing}($(grid))
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                    getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
+                end
+            end
+
+            if $(horizontal_topology) == FullyConnected
+                fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), signed = false)
+            end
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                    getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+                end
+            end
+        end # quote
+
+        eval(expr)
     end
 
-    if horizontal_topology == FullyConnected
-        fill_faceface_coordinates!(grid)
-        fill_faceface_metrics!(grid)
+    fields = (:λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
+    LXs    = (:Face, :Face, :Face)
+    LYs    = (:Face, :Face, :Face)
+
+    for (field, LX, LY) in zip(fields, LXs, LYs)
+        expr = quote
+            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
+                end
+            end
+
+            if $(horizontal_topology) == FullyConnected
+                fill_cubed_sphere_halo_regions!($(Symbol(field)))
+            end
+
+            CUDA.@allowscalar begin
+                for region in 1:number_of_regions($(grid))
+                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
+                end
+            end
+        end # quote
+
+        eval(expr)
+    end
+
+    field_1 = :Δxᶠᶠᵃ
+    field_2 = :Δyᶠᶠᵃ
+
+    expr = quote
+        $(Symbol(field_1)) = Field{Face, Face, Nothing}($(grid))
+        $(Symbol(field_2)) = Field{Face, Face, Nothing}($(grid))
+
+        CUDA.@allowscalar begin
+            for region in 1:number_of_regions($(grid))
+                getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
+                getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
+            end
+        end
+
+        if $(horizontal_topology) == FullyConnected
+            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), signed = false)
+        end
+
+        CUDA.@allowscalar begin
+            for region in 1:number_of_regions($(grid))
+                getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
+                getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
+            end
+        end
+    end # quote
+
+    eval(expr)
+
+    CUDA.@allowscalar begin
+
+        for region in (1, 3, 5)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+            getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
+        for region in (2, 4, 6)
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
+            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
+            getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
+            getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
+            getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        end
+
     end
 
     CUDA.@allowscalar begin
@@ -409,7 +410,7 @@ Load a `ConformalCubedSphereGrid` from `filepath`.
 function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
                                   Nz,
                                   z,
-                                  panel_halo = (1, 1, 1),
+                                  panel_halo = (4, 4, 4),
                                   panel_topology = (FullyConnected, FullyConnected, Bounded),
                                   radius = R_Earth,
                                   devices = nothing)

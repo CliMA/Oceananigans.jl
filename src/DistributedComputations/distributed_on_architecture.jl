@@ -2,6 +2,8 @@ using CUDA: CuArray
 using OffsetArrays
 import Oceananigans.Architectures: on_architecture
 
+import Oceananigans.Architectures: on_architecture
+
 # We do not support switching from distributed and serial through `on_architecture`.
 # We only support moving a type from CPU to GPU and the other way around
 # TODO: support changing the number of ranks / the partitioning?

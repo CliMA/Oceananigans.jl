@@ -1,5 +1,6 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
+
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
