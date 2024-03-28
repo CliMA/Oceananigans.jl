@@ -91,8 +91,8 @@ julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: OpenBoundaryCondition: Nothing
-├── north: OpenBoundaryCondition: Nothing
+├── south: OpenBoundaryCondition{Nothing}: Nothing
+├── north: OpenBoundaryCondition{Nothing}: Nothing
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: FluxBoundaryCondition: Nothing
