@@ -14,7 +14,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
     for region in 1:6
 
         if mod(region, 2) == 1
-            #- odd face number (1,3,5):
+            #- odd face number (1, 3, 5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
             region_W = mod(region + 3, 6) + 1
@@ -28,7 +28,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
                 field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
-            #- even face number (2,4,6):
+            #- even face number (2, 4, 6):
             region_E = mod(region + 1, 6) + 1
             region_N = mod(region + 0, 6) + 1
             region_W = mod(region + 4, 6) + 1
@@ -64,7 +64,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     for region in 1:6
 
         if mod(region, 2) == 1
-            #- odd face number (1,3,5):
+            #- odd face number (1, 3, 5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
             region_W = mod(region + 3, 6) + 1
@@ -83,7 +83,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
                 field[region][Nc+1, 1-Hc:0, k]        = reverse(field[region_E][2:Hc+1, 1, k])
             end
         else
-            #- even face number (2,4,6):
+            #- even face number (2, 4, 6):
             region_E = mod(region + 1, 6) + 1
             region_N = mod(region + 0, 6) + 1
             region_W = mod(region + 4, 6) + 1
@@ -129,7 +129,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
     for region in 1:6
 
         if mod(region, 2) == 1
-            #- odd face number (1,3,5):
+            #- odd face number (1, 3, 5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
             region_W = mod(region + 3, 6) + 1
@@ -149,7 +149,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
                 field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
-            #- even face number (2,4,6):
+            #- even face number (2, 4, 6):
             region_E = mod(region + 1, 6) + 1
             region_N = mod(region + 0, 6) + 1
             region_W = mod(region + 4, 6) + 1
@@ -193,7 +193,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
     for region in 1:6
 
         if mod(region, 2) == 1
-            #- odd face number (1,3,5):
+            #- odd face number (1, 3, 5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
             region_W = mod(region + 3, 6) + 1
@@ -217,7 +217,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
                 field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
-            #- even face number (2,4,6):
+            #- even face number (2, 4, 6):
             region_E = mod(region + 1, 6) + 1
             region_N = mod(region + 0, 6) + 1
             region_W = mod(region + 4, 6) + 1
@@ -288,7 +288,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
     for region in 1:6
 
         if mod(region, 2) == 1
-            #- odd face number (1,3,5):
+            #- odd face number (1, 3, 5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
             region_W = mod(region + 3, 6) + 1
@@ -318,7 +318,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
                 field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
-            #- even face number (2,4,6):
+            #- even face number (2, 4, 6):
             region_E = mod(region + 1, 6) + 1
             region_N = mod(region + 0, 6) + 1
             region_W = mod(region + 4, 6) + 1
