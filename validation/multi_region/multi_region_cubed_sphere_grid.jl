@@ -1,90 +1,96 @@
-using Oceananigans, JLD2, OffsetArrays, Statistics
+# Comparison of coordinates and metrics of a 32x32 cubed sphere grid with 4 halos
+# to their counterparts from MITgcm
 
-# Comparison of 32x32 cubed sphere grid coordinates and metrics relative to their counterparts from MITgcm
+using Oceananigans, DataDeps, JLD2, Statistics
 
 Nx, Ny, Nz = 32, 32, 1
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=6370e3, horizontal_direction_halo = 4,
-                                  z_halo = 1)
-Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+cs_grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=6370e3, horizontal_direction_halo = 4,
+                                     z_halo = 1)
+Hx, Hy, Hz = cs_grid.Hx, cs_grid.Hy, cs_grid.Hz
 
-MITgcm_cs_grid_file = jldopen("cubed_sphere_32_grid_with_4_halos.jld2")
+cs32_4 = DataDep("cubed_sphere_32_grid_with_4_halos",
+                 "Conformal cubed sphere grid with 32×32 cells on each face and 4 halos on each side",
+                 "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs32_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2",
+                 "fbe684cb560c95ecae627b23784e449aa083a1e6e029dcda32cbfecfc0e26721")
+DataDeps.register(cs32_4)
+grid_filepath = datadep"cubed_sphere_32_grid_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2"
 
-λᶜᶜᵃ_difference_MITgcm  = zeros(Nx+2Hx, Ny+2Hy, 6)
-λᶠᶠᵃ_difference_MITgcm  = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶜᶜᵃ_difference_MITgcm  = zeros(Nx+2Hx, Ny+2Hy, 6)
-φᶠᶠᵃ_difference_MITgcm  = zeros(Nx+2Hx, Ny+2Hy, 6)
-Δxᶠᶜᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Δxᶜᶠᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Δyᶠᶜᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Δyᶜᶠᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Δyᶠᶠᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Azᶜᶜᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Azᶠᶜᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Azᶜᶠᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
-Azᶠᶠᵃ_difference_MITgcm = zeros(Nx+2Hx, Ny+2Hy, 6)
+cs_grid_MITgcm = ConformalCubedSphereGrid(grid_filepath;
+                                          Nz = 1,
+                                          z = (-1, 0),
+                                          panel_halo = (4, 4, 1),
+                                          radius = 6370e3)
 
-jldopen("MITgcm_cs_grid_relative_difference.jld2", "w") do file
+function same_longitude_at_poles!(grid1, grid2)
     for region in 1:6
-         λᶜᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].λᶜᶜᵃ  - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/λᶜᶜᵃ" ], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].λᶜᶜᵃ  .+ 100eps(eltype(grid)))
-         λᶠᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].λᶠᶠᵃ  - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/λᶠᶠᵃ" ], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].λᶠᶠᵃ  .+ 100eps(eltype(grid)))
-         φᶜᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].φᶜᶜᵃ  - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/φᶜᶜᵃ" ], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].φᶜᶜᵃ  .+ 100eps(eltype(grid)))
-         φᶠᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].φᶠᶠᵃ  - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/φᶠᶠᵃ" ], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].φᶠᶠᵃ  .+ 100eps(eltype(grid)))
-        Δxᶠᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].Δxᶠᶜᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Δxᶠᶜᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Δxᶠᶜᵃ .+ 100eps(eltype(grid)))
-        Δxᶜᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].Δxᶜᶠᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Δxᶜᶠᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Δxᶜᶠᵃ .+ 100eps(eltype(grid)))
-        Δyᶠᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].Δyᶠᶜᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Δyᶠᶜᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Δyᶠᶜᵃ .+ 100eps(eltype(grid)))
-        Δyᶜᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].Δyᶜᶠᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Δyᶜᶠᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Δyᶜᶠᵃ .+ 100eps(eltype(grid)))
-        Azᶜᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].Azᶜᶜᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Azᶜᶜᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Azᶜᶜᵃ .+ 100eps(eltype(grid)))
-        Azᶠᶜᵃ_difference_MITgcm[:, :, region] = (grid[region].Azᶠᶜᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Azᶠᶜᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Azᶠᶜᵃ .+ 100eps(eltype(grid)))
-        Azᶜᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].Azᶜᶠᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Azᶜᶠᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Azᶜᶠᵃ .+ 100eps(eltype(grid)))
-        Azᶠᶠᵃ_difference_MITgcm[:, :, region] = (grid[region].Azᶠᶠᵃ - OffsetArray(MITgcm_cs_grid_file["face" * string(region) * "/Azᶠᶠᵃ"], 1-Hx:Nx+Hx, 1-Hy:Ny+Hy)) ./ (grid[region].Azᶠᶠᵃ .+ 100eps(eltype(grid)))
-        file["λᶜᶜᵃ_relative_difference_MITgcm/" * string(region)]  =  λᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["λᶠᶠᵃ_relative_difference_MITgcm/" * string(region)]  =  λᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["φᶜᶜᵃ_relative_difference_MITgcm/" * string(region)]  =  φᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["φᶠᶠᵃ_relative_difference_MITgcm/" * string(region)]  =  φᶠᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶠᶜᵃ_relative_difference_MITgcm/" * string(region)] = Δxᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δxᶜᶠᵃ_relative_difference_MITgcm/" * string(region)] = Δxᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶠᶜᵃ_relative_difference_MITgcm/" * string(region)] = Δyᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Δyᶜᶠᵃ_relative_difference_MITgcm/" * string(region)] = Δyᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Azᶜᶜᵃ_relative_difference_MITgcm/" * string(region)] = Azᶜᶜᵃ_difference_MITgcm[:, :, region]
-        file["Azᶠᶜᵃ_relative_difference_MITgcm/" * string(region)] = Azᶠᶜᵃ_difference_MITgcm[:, :, region]
-        file["Azᶜᶠᵃ_relative_difference_MITgcm/" * string(region)] = Azᶜᶠᵃ_difference_MITgcm[:, :, region]
-        file["Azᶠᶠᵃ_relative_difference_MITgcm/" * string(region)] = Azᶠᶠᵃ_difference_MITgcm[:, :, region]
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]
+    end
+    return nothing
+end
+
+same_longitude_at_poles!(cs_grid_MITgcm, cs_grid)
+
+vars = (:λᶜᶜᵃ, :λᶠᶠᵃ,
+        :φᶜᶜᵃ, :φᶠᶠᵃ,
+        :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+        :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+        :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+var_diffs = Tuple(Symbol(string(var) * "_difference_MITgcm") for var in vars)
+
+for var_diff in var_diffs
+    eval(:($var_diff = zeros(Nx+2Hx, Ny+2Hy, 6)))
+end
+
+jldopen("cs_grid_difference_with_MITgcm.jld2", "w") do file
+    for panel in 1:6
+        for (counter, var) in enumerate(vars)
+            var_diff = var_diffs[counter]
+            var_diff_name = string(var_diff)
+
+            expr = quote
+                $var_diff[:, :, $panel] = $cs_grid[$panel].$var - $cs_grid_MITgcm[$panel].$var
+                $file[$var_diff_name * "/" * string($panel)] = $var_diff[:, :, $panel]
+            end
+            eval(expr)
+        end
     end
 end
 
-close(MITgcm_cs_grid_file)
-
-function zero_out_corners!(array, (Nx, Ny), (Hx, Hy))
+function zero_out_corner_halos!(array, (Nx, Ny), (Hx, Hy))
     array[1:Hx, 1:Hy] .= 0
     array[1:Hx, Ny+Hy+1:Ny+2Hy] .= 0
     array[Nx+Hx+1:Nx+2Hx, 1:Hy] .= 0
     array[Nx+Hx+1:Nx+2Hx, Ny+Hy+1:Ny+2Hy] .= 0
+
     return nothing
 end
 
+function zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
+    array[1:Hx, :] .= 0
+    array[Nx+Hx+1:Nx+2Hx, :] .= 0
+    array[:, 1:Hy] .= 0
+    array[:, Ny+Hy+1:Ny+2Hy] .= 0
+
+    return nothing
+end
+
+
 function variance_excluding_corners(array, (Nx, Ny), (Hx, Hy))
-    zero_out_corners!(array, (Nx, Ny), (Hx, Hy))
+    zero_out_corner_halos!(array, (Nx, Ny), (Hx, Hy))
+    zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
     return mean(abs, array)
 end
 
-file = jldopen("MITgcm_cs_grid_relative_difference.jld2")
+file = jldopen("cs_grid_difference_with_MITgcm.jld2")
 
-for varname in ("λᶜᶜᵃ",
-                "λᶜᶜᵃ",
-                "λᶠᶠᵃ",
-                "φᶜᶜᵃ",
-                "φᶠᶠᵃ",
-                "Δxᶠᶜᵃ",
-                "Δxᶜᶠᵃ",
-                "Δyᶠᶜᵃ",
-                "Δyᶜᶠᵃ",
-                "Azᶜᶜᵃ",
-                "Azᶠᶜᵃ",
-                "Azᶜᶠᵃ",
-                "Azᶠᶠᵃ")
+for var in vars
+
+    varname = string(var)
 
     for region in 1:6
-        array = deepcopy(file[varname * "_relative_difference_MITgcm/" * string(region)])
+        array = deepcopy(file[varname * "_difference_MITgcm/" * string(region)])
         relative_error = variance_excluding_corners(array, (32, 32), (4, 4))
         @info varname * " panel " * string(region) * ": " * string(relative_error)
     end

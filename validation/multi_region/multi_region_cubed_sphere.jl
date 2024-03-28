@@ -1,11 +1,12 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.MultiRegion: fill_cubed_sphere_halo_regions!
+
 #=
 Install Imaginocean.jl from GitHub:
 using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
 =#
-using OffsetArrays, CairoMakie, Imaginocean, JLD2
+using CairoMakie, Imaginocean
 
 # First create a conformal cubed sphere grid.
 
@@ -134,46 +135,3 @@ ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
 heatlatlon!(ax, v, 1; colorrange, colormap)
 save("multi_region_cubed_sphere_v_geo_heatlatlon.png", fig)
 =#
-
-# Comparison of coordinates and metrics of a 32x32 cubed sphere grid with 4 halos relative to their counterparts from MITgcm
-
-Nx, Ny, Nz = 32, 32, 1
-cs_grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-1, 0), radius=6370e3, horizontal_direction_halo = 4,
-                                     z_halo = 1)
-Hx, Hy, Hz = cs_grid.Hx, cs_grid.Hy, cs_grid.Hz
-
-using DataDeps
-cs32_4 = DataDep("cubed_sphere_32_grid_with_4_halos",
-                 "Conformal cubed sphere grid with 32×32 cells on each face and 4 halos on each side",
-                 "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs32_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2",
-                 "fbe684cb560c95ecae627b23784e449aa083a1e6e029dcda32cbfecfc0e26721")
-DataDeps.register(cs32_4)
-grid_filepath = datadep"cubed_sphere_32_grid_with_4_halos/cubed_sphere_32_grid_with_4_halos.jld2"
-cs_grid_MITgcm = ConformalCubedSphereGrid(grid_filepath;
-                                          Nz = 1,
-                                          z = (-1, 0),
-                                          panel_halo = (4, 4, 1),
-                                          radius = 6370e3)
-
-vars = (:λᶜᶜᵃ, :λᶠᶠᵃ, :φᶜᶜᵃ, :φᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ,
-        :Azᶜᶠᵃ, :Azᶠᶠᵃ)
-
-var_diffs = Tuple(Symbol(string(var) * "_difference_MITgcm") for var in vars)
-
-for var_diff in var_diffs
-    eval(:($var_diff = zeros(Nx+2Hx, Ny+2Hy, 6)))
-end
-
-jldopen("cs_grid_difference_with_MITgcm.jld2", "w") do file
-    for panel in 1:6
-        for (counter, var) in enumerate(vars)
-            var_diff = var_diffs[counter]
-            var_diff_name = string(var_diff)
-            expr = quote
-                $var_diff[:, :, $panel] = $cs_grid[$panel].$var - $cs_grid_MITgcm[$panel].$var
-                $file[$var_diff_name * "/" * string($panel)] = $var_diff[:, :, $panel]
-            end
-            eval(expr)
-        end
-    end
-end
