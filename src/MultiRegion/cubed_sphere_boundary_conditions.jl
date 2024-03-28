@@ -13,7 +13,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        if mod(region,2) == 1
+        if mod(region, 2) == 1
             #- odd face number (1,3,5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
@@ -63,7 +63,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        if mod(region,2) == 1
+        if mod(region, 2) == 1
             #- odd face number (1,3,5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
@@ -108,9 +108,8 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(fields, signed=true)
-    fill_cubed_sphere_halo_regions!(fields[1], fields[2], signed)
-end
+fill_cubed_sphere_halo_regions!(fields; signed=true) =
+    fill_cubed_sphere_halo_regions!(fields[1], fields[2]; signed)
 
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                                          field_2::CubedSphereField{<:Center, <:Center}, signed=true)
@@ -129,7 +128,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        if mod(region,2) == 1
+        if mod(region, 2) == 1
             #- odd face number (1,3,5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
@@ -193,7 +192,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        if mod(region,2) == 1
+        if mod(region, 2) == 1
             #- odd face number (1,3,5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
@@ -288,7 +287,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        if mod(region,2) == 1
+        if mod(region, 2) == 1
             #- odd face number (1,3,5):
             region_E = mod(region + 0, 6) + 1
             region_N = mod(region + 1, 6) + 1
