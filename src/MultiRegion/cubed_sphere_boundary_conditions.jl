@@ -1,3 +1,19 @@
+function find_neighboring_panels(region)
+    if mod(region, 2) == 1
+        region_E = mod(region + 0, 6) + 1
+        region_N = mod(region + 1, 6) + 1
+        region_W = mod(region + 3, 6) + 1
+        region_S = mod(region + 4, 6) + 1
+    elseif mod(region, 2) == 0
+        region_E = mod(region + 1, 6) + 1
+        region_N = mod(region + 0, 6) + 1
+        region_W = mod(region + 4, 6) + 1
+        region_S = mod(region + 3, 6) + 1
+    end
+
+    return (; region_E, region_N, region_W, region_S)
+end
+
 function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
@@ -13,12 +29,10 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
     #-- one pass: only use interior-point values:
     for region in 1:6
 
+        region_E, region_N, region_W, region_S = find_neighboring_panels(region)
+
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
@@ -29,10 +43,6 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
             end
         else
             #- even face number (2, 4, 6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
@@ -63,12 +73,10 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     #-- one pass: only use interior-point values:
     for region in 1:6
 
+        region_E, region_N, region_W, region_S = find_neighboring_panels(region)
+
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
@@ -84,10 +92,6 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
             end
         else
             #- even face number (2, 4, 6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
@@ -131,12 +135,10 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
     #-- one pass: only use interior-point values:
     for region in 1:6
 
+        region_E, region_N, region_W, region_S = find_neighboring_panels(region)
+
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
@@ -153,10 +155,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
             end
         else
             #- even face number (2, 4, 6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
@@ -198,12 +196,10 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
     #-- one pass: only use interior-point values:
     for region in 1:6
 
+        region_E, region_N, region_W, region_S = find_neighboring_panels(region)
+
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
@@ -224,10 +220,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
             end
         else
             #- even face number (2, 4, 6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
@@ -296,12 +288,10 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
     #-- one pass: only use interior-point values:
     for region in 1:6
 
+        region_E, region_N, region_W, region_S = find_neighboring_panels(region)
+
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
-            region_E = mod(region + 0, 6) + 1
-            region_N = mod(region + 1, 6) + 1
-            region_W = mod(region + 3, 6) + 1
-            region_S = mod(region + 4, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
@@ -328,10 +318,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
             end
         else
             #- even face number (2, 4, 6):
-            region_E = mod(region + 1, 6) + 1
-            region_N = mod(region + 0, 6) + 1
-            region_W = mod(region + 4, 6) + 1
-            region_S = mod(region + 3, 6) + 1
             for k in -Hz+1:Nz+Hz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field_2[region_E][2:Nc, 1:Hc, k], dims=1)'
