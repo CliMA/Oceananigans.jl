@@ -4,29 +4,29 @@ using Oceananigans.Utils: prettysummary
 const DFBC = DefaultBoundaryCondition
 const IBC = BoundaryCondition{Open, Nothing} # ImpenetrableBoundaryCondition
 
-bc_str(::FBC)     = "Flux"
-bc_str(::PBC)     = "Periodic"
-bc_str(::OBC)     = "Open"
-bc_str(::VBC)     = "Value"
-bc_str(::GBC)     = "Gradient"
-bc_str(::ZFBC)    = "ZeroFlux"
-bc_str(::IBC)     = "Impenetrable"
-bc_str(::DFBC)    = "Default"
-bc_str(::MCBC)    = "MultiRegionCommunication"
-bc_str(::DCBC)    = "DistributedCommunication"
-bc_str(::Nothing) = "Nothing"
+bc_str(::FBC)                    = "Flux"
+bc_str(::PBC)                    = "Periodic"
+bc_str(::OBC{Open{MS}}) where MS = "Open{$MS}"
+bc_str(::VBC)                    = "Value"
+bc_str(::GBC)                    = "Gradient"
+bc_str(::ZFBC)                   = "ZeroFlux"
+bc_str(::IBC)                    = "Impenetrable"
+bc_str(::DFBC)                   = "Default"
+bc_str(::MCBC)                   = "MultiRegionCommunication"
+bc_str(::DCBC)                   = "DistributedCommunication"
+bc_str(::Nothing)                = "Nothing"
 
 #####
 ##### BoundaryCondition
 #####
 
-Base.summary(bc::DFBC) = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
-Base.summary(bc::OBC)  = string("OpenBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::FBC)  = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::VBC)  = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::GBC)  = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(::PBC)    = string("PeriodicBoundaryCondition")
-Base.summary(bc::DCBC) = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::DFBC)                    = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
+Base.summary(bc::OBC{Open{MS}}) where MS  = string("OpenBoundaryCondition{$MS}: ", prettysummary(bc.condition))
+Base.summary(bc::FBC)                     = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::VBC)                     = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::GBC)                     = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(::PBC)                       = string("PeriodicBoundaryCondition")
+Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 
 show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 
