@@ -21,6 +21,12 @@ cs_grid_MITgcm = ConformalCubedSphereGrid(grid_filepath;
                                           panel_halo = (4, 4, 1),
                                           radius = 6370e3)
 
+"""
+    same_longitude_at_poles!(grid1, grid2)
+
+Change the longitude values in `grid1` that correspond to points situated _exactly_ at
+the poles so that they match the corresponding longitude values of `grid2`.
+"""
 function same_longitude_at_poles!(grid1, grid2)
     for region in 1:6
         grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
@@ -31,11 +37,13 @@ end
 
 same_longitude_at_poles!(cs_grid_MITgcm, cs_grid)
 
-vars = (:λᶜᶜᵃ, :λᶠᶠᵃ,
-        :φᶜᶜᵃ, :φᶠᶠᵃ,
-        :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
-        :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
-        :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+coords = (:λᶜᶜᵃ, :λᶠᶠᵃ, :φᶜᶜᵃ, :φᶠᶠᵃ)
+
+metrics = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+           :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+           :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+vars = (coords..., metrics...)
 
 var_diffs = Tuple(Symbol(string(var) * "_difference_MITgcm") for var in vars)
 
@@ -58,6 +66,11 @@ jldopen("cs_grid_difference_with_MITgcm.jld2", "w") do file
     end
 end
 
+"""
+    zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
+
+Return the `array` after zeroing out all data that correspond to corner halo points.
+"""
 function zero_out_corner_halos!(array, (Nx, Ny), (Hx, Hy))
     array[1:Hx, 1:Hy] .= 0
     array[1:Hx, Ny+Hy+1:Ny+2Hy] .= 0
@@ -67,6 +80,11 @@ function zero_out_corner_halos!(array, (Nx, Ny), (Hx, Hy))
     return nothing
 end
 
+"""
+    zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
+
+Return the `array` after zeroing out all data that correspond to halo points.
+"""
 function zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
     array[1:Hx, :] .= 0
     array[Nx+Hx+1:Nx+2Hx, :] .= 0
@@ -76,23 +94,24 @@ function zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
     return nothing
 end
 
+"""
+    mean_func(array, (Nx, Ny), (Hx, Hy), func=abs)
 
-function variance_excluding_corners(array, (Nx, Ny), (Hx, Hy))
+Return `mean(func, array)`.
+"""
+function mean_func(array, (Nx, Ny), (Hx, Hy), func=abs)
     zero_out_corner_halos!(array, (Nx, Ny), (Hx, Hy))
-    zero_out_halos!(array, (Nx, Ny), (Hx, Hy))
-    return mean(abs, array)
+    return mean(func, array)
 end
 
 file = jldopen("cs_grid_difference_with_MITgcm.jld2")
 
 for var in vars
-
     varname = string(var)
-
     for region in 1:6
         array = deepcopy(file[varname * "_difference_MITgcm/" * string(region)])
-        relative_error = variance_excluding_corners(array, (32, 32), (4, 4))
-        @info varname * " panel " * string(region) * ": " * string(relative_error)
+        error = mean_func(array, (32, 32), (4, 4), abs)
+        @info varname * " panel " * string(region) * ": " * string(error)
     end
 end
 
