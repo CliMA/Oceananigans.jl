@@ -109,7 +109,6 @@ function test_netcdf_file_splitting_time(arch)
 
     push!(simulation.output_writers, ow)
 
-    # 531 KiB of output will be written which should get split into 3 files.
     run!(simulation)
 
     for n in string.(1:3)
