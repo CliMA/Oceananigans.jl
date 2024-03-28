@@ -17,7 +17,6 @@ struct NoFileSplitting end
 Base.summary(::NoFileSplitting) = "NoFileSplitting" 
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 
-
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
     path :: String
