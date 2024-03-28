@@ -10,6 +10,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Solvers
 
+using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid

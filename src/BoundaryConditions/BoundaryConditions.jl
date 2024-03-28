@@ -34,4 +34,6 @@ include("fill_halo_regions_nothing.jl")
 
 include("apply_flux_bcs.jl")
 
+include("update_boundary_conditions.jl")
+
 end # module
