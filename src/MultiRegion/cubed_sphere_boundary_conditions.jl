@@ -108,11 +108,12 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     return nothing
 end
 
-fill_cubed_sphere_halo_regions!(fields; signed=true) =
-    fill_cubed_sphere_halo_regions!(fields[1], fields[2]; signed)
+fill_cubed_sphere_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField};
+                                signed = true) = fill_cubed_sphere_halo_regions!(fields...; signed)
 
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
-                                         field_2::CubedSphereField{<:Center, <:Center}, signed=true)
+                                         field_2::CubedSphereField{<:Center, <:Center};
+                                         signed = true)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
@@ -176,7 +177,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
 end
 
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
-                                         field_2::CubedSphereField{<:Center, <:Face}, signed=true)
+                                         field_2::CubedSphereField{<:Center, <:Face};
+                                         signed = true)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
@@ -271,7 +273,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
 end
 
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
-                                         field_2::CubedSphereField{<:Face, <:Face}, signed=true)
+                                         field_2::CubedSphereField{<:Face, <:Face};
+                                         signed = true)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
