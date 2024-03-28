@@ -1,10 +1,6 @@
 function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
-    if !(grid isa ConformalCubedSphereGrid)
-        return
-    end
-
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -54,10 +50,6 @@ end
 
 function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
-
-    if !(grid isa ConformalCubedSphereGrid)
-        return
-    end
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -124,10 +116,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
                                          field_2::CubedSphereField{<:Center, <:Center}, signed=true)
     grid = field_1.grid
 
-    if !(grid isa ConformalCubedSphereGrid)
-        return
-    end
-
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
@@ -191,10 +179,6 @@ end
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                                          field_2::CubedSphereField{<:Center, <:Face}, signed=true)
     grid = field_1.grid
-
-    if !(grid isa ConformalCubedSphereGrid)
-        return
-    end
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -290,10 +274,6 @@ end
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                                          field_2::CubedSphereField{<:Face, <:Face}, signed=true)
     grid = field_1.grid
-
-    if !(grid isa ConformalCubedSphereGrid)
-        return
-    end
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
