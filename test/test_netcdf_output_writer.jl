@@ -45,7 +45,7 @@ function test_DateTime_netcdf_output(arch)
     return nothing
 end
 
-function test_netcdf_file_splitting_size(arch)
+function test_netcdf_size_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
@@ -90,7 +90,7 @@ function test_netcdf_file_splitting_size(arch)
     return nothing
 end
 
-function test_netcdf_file_splitting_time(arch)
+function test_netcdf_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=12seconds)
@@ -919,8 +919,8 @@ for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
         test_DateTime_netcdf_output(arch)
-        test_netcdf_file_splitting_size(arch)
-        test_netcdf_file_splitting_time(arch)
+        test_netcdf_size_file_splitting(arch)
+        test_netcdf_time_file_splitting(arch)
         test_TimeDate_netcdf_output(arch)
         test_thermal_bubble_netcdf_output(arch)
         test_thermal_bubble_netcdf_output_with_halos(arch)

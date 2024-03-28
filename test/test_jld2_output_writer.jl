@@ -41,7 +41,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
-function test_jld2_file_splitting_size(arch)
+function test_jld2_size_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
@@ -88,7 +88,7 @@ function test_jld2_file_splitting_size(arch)
     return nothing
 end
 
-function test_jld2_file_splitting_time(arch)
+function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
