@@ -3,9 +3,8 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.MultiRegion: number_of_regions
+using Oceananigans.MultiRegion: number_of_regions, fill_cubed_sphere_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
 
@@ -297,7 +296,7 @@ end
             region = Iterate(1:6)
             @apply_regionally data = create_c_test_data(grid, region)
             set!(c, data)
-            fill_halo_regions!(c)
+            fill_cubed_sphere_halo_regions!(c)
 
             Hx, Hy, Hz = halo_size(c.grid)
 
@@ -367,12 +366,7 @@ end
             set!(u, u_data)
             set!(v, v_data)
 
-            # we need 2 halo filling passes for velocities at the moment
-            for _ in 1:2
-                fill_halo_regions!(u)
-                fill_halo_regions!(v)
-                @apply_regionally replace_horizontal_vector_halos!((; u, v, w = nothing), grid)
-            end
+            fill_cubed_sphere_halo_regions!((u, v); signed = true)
 
             Hx, Hy, Hz = halo_size(u.grid)
 
@@ -617,9 +611,7 @@ end
             @apply_regionally data = create_ψ_test_data(grid, region)
             set!(ψ, data)
 
-            for _ in 1:2
-                fill_halo_regions!(ψ)
-            end
+            fill_cubed_sphere_halo_regions!(ψ)
 
             Hx, Hy, Hz = halo_size(ψ.grid)
 
