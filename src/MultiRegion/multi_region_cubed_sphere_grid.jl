@@ -5,12 +5,13 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           size_summary,
                           total_length,
                           topology
-using Oceananigans.MultiRegion: fill_cubed_sphere_halo_regions!
 
 using CubedSphere
 using Distances
 
 import Oceananigans.Grids: grid_name
+
+fill_cubed_sphere_halo_regions!() = nothing
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
@@ -226,7 +227,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(Symbol(field)), (Center(), Center()))
+                fill_cubed_sphere_halo_regions!($(Symbol(field)))
             end
 
             CUDA.@allowscalar begin
@@ -259,7 +260,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         end
 
         if $(horizontal_topology) == FullyConnected
-            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Center(), Center()), (Center(), Center()), false)
+            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), false)
         end
 
         CUDA.@allowscalar begin
@@ -293,7 +294,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Center()), (Center(), Face()), false)
+                fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), false)
             end
 
             CUDA.@allowscalar begin
@@ -322,7 +323,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(Symbol(field)), (Face(), Face()))
+                fill_cubed_sphere_halo_regions!($(Symbol(field)))
             end
 
             CUDA.@allowscalar begin
@@ -350,7 +351,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         end
 
         if $(horizontal_topology) == FullyConnected
-            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Face()), (Face(), Face()), false)
+            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), false)
         end
 
         CUDA.@allowscalar begin

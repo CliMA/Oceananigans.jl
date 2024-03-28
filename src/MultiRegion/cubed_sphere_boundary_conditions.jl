@@ -1,4 +1,4 @@
-function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
+function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
     if !(grid isa ConformalCubedSphereGrid)
@@ -52,7 +52,7 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Center, <:Center})
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Face, <:Face})
+function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
 
     if !(grid isa ConformalCubedSphereGrid)
@@ -116,8 +116,12 @@ function fill_cubed_sphere_halo_regions!(field, ::Tuple{<:Face, <:Face})
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Center, <:Center}, ::Tuple{<:Center, <:Center}, signed=true)
-    field_1, field_2 = fields
+function fill_cubed_sphere_halo_regions!(fields, signed=true)
+    fill_cubed_sphere_halo_regions!(fields[1], fields[2], signed)
+end
+
+function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
+                                         field_2::CubedSphereField{<:Center, <:Center}, signed=true)
     grid = field_1.grid
 
     if !(grid isa ConformalCubedSphereGrid)
@@ -184,8 +188,8 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Center, <:Center}, ::
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Center}, ::Tuple{<:Center, <:Face}, signed=true)
-    field_1, field_2 = fields
+function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
+                                         field_2::CubedSphereField{<:Center, <:Face}, signed=true)
     grid = field_1.grid
 
     if !(grid isa ConformalCubedSphereGrid)
@@ -283,8 +287,8 @@ function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Center}, ::Tu
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(fields, ::Tuple{<:Face, <:Face}, ::Tuple{<:Face, <:Face}, signed=true)
-    field_1, field_2 = fields
+function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
+                                         field_2::CubedSphereField{<:Face, <:Face}, signed=true)
     grid = field_1.grid
 
     if !(grid isa ConformalCubedSphereGrid)

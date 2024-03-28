@@ -99,7 +99,7 @@ set!(u, (λ, φ, z) -> φ)
 v = YFaceField(grid)
 set!(v, (λ, φ, z) -> φ)
 
-fill_cubed_sphere_halo_regions!((u, v), (Face(), Center()), (Center(), Face()))
+fill_cubed_sphere_halo_regions!((u, v))
 
 fig = Figure()
 ax = Axis3(fig[1, 1], aspect=(1, 1, 1), limits=((-1, 1), (-1, 1), (-1, 1)))
