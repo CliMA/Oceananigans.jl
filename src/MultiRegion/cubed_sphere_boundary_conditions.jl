@@ -114,6 +114,8 @@ fill_cubed_sphere_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                                          field_2::CubedSphereField{<:Center, <:Center};
                                          signed = true)
+
+    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
@@ -179,6 +181,8 @@ end
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                                          field_2::CubedSphereField{<:Center, <:Face};
                                          signed = true)
+
+    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
@@ -275,6 +279,8 @@ end
 function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                                          field_2::CubedSphereField{<:Face, <:Face};
                                          signed = true)
+
+    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
     Nx, Ny, Nz = size(grid)
