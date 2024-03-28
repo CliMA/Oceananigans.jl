@@ -5,6 +5,7 @@ using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.MultiRegion: number_of_regions
 
 function get_range_of_indices(operation, index, Nx, Ny)
 
@@ -135,7 +136,51 @@ create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros
     end
 end
 
-@testset "Testing conformal cubed sphere face grid from file" begin
+"""
+    same_longitude_at_poles!(grid1, grid2)
+
+Change the longitude values in `grid1` that correspond to points situated _exactly_ at
+the poles so that they match the corresponding longitude values of `grid2`.
+"""
+function same_longitude_at_poles!(grid1::ConformalCubedSphereGrid, grid2::ConformalCubedSphereGrid)
+    number_of_regions(grid1) == number_of_regions(grid2) || error("grid1 and grid2 must have same number of regions")
+
+    for region in 1:number_of_regions(grid1)
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]
+    end
+
+    return nothing
+end
+
+"""
+    zero_out_corner_halos!(array::OffsetArray, N, H)
+
+Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`.
+It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo
+region is `H` in both dimensions.
+"""
+function zero_out_corner_halos!(array::OffsetArray, N, H)
+    size(array) == (N+2H, N+2H)
+
+    Nx = Ny = N
+    Hx = Hy = H
+
+    array[-Hx+1:0, -Hy+1:0] .= 0
+    array[-Hx+1:0, Ny+1:Ny+Hy] .= 0
+    array[Nx+1:Nx+Hx, -Hy+1:0] .= 0
+    array[Nx+1:Nx+Hx, Ny+1:Ny+Hy] .= 0
+
+    return nothing
+end
+
+function compare_grid_vars(var1, var2, N, H)
+    zero_out_corner_halos!(var1, N, H)
+    zero_out_corner_halos!(var2, N, H)
+    return isapprox(var1, var2)
+end
+
+@testset "Testing conformal cubed sphere grid from file" begin
     Nz = 1
     z = (-1, 0)
 
@@ -147,7 +192,7 @@ end
     end
 
     for arch in archs
-        @info "  Testing conformal cubed sphere face grid from file [$(typeof(arch))]..."
+        @info "  Testing conformal cubed sphere grid from file [$(typeof(arch))]..."
 
         # read cs32 grid from file
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
@@ -155,8 +200,12 @@ end
         radius = first(grid_cs32).radius
         Nx, Ny, Nz = size(grid_cs32)
         Hx, Hy, Hz = halo_size(grid_cs32)
-        Hx !== Hy && error("Hx must be same as Hy")
 
+        Nx !== Ny && error("Nx must be same as Ny")
+        N = Nx
+        Hx !== Hy && error("Hx must be same as Hy")
+        H = Hy
+    
         # construct a ConformalCubedSphereGrid similar to cs32
         grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
                                         horizontal_direction_halo = Hx, z_halo = Hz)
@@ -167,17 +216,20 @@ end
                 # Test only on cca and ffa; fca and cfa are all zeros on grid_cs32!
                 # Only test interior points since halo regions are not filled for grid_cs32!
 
-                @test isapprox(getregion(grid, panel).φᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶜᶜᵃ[1:Nx, 1:Ny])
-                @test isapprox(getregion(grid, panel).λᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶜᶜᵃ[1:Nx, 1:Ny])
+                @test compare_grid_vars(getregion(grid, panel).φᶜᶜᵃ, getregion(grid_cs32, panel).φᶜᶜᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶜᶜᵃ, getregion(grid_cs32, panel).λᶜᶜᵃ, N, H)
 
                 # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).λᶠᶠᵃ .≈ -180] .= 180
 
                 # and if poles are included, they have the same longitude.
-                getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90]
-                getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90]
-                @test isapprox(getregion(grid, panel).φᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶠᶠᵃ[1:Nx, 1:Ny])
-                @test isapprox(getregion(grid, panel).λᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶠᶠᵃ[1:Nx, 1:Ny])
+                same_longitude_at_poles!(grid, grid_cs32)
+
+                @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶠᶠᵃ, getregion(grid_cs32, panel).λᶠᶠᵃ, N, H)
+
+                @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶠᶠᵃ, getregion(grid_cs32, panel).λᶠᶠᵃ, N, H)
             end
         end
     end
@@ -722,3 +774,4 @@ end
         end
     end
 end 
+=#
