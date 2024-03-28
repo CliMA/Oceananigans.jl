@@ -52,7 +52,6 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
                 field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
             end
         end
-
     end
 
     return nothing
@@ -106,7 +105,6 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
                 field[region][1, 1-Hc:0, k]           =         field[region_W][Nc+1-Hc:Nc, 1, k]
             end
         end
-
     end
 
     return nothing
@@ -170,7 +168,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
                 field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
             end
         end
-
     end
 
     return nothing
@@ -239,7 +236,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
                 field_2[region][1:Nc, 1-Hc:0, k]       .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
             end
         end
-
     end
 
     #-- Add one valid field_1, field_2 value next to the corner, that allows
@@ -343,7 +339,6 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
                 field_2[region][1, 1-Hc:0, k]           =         field_1[region_W][Nc+1-Hc:Nc, 1, k]
             end
         end
-
     end
 
     return nothing
