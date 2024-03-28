@@ -238,25 +238,27 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
         end
     end
 
-    #-- Add one valid field_1, field_2 value next to the corner, that allows
-    #   to compute vorticity on a wider stencil (e.g., vort3(0,1) & (1,0)).
-    for region in 1:6
-        for k in -Hz+1:Nz+Hz
-            #- SW corner:
-            field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
-            field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
-        end
-        if Hc > 1
+    if signed
+        #-- Add one valid field_1, field_2 value next to the corner, that allows to compute vorticity on a wider stencil
+        # (e.g., vort3(0,1) & (1,0)).
+        for region in 1:6
             for k in -Hz+1:Nz+Hz
-                #- NW corner:
-                field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
-                field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
-                #- SE corner:
-                field_1[region][Nc+2:Nc+Hc, 0, k]    .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
-                field_2[region][Nc+1, 2-Hc:0,  k]    .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
-                #- NE corner:
-                field_1[region][Nc+2:Nc+Hc, Nc+1, k] .= field_2[region][Nc, Nc+2:Nc+Hc, k]
-                field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
+                #- SW corner:
+                field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
+                field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
+            end
+            if Hc > 1
+                for k in -Hz+1:Nz+Hz
+                    #- NW corner:
+                    field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
+                    field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
+                    #- SE corner:
+                    field_1[region][Nc+2:Nc+Hc, 0, k]    .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
+                    field_2[region][Nc+1, 2-Hc:0,  k]    .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
+                    #- NE corner:
+                    field_1[region][Nc+2:Nc+Hc, Nc+1, k] .= field_2[region][Nc, Nc+2:Nc+Hc, k]
+                    field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
+                end
             end
         end
     end
