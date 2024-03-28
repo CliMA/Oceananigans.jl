@@ -248,15 +248,12 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
 
                 areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
 
-                for region in 1:length(grid.partition)
-
-                    region_Nx, region_Ny, _ = size(getregion(grid, region))
-
+                for region in 1:number_of_regions(grid)
                     CUDA.@allowscalar begin
-                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:region_Nx, 1:region_Ny])
+                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
+                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
+                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
+                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
                     end
                 end
 
@@ -774,4 +771,3 @@ end
         end
     end
 end 
-=#
