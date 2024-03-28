@@ -88,7 +88,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
                                                                              boundary_func.field_dependencies,
                                                                              indices, interps)
 
-    return BoundaryCondition(C, regularized_boundary_func)
+    return BoundaryCondition(bc.classification, regularized_boundary_func)
 end
 
 @inline domain_boundary_indices(::LeftBoundary, N) = 1, 1

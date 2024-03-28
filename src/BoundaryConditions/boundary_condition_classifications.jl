@@ -63,7 +63,7 @@ struct Open{MS} <: AbstractBoundaryConditionClassification
     matching_scheme::MS
 end
 
-Open{ms}() where ms = Open(ms())
+(open::Open)() = open
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
