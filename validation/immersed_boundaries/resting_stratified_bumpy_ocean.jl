@@ -50,7 +50,7 @@ for ib in immersed_boundaries
                                         buoyancy = BuoyancyTracer())
 
     N² = 1
-    bᵢ(x, y, z) = N² * z
+    bᵢ(y, z) = N² * z
     set!(model, b = bᵢ)
 
     simulation = Simulation(model; Δt=1e-3, stop_iteration=1000)
