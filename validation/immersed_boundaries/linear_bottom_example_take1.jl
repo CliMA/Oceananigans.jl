@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, PartialCellBottom
 
 using CairoMakie
 using Printf
@@ -35,7 +35,7 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
                                   topology = (Bounded, Flat, Bounded))
 
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom, minimum_fractional_cell_height=0.1))
 
 x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
