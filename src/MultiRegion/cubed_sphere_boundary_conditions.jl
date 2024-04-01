@@ -238,32 +238,25 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
         end
     end
 
-    # While filling the halos of paired grid coordinates and metrics, we always set signed = false. This is because
-    # these paired quantities are not the horizontal components of a vector, such as zonal and meridional velocity
-    # components, and therefore, sign reversal does not apply when these components are swapped. In practice, we only
-    # use signed = true while filling the halos of velocities, in which case we need the velocity halos adjacent to the
-    # corners to compute vorticity, which in turn is used in the prognostic momentum equations.
-    if signed
-        #-- Add one valid field_1, field_2 value next to the corner, that allows to compute vorticity on a wider stencil
-        # (e.g., vort3(0,1) & (1,0)).
-        for region in 1:6
+    #-- Add one valid field_1, field_2 value next to the corner, that allows to compute vorticity on a wider stencil
+    # (e.g., vort3(0,1) & (1,0)).
+    for region in 1:6
+        for k in -Hz+1:Nz+Hz
+            #- SW corner:
+            field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
+            field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
+        end
+        if Hc > 1
             for k in -Hz+1:Nz+Hz
-                #- SW corner:
-                field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
-                field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
-            end
-            if Hc > 1
-                for k in -Hz+1:Nz+Hz
-                    #- NW corner:
-                    field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
-                    field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
-                    #- SE corner:
-                    field_1[region][Nc+2:Nc+Hc, 0, k]    .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
-                    field_2[region][Nc+1, 2-Hc:0,  k]    .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
-                    #- NE corner:
-                    field_1[region][Nc+2:Nc+Hc, Nc+1, k] .= field_2[region][Nc, Nc+2:Nc+Hc, k]
-                    field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
-                end
+                #- NW corner:
+                field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
+                field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
+                #- SE corner:
+                field_1[region][Nc+2:Nc+Hc, 0, k]    .= reverse(field_2[region][Nc, 2-Hc:0, k]) * plmn
+                field_2[region][Nc+1, 2-Hc:0,  k]    .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
+                #- NE corner:
+                field_1[region][Nc+2:Nc+Hc, Nc+1, k] .= field_2[region][Nc, Nc+2:Nc+Hc, k]
+                field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
             end
         end
     end
