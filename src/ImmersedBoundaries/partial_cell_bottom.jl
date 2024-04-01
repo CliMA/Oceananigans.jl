@@ -108,7 +108,8 @@ end
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
     # Get node at face above and defining nodes on c,c,f
-    x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
+    #x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
+    z = node(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom height and fractional Δz parameter
     h = @inbounds ib.bottom_height[i, j, 1]
