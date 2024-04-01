@@ -86,6 +86,8 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
                 if Hc > 1
                     field[region][1, Nc+2:Nc+Hc, k]   = reverse(field[region_W][1, Nc+2-Hc:Nc, k])
                 end
+                # Note that the halo corresponding to the "missing" north-west corner of odd panels, specifically
+                # field[region][1, Nc+1, k], remains unfilled.
                 field[region][1:Nc, 1-Hc:0, k]       .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
                 field[region][Nc+1, 1-Hc:0, k]        = reverse(field[region_E][2:Hc+1, 1, k])
             end
@@ -97,6 +99,8 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
                 if Hc > 1
                     field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
                 end
+                # Note that the halo corresponding to the "missing" south-east corner of even panels, specifically
+                # field[region][Nc+1, 1, k], remains unfilled.
                 field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 #- N + S Halo for field:
                 field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
@@ -305,6 +309,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
                     field_1[region][1, Nc+2:Nc+Hc, k]   = reverse(field_1[region_W][1, Nc+2-Hc:Nc, k]) * plmn
                     field_2[region][1, Nc+2:Nc+Hc, k]   = reverse(field_2[region_W][1, Nc+2-Hc:Nc, k]) * plmn
                 end
+                # Note that the halos corresponding to the "missing" north-west corner of odd panels, specifically
+                # field_1[region][1, Nc+1, k] and field_2[region][1, Nc+1, k], remain unfilled.
                 #- S Halo:
                 field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
                 field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
@@ -320,6 +326,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
                     field_1[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_1[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
                     field_2[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_2[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
                 end
+                # Note that the halos corresponding to the "missing" south-east corner of even panels, specifically
+                # field_1[region][Nc+1, 1, k] and field_2[region][Nc+1, 1, k], remain unfilled.
                 #- W Halo:
                 field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 field_2[region][1-Hc:0, 1:Nc, k]       .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
