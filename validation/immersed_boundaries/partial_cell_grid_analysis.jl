@@ -23,7 +23,7 @@ seamount_field = Field{Center, Center, Nothing}(underlying_grid)
 set!(seamount_field, seamount)
 fill_halo_regions!(seamount_field)
 
-ib = PartialCellBottom(seamount_field.data; minimum_fractional_Δz=0.2)
+ib = PartialCellBottom(seamount_field.data, minimum_fractional_cell_height = 0.2)
 grid = ImmersedBoundaryGrid(underlying_grid, ib)
 
 Nx, Ny, Nz = size(grid)
