@@ -138,33 +138,33 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
             for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field_1:
+                #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
-                field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-                #- N + S Halo for field_1:
-                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
-                field_1[region][1:Nc, 1-Hc:0, k]     .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                #- E + W Halo for field_2:
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_2[region_E][1:Hc, 1:Nc, k]
+                #- W Halo:
+                field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
                 field_2[region][1-Hc:0, 1:Nc, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
-                #- N + S Halo for field_2:
+                #- N Halo:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
                 field_2[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
+                #- S Halo:
+                field_1[region][1:Nc, 1-Hc:0, k]     .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
                 field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
             end
         else
             #- even face number (2, 4, 6):
             for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field_1:
+                #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
-                field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N + S Halo for field_1:
-                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_1[region_N][1:Nc, 1:Hc, k]
-                field_1[region][1:Nc, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
-                #- E + W Halo for field_2:
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
+                #- W Halo:
+                field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 field_2[region][1-Hc:0, 1:Nc, k]     .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N + S Halo for field_2:
+                #- N Halo:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_1[region_N][1:Nc, 1:Hc, k]
                 field_2[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_2[region_N][1:Nc, 1:Hc, k]
+                #- S Halo:
+                field_1[region][1:Nc, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
                 field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
             end
         end
@@ -240,13 +240,13 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
 
     #-- Add one valid field_1, field_2 value next to the corner, that allows to compute vorticity on a wider stencil
     # (e.g., vort3(0,1) & (1,0)).
-    for region in 1:6
-        for k in -Hz+1:Nz+Hz
-            #- SW corner:
-            field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
-            field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
-        end
-        if Hc > 1
+    if Hc > 1
+        for region in 1:6
+            for k in -Hz+1:Nz+Hz
+                #- SW corner:
+                field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
+                field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
+            end
             for k in -Hz+1:Nz+Hz
                 #- NW corner:
                 field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
@@ -289,53 +289,49 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
         if mod(region, 2) == 1
             #- odd face number (1, 3, 5):
             for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field_1:
+                #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
-                field_1[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-                field_1[region][1-Hc:0, 1, k]          .=         field_2[region_S][1, Nc+1-Hc:Nc, k]
-                #- N + S Halo for field_1:
-                field_1[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
-                if Hc > 1
-                    field_1[region][1, Nc+2:Nc+Hc, k]   = reverse(field_1[region_W][1, Nc+2-Hc:Nc, k]) * plmn
-                end
-                field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field_1[region][Nc+1, 1-Hc:0, k]        = reverse(field_2[region_E][2:Hc+1, 1, k])
-                #- E + W Halo for field_2:
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_2[region_E][1:Hc, 1:Nc, k]
                 field_2[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field_2[region_N][1:Hc, 1, k]
+                #- W Halo:
+                field_1[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
                 field_2[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
+                field_1[region][1-Hc:0, 1, k]          .=         field_2[region_S][1, Nc+1-Hc:Nc, k]
                 field_2[region][1-Hc:0, 1, k]          .=         field_1[region_S][1, Nc+1-Hc:Nc, k] * plmn
-                #- N + S Halo for field_2:
+                #- N Halo:
+                field_1[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
                 field_2[region][2:Nc, Nc+1:Nc+Hc, k]   .= reverse(field_1[region_N][1:Hc, 2:Nc, k], dims=2)'
                 if Hc > 1
+                    field_1[region][1, Nc+2:Nc+Hc, k]   = reverse(field_1[region_W][1, Nc+2-Hc:Nc, k]) * plmn
                     field_2[region][1, Nc+2:Nc+Hc, k]   = reverse(field_2[region_W][1, Nc+2-Hc:Nc, k]) * plmn
                 end
+                #- S Halo:
+                field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
                 field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                field_1[region][Nc+1, 1-Hc:0, k]        = reverse(field_2[region_E][2:Hc+1, 1, k])
             end
         else
             #- even face number (2, 4, 6):
             for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field_1:
+                #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field_2[region_E][2:Nc, 1:Hc, k], dims=1)'
-                if Hc > 1
-                    field_1[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_1[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
-                end
-                field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N + S Halo for field_1:
-                field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
-                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=    view(field_1[region_E], 1, 1:Hc, k)
-                field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
-                field_1[region][1, 1-Hc:0, k]          .=    view(field_2[region_W], Nc+1-Hc:Nc, 1, k) * plmn
-                #- E + W Halo for field_2:
                 field_2[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
                 if Hc > 1
+                    field_1[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_1[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
                     field_2[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_2[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
                 end
+                #- W Halo:
+                field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 field_2[region][1-Hc:0, 1:Nc, k]       .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 field_2[region][1-Hc:0, Nc+1, k]       .= reverse(field_1[region_N][1, 2:Hc+1, k])
-                #- N + S Halo for field_2:
+                #- N Halo:
+                field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
                 field_2[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_2[region_N][1:Nc, 1:Hc, k]
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=    view(field_1[region_E], 1, 1:Hc, k)
+                #- S Halo:
+                field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
                 field_2[region][2:Nc, 1-Hc:0, k]       .= reverse(field_1[region_S][Nc+1-Hc:Nc, 2:Nc, k], dims=2)'
+                field_1[region][1, 1-Hc:0, k]          .=    view(field_2[region_W], Nc+1-Hc:Nc, 1, k) * plmn
                 field_2[region][1, 1-Hc:0, k]          .=    view(field_1[region_W], Nc+1-Hc:Nc, 1, k)
             end
         end
