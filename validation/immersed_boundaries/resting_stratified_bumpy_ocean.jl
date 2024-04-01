@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom
+using Oceananigans.ImmersedBoundaries: PartialCellBottom
+
 using Printf
 using GLMakie
 
@@ -76,7 +77,7 @@ fig = Figure(size=(1200, 1800))
 partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f", minimum_fractional_Δz)
 ax_bp = Axis(fig[1, 2], title=partial_cell_title)
 ax_bf = Axis(fig[2, 2], title="GridFittedBottom")
-ax_bd = Axis(fig[3, 2], title="Difference (GridFitted - PartialCell)")
+ax_bd = Axis(fig[3, 2], title="difference; GridFitted - PartialCell")
 
 # ax_vp = Axis(fig[1, 3])
 # ax_vf = Axis(fig[2, 3])
@@ -111,4 +112,3 @@ hmvd = heatmap!(ax_vd, Δv)
 =#
 
 display(fig)
-
