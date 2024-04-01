@@ -18,12 +18,11 @@ underlying_grid = RectilinearGrid(arch,
 h₀ = 0.5 # bump height
 L = 0.25 # bump width
 @inline h(y) = h₀ * exp(- y^2 / L^2)
-@inline seamount(x, y) = - 1 + h(y)
+@inline seamount(y) = - 1 + h(y)
 
-minimum_fractional_Δz = 0.2
 immersed_boundaries = [
                        PartialCellBottom(seamount;
-                                         minimum_fractional_Δz),
+                                         minimum_fractional_cell_height = 0.2),
                        GridFittedBottom(seamount)
                       ]
 
