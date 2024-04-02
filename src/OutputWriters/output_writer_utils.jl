@@ -12,6 +12,11 @@ using Oceananigans.Utils: AbstractSchedule
 ##### Output writer utilities
 #####
 
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
     path :: String
@@ -46,11 +51,6 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
 end 
-
-struct NoFileSplitting end
-(::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
-Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 
 """
     ext(ow)
