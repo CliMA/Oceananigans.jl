@@ -37,7 +37,7 @@ Other possible terms associated with the Coriolis force, buoyancy, turbulence cl
 and surface waves acting on background fields are neglected.
 
 !!! compat "Model compatibility"
-    At the moment _only_ the [`NonhydrostaticModel`](@ref) supports `BackgroundFields`.
+    `BackgroundFields` are only supported by [`NonhydrostaticModel`](@ref).
 
 ## Specifying background fields
 
