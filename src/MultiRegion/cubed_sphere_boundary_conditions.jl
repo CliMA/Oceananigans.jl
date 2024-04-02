@@ -104,7 +104,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
                 field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 #- N + S Halo for field:
                 field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
-                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=    view(field[region_E], 1, 1:Hc, k)
+                field[region][Nc+1, Nc+1:Nc+Hc, k]    =         field[region_E][1, 1:Hc, k]
                 field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
                 field[region][1, 1-Hc:0, k]           =         field[region_W][Nc+1-Hc:Nc, 1, k]
             end
@@ -227,7 +227,7 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
                 field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 #- N + S Halo for field_1:
                 field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
-                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=    view(field_1[region_E], 1, 1:Hc, k)
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]    =         field_1[region_E][1, 1:Hc, k]
                 field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
                 field_1[region][1, 1-Hc:0, k]           =         field_2[region_W][Nc+1-Hc:Nc, 1, k] * plmn
                 #- E + W Halo for field_2:
@@ -335,12 +335,12 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Fac
                 #- N Halo:
                 field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
                 field_2[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_2[region_N][1:Nc, 1:Hc, k]
-                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=    view(field_1[region_E], 1, 1:Hc, k)
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]    =         field_1[region_E][1, 1:Hc, k]
                 #- S Halo:
                 field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
                 field_2[region][2:Nc, 1-Hc:0, k]       .= reverse(field_1[region_S][Nc+1-Hc:Nc, 2:Nc, k], dims=2)'
-                field_1[region][1, 1-Hc:0, k]          .=    view(field_2[region_W], Nc+1-Hc:Nc, 1, k) * plmn
-                field_2[region][1, 1-Hc:0, k]          .=    view(field_1[region_W], Nc+1-Hc:Nc, 1, k)
+                field_1[region][1, 1-Hc:0, k]           =         field_2[region_W][Nc+1-Hc:Nc, 1, k] * plmn
+                field_2[region][1, 1-Hc:0, k]           =         field_1[region_W][Nc+1-Hc:Nc, 1, k]
             end
         end
     end
