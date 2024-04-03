@@ -76,8 +76,7 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
         u .= f
     catch err
         if err isa DimensionMismatch
-            sz_f = size(f)
-            sz_u = Nx, Ny, Nz = size(u)
+            Nx, Ny, Nz = size(u)
             u .= reshape(f, Nx, Ny, Nz)
 
             msg = string("Reshaped ", summary(f),
