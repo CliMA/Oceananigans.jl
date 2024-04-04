@@ -253,8 +253,6 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                 #- SW corner:
                 field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
                 field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
-            end
-            for k in -Hz+1:Nz+Hz
                 #- NW corner:
                 field_1[region][2-Hc:0, Nc+1,  k]    .= reverse(field_2[region][1, Nc+2:Nc+Hc, k]) * plmn
                 field_2[region][0, Nc+2:Nc+Hc, k]    .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
