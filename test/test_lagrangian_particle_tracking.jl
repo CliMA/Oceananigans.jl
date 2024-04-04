@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using NCDatasets
 using StructArrays
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 
 struct TestParticle{T}
     x :: T
@@ -54,9 +54,9 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     ##### Test default particle
     #####
     
-    xs = arch_array(arch, 0.6*ones(P))
-    ys = arch_array(arch, 0.58*ones(P))
-    zs = arch_array(arch, 0.8*ones(P))
+    xs = on_architecture(arch, 0.6*ones(P))
+    ys = on_architecture(arch, 0.58*ones(P))
+    zs = on_architecture(arch, 0.8*ones(P))
 
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
     @test particles isa LagrangianParticles
@@ -80,7 +80,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     initial_z    = CUDA.@allowscalar grid.zᵃᵃᶜ[grid.Nz - 1]
     top_boundary = CUDA.@allowscalar grid.zᵃᵃᶠ[grid.Nz + 1]
 
-    x, y, z = arch_array.(Ref(arch), ([0.0], [0.0], [initial_z]))
+    x, y, z = on_architecture.(Ref(arch), ([0.0], [0.0], [initial_z]))
 
     particles = LagrangianParticles(; x, y, z)
     u, v, w   = VelocityFields(grid)
@@ -102,13 +102,13 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     ##### Test custom particle "SpeedTrackingParticle"
     #####
     
-    xs = arch_array(arch, zeros(P))
-    ys = arch_array(arch, zeros(P))
-    zs = arch_array(arch, 0.5 * ones(P))
-    us = arch_array(arch, zeros(P))
-    vs = arch_array(arch, zeros(P))
-    ws = arch_array(arch, zeros(P))
-    ss = arch_array(arch, zeros(P))
+    xs = on_architecture(arch, zeros(P))
+    ys = on_architecture(arch, zeros(P))
+    zs = on_architecture(arch, 0.5 * ones(P))
+    us = on_architecture(arch, zeros(P))
+    vs = on_architecture(arch, zeros(P))
+    ws = on_architecture(arch, zeros(P))
+    ss = on_architecture(arch, zeros(P))
 
     # Test custom constructor
     particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))

@@ -76,6 +76,12 @@ Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
                     Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
                     Adapt.adapt(to, scheme.buffer_scheme))
 
+on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
+    Centered{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                    on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                    on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                    on_architecture(to, scheme.buffer_scheme))
+
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 

@@ -20,7 +20,7 @@ using Oceananigans.Fields: interior_view_indices, index_binary_search,
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
@@ -247,7 +247,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
                 times = time_range
             end
 
-            times = arch_array(architecture(grid), times)
+            times = on_architecture(architecture(grid), times)
         end
         
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
@@ -266,6 +266,17 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
                                                                time_indexing)
     end
 end
+
+on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} = 
+    FieldTimeSeries{LX, LY, LZ}(on_architecture(to, data),
+                                on_architecture(to, grid),
+                                on_architecture(to, backend),
+                                on_architecture(to, bcs),
+                                on_architecture(to, indices), 
+                                on_architecture(to, times),
+                                on_architecture(to, path),
+                                on_architecture(to, name),
+                                on_architecture(to, time_indexing))
 
 #####
 ##### Minimal implementation of FieldTimeSeries for use in GPU kernels
@@ -551,7 +562,7 @@ function Field(location, path::String, name::String, iter;
 
     # Change grid to specified architecture?
     grid     = on_architecture(architecture, grid)
-    raw_data = arch_array(architecture, raw_data)
+    raw_data = on_architecture(architecture, raw_data)
     data     = offset_data(raw_data, grid, location, indices)
     
     return Field(location, grid; boundary_conditions, indices, data)

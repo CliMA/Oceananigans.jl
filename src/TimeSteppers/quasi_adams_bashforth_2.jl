@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT

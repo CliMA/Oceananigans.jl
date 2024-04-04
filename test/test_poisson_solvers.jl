@@ -31,7 +31,6 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                 grids_2d = [RectilinearGrid(arch, FT, size=(2, 2), extent=(1, 1), topology=topo)
                             for topo in two_dimensional_topologies]
 
-
                 grids = []
                 push!(grids, grids_3d..., grids_2d...)
 

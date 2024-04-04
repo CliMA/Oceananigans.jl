@@ -34,7 +34,7 @@ function correct_field_value_was_set(grid, FieldType, val::Number)
     arch = architecture(grid)
     f = FieldType(grid)
     set!(f, val)
-    return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
+    return all(interior(f) .≈ val * on_architecture(arch, ones(size(f))))
 end
 
 function run_field_reduction_tests(FT, arch)
@@ -58,10 +58,10 @@ function run_field_reduction_tests(FT, arch)
     c_vals = f.(nodes(c, reshape=true)...)
 
     # Convert to CuArray if needed.
-    u_vals = arch_array(arch, u_vals)
-    v_vals = arch_array(arch, v_vals)
-    w_vals = arch_array(arch, w_vals)
-    c_vals = arch_array(arch, c_vals)
+    u_vals = on_architecture(arch, u_vals)
+    v_vals = on_architecture(arch, v_vals)
+    w_vals = on_architecture(arch, w_vals)
+    c_vals = on_architecture(arch, c_vals)
 
     ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
 
@@ -149,11 +149,11 @@ function run_field_interpolation_tests(grid)
     zs = Array(reshape([-1.3, 1.23, 2.1], (1, 1, 3)))
 
     X = [(xs[i], ys[j], zs[k]) for i=1:3, j=1:3, k=1:3]
-    X = arch_array(arch, X)
+    X = on_architecture(arch, X)
 
-    xs = arch_array(arch, xs)
-    ys = arch_array(arch, ys)
-    zs = arch_array(arch, zs)
+    xs = on_architecture(arch, xs)
+    ys = on_architecture(arch, ys)
+    zs = on_architecture(arch, zs)
 
     CUDA.@allowscalar begin
         for f in (u, v, w, c)

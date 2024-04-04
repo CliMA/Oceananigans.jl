@@ -354,7 +354,6 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
-
     return nothing
 end
 
@@ -376,6 +375,7 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
+
     return nothing
 end
 
@@ -449,8 +449,6 @@ end
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         if CPU() ∈ archs 
-            #for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
-                #@info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
             for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
                 arch = Distributed(; partition)
@@ -487,4 +485,3 @@ end
         end
     end
 end
-

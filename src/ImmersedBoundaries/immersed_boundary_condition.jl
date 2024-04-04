@@ -45,9 +45,9 @@ Base.show(io::IO, ibc::IBC) =
 """
     ImmersedBoundaryCondition(; interfaces...)
 
-Return an ImmersedBoundaryCondition with conditions on individual
-cell `interfaces ∈ (west, east, south, north, bottom, top)`
-between the fluid and immersed boundary.
+Return an `ImmersedBoundaryCondition` with conditions on individual cell
+`interfaces ∈ (west, east, south, north, bottom, top)` between the fluid
+and the immersed boundary.
 """
 function ImmersedBoundaryCondition(; west = nothing,
                                      east = nothing,

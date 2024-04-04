@@ -1,15 +1,14 @@
 agents:
-  queue: central
+  queue: new-central
   slurm_mem: 8G
-  modules: julia/1.9.4 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 hdf5/1.12.2-ompi415 nsight-systems/2023.2.1
+  modules: climacommon/2024_03_18
+
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
-  JULIA_NVTX_CALLBACKS: gc
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
   JULIA_CPU_TARGET: 'broadwell;skylake'
-  JULIA_CUDA_MEMORY_POOL: none
 
 steps:
   - label: "initialize"

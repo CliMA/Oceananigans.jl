@@ -253,7 +253,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -267,7 +267,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+        push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data

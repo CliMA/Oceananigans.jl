@@ -353,7 +353,7 @@ end
         #
         # where ω = ϵ / e ∼ √e / ℓ.
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e - ω + div_Jᵉ_e
+        diffusivities.Lᵉ[i, j, k] = wb_e - ω + div_Jᵉ_e
     end
 end
 

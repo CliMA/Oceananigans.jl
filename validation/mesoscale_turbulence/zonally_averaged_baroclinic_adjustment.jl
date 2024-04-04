@@ -135,7 +135,7 @@ filename = "zonally_averaged_baroclinic_adjustment"
 using GLMakie
 using Oceananigans
 
-fig = Figure(resolution = (2800, 1600))
+fig = Figure(size=(2800, 1600))
 
 filepath = filename * ".jld2"
 
