@@ -276,18 +276,24 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     CUDA.@allowscalar begin
 
         for region in (1, 3, 5)
+            # NW corner coordinate points can't be read from interior for odd panels
+            # so we the compute using conformal_cubed_sphere_mapping
             φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
             getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
             getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+
             getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
             getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
             getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
         end
 
         for region in (2, 4, 6)
-            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
-            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
+            # SE corner coordinate points can't be read from interior for even panels
+            # so we the compute using conformal_cubed_sphere_mapping
+            φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
+            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
+
             getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
             getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
             getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
