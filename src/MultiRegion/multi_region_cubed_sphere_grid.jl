@@ -351,7 +351,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 
     connectivity = CubedSphereConnectivity(devices, partition)
 
-    return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
+    return MultiRegionGrid{FT, panel_topology...}(arch, partition, connectivity, region_grids, devices)
 end
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid)
