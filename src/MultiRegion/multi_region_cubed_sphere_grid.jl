@@ -278,14 +278,14 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
         for region in 1:6
             if isodd(region)
-                # NW corner coordinate points on odd panels can't be read from interior
-                # so we the compute them via conformal_cubed_sphere_mapping
+                # Coordinates of "missing" NW corner points on odd panels can't be read from the interior
+                # so we compute them via conformal_cubed_sphere_mapping
                 φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
                 getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
                 getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
             elseif iseven(region)
-                # SE corner coordinate points on even panels can't be read from the interior
-                # so we the compute them via conformal_cubed_sphere_mapping
+                # Coordinates of "missing" SE corner points on even panels can't be read from the interior
+                # so we compute them via conformal_cubed_sphere_mapping
                 φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
                 getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
                 getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
