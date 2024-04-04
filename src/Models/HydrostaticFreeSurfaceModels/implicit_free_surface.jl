@@ -81,9 +81,17 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
                         nothing, nothing, nothing, nothing)
 
+on_architecture(to, free_surface::ImplicitFreeSurface) =
+    ImplicitFreeSurface(on_architecture(to, free_surface.η), 
+                        on_architecture(to, free_surface.gravitational_acceleration),
+                        on_architecture(to, free_surface.barotropic_volume_flux),
+                        on_architecture(to, free_surface.implicit_step_solver),
+                        on_architecture(to, free_surface.solver_methods),
+                        on_architecture(to, free_surface.solver_settings))
+
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
@@ -103,13 +111,11 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
                                free_surface.solver_settings)
 end
 
-is_horizontally_regular(grid) = false
-is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
-function build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
-    return build_implicit_step_solver(Val(default_method), grid, settings, gravitational_acceleration)
-end
+build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
+    build_implicit_step_solver(Val(:HeptadiagonalIterativeSolver), grid, settings, gravitational_acceleration)
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -132,239 +138,8 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     # Compute right hand side of implicit free surface equation
     @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
-    
-    u = ∫ᶻQ.u
-    v = ∫ᶻQ.v
+    fill_halo_regions!(∫ᶻQ)
 
-    for _ in 1:3
-        fill_halo_regions!(∫ᶻQ)
-        @apply_regionally replace_horizontal_vector_halos!((; u, v, w=nothing), model.grid)
-    end
-    
-    Nx, Ny, Nz = size(model.grid)
-    Hx, Hy, Hz = halo_size(model.grid)
-    
-    operation_corner_points = "average" # Choose operation_corner_points to be "average", "CCW", "CW".
-    
-    for region in [1, 3, 5]
-
-        region_south = mod(region + 4, 6) + 1
-        region_east = region + 1
-        region_north = mod(region + 2, 6)
-        region_west = mod(region + 4, 6)
-
-        # Northwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, Ny+1] to [1, Ny+Hy].
-            # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
-            u[region][0, Ny+1:Ny+Hy, k] .= reverse(-u[region_west][2, Ny-Hy+1:Ny, k]')
-            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-v[region_west][1, Ny-Hy+2:Ny, k]')
-            # Local x direction
-            # (a) Proceed from [1-Hx, Ny] to [0, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
-            u[region][1-Hx:0, Ny+1, k] .= reverse(-u[region_north][2:Hx+1, Ny, k])
-            v[region][1-Hx:0, Ny+1, k] .= -u[region_west][1, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = -u[region_west][2, Ny, k]
-            u_CW = -u[region_north][2, Ny, k]
-            u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region][1, Ny, k] 
-            v_CW = -u[region_west][1, Ny, k]
-            v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
-        end
-
-        # Northeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, Ny+1] to [Nx, Ny+Hy].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, Ny+1] to [Nx+1, Ny+Hy].
-            u[region][Nx+1, Ny+1:Ny+Hy, k] .= -v[region_north][1:Hy, 1, k]'
-            v[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1:Hy, Ny, k]'
-            # Local x direction
-            # (a) Proceed from [Nx+1, Ny] to [Nx+Hx, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [Nx+1, Ny+1] to [Nx+Hx, Ny+1].
-            u[region][Nx+1:Nx+Hx, Ny+1, k] .= u[region_north][1:Hx, 1, k]
-            v[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][1:Hx, 1, k]
-            # Corner point operation
-            u_CCW = u[region_north][1, 1, k]
-            u_CW = -v[region_north][1, 1, k]
-            u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                       operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = v[region_north][1, 1, k]
-            v_CW = u[region_east][1, Ny, k]
-            v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                       operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points == "CW" ? v_CW : nothing
-        end
-
-        # Southwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, 1-Hy] to [1, 0].
-            # (b) Shift left by one index in the first dimension to proceed from [0, 1-Hy] to [0, 0].
-            u[region][0, 1-Hy:0, k] .= u[region_west][Nx, Ny-Hy+1:Ny, k]'
-            v[region][0, 1-Hy:0, k] .= v[region_west][Nx, Ny-Hy+1:Ny, k]'
-            # Local x direction
-            # (a) Proceed from [1-Hx, 1] to [0, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [1-Hx, 0] to [0, 0].
-            u[region][1-Hx:0, 0, k] .= v[region_south][1, Ny-Hx+1:Ny, k]
-            v[region][1-Hx:0, 0, k] .= -u[region_south][2, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = v[region_south][1, Ny, k]
-            u_CW = u[region_west][Nx, Ny, k]
-            u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                 operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region_south][2, Ny, k]
-            v_CW = v[region_west][Nx, Ny, k]
-            v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                 operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points == "CW" ? v_CW : nothing
-        end
-
-        # Southeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, 1-Hy] to [Nx, 0].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, 1-Hy] to [Nx+1, 0].
-            u[region][Nx+1, 1-Hy:0, k] .= reverse(v[region_east][1:Hy, 1, k]')
-            v[region][Nx+1, 1-Hy:0, k] .= reverse(-u[region_east][2:Hy+1, 1, k]')
-            # Local x direction
-            # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
-            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx, Ny-Hx+2:Ny, k])
-            v[region][Nx+1:Nx+Hx, 0, k] .= u[region_south][Nx, Ny-Hx+1:Ny, k]
-            # Corner point operation
-            u_CCW = v[region_east][1, 1, k]
-            u_CW = -v[region][Nx, 1, k]
-            u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region_east][2, 1, k]
-            v_CW = u[region_south][Nx, Ny, k]
-            v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
-        end
-    end
-    
-    for region in [2, 4, 6]
-        region_south = mod(region + 3, 6) + 1
-        region_east = mod(region, 6) + 2
-        region_north = mod(region, 6) + 1
-        region_west = region - 1
-
-        # Northwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, Ny+1] to [1, Ny+Hy].
-            # (b) Shift left by one index in the first dimension to proceed from [0, Ny+1] to [0, Ny+Hy].
-            u[region][0, Ny+1:Ny+Hy, k] .= reverse(v[region_west][Nx-Hy+1:Nx, Ny, k]')
-            v[region][0, Ny+1, k] = -u[region][1, Ny, k]
-            v[region][0, Ny+2:Ny+Hy, k] .= reverse(-u[region_west][Nx-Hy+2:Nx, Ny, k]')
-            # Local x direction
-            # (a) Proceed from [1-Hx, Ny] to [0, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [1-Hx, Ny+1] to [0, Ny+1].
-            u[region][1-Hx:0, Ny+1, k] .= reverse(-v[region_north][1, 2:Hx+1, k])
-            v[region][1-Hx:0, Ny+1, k] .= reverse(u[region_north][1, 1:Hx, k])
-            # Corner point operation
-            u_CCW = v[region_west][Nx, Ny, k]
-            u_CW = -v[region_north][1, 2, k]
-            u[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region][1, Ny, k]
-            v_CW = u[region_north][1, 1, k]
-            v[region][0, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing    
-        end
-
-        # Northeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, Ny+1] to [Nx, Ny+Hy].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, Ny+1] to [Nx+1, Ny+Hy].
-            u[region][Nx+1, Ny+1:Ny+Hy, k] .= u[region_east][1, 1:Hy, k]'
-            v[region][Nx+1, Ny+1:Ny+Hy, k] .= v[region_east][1, 1:Hy, k]'
-            # Local x direction
-            # (a) Proceed from [Nx+1, Ny] to [Nx+Hx, Ny].
-            # (b) Shift up by one index in the second dimension to proceed from [Nx+1, Ny+1] to [Nx+Hx, Ny+1].
-            u[region][Nx+1:Nx+Hx, Ny+1, k] .= v[region_north][Nx, 1:Hx, k]
-            v[region][Nx+1:Nx+Hx, Ny+1, k] .= -u[region_east][1, 1:Hx, k]
-            # Corner point operation
-            u_CCW = v[region_north][Nx, 1, k]
-            u_CW = u[region_east][1, 1, k]
-            u[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                       operation_corner_points == "CCW" ? u_CCW :
-                                       operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -u[region_east][1, 1, k]
-            v_CW = v[region_east][1, 1, k]
-            v[region][Nx+1, Ny+1, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                       operation_corner_points == "CCW" ? v_CCW :
-                                       operation_corner_points == "CW" ? v_CW : nothing
-        end
-        
-        # Southwest corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [1, 1-Hy] to [1, 0].
-            # (b) Shift left by one index in the first dimension to proceed from [0, 1-Hy] to [0, 0].
-            u[region][0, 1-Hy:0, k] .= -v[region_west][Nx-Hy+1:Nx, 2, k]'
-            v[region][0, 1-Hy:0, k] .= u[region_west][Nx-Hy+1:Nx, 1, k]'
-            # Local x direction
-            # (a) Proceed from [1-Hx, 1] to [0, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [1-Hx, 0] to [0, 0].
-            u[region][1-Hx:0, 0, k] .= u[region_south][Nx-Hx+1:Nx, Ny, k]
-            v[region][1-Hx:0, 0, k] .= v[region_south][Nx-Hx+1:Nx, Ny, k]
-            # Corner point operation
-            u_CCW = u[region_south][Nx, Ny, k]
-            u_CW = -v[region_west][Nx, 2, k]
-            u[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                 operation_corner_points == "CCW" ? u_CCW :
-                                 operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = v[region_south][Nx, Ny, k]
-            v_CW = u[region_west][Nx, 1, k]
-            v[region][0, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                 operation_corner_points == "CCW" ? v_CCW :
-                                 operation_corner_points == "CW" ? v_CW : nothing
-        end
-        
-        # Southeast corner region
-        for k in -Hz+1:Nz+Hz
-            # Local y direction
-            # (a) Proceed from [Nx, 1-Hy] to [Nx, 0].
-            # (b) Shift right by one index in the first dimension to proceed from [Nx+1, 1-Hy] to [Nx+1, 0].
-            u[region][Nx+1, 1-Hy:0, k] .= -v[region_south][Nx-Hy+1:Nx, 1, k]'
-            v[region][Nx+1, 1-Hy:0, k] .= reverse(-v[region_east][Nx, 2:Hy+1, k]')
-            # Local x direction
-            # (a) Proceed from [Nx+1, 1] to [Nx+Hx, 1].
-            # (b) Shift down by one index in the second dimension to proceed from [Nx+1, 0] to [Nx+Hx, 0].
-            u[region][Nx+1, 0, k] = -v[region][Nx, 1, k]
-            u[region][Nx+2:Nx+Hx, 0, k] .= reverse(-u[region_south][Nx-Hx+2:Nx, 1, k])
-            v[region][Nx+1:Nx+Hx, 0, k] .= reverse(-v[region_south][Nx-Hx+1:Nx, 2, k])
-            # Corner point operation
-            u_CCW = -v[region_south][Nx, 1, k]
-            u_CW = -v[region][Nx, 1, k]
-            u[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (u_CCW + u_CW) :
-                                    operation_corner_points == "CCW" ? u_CCW :
-                                    operation_corner_points == "CW" ? u_CW : nothing
-            v_CCW = -v[region_east][Nx, 2, k]
-            v_CW = -v[region_south][Nx, 2, k]
-            v[region][Nx+1, 0, k] = operation_corner_points == "average" ? 0.5 * (v_CCW + v_CW) :
-                                    operation_corner_points == "CCW" ? v_CCW :
-                                    operation_corner_points == "CW" ? v_CW : nothing
-        end        
-    end
-    
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -380,7 +155,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
-    
+
     foreach(mask_immersed_field!, velocities)
 
     # Compute barotropic volume flux. Blocking.

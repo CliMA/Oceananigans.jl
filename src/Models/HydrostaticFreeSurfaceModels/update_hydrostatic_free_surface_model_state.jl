@@ -154,7 +154,6 @@ function fill_paired_halo_regions!(fields, signed=true)
 end
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
-
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
@@ -207,9 +206,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
         compute_w_from_continuity!(model; parameters = wpar)
 
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-
         update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
-                                     grid, model.buoyancy, model.tracers;
+                                     grid, model.buoyancy, model.tracers; 
                                      parameters = ppar)
     end
 

@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Grids: minimum_spacing, destantiate
 
@@ -47,6 +48,10 @@ minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 
 @inline Base.length(mrg::MultiRegionGrid)         = Base.length(mrg.region_grids)
 @inline Base.length(mrg::ImmersedMultiRegionGrid) = Base.length(mrg.underlying_grid.region_grids)
+
+# the default free surface solver; see Models.HydrostaticFreeSurfaceModels
+default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=g_Earth) =
+    ImplicitFreeSurface(; gravitational_acceleration)
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2),
@@ -197,13 +202,13 @@ Adapt an array `a` to be compatible with a `MultiRegionGrid`.
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
     arch = architecture(mrg)
-    a    = arch_array(CPU(), a)
+    a    = on_architecture(CPU(), a)
     ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
 
 # Fallback!
-multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
+multi_region_object_from_array(a::AbstractArray, grid) = on_architecture(architecture(grid), a)
 
 #### 
 #### Utilities for MultiRegionGrid

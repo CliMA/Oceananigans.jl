@@ -63,6 +63,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: Nothing
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme: 
+│   └── momentum: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
 
@@ -94,6 +96,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme: 
+│   ├── momentum: Centered reconstruction order 2
+│   └── b: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
 
@@ -131,6 +136,10 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme: 
+│   ├── momentum: Centered reconstruction order 2
+│   ├── T: Centered reconstruction order 2
+│   └── S: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
 
@@ -146,6 +155,10 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
+├── advection scheme: 
+│   ├── momentum: Centered reconstruction order 2
+│   ├── T: Centered reconstruction order 2
+│   └── S: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
 

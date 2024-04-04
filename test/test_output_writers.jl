@@ -239,7 +239,6 @@ end
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
-
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
             run_instantiate_windowed_time_average_tests(model)

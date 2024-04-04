@@ -38,7 +38,7 @@ end
 
 function solid_body_rotation_test(grid)
 
-    free_surface = SplitExplicitFreeSurface(; substeps = 5, gravitational_acceleration = 1)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 5, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -78,49 +78,57 @@ Ny = 32
 
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
-        grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                     halo = (3, 3, 3),
-                                     latitude = (-80, 80),
-                                     longitude = (-160, 160),
-                                     z = (-1, 0),
-                                     radius = 1,
-                                     topology=(Bounded, Bounded, Bounded))
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+                                                halo = (4, 4, 4),
+                                                latitude = (-80, 80),
+                                                longitude = (-160, 160),
+                                                z = (-1, 0),
+                                                radius = 1,
+                                                topology=(Bounded, Bounded, Bounded))
 
-        global_grid = reconstruct_global_grid(grid)
+        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-        # "s" for "serial" computation
-        us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        us = Array(interior(us))
-        vs = Array(interior(vs))
-        ws = Array(interior(ws))
-        cs = Array(interior(cs))
-        ηs = Array(interior(ηs))
+        global_underlying_grid = reconstruct_global_grid(underlying_grid)
+        global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        @info "  Testing distributed solid body rotation with architecture $arch"
-        u, v, w, c, η = solid_body_rotation_test(grid)
+        for (grid, global_grid) in zip((underlying_grid, immersed_grid), (global_underlying_grid, global_immersed_grid))
 
-        u = Array(interior(u))
-        v = Array(interior(v))
-        w = Array(interior(w))
-        c = Array(interior(c))
-        η = Array(interior(η))
+            # "s" for "serial" computation
+            us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
-        cpu_arch = cpu_architecture(arch)
+            us = interior(on_architecture(CPU(), us))
+            vs = interior(on_architecture(CPU(), vs))
+            ws = interior(on_architecture(CPU(), ws))
+            cs = interior(on_architecture(CPU(), cs))
+            ηs = interior(on_architecture(CPU(), ηs))
 
-        us = partition_global_array(cpu_arch, us, size(u))
-        vs = partition_global_array(cpu_arch, vs, size(v))
-        ws = partition_global_array(cpu_arch, ws, size(w))
-        cs = partition_global_array(cpu_arch, cs, size(c))
-        ηs = partition_global_array(cpu_arch, ηs, size(η))
+            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
+            u, v, w, c, η = solid_body_rotation_test(grid)
 
-        atol = eps(eltype(grid))
-        rtol = sqrt(eps(eltype(grid)))
+            cpu_arch = cpu_architecture(arch)
 
-        @test all(isapprox(u, us; atol, rtol))
-        @test all(isapprox(v, vs; atol, rtol))
-        @test all(isapprox(w, ws; atol, rtol))
-        @test all(isapprox(c, cs; atol, rtol))
-        @test all(isapprox(η, ηs; atol, rtol))
+            u = interior(on_architecture(cpu_arch, u))
+            v = interior(on_architecture(cpu_arch, v))
+            w = interior(on_architecture(cpu_arch, w))
+            c = interior(on_architecture(cpu_arch, c))
+            η = interior(on_architecture(cpu_arch, η))
+
+            us = partition_global_array(cpu_arch, us, size(u))
+            vs = partition_global_array(cpu_arch, vs, size(v))
+            ws = partition_global_array(cpu_arch, ws, size(w))
+            cs = partition_global_array(cpu_arch, cs, size(c))
+            ηs = partition_global_array(cpu_arch, ηs, size(η))
+
+            atol = eps(eltype(grid))
+            rtol = sqrt(eps(eltype(grid)))
+
+            @test all(isapprox(u, us; atol, rtol))
+            @test all(isapprox(v, vs; atol, rtol))
+            @test all(isapprox(w, ws; atol, rtol))
+            @test all(isapprox(c, cs; atol, rtol))
+            @test all(isapprox(η, ηs; atol, rtol))
+        end
     end
 end

@@ -3,33 +3,8 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
-
-function read_big_endian_coordinates(filename, Ninterior = 32, Nhalo = 1)
-    # Open the file in binary read mode
-    open(filename, "r") do io
-        # Calculate the number of Float64 values in the file
-        n = filesize(io) ÷ sizeof(Float64)
-
-        # Ensure n = (Ninterior + 2 * Nhalo) * (Ninterior + 2 * Nhalo)
-        if n != (Ninterior + 2 * Nhalo) * (Ninterior + 2 * Nhalo)
-            error("File size does not match the expected size for one (Ninterior + 2 * Nhalo) x (Ninterior + 2 * Nhalo) field")
-        end
-
-        # Initialize an array to hold the data
-        data = Vector{Float64}(undef, n)
-
-        # Read the data into the array
-        read!(io, data)
-
-        # Convert from big-endian to native endianness
-        native_data = reshape(bswap.(data), (Ninterior + 2 * Nhalo), (Ninterior + 2 * Nhalo))
-
-        return native_data
-    end
-end
+using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
 
@@ -97,17 +72,17 @@ function get_halo_data(field, ::West, k_index=1; operation=nothing, index=:all, 
 
     Nx, Ny, _ = size(field)
     Hx, Hy, _ = halo_size(field.grid)
-    
-    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
-    
-    if vorticity
-        range_x = -Hx+2:0
-    else
-        range_x = -Hx+1:0
-    end
 
-    return field.data[range_x, range_y, k_index]
-    
+    range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
+
+    return field.data[range_x, -Hy+1:0, k_index]
+end
+
+function get_boundary_indices(Nx, Ny, Hx, Hy, ::West; operation=nothing, index=:all)
+
+    _, range_y = get_range_of_indices(operation, index, Nx, Ny)
+
+    return 1:Hx, range_y
 end
 
 function get_boundary_indices(Nx, Ny, Hx, Hy, ::South; operation=nothing, index=:all)
@@ -209,12 +184,55 @@ create_v_test_data_in_lexicographic_order(grid, region) = create_test_data_in_le
     end
 end
 
-@testset "Testing conformal cubed sphere face grid from file" begin
+"""
+    same_longitude_at_poles!(grid1, grid2)
 
+Change the longitude values in `grid1` that correspond to points situated _exactly_ at
+the poles so that they match the corresponding longitude values of `grid2`.
+"""
+function same_longitude_at_poles!(grid1::ConformalCubedSphereGrid, grid2::ConformalCubedSphereGrid)
+    number_of_regions(grid1) == number_of_regions(grid2) || error("grid1 and grid2 must have same number of regions")
+
+    for region in 1:number_of_regions(grid1)
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== +90]
+        grid1[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]= grid2[region].λᶠᶠᵃ[grid2[region].φᶠᶠᵃ .== -90]
+    end
+
+    return nothing
+end
+
+"""
+    zero_out_corner_halos!(array::OffsetArray, N, H)
+
+Zero out the values at the corner halo regions of the two-dimensional `array :: OffsetArray`.
+It is expected that the interior of the offset `array` is `(Nx, Ny) = (N, N)` and the halo
+region is `H` in both dimensions.
+"""
+function zero_out_corner_halos!(array::OffsetArray, N, H)
+    size(array) == (N+2H, N+2H)
+
+    Nx = Ny = N
+    Hx = Hy = H
+
+    array[-Hx+1:0, -Hy+1:0] .= 0
+    array[-Hx+1:0, Ny+1:Ny+Hy] .= 0
+    array[Nx+1:Nx+Hx, -Hy+1:0] .= 0
+    array[Nx+1:Nx+Hx, Ny+1:Ny+Hy] .= 0
+
+    return nothing
+end
+
+function compare_grid_vars(var1, var2, N, H)
+    zero_out_corner_halos!(var1, N, H)
+    zero_out_corner_halos!(var2, N, H)
+    return isapprox(var1, var2)
+end
+
+@testset "Testing conformal cubed sphere grid from file" begin
     Nz = 1
     z = (-1, 0)
 
-    cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+    cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid_with_4_halos.jld2"
 
     for panel in 1:6
         grid = conformal_cubed_sphere_panel(cs32_filepath; panel, Nz, z)
@@ -222,8 +240,7 @@ end
     end
 
     for arch in archs
-    
-        @info "  Testing conformal cubed sphere face grid from file [$(typeof(arch))]..."
+        @info "  Testing conformal cubed sphere grid from file [$(typeof(arch))]..."
 
         # Read cs32 grid from file.
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
@@ -231,9 +248,13 @@ end
         radius = first(grid_cs32).radius
         Nx, Ny, Nz = size(grid_cs32)
         Hx, Hy, Hz = halo_size(grid_cs32)
-        Hx !== Hy && error("Hx must be same as Hy")
 
-        # Construct a ConformalCubedSphereGrid similar to cs32.
+        Nx !== Ny && error("Nx must be same as Ny")
+        N = Nx
+        Hx !== Hy && error("Hx must be same as Hy")
+        H = Hy
+    
+        # construct a ConformalCubedSphereGrid similar to cs32
         grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
                                         horizontal_direction_halo = Hx, z_halo = Hz)
 
@@ -244,18 +265,20 @@ end
                 # Test only on cca and ffa; fca and cfa are all zeros on grid_cs32!
                 # Only test interior points since halo regions are not filled for grid_cs32!
 
-                @test isapprox(getregion(grid, panel).φᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶜᶜᵃ[1:Nx, 1:Ny])
-                @test isapprox(getregion(grid, panel).λᶜᶜᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶜᶜᵃ[1:Nx, 1:Ny])
+                @test compare_grid_vars(getregion(grid, panel).φᶜᶜᵃ, getregion(grid_cs32, panel).φᶜᶜᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶜᶜᵃ, getregion(grid_cs32, panel).λᶜᶜᵃ, N, H)
 
                 # Before we test, make sure we don't consider +180 and -180 longitudes as being "different".
                 getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).λᶠᶠᵃ .≈ -180] .= 180
 
-                # And if poles are included, they have the same longitude.
-                getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ +90]
-                getregion(grid, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90] = getregion(grid_cs32, panel).λᶠᶠᵃ[getregion(grid, panel).φᶠᶠᵃ .≈ -90]
-                @test isapprox(getregion(grid, panel).φᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).φᶠᶠᵃ[1:Nx, 1:Ny])
-                @test isapprox(getregion(grid, panel).λᶠᶠᵃ[1:Nx, 1:Ny], getregion(grid_cs32, panel).λᶠᶠᵃ[1:Nx, 1:Ny])
-                
+                # and if poles are included, they have the same longitude.
+                same_longitude_at_poles!(grid, grid_cs32)
+
+                @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶠᶠᵃ, getregion(grid_cs32, panel).λᶠᶠᵃ, N, H)
+
+                @test compare_grid_vars(getregion(grid, panel).φᶠᶠᵃ, getregion(grid_cs32, panel).φᶠᶠᵃ, N, H)
+                @test compare_grid_vars(getregion(grid, panel).λᶠᶠᵃ, getregion(grid_cs32, panel).λᶠᶠᵃ, N, H)
             end
             
         end
@@ -277,15 +300,12 @@ panel_sizes = ((8, 8, 1), (9, 9, 2))
 
                 areaᶜᶜᵃ = areaᶠᶜᵃ = areaᶜᶠᵃ = areaᶠᶠᵃ = 0
 
-                for region in 1:length(grid.partition)
-
-                    region_Nx, region_Ny, _ = size(getregion(grid, region))
-
+                for region in 1:number_of_regions(grid)
                     CUDA.@allowscalar begin
-                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:region_Nx, 1:region_Ny])
-                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:region_Nx, 1:region_Ny])
+                        areaᶜᶜᵃ += sum(getregion(grid, region).Azᶜᶜᵃ[1:Nx, 1:Ny])
+                        areaᶠᶜᵃ += sum(getregion(grid, region).Azᶠᶜᵃ[1:Nx, 1:Ny])
+                        areaᶜᶠᵃ += sum(getregion(grid, region).Azᶜᶠᵃ[1:Nx, 1:Ny])
+                        areaᶠᶠᵃ += sum(getregion(grid, region).Azᶠᶠᵃ[1:Nx, 1:Ny])
                     end
                     
                 end
@@ -409,8 +429,8 @@ end
             @apply_regionally v_data = create_v_test_data(grid, region)
             set!(u, u_data)
             set!(v, v_data)
-            
-            fill_paired_halo_regions!((u, v))
+
+            fill_halo_regions!((u, v); signed = true)
 
             Hx, Hy, Hz = halo_size(u.grid)
 
@@ -673,11 +693,7 @@ end
             set!(u, u_data)
             set!(v, v_data)
 
-            for _ in 1:2
-                fill_halo_regions!(ψ)
-            end
-
-            fill_paired_halo_regions!((u, v))
+            fill_halo_regions!(ψ)
 
             Hx, Hy, Hz = halo_size(ψ.grid)
             
@@ -729,12 +745,11 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 1), West();
                                     operation=:endpoint,
-                                    index=:first)             ==         create_my_ψ_test_data(grid, 6)[north_indices_first...]
+                                    index=:first) == create_ψ_test_data(grid, 6)[north_indices_first...]
 
-                switch_device!(grid, 2) # Panel 2
-                
-                @test get_halo_data(getregion(ψ, 2), West())  ==         create_my_ψ_test_data(grid, 1)[east_indices...]
-                @test get_halo_data(getregion(ψ, 2), North()) ==         create_my_ψ_test_data(grid, 3)[south_indices...]
+                switch_device!(grid, 2)
+                @test get_halo_data(getregion(ψ, 2), West())  == create_ψ_test_data(grid, 1)[east_indices...]
+                @test get_halo_data(getregion(ψ, 2), North()) == create_ψ_test_data(grid, 3)[south_indices...]
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 2), East();
@@ -749,12 +764,11 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 2), South();
                                     operation=:endpoint,
-                                    index=:first)             ==         create_my_ψ_test_data(grid, 1)[east_indices_first...]                
+                                    index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]                
 
-                switch_device!(grid, 3) # Panel 3
-                
-                @test get_halo_data(getregion(ψ, 3), East())  ==         create_my_ψ_test_data(grid, 4)[west_indices...]
-                @test get_halo_data(getregion(ψ, 3), South()) ==         create_my_ψ_test_data(grid, 2)[north_indices...]
+                switch_device!(grid, 3)
+                @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
+                @test get_halo_data(getregion(ψ, 3), South()) == create_ψ_test_data(grid, 2)[north_indices...]
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 3), West();
@@ -789,12 +803,11 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 4), South();
                                     operation=:endpoint, 
-                                    index=:first)             ==         create_my_ψ_test_data(grid, 3)[east_indices_first...]
+                                    index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
 
-                switch_device!(grid, 5) # Panel 5
-                
-                @test get_halo_data(getregion(ψ, 5), East())  ==         create_my_ψ_test_data(grid, 6)[west_indices...]
-                @test get_halo_data(getregion(ψ, 5), South()) ==         create_my_ψ_test_data(grid, 4)[north_indices...]
+                switch_device!(grid, 5)
+                @test get_halo_data(getregion(ψ, 5), East())  == create_ψ_test_data(grid, 6)[west_indices...]
+                @test get_halo_data(getregion(ψ, 5), South()) == create_ψ_test_data(grid, 4)[north_indices...]
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 5), West();

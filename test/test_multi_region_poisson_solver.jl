@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
@@ -55,7 +55,7 @@ function compute_poisson_weights(grid)
     Ay = zeros(N...)
     Az = zeros(N...)
     C  = zeros(grid, N...)
-    D  = arch_array(grid.architecture, ones(N...))
+    D  = on_architecture(grid.architecture, ones(N...))
 
     for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
