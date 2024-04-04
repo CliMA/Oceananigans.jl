@@ -317,7 +317,7 @@ end
     ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
                              Nz,
                              z,
-                             panel_halo = (1, 1, 1),
+                             panel_halo = (4, 4, 4),
                              panel_topology = (FullyConnected, FullyConnected, Bounded),
                              radius = R_Earth,
                              devices = nothing)
@@ -332,7 +332,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                   radius = R_Earth,
                                   devices = nothing)
 
-    # only 6-panel partition, i.e. R=1, are allowed when loading a ConformalCubedSphereGrid from file
+    # only 6-panel partition, i.e. R = 1, are allowed when loading a ConformalCubedSphereGrid from file
     partition = CubedSpherePartition(R = 1)
 
     devices = validate_devices(partition, arch, devices)
