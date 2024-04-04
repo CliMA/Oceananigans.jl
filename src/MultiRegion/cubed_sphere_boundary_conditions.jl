@@ -14,7 +14,7 @@ function find_neighboring_panels(region)
     return (; region_E, region_N, region_W, region_S)
 end
 
-function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Center})
+function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
     Nx, Ny, Nz = size(grid)
@@ -57,7 +57,7 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Center, <:Cen
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face})
+function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
 
     Nx, Ny, Nz = size(grid)
@@ -114,12 +114,10 @@ function fill_cubed_sphere_halo_regions!(field::CubedSphereField{<:Face, <:Face}
     return nothing
 end
 
-fill_cubed_sphere_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField};
-                                signed = true) = fill_cubed_sphere_halo_regions!(fields...; signed)
+fill_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField}; signed = true) = fill_halo_regions!(fields...; signed)
 
-function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
-                                         field_2::CubedSphereField{<:Center, <:Center};
-                                         signed = true)
+function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
+                            field_2::CubedSphereField{<:Center, <:Center}; signed = true)
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
@@ -177,9 +175,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Center, <:C
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
-                                         field_2::CubedSphereField{<:Center, <:Face};
-                                         signed = true)
+function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
+                            field_2::CubedSphereField{<:Center, <:Face}; signed = true)
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
@@ -268,9 +265,8 @@ function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Cen
     return nothing
 end
 
-function fill_cubed_sphere_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
-                                         field_2::CubedSphereField{<:Face, <:Face};
-                                         signed = true)
+function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
+                            field_2::CubedSphereField{<:Face, <:Face}; signed = true)
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
