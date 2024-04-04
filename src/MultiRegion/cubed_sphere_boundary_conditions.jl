@@ -1,3 +1,5 @@
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+
 function find_neighboring_panels(region)
     if mod(region, 2) == 1
         region_E = mod(region + 0, 6) + 1
