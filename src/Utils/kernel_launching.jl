@@ -117,7 +117,7 @@ over the `dims` of `grid` on the architecture `arch`. kernels run on the default
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
-                 only_active_cells = nothing,
+                 active_cells_map = nothing,
                  kwargs...) where {N}
 
     loop! = configured_kernel(arch, grid, workspec, kernel!;
