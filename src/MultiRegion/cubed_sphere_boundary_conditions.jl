@@ -2,7 +2,7 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function find_neighboring_panels(::ConformalCubedSphereGrid, region)
+function find_neighboring_panels(grid::ConformalCubedSphereGrid, region)
     number_of_regions(grid) !== 6 && error("requires cubed sphere grids with 1 region per panel")
 
     if isodd(region)

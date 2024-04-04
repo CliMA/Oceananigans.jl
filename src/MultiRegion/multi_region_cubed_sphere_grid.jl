@@ -273,42 +273,32 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    CUDA.@allowscalar begin
-
-        for region in (1, 3, 5)
-            # NW corner coordinate points can't be read from interior for odd panels
-            # so we the compute using conformal_cubed_sphere_mapping
-            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
-            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
-            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
-
-            getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
-            getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
-            getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
-        end
-
-        for region in (2, 4, 6)
-            # SE corner coordinate points can't be read from interior for even panels
-            # so we the compute using conformal_cubed_sphere_mapping
-            φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
-            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
-
-            getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
-            getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
-            getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
-        end
-
-    end
 
     CUDA.@allowscalar begin
+
+        for region in 1:6
+            if isodd(region)
+                # NW corner coordinate points on odd panels can't be read from interior
+                # so we the compute them via conformal_cubed_sphere_mapping
+                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+            elseif iseven(region)
+                # SE corner coordinate points on even panels can't be read from the interior
+                # so we the compute them via conformal_cubed_sphere_mapping
+                φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
+                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
+            end
+        end
+
         for region in 1:6
             getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
             getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
             getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
             getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
         end
-    end
+    end # CUDA.@allowscalar
 
     return grid
 end
