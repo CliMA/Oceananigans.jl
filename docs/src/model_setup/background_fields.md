@@ -1,8 +1,8 @@
 # Background fields
 
 `BackgroundField`s are velocity and tracer fields around which the resolved
-velocity and tracer fields evolve. In `Oceananigans`, only the _advective_ terms
-associated with the interaction between background and resolved fields are included.
+velocity and tracer fields evolve. Only the _advective_ terms associated with
+the interaction between background and resolved fields are included.
 For example, tracer advection is described by
 
 ```math
@@ -35,6 +35,9 @@ An analogous statement holds for the advection of background momentum by the res
 velocity field.
 Other possible terms associated with the Coriolis force, buoyancy, turbulence closures,
 and surface waves acting on background fields are neglected.
+
+!!! compat "Model compatibility"
+    `BackgroundFields` are only supported by [`NonhydrostaticModel`](@ref).
 
 ## Specifying background fields
 
