@@ -5,7 +5,6 @@ using Oceananigans.Grids: conformal_cubed_sphere_panel,
                           size_summary,
                           total_length,
                           topology
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_cubed_sphere_halo_regions!
 
 using CubedSphere
 using Distances
@@ -205,15 +204,15 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology[1], region_topology[2], region_topology[3]}(arch,
-                                                                                           partition,
-                                                                                           connectivity,
-                                                                                           region_grids,
-                                                                                           devices)
+    grid = MultiRegionGrid{FT, region_topology...}(arch,
+                                                   partition,
+                                                   connectivity,
+                                                   region_grids,
+                                                   devices)
 
-    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ )
-    LXs    = (:Center, :Center, :Center)
-    LYs    = (:Center, :Center, :Center)
+    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ , :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
+    LXs    = (:Center, :Center, :Center, :Face, :Face, :Face )
+    LYs    = (:Center, :Center, :Center, :Face, :Face, :Face )
 
     for (field, LX, LY) in zip(fields, LXs, LYs)
         expr = quote
@@ -226,7 +225,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(arch), $(grid), $(Symbol(field)), (Center(), Center()))
+                fill_halo_regions!($(Symbol(field)))
             end
 
             CUDA.@allowscalar begin
@@ -239,46 +238,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    field_1 = :Δxᶜᶜᵃ
-    LX_1    = :Center
-    LY_1    = :Center
+    fields_1 = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
+    LXs_1    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
+    LYs_1    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
 
-    field_2 = :Δyᶜᶜᵃ
-    LX_2    = :Center
-    LY_2    = :Center
-
-    expr = quote
-        $(Symbol(field_1)) = Field{$(Symbol(LX_1)), $(Symbol(LY_1)), Nothing}($(grid))
-        $(Symbol(field_2)) = Field{$(Symbol(LX_2)), $(Symbol(LY_2)), Nothing}($(grid))
-
-        CUDA.@allowscalar begin
-            for region in 1:number_of_regions($(grid))
-                getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
-                getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
-            end
-        end
-
-        if $(horizontal_topology) == FullyConnected
-            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Center(), Center()), (Center(), Center()), false)
-        end
-
-        CUDA.@allowscalar begin
-            for region in 1:number_of_regions($(grid))
-                getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
-                getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
-            end
-        end
-    end # quote
-
-    eval(expr)
-
-    fields_1 = (:Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ )
-    LXs_1    = (:Face,   :Face,   :Face,   :Face,   :Face  )
-    LYs_1    = (:Center, :Center, :Center, :Center, :Center)
-
-    fields_2 = (:Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ )
-    LXs_2    = (:Center, :Center, :Center, :Center, :Center)
-    LYs_2    = (:Face,   :Face,   :Face,   :Face,   :Face  )
+    fields_2 = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
+    LXs_2    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
+    LYs_2    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
 
     for (field_1, LX_1, LY_1, field_2, LX_2, LY_2) in zip(fields_1, LXs_1, LYs_1, fields_2, LXs_2, LYs_2)
         expr = quote
@@ -293,7 +259,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Center()), (Center(), Face()), false)
+                fill_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))); signed = false)
             end
 
             CUDA.@allowscalar begin
@@ -307,92 +273,32 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         eval(expr)
     end
 
-    fields = (:λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
-    LXs    = (:Face, :Face, :Face)
-    LYs    = (:Face, :Face, :Face)
-
-    for (field, LX, LY) in zip(fields, LXs, LYs)
-        expr = quote
-            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
-                end
-            end
-
-            if $(horizontal_topology) == FullyConnected
-                fill_cubed_sphere_halo_regions!($(Symbol(field)), (Face(), Face()))
-            end
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
-                end
-            end
-        end # quote
-
-        eval(expr)
-    end
-
-    field_1 = :Δxᶠᶠᵃ
-    field_2 = :Δyᶠᶠᵃ
-
-    expr = quote
-        $(Symbol(field_1)) = Field{Face, Face, Nothing}($(grid))
-        $(Symbol(field_2)) = Field{Face, Face, Nothing}($(grid))
-
-        CUDA.@allowscalar begin
-            for region in 1:number_of_regions($(grid))
-                getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
-                getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
-            end
-        end
-
-        if $(horizontal_topology) == FullyConnected
-            fill_cubed_sphere_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))), (Face(), Face()), (Face(), Face()), false)
-        end
-
-        CUDA.@allowscalar begin
-            for region in 1:number_of_regions($(grid))
-                getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
-                getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
-            end
-        end
-    end # quote
-
-    eval(expr)
 
     CUDA.@allowscalar begin
 
-        for region in (1, 3, 5)
-            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
-            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
-            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
-            getregion(grid, region).Δxᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1]
-            getregion(grid, region).Δyᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1]
-            getregion(grid, region).Azᶠᶠᵃ[1, Ny+1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
+        for region in 1:6
+            if isodd(region)
+                # Coordinates of "missing" NW corner points on odd panels can't be read from the interior
+                # so we compute them via conformal_cubed_sphere_mapping
+                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+            elseif iseven(region)
+                # Coordinates of "missing" SE corner points on even panels can't be read from the interior
+                # so we compute them via conformal_cubed_sphere_mapping
+                φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
+                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
+            end
         end
 
-        for region in (2, 4, 6)
-            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = -φc
-            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = -λc
-            getregion(grid, region).Δxᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δxᶠᶠᵃ[1, 1]
-            getregion(grid, region).Δyᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Δyᶠᶠᵃ[1, 1]
-            getregion(grid, region).Azᶠᶠᵃ[Nx+1, 1] = getregion(grid, region).Azᶠᶠᵃ[1, 1]
-        end
-
-    end
-
-    CUDA.@allowscalar begin
         for region in 1:6
             getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
             getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
             getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
             getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
         end
-    end
+    end # CUDA.@allowscalar
 
     return grid
 end
@@ -401,7 +307,7 @@ end
     ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
                              Nz,
                              z,
-                             panel_halo = (1, 1, 1),
+                             panel_halo = (4, 4, 4),
                              panel_topology = (FullyConnected, FullyConnected, Bounded),
                              radius = R_Earth,
                              devices = nothing)
@@ -411,12 +317,12 @@ Load a `ConformalCubedSphereGrid` from `filepath`.
 function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
                                   Nz,
                                   z,
-                                  panel_halo = (1, 1, 1),
+                                  panel_halo = (4, 4, 4),
                                   panel_topology = (FullyConnected, FullyConnected, Bounded),
                                   radius = R_Earth,
                                   devices = nothing)
 
-    # only 6-panel partition, i.e. R=1, are allowed when loading a ConformalCubedSphereGrid from file
+    # only 6-panel partition, i.e. R = 1, are allowed when loading a ConformalCubedSphereGrid from file
     partition = CubedSpherePartition(R = 1)
 
     devices = validate_devices(partition, arch, devices)
@@ -435,7 +341,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 
     connectivity = CubedSphereConnectivity(devices, partition)
 
-    return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, connectivity, region_grids, devices)
+    return MultiRegionGrid{FT, panel_topology...}(arch, partition, connectivity, region_grids, devices)
 end
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid)
