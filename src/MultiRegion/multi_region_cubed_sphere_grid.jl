@@ -150,33 +150,27 @@ For example, to find out all connectivites on the South boundary of each region 
 ```jldoctest cubedspheregrid
 julia> using Oceananigans.MultiRegion: East, North, West, South
 
-julia> for region in 1:length(grid); @info "region $region"; display(grid.connectivity.connections[region].south); end
-[ Info: region 1
+julia> for region in 1:length(grid); println(grid.connectivity.connections[region].south); end
 CubedSphereRegionalConnectivity
 ├── from: North side, region 6 
 ├── to:   South side, region 1 
 └── no rotation
-[ Info: region 2
 CubedSphereRegionalConnectivity
 ├── from: East side, region 6 
 ├── to:   South side, region 2 
 └── counter-clockwise rotation ↺
-[ Info: region 3
 CubedSphereRegionalConnectivity
 ├── from: North side, region 2 
 ├── to:   South side, region 3 
 └── no rotation
-[ Info: region 4
 CubedSphereRegionalConnectivity
 ├── from: East side, region 2 
 ├── to:   South side, region 4 
 └── counter-clockwise rotation ↺
-[ Info: region 5
 CubedSphereRegionalConnectivity
 ├── from: North side, region 4 
 ├── to:   South side, region 5 
 └── no rotation
-[ Info: region 6
 CubedSphereRegionalConnectivity
 ├── from: East side, region 4 
 ├── to:   South side, region 6 
