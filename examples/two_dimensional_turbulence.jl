@@ -37,6 +37,8 @@ model = NonhydrostaticModel(; grid,
 
 using Statistics
 
+using Random; Random.seed!(1234) #hide
+
 u, v, w = model.velocities
 
 uᵢ = rand(size(u)...)
@@ -47,14 +49,37 @@ vᵢ .-= mean(vᵢ)
 
 set!(model, u=uᵢ, v=vᵢ)
 
-simulation = Simulation(model, Δt=0.1, stop_time=50)
+# ## Simulation
+#
+# Next we construct a simulation. To choose an appropriate timestep we check the
+# CFL number. In this case, the initial flow is highly variable and given
+# that there is no forcing in the model we expect flow to smoothen with time.
+# Thus, the CFL that corresponds to the initial time should be a close upper bound.
+#
+# For the `:RungeKutta3` timestepper used in this model, a timestep `Δt` that
+# gives CFL ⪅ 1 should be adequate; the `:QuasiAdamsBashforth2` requires CFL ⪅ 0.25.
+
+Δt = 0.03
+cfl = AdvectiveCFL(Δt)
+cfl(model)
+
+# Now we create the simulation.
+
+simulation = Simulation(model, Δt=Δt, stop_time=50)
 
 # ## Logging simulation progress
 #
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
-progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-add_callback!(simulation, progress, IterationInterval(100))
+using Printf
+
+progress_message(sim) = @printf("Iteration: %04d, time: %s, cfl: %s, wall time: %s\n",
+                                iteration(sim),
+                                time(sim),
+                                round(AdvectiveCFL(sim.Δt)(sim.model), digits=4),
+                                prettytime(sim.run_wall_time))
+
+add_callback!(simulation, progress_message, IterationInterval(100))
 
 # ## Output
 #
