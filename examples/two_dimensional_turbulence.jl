@@ -37,7 +37,9 @@ model = NonhydrostaticModel(; grid,
 
 using Statistics
 
-using Random; Random.seed!(1234) #hide
+using Random
+
+Random.seed!(1234)
 
 u, v, w = model.velocities
 
