@@ -37,10 +37,6 @@ model = NonhydrostaticModel(; grid,
 
 using Statistics
 
-using Random
-
-Random.seed!(1234)
-
 u, v, w = model.velocities
 
 uᵢ = rand(size(u)...)
@@ -51,23 +47,18 @@ vᵢ .-= mean(vᵢ)
 
 set!(model, u=uᵢ, v=vᵢ)
 
-# ## Simulation
+# ## Setting up a simulation
 #
-# Next we construct a simulation. To choose an appropriate timestep we check the
-# CFL number. In this case, the initial flow is highly variable and given
-# that there is no forcing in the model we expect flow to smoothen with time.
-# Thus, the CFL that corresponds to the initial time should be a close upper bound.
-#
-# For the `:RungeKutta3` timestepper used in this model, a timestep `Δt` that
-# gives CFL ⪅ 1 should be adequate; the `:QuasiAdamsBashforth2` requires CFL ⪅ 0.25.
+# We set-up a simulation that stops at 50 time units, with an initial
+# time-step of 0.1, and with adaptive time-stepping and progress printing.
 
-Δt = 0.03
-cfl = AdvectiveCFL(Δt)
-cfl(model)
+simulation = Simulation(model, Δt=0.2, stop_time=50)
 
-# Now we create the simulation.
+# The `TimeStepWizard` helps ensure stable time-stepping
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
 
-simulation = Simulation(model, Δt=Δt, stop_time=50)
+wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ## Logging simulation progress
 #
@@ -75,11 +66,14 @@ simulation = Simulation(model, Δt=Δt, stop_time=50)
 
 using Printf
 
-progress_message(sim) = @printf("Iteration: %04d, time: %s, cfl: %s, wall time: %s\n",
-                                iteration(sim),
-                                time(sim),
-                                round(AdvectiveCFL(sim.Δt)(sim.model), digits=4),
-                                prettytime(sim.run_wall_time))
+function progress_message(sim)
+    iter, t, Δt = iteration(sim), time(sim), sim.Δt
+    max_abs_u = maximum(abs, sim.model.velocities.u)
+    walltime = prettytime(sim.run_wall_time)
+
+    return @printf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
+                   iter, t, Δt, max_abs_u, walltime)
+end
 
 add_callback!(simulation, progress_message, IterationInterval(100))
 
