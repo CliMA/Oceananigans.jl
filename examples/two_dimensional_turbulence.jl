@@ -139,8 +139,6 @@ nothing #hide
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-@info "Making a neat movie of vorticity and speed..."
-
 fig = Figure(size = (800, 500))
 
 axis_kwargs = (xlabel = "x",
