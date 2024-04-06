@@ -10,11 +10,9 @@ include("cubed_sphere_rossby_haurwitz.jl")
 
 using Oceananigans, Printf
 
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: φnode, λnode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
 using DataDeps
@@ -170,9 +168,7 @@ for region in [2, 4, 6]
     end
 end
 
-for passes in 1:3
-    fill_halo_regions!(ψ)
-end
+fill_halo_regions!(ψ)
 
 u = XFaceField(grid)
 v = YFaceField(grid)
@@ -184,7 +180,7 @@ for region in 1:number_of_regions(grid)
     end
 end
 
-fill_paired_halo_regions!((u, v))
+fill_halo_regions!((u, v))
 
 # Now, compute the vorticity.
 using Oceananigans.Utils
@@ -506,9 +502,7 @@ for region in 1:number_of_regions(grid)
     
 end
 
-for passes in 1:3
-    fill_halo_regions!(model.free_surface.η)
-end
+fill_halo_regions!(model.free_surface.η)
 
 ## Simulation setup
 
@@ -522,7 +516,7 @@ c = sqrt(model.free_surface.gravitational_acceleration * H)
 
 Ntime = round(Int, stop_time/Δt)
 
-print_output_to_jld2_file = true
+print_output_to_jld2_file = false
 if print_output_to_jld2_file
     Ntime = 500
     stop_time = Ntime * Δt
@@ -573,7 +567,7 @@ end
 function save_ζ(sim)
     Hx, Hy, Hz = halo_size(grid)
 
-    fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
+    fill_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
 
     offset = -1 .* halo_size(grid)
 
@@ -695,10 +689,11 @@ simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields
 
 run!(simulation)
 
-for i_field in 1:length(η_fields)
+n_snapshots = length(η_fields)
+for i_snapshot in 1:n_snapshots
     for region in 1:number_of_regions(grid)
         for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
-            η_fields[i_field][region][i, j, k] -= H
+            η_fields[i_snapshot][region][i, j, k] -= H
         end
     end
 end

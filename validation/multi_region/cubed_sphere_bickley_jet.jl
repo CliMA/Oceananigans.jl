@@ -1,10 +1,8 @@
 using Oceananigans, Printf
 
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: λnode, φnode, znode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_paired_halo_regions!
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using Oceananigans.Operators
 using Oceananigans.Utils
 using Oceananigans.Utils: Iterate
@@ -70,9 +68,7 @@ function set_bickley_jet!(model;
         end
     end
 
-    for passes in 1:3
-        fill_halo_regions!(ψ)
-    end
+    fill_halo_regions!(ψ)
 
     u = XFaceField(grid)
     v = YFaceField(grid)
@@ -84,7 +80,7 @@ function set_bickley_jet!(model;
         end
     end
 
-    fill_paired_halo_regions!((u, v))
+    fill_halo_regions!((u, v))
 
     for region in 1:number_of_regions(grid)
 
@@ -102,9 +98,7 @@ function set_bickley_jet!(model;
 
     end
 
-    for _ in 1:3
-        fill_halo_regions!(model.tracers.c)
-    end
+    fill_halo_regions!(model.tracers.c)
 
     return nothing
 end
@@ -145,7 +139,7 @@ c = sqrt(model.free_surface.gravitational_acceleration * H)
 Ntime = 15000
 stop_time = Ntime * Δt
 
-print_output_to_jld2_file = true
+print_output_to_jld2_file = false
 if print_output_to_jld2_file
     Ntime = 500
     stop_time = Ntime * Δt
@@ -188,10 +182,9 @@ end
 ζ_fields = Field[]
 
 function save_ζ(sim)
-
     Hx, Hy, Hz = halo_size(grid)
 
-    fill_paired_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
+    fill_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
 
     offset = -1 .* halo_size(grid)
 
@@ -201,7 +194,6 @@ function save_ζ(sim)
     end
 
     push!(ζ_fields, deepcopy(ζ))
-
 end
 
 η_fields = Field[]
@@ -279,10 +271,11 @@ simulation.callbacks[:save_c] = Callback(save_c, IterationInterval(save_fields_i
 
 run!(simulation)
 
-for i_field in 1:length(η_fields)
+n_snapshots = length(η_fields)
+for i_snapshot in 1:n_snapshots
     for region in 1:number_of_regions(grid)
         for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
-            η_fields[i_field][region][i, j, k] -= H
+            η_fields[i_snapshot][region][i, j, k] -= H
         end
     end
 end
