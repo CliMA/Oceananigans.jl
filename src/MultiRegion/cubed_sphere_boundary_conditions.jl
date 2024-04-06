@@ -32,6 +32,12 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
     Hc = Hx
 
+    if size(field[1].data)[3] == 1 && first.(axes(field[1].data))[3] == grid.Nz + 1 # take ssh into consideration
+        k_min, k_max = Nz+1, Nz+1
+    else
+        k_min, k_max = -Hz+1, Nz+Hz
+    end
+
     #-- one pass: only use interior-point values:
     for region in 1:6
 
@@ -39,7 +45,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
 
         if isodd(region)
             #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
+            for k in k_min:k_max
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
                 field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
@@ -49,7 +55,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
             end
         elseif iseven(region)
             #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
+            for k in k_min:k_max
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
                 field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
