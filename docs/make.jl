@@ -167,6 +167,8 @@ format = Documenter.HTML(collapselevel = 1,
                          size_threshold = 2^20,
                          assets = String["assets/citations.css"])
 
+DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
+
 makedocs(sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = format,
