@@ -152,28 +152,28 @@ julia> using Oceananigans.MultiRegion: East, North, West, South
 
 julia> for region in 1:length(grid); println(grid.connectivity.connections[region].south); end
 CubedSphereRegionalConnectivity
-├── from: North side, region 6 
-├── to:   South side, region 1 
+├── from: Oceananigans.MultiRegion.North side, region 6 
+├── to:   Oceananigans.MultiRegion.South side, region 1 
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: East side, region 6 
-├── to:   South side, region 2 
+├── from: Oceananigans.MultiRegion.East side, region 6 
+├── to:   Oceananigans.MultiRegion.South side, region 2 
 └── counter-clockwise rotation ↺
 CubedSphereRegionalConnectivity
-├── from: North side, region 2 
-├── to:   South side, region 3 
+├── from: Oceananigans.MultiRegion.North side, region 2 
+├── to:   Oceananigans.MultiRegion.South side, region 3 
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: East side, region 2 
-├── to:   South side, region 4 
+├── from: Oceananigans.MultiRegion.East side, region 2 
+├── to:   Oceananigans.MultiRegion.South side, region 4 
 └── counter-clockwise rotation ↺
 CubedSphereRegionalConnectivity
-├── from: North side, region 4 
-├── to:   South side, region 5 
+├── from: Oceananigans.MultiRegion.North side, region 4 
+├── to:   Oceananigans.MultiRegion.South side, region 5 
 └── no rotation
 CubedSphereRegionalConnectivity
-├── from: East side, region 4 
-├── to:   South side, region 6 
+├── from: Oceananigans.MultiRegion.East side, region 4 
+├── to:   Oceananigans.MultiRegion.South side, region 6 
 └── counter-clockwise rotation ↺
 ```
 """
