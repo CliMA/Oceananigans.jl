@@ -67,12 +67,11 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 using Printf
 
 function progress_message(sim)
-    iter, t, Δt = iteration(sim), time(sim), sim.Δt
     max_abs_u = maximum(abs, sim.model.velocities.u)
     walltime = prettytime(sim.run_wall_time)
 
     return @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
-                          iter, t, Δt, max_abs_u, walltime)
+                          iteration(sim), time(sim), sim.Δt, max_abs_u, walltime)
 end
 
 add_callback!(simulation, progress_message, IterationInterval(100))
