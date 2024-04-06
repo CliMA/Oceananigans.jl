@@ -306,12 +306,18 @@ end
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
         wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        wb⁻ = min(zero(grid), wb)
+
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
+        wb_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
+
+        #=
         eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
 
         # See `buoyancy_flux`
         dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
+        =#
 
         # Treat the divergence of TKE flux at solid bottoms implicitly.
         # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
