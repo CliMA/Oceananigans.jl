@@ -71,8 +71,8 @@ function progress_message(sim)
     max_abs_u = maximum(abs, sim.model.velocities.u)
     walltime = prettytime(sim.run_wall_time)
 
-    return @printf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
-                   iter, t, Δt, max_abs_u, walltime)
+    return @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
+                          iter, t, Δt, max_abs_u, walltime)
 end
 
 add_callback!(simulation, progress_message, IterationInterval(100))
