@@ -58,7 +58,7 @@ using Oceananigans.TurbulenceClosures
 
             # A spherical domain
             underlying_grid = LatitudeLongitudeGrid(arch,
-                                                    size = (Nx, Ny, 1),
+                                                    size = (Nx, Ny, 2),
                                                     longitude = (-30, 30),
                                                     latitude = (15, 75),
                                                     z = (-4000, 0))
@@ -104,7 +104,6 @@ using Oceananigans.TurbulenceClosures
                                                 tracers = nothing,
                                                 buoyancy = nothing)
 
-
             simulation = Simulation(model, Δt=3600, stop_iteration=1)
 
             run!(simulation)
@@ -124,10 +123,10 @@ using Oceananigans.TurbulenceClosures
                                               extent = (Nx, Ny, 3),
                                               topology = (Periodic, Periodic, Bounded))
 
-            # B for bathymetry
             bathymetry = [-3.0 for j=1:Ny, i=1:Nx]
             bathymetry[2:Nx-1, 2:Ny-1] .= [-2 for j=2:Ny-1, i=2:Nx-1]
             bathymetry[3:Nx-2, 3:Ny-2] .= [-1 for j=3:Ny-2, i=3:Nx-2]
+            bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
