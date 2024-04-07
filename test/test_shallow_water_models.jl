@@ -51,9 +51,9 @@ function shallow_water_model_tracers_and_forcings_work(arch)
 end
 
 function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ) 
-    κ, m = 1, 2 # diffusivity and cosine wavenumber
+    ν, m = 1, 2 # viscosity and cosine wavenumber
 
-    closure = ShallowWaterScalarDiffusivity(ν = κ)
+    closure = ShallowWaterScalarDiffusivity(; ν)
     momentum_advection = nothing
     tracer_advection = nothing
     mass_advection = nothing
@@ -68,8 +68,8 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     interior(field) .= on_architecture(architecture(grid), cos.(m * ξ))
     update_state!(model)
 
-    # Step forward with small time-step relative to diff. time-scale
-    Δt = 1e-6 * grid.Lx^2 / closure.κ
+    # Step forward with small time-step relative to viscous/diffusive time scale
+    Δt = 1e-6 * grid.Lx^2 / closure.ν
     for _ in 1:5
         time_step!(model, Δt)
     end
