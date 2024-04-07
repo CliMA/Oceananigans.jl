@@ -73,8 +73,8 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
 
     julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
     CubedSphereRegionalConnectivity
-    ├── from: West side, region 2
-    ├── to:   East side, region 1
+    ├── from: Oceananigans.MultiRegion.West side, region 2
+    ├── to:   Oceananigans.MultiRegion.East side, region 1
     └── no rotation
     ```
 
@@ -84,8 +84,8 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
     CubedSphereRegionalConnectivity
-    ├── from: East side, region 3
-    ├── to:   North side, region 1
+    ├── from: Oceananigans.MultiRegion.East side, region 3
+    ├── to:   Oceananigans.MultiRegion.North side, region 1
     └── counter-clockwise rotation ↺
     ```
     """
