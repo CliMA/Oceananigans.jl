@@ -49,7 +49,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 
     settings.substepping isa FixedTimeStepSize &&
-        throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialized SplitExplicitFreeSurface using substeps kwarg"))
+        throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
 
     switch_device!(grid.devices[1])
 
