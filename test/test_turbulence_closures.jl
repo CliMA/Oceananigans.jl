@@ -216,7 +216,7 @@ end
             closure = getproperty(TurbulenceClosures, closurename)()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(CPU(), size=(2, 2, 1), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
