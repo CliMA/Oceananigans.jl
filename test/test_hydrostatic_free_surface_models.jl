@@ -119,7 +119,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
 
             # Big enough
-            bigger_grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+            bigger_grid = RectilinearGrid(topology=topo, size=(3, 3, 1), extent=(1, 2, 3), halo=(3, 3, 3))
 
             model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
@@ -174,12 +174,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
         z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
 
-        rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        rectilinear_grid = RectilinearGrid(arch, size=(3, 3, 1), extent=(1, 1, 1), halo=(3, 3, 3))
 
         lat_lon_sector_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
         lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
         
-        vertically_stretched_grid = RectilinearGrid(arch, size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3))
+        vertically_stretched_grid = RectilinearGrid(arch, size=(3, 3, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3))
         lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
 

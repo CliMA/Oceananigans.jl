@@ -125,11 +125,11 @@ using Oceananigans.TurbulenceClosures
                                               topology = (Periodic, Periodic, Bounded))
 
             # B for bathymetry
-            B = [-3. for i=1:Nx, j=1:Ny ]
-            B[2:Nx-1, 2:Ny-1] .= [-2 for i=2:Nx-1, j=2:Ny-1 ]
-            B[3:Nx-2, 3:Ny-2] .= [-1 for i=3:Nx-2, j=3:Ny-2 ]
+            bathymetry = [-3.0 for j=1:Ny, i=1:Nx]
+            bathymetry[2:Nx-1, 2:Ny-1] .= [-2 for j=2:Ny-1, i=2:Nx-1]
+            bathymetry[3:Nx-2, 3:Ny-2] .= [-1 for j=3:Ny-2, i=3:Nx-2]
 
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
