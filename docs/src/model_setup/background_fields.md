@@ -58,7 +58,7 @@ model.background_fields.velocities.u
 # output
 FunctionField located at (Face, Center, Center)
 ├── func: U (generic function with 1 method)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0, last_Δt=Inf days)
 └── parameters: nothing
 ```
@@ -101,7 +101,7 @@ model.background_fields.tracers.b
 # output
 FunctionField located at (Center, Center, Center)
 ├── func: B (generic function with 1 method)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0, last_Δt=Inf days)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
