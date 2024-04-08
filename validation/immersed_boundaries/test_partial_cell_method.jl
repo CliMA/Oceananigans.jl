@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, PartialCellBottom
-using Oceananigans.ImmersedBoundaries: Δzᶜᶜᶠ, Δzᶜᶜᶜ, immersed_cell
+using Oceananigans.ImmersedBoundaries: Δzᶜᶜᶠ, Δzᶜᶜᶜ, immersed_cell, bottom_cell
 
 using CairoMakie
 using Printf
@@ -17,7 +17,7 @@ using Printf
 Nx, Nz = 5, 5
 Lx, Lz = 1kilometers, 200meters
 
-α = 0.2 #2e-2
+α = 0.1 #2e-2
 bottom(x) = -Lz +  α*x
 
 underlying_grid = RectilinearGrid(size = (Nx, Nz),
@@ -30,14 +30,15 @@ underlying_grid = RectilinearGrid(size = (Nx, Nz),
 grid_gfb = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 grid_pcb = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom, minimum_fractional_cell_height=0.1))
 
-xᶜ = xnodes(underlying_grid, Center())
-xᶠ = xnodes(underlying_grid, Face())
-zᶠ = znodes(underlying_grid, Face())
+xᶜ,xᶠ = xnodes(underlying_grid, Center()), xnodes(underlying_grid, Face())
+zᶜ,zᶠ = znodes(underlying_grid, Center()), znodes(underlying_grid, Face())
 
- z_gfb = 0*xᶜ
- z_pcb = 0*xᶜ
+# bottom cell agrees with what we find in k_gfb
+ z_gfb, z_pcb = zeros(Float64, Nx), zeros(Float64, Nx)
+ k_gfb, k_pcb = zeros(Int64, Nx), zeros(Int64, Nx)
  for (i, x) in enumerate(xᶜ)
     k = findlast(zᶠ .<= grid_pcb.immersed_boundary.bottom_height.data[i, 1, 1])
+    k_gfb[i] = k
     z_gfb[i] = zᶠ[k]  
     z_pcb[i] = zᶠ[k+1] - Δzᶜᶜᶜ(i, 1, k, grid_pcb)      
  end
@@ -76,6 +77,60 @@ scatter!(ax, xᶜ/1e3, z_pcb, markersize = 10, color=:green)
 axislegend(ax; position = :lt)
 
 save("CompareBottoms.png", fig)
+
+
+## Plot the dual grid
+
+zdual_gfb, zdual_pcb = zeros(Float64, Nx), zeros(Float64, Nx)
+kdual_gfb, kdual_pcb = zeros(Int64, Nx), zeros(Int64, Nx)
+for (i, x) in enumerate(xᶜ)
+    k = findlast(zᶜ .<= grid_pcb.immersed_boundary.bottom_height.data[i, 1, 1])
+    if sizeof(k) == 0
+        kdual_gfb[i] = 1
+        zdual_gfb[i] = zᶜ[1]  
+        zdual_pcb[i] = zᶜ[1]      
+    else
+        kdual_gfb[i] = k
+        zdual_gfb[i] = zᶜ[k]  
+        zdual_pcb[i] = zᶜ[k+1] - Δzᶜᶜᶠ(i, 1, k+1, grid_pcb)      
+    end
+end
+
+fig = Figure(size = (700, 400))
+ax = Axis(fig[1, 1],
+          title="Bathymetry (dual grid)",
+          xlabel="x [km]",
+          ylabel="z [m]",
+          limits=((0, Lx/1e3), (-Lz*1.1, 0)))
+
+# Plot vertical grid lines
+for (i, x) in enumerate(xᶜ)
+    lines!(ax, [x/1e3, x/1e3], [-Lz, 0], linewidth=1, color=:grey)
+end
+
+# Plot horizontal grid lines
+for (k, z) in enumerate(zᶜ)
+    lines!(ax, [0, Lx/1e3], [z, z], linewidth=1, color=:grey)
+end
+
+# Plot bottom function 
+bottom_faces = bottom.(xᶠ)
+lines!(ax, xᶠ/1e3, bottom_faces, linewidth=4, color=:red, label="-200 +  0.2*x")
+
+# Plot GridFittedBottom
+stairs!(ax, vcat(xᶠ[1], xᶜ, xᶠ[end])/1e3, vcat(zdual_gfb[1], zdual_gfb, zdual_gfb[end]),
+            linewidth = 4, step=:center, color=:blue, label="GridFittedBottom")
+scatter!(ax, xᶜ/1e3, zdual_gfb, markersize = 10, color=:blue)
+
+# Plot PartialCellBottom
+#stairs!(ax, vcat(xᶠ[1], xᶜ, xᶠ[end])/1e3, vcat(z_pcb[1], zdual_pcb, zdual_pcb[end]), 
+#            linewidth = 4, step=:center, color=:green, label="PartialCellBottom")
+#scatter!(ax, xᶜ/1e3, zdual_pcb, markersize = 10, color=:green)
+
+axislegend(ax; position = :lt)
+
+save("CompareBottoms_dual.png", fig)
+
 #fig
 #z_mat = repeat(zᶠ, 1, Nx+1)
 #h_mat = repeat(transpose(grid_pcb.immersed_boundary.bottom_height.data[1:6, 1, 1]), Nz+1, 1)
