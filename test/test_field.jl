@@ -367,7 +367,7 @@ end
             big_halo = (3, 3, 3)
             small_halo = (1, 1, 1)
             domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
-            sz = (1, 1, 1)
+            sz = (3, 3, 3)
 
             grid = RectilinearGrid(arch, FT; halo=big_halo, size=sz, domain...)
             a = CenterField(grid)
