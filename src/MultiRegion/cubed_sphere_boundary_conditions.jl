@@ -2,8 +2,8 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function find_neighboring_panels(grid::ConformalCubedSphereGrid, region)
-    number_of_regions(grid) !== 6 && error("requires cubed sphere grids with 1 region per panel")
+function find_neighboring_panels(n_regions, region)
+    n_regions !== 6 && error("requires cubed sphere grids with 1 region per panel")
 
     if isodd(region)
         region_E = mod(region + 0, 6) + 1
@@ -22,6 +22,7 @@ end
 
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
+    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -32,39 +33,81 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
     Hc = Hx
 
-    #-- one pass: only use interior-point values:
-    for region in 1:6
+    multiregion_field = Reference(field.data.regional_objects)
+    region = Iterate(1:6)
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(grid, region)
+    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
+                field, multiregion_field, n_regions, region, Hc, Nc)
+    end
 
-        if isodd(region)
-            #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field:
-                field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
-                field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-                #- N + S Halo for field:
-                field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
-                field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
-            end
-        elseif iseven(region)
-            #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field:
-                field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
-                field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N + S Halo for field:
-                field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
-                field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-            end
-        end
+    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
+                field, multiregion_field, n_regions, region, Nc, Hc)
     end
 
     return nothing
 end
 
+@kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, n_regions,
+                                                                                region, Hc, Nc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- E + W Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
+            field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+            =#
+            field[Nc+i, j, k] = multiregion_field[region_E][i, j, k]
+            field[i-Hc, j, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
+            field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+            =#
+            field[Nc+i, j, k] = multiregion_field[region_E][Nc+1-j, i, k]
+            field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+        end
+    end
+end
+
+@kernel function _fill_cubed_sphere_center_center_field_north_south_halo_regions!(field, multiregion_field, n_regions,
+                                                                                  region, Nc, Hc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- N + S Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+            field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            =#
+            field[i, Nc+j, k] = multiregion_field[region_N][j, Nc+1-i, k]
+            field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
+            field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            =#
+            field[i, Nc+j, k] = multiregion_field[region_N][i, j, k]
+            field[i, j-Hc, k] = multiregion_field[region_S][Nc+j-Hc, Nc+1-i, k]
+        end
+    end
+end
+
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
+    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -78,7 +121,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(grid, region)
+        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
 
         if isodd(region)
             #- odd face number (1, 3, 5):
@@ -127,6 +170,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
+    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -141,7 +185,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(grid, region)
+        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
 
         if isodd(region)
             #- odd face number (1, 3, 5):
@@ -186,6 +230,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
+    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -200,7 +245,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(grid, region)
+        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
 
         if isodd(region)
             #- odd face number (1, 3, 5):
@@ -274,6 +319,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
 
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
+    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -288,7 +334,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     #-- one pass: only use interior-point values:
     for region in 1:6
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(grid, region)
+        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
 
         if isodd(region)
             #- odd face number (1, 3, 5):
