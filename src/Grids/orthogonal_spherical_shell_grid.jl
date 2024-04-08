@@ -791,6 +791,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     Hx, Hy, Hz = halo
 
     ## The vertical coordinates can come out of the regular rectilinear grid!
+
     z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
 
      zᵃᵃᶠ = z_grid.zᵃᵃᶠ
