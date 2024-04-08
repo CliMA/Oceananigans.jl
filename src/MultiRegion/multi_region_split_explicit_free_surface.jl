@@ -2,7 +2,9 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
                                                         SplitExplicitSettings,
-                                                        SplitExplicitState
+                                                        SplitExplicitState,
+                                                        FixedSubstepNumber, FixedTimeStepSize,
+                                                        calculate_substeps
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
@@ -44,14 +46,17 @@ end
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
-
     settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 
-    switch_device!(grid.devices[1])
-    old_halos = halo_size(getregion(grid, 1))
-    Nsubsteps = length(settings.substepping.averaging_weights)
+    settings.substepping isa FixedTimeStepSize &&
+        throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
 
-    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)         
+    switch_device!(grid.devices[1])
+
+    old_halos = halo_size(getregion(grid, 1))
+    Nsubsteps = calculate_substeps(settings.substepping)
+
+    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
     new_grid  = with_halo(new_halos, grid)
 
     η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
@@ -63,5 +68,5 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     free_surface.settings)
 end
 
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (step_halo, old_halos[2], old_halos[3])
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], step_halo, old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
