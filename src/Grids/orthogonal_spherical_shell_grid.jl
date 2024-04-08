@@ -793,8 +793,8 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξ, η = (-1, 1), (-1, 1)
-    ξη_grid = RectilinearGrid(architecture, FT; size = (1, 1, Nz), x = ξ, y = η, z, topology, halo)
+    # ξ, η = (-1, 1), (-1, 1)
+    ξη_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
 
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
