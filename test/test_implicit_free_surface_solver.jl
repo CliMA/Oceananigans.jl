@@ -71,8 +71,8 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -101,10 +101,11 @@ end
     for arch in archs
         A = typeof(arch)
 
-        rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
+        rectilinear_grid = RectilinearGrid(arch, size = (128, 2, 5),
                                            x = (-5000kilometers, 5000kilometers),
                                            y = (0, 100kilometers),
                                            z = (-500, 0),
+                                           halo = (3, 2, 3),
                                            topology = (Bounded, Periodic, Bounded))
 
         Lz = rectilinear_grid.Lz
@@ -112,10 +113,11 @@ end
 
         bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
-        underlying_grid = RectilinearGrid(arch, size = (128, 1, 5),
+        underlying_grid = RectilinearGrid(arch, size = (128, 2, 5),
                                           x = (-5000kilometers, 5000kilometers),
                                           y = (0, 100kilometers),
                                           z = [-500, -300, -220, -170, -60, 0],
+                                          halo = (3, 2, 3),
                                           topology = (Bounded, Periodic, Bounded))
 
         bumpy_vertically_stretched_rectilinear_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
