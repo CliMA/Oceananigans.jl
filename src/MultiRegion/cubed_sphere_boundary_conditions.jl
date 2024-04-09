@@ -233,47 +233,111 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
     Hc = Hx
 
-    #-- one pass: only use interior-point values:
-    for region in 1:6
+    multiregion_field_1 = Reference(field_1.data.regional_objects)
+    multiregion_field_2 = Reference(field_2.data.regional_objects)
+    region = Iterate(1:6)
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters,
+                _fill_cubed_sphere_center_center_center_center_fields_east_west_halo_regions!,
+                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+    end
 
-        if isodd(region)
-            #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
-                #- E Halo:
-                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
-                field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_2[region_E][1:Hc, 1:Nc, k]
-                #- W Halo:
-                field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-                field_2[region][1-Hc:0, 1:Nc, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
-                #- N Halo:
-                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
-                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
-                #- S Halo:
-                field_1[region][1:Nc, 1-Hc:0, k]     .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
-            end
-        elseif iseven(region)
-            #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
-                #- E Halo:
-                field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
-                field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
-                #- W Halo:
-                field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                field_2[region][1-Hc:0, 1:Nc, k]     .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N Halo:
-                field_1[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_1[region_N][1:Nc, 1:Hc, k]
-                field_2[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_2[region_N][1:Nc, 1:Hc, k]
-                #- S Halo:
-                field_1[region][1:Nc, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
-                field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-            end
-        end
+    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters,
+                _fill_cubed_sphere_center_center_center_center_fields_north_south_halo_regions!,
+                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
     end
 
     return nothing
+end
+
+@kernel function _fill_cubed_sphere_center_center_center_center_fields_east_west_halo_regions!(
+field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- E + W Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            #- E Halo:
+            field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
+            field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_2[region_E][1:Hc, 1:Nc, k]
+            =#
+            field_1[Nc+i, j, k] = multiregion_field_1[region_E][i, j, k]
+            field_2[Nc+i, j, k] = multiregion_field_2[region_E][i, j, k]
+            #=
+            #- W Halo:
+            field_1[region][1-Hc:0, 1:Nc, k]     .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+            field_2[region][1-Hc:0, 1:Nc, k]     .= reverse(field_1[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)' * plmn
+            =#
+            field_1[i-Hc, j, k] = multiregion_field_2[region_W][Nc+1-j, Nc+i-Hc, k]
+            field_2[i-Hc, j, k] = multiregion_field_1[region_W][Nc+1-j, Nc+i-Hc, k] * plmn
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            #- E Halo:
+            field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
+            field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
+            =#
+            field_1[Nc+i, j, k] = multiregion_field_2[region_E][Nc+1-j, i, k]
+            field_2[Nc+i, j, k] = multiregion_field_1[region_E][Nc+1-j, i, k] * plmn
+            #=
+            #- W Halo:
+            field_1[region][1-Hc:0, 1:Nc, k]     .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+            field_2[region][1-Hc:0, 1:Nc, k]     .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+            =#
+            field_1[i-Hc, j, k] = multiregion_field_1[region_W][Nc+i-Hc, j, k]
+            field_2[i-Hc, j, k] = multiregion_field_2[region_W][Nc+i-Hc, j, k]
+        end
+    end
+end
+
+@kernel function _fill_cubed_sphere_center_center_center_center_fields_north_south_halo_regions!(
+field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- N + S Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            #- N Halo:
+            field_1[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
+            field_2[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
+            =#
+            field_1[i, Nc+j, k] = multiregion_field_2[region_N][j, Nc+1-i, k] * plmn
+            field_2[i, Nc+j, k] = multiregion_field_1[region_N][j, Nc+1-i, k]
+            #=
+            #- S Halo:
+            field_1[region][1:Nc, 1-Hc:0, k]     .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            field_2[region][1:Nc, 1-Hc:0, k]     .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            =#
+            field_1[i, j-Hc, k] = multiregion_field_1[region_S][i, Nc+j-Hc, k]
+            field_2[i, j-Hc, k] = multiregion_field_2[region_S][i, Nc+j-Hc, k]
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            #- N Halo:
+            field_1[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_1[region_N][1:Nc, 1:Hc, k]
+            field_2[region][1:Nc, Nc+1:Nc+Hc, k] .=         field_2[region_N][1:Nc, 1:Hc, k]
+            =#
+            field_1[i, Nc+j, k] = multiregion_field_1[region_N][i, j, k]
+            field_2[i, Nc+j, k] = multiregion_field_2[region_N][i, j, k]
+            #=
+            #- S Halo:
+            field_1[region][1:Nc, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
+            field_2[region][1:Nc, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            =#
+            field_1[i, j-Hc, k] = multiregion_field_2[region_S][Nc+j-Hc, Nc+1-i, k] * plmn
+            field_2[i, j-Hc, k] = multiregion_field_1[region_S][Nc+j-Hc, Nc+1-i, k]
+        end
+    end
 end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
