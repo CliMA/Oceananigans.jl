@@ -118,49 +118,100 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
     Hc = Hx
 
-    #-- one pass: only use interior-point values:
-    for region in 1:6
+    multiregion_field = Reference(field.data.regional_objects)
+    region = Iterate(1:6)
 
-        region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_east_west_halo_regions!,
+                field, multiregion_field, n_regions, region, Hc, Nc)
+    end
 
-        if isodd(region)
-            #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field:
-                field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
-                field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-                field[region][1-Hc:0, 1, k]          .=         field[region_S][1, Nc+1-Hc:Nc, k]
-                #- N + S Halo for field:
-                field[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
-                if Hc > 1
-                    field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])'
-                end
-                # Note that the halo corresponding to the "missing" north-west corner of odd panels, specifically
-                # field[region][1, Nc+1, k], remains unfilled.
-                field[region][1:Nc, 1-Hc:0, k]       .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field[region][Nc+1, 1-Hc:0, k]       .= reverse(field[region_E][2:Hc+1, 1, k])'
-            end
-        elseif iseven(region)
-            #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
-                #- E + W Halo for field:
-                field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
-                if Hc > 1
-                    field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
-                end
-                # Note that the halo corresponding to the "missing" south-east corner of even panels, specifically
-                # field[region][Nc+1, 1, k], remains unfilled.
-                field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-                #- N + S Halo for field:
-                field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
-                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]'
-                field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-                field[region][1, 1-Hc:0, k]          .=         field[region_W][Nc+1-Hc:Nc, 1, k]'
-            end
-        end
+    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    @apply_regionally begin
+        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_north_south_halo_regions!,
+                field, multiregion_field, n_regions, region, Nc, Hc)
     end
 
     return nothing
+end
+
+@kernel function _fill_cubed_sphere_face_face_field_east_west_halo_regions!(field, multiregion_field, n_regions, region,
+                                                                            Hc, Nc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- E + W Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
+            field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+            field[region][1-Hc:0, 1, k]          .=         field[region_S][1, Nc+1-Hc:Nc, k]
+            =#
+            field[Nc+i, j, k]   = multiregion_field[region_E][i, j, k]
+            field[i-Hc, j+1, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+            field[i-Hc, 1, k]   = multiregion_field[region_S][1, Nc+i-Hc, k]
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
+            if Hc > 1
+                field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
+            end
+            =#
+            j > 1 && (field[Nc+i, j, k] = multiregion_field[region_E][Nc+2-j, i, k])
+            (Hc > 1 && i > 1) && (field[Nc+i, 1, k] = multiregion_field[region_S][Nc+2-i, 1, k])
+            #=
+            Note that the halo corresponding to the "missing" south-east corner of even panels, specifically
+            field[region][Nc+1, 1, k], remains unfilled.
+            field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+            =#
+            field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+        end
+    end
+end
+
+@kernel function _fill_cubed_sphere_face_face_field_north_south_halo_regions!(field, multiregion_field, n_regions,
+                                                                              region, Nc, Hc)
+    i, j, k = @index(Global, NTuple)
+    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+
+    #- N + S Halo for field:
+    if isodd(region)
+        @inbounds begin
+            #=
+            field[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+            if Hc > 1
+                field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])'
+            end
+            =#
+            field[i+1, Nc+j, k] = multiregion_field[region_N][j, Nc+1-i, k]
+            (Hc > 1 && j > 1) && (field[1, Nc+j, k] = multiregion_field[region_W][1, Nc+2-j, k])
+            #=
+            Note that the halo corresponding to the "missing" north-west corner of odd panels, specifically
+            field[region][1, Nc+1, k], remains unfilled.
+            field[region][1:Nc, 1-Hc:0, k]       .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+            field[region][Nc+1, 1-Hc:0, k]       .= reverse(field[region_E][2:Hc+1, 1, k])'
+            =#
+            field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
+            field[Nc+1, j-Hc, k] = multiregion_field[region_E][Hc+2-j, 1, k]
+        end
+    elseif iseven(region)
+        @inbounds begin
+            #=
+            field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
+            field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]'
+            field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+            field[region][1, 1-Hc:0, k]          .=         field[region_W][Nc+1-Hc:Nc, 1, k]'
+            =#
+            field[i, Nc+j, k] = multiregion_field[region_N][i, j, k]
+            field[Nc+1, Nc+j, k] = multiregion_field[region_E][1, j, k]
+            field[i+1, j-Hc, k] = multiregion_field[region_S][Nc+j-Hc, Nc+1-i, k]
+            field[1, j-Hc, k] = multiregion_field[region_W][Nc+j-Hc, 1, k]
+        end
+    end
 end
 
 fill_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField}; signed = true) = fill_halo_regions!(fields...; signed)
