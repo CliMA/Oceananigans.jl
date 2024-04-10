@@ -272,7 +272,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
     z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
 
-    halo = validate_halo(TX, TY, TZ, halo)
+    halo = validate_halo(TX, TY, TZ, size, halo)
     topology = (TX, TY, TZ)
 
     return topology, size, halo, latitude, longitude, z, precompute_metrics

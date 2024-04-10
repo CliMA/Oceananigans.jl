@@ -78,8 +78,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? old_halos[1] : step_halo
-    Ay = Ry == 1 ? old_halos[2] : step_halo
+    Ax = Rx == 1 ? old_halos[1] : max(step_halo, old_halos[1])
+    Ay = Ry == 1 ? old_halos[2] : max(step_halo, old_halos[2])
 
     return (Ax, Ay, old_halos[3])
 end

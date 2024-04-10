@@ -790,17 +790,15 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
-    ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξ, η = (-1, 1), (-1, 1)
-    ξη_grid = RectilinearGrid(architecture, FT; size = (1, 1, Nz), x = ξ, y = η, z, topology, halo)
+    z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
 
-     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
-     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
-    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
-    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
-    Lz    = ξη_grid.Lz
+     zᵃᵃᶠ = z_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = z_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = z_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = z_grid.Δzᵃᵃᶠ
+    Lz    = z_grid.Lz
 
     ## Read everything else from the file
 
@@ -851,7 +849,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    conformal_mapping = (; ξ, η)
+    conformal_mapping = (ξ = (-1, 1), η = (-1, 1))
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
