@@ -2,27 +2,8 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function find_neighboring_panels(n_regions, region)
-    n_regions !== 6 && error("requires cubed sphere grids with 1 region per panel")
-
-    if isodd(region)
-        region_E = mod(region + 0, 6) + 1
-        region_N = mod(region + 1, 6) + 1
-        region_W = mod(region + 3, 6) + 1
-        region_S = mod(region + 4, 6) + 1
-    elseif iseven(region)
-        region_E = mod(region + 1, 6) + 1
-        region_N = mod(region + 0, 6) + 1
-        region_W = mod(region + 4, 6) + 1
-        region_S = mod(region + 3, 6) + 1
-    end
-
-    return (; region_E, region_N, region_W, region_S)
-end
-
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
-    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -39,22 +20,23 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
-                field, multiregion_field, n_regions, region, Hc, Nc)
+                field, multiregion_field, region, grid.connectivity.connections, Hc, Nc)
     end
 
     kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
-                field, multiregion_field, n_regions, region, Nc, Hc)
+                field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     return nothing
 end
 
-@kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, n_regions,
-                                                                                region, Hc, Nc)
+@kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
+                                                                                connections, Hc, Nc)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_W = connections.west.from_rank
 
     #- E + W Halo for field:
     if isodd(region)
@@ -78,10 +60,11 @@ end
     end
 end
 
-@kernel function _fill_cubed_sphere_center_center_field_north_south_halo_regions!(field, multiregion_field, n_regions,
-                                                                                  region, Nc, Hc)
+@kernel function _fill_cubed_sphere_center_center_field_north_south_halo_regions!(field, multiregion_field, region,
+                                                                                  connections, Nc, Hc)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_N = connections.north.from_rank
+    region_S = connections.south.from_rank
 
     #- N + S Halo for field:
     if isodd(region)
@@ -107,7 +90,6 @@ end
 
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
-    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -124,22 +106,24 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_east_west_halo_regions!,
-                field, multiregion_field, n_regions, region, Hc, Nc)
+                field, multiregion_field, region, grid.connectivity.connections, Hc, Nc)
     end
 
     kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_north_south_halo_regions!,
-                field, multiregion_field, n_regions, region, Nc, Hc)
+                field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     return nothing
 end
 
-@kernel function _fill_cubed_sphere_face_face_field_east_west_halo_regions!(field, multiregion_field, n_regions, region,
-                                                                            Hc, Nc)
+@kernel function _fill_cubed_sphere_face_face_field_east_west_halo_regions!(field, multiregion_field, region,
+                                                                            connections, Hc, Nc)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- E + W Halo for field:
     if isodd(region)
@@ -173,10 +157,13 @@ end
     end
 end
 
-@kernel function _fill_cubed_sphere_face_face_field_north_south_halo_regions!(field, multiregion_field, n_regions,
-                                                                              region, Nc, Hc)
+@kernel function _fill_cubed_sphere_face_face_field_north_south_halo_regions!(field, multiregion_field, region,
+                                                                              connections, Nc, Hc)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_N = connections.north.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- N + S Halo for field:
     if isodd(region)
@@ -218,10 +205,8 @@ fill_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField}; signed = t
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true)
-
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
-    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -241,23 +226,26 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Hc, Nc, plmn)
     end
 
     kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Nc, Hc, plmn)
     end
 
     return nothing
 end
 
 @kernel function _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Hc, Nc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_W = connections.west.from_rank
 
     #- E + W Halo for field:
     if isodd(region)
@@ -298,9 +286,10 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, H
 end
 
 @kernel function _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_N = connections.north.from_rank
+    region_S = connections.south.from_rank
 
     #- N + S Halo for field:
     if isodd(region)
@@ -342,10 +331,8 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true)
-
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
-    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -365,14 +352,16 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Hc, Nc, plmn)
     end
 
     kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Nc, Hc, plmn)
     end
 
     #=
@@ -397,9 +386,12 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
 end
 
 @kernel function _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Hc, Nc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_N = connections.north.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- E + W Halo for field:
     if isodd(region)
@@ -448,9 +440,12 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, H
 end
 
 @kernel function _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_N = connections.north.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- N + S Halo for field:
     if isodd(region)
@@ -554,10 +549,8 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true)
-
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
-    n_regions = number_of_regions(grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -577,23 +570,28 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Hc, Nc, plmn)
     end
 
     kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!,
-                field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+                field_1, multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections,
+                Nc, Hc, plmn)
     end
 
     return nothing
 end
 
 @kernel function _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Hc, Nc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Hc, Nc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_N = connections.north.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- E + W Halo for field:
     if isodd(region)
@@ -650,9 +648,12 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, H
 end
 
 @kernel function _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!(
-field_1, multiregion_field_1, field_2, multiregion_field_2, n_regions, region, Nc, Hc, plmn)
+field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, j, k = @index(Global, NTuple)
-    region_E, region_N, region_W, region_S = find_neighboring_panels(n_regions, region)
+    region_E = connections.east.from_rank
+    region_N = connections.north.from_rank
+    region_W = connections.west.from_rank
+    region_S = connections.south.from_rank
 
     #- N + S Halo for field:
     if isodd(region)
