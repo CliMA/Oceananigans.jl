@@ -15,7 +15,7 @@ using Oceananigans.Architectures: child_architecture
 """
     index_binary_search(val, vec, N)
 
-Return indices `low, high` of `vec`tor for which 
+Return indices `low, high` of `vec`tor for which
 
 ```julia
 vec[low] ≤ val && vec[high] ≥ val
@@ -29,9 +29,9 @@ Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/1
     low = 0
     high = N - 1
 
-    while low + 1 < high 
+    while low + 1 < high
         mid = middle_point(low, high)
-        if @inbounds vec[mid + 1] == val 
+        if @inbounds vec[mid + 1] == val
             return (mid + 1, mid + 1)
         elseif @inbounds vec[mid + 1] < val
             low = mid
@@ -212,6 +212,23 @@ end
 end
 
 """
+    truncate_fractional_indices(fi, fj, fk)
+
+Truncate _fractional_ indices output from `fractional_indices` to integer indices, dealing
+with `nothing` indices for `Flat` domains.
+"""
+@inline function truncate_fractional_indices(fi, fj, fk)
+    i = _truncate_fractional_index(fi)
+    j = _truncate_fractional_index(fj)
+    k = _truncate_fractional_index(fk)
+    return (i, j, k)
+end
+
+@inline _truncate_fractional_index(::Nothing) = 1
+@inline _truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
+
+
+"""
     interpolate(at_node, from_field, from_loc, from_grid)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
@@ -277,7 +294,7 @@ end
     k⁻, k⁺, ζ = iz
 
     return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
-                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +  
+                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +
                      ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
                      ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
                      ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
@@ -316,7 +333,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     to_arch   = architecture(to_field)
     from_arch = architecture(from_field)
 
-    # In case architectures are `Distributed` we 
+    # In case architectures are `Distributed` we
     # verify that the fields are on the same child architecture
     to_arch   = child_architecture(to_arch)
     from_arch = child_architecture(from_arch)
@@ -338,4 +355,3 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     return nothing
 end
-
