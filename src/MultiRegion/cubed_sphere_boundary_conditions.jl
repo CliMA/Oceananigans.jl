@@ -2,7 +2,7 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
+function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; multilayer = true)
     grid = field.grid
 
     Nx, Ny, Nz = size(grid)
@@ -17,13 +17,16 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
-    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    multilayer ? nZ = Nz + 2Hz : nZ = Nz
+    multilayer ? hZ = -Hz : hZ = 0
+
+    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
                 field, multiregion_field, region, grid.connectivity.connections, Hc, Nc)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
                 field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
@@ -88,7 +91,7 @@ end
     end
 end
 
-function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
+function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; multilayer = true)
     grid = field.grid
 
     Nx, Ny, Nz = size(grid)
@@ -103,13 +106,16 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
-    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    multilayer ? nZ = Nz + 2Hz : nZ = Nz
+    multilayer ? hZ = -Hz : hZ = 0
+
+    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_east_west_halo_regions!,
                 field, multiregion_field, region, grid.connectivity.connections, Hc, Nc)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_face_field_north_south_halo_regions!,
                 field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
@@ -201,10 +207,10 @@ end
     end
 end
 
-fill_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField}; signed = true) = fill_halo_regions!(fields...; signed)
+fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; multilayer = true, signed = true) = fill_halo_regions!(fields...; multilayer, signed)
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Center}; signed = true)
+                            field_2::CubedSphereField{<:Center, <:Center}; multilayer = true, signed = true)
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
@@ -222,7 +228,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     multiregion_field_2 = Reference(field_2.data.regional_objects)
     region = Iterate(1:6)
 
-    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    multilayer ? nZ = Nz + 2Hz : nZ = Nz
+    multilayer ? hZ = -Hz : hZ = 0
+
+    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!,
@@ -230,7 +239,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                 Hc, Nc, plmn)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!,
@@ -330,7 +339,7 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Face}; signed = true)
+                            field_2::CubedSphereField{<:Center, <:Face}; multilayer = true, signed = true)
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
@@ -348,7 +357,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     multiregion_field_2 = Reference(field_2.data.regional_objects)
     region = Iterate(1:6)
 
-    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    multilayer ? nZ = Nz + 2Hz : nZ = Nz
+    multilayer ? hZ = -Hz : hZ = 0
+
+    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!,
@@ -356,7 +368,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                 Hc, Nc, plmn)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!,
@@ -369,13 +381,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     (e.g., vort3(0,1) & (1,0)).
     =#
     if Hc > 1
-        kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+        kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
         @apply_regionally begin
             launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_face_center_field_corner_halo_regions!,
                     field_1, field_2, Hc, Nc, plmn)
         end
 
-        kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+        kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
         @apply_regionally begin
             launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_face_field_corner_halo_regions!,
                     field_1, field_2, Nc, Hc, plmn)
@@ -548,7 +560,7 @@ end
 end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
-                            field_2::CubedSphereField{<:Face, <:Face}; signed = true)
+                            field_2::CubedSphereField{<:Face, <:Face}; multilayer = true, signed = true)
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
@@ -566,7 +578,10 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     multiregion_field_2 = Reference(field_2.data.regional_objects)
     region = Iterate(1:6)
 
-    kernel_parameters = KernelParameters((Hc, Nc, Nz), (0, 0, 0))
+    multilayer ? nZ = Nz + 2Hz : nZ = Nz
+    multilayer ? hZ = -Hz : hZ = 0
+
+    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!,
@@ -574,7 +589,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                 Hc, Nc, plmn)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, Nz), (0, 0, 0))
+    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
         launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!,
