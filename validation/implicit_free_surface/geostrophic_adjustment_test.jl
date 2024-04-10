@@ -107,13 +107,7 @@ function run_and_analyze(simulation)
     return (ηarr, varr, uarr)
 end
 
-# fft_based_free_surface = ImplicitFreeSurface()
-pcg_free_surface           = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient);
-matrix_free_surface        = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver);
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function, 
-                                                        averaging_cosine_function, 
-                                                        averaging_fixed_function, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function,
                                                         ForwardBackwardScheme,
                                                         AdamsBashforth3Scheme
 
@@ -131,14 +125,12 @@ topology_types = [topology_types[2]]
 archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
 archs = [archs[1]]
 
-free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface] #, matrix_free_surface];
-
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, multi_region, arch = arch) 
               for (free_surface, multi_region) in zip(free_surfaces, (true, false, false)), 
               topology_type in topology_types, 
-              arch in archs];
+              arch in archs]
 
-data = [run_and_analyze(sim) for sim in simulations];
+data = [run_and_analyze(sim) for sim in simulations]
 
 using GLMakie
 using JLD2
@@ -152,6 +144,17 @@ grid = RectilinearGrid(arch,
         size = (80, 3, 1),
         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
         topology = topology)
+
+explicit_free_surface = ExplicitFreeSurface()
+fft_based_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
+pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver)
+splitexplicit_free_surface = SplitExplicitFreeSurface(grid,
+                                                      substeps = 10, 
+                                                      averaging_kernel = averaging_shape_function,
+                                                      timestepper = AdamsBashforth3Scheme())
+
+free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface]
 
 x  = grid.xᶜᵃᵃ[1:grid.Nx]
 xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
@@ -220,7 +223,3 @@ GLMakie.record(fig, "free_surface_bounded.mp4", 1:1000, framerate = 12) do i
     @info "Plotting iteration $i of 600..."
     iter[] = i
 end
-
-
-
-

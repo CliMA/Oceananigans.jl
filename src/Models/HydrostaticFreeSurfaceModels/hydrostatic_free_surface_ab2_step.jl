@@ -1,7 +1,6 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
-
 using Oceananigans.ImmersedBoundaries: active_interior_map, active_surface_map
 
 import Oceananigans.TimeSteppers: ab2_step!

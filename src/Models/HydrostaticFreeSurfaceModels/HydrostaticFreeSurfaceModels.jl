@@ -28,8 +28,8 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
+free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # Generalized vertical coordinate functionality
 include("generalized_vertical_spacing.jl")

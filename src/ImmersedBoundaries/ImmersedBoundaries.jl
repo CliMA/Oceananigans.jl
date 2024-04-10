@@ -91,6 +91,8 @@ import Oceananigans.TurbulenceClosures:
     νᶠᶜᶠ,
     z_bottom
 
+import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
+
 """
     abstract type AbstractImmersedBoundary
 
@@ -284,6 +286,10 @@ function on_architecture(arch, ibg::IBG)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
+
+@inline fractional_x_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_x_index(x, locs, grid.underlying_grid) 
+@inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid) 
+@inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid) 
 
 #####
 ##### Diffusivities (for VerticallyImplicit)

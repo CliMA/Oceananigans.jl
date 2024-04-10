@@ -494,4 +494,3 @@ const C = Center
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
-

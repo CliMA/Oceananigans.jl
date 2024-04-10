@@ -5,13 +5,12 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
+using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
-import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
-
-using Oceananigans.Models: update_model_field_time_series!
+import Oceananigans.TimeSteppers: update_state!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -42,7 +41,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
-    
+
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies && 
@@ -83,9 +82,9 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
         # Update the other auxiliary terms
         compute_w_from_continuity!(model; parameters = wpar)
         compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid), 
-                                    grid, model.buoyancy, model.tracers; 
-                                    parameters = ppar)
+        update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
+                                     grid, model.buoyancy, model.tracers; 
+                                     parameters = ppar)
     end
 
     return nothing

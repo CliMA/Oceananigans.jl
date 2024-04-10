@@ -71,7 +71,23 @@ end
 
 function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     f = on_architecture(architecture(u), f)
-    u .= f
+
+    try
+        u .= f
+    catch err
+        if err isa DimensionMismatch
+            Nx, Ny, Nz = size(u)
+            u .= reshape(f, Nx, Ny, Nz)
+
+            msg = string("Reshaped ", summary(f),
+                         " to set! its data to ", '\n',
+                         summary(u))
+            @warn msg
+        else
+            throw(err)
+        end
+    end
+
     return u
 end
 
