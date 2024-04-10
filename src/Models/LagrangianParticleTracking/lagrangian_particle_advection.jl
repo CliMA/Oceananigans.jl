@@ -28,6 +28,13 @@ is outside the Periodic interval `(xᴸ, xᴿ)`.
 @inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + (x - xᴿ),
                                                                  ifelse(x < xᴸ, xᴿ - (xᴸ - x), x))
 
+"""
+    enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ)
+
+Do nothing on Flat dimensions.
+"""
+@inline enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ) = x
+
 const f = Face()
 const c = Center()
 
