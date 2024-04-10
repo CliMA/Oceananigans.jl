@@ -42,9 +42,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 
     # Determine current particle cell
     fi, fj, fk = fractional_indices(X, ibg.underlying_grid, (c, c, c))
-    i = Base.unsafe_trunc(Int, fi)
-    j = Base.unsafe_trunc(Int, fj)
-    k = Base.unsafe_trunc(Int, fk)
+    i, j, k = truncate_fractional_indices(fi, fj, fk)
 
     if immersed_cell(i, j, k, ibg)
         # Determine whether particle was _previously_ in a non-immersed cell
@@ -77,9 +75,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     # Obtain current particle indices
     fi, fj, fk = fractional_indices(X, grid, c, c, c)
-    i = Base.unsafe_trunc(Int, fi)
-    j = Base.unsafe_trunc(Int, fj)
-    k = Base.unsafe_trunc(Int, fk)
+    i, j, k = truncate_fractional_indices(fi, fj, fk)
 
     current_particle_indices = (i, j, k)
 
