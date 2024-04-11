@@ -2,34 +2,24 @@ using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}; multilayer = true)
+function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-
-    Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
-    Nc = Nx
-
-    Hx == Hy || error("horizontal halo size Hx and Hy must be the same")
-    Hc = Hx
-
+    # Remember! For a CubedSphereGrid `Nx == Ny` and `Hx == Hy`
+    Nx, Ny, Nz = size(grid) 
+    Hx, Hy, Hz = halo_size(grid) 
+    
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
-    multilayer ? nZ = Nz + 2Hz : nZ = Nz
-    multilayer ? hZ = -Hz : hZ = 0
-
-    kernel_parameters = KernelParameters((Hc, Nc, nZ), (0, 0, hZ))
     @apply_regionally begin
-        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
-                field, multiregion_field, region, grid.connectivity.connections, Hc, Nc)
+        launch!(grid.architecture, grid, :yz, _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
+                field, multiregion_field, region, grid.connectivity.connections, Hx, Nx)
     end
 
-    kernel_parameters = KernelParameters((Nc, Hc, nZ), (0, 0, hZ))
     @apply_regionally begin
-        launch!(grid.architecture, grid, kernel_parameters, _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
-                field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
+        launch!(grid.architecture, grid, :xz, _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
+                field, multiregion_field, region, grid.connectivity.connections, Hy, Ny)
     end
 
     return nothing
@@ -37,56 +27,60 @@ end
 
 @kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
                                                                                 connections, Hc, Nc)
-    i, j, k = @index(Global, NTuple)
+    j, k = @index(Global, NTuple)
     region_E = connections.east.from_rank
     region_W = connections.west.from_rank
 
-    #- E + W Halo for field:
-    if isodd(region)
-        @inbounds begin
-            #=
-            field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
-            field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-            =#
-            field[Nc+i, j, k] = multiregion_field[region_E][i, j, k]
-            field[i-Hc, j, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
-        end
-    elseif iseven(region)
-        @inbounds begin
-            #=
-            field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
-            field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
-            =#
-            field[Nc+i, j, k] = multiregion_field[region_E][Nc+1-j, i, k]
-            field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+    @unroll for i in 1:Hc
+        #- E + W Halo for field:
+        if isodd(region)
+            @inbounds begin
+                #=
+                field[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field[region_E][1:Hc, 1:Nc, k]
+                field[region][1-Hc:0, 1:Nc, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
+                =#
+                field[Nc+i, j, k] = multiregion_field[region_E][i, j, k]
+                field[i-Hc, j, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+            end
+        elseif iseven(region)
+            @inbounds begin
+                #=
+                field[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
+                field[region][1-Hc:0, 1:Nc, k]     .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                =#
+                field[Nc+i, j, k] = multiregion_field[region_E][Nc+1-j, i, k]
+                field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+            end
         end
     end
 end
 
 @kernel function _fill_cubed_sphere_center_center_field_north_south_halo_regions!(field, multiregion_field, region,
-                                                                                  connections, Nc, Hc)
-    i, j, k = @index(Global, NTuple)
+                                                                                  connections, Hc, Nc)
+    i, k = @index(Global, NTuple)
     region_N = connections.north.from_rank
     region_S = connections.south.from_rank
 
     #- N + S Halo for field:
-    if isodd(region)
+    @unroll for j in 1:Hc
+        if isodd(region)
         @inbounds begin
-            #=
-            field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
-            field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
-            =#
-            field[i, Nc+j, k] = multiregion_field[region_N][j, Nc+1-i, k]
-            field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
-        end
-    elseif iseven(region)
-        @inbounds begin
-            #=
-            field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
-            field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-            =#
-            field[i, Nc+j, k] = multiregion_field[region_N][i, j, k]
-            field[i, j-Hc, k] = multiregion_field[region_S][Nc+j-Hc, Nc+1-i, k]
+                #=
+                field[region][1:Nc, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
+                field[region][1:Nc, 1-Hc:0, k]     .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
+                =#
+                field[i, Nc+j, k] = multiregion_field[region_N][j, Nc+1-i, k]
+                field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
+            end
+        elseif iseven(region)
+            @inbounds begin
+                #=
+                field[region][1:Nc, Nc+1:Nc+Hc, k] .=         field[region_N][1:Nc, 1:Hc, k]
+                field[region][1:Nc, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+                =#
+                field[i, Nc+j, k] = multiregion_field[region_N][i, j, k]
+                field[i, j-Hc, k] = multiregion_field[region_S][Nc+j-Hc, Nc+1-i, k]
+            end
         end
     end
 end
