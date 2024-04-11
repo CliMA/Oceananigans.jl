@@ -252,7 +252,7 @@ left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 
     i⁻ = Base.unsafe_trunc(Int, fractional_idx)
     i⁻ = Int(i⁻ + 1) # convert to "proper" integer?
-    i⁺ = i⁻ + 1
+    i⁺ = i⁻ + 1 * Int(sign(fractional_idx))
     ξ = mod(fractional_idx, 1)
 
     return (i⁻, i⁺, ξ)
