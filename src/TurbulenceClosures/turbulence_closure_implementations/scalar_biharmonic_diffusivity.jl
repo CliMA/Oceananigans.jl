@@ -48,7 +48,7 @@ Keyword arguments
 * `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
        `NamedTuple` of diffusivities with entries for each tracer.
 
-* `discrete_form`: `Boolean`; default: `False`.
+* `discrete_form`: `Boolean`; default: `false`.
 
 When prescribing the viscosities or diffusivities as functions, depending on the
 value of keyword argument `discrete_form`, the constructor expects:
