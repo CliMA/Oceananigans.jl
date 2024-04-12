@@ -1,7 +1,7 @@
 """
     required_halo_size(tendency_term)
 
-Returns the required size of halos for a term appearing
+Return the required size of halos for a term appearing
 in the tendency for a velocity field or tracer field.
 
 Example

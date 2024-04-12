@@ -50,4 +50,3 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
     end
 end
-
