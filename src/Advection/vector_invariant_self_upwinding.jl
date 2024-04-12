@@ -3,7 +3,7 @@
 #####
 
 # Metric term for moving grids
-∂t_∂s_grid(i, j, k, grid) = zero(grid)
+@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
 @inline V_times_∂t_∂s_grid(i, j, k, grid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
@@ -25,9 +25,9 @@
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U_plus_metric, δU_stencil, u, v) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U_plus_metric, δU_stencil, u, v) 
+    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_metric, u, v) 
+    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
+    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
 
     return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ 
 end
@@ -38,9 +38,9 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V_plus_metric, δV_stencil, u, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V_plus_metric, δV_stencil, u, v) 
+    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U_plus_metric, u, v)
+    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
+    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
 
     return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
 end
