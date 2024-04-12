@@ -254,7 +254,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!($(Symbol(field)); multilayer = false)
+                fill_halo_regions!($(Symbol(field)))
             end
 
             CUDA.@allowscalar begin
@@ -288,7 +288,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
 
             if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))); multilayer = false, signed = false)
+                fill_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))); signed = false)
             end
 
             CUDA.@allowscalar begin
