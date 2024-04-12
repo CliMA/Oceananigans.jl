@@ -214,7 +214,7 @@ end
 """
     truncate_fractional_indices(fi, fj, fk)
 
-Truncate _fractional_ indices output from `fractional_indices` to integer indices, dealing
+Truncate _fractional_ indices output from fractional indices `fi, fj, fk` to integer indices, dealing
 with `nothing` indices for `Flat` domains.
 """
 @inline function truncate_fractional_indices(fi, fj, fk)
