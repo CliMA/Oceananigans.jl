@@ -23,7 +23,7 @@ end
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(field)
     Hx, Hy, Hz = halo_size(grid)
 
     Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
@@ -35,7 +35,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     if size(field[1].data)[3] == 1 && first.(axes(field[1].data))[3] == grid.Nz + 1 # take ssh into consideration
         k_min, k_max = Nz+1, Nz+1
     else
-        k_min, k_max = -Hz+1, Nz+Hz
+        k_min, k_max = 1, Nz
     end
 
     #-- one pass: only use interior-point values:
@@ -72,7 +72,7 @@ end
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
 
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(field)
     Hx, Hy, Hz = halo_size(grid)
 
     Nx == Ny || error("horizontal grid size Nx and Ny must be the same")
@@ -88,7 +88,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
 
         if isodd(region)
             #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
                 field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
@@ -105,7 +105,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
             end
         elseif iseven(region)
             #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E + W Halo for field:
                 field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
                 if Hc > 1
@@ -134,7 +134,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(field_1)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
 
@@ -151,7 +151,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
 
         if isodd(region)
             #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_1[region_E][1:Hc, 1:Nc, k]
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .=         field_2[region_E][1:Hc, 1:Nc, k]
@@ -167,7 +167,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
             end
         elseif iseven(region)
             #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
@@ -193,7 +193,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(field_1)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
 
@@ -210,7 +210,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
 
         if isodd(region)
             #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
                 field_1[region][1-Hc:0, 1:Nc, k]       .= reverse(field_2[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
@@ -230,7 +230,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
             end
         elseif iseven(region)
             #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E + W Halo for field_1:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
                 field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
@@ -255,7 +255,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     # (e.g., vort3(0,1) & (1,0)).
     if Hc > 1
         for region in 1:6
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- SW corner:
                 field_1[region][1-Hc:0, 0, k] .= field_2[region][1, 1-Hc:0, k]
                 field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
@@ -281,7 +281,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(field_1)
     Hx, Hy, Hz = halo_size(grid)
     signed ? plmn = -1 : plmn = 1
 
@@ -298,7 +298,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
 
         if isodd(region)
             #- odd face number (1, 3, 5):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_2[region_E][1:Hc, 1:Nc, k]
@@ -324,7 +324,7 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
             end
         else
             #- even face number (2, 4, 6):
-            for k in -Hz+1:Nz+Hz
+            for k in 1:Nz
                 #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field_2[region_E][2:Nc, 1:Hc, k], dims=1)'
                 field_2[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
