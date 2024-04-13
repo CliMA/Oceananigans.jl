@@ -5,8 +5,8 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Nx, Ny, Nz = size(field)
+    Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -15,13 +15,13 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :yz, _fill_cubed_sphere_center_center_field_east_west_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc)
+        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_center_center_field_east_west_halo_regions!,
+                field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :xz, _fill_cubed_sphere_center_center_field_north_south_halo_regions!, field,
-                multiregion_field, region, grid.connectivity.connections, Nc, Hc)
+        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
+                field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     return nothing
@@ -90,8 +90,8 @@ end
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Nx, Ny, Nz = size(field)
+    Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -100,12 +100,12 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :yz, _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
+        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
                 multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :xz, _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
+        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
                 multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
@@ -203,11 +203,10 @@ fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = tr
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true)
-    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Nx, Ny, Nz = size(field_1)
+    Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -219,13 +218,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :yz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :xz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
@@ -327,11 +326,10 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true)
-    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Nx, Ny, Nz = size(field_1)
+    Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -343,13 +341,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :yz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :xz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
@@ -547,11 +545,10 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true)
-    field_1.grid == field_2.grid || error("fields must be on the same grid")
     grid = field_1.grid
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Nx, Ny, Nz = size(field_1)
+    Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
@@ -563,13 +560,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :yz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, :xz,
+        launch!(grid.architecture, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
