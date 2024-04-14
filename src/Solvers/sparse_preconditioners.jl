@@ -50,12 +50,15 @@ to use `sparse_inverse_preconditioner`
 `ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 """
+validate_settings(method, arch, settings) = settings
 
-validate_settings(T, arch, settings)                                  = settings
-validate_settings(::Val{:Default}, arch, settings)                    = arch isa CPU ? (τ = 0.001, ) : (order = 1, ) 
-validate_settings(::Val{:SparseInverse}, arch, settings::Nothing)     = (ε = 0.1, nzrel = 2.0)
-validate_settings(::Val{:ILUFactorization}, arch, settings::Nothing)  = (τ = 0.001, ) 
-validate_settings(::Val{:AsymptoticInverse}, arch, settings::Nothing) = (order = 1, ) 
+validate_settings(method::Symbol, arch,  settings) = validate_settings(Val(method), arch, settings)
+validate_settings(method::Symbol, arch, ::Nothing) = validate_settings(Val(method), arch, nothing)
+
+validate_settings(::Val{:Default}, arch, settings)            = arch isa CPU ? (τ = 0.001, ) : (order = 1, ) 
+validate_settings(::Val{:SparseInverse},     arch, ::Nothing) = (ε = 0.1, nzrel = 2.0)
+validate_settings(::Val{:ILUFactorization},  arch, ::Nothing) = (τ = 0.001, ) 
+validate_settings(::Val{:AsymptoticInverse}, arch, ::Nothing) = (order = 1, ) 
 
 validate_settings(::Val{:ILUFactorization}, arch, settings)  = haskey(settings, :τ) ? 
                                                                       settings :
@@ -68,12 +71,14 @@ validate_settings(::Val{:AsymptoticInverse}, arch, settings) = haskey(settings, 
                                                                       throw(ArgumentError("and order ∈ [0, 1, 2] has to be specified for AsymptoticInverse"))
 
 
+build_preconditioner(method::Symbol,  args...) = build_preconditioner(Val(method), args...)
+build_preconditioner(method::Nothing, args...) = Identity()
+                        
 function build_preconditioner(::Val{:Default}, matrix, settings)
     default_method = architecture(matrix) isa CPU ? :ILUFactorization : :AsymptoticInverse
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
-build_preconditioner(::Val{nothing},            A, settings)  = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
 build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A)

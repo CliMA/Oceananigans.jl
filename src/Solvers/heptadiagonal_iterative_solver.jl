@@ -106,9 +106,9 @@ function HeptadiagonalIterativeSolver(coeffs;
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
     
-    settings       = validate_settings(Val(preconditioner_method), arch, preconditioner_settings)
+    settings       = validate_settings(preconditioner_method, arch, preconditioner_settings)
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
-    preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
+    preconditioner = build_preconditioner(preconditioner_method, reduced_matrix, settings)
 
     state_vars = CGStateVariables(zero(template), deepcopy(template), deepcopy(template))
 
@@ -317,9 +317,9 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
         unsafe_free!(constructors)
 
-        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
-                                                         solver.matrix,
-                                                         solver.preconditioner_settings)
+        solver.preconditioner = build_preconditioner(solver.preconditioner_method,
+                                                     solver.matrix,
+                                                     solver.preconditioner_settings)
 
         solver.previous_Δt = Δt
     end

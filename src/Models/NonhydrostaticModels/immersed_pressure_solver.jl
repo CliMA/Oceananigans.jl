@@ -14,6 +14,7 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Solvers: precondition!, solve!, build_preconditioner
 import Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
+using LinearAlgebra
 
 struct ImmersedPoissonSolver{R, G, S, Z}
     rhs :: R
@@ -25,6 +26,13 @@ end
 @kernel function fft_preconditioner_right_hand_side!(preconditioner_rhs, rhs)
     i, j, k = @index(Global, NTuple)
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
+end
+
+@kernel function fft_preconditioner_right_hand_side_linear!(preconditioner_rhs, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    Nx, Ny, _ = size(grid)
+    t = i + Nx * (j - 1 + Ny * (k - 1))
+    @inbounds preconditioner_rhs[i, j, k] = rhs[t]
 end
 
 # FFTBasedPoissonPreconditioner
@@ -39,6 +47,41 @@ function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
     return solve!(p, solver, solver.storage)
 end
 
+build_preconditioner(p::FFTBasedPoissonSolver, A, settings) = p
+
+# Solve pressure with FFT solver for a one-dimensional array
+function solve!(p::AbstractArray{<:Any, 1}, solver::FFTBasedPoissonSolver, rhs)
+    s = size(p)
+    p = reshape(p, size(rhs))
+    solve!(p, solver, rhs)
+
+    return reshape(p, s)
+end
+
+# Necessary for preconditioning
+function LinearAlgebra.ldiv!(p, solver::FFTBasedPoissonSolver, rhs)
+    grid = solver.grid
+    arch = architecture(grid)
+
+    launch!(arch, grid, :xyz,
+            fft_preconditioner_right_hand_side_linear!,
+            solver.storage, grid, rhs)
+
+    return solve!(p, solver, solver.storage)
+end
+
+# Necessary for preconditioning
+function LinearAlgebra.ldiv!(solver::FFTBasedPoissonSolver, rhs)
+    grid = solver.grid
+    arch = architecture(grid)
+
+    launch!(arch, grid, :xyz,
+            fft_preconditioner_right_hand_side_linear!,
+            solver.storage, grid, rhs)
+
+    return solve!(rhs, solver, solver.storage)
+end
+
 function ImmersedPoissonSolver(grid;
                                preconditioner = nothing,
                                reltol = eps(eltype(grid)),
@@ -46,7 +89,7 @@ function ImmersedPoissonSolver(grid;
                                abstol = 0,
                                kw...)
 
-    if preconditioner == "FFT"
+    if preconditioner == :FFT
         arch = architecture(grid)
         preconditioner = PressureSolver(arch, grid)
     end
@@ -59,7 +102,9 @@ end
 function build_implicit_poisson_solver(::Val{:PreconditionedConjugateGradient}, grid;
                                        reltol = eps(eltype(grid)),
                                        abstol = 0,
+                                       tolerance = false,
                                        preconditioner = nothing, 
+                                       verbose = false,
                                        kw...)
 
     rhs = CenterField(grid)
@@ -76,6 +121,7 @@ function build_implicit_poisson_solver(::Val{:HeptadiagonalIterativeSolver}, gri
                                        reltol = eps(eltype(grid)),
                                        abstol = 0,
                                        preconditioner = nothing, 
+                                       tolerance = nothing,
                                        kw...)
 
     N = prod(size(grid))
