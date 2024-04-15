@@ -1,8 +1,10 @@
+using Oceananigans.Architectues: architecture
 using Oceananigans.MultiRegion: number_of_regions
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
+    arch = architecture(field)
     grid = field.grid
 
     Nx, Ny, Nz = size(field)
@@ -10,7 +12,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
-    
+
     multiregion_field = Reference(field.data.regional_objects)
     region = Iterate(1:6)
 
@@ -20,7 +22,7 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
+        launch!(arch, grid, (Nc, Nz), _fill_cubed_sphere_center_center_field_north_south_halo_regions!,
                 field, multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
@@ -88,6 +90,7 @@ end
 end
 
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
+    arch = architecture(field)
     grid = field.grid
 
     Nx, Ny, Nz = size(field)
@@ -100,12 +103,12 @@ function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
+        launch!(arch, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_east_west_halo_regions!, field,
                 multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
+        launch!(arch, grid, (Nc, Nz), _fill_cubed_sphere_face_face_field_north_south_halo_regions!, field,
                 multiregion_field, region, grid.connectivity.connections, Nc, Hc)
     end
 
@@ -203,6 +206,7 @@ fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = tr
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true)
+    arch = architecture(field_1)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(field_1)
@@ -218,13 +222,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_center_center_center_center_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
@@ -326,6 +330,7 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true)
+    arch = architecture(field_1)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(field_1)
@@ -341,13 +346,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
@@ -358,12 +363,12 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     =#
     if Hc > 1
         @apply_regionally begin
-            launch!(grid.architecture, grid, Nz, _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1,
+            launch!(arch, grid, Nz, _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1,
                     field_2, Nc, Hc, plmn)
         end
 
         @apply_regionally begin
-            launch!(grid.architecture, grid, Nz, _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1,
+            launch!(arch, grid, Nz, _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1,
                     field_2, Nc, Hc, plmn)
         end
     end
@@ -545,6 +550,7 @@ end
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
                             field_2::CubedSphereField{<:Face, <:Face}; signed = true)
+    arch = architecture(field_1)
     grid = field_1.grid
 
     Nx, Ny, Nz = size(field_1)
@@ -560,13 +566,13 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
     region = Iterate(1:6)
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(arch, grid, (Nc, Nz),
                 _fill_cubed_sphere_face_face_face_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
