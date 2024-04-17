@@ -218,14 +218,14 @@ Truncate _fractional_ indices output from fractional indices `fi, fj, fk` to int
 with `nothing` indices for `Flat` domains.
 """
 @inline function truncate_fractional_indices(fi, fj, fk)
-    i = _truncate_fractional_index(fi)
-    j = _truncate_fractional_index(fj)
-    k = _truncate_fractional_index(fk)
+    i = truncate_fractional_index(fi)
+    j = truncate_fractional_index(fj)
+    k = truncate_fractional_index(fk)
     return (i, j, k)
 end
 
-@inline _truncate_fractional_index(::Nothing) = 1
-@inline _truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
+@inline truncate_fractional_index(::Nothing) = 1
+@inline truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
 
 
 """
