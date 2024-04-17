@@ -4,7 +4,7 @@
 """
      ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
- The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
+The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 
@@ -30,7 +30,7 @@ end
 """
      Γᶠᶠᶜ(i, j, k, grid, u, v)
 
- The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
 #=
 @inline Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v) = 

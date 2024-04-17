@@ -7,8 +7,8 @@ using Oceananigans.Architectures: device
 
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
-import Oceananigans.Solvers: solve!, precondition!, auxiliary_actions!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Solvers: solve!, precondition!, auxiliary_actions!
 
 """
     struct PCGImplicitFreeSurfaceSolver{V, S, R}
