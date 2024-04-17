@@ -8,7 +8,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
                                                         FixedSubstepNumber, FixedTimeStepSize,
                                                         calculate_substeps,
                                                         averaging_shape_function,
-                                                        ForwardBackwardScheme
+                                                        ForwardBackwardScheme,
+                                                        _split_explicit_free_surface!,
+                                                        _split_explicit_barotropic_velocity!
 
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -119,8 +121,8 @@ iterate_split_explicit!(free_surface, grid::MultiRegionGrids, Δτᴮ, weights, 
         @apply_regionally iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, Val(Nsubsteps))
 
 # Fill the halos after each substep
-iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::MultiRegionGrids, Δτᴮ, weights, Nsubsteps) = 
-        fill_halo_iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, Nsubsteps)
+iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::MultiRegionGrids, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps = 
+        fill_halo_iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, Val(Nsubsteps))
 
 function fill_halo_iterate_split_explicit!(free_surface, grid::MultiRegionGrids, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -153,8 +155,7 @@ function fill_halo_iterate_split_explicit!(free_surface, grid::MultiRegionGrids,
     @unroll for substep in 1:Nsubsteps
         averaging_weight = weights[substep]
 
-        fill_halo_regions!(U)
-        fill_halo_regions!(V)
+        fill_halo_regions!((U, V))
         @apply_regionally begin 
             launch!(arch, grid, :xy, _split_explicit_free_surface!, η_args...)
         end

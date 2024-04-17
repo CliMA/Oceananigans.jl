@@ -28,7 +28,6 @@ grid = RectilinearGrid(arch,
 grid = MultiRegionGrid(grid, partition = XPartition(4))
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100 : -500meters
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=10, extended_halos = false)
 
