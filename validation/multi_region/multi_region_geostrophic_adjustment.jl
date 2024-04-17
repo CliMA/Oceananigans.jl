@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.MultiRegion
+using Oceananigans.Utils
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
@@ -29,11 +30,13 @@ grid = MultiRegionGrid(grid, partition = XPartition(4))
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100 : -500meters
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+free_surface = SplitExplicitFreeSurface(grid; substeps=10, extended_halos = false)
+
+coriolis = FPlane(f=1e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    coriolis = FPlane(f=1e-4),
-                                    free_surface)
+                                      coriolis,
+                                      free_surface)
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -52,8 +55,8 @@ g = model.free_surface.gravitational_acceleration
 set!(model, v = vᵍ)
 set!(model, η = ηⁱ)
 
-gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
+gravity_wave_speed = sqrt(g * Lz) # hydrostatic (shallow water) gravity wave speed
+Δt = 2 * getregion(model.grid, 1).Δxᶜᵃᵃ / gravity_wave_speed
 simulation = Simulation(model; Δt, stop_iteration = 1000)
 
 ut = []

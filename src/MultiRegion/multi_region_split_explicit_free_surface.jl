@@ -115,8 +115,8 @@ end
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Any, <:Any, <:SplitExplicitAuxiliaryFields{<:Any, <:Any, <:Nothing}}
 
 # Fallback!
-iterate_split_explicit!(free_surface, grid::MultiRegionGrids, Δτᴮ, weights, Nsubsteps) = 
-        @apply_regionally iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, Nsubsteps)
+iterate_split_explicit!(free_surface, grid::MultiRegionGrids, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps = 
+        @apply_regionally iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, Val(Nsubsteps))
 
 # Fill the halos after each substep
 iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::MultiRegionGrids, Δτᴮ, weights, Nsubsteps) = 
