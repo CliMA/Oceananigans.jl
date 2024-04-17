@@ -69,6 +69,10 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     return nothing
 end
 
+fill_halo_regions!(field::CubedSphereField{<:Face, <:Center}) = nothing
+
+fill_halo_regions!(field::CubedSphereField{<:Center, <:Face}) = nothing
+
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
 
