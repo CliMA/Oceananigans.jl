@@ -69,8 +69,10 @@ function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     return nothing
 end
 
+# Halos have to be filled concurrently for pairs of XFaced and YFaced Fields, like `u` and `v`.
+# Therefore, e.g., fill_halo_regions!(u) should do nothing and the halos for `u` and `v` are filed
+# via fill_halo_regions!((u, v))
 fill_halo_regions!(field::CubedSphereField{<:Face, <:Center}) = nothing
-
 fill_halo_regions!(field::CubedSphereField{<:Center, <:Face}) = nothing
 
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
