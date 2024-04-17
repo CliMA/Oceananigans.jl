@@ -38,7 +38,9 @@ function error_non_Boussinesq(arch, FT)
 end
 
 """
-    function eos_works(arch, FT, eos::BoussinesqEquationOfState)
+    eos_works(arch, FT, eos::BoussinesqEquationOfState;
+              constant_temperature = nothing, constant_salinity = nothing)
+
 Check if using a `BoussinesqEquationOfState` returns a `KernelFunctionOperation`.
 """
 function eos_works(arch, FT, eos::BoussinesqEquationOfState;
@@ -52,10 +54,13 @@ function eos_works(arch, FT, eos::BoussinesqEquationOfState;
 end
 
 """
-    function insitu_density(arch, FT, eos)
-Use the `KernelFunctionOperation` returned from `seawater_density` to compute a density `Field`
-and compare the computed values to density values explicitly calculate using
-`SeawaterPolynomials.ρ`. Similar function is used to test the potential density computation.
+    insitu_density(arch, FT, eos::BoussinesqEquationOfState;
+                   constant_temperature = nothing, constant_salinity = nothing)
+
+Use the `KernelFunctionOperation` returned from `seawater_density` to compute
+a density `Field` and compare the computed values to density values explicitly
+calculate using `SeawaterPolynomials.ρ`. Similar function is used to test the
+potential density computation.
 """
 function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
                         constant_temperature = nothing, constant_salinity = nothing)
@@ -143,7 +148,7 @@ end
     end
 
     @testset "In-situ density computation tests" begin
-        @info "Testing in-situ density compuation..."
+        @info "Testing in-situ density computation..."
 
         for FT in float_types
             for arch in archs
