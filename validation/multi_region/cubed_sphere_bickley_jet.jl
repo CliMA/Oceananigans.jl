@@ -327,13 +327,24 @@ for i_plot in 1:n_plots
 end
 
 if print_output_to_jld2_file
+    jldopen("cubed_sphere_bickley_jet_initial_condition.jld2", "w") do file
+        for region in 1:6
+            file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
+            file["u/" * string(region)] = u_fields[1][region][:, :, 1]
+            file["v/" * string(region)] = v_fields[1][region][:, :, 1]
+            file["ζ/" * string(region)] = ζ_fields[1][region][:, :, 1]
+            file["η/" * string(region)] = η_fields[1][region][:, :, 1+1]
+            file["c/" * string(region)] = c_fields[1][region][:, :, 1]
+        end
+    end
     jldopen("cubed_sphere_bickley_jet_output.jld2", "w") do file
         for region in 1:6
-            file["u/" * string(region)]  =  u_fields[end][region][:, :, 1]
-            file["v/" * string(region)]  =  v_fields[end][region][:, :, 1]
-            file["ζ/" * string(region)]  =  ζ_fields[end][region][:, :, 1]
-            file["η/" * string(region)]  =  η_fields[end][region][:, :, 1+1]
-            file["c/" * string(region)]  =  c_fields[end][region][:, :, 1]
+            file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
+            file["u/" * string(region)] = u_fields[end][region][:, :, 1]
+            file["v/" * string(region)] = v_fields[end][region][:, :, 1]
+            file["ζ/" * string(region)] = ζ_fields[end][region][:, :, 1]
+            file["η/" * string(region)] = η_fields[end][region][:, :, 1+1]
+            file["c/" * string(region)] = c_fields[end][region][:, :, 1]
         end
     end
 end
