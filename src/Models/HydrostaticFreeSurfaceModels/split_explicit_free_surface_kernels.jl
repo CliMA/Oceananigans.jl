@@ -317,16 +317,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Δτᴮ = fractional_Δt * Δt  
     
     # reset free surface averages
-    @apply_regionally begin 
-        initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
+    @apply_regionally initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
         
-        # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
+    # Solve for the free surface at tⁿ⁺¹
+    iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
         
-        # Reset eta for the next timestep
-        set!(free_surface.η, free_surface.state.η̅)
-    end
-
+    # Reset eta for the next timestep
+    set!(free_surface.η, free_surface.state.η̅)
+    
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; async = true)
 
