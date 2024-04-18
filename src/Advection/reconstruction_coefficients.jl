@@ -210,24 +210,24 @@ end
 
     method = scheme == :Centered ? 1 : scheme == :Upwind ? 2 : 3
 
-    rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
     if grid isa Nothing
-        for metric in rect_metrics
-            @eval $(Symbol(:coeff_ , metric)) = nothing
-            @eval $(Symbol(:smooth_, metric)) = nothing
-        end
+        coeff_xᶠᵃᵃ = nothing
+        coeff_xᶜᵃᵃ = nothing
+        coeff_yᵃᶠᵃ = nothing
+        coeff_yᵃᶜᵃ = nothing
+        coeff_zᵃᵃᶠ = nothing
+        coeff_zᵃᵃᶜ = nothing
     else
-        metrics = coordinates(grid)
-        dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
-
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
 
-        for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_reconstruction_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir, Val($method); order = $order)
-        end
+        coeff_xᶠᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[1], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_xᶜᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[2], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶠᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶜᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[4], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_zᵃᵃᶠ = calc_reconstruction_coefficients(FT, getproperty(metrics[5], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_zᵃᵃᶜ = calc_reconstruction_coefficients(FT, getproperty(metrics[6], new_grid), arch, new_grid.Nx, Val(method); order)
     end
 
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
