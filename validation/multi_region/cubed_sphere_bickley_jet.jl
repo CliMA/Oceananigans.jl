@@ -25,15 +25,20 @@ ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + (y + ℓ/10) / ℓ^
 ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
 """
-    u, v: Large-scale jet + vortical perturbations
-       c: Sinusoid
-"""
+    set_bickley_jet!(model; Ly = 4π, ϵ  = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
-function set_bickley_jet!(model;
-                          Ly = 4π,  # meridional domain extent
-                          ϵ  = 0.1, # perturbation magnitude
-                          ℓ₀ = 0.5, # Gaussian width for meridional extent of 4π
-                          k₀ = 0.5) # sinusoidal wavenumber for domain extents of 4π in each direction
+Set the `u` and `v`: Large-scale jet + vortical perturbations.
+Set the tracer `c`: Sinusoid
+
+Keyword args
+============
+
+* `Ly`: meridional domain extent
+* `ϵ`: perturbation magnitude
+* `ℓ₀`: Gaussian width for meridional extent of 4π
+* `k₀`: sinusoidal wavenumber for domain extents of 4π in each direction
+"""
+function set_bickley_jet!(model; Ly = 4π, ϵ  = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
     ℓ = ℓ₀ / 4π * Ly
     k = k₀ * 4π / Ly
