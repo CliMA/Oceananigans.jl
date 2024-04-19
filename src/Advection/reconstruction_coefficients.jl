@@ -224,10 +224,10 @@ end
 
         coeff_xᶠᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[1], new_grid), arch, new_grid.Nx, Val(method); order)
         coeff_xᶜᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[2], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_yᵃᶠᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_yᵃᶜᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[4], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_zᵃᵃᶠ = calc_reconstruction_coefficients(FT, getproperty(metrics[5], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_zᵃᵃᶜ = calc_reconstruction_coefficients(FT, getproperty(metrics[6], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶠᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Ny, Val(method); order)
+        coeff_yᵃᶜᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[4], new_grid), arch, new_grid.Ny, Val(method); order)
+        coeff_zᵃᵃᶠ = calc_reconstruction_coefficients(FT, getproperty(metrics[5], new_grid), arch, new_grid.Nz, Val(method); order)
+        coeff_zᵃᵃᶜ = calc_reconstruction_coefficients(FT, getproperty(metrics[6], new_grid), arch, new_grid.Nz, Val(method); order)
     end
 
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
