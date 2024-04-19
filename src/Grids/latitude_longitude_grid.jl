@@ -549,7 +549,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     Azᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
 
     if grid isa YRegularLLG
-        Δyᶠᶜ = FT(0.0)
+        Δyᶠᶜ = FT(0)
         Δyᶜᶠ = FT(0.0)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
