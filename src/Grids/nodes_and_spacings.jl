@@ -195,7 +195,6 @@ julia> xspacings(grid, Center(), Face(), Center())
 """
 @inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
 
-
 """
     yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
 
@@ -233,10 +232,23 @@ julia> zspacings(grid, Center(), Center(), Center())
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
-function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
-    spacing = eval(Symbol(dir, :spacing))
+function minimum_spacing(::Val{x}, grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
+    Δ = KernelFunctionOperation{LX, LY, LZ}(xpacing, grid, ℓx, ℓy, ℓz)
+
+    return minimum(Δ)
+end
+
+function minimum_spacing(::Val{y}, grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
+
+    return minimum(Δ)
+end
+
+function minimum_spacing(::Val{z}, grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
+    Δ = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
 
     return minimum(Δ)
 end
@@ -258,8 +270,8 @@ julia> minimum_xspacing(grid, Center(), Center(), Center())
 0.5
 ```
 """
-minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
-minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
+minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:x), grid, ℓx, ℓy, ℓz)
+minimum_xspacing(grid) = minimum_spacing(Val(:x), grid, Center(), Center(), Center())
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
     minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
@@ -277,8 +289,8 @@ julia> minimum_yspacing(grid, Center(), Center(), Center())
 0.25
 ```
 """
-minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
-minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
+minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:y), grid, ℓx, ℓy, ℓz)
+minimum_yspacing(grid) = minimum_spacing(Val(:y), grid, Center(), Center(), Center())
 
 """
     minimum_zspacing(grid, ℓx, ℓy, ℓz)
@@ -297,7 +309,7 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 0.125
 ```
 """
-minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
-minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
+minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:z), grid, ℓx, ℓy, ℓz)
+minimum_zspacing(grid) = minimum_spacing(Val(:z), grid, Center(), Center(), Center())
 
 
