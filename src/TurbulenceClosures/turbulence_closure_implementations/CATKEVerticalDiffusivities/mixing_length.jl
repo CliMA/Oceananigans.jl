@@ -15,8 +15,10 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 Base.@kwdef struct MixingLength{FT}
     Cˢ   :: FT = 1.03   # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
+    Cᶜu  :: FT = 0.0    # Convective mixing length coefficient for tracers
     Cᶜc  :: FT = 3.72   # Convective mixing length coefficient for tracers
     Cᶜe  :: FT = 1.40   # Convective mixing length coefficient for TKE
+    Cᵉu  :: FT = 0.0    # Convective penetration mixing length coefficient for tracers
     Cᵉc  :: FT = 0.841  # Convective penetration mixing length coefficient for tracers
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
     Cˢᵖ  :: FT = 1.02   # Sheared convective plume coefficient
@@ -207,29 +209,43 @@ end
 end
 
 @inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    Cᶜ  = closure.mixing_length.Cᶜu
+    Cᵉ  = closure.mixing_length.Cᵉu
+    Cˢᵖ = closure.mixing_length.Cˢᵖ
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
     σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
 
     ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+
+    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+    ℓu = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-
-    return min(H, ℓ★)
+    return min(H, ℓu)
 end
 
 @inline function momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    Cᶜ  = closure.mixing_length.Cᶜu
+    Cᵉ  = closure.mixing_length.Cᵉu
+    Cˢᵖ = closure.mixing_length.Cˢᵖ
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
     σ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
 
     ℓ★ = σ * stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+
+    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+    ℓu = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-
-    return min(H, ℓ★)
+    return min(H, ℓu)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -245,10 +261,10 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓᶜ = max(ℓ★, ℓʰ)
+    ℓc = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(H, ℓᶜ)
+    return min(H, ℓc)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -264,11 +280,10 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓᶜ = max(ℓ★, ℓʰ)
+    ℓc = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-
-    return min(H, ℓᶜ)
+    return min(H, ℓc)
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -284,10 +299,10 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓᵉ = max(ℓ★, ℓʰ)
+    ℓe = max(ℓ★, ℓʰ)
 
     H = total_depthᶜᶜᵃ(i, j, grid)
-    return min(H, ℓᵉ)
+    return min(H, ℓe)
 end
 
 Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
