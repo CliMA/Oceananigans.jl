@@ -550,7 +550,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = FT(0)
-        Δyᶜᶠ = FT(0.0)
+        Δyᶜᶠ = FT(0)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
