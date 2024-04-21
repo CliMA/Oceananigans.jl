@@ -110,13 +110,13 @@ end
 
 ## Grid setup
 
-H = 1
+H = 1000
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 4
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = 1, horizontal_direction_halo = Nhalo,
-                                partition = CubedSpherePartition(; R = 1))
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = 6370e3,
+                                horizontal_direction_halo = Nhalo, partition = CubedSpherePartition(; R = 1))
 
 Ly = 2π * grid.radius
 
@@ -124,11 +124,15 @@ Hx, Hy, Hz = halo_size(grid)
 
 momentum_advection = VectorInvariant()
 tracer_advection = WENO()
-free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
+free_surface = ExplicitFreeSurface(gravitational_acceleration=10)
 
-closure = ScalarDiffusivity(ν=0.0005)
-# The numerical solution blows up at ν = 0.0001 with radius = 1, N = 32, and Δt = 0.1 * min_spacing / c.
-# With ν = 0.001, the solution is a bit too diffusive.
+closure = ScalarDiffusivity(ν = 100 * 6370e3 * 0.0005)
+# Using radius, r₁ = 1, number of points in each direction of a conformal cubed sphere panel, N = 32, and a time step,
+# Δt₁ = 0.1 * min_spacing / c₁ = 0.1 * min_spacing / sqrt(g₁ * H₁), the numerical solution becomes unstable at
+# ν = 0.0001, and experiences excessive diffusion at ν₁ = 0.001. So, we specify ν₁ = 0.0005, a value midway between
+# 0.0001 and 0.001, to balance between retaining important gradient features and maintaining stability. For a much
+# larger radius of r₂ = 6370e3, equivalent to Earth's radius, we apply scaling analysis and and obtain
+# ν₂ = sqrt(c₂/c₁) r₂/r₁ = sqrt((g₂ H₂)/(g₁ H₁)) r₂/r₁ ν₁ = sqrt(10 * 1000) 6370e3/1 ν₁ = 100 * 6370e3 * 0.0005.
 
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
                                     buoyancy=nothing, closure)
