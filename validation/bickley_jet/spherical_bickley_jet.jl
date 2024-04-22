@@ -16,6 +16,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.OutputReaders: FieldTimeSeries
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
+
+using CUDA: device!
+
+device!(2)
 
 #####
 ##### The Bickley jet
@@ -31,7 +36,7 @@ C(y, L) = sin(2π * y / L)
 ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
 
 # Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + (y + ℓ/10) / ℓ^2)
+ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
 ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
 """
@@ -42,19 +47,26 @@ Run the Bickley jet validation experiment until `stop_time` using `momentum_adve
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
-                           momentum_advection = VectorInvariant(),
-                           experiment_name = string(nameof(typeof(momentum_advection))))
+                           momentum_advection = VectorInvariant())
 
     Nφ = Int(Nh/2)
 
     grid = LatitudeLongitudeGrid(arch, size=(Nh, Nφ, 1),
                                  radius = 1,
-                                 longitude = (-180, 180), latitude=(-80, 80), z=(0, 1), halo = (5, 5, 5),
+                                 longitude = (-180, 180), latitude=(-80, 80), z=(0, 1), halo = (4, 4, 4),
                                  precompute_metrics = true)
+
+    @inline toplft(x, y) = (((x > 45) & (x < 135)) & (((y > 15) & (y < 30)) | ((y > 45) & (y < 60))))
+    @inline botlft(x, y) = (((x > 45) & (x < 135)) & (((y < -15) & (y > -30)) | ((y < -45) & (y > -60))))
+    
+    @inline toprgt(x, y) = (((x < - 45) & (x > - 135)) & (((y > 15) & (y < 30)) | ((y > 45) & (y < 60))))
+    @inline botrgt(x, y) = (((x < - 45) & (x > - 135)) & (((y < -15) & (y > -30)) | ((y < -45) & (y > -60))))
+    
+    @inline bottom(x, y) = Int(toplft(x, y) | botlft(x, y) | toprgt(x, y) | botrgt(x, y))
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -1))
                             
-    free_surface = ExplicitFreeSurface(gravitational_acceleration=1)
+    free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1)
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO(),
@@ -107,21 +119,28 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     ζ = Field(ζ_op)
-    outputs = merge(model.velocities, model.tracers, (; ζ=ζ))
+    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
-    @show output_name = "spherical_bickley_jet_Nh_$(Nh)_" * experiment_name
+    name = typeof(model.advection.momentum).name.wrapper
+    if model.advection.momentum isa WENOVectorInvariantVel
+        name = "WENOVectorInvariantVel"
+    elseif model.advection.momentum isa WENOVectorInvariantVort
+        name = "WENOVectorInvariantVort"
+    end
+
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
-                         schedule = TimeInterval(output_time_interval),
-                         filename = output_name,
-                         overwrite_existing = true)
+                                schedule =TimeInterval(output_time_interval),
+                                filename = experiment_name,
+                                overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
     run!(simulation)
 
-    return output_name
+    return experiment_name 
 end
 
 
@@ -177,15 +196,12 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [VectorInvariant(vorticity_scheme = WENO()),
-                     WENO(),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
                      VectorInvariant()]
 
-experiment_names = ["VectorInvariant_VorticityScheme_WENO", "WENO", "VectorInvariant"]
-
-for Nx in [128] # for Nx in [64, 128, 256, 512, 1024]
-    for (i, advection) in enumerate(advection_schemes)
-        output_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx,
-                                      experiment_name = experiment_names[i])
+for Nx in [64, 128, 256, 512, 1024]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
     end
 end

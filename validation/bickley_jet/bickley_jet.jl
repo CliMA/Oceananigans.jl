@@ -1,5 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, boundary_buffer
+
 using Printf
 using GLMakie
 
@@ -17,7 +19,7 @@ function run_bickley_jet(;
                          stop_time = 200,
                          arch = CPU(),
                          Nh = 64, 
-                         free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0),
+                         free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0),
                          momentum_advection = WENO(order = 5),
                          tracer_advection = WENO(order = 5),
                          experiment_name = string(nameof(typeof(momentum_advection))))
@@ -43,15 +45,15 @@ function run_bickley_jet(;
 
     # Output: primitive fields + computations
     u, v, w = model.velocities
-    outputs = merge(model.velocities, model.tracers, (; ζ=∂x(v) - ∂y(u)))
+    outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.η))
 
-    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name
+    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
-                         schedule = TimeInterval(output_time_interval),
-                         filename = output_name,
-                         overwrite_existing = true)
+                                schedule = TimeInterval(output_time_interval),
+                                filename = output_name,
+                                overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
@@ -102,16 +104,15 @@ function visualize_bickley_jet(name)
     end
 end
 
-advection_schemes = [VectorInvariant(vorticity_scheme = WENO()),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
                      WENO(),
                      VectorInvariant()]
 
-experiment_names = ["VectorInvariant_VorticityScheme_WENO", "WENO", "VectorInvariant"]
 
-for Nx in [128] # for Nx in [64, 128, 256, 512, 1024]
-    for (i, advection) in enumerate(advection_schemes)
-        output_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx, 
-                                      experiment_name = experiment_names[i])
-        visualize_bickley_jet(output_name)
+for Nx in [128]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        visualize_bickley_jet(experiment_name)
     end
 end
