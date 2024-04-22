@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using NCDatasets
 using StructArrays
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: architecture, on_architecture
 
 struct TestParticle{T}
     x::T
@@ -34,7 +34,10 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     return sim, jld2_filepath, nc_filepath
 end
 
-function run_simple_particle_tracking_tests(arch, grid, timestepper)
+function run_simple_particle_tracking_tests(grid, timestepper)
+
+    arch = architecture(grid)
+
     P = 10
 
     #####
@@ -261,17 +264,19 @@ function run_simple_particle_tracking_tests(arch, grid, timestepper)
     return nothing
 end
 
+lagrangian_particle_test_grid(arch, ::Periodic, z) =
+    RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(5, 5, 5), x=(-1, 1), y=(-1, 1), z)
+lagrangian_particle_test_grid(arch, ::Flat, z) =
+    RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(5, 5), x=(-1, 1), z)
+
 @testset "Lagrangian particle tracking" begin
     timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     y_topologies = (Periodic(), Flat())
     vertical_grids = (uniform=(-1, 1), stretched=[-1, -0.5, 0.0, 0.4, 0.7, 1])
 
-    lagrangian_particle_test_grid(arch, ::Periodic, z) = RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(5, 5, 5), x=(-1, 1), y=(-1, 1), z)
-    lagrangian_particle_test_grid(arch, ::Flat, z) = RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(5, 5), x=(-1, 1), z)
-
     for arch in archs, timestepper in timesteppers, y_topo in y_topologies, (z_grid_type, z) in pairs(vertical_grids)
         @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type grid ..."
         grid = lagrangian_particle_test_grid(arch, y_topo, z)
-        run_simple_particle_tracking_tests(arch, grid, timestepper)
+        run_simple_particle_tracking_tests(grid, timestepper)
     end
 end
