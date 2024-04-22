@@ -113,9 +113,10 @@ H = 1000
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 4
+R = 6370e3 # sphere's radius
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = 6370e3,
-                                horizontal_direction_halo = Nhalo, partition = CubedSpherePartition(; R = 1))
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = Nhalo,
+                                partition = CubedSpherePartition(; R = 1))
 
 Ly = 2π * grid.radius
 
@@ -123,15 +124,19 @@ Hx, Hy, Hz = halo_size(grid)
 
 momentum_advection = VectorInvariant()
 tracer_advection = WENO()
-free_surface = ExplicitFreeSurface(gravitational_acceleration=10)
+g = 10
+free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
 
-closure = ScalarDiffusivity(ν = 100 * 6370e3 * 0.0005)
-# Using radius, r₁ = 1, number of points in each direction of a conformal cubed sphere panel, N = 32, and a time step,
-# Δt₁ = 0.1 * min_spacing / c₁ = 0.1 * min_spacing / sqrt(g₁ * H₁), the numerical solution becomes unstable at
-# ν = 0.0001, and experiences excessive diffusion at ν₁ = 0.001. So, we specify ν₁ = 0.0005, a value midway between
-# 0.0001 and 0.001, to balance between retaining important gradient features and maintaining stability. For a much
-# larger radius of r₂ = 6370e3, equivalent to Earth's radius, we apply scaling analysis and and obtain
-# ν₂ = sqrt(c₂/c₁) r₂/r₁ = sqrt((g₂ H₂)/(g₁ H₁)) r₂/r₁ ν₁ = sqrt(10 * 1000) 6370e3/1 ν₁ = 100 * 6370e3 * 0.0005.
+c = sqrt(g * H)
+closure = ScalarDiffusivity(ν = c * R * 0.0005)
+#=
+Using N₁ = 32, r₁ = 1, g₁ = 1, H₁ = 1, so that c₁ = sqrt(g₁ * H₁) = 1, and
+Δt₁ = 0.1 * min_spacing / c₁ = 0.1 * min_spacing, the numerical solution becomes unstable at ν = 0.0001, and experiences
+excessive diffusion at ν₁ = 0.001. So, we specify ν₁ = 0.0005, a value midway between 0.0001 and 0.001, to balance
+between retaining important gradient features and maintaining stability. For a much larger radius of r₂ = 6370e3
+(Earth's radius) at same spatial resolution (N₂ = 32), we apply scaling analysis and obtain
+ν₂ = c₂/c₁ (r₂/N₂) / (r₁/N₁) ν₁ = c₂/c₁ r₂/r₁ ν₁ = c₂ r₂ ν₁ = 100 * 6370e3 * 0.0005.
+=#
 
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
                                     buoyancy=nothing, closure)
@@ -141,7 +146,6 @@ set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 # Specify cfl = c * Δt / min(Δx) = 0.2, so that Δt = 0.2 * min(Δx) / c
 
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
-c = sqrt(model.free_surface.gravitational_acceleration * H)
 Δt = 0.2 * min_spacing / c
 
 Ntime = 15000
