@@ -1,9 +1,7 @@
 using Oceananigans, Printf
 
 using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 
 Nx = 30
 Ny = 30
@@ -52,9 +50,7 @@ for region in [2, 4, 6]
     end
 end
 
-for passes in 1:3
-    fill_halo_regions!(ψ)
-end
+fill_halo_regions!(ψ)
 
 u = XFaceField(grid)
 v = YFaceField(grid)

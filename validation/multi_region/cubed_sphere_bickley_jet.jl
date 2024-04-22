@@ -1,6 +1,5 @@
 using Oceananigans, Printf
 
-using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.Grids: λnode, φnode, znode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using Oceananigans.Operators
