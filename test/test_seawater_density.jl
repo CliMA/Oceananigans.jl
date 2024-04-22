@@ -91,7 +91,7 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
     SWP_ρ = similar(interior(d_field))
     @. SWP_ρ = SeawaterPolynomials.ρ(T_vec, S_vec, geopotential_height, eos_vec)
 
-    return all(interior(d_field) .== SWP_ρ)
+    return all(interior(d_field) .≈ SWP_ρ)
 end
 
 function potential_density(arch, FT, eos::BoussinesqEquationOfState;
