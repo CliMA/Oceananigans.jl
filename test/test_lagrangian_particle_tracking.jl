@@ -29,7 +29,7 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
         NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-        dir=".", prefix="particles_checkpoint")
+                                                     dir=".", prefix="particles_checkpoint")
 
     return sim, jld2_filepath, nc_filepath
 end
@@ -114,8 +114,8 @@ function run_simple_particle_tracking_tests(arch, grid, timestepper)
     @test lagrangian_particles isa LagrangianParticles
 
     model = NonhydrostaticModel(; grid, timestepper,
-        velocities, particles=lagrangian_particles,
-        background_fields=(v=background_v,))
+                                  velocities, particles=lagrangian_particles,
+                                  background_fields=(v=background_v,))
 
     set!(model, u=1)
 
@@ -124,14 +124,14 @@ function run_simple_particle_tracking_tests(arch, grid, timestepper)
     jld2_filepath = "test_particles.jld2"
     sim.output_writers[:particles_jld2] =
         JLD2OutputWriter(model, (; particles=model.particles),
-            filename=jld2_filepath, schedule=IterationInterval(1))
+                         filename=jld2_filepath, schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
         NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-        dir=".", prefix="particles_checkpoint")
+                                                    dir=".", prefix="particles_checkpoint")
 
     rm(jld2_filepath)
     rm(nc_filepath)
