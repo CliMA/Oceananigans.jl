@@ -7,7 +7,7 @@ using Printf
 using CairoMakie
 using DataDeps
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
+path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/quarter_degree_near_global_input_data/"
 
 datanames = ["tau_x-1440x600-latitude-75",
              "tau_y-1440x600-latitude-75",
