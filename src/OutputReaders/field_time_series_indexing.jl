@@ -198,7 +198,7 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     source_location = map(instantiate, location(source_fts))
     target_location = map(instantiate, location(target_fts))
 
-    target_times = target_fts.times
+    target_times = map(Time, target_fts.times)
 
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
