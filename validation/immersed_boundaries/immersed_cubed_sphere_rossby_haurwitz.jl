@@ -49,15 +49,12 @@ ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 Logging.global_logger(OceananigansLogger())
 
 dd32 = DataDep("cubed_sphere_32_grid",
-    "Conformal cubed sphere grid with 32×32 grid points on each face",
-    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-    "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
-)
+               "Conformal cubed sphere grid with 32×32 grid points on each face",
+               "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2")
 
 dd96 = DataDep("cubed_sphere_96_grid",
-    "Conformal cubed sphere grid with 96×96 grid points on each face",
-    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs96/cubed_sphere_96_grid.jld2"
-)
+               "Conformal cubed sphere grid with 96×96 grid points on each face",
+               "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs96/cubed_sphere_96_grid.jld2")
 
 DataDeps.register(dd32)
 DataDeps.register(dd96)
