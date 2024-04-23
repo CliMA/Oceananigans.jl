@@ -113,7 +113,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
-            include("test_sewater_density.jl")
+            include("test_seawater_density.jl")
         end
     end
 
