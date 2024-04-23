@@ -202,7 +202,7 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
 
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
-            target_fts.data, target_grid, target_location, Time.(target_times),
+            target_fts.data, target_grid, target_location, target_times,
             source_fts, source_grid, source_location)
 
     fill_halo_regions!(target_fts)
