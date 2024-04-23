@@ -1,64 +1,93 @@
-abstract type MatchingScheme end
+using Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.Operators: Axᶜᶜᶠ, Ayᶜᶠᶜ, Azᶜᶜᶠ
 
-# generic infrastructure
-const MOBC = BoundaryCondition{Open{<:MatchingScheme}}
+"""
+    MeanOutflow
 
-# nudging
-
-struct Nudging{IT, OT} <: MatchingScheme
-     inflow_nudging_timescale :: IT
-    outflow_nudging_timescale :: OT
+Advect out of the domain with the boundary mean flow, and relax inflows to external state.
+"""
+struct MeanOutflow{BF, IT}
+                boundary_flux :: BF
+        mean_outflow_velocity :: AbstractArray
+  inflow_relaxation_timescale :: IT
 end
 
-(nudging::Nudging)() = nudging
+(ms::MeanOutflow)() = ms
 
-const NOBC = BoundaryCondition{<:Open{<:Nudging}}
+Adapt.adapt_structure(to, mo::MeanOutflow) = 
+    MeanOutflow(nothing, adapt(to, mo.mean_outflow_velocity), adapt(to, mo.inflow_relaxation_timescale))
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::NOBC, loc, clock, model_fields)
-    Δt = clock.last_Δt
+function MeanOutflowOpenBoundaryCondition(grid, side, val; inflow_relaxation_timescale = 1, kwargs...)
+    boundary_flux = boundary_flux_field(grid, Val(side))
 
-    matching_scheme = bc.classification.matching_scheme
-
-    i, i′ = domain_boundary_indices(LeftBoundary(), grid.Nx)
-
-    external_state = getbc(bc, j, k, grid, clock, model_fields)
+    classifcation = Open(MeanOutflow(boundary_flux, [0.], inflow_relaxation_timescale))
     
-    wall_normal_velocity = @inbounds model_fields.u[i, j, k]
-
-    relaxation_timescale = wall_normal_velocity > 0 * matching_scheme.outflow_nudging_timescale + 
-                           wall_normal_velocity < 0 * matching_scheme.inflow_nudging_timescale
-
-    relaxation_rate = min(1, Δt / relaxation_timescale)
-
-    internal_state = @inbounds c[i, j, k]
-
-    @inbounds c[i′, j, k] = 0#internal_state * (1 - relaxation_rate) + external_state * relaxation_rate
+    return BoundaryCondition(classifcation, val; kwargs...)
 end
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::NOBC, loc, clock, model_fields)
-    Δt = clock.last_Δt
+# fields is not yet defiled so have to use an array
+boundary_flux_field(grid, ::Union{Val{:west}, Val{:east}}) = on_architecture(architecture(grid), zeros(size(grid, 2), size(grid, 3)))
+boundary_flux_field(grid, ::Union{Val{:south}, Val{:north}}) = on_architecture(architecture(grid), zeros(size(grid, 1), size(grid, 3)))
+boundary_flux_field(grid, ::Union{Val{:bottom}, Val{:top}}) = on_architecture(architecture(grid), zeros(size(grid, 2), size(grid, 3)))
 
-    matching_scheme = bc.classification.matching_scheme
+const MOOBC = BoundaryCondition{<:Open{<:MeanOutflow}}
 
-    i, i′ = domain_boundary_indices(RightBoundary(), grid.Nx)
+boundary_normal_velocity(velocities, ::Union{Val{:west}, Val{:east}}) = velocities.u
+boundary_normal_velocity(velocities, ::Union{Val{:south}, Val{:north}}) = velocities.v
+boundary_normal_velocity(velocities, ::Union{Val{:bottom}, Val{:top}}) = velocities.w
 
-    external_state = getbc(bc, j, k, grid, clock, model_fields)
-    
-    wall_normal_velocity = - @inbounds model_fields.u[i + 1, j, k]
+function update_boundary_condition!(bc::MOOBC, field, model, side)
+    ms = bc.classification.matching_scheme
 
-    relaxation_timescale = wall_normal_velocity > 0 * matching_scheme.outflow_nudging_timescale + 
-                           wall_normal_velocity < 0 * matching_scheme.inflow_nudging_timescale
+    u = boundary_normal_velocity(model.velocities, side)
+    F = ms.boundary_flux
 
-    relaxation_rate = min(1, Δt / relaxation_timescale)
+    arch = architecture(model)
+    grid = model.grid
 
-    internal_state = @inbounds c[i + 1, j, k]
+    launch!(arch, grid, :yz, _update_boundary_flux!, F, grid, u, side)
 
-    @inbounds c[i′ + 1, j, k] = 0#internal_state * (1 - relaxation_rate) + external_state * relaxation_rate
+    ms.mean_outflow_velocity[1] = sum(F) / (grid.Ly * grid.Lz)
 end
 
-#=
-@inline  _fill_south_halo!(i, k, grid, c, bc::MOBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
-@inline  _fill_north_halo!(i, k, grid, c, bc::MOBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::MOBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
-@inline    _fill_top_halo!(i, j, grid, c, bc::MOBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
-=#
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:west})
+    j, k = @index(Global, NTuple)
+
+    @inbounds F[j, k] = -u[1, j, k] * Axᶜᶜᶠ(1, j, k, grid)
+end
+
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:east})
+    j, k = @index(Global, NTuple)
+
+    i = grid.Nx
+
+    @inbounds F[j, k] = u[i, j, k] * Axᶜᶜᶠ(i, j, k, grid)
+end
+
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:south})
+    i, k = @index(Global, NTuple)
+
+    @inbounds F[i, k] = -u[i, 1, k] * Ayᶜᶠᶜ(i, 1, k, grid)
+end
+
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:north})
+    i, k = @index(Global, NTuple)
+
+    j = grid.Ny
+
+    @inbounds F[i, k] = u[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
+end
+
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:bottom})
+    i, j = @index(Global, NTuple)
+
+    @inbounds F[i, j] = -u[i, j, 1] * Azᶜᶜᶠ(i, j, 1, grid)
+end
+
+@kernel function _update_boundary_flux!(F, grid, u, ::Val{:top})
+    i, j = @index(Global, NTuple)
+
+    k = grid.Nz
+
+    @inbounds F[i, j] = u[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+end
