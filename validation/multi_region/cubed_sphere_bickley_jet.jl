@@ -17,14 +17,14 @@ U(y) = sech(y)^2
 C(y, L) = sin(2π * y / L)
 
 # Slightly off-center vortical perturbations
-ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
+ψ̃(x, y, ℓ, k_x, k_y) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k_x * x) * cos(k_y * y)
 
 # Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + (y + ℓ/10) / ℓ^2)
-ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
+ũ(x, y, ℓ, k_x, k_y) = +ψ̃(x, y, ℓ, k_x, k_y) * (k_y * tan(k_y * y) + (y + ℓ / 10) / ℓ^2)
+ṽ(x, y, ℓ, k_x, k_y) = -ψ̃(x, y, ℓ, k_x, k_y) * k_x * tan(k_x * x)
 
 """
-    set_bickley_jet!(model; Ly = 4π, ϵ  = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
+    set_bickley_jet!(model; Ly = 4π, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
 Set the `u` and `v`: Large-scale jet + vortical perturbations.
 Set the tracer `c`: Sinusoid
@@ -37,14 +37,15 @@ Keyword args
 * `ℓ₀`: Gaussian width for meridional extent of 4π
 * `k₀`: sinusoidal wavenumber for domain extents of 4π in each direction
 """
-function set_bickley_jet!(model; Ly = 4π, ϵ  = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
+function set_bickley_jet!(model; Lx = 4π, Ly = 4π, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
     ℓ = ℓ₀ / 4π * Ly
-    k = k₀ * 4π / Ly
+    k_x = k₀ * 4π / Lx
+    k_y = k₀ * 4π / Ly
 
     dr(x) = deg2rad(x)
 
-    ψᵢ(λ, φ, z) = ℓ * (Ψ(dr(φ)*8) + ϵ * ψ̃(dr(λ)*2, dr(φ)*8, ℓ, k))
+    ψᵢ(λ, φ, z) = Ψ(dr(φ) * 8) + ϵ * ψ̃(dr(λ) * 2, dr(φ) * 8, ℓ, k_x, k_y)
     cᵢ(λ, φ, z) = C(dr(φ)*8, 180)
 
     ψ = Field{Face, Face, Center}(grid)
@@ -86,11 +87,15 @@ function set_bickley_jet!(model; Ly = 4π, ϵ  = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
     fill_halo_regions!((u, v))
 
+    u_max = maximum(abs, u)
+    v_max = maximum(abs, v)
+    u_v_max = max(u_max, v_max)
+
     for region in 1:number_of_regions(grid)
 
         for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
-            model.velocities.u[region][i, j, k] = u[region][i, j, k]
-            model.velocities.v[region][i, j, k] = v[region][i, j, k]
+            model.velocities.u[region][i, j, k] = u[region][i, j, k]/u_v_max
+            model.velocities.v[region][i, j, k] = v[region][i, j, k]/u_v_max
         end
 
         for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
@@ -109,22 +114,23 @@ end
 
 ## Grid setup
 
-H = 1000
+H = 1
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 4
-R = 6370e3 # sphere's radius
+R = 1 # sphere's radius
 
 grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = Nhalo,
                                 partition = CubedSpherePartition(; R = 1))
 
-Ly = 2π * grid.radius
+Lx = 2π
+Ly = π
 
 Hx, Hy, Hz = halo_size(grid)
 
 momentum_advection = VectorInvariant()
 tracer_advection = WENO()
-g = 10
+g = 1
 free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
 
 c = sqrt(g * H)
@@ -138,10 +144,13 @@ between retaining important gradient features and maintaining stability. For a m
 ν₂ = c₂/c₁ (r₂/N₂) / (r₁/N₁) ν₁ = c₂/c₁ r₂/r₁ ν₁ = c₂ r₂ ν₁ = 100 * 6370e3 * 0.0005.
 =#
 
-model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
-                                    buoyancy=nothing, closure)
+Ω = 2π/86400 # Earth's rotation rate
+myCoriolis = HydrostaticSphericalCoriolis(rotation_rate = Ω, scheme = EnstrophyConserving())
 
-set_bickley_jet!(model; Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
+model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
+                                    coriolis = myCoriolis, buoyancy = nothing, closure)
+
+set_bickley_jet!(model; Lx = Lx, Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
 # Specify cfl = c * Δt / min(Δx) = 0.2, so that Δt = 0.2 * min(Δx) / c
 
@@ -320,18 +329,18 @@ end
 for i_plot in 1:n_plots
     frame_index = round(Int, i_plot * n_frames / n_plots)
     simulation_time = simulation_time_per_frame * frame_index
-    title = "Relative vorticity after $(prettytime(simulation_time*6371e3))"
+    title = "Relative vorticity after $(prettytime(simulation_time))"
     fig = geo_heatlatlon_visualization(grid, interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
                                                                                             "ff"), title;
                                        cbar_label = "Relative vorticity (s⁻¹)", specify_plot_limits = true,
                                        plot_limits = ζ_colorrange)
     save(@sprintf("ζ_%d.png", i_plot), fig)
-    title = "Surface elevation after $(prettytime(simulation_time*6371e3))"
+    title = "Surface elevation after $(prettytime(simulation_time))"
     fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false, ssh = true,
                                        cbar_label = "Surface elevation (m)", specify_plot_limits = true,
                                        plot_limits = η_colorrange)
     save(@sprintf("η_%d.png", i_plot), fig)
-    title = "Tracer distribution after $(prettytime(simulation_time*6371e3))"
+    title = "Tracer distribution after $(prettytime(simulation_time))"
     fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title;
                                        cbar_label = "Tracer level (tracer units m⁻³)", specify_plot_limits = true,
                                        plot_limits = c_colorrange)
