@@ -167,9 +167,9 @@ function configured_kernel(arch, grid, workspec, kernel!;
                            kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
-                                      include_right_boundaries,
-                                      reduced_dimensions,
-                                      location)
+                                    include_right_boundaries,
+                                    reduced_dimensions,
+                                    location)
 
     offset = offsets(workspec)
 
