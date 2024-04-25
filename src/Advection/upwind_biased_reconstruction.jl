@@ -38,8 +38,8 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI, D} <: AbstractUpwindBiasedAdvecti
     end
 end
 
-const    DivergentUpwind{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, true}  where {N, FT, XT, YT, ZT, CA, SI}
-const NonDivergentUpwind{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, false} where {N, FT, XT, YT, ZT, CA, SI}
+const    DivergentUpwindBiased{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, true}  where {N, FT, XT, YT, ZT, CA, SI}
+const NonDivergentUpwindBiased{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, false} where {N, FT, XT, YT, ZT, CA, SI}
 
 function UpwindBiased(FT::DataType = Float64; 
                       grid = nothing, 

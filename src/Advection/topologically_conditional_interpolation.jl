@@ -41,8 +41,8 @@ const HOADV = Union{NonDivergentWENO,
                     Tuple(NonDivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
 
 const HOADVDiv = Union{DivergentWENO, 
-                    Tuple(DivergentCentered{N} for N in advection_buffers[2:end])...,
-                    Tuple(DivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
+                       Tuple(DivergentCentered{N} for N in advection_buffers[2:end])...,
+                       Tuple(DivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
