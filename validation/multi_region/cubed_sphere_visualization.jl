@@ -2,8 +2,12 @@ using LinearAlgebra
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
-function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location, k = 1)
+function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; k = 1)
 
+    if location == "cc"
+        return field
+    end
+    
     Nx = grid.Nx
     Ny = grid.Ny
 
@@ -28,7 +32,7 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location, k
 
 end
 
-function read_big_endian_coordinates(filename, nInterior = 32, Nhalo = 1)
+function read_big_endian_coordinates(filename, nInterior, Nhalo)
     # Open the file in binary read mode
     open(filename, "r") do io
         # Calculate the number of Float64 values in the file
@@ -82,9 +86,9 @@ function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, lab
 
 end
 
-function make_heat_map_or_contour_plot(output_directory, plot_type, x, y, φ, φ_limits, file_name, labels, title, 
+function make_heat_map_or_contour_plot(output_directory, plot_type, x, y, φ, φ_limits, file_name, labels, title,
                                        resolution, labelsizes, ticklabelsizes, labelpaddings, aspect, titlesize, 
-                                       titlegap, colormap, contourlevels, specify_axis_limits = true, 
+                                       titlegap, colormap, contourlevels; specify_axis_limits = true, 
                                        use_specified_limits = false)
 
     cwd = pwd()
@@ -188,7 +192,7 @@ function specify_colorrange_MITgcm(φ, use_symmetric_colorrange = true)
 
 end
 
-function specify_colorrange(grid, φ, use_symmetric_colorrange = true, ssh = false)
+function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = false)
 
     Nx = grid.Nx
     Ny = grid.Ny
@@ -220,7 +224,7 @@ function specify_colorrange(grid, φ, use_symmetric_colorrange = true, ssh = fal
 
 end
 
-function specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange = true, ssh = false)
+function specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = true, ssh = false)
 
     Nx = grid.Nx
     Ny = grid.Ny
@@ -257,7 +261,7 @@ function specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange
 
 end
 
-function panel_wise_visualization_MITgcm(x, y, field, use_symmetric_colorrange)
+function panel_wise_visualization_MITgcm(x, y, field; use_symmetric_colorrange = true)
 
     fig = Figure(resolution = (2450, 1400))
 
@@ -300,7 +304,7 @@ function panel_wise_visualization_MITgcm(x, y, field, use_symmetric_colorrange)
     
 end
 
-function panel_wise_visualization_of_grid_metrics_with_halos(metric, use_symmetric_colorrange = true)
+function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetric_colorrange = true)
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0,
@@ -341,14 +345,14 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric, use_symmetr
     return fig
 end
 
-function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_colorrange = true, ssh = false)
+function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false)
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+    colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -382,7 +386,7 @@ function panel_wise_visualization_with_halos(grid, field, k = 1, use_symmetric_c
     return fig
 end
 
-function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange = true, ssh = false)
+function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false)
     fig = Figure(resolution = (2450, 1400))
     
     Nx = grid.Nx
@@ -392,7 +396,7 @@ function panel_wise_visualization(grid, field, k = 1, use_symmetric_colorrange =
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+    colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -436,7 +440,7 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     if specify_plot_limits
         colorrange = plot_limits
     else
-        colorrange = specify_colorrange(grid, field, use_symmetric_colorrange, ssh)
+        colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
     end
 
     if use_symmetric_colorrange
@@ -457,9 +461,63 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     return fig
 end
 
-function create_heat_map_or_contour_plot_animation(plot_type, x, y, φ_series, start_index, resolution, axis_kwargs, 
-                                                   use_symmetric_colorrange, contourlevels, cbar_kwargs, framerate, 
-                                                   filename)
+function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix; start_index = 1,
+                                                k = 1, use_symmetric_colorrange = true, ssh = false, cbar_label = "",
+                                                specify_plot_limits = false, plot_limits = [], framerate = 10,
+                                                filename = "animation")
+    n = Observable(start_index)
+    
+    fig = Figure(resolution=(1350, 650))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
+
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange_timeseries(grid, fields; use_symmetric_colorrange = use_symmetric_colorrange,
+                                                   ssh = ssh)
+    end
+
+    if use_symmetric_colorrange
+        colormap = :balance
+    else
+        colormap = :amp
+    end
+    
+    ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
+    ax.title = title_prefix * " after " * prettytimes[start_index]
+    field = interpolate_cubed_sphere_field_to_cell_centers(grid, fields[start_index], location; k = k)
+    heatlatlon!(ax, field, k; colorrange, colormap)
+    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
+             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+    colsize!(fig.layout, 1, Auto(0.8))
+    colgap!(fig.layout, 75)
+    
+    # Use an on block to reactively update the visualization.
+    on(n) do index
+        # Update the title of the plot
+        ax.title = title_prefix * " after " * prettytimes[index]
+        # Update the plot
+        field = interpolate_cubed_sphere_field_to_cell_centers(grid, fields[index], location; k = k)
+        heatlatlon!(ax, field, k; colorrange, colormap)
+        Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
+                 labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+        colsize!(fig.layout, 1, Auto(0.8))
+        colgap!(fig.layout, 75)
+    end
+    
+    frames = 1:size(fields, 1)
+    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+        msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+        n[] = i
+    end
+end
+
+function create_heat_map_or_contour_plot_animation(plot_type, x, y, φ_series, resolution, axis_kwargs, contourlevels,
+                                                   cbar_kwargs, framerate, filename; start_index = 1,
+                                                   use_symmetric_colorrange = true)
 
     n = Observable(start_index)
     φ = @lift begin
@@ -511,20 +569,17 @@ function test_create_heat_map_or_contour_plot_animation()
     axis_kwargs = (xlabel = "x", ylabel = "y", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, 
                    yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
                    title = "sin(kx + ly - ωt)", titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    use_symmetric_colorrange = true
     contourlevels = 50
     cbar_kwargs = (label = "sin(kx + ly - ωt)", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
     framerate = 10
-    create_heat_map_or_contour_plot_animation("heat_map", x, y, φ_series, 1, (850, 750), axis_kwargs, 
-                                              use_symmetric_colorrange, contourlevels, cbar_kwargs, framerate, 
-                                              "sine_wave_heat_map")
-    create_heat_map_or_contour_plot_animation("filled_contour_plot", x, y, φ_series, 1, (850, 750), axis_kwargs, 
-                                              use_symmetric_colorrange, contourlevels, cbar_kwargs, framerate, 
-                                              "sine_wave_filled_contour_plot")
+    create_heat_map_or_contour_plot_animation("heat_map", x, y, φ_series, (850, 750), axis_kwargs, contourlevels,
+                                              cbar_kwargs, framerate, "sine_wave_heat_map")
+    create_heat_map_or_contour_plot_animation("filled_contour_plot", x, y, φ_series, (850, 750), axis_kwargs, 
+                                              contourlevels, cbar_kwargs, framerate, "sine_wave_filled_contour_plot")
 end
 
-function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, start_index, use_symmetric_colorrange, 
-                                                          framerate, filename)
+function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, framerate, filename; start_index = 1,
+                                                          use_symmetric_colorrange = true)
 
     n = Observable(start_index) # the current index
 
@@ -596,12 +651,12 @@ function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, start
 
 end
 
-function create_panel_wise_visualization_animation_with_halos(grid, φ_series, start_index, use_symmetric_colorrange, 
-                                                              framerate, filename, k=1, ssh = false)
+function create_panel_wise_visualization_animation_with_halos(grid, φ_series, framerate, filename; start_index = 1,
+                                                              k = 1, use_symmetric_colorrange = true, ssh = false)
 
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange(grid, φ_series, use_symmetric_colorrange, ssh)
+    colorrange = specify_colorrange(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -669,15 +724,16 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, s
 
 end
 
-function create_panel_wise_visualization_animation(grid, φ_series, start_index, use_symmetric_colorrange, framerate, 
-                                                   filename, k=1, ssh = false)
+function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,
+                                                   use_symmetric_colorrange = true, ssh = false)
     
     Nx = grid.Nx
     Ny = grid.Ny
     
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange_timeseries(grid, φ_series, use_symmetric_colorrange, ssh)
+    colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange,
+                                               ssh = ssh)
     if use_symmetric_colorrange
         colormap = :balance
     else

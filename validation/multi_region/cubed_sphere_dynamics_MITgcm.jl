@@ -22,11 +22,11 @@ using KernelAbstractions: @kernel, @index
 
 include("cubed_sphere_visualization.jl")
 
-g = 10.
+g = 10
 
 Lz = 1000
 R  = 6370e3 # sphere's radius
-U  = 40.    # velocity scale
+U  = 40     # velocity scale
 
 # Solid body and planet rotation:
 Ω_prime = U/R
@@ -47,7 +47,7 @@ if load_cs32_grid
                                     z = (-Lz, 0),
                                     panel_halo = (1, 1, 1),
                                     radius = R)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Nx, Ny, Nz = size(grid)
 else
     old_code_metrics_JMC = true
     if old_code_metrics_JMC
@@ -164,24 +164,24 @@ plot_initial_condition_before_model_definition = false
 if plot_initial_condition_before_model_definition
     # Plot the initial velocity field before model definition.
 
-    fig = panel_wise_visualization_with_halos(grid, u)
+    fig = panel_wise_visualization_with_halos(grid, u; k = Nz)
     save("u₀₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization(grid, u)
+    fig = panel_wise_visualization(grid, u; k = Nz)
     save("u₀₀.png", fig)
 
-    fig = panel_wise_visualization_with_halos(grid, v)
+    fig = panel_wise_visualization_with_halos(grid, v; k = Nz)
     save("v₀₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization(grid, v)
+    fig = panel_wise_visualization(grid, v; k = Nz)
     save("v₀₀.png", fig)
 
     # Plot the initial vorticity field before model definition.
 
-    fig = panel_wise_visualization_with_halos(grid, ζ)
+    fig = panel_wise_visualization_with_halos(grid, ζ; k = Nz)
     save("ζ₀₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization(grid, ζ)
+    fig = panel_wise_visualization(grid, ζ; k = Nz)
     save("ζ₀₀.png", fig)
 end
 
@@ -439,7 +439,7 @@ u = XFaceField(grid)
 v = YFaceField(grid)
 
 for region in 1:number_of_regions(grid)
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in 1:grid.Nz
+    for j in 1:Ny, i in 1:Nx, k in 1:Nz
         u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
         v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
     end
@@ -469,12 +469,12 @@ fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 
 for region in 1:number_of_regions(grid)
 
-    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in 1:grid.Nz
+    for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in 1:Nz
         model.velocities.u[region][i, j, k] = u[region][i, j, k]
         model.velocities.v[region][i, j, k] = v[region][i, j, k]
     end
 
-    for j in 1:grid.Ny, i in 1:grid.Nx, k in grid.Nz+1:grid.Nz+1
+    for j in 1:Ny, i in 1:Nx, k in Nz+1:Nz+1
         φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
         model.free_surface.η[region][i, j, k] = fac * ( (sind(φ))^2 -1/3 )
     end
@@ -522,16 +522,16 @@ save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 end
 
 ζ_fields = Field[]
-Δζ_fields = Field[]
 
 function save_ζ(sim)
+    grid = sim.model.grid
+    
     Hx, Hy, Hz = halo_size(grid)
-
-    fill_halo_regions!((sim.model.velocities.u, sim.model.velocities.v))
-
+    offset = -1 .* halo_size(grid)
+    
     u, v, _ = sim.model.velocities
 
-    offset = -1 .* halo_size(grid)
+    fill_halo_regions!((u, v))
 
     @apply_regionally begin
         params = KernelParameters(total_size(ζ[1]), offset)
@@ -539,15 +539,6 @@ function save_ζ(sim)
     end
 
     push!(ζ_fields, deepcopy(ζ))
-
-    Δζ_field = deepcopy(ζ)
-    for region in 1:number_of_regions(grid)
-        for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
-            Δζ_field[region][i, j, k] -= ζ₀[region][i, j, k]
-        end
-    end
-
-    push!(Δζ_fields, Δζ_field)
 end
 
 η_fields = Field[]
@@ -559,7 +550,7 @@ v₀ = deepcopy(simulation.model.velocities.v)
 
 η₀ = deepcopy(simulation.model.free_surface.η)
 for region in 1:number_of_regions(grid)
-    for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+    for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
         η₀[region][i, j, k] -= Lz
     end
 end
@@ -608,32 +599,32 @@ end
 
 # Plot the initial velocity field after model definition.
 
-fig = panel_wise_visualization_with_halos(grid, u₀)
+fig = panel_wise_visualization_with_halos(grid, u₀; k = Nz)
 save("u₀_with_halos.png", fig)
 
-fig = panel_wise_visualization(grid, u₀)
+fig = panel_wise_visualization(grid, u₀; k = Nz)
 save("u₀.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, v₀)
+fig = panel_wise_visualization_with_halos(grid, v₀; k = Nz)
 save("v₀_with_halos.png", fig)
 
-fig = panel_wise_visualization(grid, v₀)
+fig = panel_wise_visualization(grid, v₀; k = Nz)
 save("v₀.png", fig)
 
 # Plot the initial vorticity field after model definition.
 
-fig = panel_wise_visualization_with_halos(grid, ζ₀)
+fig = panel_wise_visualization_with_halos(grid, ζ₀; k = Nz)
 save("ζ₀_with_halos.png", fig)
 
-fig = panel_wise_visualization(grid, ζ₀)
+fig = panel_wise_visualization(grid, ζ₀; k = Nz)
 save("ζ₀.png", fig)
 
 # Plot the initial surface elevation field after model definition.
 
-fig = panel_wise_visualization_with_halos(grid, η₀, grid.Nz+1, true, true)
+fig = panel_wise_visualization_with_halos(grid, η₀; k = Nz+1, ssh = true)
 save("η₀_with_halos.png", fig)
 
-fig = panel_wise_visualization(grid, η₀, grid.Nz+1, true, true)
+fig = panel_wise_visualization(grid, η₀; k = Nz+1, ssh = true)
 save("η₀.png", fig)
 
 animation_time = 15 # seconds
@@ -651,10 +642,31 @@ simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields
 
 run!(simulation)
 
+if print_output_to_jld2_file
+    jldopen("cubed_sphere_solid_body_rotation_initial_condition.jld2", "w") do file
+        for region in 1:6
+            file["u/"*string(region)] = u_fields[1][region][:, :, Nz]
+            file["v/"*string(region)] = v_fields[1][region][:, :, Nz]
+            file["ζ/"*string(region)] = ζ_fields[1][region][:, :, Nz]
+            file["η/"*string(region)] = η_fields[1][region][:, :, Nz+1]
+        end
+    end
+    jldopen("cubed_sphere_solid_body_rotation_output.jld2", "w") do file
+        for region in 1:6
+            file["u/"*string(region)] = u_fields[end][region][:, :, Nz]
+            file["v/"*string(region)] = v_fields[end][region][:, :, Nz]
+            file["ζ/"*string(region)] = ζ_fields[end][region][:, :, Nz]
+            file["η/"*string(region)] = η_fields[end][region][:, :, Nz+1]
+        end
+    end
+end
+
+# Make plots and animations.
+
 n_snapshots = length(η_fields)
 for i_snapshot in 1:n_snapshots
     for region in 1:number_of_regions(grid)
-        for j in 1-Hy:grid.Ny+Hy, i in 1-Hx:grid.Nx+Hx, k in grid.Nz+1:grid.Nz+1
+        for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
             η_fields[i_snapshot][region][i, j, k] -= Lz
         end
     end
@@ -667,8 +679,8 @@ n_plots = 3
 
 for i_plot in 1:n_plots
     frame_index = round(Int, i_plot * n_frames / n_plots)
-    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index], true, false)
-    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index], true, true)
+    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
+    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; ssh = true)
     if i_plot == 1
         ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
         η_colorrange[:] = collect(η_colorrange_at_frame_index)
@@ -687,48 +699,69 @@ for i_plot in 1:n_plots
     fig = geo_heatlatlon_visualization(grid,
                                        interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
                                                                                       "ff"), title;
-                                       cbar_label = "Relative vorticity (s⁻¹)", specify_plot_limits = true,
+                                       cbar_label = "Relative vorticity", specify_plot_limits = true,
                                        plot_limits = ζ_colorrange)
     save(@sprintf("ζ_%d.png", i_plot), fig)
     title = "Surface elevation after $(prettytime(simulation_time))"
     fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
-                                       cbar_label = "Surface elevation (m)", specify_plot_limits = true,
+                                       cbar_label = "Surface elevation", specify_plot_limits = true,
                                        plot_limits = η_colorrange)
     save(@sprintf("η_%d.png", i_plot), fig)
 end
 
-if print_output_to_jld2_file
-    jldopen("cubed_sphere_solid_body_rotation_initial_condition.jld2", "w") do file
-        for region in 1:6
-            file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
-            file["u/" * string(region)] = u_fields[1][region][:, :, 1]
-            file["v/" * string(region)] = v_fields[1][region][:, :, 1]
-            file["ζ/" * string(region)] = ζ_fields[1][region][:, :, 1]
-            file["η/" * string(region)] = η_fields[1][region][:, :, 1+1]
-        end
-    end
-    jldopen("cubed_sphere_solid_body_rotation_output.jld2", "w") do file
-        for region in 1:6
-            file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ
-            file["u/" * string(region)] = u_fields[end][region][:, :, 1]
-            file["v/" * string(region)] = v_fields[end][region][:, :, 1]
-            file["ζ/" * string(region)] = ζ_fields[end][region][:, :, 1]
-            file["η/" * string(region)] = η_fields[end][region][:, :, 1+1]
-        end
-    end
-end
+fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
+save("u_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
+save("u.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
+save("v_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
+save("v.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
+save("ζ_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
+save("ζ.png", fig)
+
+fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
+save("η_with_halos.png", fig)
+
+fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
+save("η.png", fig)
+
+create_panel_wise_visualization_animation(grid, u_fields, framerate, "u"; k = Nz)
+create_panel_wise_visualization_animation(grid, v_fields, framerate, "v"; k = Nz)
+create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "ζ"; k = Nz)
+create_panel_wise_visualization_animation(grid, η_fields, framerate, "η"; k = Nz+1, ssh = true)
+
+prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
+
+u_colorrange = specify_colorrange_timeseries(grid, u_fields)
+geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity";
+                                       k = Nz, cbar_label = "zonal velocity", specify_plot_limits = true,
+                                       plot_limits = u_colorrange, framerate = framerate,
+                                       filename = "u_geo_heatlatlon_animation")
+
+v_colorrange = specify_colorrange_timeseries(grid, v_fields)
+geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity";
+                                       k = Nz, cbar_label = "meridional velocity", specify_plot_limits = true,
+                                       plot_limits = v_colorrange, framerate = framerate,
+                                       filename = "v_geo_heatlatlon_animation")
+
+ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
+geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity";
+                                       k = Nz, cbar_label = "relative vorticity", specify_plot_limits = true,
+                                       plot_limits = ζ_colorrange, framerate = framerate,
+                                       filename = "ζ_geo_heatlatlon_animation")
 
 #=
-fig = panel_wise_visualization(grid, Δζ_fields[end])
-save("Δζ.png", fig)
-
-fig = panel_wise_visualization(grid, ζ₀)
-save("ζ₀.png", fig)
-
-start_index = 1
-use_symmetric_colorrange = true
-animation_time = 10 # seconds
-framerate = floor(Int, size(Δζ_fields)[1]/animation_time)
-
-create_panel_wise_visualization_animation(grid, Δζ_fields, start_index, use_symmetric_colorrange, framerate, "Δζ")
+η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
+geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation";
+                                       k = Nz+1, ssh = true, cbar_label = "surface elevation",
+                                       specify_plot_limits = true, plot_limits = η_colorrange, framerate = framerate,
+                                       filename = "η_geo_heatlatlon_animation")
 =#
