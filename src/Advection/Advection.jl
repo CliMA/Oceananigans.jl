@@ -40,11 +40,9 @@ import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 import Oceananigans.Architectures: on_architecture
 
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-abstract type AbstractAdvectionScheme{B, FT} end
-abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractAdvectionScheme{B, D, FT} end
+abstract type AbstractCenteredAdvectionScheme{B, D, FT} <: AbstractAdvectionScheme{B, D, FT} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, D, FT} <: AbstractAdvectionScheme{B, D, FT} end
 
 # `advection_buffers` specifies the list of buffers for which advection schemes
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
@@ -57,7 +55,7 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 @inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
-@inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
+@inline Base.eltype(::AbstractAdvectionScheme{<:Any, <:Any, FT}) where FT = FT
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")

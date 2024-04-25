@@ -2,13 +2,13 @@ using Oceananigans.Operators
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
-struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
-struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
+struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, false, FT} end
+struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, false, FT} end
 
 EnergyConserving(FT::DataType = Float64)    = EnergyConserving{FT}()
 EnstrophyConserving(FT::DataType = Float64) = EnstrophyConserving{FT}()
 
-struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, false, FT}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
     vertical_scheme                :: V  # recontruction scheme for vertical advection

@@ -78,7 +78,7 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 26.7 KiB
+└── file size: 26.5 KiB
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)

@@ -184,7 +184,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     end
 end
 
-using Oceananigans.Advection: LOADV, HOADV, WENO
+using Oceananigans.Advection: LOADV, HOADV, HOADVDiv, WENO
 using Oceananigans.Advection: AbstractSmoothnessStencil, VelocityStencil, DefaultStencil
 
 for bias in (:symmetric, :left_biased, :right_biased)
@@ -206,11 +206,17 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 # Fallback for low order interpolation
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
 
-                # Conditional high-order interpolation in Bounded directions
+                # Conditional high-order interpolation in Bounded directions - Non divergent
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
+
+                # Conditional high-order interpolation in Bounded directions - Divergent
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADVDiv, args...) =
+                    $near_boundary(i, j, k, ibg, scheme) ? 
+                       $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...) :
+                       $interp(i, j, k, ibg, scheme, args...)
             end
         end
     end

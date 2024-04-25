@@ -7,7 +7,7 @@
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
+struct Centered{N, FT, XT, YT, ZT, CA, D} <: AbstractCenteredAdvectionScheme{N, D, FT}
     "coefficient for Centered reconstruction on stretched ``x``-faces" 
     coeff_xᶠᵃᵃ :: XT
     "coefficient for Centered reconstruction on stretched ``x``-centers"
@@ -24,19 +24,22 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     "advection scheme used near boundaries"
     buffer_scheme :: CA
 
-    function Centered{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                             coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                             coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                             buffer_scheme::CA) where {N, FT, XT, YT, ZT, CA}
+    function Centered{N, FT, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                buffer_scheme::CA) where {N, FT, XT, YT, ZT, CA, D}
 
-        return new{N, FT, XT, YT, ZT, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                          coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                          coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                          buffer_scheme)
+        return new{N, FT, XT, YT, ZT, CA, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                             coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                             coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                             buffer_scheme)
     end
 end
 
-function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
+function Centered(FT::DataType = Float64; 
+                  grid = nothing, 
+                  order = 2,
+                  divergent_branches = true) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -55,8 +58,11 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
         coefficients    = Tuple(nothing for i in 1:6)
         buffer_scheme = nothing
     end
-    return Centered{N, FT}(coefficients..., buffer_scheme)
+    return Centered{N, FT, divergent_branches}(coefficients..., buffer_scheme)
 end
+
+const    DivergentCentered{N, FT, XT, YT, ZT, CA} = Centered{N, FT, XT, YT, ZT, CA, true}  where {N, FT, XT, YT, ZT, CA}
+const NonDivergentCentered{N, FT, XT, YT, ZT, CA} = Centered{N, FT, XT, YT, ZT, CA, false} where {N, FT, XT, YT, ZT, CA}
 
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
 
@@ -70,17 +76,17 @@ Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
               "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )
 
 
-Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
-    Centered{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                    Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                    Adapt.adapt(to, scheme.buffer_scheme))
+Adapt.adapt_structure(to, scheme::Centered{N, FT, XT, YT, ZT, CA, D}) where {N, FT, XT, YT, ZT, CA, D} =
+    Centered{N, FT, D}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.buffer_scheme))
 
-on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
-    Centered{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
-                    on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
-                    on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
-                    on_architecture(to, scheme.buffer_scheme))
+on_architecture(to, scheme::Centered{N, FT, XT, YT, ZT, CA, D}) where {N, FT, XT, YT, ZT, CA, D} =
+    Centered{N, FT, D}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                       on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                       on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                       on_architecture(to, scheme.buffer_scheme))
 
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)

@@ -7,7 +7,7 @@
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
+struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI, D} <: AbstractUpwindBiasedAdvectionScheme{N, D, FT} 
     "Coefficient for Upwind reconstruction on stretched ``x``-faces" 
     coeff_xᶠᵃᵃ::XT
     "Coefficient for Upwind reconstruction on stretched ``x``-centers"
@@ -26,19 +26,25 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionS
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function UpwindBiased{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                                 coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                                 coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                                 buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, XT, YT, ZT, CA, SI}
+    function UpwindBiased{N, FT, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                    coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                    coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                    buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, D, FT, XT, YT, ZT, CA, SI}
 
-        return new{N, FT, XT, YT, ZT, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                              coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                              coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                              buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, XT, YT, ZT, CA, SI, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                                 coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                                 coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                 buffer_scheme, advecting_velocity_scheme)
     end
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
+const    DivergentUpwindBiased{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, true}  where {N, FT, XT, YT, ZT, CA, SI}
+const NonDivergentUpwindBiased{N, FT, XT, YT, ZT, CA, SI} = UpwindBiased{N, FT, XT, YT, ZT, CA, SI, false} where {N, FT, XT, YT, ZT, CA, SI}
+
+function UpwindBiased(FT::DataType = Float64; 
+                      grid = nothing, 
+                      divergent_branches = true,
+                      order = 3) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -62,7 +68,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
         buffer_scheme  = nothing
     end
 
-    return UpwindBiased{N, FT}(coefficients..., buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT, divergent_branches}(coefficients..., buffer_scheme, advecting_velocity_scheme)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)
@@ -78,19 +84,19 @@ Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} 
               "    ├── Y $(YT == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )
 
-Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                        Adapt.adapt(to, scheme.buffer_scheme),
-                        Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT, XT, YT, ZT, CA, SI, D}) where {N, FT, XT, YT, ZT, CA, SI, D} =
+    UpwindBiased{N, FT, D}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                           Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                           Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                           Adapt.adapt(to, scheme.buffer_scheme),
+                           Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
-                        on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
-                        on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
-                        on_architecture(to, scheme.buffer_scheme),
-                        on_architecture(to, scheme.advecting_velocity_scheme))
+on_architecture(to, scheme::UpwindBiased{N, FT, XT, YT, ZT, CA, SI, D}) where {N, FT, XT, YT, ZT, CA, SI, D} =
+    UpwindBiased{N, FT, D}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                           on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                           on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                           on_architecture(to, scheme.buffer_scheme),
+                           on_architecture(to, scheme.advecting_velocity_scheme))
 
 # Useful aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)

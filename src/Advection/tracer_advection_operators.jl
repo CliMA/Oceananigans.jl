@@ -1,7 +1,7 @@
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Oceananigans.Fields: ZeroField
 
-struct TracerAdvection{N, FT, A, B, C} <: AbstractAdvectionScheme{N, FT}
+struct TracerAdvection{N, FT, A, B, C} <: AbstractAdvectionScheme{N, true, FT}
     x :: A
     y :: B
     z :: C

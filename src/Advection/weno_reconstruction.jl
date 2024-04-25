@@ -3,7 +3,7 @@
 #####
 using Oceananigans.Fields: CenterField
 
-struct WENO{N, FT, XT, YT, ZT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, D} <: AbstractUpwindBiasedAdvectionScheme{N, D, FT}
     
     "Coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -26,18 +26,21 @@ struct WENO{N, FT, XT, YT, ZT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionSchem
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                         coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                         coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                         bounds::PP, buffer_scheme::CA,
-                         advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, PP, CA, SI}
+    function WENO{N, FT, WF, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                bounds::PP, buffer_scheme::CA,
+                                advecting_velocity_scheme :: SI) where {N, D, FT, XT, YT, ZT, WF, PP, CA, SI}
 
-            return new{N, FT, XT, YT, ZT, PP, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                                      coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                                      coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                      bounds, buffer_scheme, advecting_velocity_scheme)
+            return new{N, FT, XT, YT, ZT, WF, PP, CA, SI, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                                             coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                                             coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                             bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
+
+const    DivergentWENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} = WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, true}  where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
+const NonDivergentWENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} = WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, false} where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
 
 """
     WENO([FT=Float64;] 
@@ -103,6 +106,7 @@ WENO reconstruction order 7
 """
 function WENO(FT::DataType=Float64; 
               order = 5,
+              divergent_branches = true,
               grid = nothing, 
               bounds = nothing)
     
@@ -123,8 +127,7 @@ function WENO(FT::DataType=Float64;
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
-    return WENO{N, FT}(weno_coefficients..., 
-                       bounds, buffer_scheme, advecting_velocity_scheme)
+    return WENO{N, FT, zweno, divergent_branches}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
@@ -150,21 +153,21 @@ Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, WF, PP}) where {N, FT, RX, RY, RZ, 
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
-     WENO{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                 Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                 Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                 Adapt.adapt(to, scheme.bounds),
-                 Adapt.adapt(to, scheme.buffer_scheme),
-                 Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, D}) where {N, FT, XT, YT, ZT, WF, PP, CA, SI, D} =
+     WENO{N, FT, WF, D}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                        Adapt.adapt(to, scheme.bounds),
+                        Adapt.adapt(to, scheme.buffer_scheme),
+                        Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
-    WENO{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
-                on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
-                on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
-                on_architecture(to, scheme.bounds),
-                on_architecture(to, scheme.buffer_scheme),
-                on_architecture(to, scheme.advecting_velocity_scheme))
+on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, D}) where {N, FT, XT, YT, ZT, WF, PP, CA, SI, D} =
+    WENO{N, FT, WF, D}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                       on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                       on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                       on_architecture(to, scheme.bounds),
+                       on_architecture(to, scheme.buffer_scheme),
+                       on_architecture(to, scheme.advecting_velocity_scheme))
 
 # Retrieve precomputed coefficients (+2 for julia's 1 based indices)
 @inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
