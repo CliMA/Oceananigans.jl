@@ -35,9 +35,11 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
 # Separate High order advection from low order advection
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
+
 const HOADV = Union{NonDivergentWENO, 
                     Tuple(NonDivergentCentered{N} for N in advection_buffers[2:end])...,
                     Tuple(NonDivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
+
 const HOADVDiv = Union{DivergentWENO, 
                     Tuple(DivergentCentered{N} for N in advection_buffers[2:end])...,
                     Tuple(DivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
