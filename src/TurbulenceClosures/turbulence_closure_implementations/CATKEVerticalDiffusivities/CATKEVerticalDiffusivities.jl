@@ -144,7 +144,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   maximum_tracer_diffusivity = Inf,
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
-                                  minimum_turbulent_kinetic_energy = 1e-15,
+                                  minimum_turbulent_kinetic_energy = 1e-9,
                                   minimum_convective_buoyancy_flux = 1e-15,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
 
