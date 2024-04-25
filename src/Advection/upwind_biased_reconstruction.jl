@@ -7,7 +7,7 @@
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
+struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI, D} <: AbstractUpwindBiasedAdvectionScheme{N, D, FT} 
     "Coefficient for Upwind reconstruction on stretched ``x``-faces" 
     coeff_xᶠᵃᵃ::XT
     "Coefficient for Upwind reconstruction on stretched ``x``-centers"
@@ -26,19 +26,22 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionS
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function UpwindBiased{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                                 coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                                 coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                                 buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, XT, YT, ZT, CA, SI}
+    function UpwindBiased{N, FT, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                    coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                    coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                    buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, D, FT, XT, YT, ZT, CA, SI}
 
-        return new{N, FT, XT, YT, ZT, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                              coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                              coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                              buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, XT, YT, ZT, CA, SI, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                                 coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                                 coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                 buffer_scheme, advecting_velocity_scheme)
     end
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
+function UpwindBiased(FT::DataType = Float64; 
+                      grid = nothing, 
+                      divergent_branches = true,
+                      order = 3) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -62,7 +65,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
         buffer_scheme  = nothing
     end
 
-    return UpwindBiased{N, FT}(coefficients..., buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT, divergent_branches}(coefficients..., buffer_scheme, advecting_velocity_scheme)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)

@@ -7,7 +7,7 @@
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
+struct Centered{N, FT, XT, YT, ZT, CA, D} <: AbstractCenteredAdvectionScheme{N, D, FT}
     "coefficient for Centered reconstruction on stretched ``x``-faces" 
     coeff_xᶠᵃᵃ :: XT
     "coefficient for Centered reconstruction on stretched ``x``-centers"
@@ -24,19 +24,22 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     "advection scheme used near boundaries"
     buffer_scheme :: CA
 
-    function Centered{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                             coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                             coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                             buffer_scheme::CA) where {N, FT, XT, YT, ZT, CA}
+    function Centered{N, FT, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                buffer_scheme::CA) where {N, FT, XT, YT, ZT, CA, D}
 
-        return new{N, FT, XT, YT, ZT, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                          coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                          coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                          buffer_scheme)
+        return new{N, FT, XT, YT, ZT, CA, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                             coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                             coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                             buffer_scheme)
     end
 end
 
-function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
+function Centered(FT::DataType = Float64; 
+                  grid = nothing, 
+                  order = 2,
+                  divergent_branches = true) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -55,7 +58,7 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
         coefficients    = Tuple(nothing for i in 1:6)
         buffer_scheme = nothing
     end
-    return Centered{N, FT}(coefficients..., buffer_scheme)
+    return Centered{N, FT, divergent_branches}(coefficients..., buffer_scheme)
 end
 
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)

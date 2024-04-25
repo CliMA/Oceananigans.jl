@@ -2,7 +2,7 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, D} <: AbstractUpwindBiasedAdvectionScheme{N, D, FT}
     
     "Coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -25,16 +25,16 @@ struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionS
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                             coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                             coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                             bounds::PP, buffer_scheme::CA,
-                             advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
+    function WENO{N, FT, WF, D}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                                coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                                bounds::PP, buffer_scheme::CA,
+                                advecting_velocity_scheme :: SI) where {N, D, FT, XT, YT, ZT, WF, PP, CA, SI}
 
-            return new{N, FT, XT, YT, ZT, WF, PP, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                                          coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                                          coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                          bounds, buffer_scheme, advecting_velocity_scheme)
+            return new{N, FT, XT, YT, ZT, WF, PP, CA, SI, D}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
+                                                             coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
+                                                             coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                             bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
@@ -102,6 +102,7 @@ WENO reconstruction order 7
 """
 function WENO(FT::DataType=Float64; 
               order = 5,
+              divergent_branches = true,
               grid = nothing, 
               zweno = true, 
               bounds = nothing)
@@ -123,7 +124,7 @@ function WENO(FT::DataType=Float64;
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
-    return WENO{N, FT, zweno}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
+    return WENO{N, FT, zweno, divergent_branches}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
