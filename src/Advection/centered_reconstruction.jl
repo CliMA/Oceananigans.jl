@@ -76,17 +76,17 @@ Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
               "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )
 
 
-Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
-    Centered{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                    Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                    Adapt.adapt(to, scheme.buffer_scheme))
+Adapt.adapt_structure(to, scheme::Centered{N, FT, XT, YT, ZT, CA, D}) where {N, FT, XT, YT, ZT, CA, D} =
+    Centered{N, FT, D}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.buffer_scheme))
 
-on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
-    Centered{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
-                    on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
-                    on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
-                    on_architecture(to, scheme.buffer_scheme))
+on_architecture(to, scheme::Centered{N, FT, XT, YT, ZT, CA, D}) where {N, FT, XT, YT, ZT, CA, D} =
+    Centered{N, FT, D}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                       on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                       on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                       on_architecture(to, scheme.buffer_scheme))
 
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
