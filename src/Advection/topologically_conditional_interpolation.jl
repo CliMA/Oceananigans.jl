@@ -57,8 +57,9 @@ for bias in (:symmetric, :left_biased, :right_biased)
             alt_interp = Symbol(:_, interp)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...)    = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...)    = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADVDiv, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
