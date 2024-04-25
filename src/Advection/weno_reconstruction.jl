@@ -38,6 +38,9 @@ struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, D} <: AbstractUpwindBiasedAdvecti
     end
 end
 
+const    DivergentWENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} = WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, true}  where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
+const NonDivergentWENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} = WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI, false} where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
+
 """
     WENO([FT=Float64;] 
          order = 5,

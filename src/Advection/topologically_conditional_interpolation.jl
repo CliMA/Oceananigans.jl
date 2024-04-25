@@ -34,9 +34,13 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_haloᶜ(i, N, adv) = (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv))
 
 # Separate High order advection from low order advection
-const LOADV    = Union{UpwindBiased{1}, Centered{1}, WENO{1}}
-const HOADV    = Union{Tuple(AbstractAdvectionScheme{N, false} for N in advection_buffers[2:end])...}
-const HOADVDiv = Union{Tuple(AbstractAdvectionScheme{N, true} for N in advection_buffers[2:end])...}
+const LOADV = Union{UpwindBiased{1}, Centered{1}}
+const HOADV = Union{NonDivergentWENO, 
+                    Tuple(NonDivergentCentered{N} for N in advection_buffers[2:end])...,
+                    Tuple(NonDivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
+const HOADVDiv = Union{DivergentWENO, 
+                    Tuple(DivergentCentered{N} for N in advection_buffers[2:end])...,
+                    Tuple(DivergentUpwindBiased{N} for N in advection_buffers[2:end])...} 
 
 for bias in (:symmetric, :left_biased, :right_biased)
 

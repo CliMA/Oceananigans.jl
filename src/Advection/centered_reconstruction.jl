@@ -61,6 +61,9 @@ function Centered(FT::DataType = Float64;
     return Centered{N, FT, divergent_branches}(coefficients..., buffer_scheme)
 end
 
+const    DivergentCentered{N, FT, XT, YT, ZT, CA} = Centered{N, FT, XT, YT, ZT, CA, true}  where {N, FT, XT, YT, ZT, CA}
+const NonDivergentCentered{N, FT, XT, YT, ZT, CA} = Centered{N, FT, XT, YT, ZT, CA, false} where {N, FT, XT, YT, ZT, CA}
+
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
 
 Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
