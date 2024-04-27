@@ -70,6 +70,8 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -83,6 +85,8 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -98,6 +102,8 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 └── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 17.6 KiB
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
@@ -148,6 +154,8 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 17.8 KiB
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
@@ -196,7 +204,8 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── 3 outputs: (u, v, w)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 27.2 KiB
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
@@ -213,7 +222,8 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 17.3 KiB
 ```
 
 
@@ -239,7 +249,7 @@ time `interval`. The ``t_i`` specify both the end of the averaging window and th
 Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 days,
 
 ```jldoctest averaged_time_interval
-using Oceananigans.OutputWriters: AveragedTimeInterval
+using Oceananigans
 using Oceananigans.Units
 
 schedule = AveragedTimeInterval(4days, window=1day)
@@ -253,7 +263,6 @@ to time-average its outputs before writing them to disk:
 
 ```jldoctest averaged_time_interval
 using Oceananigans
-using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
@@ -270,5 +279,6 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 day, stride=2, interval=4 days)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 26.5 KiB
 ```

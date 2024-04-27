@@ -41,7 +41,7 @@ end
 SliceEnsembleSize(; size, ensemble=0, halo=(1, 1)) = SliceEnsembleSize(ensemble, size[1], size[2], halo[1], halo[2])
 
 validate_size(TX, TY, TZ, e::SliceEnsembleSize) = tuple(e.ensemble, e.Ny, e.Nz)
-validate_halo(TX, TY, TZ, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
+validate_halo(TX, TY, TZ, size, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
 
 #####
 ##### CATKEVerticalDiffusivity helpers

@@ -289,7 +289,7 @@ end
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
     TX, TY, TZ = topology = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
-    halo = validate_halo(TX, TY, TZ, halo)
+    halo = validate_halo(TX, TY, TZ, size, halo)
 
     # Validate the rectilinear domain
     x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)

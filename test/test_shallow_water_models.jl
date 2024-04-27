@@ -4,7 +4,7 @@ using Oceananigans.Models.ShallowWaterModels
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
-    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo)
+    grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, coriolis=coriolis,
                               momentum_advection=advection, timestepper=:RungeKutta3)
     set!(model, h=1)
@@ -16,7 +16,7 @@ function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection
 end
 
 function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
-    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo)
+    grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, coriolis=coriolis)
     set!(model, h=1)
 
@@ -29,7 +29,7 @@ function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
 end
 
 function shallow_water_model_tracers_and_forcings_work(arch)
-    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=((Periodic, Periodic, Flat)))
+    grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, tracers=(:c, :d))
     set!(model, h=1)
 
@@ -51,9 +51,9 @@ function shallow_water_model_tracers_and_forcings_work(arch)
 end
 
 function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ) 
-    κ, m = 1, 2 # diffusivity and cosine wavenumber
+    ν, m = 1, 2 # viscosity and cosine wavenumber
 
-    closure = ShallowWaterScalarDiffusivity(ν = κ)
+    closure = ShallowWaterScalarDiffusivity(; ν)
     momentum_advection = nothing
     tracer_advection = nothing
     mass_advection = nothing
@@ -68,15 +68,15 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     interior(field) .= on_architecture(architecture(grid), cos.(m * ξ))
     update_state!(model)
 
-    # Step forward with small time-step relative to diff. time-scale
-    Δt = 1e-6 * grid.Lx^2 / κ
-    for n = 1:5
+    # Step forward with small time-step relative to viscous/diffusive time scale
+    Δt = 1e-6 * grid.Lx^2 / closure.ν
+    for _ in 1:5
         time_step!(model, Δt)
     end
 
     diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
     analytical_solution = Field(location(field), grid)
-    analytical_solution .= diffusing_cosine.(ξ, model.clock.time, κ, m)
+    analytical_solution .= diffusing_cosine.(ξ, model.clock.time, ν, m)
 
     return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
 end
@@ -98,7 +98,7 @@ end
         @test_throws MethodError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
-    topo = ( Flat,      Flat,     Flat )
+    topo = (Flat, Flat, Flat)
    
     @testset "$topo model construction" begin
     @info "  Testing $topo model construction..."
@@ -111,8 +111,8 @@ end
     end
 
     topos = (
-             (Bounded,   Flat,     Flat),
-             (Flat,      Bounded,  Flat),
+             (Bounded, Flat,    Flat),
+             (Flat,    Bounded, Flat),
             )
 
     for topo in topos
@@ -121,7 +121,7 @@ end
             for arch in archs, FT in float_types
                 #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
         
-                grid = RectilinearGrid(arch, FT, topology=topo, size=1, extent=1, halo=3)
+                grid = RectilinearGrid(arch, FT, topology=topo, size=3, extent=1, halo=3)
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1) 
                 
                 @test model isa ShallowWaterModel
@@ -130,9 +130,9 @@ end
     end
 
     topos = (
-             (Periodic, Periodic,  Flat),
-             (Periodic,  Bounded,  Flat),
-             (Bounded,   Bounded,  Flat),
+             (Periodic, Periodic, Flat),
+             (Periodic,  Bounded, Flat),
+             (Bounded,   Bounded, Flat),
             )
 
     for topo in topos
@@ -141,7 +141,7 @@ end
             for arch in archs, FT in float_types
                #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
-                grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3, 3))
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), extent=(1, 2), halo=(3, 3))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
 
                 @test model isa ShallowWaterModel

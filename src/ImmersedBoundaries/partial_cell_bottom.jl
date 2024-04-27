@@ -1,6 +1,5 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: on_architecture
 using Printf
 
 #####
@@ -92,14 +91,14 @@ on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(t
           ∘   k  | Δz
       k --x--    ↓
       
-Criterion is h >= z - ϵ Δz
+Criterion is h ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     # Face node above current cell
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j, 1]
-    return z <= h
+    return z ≤ h
 end
 
 @inline bottom_cell(i, j, k, ibg::PCBIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
@@ -108,8 +107,9 @@ end
 @inline function Δzᶜᶜᶜ(i, j, k, ibg::PCBIBG)
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
+
     # Get node at face above and defining nodes on c,c,f
-    x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom height and fractional Δz parameter
     h = @inbounds ib.bottom_height[i, j, 1]
