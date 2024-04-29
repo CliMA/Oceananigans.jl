@@ -242,54 +242,60 @@ end
 
 cᵢ = deepcopy(simulation.model.tracers.c)
 
-# Plot the initial velocity field.
-
 include("cubed_sphere_visualization.jl")
 
-fig = panel_wise_visualization_with_halos(grid, uᵢ; k = Nz)
-save("u₀_with_halos.png", fig)
+plot_initial_field = false
+if plot_initial_field
+    # Plot the initial velocity field.
 
-fig = panel_wise_visualization(grid, uᵢ; k = Nz)
-save("u₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, uᵢ; k = Nz)
+    save("u₀_with_halos.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, vᵢ; k = Nz)
-save("v₀_with_halos.png", fig)
+    fig = panel_wise_visualization(grid, uᵢ; k = Nz)
+    save("u₀.png", fig)
 
-fig = panel_wise_visualization(grid, vᵢ; k = Nz)
-save("v₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, vᵢ; k = Nz)
+    save("v₀_with_halos.png", fig)
 
-# Plot the initial vorticity field after model definition.
+    fig = panel_wise_visualization(grid, vᵢ; k = Nz)
+    save("v₀.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, ζᵢ; k = Nz)
-save("ζ₀_with_halos.png", fig)
+    # Plot the initial vorticity field after model definition.
 
-fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
-save("ζ₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, ζᵢ; k = Nz)
+    save("ζ₀_with_halos.png", fig)
 
-# Plot the initial surface elevation field after model definition.
+    fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
+    save("ζ₀.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, ηᵢ; k = Nz+1, ssh = true)
-save("η₀_with_halos.png", fig)
+    # Plot the initial surface elevation field after model definition.
 
-fig = panel_wise_visualization(grid, ηᵢ; k = Nz+1, ssh = true)
-save("η₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, ηᵢ; k = Nz + 1, ssh = true)
+    save("η₀_with_halos.png", fig)
 
-# Plot the initial tracer field.
+    fig = panel_wise_visualization(grid, ηᵢ; k = Nz + 1, ssh = true)
+    save("η₀.png", fig)
 
-fig = panel_wise_visualization_with_halos(grid, cᵢ; k = Nz)
-save("c₀_with_halos.png", fig)
+    # Plot the initial tracer field.
 
-fig = panel_wise_visualization(grid, cᵢ; k = Nz)
-save("c₀.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, cᵢ; k = Nz)
+    save("c₀_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, cᵢ; k = Nz)
+    save("c₀.png", fig)
+end
 
 animation_time = 15 # seconds
 framerate = 5
-n_frames = animation_time * framerate
-simulation_time_per_frame = stop_time/n_frames
-# Specify animation_time and framerate in such a way that n_frames is a multiple of n_plots defined below.
+n_frames = animation_time * framerate # excluding the initial condition frame
+simulation_time_per_frame = stop_time / n_frames
 save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
 # Redefine the simulation time per frame.
 simulation_time_per_frame = save_fields_iteration_interval * Δt
+# Redefine the number of frames.
+n_frames = floor(Int, Ntime / save_fields_iteration_interval) # excluding the initial condition frame
+# Redefine the animation time.
+animation_time = n_frames / framerate
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
@@ -319,128 +325,138 @@ if print_output_to_jld2_file
     end
 end
 
-n_snapshots = length(η_fields)
-for i_snapshot in 1:n_snapshots
+for i_frame in 1:n_frames+1
     for region in 1:number_of_regions(grid)
         for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
-            η_fields[i_snapshot][region][i, j, k] -= H
+            η_fields[i_frame][region][i, j, k] -= H
         end
     end
 end
 
-n_plots = 3
+plot_final_field = false
 
-ζ_colorrange = zeros(2)
-η_colorrange = zeros(2)
-c_colorrange = zeros(2)
+if plot_final_field
+    fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
+    save("u_with_halos.png", fig)
 
-for i_plot in 1:n_plots
-    frame_index = round(Int, i_plot * n_frames / n_plots)
-    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
-    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; use_symmetric_colorrange = false,
-                                                     ssh = true)
-    c_colorrange_at_frame_index = specify_colorrange(grid, c_fields[frame_index])
-    if i_plot == 1
-        ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
-        η_colorrange[:] = collect(η_colorrange_at_frame_index)
-        c_colorrange[:] = collect(c_colorrange_at_frame_index)
-    else
-        ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
-        ζ_colorrange[2] = -ζ_colorrange[1]
-        η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
-        η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
-        c_colorrange[1] = min(c_colorrange[1], c_colorrange_at_frame_index[1])
-        c_colorrange[2] = -c_colorrange[1]
+    fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
+    save("u.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
+    save("v_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
+    save("v.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
+    save("ζ_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
+    save("ζ.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
+    save("η_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
+    save("η.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, c_fields[end]; k = Nz)
+    save("c_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, c_fields[end]; k = Nz)
+    save("c.png", fig)
+end
+
+plot_snapshots = false
+if plot_snapshots
+    n_snapshots = 3
+
+    ζ_colorrange = zeros(2)
+    η_colorrange = zeros(2)
+    c_colorrange = zeros(2)
+
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
+        η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; use_symmetric_colorrange = false,
+                                                         ssh = true)
+        c_colorrange_at_frame_index = specify_colorrange(grid, c_fields[frame_index])
+        if i_snapshot == 0
+            ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
+            η_colorrange[:] = collect(η_colorrange_at_frame_index)
+            c_colorrange[:] = collect(c_colorrange_at_frame_index)
+        else
+            ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
+            ζ_colorrange[2] = -ζ_colorrange[1]
+            η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
+            η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
+            c_colorrange[1] = min(c_colorrange[1], c_colorrange_at_frame_index[1])
+            c_colorrange[2] = -c_colorrange[1]
+        end
+    end
+
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        simulation_time = simulation_time_per_frame * (frame_index - 1)
+        title = "Relative vorticity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
+                                                                                          "ff"), title;
+                                           cbar_label = "Relative vorticity", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange)
+        save(@sprintf("ζ_%d.png", i_snapshot), fig)
+        title = "Surface elevation after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false,
+                                           ssh = true, cbar_label = "Surface elevation", specify_plot_limits = true,
+                                           plot_limits = η_colorrange)
+        save(@sprintf("η_%d.png", i_snapshot), fig)
+        title = "Tracer distribution after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title; cbar_label = "Tracer level",
+                                           specify_plot_limits = true, plot_limits = c_colorrange)
+        save(@sprintf("c_%d.png", i_snapshot), fig)
     end
 end
 
-for i_plot in 1:n_plots
-    frame_index = round(Int, i_plot * n_frames / n_plots)
-    simulation_time = simulation_time_per_frame * frame_index
-    title = "Relative vorticity after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
-                                                                                            "ff"), title;
-                                       cbar_label = "Relative vorticity", specify_plot_limits = true,
-                                       plot_limits = ζ_colorrange)
-    save(@sprintf("ζ_%d.png", i_plot), fig)
-    title = "Surface elevation after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false, ssh = true,
-                                       cbar_label = "Surface elevation", specify_plot_limits = true,
-                                       plot_limits = η_colorrange)
-    save(@sprintf("η_%d.png", i_plot), fig)
-    title = "Tracer distribution after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title;
-                                       cbar_label = "Tracer level", specify_plot_limits = true,
-                                       plot_limits = c_colorrange)
-    save(@sprintf("c_%d.png", i_plot), fig)
+make_animations = false
+if make_animations
+    create_panel_wise_visualization_animation(grid, u_fields, framerate, "u"; k = Nz)
+    create_panel_wise_visualization_animation(grid, v_fields, framerate, "v"; k = Nz)
+    create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "ζ"; k = Nz)
+    create_panel_wise_visualization_animation(grid, η_fields, framerate, "η"; k = Nz+1, ssh = true)
+    create_panel_wise_visualization_animation(grid, c_fields, framerate, "c"; k = Nz)
+
+    prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
+
+    u_colorrange = specify_colorrange_timeseries(grid, u_fields)
+    geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
+                                           cbar_label = "zonal velocity", specify_plot_limits = true,
+                                           plot_limits = u_colorrange, framerate = framerate,
+                                           filename = "u_geo_heatlatlon_animation")
+
+    v_colorrange = specify_colorrange_timeseries(grid, v_fields)
+    geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
+                                           cbar_label = "meridional velocity", specify_plot_limits = true,
+                                           plot_limits = v_colorrange, framerate = framerate,
+                                           filename = "v_geo_heatlatlon_animation")
+
+    ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
+    geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity"; k = Nz,
+                                           cbar_label = "relative vorticity", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange, framerate = framerate,
+                                           filename = "ζ_geo_heatlatlon_animation")
+
+    #=
+    η_colorrange = specify_colorrange_timeseries(grid, η_fields; use_symmetric_colorrange = false, ssh = true)
+    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; k = Nz+1,
+                                           ssh = true, use_symmetric_colorrange = false,
+                                           cbar_label = "surface elevation", specify_plot_limits = true,
+                                           plot_limits = η_colorrange, framerate = framerate,
+                                           filename = "η_geo_heatlatlon_animation")
+    =#
+
+    c_colorrange = specify_colorrange_timeseries(grid, c_fields)
+    geo_heatlatlon_visualization_animation(grid, c_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
+                                           cbar_label = "tracer level", specify_plot_limits = true,
+                                           plot_limits = c_colorrange, framerate = framerate,
+                                           filename = "c_geo_heatlatlon_animation")
 end
-
-fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
-save("u_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
-save("u.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
-save("v_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
-save("v.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
-save("ζ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
-save("ζ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz+1, ssh = true)
-save("η_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, η_fields[end]; k = Nz+1, ssh = true)
-save("η.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, c_fields[end]; k = Nz)
-save("c_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, c_fields[end]; k = Nz)
-save("c.png", fig)
-
-create_panel_wise_visualization_animation(grid, u_fields, framerate, "u"; k = Nz)
-create_panel_wise_visualization_animation(grid, v_fields, framerate, "v"; k = Nz)
-create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "ζ"; k = Nz)
-create_panel_wise_visualization_animation(grid, η_fields, framerate, "η"; k = Nz+1, ssh = true)
-create_panel_wise_visualization_animation(grid, c_fields, framerate, "c"; k = Nz)
-
-prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
-
-u_colorrange = specify_colorrange_timeseries(grid, u_fields)
-geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
-                                       cbar_label = "zonal velocity", specify_plot_limits = true,
-                                       plot_limits = u_colorrange, framerate = framerate,
-                                       filename = "u_geo_heatlatlon_animation")
-
-v_colorrange = specify_colorrange_timeseries(grid, v_fields)
-geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
-                                       cbar_label = "meridional velocity", specify_plot_limits = true,
-                                       plot_limits = v_colorrange, framerate = framerate,
-                                       filename = "v_geo_heatlatlon_animation")
-
-ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
-geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity"; k = Nz,
-                                       cbar_label = "relative vorticity", specify_plot_limits = true,
-                                       plot_limits = ζ_colorrange, framerate = framerate,
-                                       filename = "ζ_geo_heatlatlon_animation")
-
-#=
-η_colorrange = specify_colorrange_timeseries(grid, η_fields; use_symmetric_colorrange = false, ssh = true)
-geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; k = Nz+1,
-                                       ssh = true, use_symmetric_colorrange = false, cbar_label = "surface elevation",
-                                       specify_plot_limits = true, plot_limits = η_colorrange, framerate = framerate,
-                                       filename = "η_geo_heatlatlon_animation")
-=#
-
-c_colorrange = specify_colorrange_timeseries(grid, c_fields)
-geo_heatlatlon_visualization_animation(grid, c_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
-                                       cbar_label = "tracer level", specify_plot_limits = true,
-                                       plot_limits = c_colorrange, framerate = framerate,
-                                       filename = "c_geo_heatlatlon_animation")
