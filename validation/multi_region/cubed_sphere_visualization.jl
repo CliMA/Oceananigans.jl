@@ -3,7 +3,6 @@ using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
 function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; k = 1)
-
     if location == "cc"
         return field
     end
@@ -29,37 +28,11 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; k
     end
 
     return interpolated_field
-
-end
-
-function read_big_endian_coordinates(filename, nInterior, Nhalo)
-    # Open the file in binary read mode
-    open(filename, "r") do io
-        # Calculate the number of Float64 values in the file
-        n = filesize(io) ÷ sizeof(Float64)
-
-        # Ensure n = (nInterior + 2 * Nhalo) * (nInterior + 2 * Nhalo)
-        if n != (nInterior + 2 * Nhalo) * (nInterior + 2 * Nhalo)
-            error("File size does not match the expected size for one (nInterior + 2 * Nhalo) x (nInterior + 2 * Nhalo) field")
-        end
-
-        # Initialize an array to hold the data
-        data = Vector{Float64}(undef, n)
-
-        # Read the data into the array
-        read!(io, data)
-
-        # Convert from big-endian to native endianness
-        native_data = reshape(bswap.(data), (nInterior + 2 * Nhalo), (nInterior + 2 * Nhalo))
-
-        return native_data
-    end
 end
 
 function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, labels, title, file_name, resolution, 
                                           linewidth, linecolor, marker, markersize, labelsizes, ticklabelsizes, 
                                           labelpaddings, aspect, titlesize, titlegap)
-
     cwd = pwd()
     path = joinpath(cwd, output_directory)
     if !isdir(path) 
@@ -83,14 +56,12 @@ function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, lab
 
     save(file_name, fig)
     cd(cwd)
-
 end
 
 function make_heat_map_or_contour_plot(output_directory, plot_type, x, y, φ, φ_limits, file_name, labels, title,
                                        resolution, labelsizes, ticklabelsizes, labelpaddings, aspect, titlesize, 
                                        titlegap, colormap, contourlevels; specify_axis_limits = true, 
                                        use_specified_limits = false)
-
     cwd = pwd()
     path = joinpath(cwd, output_directory)
     if !isdir(path) 
@@ -123,63 +94,9 @@ function make_heat_map_or_contour_plot(output_directory, plot_type, x, y, φ, φ
 
     save(file_name, fig)
     cd(cwd)
-
 end
 
-function read_big_endian_coordinates(filename)
-    # Open the file in binary read mode
-    open(filename, "r") do io
-        # Calculate the number of Float64 values in the file
-        n = filesize(io) ÷ sizeof(Float64)
-        
-        # Ensure n = 32x32
-        if n != 32 * 32
-            error("File size does not match the expected size for one 32x32 field")
-        end
-
-        # Initialize an array to hold the data
-        data = Vector{Float64}(undef, n)
-
-        # Read the data into the array
-        read!(io, data)
-
-        # Convert from big-endian to native endianness
-        native_data = reshape(bswap.(data), 32, 32)
-
-        return native_data
-    end
-end
-
-function read_big_endian_diagnostic_data(filename)
-    # Open the file in binary read mode
-    open(filename, "r") do io
-        # Calculate the number of Float64 values in the file
-        n = filesize(io) ÷ sizeof(Float64)
-
-        # Ensure n = 2x32x32
-        if n != 2 * 32 * 32
-            error("File size does not match the expected size for two 32x32 fields")
-        end
-
-        # Initialize an array to hold the data
-        data = Vector{Float64}(undef, n)
-
-        # Read the data into the array
-        read!(io, data)
-
-        # Convert from big-endian to native endianness
-        native_data = bswap.(data)
-
-        # Extract and reshape the data to form two 32x32 fields
-        momKE = reshape(native_data[1:32*32], 32, 32)
-        momVort3 = reshape(native_data[32*32+1:end], 32, 32)
-
-        return momKE, momVort3
-    end
-end
-
-function specify_colorrange_MITgcm(φ, use_symmetric_colorrange = true)
-
+function specify_colorrange(φ; use_symmetric_colorrange = true)
     φ_maximum = maximum(φ)
     φ_minimum = minimum(φ)
     if use_symmetric_colorrange
@@ -189,11 +106,9 @@ function specify_colorrange_MITgcm(φ, use_symmetric_colorrange = true)
         colorrange = (φ_minimum, φ_maximum)
     end
     return colorrange
-
 end
 
 function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = false)
-
     Nx = grid.Nx
     Ny = grid.Ny
     Nz = grid.Nz
@@ -221,16 +136,14 @@ function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = fal
     end
     
     return colorrange
-
 end
 
 function specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = true, ssh = false)
-
     Nx = grid.Nx
     Ny = grid.Ny
     Nz = grid.Nz
     
-    n = size(φ_series)[1]
+    n = length(φ_series)
     
     if ssh
         φ_series_array = zeros(Nx, Ny, 1, 6, n)
@@ -258,50 +171,6 @@ function specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange
     end
     
     return colorrange
-
-end
-
-function panel_wise_visualization_MITgcm(x, y, field; use_symmetric_colorrange = true)
-
-    fig = Figure(resolution = (2450, 1400))
-
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-                   xlabel = "Local x direction", ylabel = "Local y direction")
-    
-    colorrange = specify_colorrange_MITgcm(field, use_symmetric_colorrange)
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-    
-    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, x[:, :, 1], y[:, :, 1], field[:, :, 1]; colorrange, colormap)
-    Colorbar(fig[3, 2], hm_1)
-
-    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
-    hm_2 = heatmap!(ax_2, x[:, :, 2], y[:, :, 2], field[:, :, 2]; colorrange, colormap)
-    Colorbar(fig[3, 4], hm_2)
-
-    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
-    hm_3 = heatmap!(ax_3, x[:, :, 3], y[:, :, 3], field[:, :, 3]; colorrange, colormap)
-    Colorbar(fig[2, 4], hm_3)
-
-    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
-    hm_4 = heatmap!(ax_4, x[:, :, 4], y[:, :, 4], field[:, :, 4]; colorrange, colormap)
-    Colorbar(fig[2, 6], hm_4)
-
-    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
-    hm_5 = heatmap!(ax_5, x[:, :, 5], y[:, :, 5], field[:, :, 5]; colorrange, colormap)
-    Colorbar(fig[1, 6], hm_5)
-
-    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
-    hm_6 = heatmap!(ax_6, x[:, :, 6], y[:, :, 6], field[:, :, 6]; colorrange, colormap)
-    Colorbar(fig[1, 8], hm_6)
-
-    return fig
-    
 end
 
 function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetric_colorrange = true)
@@ -311,7 +180,7 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetr
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
 
-    colorrange = specify_colorrange_MITgcm(metric, use_symmetric_colorrange)
+    colorrange = specify_colorrange(metric; use_symmetric_colorrange = use_symmetric_colorrange)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -485,33 +354,37 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
         colormap = :amp
     end
     
+    field = @lift fields[$n]
+    prettytime = @lift prettytimes[$n]
+
     ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
-    ax.title = title_prefix * " after " * prettytimes[start_index]
-    field = interpolate_cubed_sphere_field_to_cell_centers(grid, fields[start_index], location; k = k)
-    heatlatlon!(ax, field, k; colorrange, colormap)
+    ax.title = title_prefix * " after " * prettytime[]
+    interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; k = k)
+    heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
     Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
              labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
     colsize!(fig.layout, 1, Auto(0.8))
     colgap!(fig.layout, 75)
     
-    # Use an on block to reactively update the visualization.
-    on(n) do index
+    frames = 1:length(fields)
+
+    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+        msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+
+        field[] = fields[i]
+        prettytime[] = prettytimes[i]
+
         # Update the title of the plot
-        ax.title = title_prefix * " after " * prettytimes[index]
+        ax.title = title_prefix * " after " * prettytime[]
+
         # Update the plot
-        field = interpolate_cubed_sphere_field_to_cell_centers(grid, fields[index], location; k = k)
-        heatlatlon!(ax, field, k; colorrange, colormap)
+        interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; k = k)
+        heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
         Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
                  labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
         colsize!(fig.layout, 1, Auto(0.8))
         colgap!(fig.layout, 75)
-    end
-    
-    frames = 1:size(fields, 1)
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
-        msg = string("Plotting frame ", i, " of ", frames[end])
-        print(msg * " \r")
-        n[] = i
     end
 end
 
@@ -527,7 +400,7 @@ function create_heat_map_or_contour_plot_animation(plot_type, x, y, φ_series, r
     fig = Figure(resolution = resolution)
     # Specify the title of every frame if desired.
     ax = Axis(fig[1,1]; axis_kwargs...)
-    colorrange = specify_colorrange_MITgcm(φ_series, use_symmetric_colorrange)
+    colorrange = specify_colorrange(φ_series; use_symmetric_colorrange = use_symmetric_colorrange)
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -578,82 +451,8 @@ function test_create_heat_map_or_contour_plot_animation()
                                               contourlevels, cbar_kwargs, framerate, "sine_wave_filled_contour_plot")
 end
 
-function create_panel_wise_visualization_animation_MITgcm(x, y, φ_series, framerate, filename; start_index = 1,
-                                                          use_symmetric_colorrange = true)
-
-    n = Observable(start_index) # the current index
-
-    colorrange = specify_colorrange_MITgcm(φ_series, use_symmetric_colorrange)
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-    
-    # Create the initial visualization.
-    fig = Figure(resolution = (2450, 1400))
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-                   xlabel = "Local x direction", ylabel = "Local y direction")
-    
-    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, x[:, :, 1], y[:, :, 1], φ_series[:, :, 1, start_index]; colorrange, colormap)
-    Colorbar(fig[3, 2], hm_1)
-
-    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
-    hm_2 = heatmap!(ax_2, x[:, :, 2], y[:, :, 2], φ_series[:, :, 2, start_index]; colorrange, colormap)
-    Colorbar(fig[3, 4], hm_2)
-
-    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
-    hm_3 = heatmap!(ax_3, x[:, :, 3], y[:, :, 3], φ_series[:, :, 3, start_index]; colorrange, colormap)
-    Colorbar(fig[2, 4], hm_3)
-
-    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
-    hm_4 = heatmap!(ax_4, x[:, :, 4], y[:, :, 4], φ_series[:, :, 4, start_index]; colorrange, colormap)
-    Colorbar(fig[2, 6], hm_4)
-
-    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
-    hm_5 = heatmap!(ax_5, x[:, :, 5], y[:, :, 5], φ_series[:, :, 5, start_index]; colorrange, colormap)
-    Colorbar(fig[1, 6], hm_5)
-
-    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
-    hm_6 = heatmap!(ax_6, x[:, :, 6], y[:, :, 6], φ_series[:, :, 6, start_index]; colorrange, colormap)
-    Colorbar(fig[1, 8], hm_6)
-    
-    # Use an on block to reactively update the visualization.
-    on(n) do index
-        hm_1 = heatmap!(ax_1, x[:, :, 1], y[:, :, 1], φ_series[:, :, 1, index]; colorrange, colormap)
-        Colorbar(fig[3, 2], hm_1)
-
-        hm_2 = heatmap!(ax_2, x[:, :, 2], y[:, :, 2], φ_series[:, :, 2, index]; colorrange, colormap)
-        Colorbar(fig[3, 4], hm_2)
-
-        hm_3 = heatmap!(ax_3, x[:, :, 3], y[:, :, 3], φ_series[:, :, 3, index]; colorrange, colormap)
-        Colorbar(fig[2, 4], hm_3)
-
-        hm_4 = heatmap!(ax_4, x[:, :, 4], y[:, :, 4], φ_series[:, :, 4, index]; colorrange, colormap)
-        Colorbar(fig[2, 6], hm_4)
-
-        hm_5 = heatmap!(ax_5, x[:, :, 5], y[:, :, 5], φ_series[:, :, 5, index]; colorrange, colormap)
-        Colorbar(fig[1, 6], hm_5)
-
-        hm_6 = heatmap!(ax_6, x[:, :, 6], y[:, :, 6], φ_series[:, :, 6, index]; colorrange, colormap)
-        Colorbar(fig[1, 8], hm_6)
-    end
-    
-    frames = 1:size(φ_series, 4)
-    
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
-        msg = string("Plotting frame ", i, " of ", frames[end])
-        print(msg * " \r")
-        n[] = i
-    end
-
-end
-
 function create_panel_wise_visualization_animation_with_halos(grid, φ_series, framerate, filename; start_index = 1,
                                                               k = 1, use_symmetric_colorrange = true, ssh = false)
-
     n = Observable(start_index) # the current index
 
     colorrange = specify_colorrange(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
@@ -668,71 +467,70 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
+    
+    φ = @lift φ_series[$n]
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, parent(φ_series[start_index][1].data[:, :, k]); colorrange, colormap)
+    hm_1 = heatmap!(ax_1, parent(φ[][1].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[3, 2], hm_1)
 
     ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
-    hm_2 = heatmap!(ax_2, parent(φ_series[start_index][2].data[:, :, k]); colorrange, colormap)
+    hm_2 = heatmap!(ax_2, parent(φ[][2].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[3, 4], hm_2)
 
     ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
-    hm_3 = heatmap!(ax_3, parent(φ_series[start_index][3].data[:, :, k]); colorrange, colormap)
+    hm_3 = heatmap!(ax_3, parent(φ[][3].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[2, 4], hm_3)
 
     ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
-    hm_4 = heatmap!(ax_4, parent(φ_series[start_index][4].data[:, :, k]); colorrange, colormap)
+    hm_4 = heatmap!(ax_4, parent(φ[][4].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[2, 6], hm_4)
 
     ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
-    hm_5 = heatmap!(ax_5, parent(φ_series[start_index][5].data[:, :, k]); colorrange, colormap)
+    hm_5 = heatmap!(ax_5, parent(φ[][5].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[1, 6], hm_5)
 
     ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
-    hm_6 = heatmap!(ax_6, parent(φ_series[start_index][6].data[:, :, k]); colorrange, colormap)
+    hm_6 = heatmap!(ax_6, parent(φ[][6].data[:, :, k]); colorrange, colormap)
     Colorbar(fig[1, 8], hm_6)
 
-    # Use an on block to reactively update the visualization.
-    on(n) do index
-        hm_1 = heatmap!(ax_1, parent(φ_series[index][1].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[3, 2], hm_1)
-
-        hm_2 = heatmap!(ax_2, parent(φ_series[index][2].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[3, 4], hm_2)
-
-        hm_3 = heatmap!(ax_3, parent(φ_series[index][3].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[2, 4], hm_3)
-
-        hm_4 = heatmap!(ax_4, parent(φ_series[index][4].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[2, 6], hm_4)
-
-        hm_5 = heatmap!(ax_5, parent(φ_series[index][5].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[1, 6], hm_5)
-
-        hm_6 = heatmap!(ax_6, parent(φ_series[index][6].data[:, :, k]); colorrange, colormap)
-        Colorbar(fig[1, 8], hm_6)
-    end
-
-    frames = 1:size(φ_series)[1]
+    frames = 1:length(φ_series)
 
     CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
-        n[] = i
+
+        φ[] = φ_series[i]
+
+        hm_1 = heatmap!(ax_1, parent(φ[][1].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[3, 2], hm_1)
+
+        hm_2 = heatmap!(ax_2, parent(φ[][2].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[3, 4], hm_2)
+
+        hm_3 = heatmap!(ax_3, parent(φ[][3].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[2, 4], hm_3)
+
+        hm_4 = heatmap!(ax_4, parent(φ[][4].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[2, 6], hm_4)
+
+        hm_5 = heatmap!(ax_5, parent(φ[][5].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[1, 6], hm_5)
+
+        hm_6 = heatmap!(ax_6, parent(φ[][6].data[:, :, k]); colorrange, colormap)
+        Colorbar(fig[1, 8], hm_6)
     end
 
 end
 
 function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,
                                                    use_symmetric_colorrange = true, ssh = false)
-    
     Nx = grid.Nx
     Ny = grid.Ny
-    
+
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange,
+    colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange=use_symmetric_colorrange,
                                                ssh = ssh)
     if use_symmetric_colorrange
         colormap = :balance
@@ -746,57 +544,56 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
 
-    ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
-    hm_1 = heatmap!(ax_1, φ_series[start_index][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    φ = @lift φ_series[$n]
+
+    ax_1 = Axis(fig[3, 1]; title="Panel 1", axis_kwargs...)
+    hm_1 = heatmap!(ax_1, φ[][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[3, 2], hm_1)
 
-    ax_2 = Axis(fig[3, 3]; title = "Panel 2", axis_kwargs...)
-    hm_2 = heatmap!(ax_2, φ_series[start_index][2].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    ax_2 = Axis(fig[3, 3]; title="Panel 2", axis_kwargs...)
+    hm_2 = heatmap!(ax_2, φ[][2].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[3, 4], hm_2)
 
-    ax_3 = Axis(fig[2, 3]; title = "Panel 3", axis_kwargs...)
-    hm_3 = heatmap!(ax_3, φ_series[start_index][3].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    ax_3 = Axis(fig[2, 3]; title="Panel 3", axis_kwargs...)
+    hm_3 = heatmap!(ax_3, φ[][3].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[2, 4], hm_3)
 
-    ax_4 = Axis(fig[2, 5]; title = "Panel 4", axis_kwargs...)
-    hm_4 = heatmap!(ax_4, φ_series[start_index][4].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    ax_4 = Axis(fig[2, 5]; title="Panel 4", axis_kwargs...)
+    hm_4 = heatmap!(ax_4, φ[][4].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[2, 6], hm_4)
 
-    ax_5 = Axis(fig[1, 5]; title = "Panel 5", axis_kwargs...)
-    hm_5 = heatmap!(ax_5, φ_series[start_index][5].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    ax_5 = Axis(fig[1, 5]; title="Panel 5", axis_kwargs...)
+    hm_5 = heatmap!(ax_5, φ[][5].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[1, 6], hm_5)
 
-    ax_6 = Axis(fig[1, 7]; title = "Panel 6", axis_kwargs...)
-    hm_6 = heatmap!(ax_6, φ_series[start_index][6].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+    ax_6 = Axis(fig[1, 7]; title="Panel 6", axis_kwargs...)
+    hm_6 = heatmap!(ax_6, φ[][6].data[1:Nx, 1:Ny, k]; colorrange, colormap)
     Colorbar(fig[1, 8], hm_6)
 
-    # Use an on block to reactively update the visualization.
-    on(n) do index
-        hm_1 = heatmap!(ax_1, φ_series[index][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[3, 2], hm_1)
-
-        hm_2 = heatmap!(ax_2, φ_series[index][2].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[3, 4], hm_2)
-
-        hm_3 = heatmap!(ax_3, φ_series[index][3].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[2, 4], hm_3)
-
-        hm_4 = heatmap!(ax_4, φ_series[index][4].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[2, 6], hm_4)
-
-        hm_5 = heatmap!(ax_5, φ_series[index][5].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[1, 6], hm_5)
-
-        hm_6 = heatmap!(ax_6, φ_series[index][6].data[1:Nx, 1:Ny, k]; colorrange, colormap)
-        Colorbar(fig[1, 8], hm_6)
-    end
-
-    frames = 1:size(φ_series)[1]
+    frames = 1:length(φ_series)
 
     CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
-        n[] = i
-    end
 
+        φ[] = φ_series[i]
+
+        hm_1 = heatmap!(ax_1, φ[][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[3, 2], hm_1)
+
+        hm_2 = heatmap!(ax_2, φ[][2].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[3, 4], hm_2)
+
+        hm_3 = heatmap!(ax_3, φ[][3].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[2, 4], hm_3)
+
+        hm_4 = heatmap!(ax_4, φ[][4].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[2, 6], hm_4)
+
+        hm_5 = heatmap!(ax_5, φ[][5].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[1, 6], hm_5)
+
+        hm_6 = heatmap!(ax_6, φ[][6].data[1:Nx, 1:Ny, k]; colorrange, colormap)
+        Colorbar(fig[1, 8], hm_6)
+    end
 end
