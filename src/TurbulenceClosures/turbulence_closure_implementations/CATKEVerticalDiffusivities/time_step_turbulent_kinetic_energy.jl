@@ -23,48 +23,27 @@ function time_step_turbulent_kinetic_energy!(model)
     closure = model.closure
     arch = model.architecture
     grid = model.grid
-    @show Δt = model.clock.last_Δt
-    @show χ = model.timestepper.χ
+    Δt = model.clock.last_Δt
+    χ = model.timestepper.χ
 
     # 1. Compute new tendency.
     e_advection   = model.advection.e
     e_forcing     = model.forcing.e
     e_immersed_bc = immersed_boundary_condition(model.tracers.e)
     active_cells_map = active_interior_map(grid)
+    previous_velocities = = model.diffusivity_fields.previous_velocities
     previous_tracers = (; b=model.diffusivity_fields.b⁻, e=model.tracers.e)
     previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
 
-    args = tuple(Val(tracer_index),
-                 Val(:e),
-                 e_advection,
-                 model.closure,
-                 e_immersed_bc,
+    args = tuple(closure,
+                 previous_velocities,
+                 previous_tracers,
                  model.buoyancy,
-                 model.biogeochemistry,
-                 model.diffusivity_fields.previous_velocities, #model.velocities,
-                 model.free_surface,
-                 previous_tracers, #model.tracers,
-                 model.diffusivity_fields,
-                 model.auxiliary_fields,
-                 e_forcing,
-                 previous_clock) # model.clock
+                 model.diffusivity_fields)
 
     launch!(arch, grid, :xyz,
-            compute_hydrostatic_free_surface_Ge!,
-            Gⁿe,
-            grid,
-            active_cells_map,
-            args;
-            active_cells_map)
-
-    #=
-    flux_bc_args = (previous_clock, # model.clock
-                    fields(model),
-                    model.closure,
-                    model.buoyancy)
-
-    apply_flux_bcs!(Gⁿe, e, arch, flux_bc_args)
-    =#
+            add_tke_source_terms!,
+            Gⁿe, grid, args)
 
     # 2. Step forward
     launch!(model.architecture, model.grid, :xyz,
@@ -85,30 +64,21 @@ function time_step_turbulent_kinetic_energy!(model)
 end
 
 """ Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
+@kernel function add_tke_source_terms!(Ge, grid, args)
     i, j, k = @index(Global, NTuple)
-    @inbounds Ge[i, j, k] += additional_tke_tendency_contributions(i, j, k, grid, args...)
+    @inbounds Ge[i, j, k] += tke_source_terms(i, j, k, grid, args...)
 end
 
-@inline function additional_tke_tendency_contributions(i, j, k, grid,
-                                                       val_tracer_index::Val{tracer_index},
-                                                       val_tracer_name,
-                                                       advection,
-                                                       closure,
-                                                       e_immersed_bc,
-                                                       buoyancy,
-                                                       biogeochemistry,
-                                                       velocities,
-                                                       free_surface,
-                                                       tracers,
-                                                       diffusivities,
-                                                       auxiliary_fields,
-                                                       forcing,
-                                                       clock) where tracer_index
+@inline function tke_source_terms(i, j, k, grid,
+                                  closure,
+                                  velocities,
+                                  tracers,
+                                  buoyancy,
+                                  diffusivities)
 
-    return  (+ shear_production(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities))
+    return shear_production(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) + 
+              buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) - 
+                dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
 end
 
 #=
