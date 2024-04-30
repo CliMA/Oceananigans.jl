@@ -226,11 +226,20 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     Qᵇ = Field{Center, Center, Nothing}(grid)
     previous_compute_time = Ref(zero(grid))
 
+    u⁻ = XFaceField(grid)
+    v⁻ = YFaceField(grid)
+    w⁻ = ZFaceField(grid)
+    previous_velocities = (; u=u⁻, v=v⁻, w=w⁻)
+
+    b⁻ = CenterField(grid)
+
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κᵉ : κᶜ          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Lᵉ : ZeroField() for name in tracer_names)
 
-    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ, previous_compute_time, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ, b⁻,
+            previous_compute_time, previous_velocities,
+            _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
 const c = Center()
@@ -261,6 +270,16 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     else
         @show model.clock
     end
+
+    # Update "previous velocities"
+    u⁻, v⁻, w⁻ = diffusivities.previous_velocities
+    u, v, w = model.velocities
+    b⁻ = diffusivities.b⁻
+    b = model.tracers.b
+    parent(u⁻) .= parent(u)
+    parent(v⁻) .= parent(v)
+    parent(b⁻) .= parent(b)
+    # parent(w⁻) .= parent(w)
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,

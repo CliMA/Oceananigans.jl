@@ -42,7 +42,7 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
-    simulation = Simulation(model; Δt=2minutes, stop_iteration=100) #stop_time)
+    simulation = Simulation(model; Δt=2minutes, stop_iteration=1) #stop_time)
 
     closurename = string(nameof(typeof(closure)))
 

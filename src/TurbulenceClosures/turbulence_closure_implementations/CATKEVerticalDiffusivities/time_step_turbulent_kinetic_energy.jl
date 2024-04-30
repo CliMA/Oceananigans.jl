@@ -5,8 +5,6 @@ using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, impli
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 
 function time_step_turbulent_kinetic_energy!(model)
-    clock = model.clock
-    !isfinite(clock.last_Δt) && return nothing
 
     tracer_name = :e
     tracer_index = findfirst(k -> k==:e, keys(model.tracers))
@@ -16,8 +14,8 @@ function time_step_turbulent_kinetic_energy!(model)
     closure = model.closure
     arch = model.architecture
     grid = model.grid
-    Δt = model.clock.last_Δt
-    χ = model.timestepper.χ
+    @show Δt = model.clock.last_Δt
+    @show χ = model.timestepper.χ
 
     # 1. Compute new tendency.
     e_tendency    = model.timestepper.Gⁿ.e
@@ -33,9 +31,9 @@ function time_step_turbulent_kinetic_energy!(model)
                  e_immersed_bc,
                  model.buoyancy,
                  model.biogeochemistry,
-                 model.velocities,
+                 model.diffusivity_fields.previous_velocities, #model.velocities,
                  model.free_surface,
-                 model.tracers,
+                 (; b=model.diffusivity_fields.b⁻, e=model.tracers.e), #model.tracers,
                  model.diffusivity_fields,
                  model.auxiliary_fields,
                  e_forcing,
@@ -58,16 +56,10 @@ function time_step_turbulent_kinetic_energy!(model)
                    closure,
                    model.diffusivity_fields,
                    Val(tracer_index),
-                   clock,
+                   model.clock,
                    Δt)
 
     launch!(model.architecture, model.grid, :xyz,
-            store_field_tendencies!,
-            model.timestepper.G⁻.e,
-            model.timestepper.Gⁿ.e)
-
-    # 3. Store tendencies
-    launch!(arch, grid, :xyz,
             store_field_tendencies!,
             model.timestepper.G⁻.e,
             model.timestepper.Gⁿ.e)

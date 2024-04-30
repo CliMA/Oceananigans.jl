@@ -65,9 +65,14 @@ btitle = @lift begin
     @sprintf("Buoyancy, mse = %.2e", mse)
 end
 
+etitle = @lift begin
+    mse = mean(($e1n .- $e2n).^2)
+    @sprintf("TKE, mse = %.2e", mse)
+end
+
 axb = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z (m)", title=btitle)
 axu = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z (m)")
-axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)")
+axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)", title=etitle)
 axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
 
 xlims!(axb, -grid.Lz * N², 0)
