@@ -4,7 +4,7 @@ using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using JLD2
 
-include("cubed_sphere_visualization.jl")
+## Grid setup
 
 Nx, Ny, Nz = 32, 32, 1
 R = 1 # sphere's radius
@@ -139,64 +139,93 @@ end
 
 simulation = Simulation(model; Δt, stop_time)
 
-# Print a progress message.
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n", iteration(sim), prettytime(sim),
-                                prettytime(sim.Δt), prettytime(sim.run_wall_time))
+# Print a progress message
+progress_message_iteration_interval = 10
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|θ|): %.2e, wall time: %s\n", iteration(sim),
+                                prettytime(sim), prettytime(sim.Δt), maximum(abs, sim.model.tracers.θ),
+                                prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
-tracer_fields = Field[]
-save_tracer(sim) = push!(tracer_fields, deepcopy(sim.model.tracers.θ))
+θ_fields = Field[]
+save_θ(sim) = push!(θ_fields, deepcopy(sim.model.tracers.θ))
+
+θ_initial = deepcopy(simulation.model.tracers.θ)
+
+include("cubed_sphere_visualization.jl")
+
+plot_initial_field = false
+if plot_initial_field
+    # Plot the initial tracer field.
+    fig = panel_wise_visualization_with_halos(grid, θ_initial; k = Nz)
+    save("cubed_sphere_tracer_advection_θ₀_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, θ_initial; k = Nz)
+    save("cubed_sphere_tracer_advection_θ₀.png", fig)
+end
 
 animation_time = 15 # seconds
 framerate = 5
-n_frames = animation_time * framerate
+n_frames = animation_time * framerate # excluding the initial condition frame
 simulation_time_per_frame = stop_time / n_frames
-# Specify animation_time and framerate in such a way that n_frames is a multiple of n_plots defined below.
-save_fields_iteration_interval = floor(Int, simulation_time_per_frame / Δt)
+save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
 # Redefine the simulation time per frame.
 simulation_time_per_frame = save_fields_iteration_interval * Δt
-simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(save_fields_iteration_interval))
+# Redefine the number of frames.
+n_frames = floor(Int, Ntime / save_fields_iteration_interval) # excluding the initial condition frame
+# Redefine the animation time.
+animation_time = n_frames / framerate
+simulation.callbacks[:save_θ] = Callback(save_θ, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
 
 if print_output_to_jld2_file
     jldopen("cubed_sphere_tracer_advection_initial_condition.jld2", "w") do file
         for region in 1:6
-            file["tracer/"*string(region)] = tracer_fields[1][region][:, :, Nz]
+            file["θ/"*string(region)] = θ_fields[1][region][:, :, Nz]
         end
     end
-    jldopen("cubed_sphere_bickley_jet_output.jld2", "w") do file
+    jldopen("cubed_sphere_tracer_advection_output.jld2", "w") do file
         for region in 1:6
-            file["tracer/"*string(region)] = tracer_fields[end][region][:, :, Nz]
+            file["θ/"*string(region)] = θ_fields[end][region][:, :, Nz]
         end
     end
 end
 
-n_plots = 3
+plot_final_field = false
+if plot_final_field
+    fig = panel_wise_visualization_with_halos(grid, θ_fields[end]; k = Nz)
+    save("cubed_sphere_tracer_advection_θ_with_halos.png", fig)
 
-tracer_colorrange = [-θ₀, θ₀]
-
-for i_plot in 1:n_plots
-    frame_index = round(Int, i_plot * n_frames / n_plots)
-    simulation_time = simulation_time_per_frame * frame_index
-    title = "Tracer distribution after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, tracer_fields[frame_index], title;
-                                       cbar_label = "Tracer level", specify_plot_limits = true,
-                                       plot_limits = tracer_colorrange)
-    save(@sprintf("tracer_%d.png", i_plot), fig)
+    fig = panel_wise_visualization(grid, θ_fields[end]; k = Nz)
+    save("cubed_sphere_tracer_advection_θ.png", fig)
 end
 
-fig = panel_wise_visualization_with_halos(grid, tracer_fields[end]; k = Nz)
-save("tracer_with_halos.png", fig)
+θ_colorrange = [-θ₀, θ₀]
 
-fig = panel_wise_visualization(grid, tracer_fields[end]; k = Nz)
-save("tracer.png", fig)
+plot_snapshots = false
+if plot_snapshots
+    n_snapshots = 3
 
-create_panel_wise_visualization_animation(grid, tracer_fields, framerate, "tracer"; k = Nz)
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        simulation_time = simulation_time_per_frame * (frame_index - 1)
+        title = "Tracer distribution after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, θ_fields[frame_index], title; cbar_label = "tracer level",
+                                           specify_plot_limits = true, plot_limits = θ_colorrange)
+        save(@sprintf("cubed_sphere_tracer_advection_θ_%d.png", i_snapshot), fig)
+    end
+end
 
-prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
-geo_heatlatlon_visualization_animation(grid, tracer_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
-                                       cbar_label = "tracer level", specify_plot_limits = true,
-                                       plot_limits = tracer_colorrange, framerate = framerate,
-                                       filename = "tracer_geo_heatlatlon_animation")
+make_animation = false
+if make_animation
+    create_panel_wise_visualization_animation(grid, θ_fields, framerate, "cubed_sphere_tracer_advection_θ"; k = Nz)
+
+    prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
+
+    θ_colorrange = specify_colorrange_timeseries(grid, θ_fields)
+    geo_heatlatlon_visualization_animation(grid, θ_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
+                                           cbar_label = "tracer level", specify_plot_limits = true,
+                                           plot_limits = θ_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_tracer_advection_θ_geo_heatlatlon_animation")
+end

@@ -3,9 +3,7 @@ using Oceananigans, Printf
 using Oceananigans.Grids: λnode, φnode, znode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using Oceananigans.Operators
-using Oceananigans.Utils
 using Oceananigans.Utils: Iterate
-using KernelAbstractions: @kernel, @index
 
 using JLD2
 
@@ -123,8 +121,11 @@ Nx, Ny, Nz = 32, 32, 1
 Nhalo = 4
 R = 1 # sphere's radius
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz), z = (-H, 0), radius = R, horizontal_direction_halo = Nhalo,
-                                partition = CubedSpherePartition(; R = 1))
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
+                                  z = (-H, 0),
+                                  radius = R,
+                                  horizontal_direction_halo = Nhalo,
+                                  partition = CubedSpherePartition(; R = 1))
 
 Lx = 2π
 Ly = π
@@ -150,13 +151,18 @@ between retaining important gradient features and maintaining stability. For a m
 Ω = 2π/86400 # Earth's rotation rate
 myCoriolis = HydrostaticSphericalCoriolis(rotation_rate = Ω, scheme = EnstrophyConserving())
 
-model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection, free_surface, tracers = :c, 
-                                    coriolis = myCoriolis, buoyancy = nothing, closure)
+model = HydrostaticFreeSurfaceModel(; grid,
+                                      momentum_advection,
+                                      tracer_advection,
+                                      free_surface,
+                                      tracers = :c,
+                                      coriolis = myCoriolis,
+                                      buoyancy = nothing,
+                                      closure = closure)
 
 set_bickley_jet!(model; Lx = Lx, Ly = Ly, ϵ = 0.1, ℓ₀ = 0.5, k₀ = 0.5)
 
 # Specify cfl = c * Δt / min(Δx) = 0.2, so that Δt = 0.2 * min(Δx) / c
-
 min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
 Δt = 0.2 * min_spacing / c
 
@@ -189,6 +195,10 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
+# Now, compute the vorticity.
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
+
 ζ = Field{Face, Face, Center}(grid)
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
@@ -208,7 +218,6 @@ end
 function save_ζ(sim)
     grid = sim.model.grid
     
-    Hx, Hy, Hz = halo_size(grid)
     offset = -1 .* halo_size(grid)
     
     u, v, _ = sim.model.velocities
@@ -234,6 +243,7 @@ vᵢ = deepcopy(simulation.model.velocities.v)
 ζᵢ = deepcopy(ζ) 
 
 ηᵢ = deepcopy(simulation.model.free_surface.η)
+# Redefine ηᵢ as ηᵢ = ηᵢ - H for better visualization.
 for region in 1:number_of_regions(grid)
     for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
         ηᵢ[region][i, j, k] -= H
@@ -247,42 +257,31 @@ include("cubed_sphere_visualization.jl")
 plot_initial_field = false
 if plot_initial_field
     # Plot the initial velocity field.
-
     fig = panel_wise_visualization_with_halos(grid, uᵢ; k = Nz)
-    save("u₀_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_u₀_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, uᵢ; k = Nz)
-    save("u₀.png", fig)
+    save("cubed_sphere_bickley_jet_u₀.png", fig)
 
     fig = panel_wise_visualization_with_halos(grid, vᵢ; k = Nz)
-    save("v₀_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_v₀_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, vᵢ; k = Nz)
-    save("v₀.png", fig)
+    save("cubed_sphere_bickley_jet_v₀.png", fig)
 
-    # Plot the initial vorticity field after model definition.
-
+    # Plot the initial vorticity field.
     fig = panel_wise_visualization_with_halos(grid, ζᵢ; k = Nz)
-    save("ζ₀_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_ζ₀_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
-    save("ζ₀.png", fig)
-
-    # Plot the initial surface elevation field after model definition.
-
-    fig = panel_wise_visualization_with_halos(grid, ηᵢ; k = Nz + 1, ssh = true)
-    save("η₀_with_halos.png", fig)
-
-    fig = panel_wise_visualization(grid, ηᵢ; k = Nz + 1, ssh = true)
-    save("η₀.png", fig)
+    save("cubed_sphere_bickley_jet_ζ₀.png", fig)
 
     # Plot the initial tracer field.
-
     fig = panel_wise_visualization_with_halos(grid, cᵢ; k = Nz)
-    save("c₀_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_c₀_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, cᵢ; k = Nz)
-    save("c₀.png", fig)
+    save("cubed_sphere_bickley_jet_c₀.png", fig)
 end
 
 animation_time = 15 # seconds
@@ -325,6 +324,7 @@ if print_output_to_jld2_file
     end
 end
 
+# Redefine η as η = η - H for better visualization.
 for i_frame in 1:n_frames+1
     for region in 1:number_of_regions(grid)
         for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
@@ -334,96 +334,123 @@ for i_frame in 1:n_frames+1
 end
 
 plot_final_field = false
-
 if plot_final_field
     fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
-    save("u_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_u_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
-    save("u.png", fig)
+    save("cubed_sphere_bickley_jet_u.png", fig)
 
     fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
-    save("v_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_v_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
-    save("v.png", fig)
+    save("cubed_sphere_bickley_jet_v.png", fig)
 
     fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
-    save("ζ_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_ζ_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
-    save("ζ.png", fig)
+    save("cubed_sphere_bickley_jet_ζ.png", fig)
 
-    fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
-    save("η_with_halos.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, use_symmetric_colorrange = false,
+                                              ssh = true)
+    save("cubed_sphere_bickley_jet_η_with_halos.png", fig)
 
-    fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
-    save("η.png", fig)
+    fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, use_symmetric_colorrange = false, ssh = true)
+    save("cubed_sphere_bickley_jet_η.png", fig)
 
     fig = panel_wise_visualization_with_halos(grid, c_fields[end]; k = Nz)
-    save("c_with_halos.png", fig)
+    save("cubed_sphere_bickley_jet_c_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, c_fields[end]; k = Nz)
-    save("c.png", fig)
+    save("cubed_sphere_bickley_jet_c.png", fig)
 end
 
 plot_snapshots = false
 if plot_snapshots
     n_snapshots = 3
 
+    u_colorrange = zeros(2)
+    v_colorrange = zeros(2)
     ζ_colorrange = zeros(2)
     η_colorrange = zeros(2)
     c_colorrange = zeros(2)
 
     for i_snapshot in 0:n_snapshots
         frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        u_colorrange_at_frame_index = specify_colorrange(grid, u_fields[frame_index])
+        v_colorrange_at_frame_index = specify_colorrange(grid, v_fields[frame_index])
         ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
         η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; use_symmetric_colorrange = false,
                                                          ssh = true)
         c_colorrange_at_frame_index = specify_colorrange(grid, c_fields[frame_index])
         if i_snapshot == 0
+            u_colorrange[:] = collect(u_colorrange_at_frame_index)
+            v_colorrange[:] = collect(v_colorrange_at_frame_index)
             ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
             η_colorrange[:] = collect(η_colorrange_at_frame_index)
             c_colorrange[:] = collect(c_colorrange_at_frame_index)
         else
+            u_colorrange[1] = min(u_colorrange[1], u_colorrange_at_frame_index[1])
+            u_colorrange[2] = max(u_colorrange[2], u_colorrange_at_frame_index[2])
+            v_colorrange[1] = min(v_colorrange[1], v_colorrange_at_frame_index[1])
+            v_colorrange[2] = max(v_colorrange[2], v_colorrange_at_frame_index[2])
             ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
-            ζ_colorrange[2] = -ζ_colorrange[1]
+            ζ_colorrange[2] = max(ζ_colorrange[2], ζ_colorrange_at_frame_index[2])
             η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
             η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
             c_colorrange[1] = min(c_colorrange[1], c_colorrange_at_frame_index[1])
-            c_colorrange[2] = -c_colorrange[1]
+            c_colorrange[2] = max(c_colorrange[2], c_colorrange_at_frame_index[2])
         end
     end
 
     for i_snapshot in 0:n_snapshots
         frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
         simulation_time = simulation_time_per_frame * (frame_index - 1)
+        #=
+        title = "Zonal velocity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, u_fields[frame_index],
+                                                                                          "fc"), title;
+                                           cbar_label = "zonal velocity", specify_plot_limits = true,
+                                           plot_limits = u_colorrange)
+        save(@sprintf("cubed_sphere_bickley_jet_u_%d.png", i_snapshot), fig)
+        title = "Meridional velocity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, v_fields[frame_index],
+                                                                                          "cf"), title;
+                                           cbar_label = "meridional velocity", specify_plot_limits = true,
+                                           plot_limits = v_colorrange)
+        save(@sprintf("cubed_sphere_bickley_jet_v_%d.png", i_snapshot), fig)
+        =#
         title = "Relative vorticity after $(prettytime(simulation_time))"
         fig = geo_heatlatlon_visualization(grid,
                                            interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
                                                                                           "ff"), title;
-                                           cbar_label = "Relative vorticity", specify_plot_limits = true,
+                                           cbar_label = "relative vorticity", specify_plot_limits = true,
                                            plot_limits = ζ_colorrange)
-        save(@sprintf("ζ_%d.png", i_snapshot), fig)
+        save(@sprintf("cubed_sphere_bickley_jet_ζ_%d.png", i_snapshot), fig)
         title = "Surface elevation after $(prettytime(simulation_time))"
         fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; use_symmetric_colorrange = false,
-                                           ssh = true, cbar_label = "Surface elevation", specify_plot_limits = true,
+                                           ssh = true, cbar_label = "surface elevation", specify_plot_limits = true,
                                            plot_limits = η_colorrange)
-        save(@sprintf("η_%d.png", i_snapshot), fig)
+        save(@sprintf("cubed_sphere_bickley_jet_η_%d.png", i_snapshot), fig)
         title = "Tracer distribution after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title; cbar_label = "Tracer level",
+        fig = geo_heatlatlon_visualization(grid, c_fields[frame_index], title; cbar_label = "tracer level",
                                            specify_plot_limits = true, plot_limits = c_colorrange)
-        save(@sprintf("c_%d.png", i_snapshot), fig)
+        save(@sprintf("cubed_sphere_bickley_jet_c_%d.png", i_snapshot), fig)
     end
 end
 
 make_animations = false
 if make_animations
-    create_panel_wise_visualization_animation(grid, u_fields, framerate, "u"; k = Nz)
-    create_panel_wise_visualization_animation(grid, v_fields, framerate, "v"; k = Nz)
-    create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "ζ"; k = Nz)
-    create_panel_wise_visualization_animation(grid, η_fields, framerate, "η"; k = Nz+1, ssh = true)
-    create_panel_wise_visualization_animation(grid, c_fields, framerate, "c"; k = Nz)
+    create_panel_wise_visualization_animation(grid, cubed_sphere_bickley_jet_u_fields, framerate, "u"; k = Nz)
+    create_panel_wise_visualization_animation(grid, cubed_sphere_bickley_jet_v_fields, framerate, "v"; k = Nz)
+    create_panel_wise_visualization_animation(grid, cubed_sphere_bickley_jet_ζ_fields, framerate, "ζ"; k = Nz)
+    create_panel_wise_visualization_animation(grid, cubed_sphere_bickley_jet_η_fields, framerate, "η"; k = Nz+1,
+                                              ssh = true)
+    create_panel_wise_visualization_animation(grid, cubed_sphere_bickley_jet_c_fields, framerate, "c"; k = Nz)
 
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
@@ -431,19 +458,19 @@ if make_animations
     geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
                                            cbar_label = "zonal velocity", specify_plot_limits = true,
                                            plot_limits = u_colorrange, framerate = framerate,
-                                           filename = "u_geo_heatlatlon_animation")
+                                           filename = "cubed_sphere_bickley_jet_u_geo_heatlatlon_animation")
 
     v_colorrange = specify_colorrange_timeseries(grid, v_fields)
     geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
                                            cbar_label = "meridional velocity", specify_plot_limits = true,
                                            plot_limits = v_colorrange, framerate = framerate,
-                                           filename = "v_geo_heatlatlon_animation")
+                                           filename = "cubed_sphere_bickley_jet_v_geo_heatlatlon_animation")
 
     ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
     geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity"; k = Nz,
                                            cbar_label = "relative vorticity", specify_plot_limits = true,
                                            plot_limits = ζ_colorrange, framerate = framerate,
-                                           filename = "ζ_geo_heatlatlon_animation")
+                                           filename = "cubed_sphere_bickley_jet_ζ_geo_heatlatlon_animation")
 
     #=
     η_colorrange = specify_colorrange_timeseries(grid, η_fields; use_symmetric_colorrange = false, ssh = true)
@@ -451,12 +478,12 @@ if make_animations
                                            ssh = true, use_symmetric_colorrange = false,
                                            cbar_label = "surface elevation", specify_plot_limits = true,
                                            plot_limits = η_colorrange, framerate = framerate,
-                                           filename = "η_geo_heatlatlon_animation")
+                                           filename = "cubed_sphere_bickley_jet_η_geo_heatlatlon_animation")
     =#
 
     c_colorrange = specify_colorrange_timeseries(grid, c_fields)
     geo_heatlatlon_visualization_animation(grid, c_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
                                            cbar_label = "tracer level", specify_plot_limits = true,
                                            plot_limits = c_colorrange, framerate = framerate,
-                                           filename = "c_geo_heatlatlon_animation")
+                                           filename = "cubed_sphere_bickley_jet_c_geo_heatlatlon_animation")
 end

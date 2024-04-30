@@ -1,105 +1,38 @@
-#=
-Download:
-(a) the file old_code_metrics.jld2 from
-    https://www.dropbox.com/scl/fo/qu7nfr94wqc6ym6izpfqw/h?rlkey=zd4o5134u64ibyxggy64tiygt&dl=0; and
-(b) the directory grid_cs32+ol4 from 
-    https://www.dropbox.com/scl/fo/c0pex0u8yvao6ehd3rqtp/h?rlkey=uq8bojrrsa7c4pb4n9ou8wvcs&dl=0;
-and place them in the path validation/multi_region/. Then run this script from the same path as:
-include("cubed_sphere_rossby_haurwitz.jl")
-=#
-
 using Oceananigans, Printf
 
-using Oceananigans.Grids: φnode, λnode, halo_size, total_size
+using Oceananigans.Grids: λnode, φnode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using Oceananigans.Operators
 using Oceananigans.Utils: Iterate
-using DataDeps
-using JLD2
-using CairoMakie
 
-include("cubed_sphere_visualization.jl")
+using JLD2
 
 ## Grid setup
 
 R = 6371e3
 H = 8000
 
-load_cs32_grid = false
-
-if load_cs32_grid
-    dd32 = DataDep("cubed_sphere_32_grid",
-                   "Conformal cubed sphere grid with 32×32 grid points on each face",
-                   "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-                   "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538")
-    DataDeps.register(dd32)
-    grid_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-    grid = ConformalCubedSphereGrid(grid_filepath; 
-                                    Nz = 1,
-                                    z = (-H, 0),
-                                    panel_halo = (1, 1, 1),
-                                    radius = R)
-    Nx, Ny, Nz = size(grid)
-else
-    old_code_metrics_JMC = true
-    if old_code_metrics_JMC
-        Nx, Ny, Nz = 32, 32, 1
-        print_jmc_cs32_grid = false
-        if print_jmc_cs32_grid
-            Nhalo = 4
-        else
-            Nhalo = 1 # For the purpose of comparing metrics, you may choose any integer from 1 to 4.
-        end
-    else
-        Nx, Ny, Nz = 32, 32, 1
-        Nhalo = 1
-    end
-    grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                      z = (-H, 0),
-                                      radius = R,
-                                      horizontal_direction_halo = Nhalo,
-                                      partition = CubedSpherePartition(; R = 1))
-end
+Nx, Ny, Nz = 32, 32, 1
+Nhalo = 1
+grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
+                                  z = (-H, 0),
+                                  radius = R,
+                                  horizontal_direction_halo = Nhalo,
+                                  partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
-
-grid_λᶜᶜᵃ  = Field{Center, Center, Center}(grid)
-grid_λᶠᶠᵃ  = Field{Face,   Face,   Center}(grid)
-grid_φᶜᶜᵃ  = Field{Center, Center, Center}(grid)
-grid_φᶠᶠᵃ  = Field{Face,   Face,   Center}(grid)
-grid_Δxᶠᶜᵃ = Field{Face,   Center, Center}(grid)
-grid_Δyᶜᶠᵃ = Field{Center, Face,   Center}(grid)
-grid_Azᶜᶜᵃ = Field{Center, Center, Center}(grid)
-grid_Azᶠᶜᵃ = Field{Face,   Center, Center}(grid)
-grid_Azᶜᶠᵃ = Field{Center, Face,   Center}(grid)
-grid_Azᶠᶠᵃ = Field{Face,   Face,   Center}(grid)
-
-for region in 1:6
-    for i in 1-Hx:Nx+Hx, j in 1-Hy:Ny+Hy, k in 1:Nz
-        grid_λᶜᶜᵃ[region][i, j, k]  = grid[region].λᶜᶜᵃ[i, j]
-        grid_λᶠᶠᵃ[region][i, j, k]  = grid[region].λᶠᶠᵃ[i, j]
-        grid_φᶜᶜᵃ[region][i, j, k]  = grid[region].φᶜᶜᵃ[i, j]
-        grid_φᶠᶠᵃ[region][i, j, k]  = grid[region].φᶠᶠᵃ[i, j]
-        grid_Δxᶠᶜᵃ[region][i, j, k] = grid[region].Δxᶠᶜᵃ[i, j]
-        grid_Δyᶜᶠᵃ[region][i, j, k] = grid[region].Δyᶜᶠᵃ[i, j]
-        grid_Azᶜᶜᵃ[region][i, j, k] = Azᶜᶜᶜ(i, j, k, grid[region])
-        grid_Azᶠᶜᵃ[region][i, j, k] = Azᶠᶜᶜ(i, j, k, grid[region])
-        grid_Azᶜᶠᵃ[region][i, j, k] = Azᶜᶠᶜ(i, j, k, grid[region])
-        grid_Azᶠᶠᵃ[region][i, j, k] = Azᶠᶠᶜ(i, j, k, grid[region])
-    end
-end
 
 ## Model setup
 
 horizontal_closure = nothing
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = nothing,
-                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration = 100),
-                                    coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving()),
-                                    closure = (horizontal_closure),
-                                    tracers = nothing,
-                                    buoyancy = nothing)
+                                      momentum_advection = nothing,
+                                      free_surface = ExplicitFreeSurface(; gravitational_acceleration = 100),
+                                      coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConserving()),
+                                      closure = (horizontal_closure),
+                                      tracers = nothing,
+                                      buoyancy = nothing)
 
 ## Rossby-Haurwitz initial condition from Williamson et al. (§3.6, 1992)
 ## # Here: θ ∈ [-π/2, π/2] is latitude and ϕ ∈ [0, 2π) is longitude.
@@ -199,295 +132,7 @@ offset = -1 .* halo_size(grid)
     launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
 end
 
-# Plot the grid metrics.
-
-fig = panel_wise_visualization_with_halos(grid, grid_λᶜᶜᵃ)
-save("grid_λᶜᶜᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_λᶜᶜᵃ)
-save("grid_λᶜᶜᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_λᶠᶠᵃ)
-save("grid_λᶠᶠᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_λᶠᶠᵃ)
-save("grid_λᶠᶠᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_φᶜᶜᵃ)
-save("grid_φᶜᶜᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_φᶜᶜᵃ)
-save("grid_φᶜᶜᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_φᶠᶠᵃ)
-save("grid_φᶠᶠᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_φᶠᶠᵃ)
-save("grid_φᶠᶠᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Δxᶠᶜᵃ)
-save("grid_Δxᶠᶜᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Δxᶠᶜᵃ)
-save("grid_Δxᶠᶜᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Δyᶜᶠᵃ)
-save("grid_Δyᶜᶠᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Δyᶜᶠᵃ)
-save("grid_Δyᶜᶠᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Azᶜᶜᵃ)
-save("grid_Azᶜᶜᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Azᶜᶜᵃ)
-save("grid_Azᶜᶜᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶜᵃ)
-save("grid_Azᶠᶜᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Azᶠᶜᵃ)
-save("grid_Azᶠᶜᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Azᶜᶠᵃ)
-save("grid_Azᶜᶠᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Azᶜᶠᵃ)
-save("grid_Azᶜᶠᵃ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, grid_Azᶠᶠᵃ)
-save("grid_Azᶠᶠᵃ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, grid_Azᶠᶠᵃ)
-save("grid_Azᶠᶠᵃ.png", fig)
-
-plot_initial_condition_before_model_definition = false
-
-if plot_initial_condition_before_model_definition
-    # Plot the initial velocity field before model definition.
-
-    fig = panel_wise_visualization_with_halos(grid, u; k = Nz)
-    save("u₀₀_with_halos.png", fig)
-
-    fig = panel_wise_visualization(grid, u; k = Nz)
-    save("u₀₀.png", fig)
-
-    fig = panel_wise_visualization_with_halos(grid, v; k = Nz)
-    save("v₀₀_with_halos.png", fig)
-
-    fig = panel_wise_visualization(grid, v; k = Nz)
-    save("v₀₀.png", fig)
-
-    # Plot the initial vorticity field before model definition.
-
-    fig = panel_wise_visualization_with_halos(grid, ζ; k = Nz)
-    save("ζ₀₀_with_halos.png", fig)
-
-    fig = panel_wise_visualization(grid, ζ; k = Nz)
-    save("ζ₀₀.png", fig)
-end
-
-jldopen("new_code_metrics.jld2", "w") do file
-    for region in 1:6
-        file["λᶜᶜᵃ/" * string(region)]  =  grid[region].λᶜᶜᵃ
-        file["λᶠᶠᵃ/" * string(region)]  =  grid[region].λᶠᶠᵃ
-        file["φᶜᶜᵃ/" * string(region)]  =  grid[region].φᶜᶜᵃ
-        file["φᶠᶠᵃ/" * string(region)]  =  grid[region].φᶠᶠᵃ
-        file["Δxᶠᶜᵃ/" * string(region)] = grid[region].Δxᶠᶜᵃ
-        file["Δxᶜᶠᵃ/" * string(region)] = grid[region].Δxᶜᶠᵃ
-        file["Δyᶠᶜᵃ/" * string(region)] = grid[region].Δyᶠᶜᵃ
-        file["Δyᶜᶠᵃ/" * string(region)] = grid[region].Δyᶜᶠᵃ
-        file["Azᶜᶜᵃ/" * string(region)] = grid[region].Azᶜᶜᵃ
-        file["Azᶠᶜᵃ/" * string(region)] = grid[region].Azᶠᶜᵃ
-        file["Azᶜᶠᵃ/" * string(region)] = grid[region].Azᶜᶠᵃ
-        file["Azᶠᶠᵃ/" * string(region)] = grid[region].Azᶠᶠᵃ       
-    end
-end
-
-compare_old_and_new_code_metrics = false
-
-if compare_old_and_new_code_metrics
-
-    old_λᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_λᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_φᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_φᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Azᶜᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Azᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Azᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    old_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    
-    new_λᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_λᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_φᶜᶜᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_φᶠᶠᵃ_parent  = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Δxᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Δxᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Δyᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Δyᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Azᶜᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Azᶠᶜᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Azᶜᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-    new_Azᶠᶠᵃ_parent = zeros(Nx+2Hx, Ny+2Hy, 6)
-
-    if old_code_metrics_JMC
-        for region in 1:6
-            old_λᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xC.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_λᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/xG.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_φᶜᶜᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yC.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_φᶠᶠᵃ_parent[:, :, region]  =  read_big_endian_coordinates("grid_cs32+ol4/yG.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Δxᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Δxᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dXg.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Δyᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYg.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Δyᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/dYc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Azᶜᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAc.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Azᶠᶜᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAw.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Azᶜᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAs.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-            old_Azᶠᶠᵃ_parent[:, :, region] = read_big_endian_coordinates("grid_cs32+ol4/rAz.00$(region).001.data", 32, 4)[1+4-Nhalo:end-4+Nhalo,1+4-Nhalo:end-4+Nhalo]
-        end
-        if print_jmc_cs32_grid
-            jldopen("jmc_cubed_sphere_32_grid_with_4_halos.jld2", "w") do file
-                for region in 1:6
-                    file["face" * string(region) * "/λᶜᶜᵃ" ] =  old_λᶜᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/λᶠᶠᵃ" ] =  old_λᶠᶠᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/φᶜᶜᵃ" ] =  old_φᶜᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/φᶠᶠᵃ" ] =  old_φᶠᶠᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Δxᶠᶜᵃ"] = old_Δxᶠᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Δxᶜᶠᵃ"] = old_Δxᶜᶠᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Δyᶠᶜᵃ"] = old_Δyᶠᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Δyᶜᶠᵃ"] = old_Δyᶜᶠᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Azᶜᶜᵃ"] = old_Azᶜᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Azᶠᶜᵃ"] = old_Azᶠᶜᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Azᶜᶠᵃ"] = old_Azᶜᶠᵃ_parent[:, :, region]
-                    file["face" * string(region) * "/Azᶠᶠᵃ"] = old_Azᶠᶠᵃ_parent[:, :, region]
-                    # Fill the following metrics with their Oceananigans counterparts for now.
-                    file["face" * string(region) * "/Δxᶜᶜᵃ"] = parent(grid[region].Δxᶜᶜᵃ)
-                    file["face" * string(region) * "/Δyᶜᶜᵃ"] = parent(grid[region].Δyᶜᶜᵃ)
-                    file["face" * string(region) * "/Δxᶠᶠᵃ"] = parent(grid[region].Δxᶠᶠᵃ)
-                    file["face" * string(region) * "/Δyᶠᶠᵃ"] = parent(grid[region].Δyᶠᶠᵃ)
-                end
-            end
-        end
-    else    
-        old_file = jldopen("old_code_metrics.jld2")
-        for region in 1:6
-            old_Δxᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
-            old_Δxᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
-            old_Δyᶠᶜᵃ_parent[:, :, region] = parent(old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
-            old_Δyᶜᶠᵃ_parent[:, :, region] = parent(old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
-            old_Azᶜᶜᵃ_parent[:, :, region] = parent(old_file["Azᶜᶜᵃ/" * string(region)][:, :])
-            old_Azᶠᶜᵃ_parent[:, :, region] = parent(old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :])
-            old_Azᶜᶠᵃ_parent[:, :, region] = parent(old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy])
-            old_Azᶠᶠᵃ_parent[:, :, region] = parent(old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy])
-        end
-    end
-
-    overwrite_grid_metrics_from_old_code = false
-    if overwrite_grid_metrics_from_old_code
-        if old_code_metrics_JMC
-            for region in 1:6
-                grid[region].λᶜᶜᵃ[:,:]  =  old_λᶜᶜᵃ_parent[:, :, region]
-                grid[region].λᶠᶠᵃ[:,:]  =  old_λᶠᶠᵃ_parent[:, :, region]
-                grid[region].φᶜᶜᵃ[:,:]  =  old_φᶜᶜᵃ_parent[:, :, region]
-                grid[region].φᶠᶠᵃ[:,:]  =  old_φᶠᶠᵃ_parent[:, :, region]
-                grid[region].Δxᶠᶜᵃ[:,:] = old_Δxᶠᶜᵃ_parent[:, :, region]
-                grid[region].Δxᶜᶠᵃ[:,:] = old_Δxᶜᶠᵃ_parent[:, :, region]
-                grid[region].Δyᶠᶜᵃ[:,:] = old_Δyᶠᶜᵃ_parent[:, :, region]
-                grid[region].Δyᶜᶠᵃ[:,:] = old_Δyᶜᶠᵃ_parent[:, :, region]
-                grid[region].Azᶜᶜᵃ[:,:] = old_Azᶜᶜᵃ_parent[:, :, region]
-                grid[region].Azᶠᶜᵃ[:,:] = old_Azᶠᶜᵃ_parent[:, :, region]
-                grid[region].Azᶜᶠᵃ[:,:] = old_Azᶜᶠᵃ_parent[:, :, region]
-                grid[region].Azᶠᶠᵃ[:,:] = old_Azᶠᶠᵃ_parent[:, :, region]
-            end
-        else
-            for region in 1:6
-                grid[region].Δxᶠᶜᵃ[:,:] = old_file["Δxᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Δxᶜᶠᵃ[:,:] = old_file["Δxᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Δyᶠᶜᵃ[:,:] = old_file["Δyᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Δyᶜᶠᵃ[:,:] = old_file["Δyᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Azᶜᶜᵃ[:,:] = old_file["Azᶜᶜᵃ/" * string(region)][:, :]
-                grid[region].Azᶠᶜᵃ[:,:] = old_file["Azᶠᶜᵃ/" * string(region)][1-Hx:Nx+Hx, :]
-                grid[region].Azᶜᶠᵃ[:,:] = old_file["Azᶜᶠᵃ/" * string(region)][:, 1-Hy:Ny+Hy]
-                grid[region].Azᶠᶠᵃ[:,:] = old_file["Azᶠᶠᵃ/" * string(region)][1-Hx:Nx+Hx, 1-Hy:Ny+Hy]
-            end
-        end
-    end
-    
-    if !old_code_metrics_JMC
-        close(old_file)
-    end
-    
-    new_file = jldopen("new_code_metrics.jld2")
-    for region in 1:6
-        new_λᶜᶜᵃ_parent[:, :, region]  =  parent(new_file["λᶜᶜᵃ/" * string(region)][:, :, 1])
-        new_λᶠᶠᵃ_parent[:, :, region]  =  parent(new_file["λᶠᶠᵃ/" * string(region)][:, :, 1])
-        new_φᶜᶜᵃ_parent[:, :, region]  =  parent(new_file["φᶜᶜᵃ/" * string(region)][:, :, 1])
-        new_φᶠᶠᵃ_parent[:, :, region]  =  parent(new_file["φᶠᶠᵃ/" * string(region)][:, :, 1])
-        new_Δxᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δxᶠᶜᵃ/" * string(region)][:, :, 1])
-        new_Δxᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δxᶜᶠᵃ/" * string(region)][:, :, 1])
-        new_Δyᶠᶜᵃ_parent[:, :, region] = parent(new_file["Δyᶠᶜᵃ/" * string(region)][:, :, 1])
-        new_Δyᶜᶠᵃ_parent[:, :, region] = parent(new_file["Δyᶜᶠᵃ/" * string(region)][:, :, 1])
-        new_Azᶜᶜᵃ_parent[:, :, region] = parent(new_file["Azᶜᶜᵃ/" * string(region)][:, :, 1])
-        new_Azᶠᶜᵃ_parent[:, :, region] = parent(new_file["Azᶠᶜᵃ/" * string(region)][:, :, 1])
-        new_Azᶜᶠᵃ_parent[:, :, region] = parent(new_file["Azᶜᶠᵃ/" * string(region)][:, :, 1])
-        new_Azᶠᶠᵃ_parent[:, :, region] = parent(new_file["Azᶠᶠᵃ/" * string(region)][:, :, 1])
-    end
-    close(new_file)
-    
-    λᶜᶜᵃ_difference  =  new_λᶜᶜᵃ_parent - old_λᶜᶜᵃ_parent
-    λᶠᶠᵃ_difference  =  new_λᶠᶠᵃ_parent - old_λᶠᶠᵃ_parent
-    φᶜᶜᵃ_difference  =  new_φᶜᶜᵃ_parent - old_φᶜᶜᵃ_parent
-    φᶠᶠᵃ_difference  =  new_φᶠᶠᵃ_parent - old_φᶠᶠᵃ_parent
-    Δxᶠᶜᵃ_difference = new_Δxᶠᶜᵃ_parent - old_Δxᶠᶜᵃ_parent
-    Δxᶜᶠᵃ_difference = new_Δxᶜᶠᵃ_parent - old_Δxᶜᶠᵃ_parent
-    Δyᶠᶜᵃ_difference = new_Δyᶠᶜᵃ_parent - old_Δyᶠᶜᵃ_parent
-    Δyᶜᶠᵃ_difference = new_Δyᶜᶠᵃ_parent - old_Δyᶜᶠᵃ_parent
-    Azᶜᶜᵃ_difference = new_Azᶜᶜᵃ_parent - old_Azᶜᶜᵃ_parent
-    Azᶠᶜᵃ_difference = new_Azᶠᶜᵃ_parent - old_Azᶠᶜᵃ_parent
-    Azᶜᶠᵃ_difference = new_Azᶜᶠᵃ_parent - old_Azᶜᶠᵃ_parent
-    Azᶠᶠᵃ_difference = new_Azᶠᶠᵃ_parent - old_Azᶠᶠᵃ_parent
-    
-    λᶜᶜᵃ_relative_difference  =  λᶜᶜᵃ_difference ./ old_λᶜᶜᵃ_parent
-    λᶠᶠᵃ_relative_difference  =  λᶠᶠᵃ_difference ./ old_λᶠᶠᵃ_parent
-    φᶜᶜᵃ_relative_difference  =  φᶜᶜᵃ_difference ./ old_φᶜᶜᵃ_parent
-    φᶠᶠᵃ_relative_difference  =  φᶠᶠᵃ_difference ./ old_φᶠᶠᵃ_parent
-    Δxᶠᶜᵃ_relative_difference = Δxᶠᶜᵃ_difference ./ old_Δxᶠᶜᵃ_parent
-    Δxᶜᶠᵃ_relative_difference = Δxᶜᶠᵃ_difference ./ old_Δxᶜᶠᵃ_parent
-    Δyᶠᶜᵃ_relative_difference = Δyᶠᶜᵃ_difference ./ old_Δyᶠᶜᵃ_parent
-    Δyᶜᶠᵃ_relative_difference = Δyᶜᶠᵃ_difference ./ old_Δyᶜᶠᵃ_parent
-    Azᶜᶜᵃ_relative_difference = Azᶜᶜᵃ_difference ./ old_Azᶜᶜᵃ_parent
-    Azᶠᶜᵃ_relative_difference = Azᶠᶜᵃ_difference ./ old_Azᶠᶜᵃ_parent
-    Azᶜᶠᵃ_relative_difference = Azᶜᶠᵃ_difference ./ old_Azᶜᶠᵃ_parent
-    Azᶠᶠᵃ_relative_difference = Azᶠᶠᵃ_difference ./ old_Azᶠᶠᵃ_parent
-
-    λᶜᶜᵃ_relative_difference[ old_λᶜᶜᵃ_parent  .== 0] .= 0
-    λᶠᶠᵃ_relative_difference[ old_λᶠᶠᵃ_parent  .== 0] .= 0
-    φᶜᶜᵃ_relative_difference[ old_φᶜᶜᵃ_parent  .== 0] .= 0
-    φᶠᶠᵃ_relative_difference[ old_φᶠᶠᵃ_parent  .== 0] .= 0
-    Δxᶠᶜᵃ_relative_difference[old_Δxᶠᶜᵃ_parent .== 0] .= 0
-    Δxᶜᶠᵃ_relative_difference[old_Δxᶜᶠᵃ_parent .== 0] .= 0
-    Δyᶠᶜᵃ_relative_difference[old_Δyᶠᶜᵃ_parent .== 0] .= 0
-    Δyᶜᶠᵃ_relative_difference[old_Δyᶜᶠᵃ_parent .== 0] .= 0
-    Azᶜᶜᵃ_relative_difference[old_Azᶜᶜᵃ_parent .== 0] .= 0
-    Azᶠᶜᵃ_relative_difference[old_Azᶠᶜᵃ_parent .== 0] .= 0
-    Azᶜᶠᵃ_relative_difference[old_Azᶜᶠᵃ_parent .== 0] .= 0
-    Azᶠᶠᵃ_relative_difference[old_Azᶠᶠᵃ_parent .== 0] .= 0
-    
-end
-
-jldopen("new_code.jld2", "w") do file
-    for region in 1:6
-        file["u/" * string(region)] = u.data[region]
-        file["v/" * string(region)] = v.data[region]
-    end
-end
-
 for region in 1:number_of_regions(grid)
-
     for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in 1:Nz
         model.velocities.u[region][i,j,k] = u[region][i, j, k]
         model.velocities.v[region][i,j,k] = v[region][i, j, k]
@@ -498,7 +143,6 @@ for region in 1:number_of_regions(grid)
         φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
         model.free_surface.η[region][i, j, k] = η₀(λ, φ)
     end
-    
 end
 
 fill_halo_regions!(model.free_surface.η)
@@ -540,9 +184,8 @@ simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
 progress_message_iteration_interval = 10
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n",
-                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
-                                maximum(abs, sim.model.velocities.u),
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|u|): %.2e, wall time: %s\n", iteration(sim),
+                                prettytime(sim), prettytime(sim.Δt), maximum(abs, sim.model.velocities.u),
                                 prettytime(sim.run_wall_time))
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
@@ -565,7 +208,6 @@ end
 function save_ζ(sim)
     grid = sim.model.grid
     
-    Hx, Hy, Hz = halo_size(grid)
     offset = -1 .* halo_size(grid)
 
     u, v, _ = sim.model.velocities
@@ -589,92 +231,56 @@ vᵢ = deepcopy(simulation.model.velocities.v)
 
 ηᵢ = deepcopy(simulation.model.free_surface.η)
 ηᵢ_mean = 0.5 * (maximum(ηᵢ) + minimum(ηᵢ))
+# Redefine ηᵢ as ηᵢ = ηᵢ - ηᵢ_mean for better visualization.
 for region in 1:number_of_regions(grid)
     for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
         ηᵢ[region][i, j, k] -= ηᵢ_mean
     end
 end
 
-if compare_old_and_new_code_metrics
+include("cubed_sphere_visualization.jl")
 
-    # Plot the relative difference of the grid metrics with halos.
+plot_initial_field = false
+if plot_initial_field
+    # Plot the initial velocity field.
+    fig = panel_wise_visualization_with_halos(grid, uᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_u₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶜᶜᵃ_relative_difference)
-    save("λᶜᶜᵃ_relative_difference_with_halos.png", fig)
+    fig = panel_wise_visualization(grid, uᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_u₀.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(λᶠᶠᵃ_relative_difference)
-    save("λᶠᶠᵃ_relative_difference_with_halos.png", fig)
+    fig = panel_wise_visualization_with_halos(grid, vᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_v₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶜᶜᵃ_relative_difference)
-    save("φᶜᶜᵃ_relative_difference_with_halos.png", fig)
+    fig = panel_wise_visualization(grid, vᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_v₀.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(φᶠᶠᵃ_relative_difference)
-    save("φᶠᶠᵃ_relative_difference_with_halos.png", fig)
+    # Plot the initial vorticity field.
+    fig = panel_wise_visualization_with_halos(grid, ζᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_ζ₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶠᶜᵃ_relative_difference)
-    save("Δxᶠᶜᵃ_relative_difference_with_halos.png", fig)
+    fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_ζ₀.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δxᶜᶠᵃ_relative_difference)
-    save("Δxᶜᶠᵃ_relative_difference_with_halos.png", fig)
+    # Plot the initial surface elevation field.
+    fig = panel_wise_visualization_with_halos(grid, ηᵢ; k = Nz + 1, ssh = true)
+    save("cubed_sphere_rossby_haurwitz_wave_η₀_with_halos.png", fig)
 
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶠᶜᵃ_relative_difference)
-    save("Δyᶠᶜᵃ_relative_difference_with_halos.png", fig)
-
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Δyᶜᶠᵃ_relative_difference)
-    save("Δyᶜᶠᵃ_relative_difference_with_halos.png", fig)
-
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶜᵃ_relative_difference)
-    save("Azᶜᶜᵃ_relative_difference_with_halos.png", fig)
-
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶜᵃ_relative_difference)
-    save("Azᶠᶜᵃ_relative_difference_with_halos.png", fig)
-
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶜᶠᵃ_relative_difference)
-    save("Azᶜᶠᵃ_relative_difference_with_halos.png", fig)
-
-    fig = panel_wise_visualization_of_grid_metrics_with_halos(Azᶠᶠᵃ_relative_difference)
-    save("Azᶠᶠᵃ_relative_difference_with_halos.png", fig)
-
+    fig = panel_wise_visualization(grid, ηᵢ; k = Nz + 1, ssh = true)
+    save("cubed_sphere_rossby_haurwitz_wave_η₀.png", fig)
 end
-
-# Plot the initial velocity field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, uᵢ; k = Nz)
-save("u₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, uᵢ; k = Nz)
-save("u₀.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, vᵢ; k = Nz)
-save("v₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, vᵢ; k = Nz)
-save("v₀.png", fig)
-
-# Plot the initial vorticity field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, ζᵢ; k = Nz)
-save("ζ₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
-save("ζ₀.png", fig)
-
-# Plot the initial surface elevation field after model definition.
-
-fig = panel_wise_visualization_with_halos(grid, ηᵢ; k = Nz+1, ssh = true)
-save("η₀_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ηᵢ; k = Nz+1, ssh = true)
-save("η₀.png", fig)
 
 animation_time = 15 # seconds
 framerate = 5
-n_frames = animation_time * framerate
-simulation_time_per_frame = stop_time/n_frames
-# Specify animation_time and framerate in such a way that n_frames is a multiple of n_plots defined below.
+n_frames = animation_time * framerate # excluding the initial condition frame
+simulation_time_per_frame = stop_time / n_frames
 save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
 # Redefine the simulation time per frame.
 simulation_time_per_frame = save_fields_iteration_interval * Δt
+# Redefine the number of frames.
+n_frames = floor(Int, Ntime / save_fields_iteration_interval) # excluding the initial condition frame
+# Redefine the animation time.
+animation_time = n_frames / framerate
 simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
 simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
@@ -701,107 +307,141 @@ if print_output_to_jld2_file
     end
 end
 
-# Make plots and animations.
-
-n_snapshots = length(η_fields)
-for i_snapshot in 1:n_snapshots
+# Redefine η as η = η - ηᵢ_mean for better visualization.
+for i_frame in 1:n_frames+1
     for region in 1:number_of_regions(grid)
         for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in Nz+1:Nz+1
-            η_fields[i_snapshot][region][i, j, k] -= ηᵢ_mean
+            η_fields[i_frame][region][i, j, k] -= ηᵢ_mean
         end
     end
 end
 
-n_plots = 3
+plot_final_field = false
+if plot_final_field
+    fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_u_with_halos.png", fig)
 
-ζ_colorrange = zeros(2)
-η_colorrange = zeros(2)
+    fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_u.png", fig)
 
-for i_plot in 1:n_plots
-    frame_index = round(Int, i_plot * n_frames / n_plots)
-    ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
-    η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; ssh = true)
-    if i_plot == 1
-        ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
-        η_colorrange[:] = collect(η_colorrange_at_frame_index)
-    else
-        ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
-        ζ_colorrange[2] = -ζ_colorrange[1]
-        η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
-        η_colorrange[2] = -η_colorrange[1]
+    fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_v_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_v.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_ζ_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
+    save("cubed_sphere_rossby_haurwitz_wave_ζ.png", fig)
+
+    fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
+    save("cubed_sphere_rossby_haurwitz_wave_η_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
+    save("cubed_sphere_rossby_haurwitz_wave_η.png", fig)
+end
+
+plot_snapshots = false
+if plot_snapshots
+    n_snapshots = 3
+
+    u_colorrange = zeros(2)
+    v_colorrange = zeros(2)
+    ζ_colorrange = zeros(2)
+    η_colorrange = zeros(2)
+
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        u_colorrange_at_frame_index = specify_colorrange(grid, u_fields[frame_index])
+        v_colorrange_at_frame_index = specify_colorrange(grid, v_fields[frame_index])
+        ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index])
+        η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; ssh = true)
+        if i_snapshot == 0
+            u_colorrange[:] = collect(u_colorrange_at_frame_index)
+            v_colorrange[:] = collect(v_colorrange_at_frame_index)
+            ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
+            η_colorrange[:] = collect(η_colorrange_at_frame_index)
+        else
+            u_colorrange[1] = min(u_colorrange[1], u_colorrange_at_frame_index[1])
+            u_colorrange[2] = max(u_colorrange[2], u_colorrange_at_frame_index[2])
+            v_colorrange[1] = min(v_colorrange[1], v_colorrange_at_frame_index[1])
+            v_colorrange[2] = max(v_colorrange[2], v_colorrange_at_frame_index[2])
+            ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
+            ζ_colorrange[2] = max(ζ_colorrange[2], ζ_colorrange_at_frame_index[2])
+            η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
+            η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
+        end
+    end
+
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        simulation_time = simulation_time_per_frame * (frame_index - 1)
+        #=
+        title = "Zonal velocity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, u_fields[frame_index],
+                                                                                          "fc"), title;
+                                           cbar_label = "zonal velocity", specify_plot_limits = true,
+                                           plot_limits = u_colorrange)
+        save(@sprintf("cubed_sphere_rossby_haurwitz_wave_u_%d.png", i_snapshot), fig)
+        title = "Meridional velocity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, v_fields[frame_index],
+                                                                                          "cf"), title;
+                                           cbar_label = "meridional velocity", specify_plot_limits = true,
+                                           plot_limits = v_colorrange)
+        save(@sprintf("cubed_sphere_rossby_haurwitz_wave_v_%d.png", i_snapshot), fig)
+        =#
+        title = "Relative vorticity after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid,
+                                           interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
+                                                                                          "ff"), title;
+                                           cbar_label = "relative vorticity", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange)
+        save(@sprintf("cubed_sphere_rossby_haurwitz_wave_ζ_%d.png", i_snapshot), fig)
+        title = "Surface elevation after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
+                                           cbar_label = "surface elevation", specify_plot_limits = true,
+                                           plot_limits = η_colorrange)
+        save(@sprintf("cubed_sphere_rossby_haurwitz_wave_η_%d.png", i_snapshot), fig)
     end
 end
 
-for i_plot in 1:n_plots
-    frame_index = round(Int, i_plot * n_frames / n_plots)
-    simulation_time = simulation_time_per_frame * frame_index
-    title = "Relative vorticity after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid,
-                                       interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
-                                                                                      "ff"), title;
-                                       cbar_label = "Relative vorticity", specify_plot_limits = true,
-                                       plot_limits = ζ_colorrange)
-    save(@sprintf("ζ_%d.png", i_plot), fig)
-    title = "Surface elevation after $(prettytime(simulation_time))"
-    fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
-                                       cbar_label = "Surface elevation", specify_plot_limits = true,
-                                       plot_limits = η_colorrange)
-    save(@sprintf("η_%d.png", i_plot), fig)
+make_animations = false
+if make_animations
+    create_panel_wise_visualization_animation(grid, u_fields, framerate, "cubed_sphere_rossby_haurwitz_wave_u"; k = Nz)
+    create_panel_wise_visualization_animation(grid, v_fields, framerate, "cubed_sphere_rossby_haurwitz_wave_v"; k = Nz)
+    create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "cubed_sphere_rossby_haurwitz_wave_ζ"; k = Nz)
+    create_panel_wise_visualization_animation(grid, η_fields, framerate, "cubed_sphere_rossby_haurwitz_wave_η";
+                                              k = Nz+1, ssh = true)
+
+    prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
+
+    u_colorrange = specify_colorrange_timeseries(grid, u_fields)
+    geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
+                                           cbar_label = "zonal velocity", specify_plot_limits = true,
+                                           plot_limits = u_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_rossby_haurwitz_wave_u_geo_heatlatlon_animation")
+
+    v_colorrange = specify_colorrange_timeseries(grid, v_fields)
+    geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
+                                           cbar_label = "meridional velocity", specify_plot_limits = true,
+                                           plot_limits = v_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_rossby_haurwitz_wave_v_geo_heatlatlon_animation")
+
+    ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
+    geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity"; k = Nz,
+                                           cbar_label = "relative vorticity", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_rossby_haurwitz_wave_ζ_geo_heatlatlon_animation")
+
+    #=
+    η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
+    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; k = Nz+1,
+                                           ssh = true, cbar_label = "surface elevation", specify_plot_limits = true,
+                                           plot_limits = η_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_rossby_haurwitz_wave_η_geo_heatlatlon_animation")
+    =#
 end
-
-fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
-save("u_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
-save("u.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
-save("v_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
-save("v.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
-save("ζ_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
-save("ζ.png", fig)
-
-fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
-save("η_with_halos.png", fig)
-
-fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
-save("η.png", fig)
-
-create_panel_wise_visualization_animation(grid, u_fields, framerate, "u"; k = Nz)
-create_panel_wise_visualization_animation(grid, v_fields, framerate, "v"; k = Nz)
-create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "ζ"; k = Nz)
-create_panel_wise_visualization_animation(grid, η_fields, framerate, "η"; k = Nz+1, ssh = true)
-
-prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
-
-u_colorrange = specify_colorrange_timeseries(grid, u_fields)
-geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity";
-                                       k = Nz, cbar_label = "zonal velocity", specify_plot_limits = true,
-                                       plot_limits = u_colorrange, framerate = framerate,
-                                       filename = "u_geo_heatlatlon_animation")
-
-v_colorrange = specify_colorrange_timeseries(grid, v_fields)
-geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity";
-                                       k = Nz, cbar_label = "meridional velocity", specify_plot_limits = true,
-                                       plot_limits = v_colorrange, framerate = framerate,
-                                       filename = "v_geo_heatlatlon_animation")
-
-ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
-geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity";
-                                       k = Nz, cbar_label = "relative vorticity", specify_plot_limits = true,
-                                       plot_limits = ζ_colorrange, framerate = framerate,
-                                       filename = "ζ_geo_heatlatlon_animation")
-
-#=
-η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
-geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation";
-                                       k = Nz+1, ssh = true, cbar_label = "surface elevation",
-                                       specify_plot_limits = true, plot_limits = η_colorrange, framerate = framerate,
-                                       filename = "η_geo_heatlatlon_animation")
-=#
