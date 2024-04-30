@@ -17,7 +17,7 @@ using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
-using Oceananigans.Fields: fractional_indices
+using Oceananigans.Fields: fractional_indices, truncate_fractional_indices
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
 
@@ -135,7 +135,7 @@ step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
     # Update the properties of the Lagrangian particles
     update_lagrangian_particle_properties!(particles, model, Δt)
-    
+
     # Compute dynamics
     particles.dynamics(particles, model, Δt)
 

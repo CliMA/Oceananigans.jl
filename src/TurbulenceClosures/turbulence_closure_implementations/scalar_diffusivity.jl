@@ -38,7 +38,7 @@ Arguments
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, three-dimensional `AbstractArray`, `Field`, or `Function`.
+* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
 
 * `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
        `NamedTuple` of diffusivities with entries for each tracer.
@@ -54,10 +54,11 @@ value of keyword argument `discrete_form`, the constructor expects:
 
 * `discrete_form = true`:
   - with `loc = (nothing, nothing, nothing)` (default):
-    functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`,
     and `ℓz` either `Face()` or `Center()`.
-  - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`
-    and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+  - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`, and `ℓz` either
+    `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
 
@@ -106,12 +107,12 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
-    formulation=ThreeDimensionalFormulation(), FT=Float64;
-    ν=0, κ=0,
-    discrete_form = false,
-    loc = (nothing, nothing, nothing),
-    parameters = nothing,
-    required_halo_size = 1)
+                           formulation=ThreeDimensionalFormulation(), FT=Float64;
+                           ν=0, κ=0,
+                           discrete_form = false,
+                           loc = (nothing, nothing, nothing),
+                           parameters = nothing,
+                           required_halo_size = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
     throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
