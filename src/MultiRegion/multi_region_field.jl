@@ -24,7 +24,7 @@ const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMult
 const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
 
 # Utils
-Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
+Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
 @inline devices(f::GriddedMultiRegionField) = devices(f.grid)

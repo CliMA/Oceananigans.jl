@@ -306,6 +306,3 @@ _recv_from_southwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,        
 _recv_from_southeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
 _recv_from_northwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-
-# Switch around halos for cubed sphere by exchanging buffer informations
-replace_horizontal_vector_halos!(vel, grid::AbstractGrid; signed=true) = nothing
