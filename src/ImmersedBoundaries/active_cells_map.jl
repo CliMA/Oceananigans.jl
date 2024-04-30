@@ -4,6 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
+import Oceananigans.Grids: active_surface_map, active_interior_map
 import Oceananigans.Utils: active_cells_work_layout
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
@@ -33,7 +34,6 @@ struct EastMap  end
 struct SouthMap end
 struct NorthMap end
 
-@inline active_surface_map(::AbstractGrid)      = nothing
 @inline active_surface_map(::ActiveZColumnsIBG) = ZColumnMap()
 
 @inline active_interior_map(::Val{:west})  = WestMap()
@@ -41,7 +41,6 @@ struct NorthMap end
 @inline active_interior_map(::Val{:south}) = SouthMap()
 @inline active_interior_map(::Val{:north}) = NorthMap()
 
-@inline active_interior_map(::AbstractGrid)              = nothing
 @inline active_interior_map(::ActiveCellsIBG)            = InteriorMap()
 @inline active_interior_map(::DistributedActiveCellsIBG) = InteriorMap()
 

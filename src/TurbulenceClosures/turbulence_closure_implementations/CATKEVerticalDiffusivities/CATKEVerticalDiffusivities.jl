@@ -56,22 +56,24 @@ struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD
     negative_turbulent_kinetic_energy_damping_time_scale :: FT
 end
 
-CATKEVerticalDiffusivity{TD}(mixing_length::CL,
-                             turbulent_kinetic_energy_equation::TKE,
-                             maximum_tracer_diffusivity::FT,
-                             maximum_tke_diffusivity::FT,
-                             maximum_viscosity::FT,
-                             minimum_turbulent_kinetic_energy::FT,
-                             minimum_convective_buoyancy_flux::FT,
-                             negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT} =
-    CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
-                                              turbulent_kinetic_energy_equation,
-                                              maximum_tracer_diffusivity,
-                                              maximum_tke_diffusivity,
-                                              maximum_viscosity,
-                                              minimum_turbulent_kinetic_energy,
-                                              minimum_convective_buoyancy_flux,
-                                              negative_turbulent_kinetic_energy_damping_time_scale)
+function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
+                                      turbulent_kinetic_energy_equation::TKE,
+                                      maximum_tracer_diffusivity::FT,
+                                      maximum_tke_diffusivity::FT,
+                                      maximum_viscosity::FT,
+                                      minimum_turbulent_kinetic_energy::FT,
+                                      minimum_convective_buoyancy_flux::FT,
+                                      negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT}
+
+    return CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
+                                                     turbulent_kinetic_energy_equation,
+                                                     maximum_tracer_diffusivity,
+                                                     maximum_tke_diffusivity,
+                                                     maximum_viscosity,
+                                                     minimum_turbulent_kinetic_energy,
+                                                     minimum_convective_buoyancy_flux,
+                                                     negative_turbulent_kinetic_energy_damping_time_scale)
+end
 
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
     CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
@@ -82,6 +84,7 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 
 include("mixing_length.jl")
 include("turbulent_kinetic_energy_equation.jl")
+include("time_step_turbulent_kinetic_energy.jl")
 
 """
     CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -250,6 +253,13 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     Δt = model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
 
+    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
+        # Compute e at the current time:
+        #   * update tendency Gⁿ using current and previous velocity field
+        #   * use tridiagonal solve to take an implicit step
+        time_step_turbulent_kinetic_energy!(model)
+    end
+
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
             diffusivities.Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
@@ -261,7 +271,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     return nothing
 end
 
-@kernel function compute_average_surface_buoyancy_flux!(Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+@kernel function compute_average_surface_buoyancy_flux!(Qᵇ, grid, closure, velocities, tracers,
+                                                        buoyancy, top_tracer_bcs, clock, Δt)
     i, j = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)

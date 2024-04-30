@@ -30,7 +30,7 @@ coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
 #closures_to_run = [catke, ri_based, convective_adjustment]
-closures_to_run = [catke] #, ri_based, convective_adjustment]
+closures_to_run = [catke, ri_based] #, convective_adjustment]
 
 for closure in closures_to_run
 
@@ -53,7 +53,7 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           schedule = TimeInterval(20minutes),
-                                                          filename = "windy_convection_" * closurename,
+                                                          filename = "new_windy_convection_" * closurename,
                                                           overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
@@ -144,7 +144,7 @@ axislegend(axκ, position=:rb)
 
 display(fig)
 
-record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
-    n[] = nn
-end
+# record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
+#     n[] = nn
+# end
 

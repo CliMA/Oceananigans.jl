@@ -114,7 +114,6 @@ where `c = C[tracer_index]`.
                                                           velocities,
                                                           free_surface,
                                                           tracers,
-                                                          top_tracer_bcs,
                                                           diffusivities,
                                                           auxiliary_fields,
                                                           forcing,
@@ -173,13 +172,12 @@ end
                                                                velocities,
                                                                free_surface,
                                                                tracers,
-                                                               top_tracer_bcs,
                                                                diffusivities,
                                                                auxiliary_fields,
                                                                forcing,
                                                                clock) where tracer_index
 
-    @inbounds e = tracers[tracer_index]
+    e = tracers.e
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
@@ -190,3 +188,4 @@ end
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              + forcing(i, j, k, grid, clock, model_fields))
 end
+

@@ -69,24 +69,32 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
+    closure = model.closure
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        G⁻ = model.timestepper.G⁻[tracer_name]
-        tracer_field = tracers[tracer_name]
-        closure = model.closure
+        
+        if false #closure isa FlavorOfCATKE && tracer_name == :e
+            @info "Skipping AB2 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            G⁻ = model.timestepper.G⁻[tracer_name]
+            tracer_field = tracers[tracer_name]
+            closure = model.closure
 
-        launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+            launch!(model.architecture, model.grid, :xyz,
+                    ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
 
-        implicit_step!(tracer_field,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
+            implicit_step!(tracer_field,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
+        end
     end
 
     return nothing
 end
+
