@@ -258,6 +258,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_turbulent_kinetic_energy!(model)
+    else
+        @show model.clock
     end
 
     launch!(arch, grid, :xy,
