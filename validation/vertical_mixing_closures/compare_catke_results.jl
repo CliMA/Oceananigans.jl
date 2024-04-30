@@ -30,7 +30,8 @@ end
 b1 = first(b_ts)
 e1 = first(e_ts)
 κ1 = first(κᶜ_ts)
-@show maximum(e1)
+@show maximum(e_ts[1])
+@show maximum(e_ts[2])
 
 zc = znodes(b1)
 zf = znodes(κ1)

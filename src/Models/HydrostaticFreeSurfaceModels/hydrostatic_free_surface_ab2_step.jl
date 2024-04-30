@@ -11,8 +11,9 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 setup_free_surface!(model, free_surface, χ) = nothing
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
+function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
+    χ = model.timestepper.χ
     setup_free_surface!(model, model.free_surface, χ)
 
     # Step locally velocity and tracers
@@ -74,7 +75,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        if false #closure isa FlavorOfCATKE && tracer_name == :e
+        if closure isa FlavorOfCATKE && tracer_name == :e
             @info "Skipping AB2 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]

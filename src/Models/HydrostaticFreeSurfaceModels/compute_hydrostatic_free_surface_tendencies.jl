@@ -70,41 +70,36 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
-        if model.closure isa FlavorOfCATKE && tracer_name == :e
-            @debug "Skipping calculate tendencies for e"
-        else
-            @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-            @inbounds c_advection   = model.advection[tracer_name]
-            @inbounds c_forcing     = model.forcing[tracer_name]
-            @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+        @inbounds c_advection   = model.advection[tracer_name]
+        @inbounds c_forcing     = model.forcing[tracer_name]
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-            args = tuple(Val(tracer_index),
-                         Val(tracer_name),
-                         c_advection,
-                         model.closure,
-                         c_immersed_bc,
-                         model.buoyancy,
-                         model.biogeochemistry,
-                         model.velocities,
-                         model.free_surface,
-                         model.tracers,
-                         model.diffusivity_fields,
-                         model.auxiliary_fields,
-                         c_forcing,
-                         model.clock)
+        args = tuple(Val(tracer_index),
+                     Val(tracer_name),
+                     c_advection,
+                     model.closure,
+                     c_immersed_bc,
+                     model.buoyancy,
+                     model.biogeochemistry,
+                     model.velocities,
+                     model.free_surface,
+                     model.tracers,
+                     model.diffusivity_fields,
+                     model.auxiliary_fields,
+                     c_forcing,
+                     model.clock)
 
-            for parameters in kernel_parameters
-                launch!(arch, grid, parameters,
-                        compute_hydrostatic_free_surface_Gc!,
-                        c_tendency,
-                        grid,
-                        active_cells_map,
-                        args;
-                        active_cells_map)
-            end
+        for parameters in kernel_parameters
+            launch!(arch, grid, parameters,
+                    compute_hydrostatic_free_surface_Gc!,
+                    c_tendency,
+                    grid,
+                    active_cells_map,
+                    args;
+                    active_cells_map)
         end
     end
-
 
     return nothing
 end
@@ -244,12 +239,6 @@ end
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, map, grid)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
-
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
 #####

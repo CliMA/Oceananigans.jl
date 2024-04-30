@@ -103,7 +103,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         end
     end
 
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
 
