@@ -31,7 +31,7 @@ function time_step_turbulent_kinetic_energy!(model)
     e_forcing     = model.forcing.e
     e_immersed_bc = immersed_boundary_condition(model.tracers.e)
     active_cells_map = active_interior_map(grid)
-    previous_velocities = = model.diffusivity_fields.previous_velocities
+    previous_velocities = model.diffusivity_fields.previous_velocities
     previous_tracers = (; b=model.diffusivity_fields.b⁻, e=model.tracers.e)
     previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
 
