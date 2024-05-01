@@ -137,8 +137,9 @@ function NonhydrostaticModel(; grid,
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     # Validate pressure fields
-    nonhydrostatic_pressure isa CenterField || throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
-    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa CenterField ||
+    nonhydrostatic_pressure isa Field{Center, Center, Center} ||
+        throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
+    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa Field{Center, Center, Center} ||
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
     # We don't support CAKTE for NonhydrostaticModel yet.
