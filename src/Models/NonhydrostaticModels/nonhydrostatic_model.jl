@@ -7,7 +7,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields
+using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -161,12 +161,12 @@ function NonhydrostaticModel(; grid,
     # First, we extract boundary conditions that are embedded within any _user-specified_ field tuples:
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
-                                         extract_boundary_conditions(pressures),
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions() for name in prognostic_field_names)
+    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions()
+                                                                     for name in prognostic_field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
