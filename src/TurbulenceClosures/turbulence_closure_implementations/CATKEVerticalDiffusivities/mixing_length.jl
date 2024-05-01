@@ -87,6 +87,7 @@ end
 @inline function stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
     Cˢ = closure.mixing_length.Cˢ
     Cᵇ = closure.mixing_length.Cᵇ
+
     d_up   = Cˢ * depthᶜᶜᶜ(i, j, k, grid)
     d_down = Cᵇ * height_above_bottomᶜᶜᶜ(i, j, k, grid)
     d = min(d_up, d_down)
@@ -195,6 +196,13 @@ end
 
 @inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    CRi⁰ = closure.mixing_length.CRi⁰
+    CRiᵟ = closure.mixing_length.CRiᵟ
+    return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
+end
+
+@inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
     return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
