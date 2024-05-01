@@ -16,7 +16,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
-                                tracers=(:T, :S))
+                                tracers = (:T, :S))
 
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
