@@ -66,7 +66,8 @@ end
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
-                                pressures = nothing,
+                  nonhydrostatic_pressure = CenterField(grid),
+             hydrostatic_pressure_anomaly = nothing,
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
                         immersed_boundary = nothing,
@@ -97,7 +98,12 @@ Keyword arguments
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
-  - `pressures`: Hydrostatic and non-hydrostatic pressure fields. Default: `nothing`.
+  - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `CenterField(grid)`.
+  - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
+                                    in hydrostatic balance with the buoyancy field. If `nothing` (default), the anomaly
+                                    is not computed. If `CenterField(grid)`, the anomaly is precomputed by
+                                    vertically-integrating the buoyancy field, and `nonhydrostatic_pressure` represents
+                                    only the part of pressure that deviates from the hydrostsatic anomaly.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
