@@ -245,10 +245,6 @@ function offset_windowed_data(data, Loc, grid, indices)
         windowed_parent = parent(data)
     else
         parent_indices = map(parent_index_range, indices, loc, topo, halo)
-        if size(data)[3] == 1 && first.(axes(data))[3] == grid.Nz + 1 # take ssh into consideration
-            parent_indices = collect(parent_indices)
-            parent_indices[3] = 1:1
-        end
         windowed_parent = view(parent(data), parent_indices...)
     end
 

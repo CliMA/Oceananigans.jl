@@ -223,7 +223,7 @@ regular_dimensions(grid) = ()
 
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(index::UnitRange,              loc, topo, halo) = UnitRange(1, length(index))
 
 parent_index_range(index::UnitRange, ::Nothing, ::Flat, halo) = index
 parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
