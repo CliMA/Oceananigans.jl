@@ -136,14 +136,19 @@ function NonhydrostaticModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
+    # Validate pressure fields
+    nonhydrostatic_pressure isa CenterField || throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
+    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa CenterField ||
+        throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
+
     # We don't support CAKTE for NonhydrostaticModel yet.
     closure = validate_closure(closure)
     first_closure = closure isa Tuple ? first(closure) : closure
     first_closure isa FlavorOfCATKE &&
-        error("CATKEVerticalDiffusivity is not supported for " *
-              "NonhydrostaticModel --- yet!")
+        error("CATKEVerticalDiffusivity is not supported for NonhydrostaticModel --- yet!")
 
-    tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry)), biogeochemistry, grid, clock)
+    all_auxiliary_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
+    tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
