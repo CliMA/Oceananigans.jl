@@ -94,8 +94,8 @@ include("time_step_turbulent_kinetic_energy.jl")
                              maximum_tracer_diffusivity = Inf,
                              maximum_tke_diffusivity = Inf,
                              maximum_viscosity = Inf,
-                             minimum_turbulent_kinetic_energy = 1e-6,
-                             minimum_convective_buoyancy_flux = 1e-8,
+                             minimum_turbulent_kinetic_energy = 1e-9,
+                             minimum_convective_buoyancy_flux = 1e-11,
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
@@ -148,7 +148,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
                                   minimum_turbulent_kinetic_energy = 1e-9,
-                                  minimum_convective_buoyancy_flux = 1e-15,
+                                  minimum_convective_buoyancy_flux = 1e-11,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
@@ -228,16 +228,13 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     u⁻ = XFaceField(grid)
     v⁻ = YFaceField(grid)
-    w⁻ = ZFaceField(grid)
-    previous_velocities = (; u=u⁻, v=v⁻, w=w⁻)
-
-    b⁻ = CenterField(grid)
+    previous_velocities = (; u=u⁻, v=v⁻)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κᵉ : κᶜ          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Lᵉ : ZeroField() for name in tracer_names)
 
-    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ, b⁻,
+    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ,
             previous_compute_time, previous_velocities,
             _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
@@ -415,25 +412,9 @@ end
     return min(κᵘ, κᵘ_max)
 end
 
-@inline function κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    ℓᵘ = momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    κᵘ = ℓᵘ * w★
-    κᵘ_max = closure.maximum_viscosity
-    return min(κᵘ, κᵘ_max)
-end
-
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓᶜ = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    κᶜ = ℓᶜ * w★
-    κᶜ_max = closure.maximum_tracer_diffusivity
-    return min(κᶜ, κᶜ_max)
-end
-
-@inline function κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
-    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    ℓᶜ = tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κᶜ = ℓᶜ * w★
     κᶜ_max = closure.maximum_tracer_diffusivity
     return min(κᶜ, κᶜ_max)

@@ -22,12 +22,11 @@ function time_step_turbulent_kinetic_energy!(model)
     grid = model.grid
     closure = model.closure
     previous_velocities = model.diffusivity_fields.previous_velocities
-    previous_tracers = (; b=model.diffusivity_fields.b⁻, e)
 
     args = tuple(closure,
                  model.velocities,
                  previous_velocities,
-                 model.tracers, #previous_tracers,
+                 model.tracers,
                  model.buoyancy,
                  model.diffusivity_fields)
 
