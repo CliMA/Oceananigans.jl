@@ -203,42 +203,6 @@ TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
 "Shortcut constructor for empty tracer fields."
 TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
 
-#####
-##### Pressure fields tuples
-#####
-
-"""
-    PressureFields(grid, bcs::NamedTuple)
-
-Return a `NamedTuple` with pressure fields `pHY′` and `pNHS` initialized as
-`CenterField`s on `grid`.  Boundary conditions `bcs`
-may be specified via a named tuple of `FieldBoundaryCondition`s.
-"""
-function PressureFields(grid, bcs=NamedTuple())
-
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
-    bcs = merge(default_pressure_boundary_conditions, bcs)
-
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (pHY′=pHY′, pNHS=pNHS)
-end
-
-function PressureFields(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
-    bcs = merge(default_pressure_boundary_conditions, bcs)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (; pHY′=nothing, pNHS=pNHS)
-end
-
 """
     TendencyFields(grid, tracer_names;
                    u = XFaceField(grid),

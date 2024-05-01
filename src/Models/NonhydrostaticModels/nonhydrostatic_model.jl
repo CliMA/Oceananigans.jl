@@ -7,7 +7,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
+using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -119,7 +119,8 @@ function NonhydrostaticModel(; grid,
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
-                                pressures = nothing,
+             hydrostatic_pressure_anomaly = nothing,
+                  nonhydrostatic_pressure = CenterField(grid),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
                         immersed_boundary = nothing,
@@ -172,7 +173,7 @@ function NonhydrostaticModel(; grid,
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
@@ -223,3 +224,4 @@ end
     (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
      v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
      w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
+
