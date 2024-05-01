@@ -223,7 +223,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     κᶜ = ZFaceField(grid, boundary_conditions=bcs.κᶜ)
     κᵉ = ZFaceField(grid, boundary_conditions=bcs.κᵉ)
     Lᵉ = CenterField(grid)
-    Qᵇ = Field{Center, Center, Nothing}(grid)
+    Jᵇ = Field{Center, Center, Nothing}(grid)
     previous_compute_time = Ref(zero(grid))
 
     u⁻ = XFaceField(grid)
@@ -234,7 +234,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κᵉ : κᶜ          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Lᵉ : ZeroField() for name in tracer_names)
 
-    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ,
+    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Jᵇ,
             previous_compute_time, previous_velocities,
             _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
@@ -274,7 +274,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            diffusivities.Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+            diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     launch!(arch, grid, parameters,
             compute_CATKE_diffusivities!,
@@ -283,24 +283,24 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     return nothing
 end
 
-@kernel function compute_average_surface_buoyancy_flux!(Qᵇ, grid, closure, velocities, tracers,
+@kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, velocities, tracers,
                                                         buoyancy, top_tracer_bcs, clock, Δt)
     i, j = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
 
-    Qᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers))
+    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers))
 
     k = grid.Nz
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Qᵇ)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ)
 
-    Qᵇᵋ = closure.minimum_convective_buoyancy_flux
-    Qᵇᵢⱼ = @inbounds Qᵇ[i, j, 1]
-    Qᵇ⁺ = max(Qᵇᵋ, Qᵇᵢⱼ, Qᵇ★) # selects fastest (dominant) time-scale
-    t★ = (ℓᴰ^2 / Qᵇ⁺)^(1/3)
+    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
+    Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ, Jᵇ★) # selects fastest (dominant) time-scale
+    t★ = (ℓᴰ^2 / Jᵇ⁺)^(1/3)
     ϵ = Δt / t★
 
-    @inbounds Qᵇ[i, j, 1] = (Qᵇᵢⱼ + ϵ * Qᵇ★) / (1 + ϵ)
+    @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
 @kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
@@ -308,12 +308,12 @@ end
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
-    Qᵇ = diffusivities.Qᵇ
+    Jᵇ = diffusivities.Jᵇ
 
     @inbounds begin
-        κᵘ★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
-        κᶜ★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
-        κᵉ★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
+        κᵘ★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+        κᶜ★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+        κᵉ★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
 
         on_periphery = peripheral_node(i, j, k, grid, c, c, f)
         within_inactive = inactive_node(i, j, k, grid, c, c, f)

@@ -20,10 +20,10 @@ end
 
 # Note special attention paid to averaging the vertical grid spacing correctly
 @inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) * 
-                                                  Δzᶠᶜᶠ(i, j, k, grid) * ∂zᶠᶜᶠ(i, j, k, grid, b)
+                                                  Δzᶠᶜᶠ(i, j, k, grid)     * ∂zᶠᶜᶠ(i, j, k, grid, b)
 
 @inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) * 
-                                                  Δzᶜᶠᶠ(i, j, k, grid) * ∂zᶜᶠᶠ(i, j, k, grid, b)
+                                                  Δzᶜᶠᶠ(i, j, k, grid)     * ∂zᶜᶠᶠ(i, j, k, grid, b)
 
 @inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
     Δz_Pxⁿ = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
@@ -90,7 +90,7 @@ end
     #=
     # Non-conservative reconstruction of shear production:
     closure = getclosure(i, j, closure)
-    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Jᵇ)
     S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
 
     return κᵘ * S²
@@ -109,16 +109,6 @@ end
 @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
     ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
-#=
-# Non-conservative reconstruction of buoyancy flux:
-@inline function explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-    closure = getclosure(i, j, closure)
-    κᶜ = κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return - κᶜ * N²
-end
-=#
-
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
     explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
 
@@ -131,15 +121,6 @@ const VITD = VerticallyImplicitTimeDiscretization
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
     # the explicit buoyancy flux.
     return max(zero(grid), wb)
-
-    #=
-    dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
-
-    # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
-    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
-    # the explicit buoyancy flux.
-    return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
-    =#
 end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
@@ -151,8 +132,8 @@ end
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    Qᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Qᵇ)
+    Jᵇ = surface_buoyancy_flux
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
@@ -173,7 +154,7 @@ end
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
                                   velocities, tracers, buoyancy, diffusivities)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Qᵇ)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Jᵇ)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
@@ -296,16 +277,16 @@ end
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
-    Qᵘ = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
-    Qᵛ = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
-    return sqrt(sqrt(Qᵘ^2 + Qᵛ^2))
+    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
+    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
+    return sqrt(sqrt(τx^2 + τy^2))
 end
 
 """ Computes the convective velocity w★. """
 @inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
-    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(Qᵇ) * Δz   
+    return clip(Jᵇ) * Δz   
 end
 
 struct TKETopBoundaryConditionParameters{C, U}

@@ -109,8 +109,8 @@ end
     u = velocities.u
     v = velocities.v
 
-    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
+    Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
+    Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
     w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
@@ -120,11 +120,11 @@ end
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
+    ℓᶜ = Cᶜ * w★³ / (Jᵇ + Jᵇᵋ)
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
+    Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
     
     # Reduce convective and entraining mixing lengths by sheared convection factor
@@ -132,13 +132,13 @@ end
     ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
 
     # "Entrainment length"
-    # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    # Ensures that w′b′ ~ Jᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     
     # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+    convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
+    entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -152,8 +152,8 @@ end
     u = velocities.u
     v = velocities.v
 
-    Qᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Qᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
+    Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
+    Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
     w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
@@ -163,14 +163,14 @@ end
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Qᵇ + Qᵇᵋ)
+    ℓᶜ = Cᶜ * w★³ / (Jᵇ + Jᵇᵋ)
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Figure out which mixing length applies
-    convecting = (Qᵇ > Qᵇᵋ) & (N² < 0)
+    convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
 
     # Model for shear-convection interaction
-    Sp = sqrt(S²) * w★² / (Qᵇ + Qᵇᵋ) # Sp = "Sheared convection number"
+    Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
 
     # Reduce convective and entraining mixing lengths by sheared convection factor
@@ -178,11 +178,11 @@ end
     ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
 
     # "Entrainment length"
-    # Ensures that w′b′ ~ Qᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Qᵇ / (w★ * N² + Qᵇᵋ)
+    # Ensures that w′b′ ~ Jᵇ at entrainment depth
+    ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
 
-    entraining = (Qᵇ > Qᵇᵋ) & (N² > 0) & (N²_above < 0)
+    entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
