@@ -264,19 +264,13 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_turbulent_kinetic_energy!(model)
-    else
-        @show model.clock
     end
 
     # Update "previous velocities"
-    u⁻, v⁻, w⁻ = diffusivities.previous_velocities
     u, v, w = model.velocities
-    b⁻ = diffusivities.b⁻
-    b = model.tracers.b
+    u⁻, v⁻ = diffusivities.previous_velocities
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
-    parent(b⁻) .= parent(b)
-    # parent(w⁻) .= parent(w)
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,

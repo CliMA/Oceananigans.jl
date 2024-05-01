@@ -205,6 +205,7 @@ end
 
 # TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
 
+#=
 @inline shear_production(i, j, k, grid, closure, U, C, B, K) = zero(grid)
 
 @inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, U, C, B, K) =
@@ -246,6 +247,7 @@ end
     dissipation(i, j, k, grid, closures[1], args...) +
     dissipation(i, j, k, grid, closures[2], args...) +
     dissipation(i, j, k, grid, closures[3], args...)
+=#
 
 #####
 ##### TKE top boundary condition

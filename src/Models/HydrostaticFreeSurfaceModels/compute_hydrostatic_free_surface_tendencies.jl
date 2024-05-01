@@ -1,6 +1,5 @@
 import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.TurbulenceClosures: compute_hydrostatic_free_surface_Ge!
 import Oceananigans.Models: complete_communication_and_compute_boundary!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
