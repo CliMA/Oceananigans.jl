@@ -15,29 +15,19 @@ end
 
 function time_step_turbulent_kinetic_energy!(model)
 
-    tracer_name = :e
-    tracer_index = findfirst(k -> k==:e, keys(model.tracers))
+    # 1. Compute new tendency.
     Gⁿe = model.timestepper.Gⁿ.e
-    G⁻e = model.timestepper.G⁻.e
     e = model.tracers.e
-    closure = model.closure
     arch = model.architecture
     grid = model.grid
-    Δt = model.clock.last_Δt
-    χ = model.timestepper.χ
-
-    # 1. Compute new tendency.
-    e_advection   = model.advection.e
-    e_forcing     = model.forcing.e
-    e_immersed_bc = immersed_boundary_condition(model.tracers.e)
-    active_cells_map = active_interior_map(grid)
+    closure = model.closure
     previous_velocities = model.diffusivity_fields.previous_velocities
-    previous_tracers = (; b=model.diffusivity_fields.b⁻, e=model.tracers.e)
-    previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
+    previous_tracers = (; b=model.diffusivity_fields.b⁻, e)
 
     args = tuple(closure,
+                 model.velocities,
                  previous_velocities,
-                 previous_tracers,
+                 model.tracers, #previous_tracers,
                  model.buoyancy,
                  model.diffusivity_fields)
 
@@ -46,19 +36,21 @@ function time_step_turbulent_kinetic_energy!(model)
             Gⁿe, grid, args)
 
     # 2. Step forward
+    Δt = model.clock.last_Δt
+    χ = model.timestepper.χ
+    G⁻e = model.timestepper.G⁻.e
+    tracer_index = findfirst(k -> k == :e, keys(model.tracers))
+    implicit_solver = model.timestepper.implicit_solver
+    previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
+
     launch!(model.architecture, model.grid, :xyz,
             ab2_step_field!, e, Δt, χ, Gⁿe, G⁻e)
 
-    implicit_step!(e,
-                   model.timestepper.implicit_solver,
-                   closure,
-                   model.diffusivity_fields,
-                   Val(tracer_index),
-                   previous_clock, #model.clock,
-                   Δt)
-
-    launch!(model.architecture, model.grid, :xyz,
-            store_field_tendencies!, G⁻e, Gⁿe)
+    implicit_step!(e, implicit_solver, closure,
+                   model.diffusivity_fields, Val(tracer_index),
+                   previous_clock, Δt)
+                   
+    launch!(arch, grid, :xyz, store_field_tendencies!, G⁻e, Gⁿe)
 
     return nothing
 end
@@ -71,14 +63,21 @@ end
 
 @inline function tke_source_terms(i, j, k, grid,
                                   closure,
-                                  velocities,
+                                  next_velocities,
+                                  previous_velocities,
                                   tracers,
                                   buoyancy,
                                   diffusivities)
 
-    return shear_production(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) + 
-              buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) - 
-                dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+    u⁺ = next_velocities.u
+    v⁺ = next_velocities.v
+    uⁿ = previous_velocities.u
+    vⁿ = previous_velocities.v
+    κᵘ = diffusivities.κᵘ
+
+    return shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺) +
+              buoyancy_flux(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities) - 
+                dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
 end
 
 #=

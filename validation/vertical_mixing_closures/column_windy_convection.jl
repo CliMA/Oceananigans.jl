@@ -10,14 +10,14 @@ using Oceananigans.TurbulenceClosures:
     ExplicitTimeDiscretization
 
 # Parameters
-Δz = 4          # Vertical resolution
+Δz = 1          # Vertical resolution
 Lz = 256        # Extent of vertical domain
 Nz = Int(Lz/Δz) # Vertical resolution
 f₀ = 1e-4       # Coriolis parameter (s⁻¹)
 N² = 1e-6       # Buoyancy gradient (s⁻²)
 Jᵇ = +1e-8      # Surface buoyancy flux (m² s⁻³)
 τˣ = -2e-4      # Surface kinematic momentum flux (m s⁻¹)
-stop_time = 2days
+stop_time = 4days
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
 catke = CATKEVerticalDiffusivity()
@@ -42,7 +42,7 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
-    simulation = Simulation(model; Δt=2minutes, stop_iteration=2) #stop_time)
+    simulation = Simulation(model; Δt=20minutes, stop_time)
 
     closurename = string(nameof(typeof(closure)))
 
@@ -52,7 +52,8 @@ for closure in closures_to_run
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          schedule = IterationInterval(1),
+                                                          schedule = TimeInterval(20minutes),
+                                                          #schedule = IterationInterval(1),
                                                           filename = "new_windy_convection_" * closurename,
                                                           overwrite_existing = true)
 

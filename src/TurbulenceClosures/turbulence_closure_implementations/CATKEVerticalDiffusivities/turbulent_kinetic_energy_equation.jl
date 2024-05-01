@@ -18,6 +18,62 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
+# Note special attention paid to averaging the vertical grid spacing correctly
+@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) * 
+                                                  Δzᶠᶜᶠ(i, j, k, grid) * ∂zᶠᶜᶠ(i, j, k, grid, b)
+
+@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) * 
+                                                  Δzᶜᶠᶠ(i, j, k, grid) * ∂zᶜᶠᶠ(i, j, k, grid, b)
+
+@inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
+    Δz_Pxⁿ = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
+    Δz_Px⁺ = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
+    return (Δz_Pxⁿ + Δz_Px⁺) / (2 * Δzᶠᶜᶜ(i, j, k, grid))
+end
+
+@inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, vⁿ, v⁺)
+    Δz_Pyⁿ = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, vⁿ, v⁺)
+    Δz_Py⁺ = ℑzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
+    return (Δz_Pyⁿ + Δz_Py⁺) / (2 * Δzᶜᶠᶜ(i, j, k, grid))
+end
+
+@inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
+    # Reconstruct the shear production term in an "approximately conservative" manner
+    # (ie respecting the spatial discretization and using a stencil commensurate with the
+    # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
+    # the temporal discretization. Note that also respecting the temporal discretization, would
+    # require storing the velocity field at n and n+1):
+
+    return ℑxᶜᵃᵃ(i, j, k, grid, shear_production_xᶠᶜᶜ, νₑ, uⁿ, u⁺) +
+           ℑyᵃᶜᵃ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, vⁿ, v⁺)
+end
+
+#=
+const c = Center()
+const f = Face()
+
+# A particular kind of reconstruction that ignores peripheral nodes
+@inline function ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
+    k⁺ = k + 1
+    k⁻ = k
+
+    f⁺ = fᵃᵃᶠ(i, j, k⁺, grid, args...)
+    f⁻ = fᵃᵃᶠ(i, j, k⁻, grid, args...)
+
+    p⁺ = peripheral_node(i, j, k⁺, grid, c, c, f)
+    p⁻ = peripheral_node(i, j, k⁻, grid, c, c, f)
+
+    f⁺ = ifelse(p⁺, f⁻, f⁺)
+    f⁻ = ifelse(p⁻, f⁺, f⁻)
+
+    return (f⁺ + f⁻) / 2
+end
+
+@inline νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
+@inline νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
+=#
+
+#=
 @inline ν_∂z_u²ᶠᶜᶠ(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
 @inline ν_∂z_v²ᶜᶠᶠ(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
 
@@ -40,6 +96,7 @@ end
     return κᵘ * S²
     =#
 end
+=#
 
 # To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
 # of mean potential energy):

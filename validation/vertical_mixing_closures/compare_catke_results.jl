@@ -16,7 +16,7 @@ filepaths = [
     "new_windy_convection_CATKEVerticalDiffusivity.jld2",
 ]
 
-labels = ["old", "new"]
+labels = ["Non-conservative", "Conservative"]
 
 for filepath in filepaths
     push!(b_ts, FieldTimeSeries(filepath, "b"))
@@ -77,31 +77,35 @@ axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)", title=etitle)
 axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
 
 xlims!(axb, -grid.Lz * N², 0)
-xlims!(axu, -0.1, 0.1)
+xlims!(axu, -0.2, 0.2)
 xlims!(axe, -1e-4, 2e-4)
-xlims!(axκ, -1e-1, 5e-1)
+xlims!(axκ, -1e-1, 2e0)
 
-colors = [:black, :blue, :red, :orange]
+colors = [
+    (:black, 0.8),
+    :royalblue,
+    :red,
+    :orange]
 
 i = 1
 label = labels[i]
-lines!(axb, b1n,  zc, label=label, color=colors[i])
-lines!(axu, u1n,  zc, label="u, " * label, color=colors[i])
-lines!(axu, v1n,  zc, label="v, " * label, linestyle=:dash, color=colors[i])
-lines!(axe, e1n,  zc, label="e, " * label, color=colors[i])
-lines!(axκ, κᶜ1n, zf, label="κᶜ, " * label, color=colors[i])
-lines!(axκ, κᵘ1n, zf, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
+linewidth=5
+lines!(axb, b1n,  zc; linewidth, label=label, color=colors[i])
+lines!(axu, u1n,  zc; linewidth, label="u, " * label, color=colors[i])
+lines!(axu, v1n,  zc; linewidth, label="v, " * label, linestyle=:dash, color=colors[i])
+lines!(axe, e1n,  zc; linewidth, label="e, " * label, color=colors[i])
+lines!(axκ, κᶜ1n, zf; linewidth, label="κᶜ, " * label, color=colors[i])
+lines!(axκ, κᵘ1n, zf; linewidth, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
 
 i = 2
 label = labels[i]
-lines!(axb, b2n,  zc, label=label, color=colors[i])
-lines!(axu, u2n,  zc, label="u, " * label, color=colors[i])
-lines!(axu, v2n,  zc, label="v, " * label, linestyle=:dash, color=colors[i])
-lines!(axe, e2n,  zc, label="e, " * label, color=colors[i])
-lines!(axκ, κᶜ2n, zf, label="κᶜ, " * label, color=colors[i])
-lines!(axκ, κᵘ2n, zf, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
-
-
+linewidth=5
+lines!(axb, b2n,  zc; linewidth, label=label, color=colors[i])
+lines!(axu, u2n,  zc; linewidth, label="u, " * label, color=colors[i])
+lines!(axu, v2n,  zc; linewidth, label="v, " * label, linestyle=:dash, color=colors[i])
+lines!(axe, e2n,  zc; linewidth, label="e, " * label, color=colors[i])
+lines!(axκ, κᶜ2n, zf; linewidth, label="κᶜ, " * label, color=colors[i])
+lines!(axκ, κᵘ2n, zf; linewidth, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
 
 axislegend(axb, position=:lb)
 axislegend(axu, position=:rb)
@@ -110,7 +114,7 @@ axislegend(axκ, position=:rb)
 
 display(fig)
 
-# record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
-#     n[] = nn
-# end
+record(fig, "compare_catkes_windy_convection.mp4", 1:Nt, framerate=24) do nn
+    n[] = nn
+end
 
