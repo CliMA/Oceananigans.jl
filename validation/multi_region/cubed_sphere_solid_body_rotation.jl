@@ -100,24 +100,6 @@ end
 
 fill_halo_regions!((u, v))
 
-# Now, compute the vorticity.
-using Oceananigans.Utils
-using KernelAbstractions: @kernel, @index
-
-ζ = Field{Face, Face, Center}(grid)
-
-@kernel function _compute_vorticity!(ζ, grid, u, v)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-end
-
-offset = -1 .* halo_size(grid)
-
-@apply_regionally begin
-    params = KernelParameters(total_size(ζ[1]), offset)
-    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
-end
-
 # Set the initial conditions.
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 
@@ -167,7 +149,18 @@ save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
 v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
+# Now, compute the vorticity.
+using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
+
 ζ = Field{Face, Face, Center}(grid)
+
+@kernel function _compute_vorticity!(ζ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+end
+
+offset = -1 .* halo_size(grid)
 
 @apply_regionally begin
     params = KernelParameters(total_size(ζ[1]), offset)
