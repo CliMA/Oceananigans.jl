@@ -1,7 +1,7 @@
 using Oceananigans, Printf
 
 using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!, Iterate
 using JLD2
 
 ## Grid setup
@@ -20,7 +20,7 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 φʳ = 0       # Latitude pierced by the axis of rotation
 α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
 
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+@inline ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 ψ = Field{Face, Face, Center}(grid)
 
@@ -31,23 +31,28 @@ set!(ψ, ψᵣ)
 # correspond to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not 
 # have a corresponding interior point.
 
-for region in [1, 3, 5]
-    i = 1
-    j = Ny+1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+region = Iterate(1:6)
+
+@apply_regionally begin
+    launch!(arch, grid, Ny+1, _set_x_region_grid!, ψ, region, grid)
+    launch!(arch, grid, Nx+1, _set_y_region_grid!, ψ, region, grid)
+end
+
+@kernel function _set_x_region_grid!(ψ, region, grid)
+    i = @index(Global, Linear)
+    j = 1
+    if region in (1, 3, 5)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
 end
 
-for region in [2, 4, 6]
-    i = Nx+1
-    j = 1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+@kernel function _set_y_region_grid!(ψ, region, grid)
+    j = @index(Global, Linear)
+    i = 1
+    if region in (2, 4, 6)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
 end
 
