@@ -343,7 +343,10 @@ instantiate(T::Type) = T()
 
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
-function new_data(FT, grid, loc, indices, Nt::Int)
+# Apparently, not explicitly specifying Int64 in here makes this function
+# fail on x86 processors where `Int` is implied to be `Int32` 
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
