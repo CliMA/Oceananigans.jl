@@ -355,7 +355,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 """
-function NetCDFOutputWriter(model, outputs; filename, schedule,
+function NetCDFOutputWriter(model, outputs, grid = model.grid; filename, schedule,
                                           dir = ".",
                                    array_type = Array{Float64},
                                       indices = (:, :, :),
@@ -394,7 +394,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # with LagrangianParticles output (see the end of the file).
     # We shouldn't support this in the future; we should require users to 'name' LagrangianParticles output.
     outputs = dictify(outputs)
-    outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
