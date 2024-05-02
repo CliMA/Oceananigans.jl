@@ -138,7 +138,7 @@ g = 1
 free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
 
 c = sqrt(g * H)
-closure = ScalarDiffusivity(ν = c * R * 0.0005)
+closure = ScalarDiffusivity(ν = c * R * 0.0005 * 32 / Nx)
 #=
 Using N₁ = 32, r₁ = 1, g₁ = 1, H₁ = 1, so that c₁ = sqrt(g₁ * H₁) = 1, and
 Δt₁ = 0.1 * min_spacing / c₁ = 0.1 * min_spacing, the numerical solution becomes unstable at ν = 0.0001, and experiences
