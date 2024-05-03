@@ -17,7 +17,7 @@ using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, Diagonall
 # The RHS evolves in time and is stored in
 # model.pressure_solver.rhs
 
-# In this case the linear system is solved with an ILUFactorization 
+# In this case the linear system is preconditioned with an ILUFactorization 
 # (the `ilu` function from `IncompleteLU.jl`) I have also added `KrylovPreconditioners.kp_ilu0` when running on a GPU
 # Other possibilities are: 
 # - `:AsymptoticInverse` Chris's MITgcm simple sparse inverse preconditioner
