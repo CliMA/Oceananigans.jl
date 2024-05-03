@@ -646,11 +646,11 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, t
         for j in 1:Ny⁺
             # fill west halos
             for i in 0:-1:-Hx+1
-                metric[i, j] = metric[Nx+i, j]
+                CUDA.@allowscalar metric[i, j] = metric[Nx+i, j]
             end
             # fill east halos
             for i in Nx⁺+1:Nx⁺+Hx
-                metric[i, j] = metric[i-Nx, j]
+                CUDA.@allowscalar metric[i, j] = metric[i-Nx, j]
             end
         end
     end
@@ -673,11 +673,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                metric[i, j] = metric[i, j+1]
+                CUDA.@allowscalar metric[i, j] = metric[i, j+1]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                metric[i, j] = metric[i, j-1]
+                CUDA.@allowscalar metric[i, j] = metric[i, j-1]
             end
         end
     end
@@ -694,11 +694,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopolog
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                metric[i, j] = metric[i, Ny+j]
+                CUDA.@allowscalar metric[i, j] = metric[i, Ny+j]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                metric[i, j] = metric[i, j-Ny]
+                CUDA.@allowscalar metric[i, j] = metric[i, j-Ny]
             end
         end
     end
@@ -721,16 +721,16 @@ function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx
 
     @inbounds begin
         for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
         end
         for j in 0:-1:-Hy+1, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
         end
     end
 
@@ -984,20 +984,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = CUDA.@allowscalar λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = CUDA.@allowscalar φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
     elseif mod(Ny, 2) == 1
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
     end
 
     if mod(Nx, 2) == 0
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     elseif mod(Nx, 2) == 1
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     end
 
     return (λ_center, φ_center), (extent_λ, extent_φ)
