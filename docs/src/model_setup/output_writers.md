@@ -158,6 +158,9 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 
+`NetCDFOutputWriter` also accepts an arbitrary `grid` for input that can be used to interpolate or subset the output fields. The output `grid` must be in the same architecture as the original grid.
+
+
 See [`NetCDFOutputWriter`](@ref) for more information.
 
 ## JLD2 output writer
