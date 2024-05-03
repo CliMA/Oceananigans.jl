@@ -232,7 +232,6 @@ end
 #####
 
 VelocityFields(::Nothing, grid, bcs) = VelocityFields(grid, bcs)
-PressureFields(::Nothing, grid, bcs) = PressureFields(grid, bcs)
 
 """
     VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs)
@@ -265,19 +264,4 @@ function TracerFields(proposed_tracers::NamedTuple, grid, bcs)
     tracer_fields = Tuple(CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data) for c in tracer_names)
 
     return NamedTuple{tracer_names}(tracer_fields)
-end
-
-"""
-    PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
-
-Return a `NamedTuple` of pressure fields with, overwriting boundary conditions
-in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
-"""
-function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
-    validate_field_tuple_grid("pressures", proposed_pressures, grid)
-
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′, data=proposed_pressures.pHY′.data)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS, data=proposed_pressures.pNHS.data)
-
-    return (pHY′=pHY′, pNHS=pNHS)
 end
