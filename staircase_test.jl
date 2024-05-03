@@ -3,15 +3,41 @@ using GLMakie
 using Printf
 using Oceananigans.Models.NonhydrostaticModels: ImmersedPoissonSolver, DiagonallyDominantThreeDimensionalPreconditioner
 
+# For Michel:
+
+# This simulation shows the evolution of a cold blob on a smooth staircase.
+# The dimension of the problem (64 x 1 x 64) is quite small compared to what we typically
+# use, the GPU limit is typically reached at around 256 x 256 x 256 so it would be nice
+# to set the Nx = Ny = Nz = 256
+# To switch to GPU computation `arch = GPU()`
+
+# The sparse matrix of the linear problem is located in:
+# model.pressure_solver.pcg_solver.matrix
+
+# The RHS evolves in time and is stored in
+# model.pressure_solver.rhs
+
+# In this case the linear system is solved with an ILUFactorization 
+# (the `ilu` function from `IncompleteLU.jl`) I have also added `KrylovPreconditioners.kp_ilu0` when running on a GPU
+# Other possibilities are: 
+# - `:AsymptoticInverse` Chris's MITgcm simple sparse inverse preconditioner
+# - `:SparseInverse` a custom version of a SPAI preconditioner
+# - `:FFT` using a FFT solve to precondition the residuals
+# - `:ICFactorization` incomplete choleski factorization I have added only for the GPU using `KrylovPreconditioners.kp_ic0`
+# You can find all these in `src/Solvers/sparese_preconditioners.jl`
+
 #####
 ##### Model setup
 #####
+
+arch = CPU()
 
 Nx = 64
 Ny = 1
 Nz = 64
 
-grid = RectilinearGrid(size = (Nx, Ny, Nz), 
+grid = RectilinearGrid(arch;
+                       size = (Nx, Ny, Nz), 
                        halo = (4, 4, 4),
                        x = (0, 1),
                        y = (0, 1),
