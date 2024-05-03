@@ -102,8 +102,8 @@ Keyword arguments
   - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
                                     in hydrostatic balance with the buoyancy field. If `nothing` (default), the anomaly
                                     is not computed. If `CenterField(grid)`, the anomaly is precomputed by
-                                    vertically-integrating the buoyancy field, and `nonhydrostatic_pressure` represents
-                                    only the part of pressure that deviates from the hydrostsatic anomaly.
+                                    vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
+                                    only the part of pressure that deviates from the hydrostatic anomaly.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
