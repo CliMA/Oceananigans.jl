@@ -10,7 +10,8 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
-mutable struct NetCDFOutputWriter{D, O, T, A, FS} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
+    grid :: G
     filepath :: String
     dataset :: D
     outputs :: O
@@ -355,19 +356,21 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 """
-function NetCDFOutputWriter(model, outputs, grid = model.grid; filename, schedule,
-                                          dir = ".",
-                                   array_type = Array{Float64},
-                                      indices = (:, :, :),
-                                   with_halos = false,
+function NetCDFOutputWriter(model, outputs, grid=model.grid;
+                            filename,
+                            schedule,
+                            dir = ".",
+                            array_type = Array{Float64},
+                            indices = (:, :, :),
+                            with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
-                                   dimensions = Dict(),
-                           overwrite_existing = nothing,
-                                 deflatelevel = 0,
-                                         part = 1,
-                               file_splitting = NoFileSplitting(),
-                                      verbose = false)
+                            dimensions = Dict(),
+                            overwrite_existing = nothing,
+                            deflatelevel = 0,
+                            part = 1,
+                            file_splitting = NoFileSplitting(),
+                            verbose = false)
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
@@ -414,9 +417,11 @@ function NetCDFOutputWriter(model, outputs, grid = model.grid; filename, schedul
                                                      dimensions,
                                                      overwrite_existing,
                                                      deflatelevel,
+                                                     grid,
                                                      model)
 
-    return NetCDFOutputWriter(filepath,
+    return NetCDFOutputWriter(grid,
+                              filepath,
                               dataset,
                               outputs,
                               schedule,
@@ -633,6 +638,7 @@ function initialize_nc_file!(filepath,
                              dimensions,
                              overwrite_existing,
                              deflatelevel,
+                             grid,
                              model)
 
     mode = overwrite_existing ? "c" : "a"
@@ -648,12 +654,12 @@ function initialize_nc_file!(filepath,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, model.grid, indices, with_halos)
+    dims = default_dimensions(outputs, grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    default_dimension_attributes = get_default_dimension_attributes(model.grid)
+    default_dimension_attributes = get_default_dimension_attributes(grid)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -669,7 +675,7 @@ function initialize_nc_file!(filepath,
 
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
+        defVar(dataset, "time", eltype(grid), ("time",), attrib=time_attrib)
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
@@ -704,4 +710,5 @@ initialize_nc_file!(ow::NetCDFOutputWriter, model) =
                         ow.dimensions,
                         ow.overwrite_existing,
                         ow.deflatelevel,
+                        ow.grid,
                         model)
