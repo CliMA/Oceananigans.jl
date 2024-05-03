@@ -1,6 +1,6 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
@@ -21,10 +21,10 @@ function run_identity_operator_test(grid)
 
     solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
-    b = arch_array(architecture(grid), rand(M))
+    b = on_architecture(architecture(grid), rand(M))
 
     arch = architecture(grid)
-    storage = arch_array(arch, zeros(size(b)))
+    storage = on_architecture(arch, zeros(size(b)))
     solve!(storage, solver, b, 1.0)
 
     @test norm(Array(storage) .- Array(b)) .< solver.tolerance
@@ -44,11 +44,11 @@ end
 
 function compute_poisson_weights(grid)
     N = size(grid)
-    Ax = arch_array(architecture(grid), zeros(N...))
-    Ay = arch_array(architecture(grid), zeros(N...))
-    Az = arch_array(architecture(grid), zeros(N...))
-    C  = arch_array(architecture(grid), zeros(grid, N...))
-    D  = arch_array(architecture(grid), zeros(grid, N...))
+    Ax = on_architecture(architecture(grid), zeros(N...))
+    Ay = on_architecture(architecture(grid), zeros(N...))
+    Az = on_architecture(architecture(grid), zeros(N...))
+    C  = on_architecture(architecture(grid), zeros(grid, N...))
+    D  = on_architecture(architecture(grid), zeros(grid, N...))
 
     launch!(architecture(grid), grid, :xyz, _compute_poisson_weights, Ax, Ay, Az, grid)
     
@@ -57,6 +57,8 @@ end
 
 poisson_rhs!(r, grid) = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
 
+random_numbers(x, y=0, z=0) = rand()
+
 function run_poisson_equation_test(grid)
     arch = architecture(grid)
 
@@ -64,7 +66,7 @@ function run_poisson_equation_test(grid)
     ϕ_truth = CenterField(grid)
 
     # Initialize zero-mean "truth" solution with random numbers
-    set!(ϕ_truth, (x, y, z) -> rand())
+    set!(ϕ_truth, random_numbers)
     parent(ϕ_truth) .-= mean(ϕ_truth)
     fill_halo_regions!(ϕ_truth)
 
@@ -83,7 +85,7 @@ function run_poisson_equation_test(grid)
     ϕ_solution = CenterField(grid)
 
     arch = architecture(grid)
-    storage = arch_array(arch, zeros(size(rhs)))
+    storage = on_architecture(arch, zeros(size(rhs)))
     solve!(storage, solver, rhs, 1.0)
     set!(ϕ_solution, reshape(storage, solver.problem_size...))
     fill_halo_regions!(ϕ_solution) 

@@ -116,6 +116,18 @@ end
 (wizard::TimeStepWizard)(simulation) =
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
+"""
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
+
+Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
+called on `schedule` which is `IterationInterval(5)` by default.
+"""
+function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
+    wizard = TimeStepWizard(; wizard_kw...)
+    simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
+    return nothing
+end
+
 const TimeStepWizardCallback = Callback{<:Any, TimeStepWizard}
 
 # TODO: when Models are imported after simulations, move this to Models
@@ -123,7 +135,7 @@ const TimeStepWizardCallback = Callback{<:Any, TimeStepWizard}
 # Another solution is to somehow help users understand what the CFL is and
 # how to use trial-and-error and experience to figure out what it needs
 # to be for their particular case.
-validated_advective_cfl(model, CFL) = nothing
+validate_advective_cfl(model, CFL) = nothing
 
 function initialize!(cb::TimeStepWizardCallback, sim)
     wizard = cb.func
@@ -137,12 +149,17 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 validate_advective_cfl(model::OceananigansModels, CFL) = validate_advective_cfl(timestepper(model), CFL)
 
 function validate_advective_cfl(::QuasiAdamsBashforth2TimeStepper, CFL)
-    CFL > 1 && @warn("Problems?")
+    recommended_max_CFL = 0.5
+    CFL > recommended_max_CFL &&
+            @warn("CFL = $CFL is kinda huge for the QuasiAdamsBashforth2TimeStepper!" *
+                  "We recommend $recommended_max_CFL or smaller.")
     return nothing
 end
 
 function validate_advective_cfl(::RungeKutta3TimeStepper, CFL)
-    CFL > 1 && @warn("Problems?")
+    recommended_max_CFL = 1
+    CFL > recommended_max_CFL &&
+        @warn("CFL = $CFL is kinda huge for the RungaKutta3TimeStepper! " *
+              "We recommend $recommended_max_CFL or smaller.")
     return nothing
 end
-

@@ -50,7 +50,7 @@ grid = RectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
+@inline bˢ(x, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
 
@@ -222,7 +222,7 @@ axis_kwargs = (xlabel = L"x / H",
                aspect = Lx / H,
                titlesize = 20)
 
-fig = Figure(resolution = (600, 1100))
+fig = Figure(size = (600, 1100))
 
 ax_s = Axis(fig[2, 1];
             title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
@@ -298,8 +298,12 @@ nothing #hide
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# where $b_s(x)$ is the surface boundary condition. The diffusive solution implies 
-# ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
+#
+# where ``b_s(x)`` is the surface boundary condition. The diffusive solution implies
+#
+# ```math
+# \langle \chi_{\rm diff} \rangle = \frac{\kappa b_*^2 \pi}{L_x H} \tanh(2 \pi Η / L_x) .
+# ```
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -332,7 +336,7 @@ for i = 1:length(t)
     Nu[i] = χ[1, 1, 1] / χ_diff
 end
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size = (850, 450))
  
 ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)

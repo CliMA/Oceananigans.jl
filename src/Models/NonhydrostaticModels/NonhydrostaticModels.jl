@@ -5,13 +5,13 @@ export NonhydrostaticModel
 using DocStringExtensions
 
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Grids
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
+
 using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: SumOfArrays
 
@@ -19,21 +19,22 @@ import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-function PressureSolver(arch::Distributed, local_grid::RegRectilinearGrid)
+function PressureSolver(arch::Distributed, local_grid::XYZRegularRG)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::RegRectilinearGrid)   = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::XYRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::XZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::YZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
+PressureSolver(arch, grid::XYRegularRG)  = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 # fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel currently support more than one stretched direction.")
+PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \
+                                   currently support more than one stretched direction.")
 
 #####
 ##### NonhydrostaticModel definition
@@ -48,7 +49,11 @@ include("set_nonhydrostatic_model.jl")
 ##### AbstractModel interface
 #####
 
-cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(model.grid, model.velocities)
+function cell_advection_timescale(model::NonhydrostaticModel)
+    grid = model.grid
+    velocities = total_velocities(model)
+    return cell_advection_timescale(grid, velocities)
+end
 
 """
     fields(model::NonhydrostaticModel)
@@ -56,7 +61,10 @@ cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
 """
-fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, model.auxiliary_fields, biogeochemical_auxiliary_fields(model.biogeochemistry))
+fields(model::NonhydrostaticModel) = merge(model.velocities,
+                                           model.tracers,
+                                           model.auxiliary_fields,
+                                           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)

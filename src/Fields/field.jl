@@ -1,11 +1,12 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Architectures: on_architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
 
@@ -121,10 +122,10 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), extent=(1, 1, 1));
 
 julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
+└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -137,24 +138,24 @@ julia> u = XFaceField(grid); v = YFaceField(grid);
 
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
+└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 
 julia> compute!(ωₛ)
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
+└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 ```
 """
@@ -275,21 +276,21 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 
 julia> c = CenterField(grid)
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
+└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 
 julia> c .= rand(size(c)...);
 
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, 2:3, 1:2)
-└── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
+└── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
 
 julia> size(v)
@@ -379,7 +380,7 @@ end
 """
     interior(f::Field)
 
-Returns a view of `f` that excludes halo points."
+Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -407,11 +408,24 @@ Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
-Base.size(f::Field)  = size(f.grid, location(f), f.indices)
+@inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
 ==(a::Field, b::Field) = interior(a) == interior(b)
+
+#####
+##### Move Fields between architectures
+#####
+
+on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+                      on_architecture(arch, field.data),
+                      on_architecture(arch, field.boundary_conditions),
+                      on_architecture(arch, field.indices),
+                      on_architecture(arch, field.operand),
+                      on_architecture(arch, field.status),
+                      on_architecture(arch, field.boundary_buffers))
 
 #####
 ##### Interface for field computations
@@ -423,6 +437,8 @@ Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 Computes `field.data` from `field.operand`.
 """
 compute!(field, time=nothing) = field # fallback
+
+compute!(collection::Union{Tuple, NamedTuple}) = map(compute!, collection)
 
 """
     @compute(exprs...)
@@ -488,11 +504,15 @@ const XYReducedField = Field{Nothing, Nothing, <:Any}
 
 const XYZReducedField = Field{Nothing, Nothing, Nothing}
 
-const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
-                           YZReducedField, XZReducedField, XYReducedField,
+const ReducedField = Union{XReducedField,
+                           YReducedField,
+                           ZReducedField,
+                           YZReducedField,
+                           XZReducedField,
+                           XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)           = ()
+reduced_dimensions(field::Field)   = ()
 reduced_dimensions(field::XReducedField)   = tuple(1)
 reduced_dimensions(field::YReducedField)   = tuple(2)
 reduced_dimensions(field::ZReducedField)   = tuple(3)
@@ -520,6 +540,21 @@ reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
+const XFieldBC = BoundaryCondition{<:Any, XReducedField}
+const YFieldBC = BoundaryCondition{<:Any, YReducedField}
+const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
+
+# Boundary conditions reduced in one direction --- drop boundary-normal index
+@inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
+@inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
+@inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
+
+# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+
+# 0D boundary conditions --- easy case
+const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
+@inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
+
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
@@ -536,6 +571,24 @@ end
 ##### Field reductions
 #####
 
+const XReducedAbstractField = AbstractField{Nothing}
+const YReducedAbstractField = AbstractField{<:Any, Nothing}
+const ZReducedAbstractField = AbstractField{<:Any, <:Any, Nothing}
+
+const YZReducedAbstractField = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedAbstractField = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedAbstractField = AbstractField{Nothing, Nothing, <:Any}
+
+const XYZReducedAbstractField = AbstractField{Nothing, Nothing, Nothing}
+
+const ReducedAbstractField = Union{XReducedAbstractField,
+                                   YReducedAbstractField,
+                                   ZReducedAbstractField,
+                                   YZReducedAbstractField,
+                                   XZReducedAbstractField,
+                                   XYReducedAbstractField,
+                                   XYZReducedAbstractField}
+
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
@@ -548,12 +601,12 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
+initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
+initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -609,7 +662,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         
         # In-place
         function Base.$(reduction!)(f::Function,
-                                    r::ReducedField,
+                                    r::ReducedAbstractField,
                                     a::AbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
@@ -621,7 +674,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                       kwargs...)
         end
 
-        function Base.$(reduction!)(r::ReducedField,
+        function Base.$(reduction!)(r::ReducedAbstractField,
                                     a::AbstractField;
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
@@ -674,7 +727,7 @@ end
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
-function Statistics.mean!(f::Function, r::ReducedField, a::AbstractField; condition = nothing, mask = 0)
+function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     n = conditional_length(condition_operand(f, a, condition, mask), dims)
@@ -682,7 +735,7 @@ function Statistics.mean!(f::Function, r::ReducedField, a::AbstractField; condit
     return r
 end
 
-Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
+Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
@@ -704,15 +757,6 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    # To correctly fill the halo regions of fields with non-default indices, we'd have to
-    # offset indices in the fill halo regions kernels.
-    # For now we punt and don't support filling halo regions on windowed fields.
-    # Note that `FieldBoundaryConditions` _can_ filter boundary conditions in
-    # windowed directions:
-    #
-    #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    #  
-    # which will be useful for implementing halo filling for windowed fields in the future.
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,

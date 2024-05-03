@@ -17,19 +17,19 @@ end
 
 function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
-    launch!(arch, grid, KernelParameters(yz_size, offset), fill_periodic_west_and_east_halo!, c_parent, grid.Hx, grid.Nx; kw...)
+    launch!(arch, grid, KernelParameters(yz_size, offset), fill_periodic_west_and_east_halo!, c_parent, Val(grid.Hx), grid.Nx; kw...)
     return nothing
 end
 
 function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xz_size, offset = parent_size_and_offset(c, 1, 3, size, offset)
-    launch!(arch, grid, KernelParameters(xz_size, offset), fill_periodic_south_and_north_halo!, c_parent, grid.Hy, grid.Ny;  kw...)
+    launch!(arch, grid, KernelParameters(xz_size, offset), fill_periodic_south_and_north_halo!, c_parent, Val(grid.Hy), grid.Ny;  kw...)
     return nothing
 end
 
 function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xy_size, offset = parent_size_and_offset(c, 1, 2, size, offset)
-    launch!(arch, grid, KernelParameters(xy_size, offset), fill_periodic_bottom_and_top_halo!, c_parent, grid.Hz, grid.Nz; kw...)
+    launch!(arch, grid, KernelParameters(xy_size, offset), fill_periodic_bottom_and_top_halo!, c_parent, Val(grid.Hz), grid.Nz; kw...)
     return nothing
 end
 
@@ -37,7 +37,7 @@ end
 ##### Periodic boundary condition kernels
 #####
 
-@kernel function fill_periodic_west_and_east_halo!(c, H::Int, N)
+@kernel function fill_periodic_west_and_east_halo!(c, ::Val{H}, N) where H
     j, k = @index(Global, NTuple)
     @unroll for i = 1:H
         @inbounds begin
@@ -47,7 +47,7 @@ end
     end
 end
 
-@kernel function fill_periodic_south_and_north_halo!(c, H::Int, N)
+@kernel function fill_periodic_south_and_north_halo!(c, ::Val{H}, N) where H
     i, k = @index(Global, NTuple)
     @unroll for j = 1:H
         @inbounds begin
@@ -57,7 +57,7 @@ end
     end
 end
 
-@kernel function fill_periodic_bottom_and_top_halo!(c, H::Int, N)
+@kernel function fill_periodic_bottom_and_top_halo!(c, ::Val{H}, N) where H
     i, j = @index(Global, NTuple)
     @unroll for k = 1:H
         @inbounds begin
@@ -71,7 +71,7 @@ end
 #### Tupled periodic boundary condition 
 ####
 
-@kernel function fill_periodic_west_and_east_halo!(c::NTuple{M}, H::Int, N) where M
+@kernel function fill_periodic_west_and_east_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
     j, k = @index(Global, NTuple)
     @unroll for n = 1:M
         @unroll for i = 1:H
@@ -83,7 +83,7 @@ end
     end
 end
 
-@kernel function fill_periodic_south_and_north_halo!(c::NTuple{M}, H::Int, N) where M
+@kernel function fill_periodic_south_and_north_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
     i, k = @index(Global, NTuple)
     @unroll for n = 1:M
         @unroll for j = 1:H
@@ -95,7 +95,7 @@ end
     end
 end
 
-@kernel function fill_periodic_bottom_and_top_halo!(c::NTuple{M}, H::Int, N) where M
+@kernel function fill_periodic_bottom_and_top_halo!(c::NTuple{M}, ::Val{H}, N) where {M, H}
     i, j = @index(Global, NTuple)
     @unroll for n = 1:M
         @unroll for k = 1:H
@@ -106,3 +106,14 @@ end
         end
     end
 end
+
+#####
+##### Throw error if single-sided periodic boundary conditions are used
+#####
+
+fill_west_halo!(c, ::PBCT, args...; kwargs...)   = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_east_halo!(c, ::PBCT, args...; kwargs...)   = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_south_halo!(c, ::PBCT, args...; kwargs...)  = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_north_halo!(c, ::PBCT, args...; kwargs...)  = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_bottom_halo!(c, ::PBCT, args...; kwargs...) = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))
+fill_top_halo!(c, ::PBCT, args...; kwargs...)    = throw(ArgumentError("Periodic boundary conditions must be applied to both sides"))

@@ -43,7 +43,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom), true)
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     coriolis = FPlane(f=1e-4),
-                                    free_surface = SplitExplicitFreeSurface(; substeps=10))
+                                    free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 

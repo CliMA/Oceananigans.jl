@@ -1,10 +1,11 @@
 using Oceananigans.Fields: FunctionField
 using Oceananigans.Grids: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Coriolis: EnergyConserving
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedComputations, all_reduce
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
 using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array, cpu_architecture
 
 using JLD2
@@ -27,11 +28,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     ##### Constructing Grid and model
     #####
     
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                          momentum_advection = VectorInvariant(),
-                                free_surface = free_surface,
-                                    coriolis = HydrostaticSphericalCoriolis(),
-                                     closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
+    # This coriolis scheme was used to generated the regression test data
+    coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
+
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+                                        momentum_advection = VectorInvariant(),
+                                        free_surface = free_surface,
+                                        closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
     
     #####
     ##### Imposing initial conditions:
@@ -93,6 +96,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                                               dir = directory,
                                                               schedule = IterationInterval(stop_iteration),
                                                               filename = output_filename,
+                                                              with_halos = true,
                                                               overwrite_existing = true)
     end
    
@@ -114,22 +118,30 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         cpu_arch = cpu_architecture(architecture(grid))
 
+        # Data was saved with 2 halos per direction (see issue #3260)
+        H = 2
         truth_fields = (
-            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][:, :, :], size(u)),
-            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][:, :, :], size(v)),
-            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][:, :, :], size(w)),
-            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][:, :, :], size(η))
+            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
+            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
+            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
+            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], size(η))
         )
 
         close(file)
 
         summarize_regression_test(test_fields, truth_fields)
 
-        @test all(test_fields.u .≈ truth_fields.u)
-        @test all(test_fields.v .≈ truth_fields.v)
-        @test all(test_fields.w .≈ truth_fields.w)
-        @test all(test_fields.η .≈ truth_fields.η)
+        test_fields_equality(cpu_arch, test_fields, truth_fields)
     end
     
+    return nothing
+end
+
+function test_fields_equality(arch, test_fields, truth_fields)
+    @test all(test_fields.u .≈ truth_fields.u)
+    @test all(test_fields.v .≈ truth_fields.v)
+    @test all(test_fields.w .≈ truth_fields.w)
+    @test all(test_fields.η .≈ truth_fields.η)
+
     return nothing
 end
