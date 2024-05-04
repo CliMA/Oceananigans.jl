@@ -126,6 +126,7 @@ An = @lift begin
     A.(ξ, ya)
 end
 
+# convert m -> km
 xu = xu .* 1e-3
 yu = yu .* 1e-3
 zu = zu .* 1e-3
@@ -157,7 +158,7 @@ heatmap!(axw, xw, yw, wn, colormap=:balance, colorrange=(-wlim, wlim))
 contour!(axw, xc, yc, An, color=:gray, levels=5)
 
 record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
-#record(fig, "surface_wave_non_rotating_induced_flow.mp4", 1:Nt, framerate=8) do nn
+record(fig, "surface_wave_non_rotating_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
 
