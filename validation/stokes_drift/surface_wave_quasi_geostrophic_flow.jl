@@ -21,7 +21,7 @@ const Uˢ = ϵ^2 * c
 
 # Write the Stokes drift as
 #
-# uˢ(x, z, t) = A(x, t) * ûˢ(z)
+# uˢ(x, y, z, t) = A(x, y, t) * ûˢ(z)
 #
 # which implies
 
@@ -31,17 +31,21 @@ const Uˢ = ϵ^2 * c
 @inline ∂y_uˢ(x, y, z, t) =        ∂η_A(x - cᵍ * t, y) * ûˢ(z)
 @inline ∂t_uˢ(x, y, z, t) = - cᵍ * ∂ξ_A(x - cᵍ * t, y) * ûˢ(z)
 
+# where we have noted that η = y, and ξ = x - cᵍ t,
+# such that ∂ξ/∂x = 1 and ∂ξ/∂t = - cᵍ.
+#
 # Note that if uˢ represents the solenoidal component of the Stokes drift,
 # then
 #
 # ```math
-# ∂z_wˢ = - ∂x_uˢ = - ∂ξ_A * ûˢ .
+# ∂z_wˢ = - ∂x_uˢ = - ∂ξ_A * ∂ξ/∂x * ûˢ .
+#                 = - ∂ξ_A * ûˢ .
 # ```
 #
 # We therefore find that
 #
 # ```math
-# wˢ = - ∂ξ_A / 2k * ûˢ
+# wˢ = - ∂ξ_A / 2k * ûˢ .
 # ```
 #
 # and
