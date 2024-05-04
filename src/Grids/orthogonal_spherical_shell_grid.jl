@@ -183,7 +183,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
-    ξη_grid = RectilinearGrid(architecture, FT;
+    # construct the grid on CPU and convert to architecture later
+    ξη_grid = RectilinearGrid(CPU(), FT;
                               size=(Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
                               x=ξ, y=η, z, halo)
@@ -591,19 +592,16 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
     Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
 
-    # convert to
-    coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
-    coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
+    coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ, φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
-    metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
 
     conformal_mapping = (; ξ, η, rotation)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
@@ -611,6 +609,26 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     fill_metric_halo_regions!(grid)
 
+    # now convert to proper architecture
+
+    coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
+                         grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
+                         grid.zᵃᵃᶜ, grid.zᵃᵃᶠ)
+
+    metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
+                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
+                     grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
+
+    coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
+
+    metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
+
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+                                                    coordinate_arrays...,
+                                                    metric_arrays...,
+                                                    radius,
+                                                    conformal_mapping)
     return grid
 end
 
@@ -650,11 +668,11 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, t
         for j in 1:Ny⁺
             # fill west halos
             for i in 0:-1:-Hx+1
-                CUDA.@allowscalar metric[i, j] = metric[Nx+i, j]
+                metric[i, j] = metric[Nx+i, j]
             end
             # fill east halos
             for i in Nx⁺+1:Nx⁺+Hx
-                CUDA.@allowscalar metric[i, j] = metric[i-Nx, j]
+                metric[i, j] = metric[i-Nx, j]
             end
         end
     end
@@ -677,11 +695,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                CUDA.@allowscalar metric[i, j] = metric[i, j+1]
+                metric[i, j] = metric[i, j+1]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                CUDA.@allowscalar metric[i, j] = metric[i, j-1]
+                metric[i, j] = metric[i, j-1]
             end
         end
     end
@@ -698,11 +716,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopolog
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                CUDA.@allowscalar metric[i, j] = metric[i, Ny+j]
+                metric[i, j] = metric[i, Ny+j]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                CUDA.@allowscalar metric[i, j] = metric[i, j-Ny]
+                metric[i, j] = metric[i, j-Ny]
             end
         end
     end
@@ -725,16 +743,16 @@ function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx
 
     @inbounds begin
         for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
-            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
+            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in 0:-1:-Hx+1
-            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
+            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
         end
         for j in 0:-1:-Hy+1, i in Nx⁺+1:Nx⁺+Hx
-            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
+            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in Nx⁺+1:Nx⁺+Hx
-            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
+            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
         end
     end
 
