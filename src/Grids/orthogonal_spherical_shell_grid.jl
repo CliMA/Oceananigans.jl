@@ -183,7 +183,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
-    # construct the grid on CPU and convert to architecture later
+    # construct the grid on CPU and convert to architecture later...
     ξη_grid = RectilinearGrid(CPU(), FT;
                               size=(Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
@@ -914,8 +914,8 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                         :Azᶜᶠᵃ,
                         :Azᶠᶠᵃ)
 
-    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
+    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
 
     TX, TY, TZ = topology(grid)
