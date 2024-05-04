@@ -45,6 +45,26 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
+const c = Center()
+const f = Face()
+
+# A particular kind of reconstruction that ignores peripheral nodes
+@inline function ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
+    k⁺ = k + 1
+    k⁻ = k
+
+    f⁺ = fᵃᵃᶠ(i, j, k⁺, grid, args...)
+    f⁻ = fᵃᵃᶠ(i, j, k⁻, grid, args...)
+
+    p⁺ = peripheral_node(i, j, k⁺, grid, c, c, f)
+    p⁻ = peripheral_node(i, j, k⁻, grid, c, c, f)
+
+    f⁺ = ifelse(p⁺, f⁻, f⁺)
+    f⁻ = ifelse(p⁻, f⁺, f⁻)
+
+    return (f⁺ + f⁻) / 2
+end
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -326,12 +346,15 @@ end
         diffusivities.κᶜ[i, j, k] = κᶜ★
         diffusivities.κᵉ[i, j, k] = κᵉ★
 
+        #=
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        wb = diffusivities.wb[i, j, k] #explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        diffusivities.wb[i, j, k] = wb
+
         wb⁻ = min(zero(grid), wb)
 
-        eⁱʲᵏ = @inbounds tracers.e[i, j, k]
+        eⁱʲᵏ = tracers.e[i, j, k]
         wb_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
 
         #=
@@ -384,6 +407,7 @@ end
         # where ω = ϵ / e ∼ √e / ℓ.
         
         diffusivities.Lᵉ[i, j, k] = wb_e - ω + div_Jᵉ_e
+        =#
     end
 end
 

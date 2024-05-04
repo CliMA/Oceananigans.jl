@@ -158,8 +158,8 @@ end
     w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
     S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
-    N²       = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²_above = ℑzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
+    N²       = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N²_above = ℑbzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling

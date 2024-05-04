@@ -15,41 +15,59 @@ end
 
 function time_step_turbulent_kinetic_energy!(model)
 
-    # 1. Compute new tendency.
-    Gⁿe = model.timestepper.Gⁿ.e
-    e = model.tracers.e
-    arch = model.architecture
-    grid = model.grid
-    closure = model.closure
-    previous_velocities = model.diffusivity_fields.previous_velocities
-
-    args = tuple(closure,
-                 model.velocities,
-                 previous_velocities,
-                 model.tracers,
-                 model.buoyancy,
-                 model.diffusivity_fields)
-
-    launch!(arch, grid, :xyz,
-            add_tke_source_terms!,
-            Gⁿe, grid, args)
-
-    # 2. Step forward
     Δt = model.clock.last_Δt
-    χ = model.timestepper.χ
-    G⁻e = model.timestepper.G⁻.e
-    tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-    implicit_solver = model.timestepper.implicit_solver
-    previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
+    Δτ = min(20.0, Δt)
+    M = ceil(Int, Δt / Δτ)
 
-    launch!(model.architecture, model.grid, :xyz,
-            ab2_step_field!, e, Δt, χ, Gⁿe, G⁻e)
+    for m = 1:M
+        Gⁿe = model.timestepper.Gⁿ.e
+        e = model.tracers.e
+        arch = model.architecture
+        grid = model.grid
+        closure = model.closure
+        diffusivity_fields = model.diffusivity_fields
+        previous_velocities = diffusivity_fields.previous_velocities
 
-    implicit_step!(e, implicit_solver, closure,
-                   model.diffusivity_fields, Val(tracer_index),
-                   previous_clock, Δt)
-                   
-    launch!(arch, grid, :xyz, store_field_tendencies!, G⁻e, Gⁿe)
+        # Compute the linear implicit component of the RHS (diffusivities, L)
+        launch!(arch, grid, :xyz,
+                compute_linear_implicit_tke_rhs!,
+                diffusivity_fields, grid, closure,
+                model.velocities, model.tracers, model.buoyancy)
+
+        args = tuple(closure,
+                     model.velocities,
+                     previous_velocities,
+                     model.tracers,
+                     model.buoyancy,
+                     model.diffusivity_fields)
+
+        # Compute the explicit component of the RHS
+        launch!(arch, grid, :xyz,
+                #add_tke_source_terms!,
+                compute_tke_source_terms!,
+                Gⁿe, grid, args)
+
+        # 2. Step forward
+        if m == 1 
+            χ = -0.5
+        else
+            χ = model.timestepper.χ
+        end
+
+        G⁻e = model.timestepper.G⁻.e
+        tracer_index = findfirst(k -> k == :e, keys(model.tracers))
+        implicit_solver = model.timestepper.implicit_solver
+        previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
+
+        launch!(model.architecture, model.grid, :xyz,
+                ab2_step_field!, e, Δτ, χ, Gⁿe, G⁻e)
+
+        implicit_step!(e, implicit_solver, closure,
+                       model.diffusivity_fields, Val(tracer_index),
+                       previous_clock, Δτ)
+                       
+        launch!(arch, grid, :xyz, store_field_tendencies!, G⁻e, Gⁿe)
+    end
 
     return nothing
 end
@@ -58,6 +76,11 @@ end
 @kernel function add_tke_source_terms!(Ge, grid, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Ge[i, j, k] += tke_source_terms(i, j, k, grid, args...)
+end
+
+@kernel function compute_tke_source_terms!(Ge, grid, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Ge[i, j, k] = tke_source_terms(i, j, k, grid, args...)
 end
 
 @inline function tke_source_terms(i, j, k, grid,
@@ -74,9 +97,45 @@ end
     vⁿ = previous_velocities.v
     κᵘ = diffusivities.κᵘ
 
-    return shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺) +
-              buoyancy_flux(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities) - 
-                dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
+    P = shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺)
+    wb = buoyancy_flux(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
+    ϵ = dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
+
+    return P + wb - ϵ
+end
+
+@kernel function compute_linear_implicit_tke_rhs!(diffusivities, grid, closure, velocities, tracers, buoyancy)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        Jᵇ = diffusivities.Jᵇ[i, j, 1]
+        closure_ij = getclosure(i, j, closure)
+
+        # Re-compute TKE diffusivity
+        κᵉ★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+        on_periphery = peripheral_node(i, j, k, grid, c, c, f)
+        within_inactive = inactive_node(i, j, k, grid, c, c, f)
+        nan = convert(eltype(grid), NaN)
+        κᵉ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᵉ★))
+        diffusivities.κᵉ[i, j, k] = κᵉ★
+
+        # Compute additional diagonal component of the linear TKE operator
+        wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        wb⁻ = min(zero(grid), wb)
+        eⁱʲᵏ = tracers.e[i, j, k]
+        wb_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
+
+        on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+        Δz = Δzᶜᶜᶜ(i, j, k, grid)
+        Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
+        e⁺ = clip(eⁱʲᵏ)
+        w★ = sqrt(e⁺)
+        div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+
+        ω = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+
+        diffusivities.Lᵉ[i, j, k] = wb_e - ω + div_Jᵉ_e
+    end
 end
 
 #=
