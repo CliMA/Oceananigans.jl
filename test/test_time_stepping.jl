@@ -9,9 +9,9 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
-    grid = RectilinearGrid(arch, size=size, extent=extent, topology=topology)
-    model = NonhydrostaticModel(grid=grid)
-    time_step!(model, 1, euler=true)
+    grid = RectilinearGrid(arch; size, extent, topology)
+    model = NonhydrostaticModel(; grid)
+    time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
@@ -29,11 +29,9 @@ end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
-    c = Coriolis(FT, latitude=45)
-    model = NonhydrostaticModel(grid=grid, coriolis=c)
-
-    time_step!(model, 1, euler=true)
-
+    coriolis = Coriolis(FT, latitude=45)
+    model = NonhydrostaticModel(; grid, coriolis)
+    time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
@@ -46,16 +44,16 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure(FT)
     model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_advection_scheme(arch, advection_scheme)
+function time_stepping_works_with_advection_scheme(arch, advection)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid, advection)
+    time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
@@ -63,14 +61,14 @@ function time_stepping_works_with_stokes_drift(arch, stokes_drift)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(; grid, stokes_drift, advection=nothing)
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid, closure=nothing)
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid, closure=nothing)
+    time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
@@ -79,10 +77,8 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
-
-    model = NonhydrostaticModel(grid=grid, buoyancy=b,
-                                tracers=(:T, :S))
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid, buoyancy=b, tracers=(:T, :S))
+    time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -95,6 +91,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid,
+                                timestepper = :QuasiAdamsBashforth2,
                                 forcing = (; T=add_ones),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
@@ -225,7 +222,7 @@ function time_stepping_with_background_fields(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers=(:T, :S))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
 
     return location(model.background_fields.velocities.u) === (Face, Center, Center) &&
            location(model.background_fields.velocities.v) === (Center, Face, Center) &&
