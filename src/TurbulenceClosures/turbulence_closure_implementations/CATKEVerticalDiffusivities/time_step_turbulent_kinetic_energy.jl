@@ -13,30 +13,32 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
     return nothing
 end
 
+tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turublent_kinetic_energy_time_step
+tke_time_step(closure::AbstractArray) = tke_time_step(first(closure)) # assume they are all the same
+
 function time_step_turbulent_kinetic_energy!(model)
 
+    e = model.tracers.e
+    arch = model.architecture
+    grid = model.grid
+    closure = model.closure
+    Gⁿe = model.timestepper.Gⁿ.e
+    G⁻e = model.timestepper.G⁻.e
+
+    diffusivity_fields = model.diffusivity_fields
+    κe = diffusivity_fields.κe
+    Le = diffusivity_fields.Le
+    previous_velocities = diffusivity_fields.previous_velocities
+
+    Δτ = tke_time_step(closure)
     Δt = model.clock.last_Δt
-    Δτ = min(10.0, Δt)
-    M = ceil(Int, Δt / Δτ)
+    M = ceil(Int, Δt / Δτ) # number of substeps
 
-    for m = 1:M
-        Gⁿe = model.timestepper.Gⁿ.e
-        G⁻e = model.timestepper.G⁻.e
-
-        e = model.tracers.e
-        arch = model.architecture
-        grid = model.grid
-        closure = model.closure
-        diffusivity_fields = model.diffusivity_fields
-        κe = diffusivity_fields.κᵉ
-        Le = diffusivity_fields.Lᵉ
-        previous_velocities = diffusivity_fields.previous_velocities
-
-        if m == 1 
-            χ = -0.5
-        else
-            χ = model.timestepper.χ
-        end
+    for m = 1:M # substep
+        
+        # Euler step for the first substep
+        FT = eltype(model.timestepper.χ)
+        χ = m == 1 ? convert(FT, -0.5) : model.timestepper.χ
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
@@ -54,9 +56,6 @@ function time_step_turbulent_kinetic_energy!(model)
                        previous_clock, Δτ)
     end
 
-    # Do we have to compute the TKE diffusivity for diagnostic purposes here?
-    # ... and omit it from the first computation above?
-
     return nothing
 end
 
@@ -73,10 +72,7 @@ end
 
         # Compute TKE diffusivity, notably omitted from calculate diffusivities.
         κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
-        on_periphery = peripheral_node(i, j, k, grid, c, c, f)
-        within_inactive = inactive_node(i, j, k, grid, c, c, f)
-        nan = convert(eltype(grid), NaN)
-        κe★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κe★))
+        κe★ = mask_diffusivity(i, j, k, grid, κe★)
         κe[i, j, k] = κe★
 
         # Compute additional diagonal component of the linear TKE operator
