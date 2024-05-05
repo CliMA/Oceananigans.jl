@@ -14,9 +14,10 @@ e_ts = []
 filepaths = [
     "windy_convection_CATKEVerticalDiffusivity.jld2",
     "new_windy_convection_CATKEVerticalDiffusivity.jld2",
+    "fully_implicit_windy_convection_CATKEVerticalDiffusivity.jld2",
 ]
 
-labels = ["Non-conservative", "Conservative"]
+labels = ["Fully 'explicit'", "Partially 'implicit'", "Fully 'implicit'"]
 
 for filepath in filepaths
     push!(b_ts, FieldTimeSeries(filepath, "b"))
@@ -35,7 +36,8 @@ e1 = first(e_ts)
 
 zc = znodes(b1)
 zf = znodes(κ1)
-Nt = length(b1.times)
+times = b1.times
+Nt = length(times)
 
 fig = Figure(size=(1800, 600))
 
@@ -60,15 +62,26 @@ v2n  = @lift interior(v_ts[2][$n], 1, 1, :)
 e2n  = @lift interior(e_ts[2][$n], 1, 1, :)
 κᶜ2n = @lift interior(κᶜ_ts[2][$n], 1, 1, :)
 κᵘ2n = @lift interior(κᵘ_ts[2][$n], 1, 1, :)
-    
+
+b3n  = @lift interior(b_ts[3][$n], 1, 1, :)
+u3n  = @lift interior(u_ts[3][$n], 1, 1, :)
+v3n  = @lift interior(v_ts[3][$n], 1, 1, :)
+e3n  = @lift interior(e_ts[3][$n], 1, 1, :)
+κᶜ3n = @lift interior(κᶜ_ts[3][$n], 1, 1, :)
+κᵘ3n = @lift interior(κᵘ_ts[3][$n], 1, 1, :)
+ 
 btitle = @lift begin
-    mse = mean(($b1n .- $b2n).^2)
-    @sprintf("Buoyancy, mse = %.2e", mse)
+    tstr = prettytime(times[$n])
+    # mse = mean(($b1n .- $b2n).^2)
+    #@sprintf("Buoyancy at t = %s, , mse = %.2e", mse)
+    string("Buoyancy at t = ", tstr)
 end
 
 etitle = @lift begin
-    mse = mean(($e1n .- $e2n).^2)
-    @sprintf("TKE, mse = %.2e", mse)
+    #mse = mean(($e1n .- $e2n).^2)
+    #@sprintf("TKE, mse = %.2e", mse)
+    tstr = prettytime(times[$n])
+    string("Turbulent kinetic energy at t = ", tstr)
 end
 
 axb = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z (m)", title=btitle)
@@ -76,6 +89,8 @@ axu = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z (m)")
 axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)", title=etitle)
 axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
 
+grid = b1.grid
+N² = 1e-6
 xlims!(axb, -grid.Lz * N², 0)
 xlims!(axu, -0.2, 0.2)
 xlims!(axe, -1e-4, 2e-4)
@@ -84,7 +99,7 @@ xlims!(axκ, -1e-1, 2e0)
 colors = [
     (:black, 0.8),
     :royalblue,
-    :red,
+    :indianred1,
     :orange]
 
 i = 1
@@ -106,6 +121,16 @@ lines!(axu, v2n,  zc; linewidth, label="v, " * label, linestyle=:dash, color=col
 lines!(axe, e2n,  zc; linewidth, label="e, " * label, color=colors[i])
 lines!(axκ, κᶜ2n, zf; linewidth, label="κᶜ, " * label, color=colors[i])
 lines!(axκ, κᵘ2n, zf; linewidth, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
+
+i = 3
+label = labels[i]
+linewidth=5
+lines!(axb, b3n,  zc; linewidth, label=label, color=colors[i])
+lines!(axu, u3n,  zc; linewidth, label="u, " * label, color=colors[i])
+lines!(axu, v3n,  zc; linewidth, label="v, " * label, linestyle=:dash, color=colors[i])
+lines!(axe, e3n,  zc; linewidth, label="e, " * label, color=colors[i])
+lines!(axκ, κᶜ3n, zf; linewidth, label="κᶜ, " * label, color=colors[i])
+lines!(axκ, κᵘ3n, zf; linewidth, label="κᵘ, " * label, linestyle=:dash, color=colors[i])
 
 axislegend(axb, position=:lb)
 axislegend(axu, position=:rb)
