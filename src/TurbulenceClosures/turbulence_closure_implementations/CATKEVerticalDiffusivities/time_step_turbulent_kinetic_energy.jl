@@ -5,6 +5,7 @@ using Oceananigans.Grids: active_interior_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
+using CUDA
 
 function apply_flux_bcs!(Gcⁿ, c, arch, args)
     apply_x_bcs!(Gcⁿ, c, arch, args...)
@@ -14,7 +15,11 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
 end
 
 tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turbulent_kinetic_energy_time_step
-tke_time_step(closure::AbstractArray) = tke_time_step(first(closure)) # assume they are all the same
+
+function tke_time_step(closure::AbstractArray)
+    # assume they are all the same
+    return CUDA.@allowscalar tke_time_step(first(closure))
+end
 
 function time_step_turbulent_kinetic_energy!(model)
 
@@ -45,9 +50,11 @@ function time_step_turbulent_kinetic_energy!(model)
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
-                substep_turbulent_kinetic_energy!, κe, Le, grid, closure,
-                #model.velocities, previous_velocities, model.tracers, model.buoyancy, diffusivity_fields,
-                model.velocities, model.velocities, model.tracers, model.buoyancy, diffusivity_fields,
+                substep_turbulent_kinetic_energy!,
+                κe, Le, grid, closure,
+                #model.velocities, previous_velocities,
+                model.velocities, model.velocities,
+                model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
         tracer_index = findfirst(k -> k == :e, keys(model.tracers))
@@ -74,10 +81,11 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds begin
-        Jᵇ = diffusivities.Jᵇ[i, j, 1]
-        closure_ij = getclosure(i, j, closure)
+    Jᵇ = diffusivities.Jᵇ
+    e = tracers.e
+    closure_ij = getclosure(i, j, closure)
 
+    @inbounds begin
         # Compute TKE diffusivity, notably omitted from calculate diffusivities.
         κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
         κe★ = mask_diffusivity(i, j, k, grid, κe★)
@@ -88,7 +96,7 @@ end
         wb⁻ = min(zero(grid), wb)
         wb⁺ = max(zero(grid), wb)
 
-        eⁱʲᵏ = tracers.e[i, j, k]
+        eⁱʲᵏ = e[i, j, k]
         eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
         wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
 
@@ -148,14 +156,13 @@ end
         fast_Gⁿe = P + wb⁺ - ϵ
 
         # Advance TKE
-        FT = eltype(χ)
-        one_point_five = convert(FT, 1.5)
-        oh_point_five  = convert(FT, 0.5)
-        e = tracers.e
-
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
 
-        e[i, j, k] += convert(FT, Δτ) * ((one_point_five + χ) * total_Gⁿe - (oh_point_five + χ) * G⁻e[i, j, k])
+        FT = eltype(χ)
+        Δt = convert(FT, Δτ)
+        α = convert(FT, 1.5) + χ
+        β = convert(FT, 0.5) + χ
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
 
         # Store TKE tendency
         G⁻e[i, j, k] = total_Gⁿe
