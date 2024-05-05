@@ -13,6 +13,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 
     model = NonhydrostaticModel(; grid, closure,
+                                timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(),
                                 hydrostatic_pressure_anomaly = CenterField(grid),

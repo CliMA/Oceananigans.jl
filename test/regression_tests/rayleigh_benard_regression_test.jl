@@ -47,6 +47,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                    bottom = BoundaryCondition(Value, Δb))
 
     model = NonhydrostaticModel(; grid,
+                                timestepper = :QuasiAdamsBashforth2,
                                 closure = ScalarDiffusivity(ν=ν, κ=κ),
                                 tracers = (:b, :c),
                                 buoyancy = Buoyancy(model=BuoyancyTracer()),
