@@ -98,10 +98,17 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 N² = 1e-5 # s⁻² # background vertical buoyancy gradient
 B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
 
-# Because the bottom boundary condition is that there must be zero *total* diffusive
-# flux across the seafloor, the default `FluxBoundaryCondition()` is insufficient;
-# instead, the boundary condition on the perturbation flux must take the background
-# into account,
+# We choose to impose a bottom boundary condition of zero *total* diffusive buoyancy
+# flux across the seafloor,
+# ```math
+# ∂_z B = ∂_z b + N^{2} \cos{\theta} = 0.
+# ```
+# The default `FluxBoundaryCondition()` (which imposes ``∂_z b = 0``) is inappropriate;
+# instead, we must rearrange this expression to override the boundary condition on the
+# perturbation flux:
+# ```math
+# ∂_z b = - N^{2} \cos{\theta}.
+#```
 
 negative_background_diffusive_flux = GradientBoundaryCondition(-N²*ĝ[3])
 b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
