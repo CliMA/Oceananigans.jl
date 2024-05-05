@@ -95,10 +95,8 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 # _perturbations_ away from the constant density stratification by imposing
 # a constant stratification as a `BackgroundField`,
 
-N² = 1e-5 # s⁻¹ # background stratification
+N² = 1e-5 # s⁻² # background vertical buoyancy gradient
 B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
-
-# where ``N^2 = 10^{-5} \rm{s}^{-2}`` is the background buoyancy gradient.
 
 # Because the bottom boundary condition is that there must be zero *total* diffusive
 # flux across the seafloor, the default `FluxBoundaryCondition()` is insufficient;
@@ -137,8 +135,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # and a constant viscosity and diffusivity. Here we use a smallish value
 # of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
-ν=1e-4
-κ=1e-4
+ν = 1e-4
+κ = 1e-4
 closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
