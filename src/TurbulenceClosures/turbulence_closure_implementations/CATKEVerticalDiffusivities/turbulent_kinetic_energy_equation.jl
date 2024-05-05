@@ -48,40 +48,12 @@ end
            ℑyᵃᶜᵃ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, vⁿ, v⁺)
 end
 
-#=
-@inline νₑ_∂z_u²ᶠᶜᶜ(i, j, k, grid, νₑ, u) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_u²ᶠᶜᶠ, νₑ, u) / Δzᶠᶜᶜ(i, j, k, grid) 
-@inline νₑ_∂z_v²ᶜᶠᶜ(i, j, k, grid, νₑ, v) = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_∂z_v²ᶜᶠᶠ, νₑ, v) / Δzᶜᶠᶜ(i, j, k, grid) 
-
-@inline ν_∂z_u²ᶠᶜᶠ(i, j, k, grid, ν, u) = ℑxᶠᵃᵃ(i, j, k, grid, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)^2
-@inline ν_∂z_v²ᶜᶠᶠ(i, j, k, grid, ν, v) = ℑyᵃᶠᵃ(i, j, k, grid, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)^2
-
-@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    u = velocities.u
-    v = velocities.v
-
-    # To reconstruct the shear production term "conservatively" (ie approximately corresponding
-    # to dissipatation of mean kinetic energy):
-    κᵘ = diffusivities.κᵘ
-    return ℑxzᶜᵃᶜ(i, j, k, grid, ν_∂z_u²ᶠᶜᶠ, κᵘ, u) +
-           ℑyzᵃᶜᶜ(i, j, k, grid, ν_∂z_v²ᶜᶠᶠ, κᵘ, v)
-
-    #=
-    # Non-conservative reconstruction of shear production:
-    closure = getclosure(i, j, closure)
-    κᵘ = κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Jᵇ)
-    S² = shearᶜᶜᶜ(i, j, k, grid, u, v)
-
-    return κᵘ * S²
-    =#
-end
-=#
-
 # To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
 # of mean potential energy):
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κᶜ = @inbounds diffusivities.κᶜ[i, j, k]
+    κc = @inbounds diffusivities.κc[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return - κᶜ * N²
+    return - κc * N²
 end
  
 @inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
@@ -157,56 +129,6 @@ end
     ω = dissipation_rate(i, j, k, grid, closure, velocities, tracers, args...)
     return ω * eᵢ
 end
-
-#####
-##### For closure tuples...
-#####
-
-# TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
-
-#=
-@inline shear_production(i, j, k, grid, closure, U, C, B, K) = zero(grid)
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any}, U, C, B, K) =
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1])
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any}, U, C, B, K) =
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
-    shear_production(i, j, k, grid, closures[2], U, C, B, K[2])
-
-@inline shear_production(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, U, C, B, K) = 
-    shear_production(i, j, k, grid, closures[1], U, C, B, K[1]) +
-    shear_production(i, j, k, grid, closures[2], U, C, B, K[2]) +
-    shear_production(i, j, k, grid, closures[3], U, C, B, K[3])
-
-@inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(grid)
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, diffusivities[1])
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any, <:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, tracers, buoyancy, diffusivities[1]) +
-    buoyancy_flux(i, j, k, grid, closures[2], velocities, tracers, buoyancy, diffusivities[2])
-
-@inline buoyancy_flux(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, velocities, tracers, buoyancy, diffusivities) =
-    buoyancy_flux(i, j, k, grid, closures[1], velocities, tracers, buoyancy, diffusivities[1]) +
-    buoyancy_flux(i, j, k, grid, closures[2], velocities, tracers, buoyancy, diffusivities[2]) +
-    buoyancy_flux(i, j, k, grid, closures[3], velocities, tracers, buoyancy, diffusivities[3])
-
-# Unlike the above, this fallback for dissipation is generically correct (we only want to compute dissipation once)
-@inline dissipation(i, j, k, grid, closure, args...) = zero(grid)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any}, args...) = dissipation(i, j, k, grid, closures[1], args...)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any, <:Any}, args...) = 
-    dissipation(i, j, k, grid, closures[1], args...) +
-    dissipation(i, j, k, grid, closures[2], args...)
-
-@inline dissipation(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, args...) = 
-    dissipation(i, j, k, grid, closures[1], args...) +
-    dissipation(i, j, k, grid, closures[2], args...) +
-    dissipation(i, j, k, grid, closures[3], args...)
-=#
 
 #####
 ##### TKE top boundary condition

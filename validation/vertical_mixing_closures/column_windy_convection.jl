@@ -14,9 +14,9 @@ using Oceananigans.TurbulenceClosures:
 Lz = 256        # Extent of vertical domain
 Nz = Int(Lz/Δz) # Vertical resolution
 f₀ = 1e-4       # Coriolis parameter (s⁻¹)
-N² = 1e-6       # Buoyancy gradient (s⁻²)
-Jᵇ = +1e-8      # Surface buoyancy flux (m² s⁻³)
-τˣ = -2e-4      # Surface kinematic momentum flux (m s⁻¹)
+N² = 1e-5       # Buoyancy gradient (s⁻²)
+Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
+τˣ = -2e-3      # Surface kinematic momentum flux (m s⁻¹)
 stop_time = 4days
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
@@ -46,15 +46,15 @@ for closure in closures_to_run
 
     closurename = string(nameof(typeof(closure)))
 
-    diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
-                     κᶜ = model.diffusivity_fields.κᶜ)
+    diffusivities = (κu = model.diffusivity_fields.κu,
+                     κc = model.diffusivity_fields.κc)
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           schedule = TimeInterval(20minutes),
                                                           #schedule = IterationInterval(1),
-                                                          filename = "new_windy_convection_" * closurename,
+                                                          filename = "windy_convection_" * closurename,
                                                           overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
@@ -66,9 +66,8 @@ for closure in closures_to_run
     run!(simulation)
 end
 
-include("compare_catke_results.jl")
+#include("compare_catke_results.jl")
 
-#=
 #####
 ##### Visualize
 #####
@@ -77,8 +76,8 @@ b_ts = []
 u_ts = []
 v_ts = []
 e_ts = []
-κᶜ_ts = []
-κᵘ_ts = []
+κc_ts = []
+κu_ts = []
 
 for closure in closures_to_run
     closurename = string(nameof(typeof(closure)))
@@ -88,13 +87,13 @@ for closure in closures_to_run
     push!(u_ts, FieldTimeSeries(filepath, "u"))
     push!(v_ts, FieldTimeSeries(filepath, "v"))
     push!(e_ts, FieldTimeSeries(filepath, "e"))
-    push!(κᶜ_ts, FieldTimeSeries(filepath, "κᶜ"))
-    push!(κᵘ_ts, FieldTimeSeries(filepath, "κᵘ"))
+    push!(κc_ts, FieldTimeSeries(filepath, "κc"))
+    push!(κu_ts, FieldTimeSeries(filepath, "κu"))
 end
 
 b1 = first(b_ts)
 e1 = first(e_ts)
-κ1 = first(κᶜ_ts)
+κ1 = first(κc_ts)
 @show maximum(e1)
 
 zc = znodes(b1)
@@ -128,8 +127,8 @@ for (i, closure) in enumerate(closures_to_run)
     un  = @lift interior(u_ts[i][$n], 1, 1, :)
     vn  = @lift interior(v_ts[i][$n], 1, 1, :)
     en  = @lift interior(e_ts[i][$n], 1, 1, :)
-    κᶜn = @lift interior(κᶜ_ts[i][$n], 1, 1, :)
-    κᵘn = @lift interior(κᵘ_ts[i][$n], 1, 1, :)
+    κcn = @lift interior(κc_ts[i][$n], 1, 1, :)
+    κun = @lift interior(κu_ts[i][$n], 1, 1, :)
     
     closurename = string(nameof(typeof(closure)))
 
@@ -137,8 +136,8 @@ for (i, closure) in enumerate(closures_to_run)
     lines!(axu, un,  zc, label="u, " * closurename, color=colors[i])
     lines!(axu, vn,  zc, label="v, " * closurename, linestyle=:dash, color=colors[i])
     lines!(axe, en,  zc, label="e, " * closurename, color=colors[i])
-    lines!(axκ, κᶜn, zf, label="κᶜ, " * closurename, color=colors[i])
-    lines!(axκ, κᵘn, zf, label="κᵘ, " * closurename, linestyle=:dash, color=colors[i])
+    lines!(axκ, κcn, zf, label="κc, " * closurename, color=colors[i])
+    lines!(axκ, κun, zf, label="κu, " * closurename, linestyle=:dash, color=colors[i])
 end
 
 axislegend(axb, position=:lb)
@@ -151,4 +150,4 @@ display(fig)
 # record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
 #     n[] = nn
 # end
-=#
+

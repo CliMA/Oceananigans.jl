@@ -13,15 +13,17 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
     return nothing
 end
 
-tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turublent_kinetic_energy_time_step
+tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turbulent_kinetic_energy_time_step
 tke_time_step(closure::AbstractArray) = tke_time_step(first(closure)) # assume they are all the same
 
 function time_step_turbulent_kinetic_energy!(model)
 
+    # TODO: properly handle closure tuples
+    closure = model.closure
+
     e = model.tracers.e
     arch = model.architecture
     grid = model.grid
-    closure = model.closure
     Gⁿe = model.timestepper.Gⁿ.e
     G⁻e = model.timestepper.G⁻.e
 
@@ -33,9 +35,9 @@ function time_step_turbulent_kinetic_energy!(model)
     Δτ = tke_time_step(closure)
     Δt = model.clock.last_Δt
     M = ceil(Int, Δt / Δτ) # number of substeps
+    Δτ = Δt / M
 
     for m = 1:M # substep
-        
         # Euler step for the first substep
         FT = eltype(model.timestepper.χ)
         χ = m == 1 ? convert(FT, -0.5) : model.timestepper.χ
@@ -44,12 +46,18 @@ function time_step_turbulent_kinetic_energy!(model)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!, κe, Le, grid, closure,
-                model.velocities, previous_velocities, model.tracers, model.buoyancy, diffusivity_fields,
+                #model.velocities, previous_velocities, model.tracers, model.buoyancy, diffusivity_fields,
+                model.velocities, model.velocities, model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
         tracer_index = findfirst(k -> k == :e, keys(model.tracers))
         implicit_solver = model.timestepper.implicit_solver
-        previous_clock = (; time=model.clock.time - Δt, iteration=model.clock.iteration-1)
+
+        # Good idea?
+        previous_time = model.clock.time - Δt
+        previous_iteration = model.clock.iteration - 1
+        current_time = previous_time + m * Δτ
+        previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
                        model.diffusivity_fields, Val(tracer_index),
@@ -81,8 +89,27 @@ end
         wb⁺ = max(zero(grid), wb)
 
         eⁱʲᵏ = tracers.e[i, j, k]
-        wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
+        eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+        wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
 
+        # Treat the divergence of TKE flux at solid bottoms implicitly.
+        # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
+        #
+        #       ∂t e = - δ(z + h) ∇ ⋅ Jᵉ + ⋯
+        #       ∂t e = + δ(z + h) Jᵉ / Δz + ⋯
+        #
+        # where δ(z + h) is a δ-function that is 0 everywhere except adjacent to the bottom boundary
+        # at $z = -h$ and Δz is the grid spacing at the bottom
+        #
+        # Thus if
+        #
+        #       Jᵉ ≡ - Cᵂϵ * √e³
+        #          = - (Cᵂϵ * √e) e
+        #
+        # Then the contribution of Jᵉ to the implicit flux is
+        #
+        #       Lᵂ = - Cᵂϵ * √e / Δz.
+        #
         on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
         Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
@@ -90,7 +117,21 @@ end
         w★ = sqrt(e⁺)
         div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
 
+        # Implicit TKE dissipation
         ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+
+        # The interior contributions to the linear implicit term `L` are defined via
+        #
+        #       ∂t e = Lⁱ e + ⋯,
+        #
+        # So
+        #
+        #       Lⁱ e = wb - ϵ
+        #            = (wb / e - ω) e,
+        #               ↖--------↗
+        #                  = Lⁱ
+        #
+        # where ω = ϵ / e ∼ √e / ℓ.
 
         Le[i, j, k] = wb⁻_e - ω + div_Jᵉ_e
 
@@ -99,10 +140,11 @@ end
         v⁺ = next_velocities.v
         uⁿ = previous_velocities.u
         vⁿ = previous_velocities.v
-        κᵘ = diffusivities.κᵘ
+        κu = diffusivities.κu
 
-        P = shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺)
-        ϵ = dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
+        # TODO: correctly handle closure / diffusivity tuples
+        P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
+        ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
         fast_Gⁿe = P + wb⁺ - ϵ
 
         # Advance TKE
@@ -120,13 +162,12 @@ end
     end
 end
 
-#=
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Ge[i, j, k] += hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
+@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
+    L = K._tupled_implicit_linear_coefficients[id]
+    return @inbounds L[i, j, k]
 end
 
+#=
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 
 @inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
