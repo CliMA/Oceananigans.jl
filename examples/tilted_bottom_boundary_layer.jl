@@ -137,8 +137,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # and a constant viscosity and diffusivity. Here we use a smallish value
 # of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
-ν=1e-4
-κ=1e-4
+ν = 1e-4
+κ = 1e-4
 closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
