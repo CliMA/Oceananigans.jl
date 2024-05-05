@@ -95,9 +95,18 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 # _perturbations_ away from the constant density stratification by imposing
 # a constant stratification as a `BackgroundField`,
 
-B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5))
+N² = 1e-5 # s⁻¹ # background stratification
+B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
 
 # where ``N^2 = 10^{-5} \rm{s}^{-2}`` is the background buoyancy gradient.
+
+# Because the bottom boundary condition is that there must be zero *total* diffusive
+# flux across the seafloor, the default `FluxBoundaryCondition()` is insufficient;
+# instead, the boundary condition on the perturbation flux must take the background
+# into account,
+
+negative_background_diffusive_flux = GradientBoundaryCondition(-N²*ĝ[3])
+b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 # ## Bottom drag
 #
@@ -128,13 +137,15 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # and a constant viscosity and diffusivity. Here we use a smallish value
 # of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
-closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
+ν=1e-4
+κ=1e-4
+closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             tracers = :b,
-                            boundary_conditions = (u=u_bcs, v=v_bcs),
+                            boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B_field))
 
 # Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
@@ -146,9 +157,11 @@ set!(model, u=noise, w=noise)
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
-# conservatively, based on the smallest grid size of our domain.
+# conservatively, based on the smallest grid size of our domain and either an advective
+# or diffusive time scaling, depending on which is shorter.
 
-simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1day)
+Δt₀ = 0.5 * minimum([minimum_zspacing(grid) / V∞, minimum_zspacing(grid)^2/κ])
+simulation = Simulation(model, Δt = Δt₀, stop_time = 1day)
 
 # We use a `TimeStepWizard` to adapt our time-step,
 
@@ -199,6 +212,7 @@ run!(simulation)
 
 using NCDatasets, CairoMakie
 
+xb, yb, zb = nodes(B)
 xω, yω, zω = nodes(ωy)
 xv, yv, zv = nodes(V)
 
@@ -220,14 +234,17 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 n = Observable(1)
 
 ωy = @lift ds["ωy"][:, 1, :, $n]
+B = @lift ds["B"][:, 1, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
+ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
 
 V = @lift ds["V"][:, 1, :, $n]
 V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
 
 hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
+ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
