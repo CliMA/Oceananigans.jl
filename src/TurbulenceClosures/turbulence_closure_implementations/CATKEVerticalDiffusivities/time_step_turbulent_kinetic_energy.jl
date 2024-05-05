@@ -21,6 +21,8 @@ function time_step_turbulent_kinetic_energy!(model)
 
     for m = 1:M
         Gⁿe = model.timestepper.Gⁿ.e
+        G⁻e = model.timestepper.G⁻.e
+
         e = model.tracers.e
         arch = model.architecture
         grid = model.grid
@@ -30,21 +32,18 @@ function time_step_turbulent_kinetic_energy!(model)
         Le = diffusivity_fields.Lᵉ
         previous_velocities = diffusivity_fields.previous_velocities
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        launch!(arch, grid, :xyz,
-                compute_tke_rhs!, κe, Le, Gⁿe,
-                grid, closure, model.velocities, previous_velocities,
-                model.tracers, model.buoyancy, diffusivity_fields)
-
-        # 2. Step forward
         if m == 1 
             χ = -0.5
         else
             χ = model.timestepper.χ
         end
 
-        G⁻e = model.timestepper.G⁻.e
-        launch!(model.architecture, model.grid, :xyz, ab2_step_field!, e, Δτ, χ, Gⁿe, G⁻e)
+        # Compute the linear implicit component of the RHS (diffusivities, L)
+        # and step forward
+        launch!(arch, grid, :xyz,
+                substep_turbulent_kinetic_energy!, κe, Le, grid, closure,
+                model.velocities, previous_velocities, model.tracers, model.buoyancy, diffusivity_fields,
+                Δτ, χ, Gⁿe, G⁻e)
 
         tracer_index = findfirst(k -> k == :e, keys(model.tracers))
         implicit_solver = model.timestepper.implicit_solver
@@ -53,54 +52,26 @@ function time_step_turbulent_kinetic_energy!(model)
         implicit_step!(e, implicit_solver, closure,
                        model.diffusivity_fields, Val(tracer_index),
                        previous_clock, Δτ)
-                       
-        launch!(arch, grid, :xyz, store_field_tendencies!, G⁻e, Gⁿe)
     end
+
+    # Do we have to compute the TKE diffusivity for diagnostic purposes here?
+    # ... and omit it from the first computation above?
 
     return nothing
 end
 
-""" Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function add_tke_source_terms!(Ge, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Ge[i, j, k] += tke_source_terms(i, j, k, grid, args...)
-end
+@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+                                                   next_velocities, previous_velocities,
+                                                   tracers, buoyancy, diffusivities,
+                                                   Δτ, χ, slow_Gⁿe, G⁻e)
 
-@kernel function compute_tke_source_terms!(Ge, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Ge[i, j, k] = tke_source_terms(i, j, k, grid, args...)
-end
-
-@inline function tke_source_terms(i, j, k, grid,
-                                  closure,
-                                  next_velocities,
-                                  previous_velocities,
-                                  tracers,
-                                  buoyancy,
-                                  diffusivities)
-
-    u⁺ = next_velocities.u
-    v⁺ = next_velocities.v
-    uⁿ = previous_velocities.u
-    vⁿ = previous_velocities.v
-    κᵘ = diffusivities.κᵘ
-
-    P = shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺)
-    wb = buoyancy_flux(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
-    ϵ = dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
-
-    return P + wb - ϵ
-end
-
-#@kernel function compute_linear_implicit_tke_rhs!(diffusivities, grid, closure, velocities, tracers, buoyancy)
-@kernel function compute_tke_rhs!(κe, Le, Ge, grid, closure, next_velocities, previous_velocities, tracers, buoyancy, diffusivities)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
         Jᵇ = diffusivities.Jᵇ[i, j, 1]
         closure_ij = getclosure(i, j, closure)
 
-        # Re-compute TKE diffusivity
+        # Compute TKE diffusivity, notably omitted from calculate diffusivities.
         κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
         on_periphery = peripheral_node(i, j, k, grid, c, c, f)
         within_inactive = inactive_node(i, j, k, grid, c, c, f)
@@ -114,7 +85,7 @@ end
         wb⁺ = max(zero(grid), wb)
 
         eⁱʲᵏ = tracers.e[i, j, k]
-        wb_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
+        wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > 0)
 
         on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
@@ -125,8 +96,9 @@ end
 
         ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
 
-        Le[i, j, k] = wb_e - ω + div_Jᵉ_e
+        Le[i, j, k] = wb⁻_e - ω + div_Jᵉ_e
 
+        # Compute fast TKE RHS
         u⁺ = next_velocities.u
         v⁺ = next_velocities.v
         uⁿ = previous_velocities.u
@@ -135,8 +107,20 @@ end
 
         P = shear_production(i, j, k, grid, κᵘ, uⁿ, u⁺, vⁿ, v⁺)
         ϵ = dissipation(i, j, k, grid, closure, next_velocities, tracers, buoyancy, diffusivities)
+        fast_Gⁿe = P + wb⁺ - ϵ
 
-        Ge[i, j, k] = P + wb⁺ - ϵ
+        # Advance TKE
+        FT = eltype(χ)
+        one_point_five = convert(FT, 1.5)
+        oh_point_five  = convert(FT, 0.5)
+        e = tracers.e
+
+        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
+
+        e[i, j, k] += convert(FT, Δτ) * ((one_point_five + χ) * total_Gⁿe - (oh_point_five + χ) * G⁻e[i, j, k])
+
+        # Store TKE tendency
+        G⁻e[i, j, k] = total_Gⁿe
     end
 end
 
