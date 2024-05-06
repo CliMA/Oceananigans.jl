@@ -451,6 +451,10 @@ get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
 ##### Variable definition
 #####
 
+materialize_output(func, model) = func(model)
+materialize_output(field::AbstractField, model) = field
+materialize_output(particles::LagrangianParticles, model) = particles
+
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
@@ -687,7 +691,9 @@ function initialize_nc_file!(filepath,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, deflatelevel, attributes, dimensions)
+            materialized = materialize_output(output, model) 
+            define_output_variable!(dataset, materialized, name, array_type,
+                                    deflatelevel, attributes, dimensions)
         end
 
         sync(dataset)
