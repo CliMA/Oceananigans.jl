@@ -150,7 +150,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             advection = UpwindBiasedFifthOrder(),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
-                            background_fields = (; b=B_field))
+                            background_fields = (; b=B∞_field))
 
 # Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
 # turbulence:
