@@ -224,12 +224,12 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    #return ifelse(N² == 0, zero(grid), Ri)
     return ifelse(N² ≤ 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
-    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT = $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
+    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT =
+        $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
     @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
 end
 
@@ -272,7 +272,6 @@ const f = Face()
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
-
 @inline clip(x) = max(zero(x), x)
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
@@ -314,11 +313,12 @@ end
 @kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, velocities, tracers,
                                                         buoyancy, top_tracer_bcs, clock, Δt)
     i, j = @index(Global, NTuple)
+    k = grid.Nz
 
     closure = getclosure(i, j, closure)
 
-    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers))
-    k = grid.Nz
+    model_fields = merge(velocities, tracers)
+    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, model_fields)
     ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ)
 
     Jᵇᵋ = closure.minimum_convective_buoyancy_flux
@@ -346,15 +346,15 @@ end
 
     # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
     # is recomputed in time_step_turbulent_kinetic_energy.
+    κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+    κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+
+    κu★ = mask_diffusivity(i, j, k, grid, κu★)
+    κc★ = mask_diffusivity(i, j, k, grid, κc★)
+    κe★ = mask_diffusivity(i, j, k, grid, κe★)
+
     @inbounds begin
-        κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
-        κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
-        κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
-
-        κu★ = mask_diffusivity(i, j, k, grid, κu★)
-        κc★ = mask_diffusivity(i, j, k, grid, κc★)
-        κe★ = mask_diffusivity(i, j, k, grid, κe★)
-
         diffusivities.κu[i, j, k] = κu★
         diffusivities.κc[i, j, k] = κc★
         diffusivities.κe[i, j, k] = κe★
