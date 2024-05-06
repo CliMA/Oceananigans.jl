@@ -96,7 +96,7 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 # a constant stratification as a `BackgroundField`,
 
 N² = 1e-5 # s⁻² # background vertical buoyancy gradient
-B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
+B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²))
 
 # We choose to impose a bottom boundary condition of zero *total* diffusive buoyancy
 # flux across the seafloor,
