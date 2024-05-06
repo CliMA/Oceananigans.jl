@@ -158,8 +158,46 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 
-`NetCDFOutputWriter` also accepts an arbitrary `grid` for input that can be used to interpolate or subset the output fields. The output `grid` must be in the same architecture as the original grid.
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded to a different grid than `model.grid`. To use this functionality, the `output_grid` must be passed explicitly when constructing `NetCDFOutputWriter` along with the regridded / interpolated `outputs`.
 
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size = (1, 1, 8), extent = (1,1,1));
+model = NonhydrostaticModel(; grid, closure = ScalarDiffusivity(ν=1e-2))
+
+set!(model, u=(x, y, z,) -> z)
+
+simulation = Simulation(model,
+                        Δt=0.5*maximum(zspacings(grid, Center())) / maximum(abs, model.velocities.u),
+                        stop_time=20)
+
+simulation.output_writers[:fullfields] = NetCDFOutputWriter(model, (; model.velocities.u),
+                                                            filename = "fullfields.nc",
+                                                            schedule = TimeInterval(5),
+                                                            overwrite_existing = true,)
+
+coarse_grid = RectilinearGrid(size = (grid.Nx, grid.Ny, grid.Nz÷2), extent = (grid.Lx, grid.Ly, grid.Lz))
+coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+using Oceananigans.Fields: interpolate!
+update_coarse_u(simulation) = interpolate!(coarse_u, simulation.model.velocities.u)
+simulation.callbacks[:update_interp] = Callback(update_coarse_u)
+
+simulation.output_writers[:coarsefields] = NetCDFOutputWriter(model, (; coarse_u,), coarse_grid;
+                                                              filename="coarsefields.nc",
+                                                              schedule=TimeInterval(5),
+                                                              overwrite_existing=true,)
+
+# output
+NetCDFOutputWriter scheduled on TimeInterval(5 seconds):
+├── filepath: ./coarsefields.nc
+├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 1 outputs: coarse_u
+└── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.6 KiB
+```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
 
