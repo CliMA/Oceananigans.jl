@@ -108,7 +108,8 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²)
 # ∂_z b = - N^{2} \cos{\theta}.
 #```
 
-negative_background_diffusive_flux = GradientBoundaryCondition(-N²*ĝ[3])
+∂z_b_bottom = - N² * cosd(θ)
+negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
 b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 # ## Bottom drag
