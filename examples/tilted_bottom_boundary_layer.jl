@@ -103,9 +103,7 @@ B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N²)
 # ```math
 # ∂_z B = ∂_z b + N^{2} \cos{\theta} = 0.
 # ```
-# The default `FluxBoundaryCondition()` (which imposes ``∂_z b = 0``) is inappropriate;
-# instead, we must rearrange this expression to override the boundary condition on the
-# perturbation flux:
+# This shows that to impose a no-flux boundary condition on the total buoyancy field ``B``, we must apply a boundary condition to the perturbation buoyancy ``b``,
 # ```math
 # ∂_z b = - N^{2} \cos{\theta}.
 #```
