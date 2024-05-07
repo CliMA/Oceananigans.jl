@@ -70,7 +70,7 @@ trilinear(x, y, z) = x + y + z
 
                 for f in (wx, wxy, Tx, Txy, ζx, ζxy)
                     @test f.operand isa Reduction
-                    @test f.operand.reduce! === mean!
+                    @test f.operand.scan! === mean!
                 end
 
                 @test Txyz.operand isa Reduction
@@ -79,13 +79,13 @@ trilinear(x, y, z) = x + y + z
 
                 # Different behavior for regular grid z vs not.
                 if grid === regular_grid
-                    @test Txyz.operand.reduce! === mean!
-                    @test wxyz.operand.reduce! === mean!
+                    @test Txyz.operand.scan! === mean!
+                    @test wxyz.operand.scan! === mean!
                     @test Txyz.operand.operand === T
                     @test wxyz.operand.operand === w
                 else
-                    @test Txyz.operand.reduce! === sum!
-                    @test wxyz.operand.reduce! === sum!
+                    @test Txyz.operand.scan! === sum!
+                    @test wxyz.operand.scan! === sum!
                     @test Txyz.operand.operand isa BinaryOperation
                     @test wxyz.operand.operand isa BinaryOperation
                 end
