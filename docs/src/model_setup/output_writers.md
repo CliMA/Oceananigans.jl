@@ -163,38 +163,27 @@ To use this functionality, the `output_grid` must be passed explicitly when cons
 
 ```jldoctest
 using Oceananigans
+using Oceananigans.Fields: interpolate!
 
-grid = RectilinearGrid(size = (1, 1, 8), extent = (1,1,1));
-model = NonhydrostaticModel(; grid, closure = ScalarDiffusivity(ν=1e-2))
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
+model = NonhydrostaticModel(; grid)
+simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-set!(model, u=(x, y, z,) -> z)
-
-simulation = Simulation(model,
-                        Δt=0.5*maximum(zspacings(grid, Center())) / maximum(abs, model.velocities.u),
-                        stop_time=20)
-
-simulation.output_writers[:fullfields] = NetCDFOutputWriter(model, (; model.velocities.u),
-                                                            filename = "fullfields.nc",
-                                                            schedule = TimeInterval(5),
-                                                            overwrite_existing = true,)
-
-coarse_grid = RectilinearGrid(size = (grid.Nx, grid.Ny, grid.Nz÷2), extent = (grid.Lx, grid.Ly, grid.Lz))
+coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-using Oceananigans.Fields: interpolate!
-update_coarse_u(simulation) = interpolate!(coarse_u, simulation.model.velocities.u)
-simulation.callbacks[:update_interp] = Callback(update_coarse_u)
+interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+outputs = (; u = interpolate_u)
 
-simulation.output_writers[:coarsefields] = NetCDFOutputWriter(model, (; coarse_u,), coarse_grid;
-                                                              filename="coarsefields.nc",
-                                                              schedule=TimeInterval(5),
-                                                              overwrite_existing=true,)
+simulation.output_writers[:coarse_u] = NetCDFOutputWriter(model, outputs, coarse_grid;
+                                                          filename = "coarse_u.nc",
+                                                          schedule = IterationInterval(1))
 
 # output
-NetCDFOutputWriter scheduled on TimeInterval(5 seconds):
-├── filepath: ./coarsefields.nc
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: ./coarse_u.nc
 ├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 1 outputs: coarse_u
+├── 1 outputs: u
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
 └── file size: 14.6 KiB

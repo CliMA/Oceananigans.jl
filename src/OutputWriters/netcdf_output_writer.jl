@@ -163,7 +163,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, schedule
+    NetCDFOutputWriter(model, outputs, grid; filename, schedule
                                           dir = ".",
                                    array_type = Array{Float64},
                                       indices = nothing,
@@ -181,7 +181,7 @@ Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
 either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
 returns something to be written to disk. Custom output requires the spatial `dimensions` (a
-`Dict`) to be manually specified (see examples).
+`Dict`) or `grid` to be manually specified (see examples).
 
 Keyword arguments
 =================
@@ -354,6 +354,37 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
 └── file size: 17.8 KiB
+```
+
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded to a different grid than `model.grid`.
+To use this functionality, the `output_grid` must be passed explicitly when constructing `NetCDFOutputWriter` along with the regridded / interpolated `outputs`.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Fields: interpolate!
+
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
+model = NonhydrostaticModel(; grid)
+simulation = Simulation(model, Δt=1, stop_iteration=1)
+
+coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
+coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+outputs = (; u = interpolate_u)
+
+simulation.output_writers[:coarse_u] = NetCDFOutputWriter(model, outputs, coarse_grid;
+                                                          filename = "coarse_u.nc",
+                                                          schedule = IterationInterval(1))
+
+# output
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: ./coarse_u.nc
+├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 1 outputs: u
+└── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.6 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs, grid=model.grid;
