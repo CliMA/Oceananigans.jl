@@ -1,7 +1,7 @@
 using Oceananigans, Printf
 
-using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!, Iterate
+using Oceananigans.Grids: node
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
 using JLD2
 
 ## Grid setup
@@ -10,11 +10,13 @@ Nx, Ny, Nz = 32, 32, 1
 R = 1 # sphere's radius
 U = 1 # velocity scale
 
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                  z = (-1, 0),
-                                  radius = R,
-                                  horizontal_direction_halo = 6,
-                                  partition = CubedSpherePartition(; R = 1))
+arch = CPU()
+grid = ConformalCubedSphereGrid(arch;
+                                panel_size = (Nx, Ny, Nz),
+                                z = (-1, 0),
+                                radius = R,
+                                horizontal_direction_halo = 6,
+                                partition = CubedSpherePartition(; R = 1))
 
 # Solid body rotation
 φʳ = 0       # Latitude pierced by the axis of rotation
@@ -24,51 +26,47 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
 
 ψ = Field{Face, Face, Center}(grid)
 
-# Note that set fills only interior points; to compute u and v we need information in the halo regions.
 set!(ψ, ψᵣ)
 
-# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not 
+# Note that set! fills only interior points; to compute u and v, we need information in the halo regions.
+fill_halo_regions!(ψ)
+
+# Note that fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not
 # correspond to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not 
 # have a corresponding interior point.
 
-region = Iterate(1:6)
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Utils: Iterate, launch!
 
-@apply_regionally begin
-    launch!(arch, grid, Ny+1, _set_x_region_grid!, ψ, region, grid)
-    launch!(arch, grid, Nx+1, _set_y_region_grid!, ψ, region, grid)
-end
-
-@kernel function _set_x_region_grid!(ψ, region, grid)
-    i = @index(Global, Linear)
-    j = 1
+@kernel function _set_ψ_missing_corners!(ψ, grid, region)
+    k = @index(Global, Linear)
+    i = 1
+    j = Ny+1
     if region in (1, 3, 5)
         λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
         @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
-end
-
-@kernel function _set_y_region_grid!(ψ, region, grid)
-    j = @index(Global, Linear)
-    i = 1
+    i = Nx+1
+    j = 1
     if region in (2, 4, 6)
         λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
         @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
 end
 
-fill_halo_regions!(ψ)
+region = Iterate(1:6)
+@apply_regionally launch!(arch, grid, Nz, _set_ψ_missing_corners!, ψ, grid, region)
 
 u = XFaceField(grid)
 v = YFaceField(grid)
 
-# What we want eventually:
-# u .= - ∂y(ψ)
-# v .= + ∂x(ψ)
-
-for region in 1:number_of_regions(grid)
-    u[region] .= - ∂y(ψ[region])
-    v[region] .= + ∂x(ψ[region])
+@kernel function _set_prescribed_velocities!(ψ, u, v)
+    i, j, k = @index(Global, NTuple)
+    u[i, j, k] = - ∂y(ψ)[i, j, k]
+    v[i, j, k] = + ∂x(ψ)[i, j, k]
 end
+
+@apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_prescribed_velocities!, ψ, u, v) 
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                     velocities = PrescribedVelocityFields(; u, v),
@@ -81,6 +79,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # Initial condition for tracer
 
 #=
+using Oceananigans.Grids: λnode, φnode
+
 # 4 Gaussians with width δR (degrees) and magnitude θ₀
 δR = 2
 θ₀ = 1
