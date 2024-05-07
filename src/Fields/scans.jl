@@ -183,3 +183,30 @@ max_c²[1:Nx, 1:Ny]
 Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
 location(a::Accumulation) = location(a.operand)
 
+#####
+##### Some custom scans
+#####
+
+function reverse_cumsum!(b::Field, a::AbstractField; dims)
+
+    # First compute the cumsum
+    cumsum!(b, a; dims)
+
+    # Now reverse it
+    ai = interior(a)
+    bi = interior(b)
+    Nx, Ny, Nz = size(b)
+
+    if dims == 1
+        Ai = interior(b, Nx, :, :)
+    elseif dims == 2
+        Ai = interior(b, :, Ny, :)
+    elseif dims == 3
+        Ai = interior(b, :, :, Nz)
+    end
+
+    @. bi = Ai - bi + ai
+
+    return b
+end
+

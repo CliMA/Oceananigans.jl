@@ -2,8 +2,10 @@ using Statistics: mean!, sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: condition_operand
+using Oceananigans.Fields: condition_operand, reverse_cumsum!
+
 import Oceananigans.Fields: Reduction
+import Oceananigans.Fields: Accumulation
 
 ##### 
 ##### Metric inference
@@ -116,3 +118,27 @@ Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) =
 
 Base.summary(r::Reduction{<:Average}) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 Base.summary(r::Reduction{<:Integral}) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
+
+#####
+##### CumulativeIntegral
+#####
+
+struct CumulativeIntegral end
+
+CumulativeIntegral(field::AbstractField; dims, reverse=false, condition = nothing, mask = 0) =
+    Reduction(CumulativeIntegral(), field; dims, reverse, condition, mask)
+
+function CumulativeIntegral(int::Integral, field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
+    dims ∈ (1, 2, 3) || throw(ArgumentError("Can only build a CumulativeIntegral over dims 1, 2, or 3"))
+
+    dx = reduction_grid_metric(dims)
+
+    if reverse
+        scan = reverse_cumsum!
+    else
+        scan = cumsum!
+    end
+
+    return Accumulation(scan, condition_operand(field * dx, condition, mask), dims)
+end
+
