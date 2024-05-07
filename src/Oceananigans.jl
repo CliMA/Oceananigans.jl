@@ -41,7 +41,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    Average, Integral, Reduction, BackgroundField,
+    Average, Integral, Reduction, Accumulation, BackgroundField,
     interior, set!, compute!, regrid!, location,
 
     # Forcing functions
