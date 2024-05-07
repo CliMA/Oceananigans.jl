@@ -9,9 +9,10 @@ using CUDA
 
 tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turbulent_kinetic_energy_time_step
 
-function tke_time_step(closure::AbstractArray)
+function tke_time_step(closure_array::AbstractArray)
     # assume they are all the same
-    return CUDA.@allowscalar tke_time_step(first(closure))
+    closure = CUDA.@allowscalar closure_array[1, 1]
+    return tke_time_step(closure)
 end
 
 function time_step_turbulent_kinetic_energy!(model)
@@ -29,29 +30,38 @@ function time_step_turbulent_kinetic_energy!(model)
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
+    tracer_index = findfirst(k -> k == :e, keys(model.tracers))
+    implicit_solver = model.timestepper.implicit_solver
 
-    Δτ = tke_time_step(closure)
     Δt = model.clock.last_Δt
-    M = ceil(Int, Δt / Δτ) # number of substeps
-    Δτ = Δt / M
+    Δτ = tke_time_step(closure)
+
+    if isnothing(Δτ)
+        Δτ = Δt
+        M = 1
+    else
+        M = ceil(Int, Δt / Δτ) # number of substeps
+        Δτ = Δt / M
+    end
+
+    FT = eltype(grid)
 
     for m = 1:M # substep
-        # Euler step for the first substep
-        FT = eltype(model.timestepper.χ)
-        χ = m == 1 ? convert(FT, -0.5) : model.timestepper.χ
+        if m == 1 && M != 1
+            χ = convert(FT, -0.5) # Euler step for the first substep
+        else
+            χ = model.timestepper.χ
+        end
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
                 κe, Le, grid, closure,
-                #model.velocities, previous_velocities,
-                model.velocities, model.velocities,
+                model.velocities, previous_velocities,
+                #model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
-
-        tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-        implicit_solver = model.timestepper.implicit_solver
 
         # Good idea?
         # previous_time = model.clock.time - Δt
