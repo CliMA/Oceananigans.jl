@@ -167,7 +167,6 @@ using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(; grid)
-simulation = Simulation(model, Δt=1, stop_iteration=1)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -175,9 +174,9 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-simulation.output_writers[:coarse_u] = NetCDFOutputWriter(model, outputs, coarse_grid;
-                                                          filename = "coarse_u.nc",
-                                                          schedule = IterationInterval(1))
+output_writer = NetCDFOutputWriter(model, outputs, coarse_grid;
+                                    filename = "coarse_u.nc",
+                                    schedule = IterationInterval(1))
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
