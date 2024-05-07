@@ -16,17 +16,20 @@ struct Scan{T, R, O, D}
     dims :: D
 end
 
-struct Reducing end
-struct Accumulating end
+abstract type AbstractReducing end
+abstract type AbstractAccumulating end
+
+struct Reducing <: AbstractReducing end
+struct Accumulating <: AbstractAccumulating end
 
 Base.summary(::Reducing) = "Reducing"
 Base.summary(::Accumulating) = "Accumulating"
 
-const Reduction = Scan{<:Reducing}
-const Accumulation = Scan{<:Accumulating}
+const Reduction = Scan{<:AbstractReducing}
+const Accumulation = Scan{<:AbstractAccumulating}
 
-scan_indices(::Reducing, indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-scan_indices(::Accumulating, indices; dims) = indices
+scan_indices(::AbstractReducing, indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
+scan_indices(::AbstractAccumulating, indices; dims) = indices
 
 Base.summary(s::Scan) = string(summary(s.type), " ",
                                s.scan!, 
@@ -60,9 +63,9 @@ function compute!(field::ScannedComputedField, time=nothing)
     s = field.operand
     compute_at!(s.operand, time)
 
-    if s.type isa Reducing
+    if s.type isa AbstractReducing
         s.scan!(field, s.operand)
-    elseif s.type isa Accumulating
+    elseif s.type isa AbstractAccumulating
         s.scan!(field, s.operand; dims=s.dims)
     end
 
@@ -203,6 +206,8 @@ function reverse_cumsum!(b::Field, a::AbstractField; dims)
         Ai = interior(b, :, Ny, :)
     elseif dims == 3
         Ai = interior(b, :, :, Nz)
+    else
+        throw(ArgumentError("reverse_cumsum! does not support dims=$dims"))
     end
 
     @. bi = Ai - bi + ai
