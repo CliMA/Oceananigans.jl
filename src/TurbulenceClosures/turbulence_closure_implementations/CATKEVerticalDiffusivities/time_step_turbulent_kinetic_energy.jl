@@ -58,8 +58,7 @@ function time_step_turbulent_kinetic_energy!(model)
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
                 κe, Le, grid, closure,
-                model.velocities, previous_velocities,
-                #model.velocities, model.velocities,
+                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e)
 
@@ -153,13 +152,16 @@ end
     κu = diffusivities.κu
 
     # TODO: correctly handle closure / diffusivity tuples
+    # TODO: the shear_production is actually a slow term so we _could_ precompute.
     P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
     ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
     fast_Gⁿe = P + wb⁺ - ϵ
 
     # Advance TKE and store tendency
     FT = eltype(χ)
-    Δt = convert(FT, Δτ)
+    Δτ = convert(FT, Δτ)
+
+    # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
 
