@@ -93,7 +93,7 @@ julia> set!(f, (x, y, z) -> x * y * z)
     └── max=0.823975, min=0.000244141, mean=0.125
 
 julia> ∫f = Integral(f)
-sum! over dims (1, 2, 3) of BinaryOperation at (Center, Center, Center)
+Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
 └── operand: BinaryOperation at (Center, Center, Center)
     └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 
@@ -121,10 +121,40 @@ const CumulativeIntegral = Reduction{<:CumulativelyIntegrating}
 Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c.operand), " over dims ", c.dims)
 
 """
-    Integral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
-
+    CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
+
+Example
+=======
+
+Compute the cumulative integral of ``f(z) = z`` over z ∈ [0, 1].
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded));
+
+julia> c = CenterField(grid);
+
+julia> set!(c, z -> z)
+1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+└── data: 1×1×14 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:11) with eltype Float64 with indices 1:1×1:1×-2:11
+    └── max=0.9375, min=0.0625, mean=0.5
+
+julia> C_op = CumulativeIntegral(c, dims=3)
+CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
+└── operand: BinaryOperation at (Center, Center, Center)
+    └── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
+
+julia> C = compute!(Field(C_op))
+
+julia> C[1, 1, 8]
+0.5
+```
 """
 function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
     dims ∈ (1, 2, 3) || throw(ArgumentError("CumulativeIntegral only supports dims=1, 2, or 3."))
