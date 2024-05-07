@@ -6,13 +6,12 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
+using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
 
-import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
-
-using Oceananigans.Models: update_model_field_time_series!
+import Oceananigans.TimeSteppers: update_state!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -30,7 +29,6 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
          update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
-
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model

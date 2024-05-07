@@ -1,8 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-float_types = (Float32, Float64)
-archs = test_architectures()
-
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
@@ -116,7 +113,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
-            include("test_sewater_density.jl")
+            include("test_seawater_density.jl")
         end
     end
 

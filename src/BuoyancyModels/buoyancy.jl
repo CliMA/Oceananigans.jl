@@ -30,8 +30,9 @@ model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 # output
 
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}

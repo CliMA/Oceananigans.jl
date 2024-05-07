@@ -646,11 +646,11 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, t
         for j in 1:Ny⁺
             # fill west halos
             for i in 0:-1:-Hx+1
-                metric[i, j] = metric[Nx+i, j]
+                CUDA.@allowscalar metric[i, j] = metric[Nx+i, j]
             end
             # fill east halos
             for i in Nx⁺+1:Nx⁺+Hx
-                metric[i, j] = metric[i-Nx, j]
+                CUDA.@allowscalar metric[i, j] = metric[i-Nx, j]
             end
         end
     end
@@ -673,11 +673,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                metric[i, j] = metric[i, j+1]
+                CUDA.@allowscalar metric[i, j] = metric[i, j+1]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                metric[i, j] = metric[i, j-1]
+                CUDA.@allowscalar metric[i, j] = metric[i, j-1]
             end
         end
     end
@@ -694,11 +694,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopolog
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                metric[i, j] = metric[i, Ny+j]
+                CUDA.@allowscalar metric[i, j] = metric[i, Ny+j]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                metric[i, j] = metric[i, j-Ny]
+                CUDA.@allowscalar metric[i, j] = metric[i, j-Ny]
             end
         end
     end
@@ -721,16 +721,16 @@ function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx
 
     @inbounds begin
         for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
         end
         for j in 0:-1:-Hy+1, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
+            CUDA.@allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
         end
     end
 
@@ -774,50 +774,40 @@ conformal_cubed_sphere_panel(FT::DataType; kwargs...) = conformal_cubed_sphere_p
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
-    ii = interior_indices(loc[1](), topo[1](), N[1])
-    jj = interior_indices(loc[2](), topo[2](), N[2])
+    data = on_architecture(arch, file[field_name])
+    data = convert.(FT, data)
 
-    interior_data = on_architecture(arch, file[field_name][ii, jj])
-
-    underlying_data = zeros(FT, arch,
-                            total_length(loc[1](), topo[1](), N[1], H[1]),
-                            total_length(loc[2](), topo[2](), N[2], H[2]))
-
-    ip = interior_parent_indices(loc[1](), topo[1](), N[1], H[1])
-    jp = interior_parent_indices(loc[2](), topo[2](), N[2], H[2])
-
-    view(underlying_data, ip, jp) .= interior_data
-
-    return offset_data(underlying_data, loc[1:2], topo[1:2], N[1:2], H[1:2])
+    return offset_data(data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
 function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       panel, Nz, z,
-                                      topology = (Bounded, Bounded, Bounded),
+                                      topology = (FullyConnected, FullyConnected, Bounded),
                                         radius = R_Earth,
-                                          halo = (1, 1, 1),
+                                          halo = (4, 4, 4),
                                       rotation = nothing)
 
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
-    ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξ, η = (-1, 1), (-1, 1)
-    ξη_grid = RectilinearGrid(architecture, FT; size = (1, 1, Nz), x = ξ, y = η, z, topology, halo)
+    z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
 
-     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
-     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
-    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
-    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
-    Lz    = ξη_grid.Lz
+     zᵃᵃᶠ = z_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = z_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = z_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = z_grid.Δzᵃᵃᶠ
+    Lz    = z_grid.Lz
 
     ## Read everything else from the file
 
-    file = jldopen(filepath, "r")["face$panel"]
+    file = jldopen(filepath, "r")["panel$panel"]
 
-    Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
+    Nξ, Nη = size(file["λᶠᶠᵃ"])
+    Hξ, Hη = halo[1], halo[2]
+    Nξ -= 2Hξ
+    Nη -= 2Hη
 
     N = (Nξ, Nη, Nz)
     H = halo
@@ -859,7 +849,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    conformal_mapping = (; ξ, η)
+    conformal_mapping = (ξ = (-1, 1), η = (-1, 1))
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -994,20 +984,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = CUDA.@allowscalar λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = CUDA.@allowscalar φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
     elseif mod(Ny, 2) == 1
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
     end
 
     if mod(Nx, 2) == 0
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     elseif mod(Nx, 2) == 1
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     end
 
     return (λ_center, φ_center), (extent_λ, extent_φ)
