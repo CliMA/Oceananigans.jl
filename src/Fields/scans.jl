@@ -28,10 +28,10 @@ const Accumulation = Scan{<:Accumulating}
 scan_indices(::Reducing, indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
 scan_indices(::Accumulating, indices; dims) = indices
 
-Base.summary(r::Scan) = string(summary(s.type), " ",
-                               r.scan!, 
-                               " over dims ", r.dims,
-                               " of ", summary(r.operand))
+Base.summary(s::Scan) = string(summary(s.type), " ",
+                               s.scan!, 
+                               " over dims ", s.dims,
+                               " of ", summary(s.operand))
 
 function Field(scan::Scan;
                data = nothing,
@@ -41,7 +41,7 @@ function Field(scan::Scan;
     operand = scan.operand
     grid = operand.grid
     LX, LY, LZ = loc = location(scan)
-    indices = scan_indices(indices; dims=scan.dims)
+    indices = scan_indices(scan.type, indices; dims=scan.dims)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)
@@ -59,7 +59,13 @@ const ScannedComputedField = Field{<:Any, <:Any, <:Any, <:Scan}
 function compute!(field::ScannedComputedField, time=nothing)
     s = field.operand
     compute_at!(s.operand, time)
-    s.scan!(field, s.operand)
+
+    if s.type isa Reducing
+        s.scan!(field, s.operand)
+    elseif s.type isa Accumulating
+        s.scan!(field, s.operand; dims=s.dims)
+    end
+
     return field
 end
 
@@ -67,17 +73,23 @@ end
 ##### show
 #####
 
-Base.show(io::IO, field::ScannedComputedField) =
-    print(io, "$(summary(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(summary(field.grid))\n",
-          "├── operand: $(summary(field.operand))\n",
-          "└── status: $(summary(field.status))")
+function Base.show(io::IO, field::ScannedComputedField)
+    print(io, summary(field), '\n',
+          "├── data: ", typeof(field.data), ", size: ", size(field), '\n',
+          "├── grid: ", summary(field.grid), '\n',
+          "├── operand: ", summary(field.operand), '\n',
+          "├── status: ", summary(field.status), '\n')
 
-Base.show(io::IO, r::Scan) =
-    print(io, "$(summary(r))\n",
-          "└── operand: $(summary(r.operand))\n",
-          "    └── grid: $(summary(r.operand.grid))")
+    data_str = string("└── data: ", summary(field.data), '\n',
+                      "    └── ", data_summary(field))
+
+    print(io, data_str)
+end
+
+Base.show(io::IO, s::Scan) =
+    print(io, "$(summary(s))\n",
+          "└── operand: $(summary(s.operand))\n",
+          "    └── grid: $(summary(s.operand.grid))")
 
 #####
 ##### Reductions (where the output has fewer dimensions than the input)
@@ -89,7 +101,7 @@ Base.show(io::IO, r::Scan) =
 Return a `Reduction` of `operand` with `reduce!`, where `reduce!` can be called with
 
 ```
-reduce!(field, operand; dims)
+reduce!(field, operand)
 ```
 
 to reduce `operand` along `dims` and store in `field`.
@@ -168,6 +180,6 @@ max_c²[1:Nx, 1:Ny]
  3.36111  4.69444  6.25
 ```
 """
-Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), reduce!, operand, dims)
+Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
 location(a::Accumulation) = location(a.operand)
 
