@@ -456,21 +456,29 @@ materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
+function define_output_variable!(dataset, output, name, array_type,
+                                 deflatelevel, attrib, dimensions)
+
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
-    defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           deflatelevel=deflatelevel, attrib=output_attributes)
+    dims = dimensions[name]
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
 
     return nothing
 end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, deflatelevel, output_attributes, dimensions) =
-    defVar(dataset, name, eltype(array_type),
-           (netcdf_spatial_dimensions(output)..., "time"),
-           deflatelevel=deflatelevel, attrib=output_attributes)
+function define_output_variable!(dataset, output::AbstractField, name, array_type,
+                                 deflatelevel, attrib, dimensions)
+
+    dims = netcdf_spatial_dimensions(output)
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+
+    return nothing
+end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
@@ -589,12 +597,17 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, deflatelevel, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
+                                 deflatelevel, output_attributes, dimensions)
+
     particle_fields = eltype(output.properties) |> fieldnames .|> string
+    T = eltype(array_type)
+
     for particle_field in particle_fields
-        defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), deflatelevel=deflatelevel)
+        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
     end
+
+    return nothing
 end
 
 dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
@@ -692,8 +705,13 @@ function initialize_nc_file!(filepath,
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
             materialized = materialize_output(output, model) 
-            define_output_variable!(dataset, materialized, name, array_type,
-                                    deflatelevel, attributes, dimensions)
+            define_output_variable!(dataset,
+                                    materialized,
+                                    name,
+                                    array_type,
+                                    deflatelevel,
+                                    attributes,
+                                    dimensions)
         end
 
         sync(dataset)
