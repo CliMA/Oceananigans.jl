@@ -16,12 +16,15 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields, iterate_split_explicit!
 
+# SplitExplicitFreeSurface on MultiRegionGrids is implemented in two different ways:
+# 1. extended_halos == true:  the halos are extended to include the full substepping
+# 2. extended_halos == false: the halos are the same as the original grid and halos are filled after each substep
 function SplitExplicitFreeSurface(grid::MultiRegionGrids;
                                   gravitational_acceleration = g_Earth,
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  extended_halos = true,
+                                  extended_halos = true, 
                                   averaging_kernel = averaging_shape_function,
                                   timestepper = ForwardBackwardScheme())
 
@@ -156,14 +159,14 @@ function fill_halo_iterate_split_explicit!(free_surface, grid::MultiRegionGrids,
         averaging_weight = weights[substep]
 
         fill_halo_regions!((U, V))
-        @apply_regionally begin 
-            launch!(arch, grid, :xy, _split_explicit_free_surface!, η_args...)
-        end
+        @apply_regionally advance_free_surface_step!(arch, grid, η_args)
+            
         fill_halo_regions!(η)
-        @apply_regionally begin
-            launch!(arch, grid, :xy, _split_explicit_barotropic_velocity!, averaging_weight, U_args...)
-        end
+        @apply_regionally advance_barotropic_velocity_step!(arch, grid, averaging_weight, U_args)
     end
 
     return nothing
 end
+
+advance_free_surface_step!(arch, grid, η_args)        = launch!(arch, grid, :xy, _split_explicit_free_surface!, η_args...)
+advance_barotropic_velocity_step!(arch, grid, η_args) = launch!(arch, grid, :xy, _split_explicit_barotropic_velocity!, averaging_weight, U_args...)
