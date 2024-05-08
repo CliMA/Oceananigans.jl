@@ -23,8 +23,8 @@ trilinear(x, y, z) = x + y + z
                                           x=(0, 2), y=(0, 2), z=[0, 1, 2],
                                           topology = (Periodic, Periodic, Bounded))
 
-        @testset "Averaged fields [$arch_str]" begin
-            @info "  Testing averaged Fields [$arch_str]"
+        @testset "Averaged and integrated fields [$arch_str]" begin
+            @info "  Testing averaged and integrated Fields [$arch_str]"
 
             for grid in (regular_grid, xy_regular_grid)
 
@@ -56,21 +56,80 @@ trilinear(x, y, z) = x + y + z
                 @compute ζxy = Field(Average(ζ, dims=(1, 2)))
                 @compute ζx = Field(Average(ζ, dims=1))
 
-                for T′ in (Tx, Txy)
+                @compute Θxyz = Field(Integral(T, dims=(1, 2, 3)))
+                @compute Θxy = Field(Integral(T, dims=(1, 2)))
+                @compute Θx = Field(Integral(T, dims=1))
+
+                @compute Wxyz = Field(Integral(w, dims=(1, 2, 3)))
+                @compute Wxy = Field(Integral(w, dims=(1, 2)))
+                @compute Wx = Field(Integral(w, dims=1))
+
+                @compute Zxyz = Field(Integral(ζ, dims=(1, 2, 3)))
+                @compute Zxy = Field(Integral(ζ, dims=(1, 2)))
+                @compute Zx = Field(Integral(ζ, dims=1))
+
+                @compute Tcx = Field(CumulativeIntegral(T, dims=1))
+                @compute Tcy = Field(CumulativeIntegral(T, dims=2))
+                @compute Tcz = Field(CumulativeIntegral(T, dims=3))
+                @compute wcx = Field(CumulativeIntegral(w, dims=1))
+                @compute wcy = Field(CumulativeIntegral(w, dims=2))
+                @compute wcz = Field(CumulativeIntegral(w, dims=3))
+                @compute ζcx = Field(CumulativeIntegral(ζ, dims=1))
+                @compute ζcy = Field(CumulativeIntegral(ζ, dims=2))
+                @compute ζcz = Field(CumulativeIntegral(ζ, dims=3))
+
+                @compute Trx = Field(CumulativeIntegral(T, dims=1, reverse=true))
+                @compute Try = Field(CumulativeIntegral(T, dims=2, reverse=true))
+                @compute Trz = Field(CumulativeIntegral(T, dims=3, reverse=true))
+                @compute wrx = Field(CumulativeIntegral(w, dims=1, reverse=true))
+                @compute wry = Field(CumulativeIntegral(w, dims=2, reverse=true))
+                @compute wrz = Field(CumulativeIntegral(w, dims=3, reverse=true))
+                @compute ζrx = Field(CumulativeIntegral(ζ, dims=1, reverse=true))
+                @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
+                @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
+
+
+
+                for T′ in (Tx, Txy, Θx, Θxy, Tcx, Tcy, Tcz, Trx, Try, Trz)
                     @test T′.operand.operand === T
                 end
                 
-                for w′ in (wx, wxy)
+                for w′ in (wx, wxy, Wx, Wxy, wcx, wcy, wcz, wrx, wry, wrz)
                     @test w′.operand.operand === w
                 end
 
-                for ζ′ in (ζx, ζxy)
+                for ζ′ in (ζx, ζxy, Zx, Zxy, ζcx, ζcy, ζcz, ζrx, ζry, ζrz)
                     @test ζ′.operand.operand === ζ
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
+                for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
                     @test f.operand isa Reduction
+                end
+
+                for f in (Tcx, Tcy, Tcz, Trx, Try, Trz,
+                          wcx, wcy, wcz, wrx, wry, wrz,
+                          ζcx, ζcy, ζcz, ζrx, ζry, ζrz)
+                    @test f.operand isa Accumulation
+                end
+
+                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
                     @test f.operand.scan! === mean!
+                end
+
+                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
+                    @test f.operand.scan! === mean!
+                end
+
+                for f in (Tcx, Tcy, Tcz,
+                          wcx, wcy, wcz,
+                          ζcx, ζcy, ζcz)
+                    @test f.operand.scan! isa cumsum!
+                end
+
+                for f in (Trx, Try, Trz,
+                          wrx, wry, wrz,
+                          ζrx, ζry, ζrz)
+                    @test f.operand.scan! isa reverse_cumsum!
                 end
 
                 @test Txyz.operand isa Reduction
@@ -104,6 +163,38 @@ trilinear(x, y, z) = x + y + z
                 @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 3
                 @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
                 @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                averages_1d  = (Tx, wx, ζx)
+                integrals_1d = (Θx, Wx, Zx)
+
+                for (a, i) in zip(averages_1d, integrals_1d)
+                    @test interior(a) == 2 .* interior(i)
+                end
+
+                averages_2d  = (Txy, wxy, ζxy)
+                integrals_2d = (Θxy, Wxy, Zxy)
+
+                for (a, i) in zip(averages_2d, integrals_2d)
+                    @test interior(a) == 4 .* interior(i)
+                end
+
+                # T = [0.5, 1.5]
+                @test Array(interior(Tcx))[:, 1, 1] ≈ [0.5, 2.0]
+                @test Array(interior(Tcy))[1, :, 1] ≈ [0.5, 2.0]
+                @test Array(interior(Tcz))[1, 1, :] ≈ [0.5, 2.0]
+
+                @test Array(interior(Trx))[:, 1, 1] ≈ [2.0, 1.5]
+                @test Array(interior(Try))[1, :, 1] ≈ [2.0, 1.5]
+                @test Array(interior(Trz))[1, 1, :] ≈ [2.0, 1.5]
+
+                # w = [0, 1, 2]
+                @test Array(interior(wcx))[:, 1, 1] ≈ [0, 1, 3]
+                @test Array(interior(wcy))[1, :, 1] ≈ [0, 1, 3]
+                @test Array(interior(wcz))[1, 1, :] ≈ [0, 1, 3]
+
+                @test Array(interior(wrx))[:, 1, 1] ≈ [3, 3, 2]
+                @test Array(interior(wry))[1, :, 1] ≈ [3, 3, 2]
+                @test Array(interior(wrz))[1, 1, :] ≈ [3, 3, 2]
 
                 @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
                 @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
