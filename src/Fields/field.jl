@@ -658,8 +658,7 @@ function Base.cumsum!(f::Function,
                       mask = get_neutral_mask(Base.sum!),
                       kwargs...)
 
-    return Base.cumsum!(identity,
-                        interior(b),
+    return Base.cumsum!(interior(b),
                         condition_operand(f, a, condition, mask);
                         kwargs...)
 end
@@ -670,8 +669,7 @@ function Base.cumsum!(b::Field,
                       mask = get_neutral_mask(Base.sum!),
                       kwargs...)
 
-    return Base.cumsum!(identity,
-                        interior(b),
+    return Base.cumsum!(interior(b),
                         condition_operand(a, condition, mask);
                         kwargs...)
 end
