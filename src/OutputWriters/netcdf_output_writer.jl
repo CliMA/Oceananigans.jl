@@ -163,7 +163,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, schedule
+    NetCDFOutputWriter(model, outputs; filename, schedule,
                        grid = model.grid,
                        dir = ".",
                        array_type = Array{Float64},
