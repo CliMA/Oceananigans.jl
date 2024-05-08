@@ -1,9 +1,8 @@
 using Oceananigans, Printf
 
-using Oceananigans.Grids: λnode, φnode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
+using Oceananigans.Grids: node, φnode, halo_size, total_size
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!, Iterate
 using Oceananigans.Operators
-using Oceananigans.Utils: Iterate
 
 using JLD2
 
@@ -22,11 +21,13 @@ U  = 40     # velocity scale
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 1
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                  z = (-Lz, 0),
-                                  radius = R,
-                                  horizontal_direction_halo = Nhalo,
-                                  partition = CubedSpherePartition(; R = 1))
+arch = CPU()
+grid = ConformalCubedSphereGrid(arch;
+                                panel_size = (Nx, Ny, Nz),
+                                z = (-Lz, 0),
+                                radius = R,
+                                horizontal_direction_halo = Nhalo,
+                                partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
 
@@ -47,74 +48,82 @@ to switch to Forward Euler time-stepping with no AB2 step.
 =#
 
 # Define the solid body rotation flow field.
-ψᵣ(λ, φ, z) = -R^2 * Ω_prime * sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
+@inline ψᵣ(λ, φ, z) = -R^2 * Ω_prime * sind(φ) # ψᵣ(λ, φ, z) = -U * R * sind(φ)
 
 #=
-for φʳ = 90; ψᵣ(λ, φ, z) = - U * R * sind(φ)
-             uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
-             vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
-             ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
+For φʳ = 90:
+ψᵣ(λ, φ, z) = - U * R * sind(φ)
+uᵣ(λ, φ, z) = - 1 / R * ∂φ(ψᵣ) = U * cosd(φ)
+vᵣ(λ, φ, z) = + 1 / (R * cosd(φ)) * ∂λ(ψᵣ) = 0
+ζᵣ(λ, φ, z) = - 1 / (R * cosd(φ)) * ∂φ(uᵣ * cosd(φ)) = 2 * (U / R) * sind(φ)
 =#
 ψ = Field{Face, Face, Center}(grid)
 
-# Note that set! fills only interior points; to compute u and v we need information in the halo regions.
 set!(ψ, ψᵣ)
 
-#=
-Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not correspond
-to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not have a
-corresponding interior point.
-=#
+# Note that set! fills only interior points; to compute u and v, we need information in the halo regions.
+fill_halo_regions!(ψ)
 
-for region in [1, 3, 5]
+# Note that fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not
+# correspond to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not
+# have a corresponding interior point.
+
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Utils
+
+@kernel function _set_ψ_missing_corners!(ψ, grid, region)
+    k = @index(Global, Linear)
     i = 1
     j = Ny+1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    if region in (1, 3, 5)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
-end
-
-for region in [2, 4, 6]
     i = Nx+1
     j = 1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+    if region in (2, 4, 6)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψᵣ(λ, φ, z)
     end
 end
 
-fill_halo_regions!(ψ)
+region = Iterate(1:6)
+@apply_regionally launch!(arch, grid, Nz, _set_ψ_missing_corners!, ψ, grid, region)
 
 u = XFaceField(grid)
 v = YFaceField(grid)
 
-for region in 1:number_of_regions(grid)
-    for j in 1:Ny, i in 1:Nx, k in 1:Nz
-        u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
-        v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
-    end
+@kernel function _set_prescribed_velocities!(ψ, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds u[i, j, k] = - ∂y(ψ)[i, j, k]
+    @inbounds v[i, j, k] = + ∂x(ψ)[i, j, k]
 end
+
+@apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_prescribed_velocities!, ψ, u, v)
 
 fill_halo_regions!((u, v))
 
 # Set the initial conditions.
 fac = -(R^2) * Ω_prime * (Ω + 0.5Ω_prime) / g
 
-for region in 1:number_of_regions(grid)
+@kernel function _set_initial_velocities!(model_u, model_v, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds model_u[i, j, k] = u[i, j, k]
+    @inbounds model_v[i, j, k] = v[i, j, k]
+end
 
-    for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in 1:Nz
-        model.velocities.u[region][i, j, k] = u[region][i, j, k]
-        model.velocities.v[region][i, j, k] = v[region][i, j, k]
-    end
+@kernel function _set_initial_surface_elevation!(model_η, grid)
+    k = Nz+1
+    i, j = @index(Global, NTuple)
+    φ = φnode(i, j, k, grid, Center(), Center(), Face())
+    @inbounds model_η[i, j, k] = fac * ((sind(φ))^2 - 1/3)
+end
 
-    for j in 1:Ny, i in 1:Nx, k in Nz+1:Nz+1
-        φ = φnode(i, j, k, grid[region], Center(), Center(), Center())
-        model.free_surface.η[region][i, j, k] = fac * ( (sind(φ))^2 -1/3 )
-    end
-
+kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy, Nz), (-Hx, -Hy, 0))
+@apply_regionally begin
+    launch!(model.architecture, grid, kernel_parameters, _set_initial_velocities!, model.velocities.u,
+            model.velocities.v, u, v)
+    launch!(model.architecture, grid, (Nx, Ny), _set_initial_surface_elevation!, model.free_surface.η, grid)
 end
 
 fill_halo_regions!(model.free_surface.η)
@@ -150,9 +159,6 @@ v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
 # Now, compute the vorticity.
-using Oceananigans.Utils
-using KernelAbstractions: @kernel, @index
-
 ζ = Field{Face, Face, Center}(grid)
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
