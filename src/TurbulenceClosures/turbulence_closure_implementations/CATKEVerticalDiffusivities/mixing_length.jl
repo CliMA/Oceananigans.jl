@@ -198,7 +198,6 @@ end
 @inline function scale(Ri, σ₀, σ⁺ , γ⁻, γ⁺)
     γ = γ⁻ * (Ri < 0) + γ⁺ * (Ri > 0)
     σ = σ₀ - γ * Ri
-    @show max(σ⁺, σ)
     return max(σ⁺, σ)
 end
 
