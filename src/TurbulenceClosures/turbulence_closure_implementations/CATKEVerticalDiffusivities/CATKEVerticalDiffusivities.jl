@@ -48,6 +48,8 @@ import Oceananigans.TurbulenceClosures:
 const c = Center()
 const f = Face()
 
+# @inline ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...) = ℑzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
+
 # A particular kind of reconstruction that ignores peripheral nodes
 @inline function ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
     k⁺ = k + 1
@@ -427,6 +429,7 @@ function Base.show(io::IO, closure::FlavorOfCATKE)
               "│   ├── Cʰⁱu: ", prettysummary(closure.mixing_length.Cʰⁱu), '\n',
               "│   ├── Cʰⁱc: ", prettysummary(closure.mixing_length.Cʰⁱc), '\n',
               "│   ├── Cʰⁱe: ", prettysummary(closure.mixing_length.Cʰⁱe), '\n',
+              "│   ├── Cˢᵖ:  ", prettysummary(closure.mixing_length.Cˢᵖ), '\n',
               "│   ├── CRiᵟ: ", prettysummary(closure.mixing_length.CRiᵟ), '\n',
               "│   └── CRi⁰: ", prettysummary(closure.mixing_length.CRi⁰), '\n',
               "└── turbulent_kinetic_energy_equation: ", prettysummary(closure.turbulent_kinetic_energy_equation), '\n',

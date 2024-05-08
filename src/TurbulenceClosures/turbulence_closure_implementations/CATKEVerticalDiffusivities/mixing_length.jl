@@ -46,8 +46,8 @@ end
 end
 
 @inline function shearᶜᶜᶜ(i, j, k, grid, u, v)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶠᶜᶠ, u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶜᶠᶠ, v)
     S² = ∂z_u² + ∂z_v²
     return S²
 end
@@ -62,7 +62,7 @@ end
 
 @inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N² = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     N²⁺ = clip(N²)
     w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
@@ -282,6 +282,7 @@ Base.show(io::IO, ml::MixingLength) =
               "    Cʰⁱu: $(ml.Cʰⁱu)", '\n',
               "    Cʰⁱc: $(ml.Cʰⁱc)", '\n',
               "    Cʰⁱe: $(ml.Cʰⁱe)", '\n',
+              "    Cˢᵖ:  $(ml.Cˢᵖ)", '\n',
               "    CRiᵟ: $(ml.CRiᵟ)", '\n',
               "    CRi⁰: $(ml.CRi⁰)")
 
