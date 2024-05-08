@@ -664,6 +664,18 @@ function Base.cumsum!(f::Function,
                         kwargs...)
 end
 
+function Base.cumsum!(b::Field,
+                      a::AbstractField;
+                      condition = nothing,
+                      mask = get_neutral_mask(Base.sum!),
+                      kwargs...)
+
+    return Base.cumsum!(identity,
+                        interior(b),
+                        condition_operand(a, condition, mask);
+                        kwargs...)
+end
+
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
