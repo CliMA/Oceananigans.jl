@@ -1,9 +1,8 @@
 using Oceananigans, Printf
 
-using Oceananigans.Grids: λnode, φnode, halo_size, total_size
-using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
+using Oceananigans.Grids: node, halo_size, total_size
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!, Iterate
 using Oceananigans.Operators
-using Oceananigans.Utils: Iterate
 
 using JLD2
 
@@ -14,11 +13,13 @@ H = 8000
 
 Nx, Ny, Nz = 32, 32, 1
 Nhalo = 1
-grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
-                                  z = (-H, 0),
-                                  radius = R,
-                                  horizontal_direction_halo = Nhalo,
-                                  partition = CubedSpherePartition(; R = 1))
+arch = CPU()
+grid = ConformalCubedSphereGrid(arch;
+                                panel_size = (Nx, Ny, Nz),
+                                z = (-H, 0),
+                                radius = R,
+                                horizontal_direction_halo = Nhalo,
+                                partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
 
@@ -44,87 +45,101 @@ n = 4
 g = model.free_surface.gravitational_acceleration
 Ω = model.coriolis.rotation_rate
 
-A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2)
-B(θ) = 2 * K * (Ω + ω) * ((n+1) * (n+2))^(-1) * cos(θ)^(n) * (n^2 + 2*n + 2 - (n+1)^2 * cos(θ)^2) # Why not (n+1)^2 sin(θ)^2 + 1?
-C(θ)  = 1/4 * K^2 * cos(θ)^(2 * n) * ((n+1) * cos(θ)^2 - (n+2))
+@inline A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2)
+@inline B(θ) = 2 * K * (Ω + ω) * ((n+1) * (n+2))^(-1) * cos(θ)^(n) * (n^2 + 2*n + 2 - (n+1)^2 * cos(θ)^2) # Why not (n+1)^2 sin(θ)^2 + 1?
+@inline C(θ)  = 1/4 * K^2 * cos(θ)^(2 * n) * ((n+1) * cos(θ)^2 - (n+2))
 
-ψ_function(θ, ϕ) = -R^2 * ω * sin(θ) + R^2 * K * cos(θ)^n * sin(θ) * cos(n*ϕ)
+@inline ψ_function(θ, ϕ) = -R^2 * ω * sin(θ) + R^2 * K * cos(θ)^n * sin(θ) * cos(n*ϕ)
 
-u_function(θ, ϕ) =  R * ω * cos(θ) + R * K * cos(θ)^(n-1) * (n * sin(θ)^2 - cos(θ)^2) * cos(n*ϕ)
-v_function(θ, ϕ) = -n * K * R * cos(θ)^(n-1) * sin(θ) * sin(n*ϕ)
+@inline u_function(θ, ϕ) =  R * ω * cos(θ) + R * K * cos(θ)^(n-1) * (n * sin(θ)^2 - cos(θ)^2) * cos(n*ϕ)
+@inline v_function(θ, ϕ) = -n * K * R * cos(θ)^(n-1) * sin(θ) * sin(n*ϕ)
 
-h_function(θ, ϕ) = H + R^2/g * (A(θ) + B(θ) * cos(n * ϕ) + C(θ) * cos(2n * ϕ))
+@inline h_function(θ, ϕ) = H + R^2/g * (A(θ) + B(θ) * cos(n * ϕ) + C(θ) * cos(2n * ϕ))
 
 # Initial conditions
 # Previously: θ ∈ [-π/2, π/2] is latitude and ϕ ∈ [0, 2π) is longitude
 # Oceananigans: ϕ ∈ [-90, 90] and λ ∈ [-180, 180]
 
-rescale¹(λ) = (λ + 180) / 360 * 2π # λ to θ
-rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
+@inline rescale¹(λ) = (λ + 180) / 360 * 2π # λ to θ
+@inline rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 
 # Arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
 #=
-u₀(λ, ϕ, z) = u_function(rescale²(ϕ), rescale¹(λ))
-v₀(λ, ϕ, z) = v_function(rescale²(ϕ), rescale¹(λ))
+@inline u₀(λ, ϕ, z) = u_function(rescale²(ϕ), rescale¹(λ))
+@inline v₀(λ, ϕ, z) = v_function(rescale²(ϕ), rescale¹(λ))
 =#
-η₀(λ, ϕ)    = h_function(rescale²(ϕ), rescale¹(λ))
+@inline η₀(λ, ϕ)    = h_function(rescale²(ϕ), rescale¹(λ))
 
 #=
 set!(model, u=u₀, v=v₀, η = η₀)
 =#
 
-ψ₀(λ, φ, z) = ψ_function(rescale²(φ), rescale¹(λ))
+@inline ψ₀(λ, φ, z) = ψ_function(rescale²(φ), rescale¹(λ))
 
 ψ = Field{Face, Face, Center}(grid)
 
-# Note that set! fills only interior points; to compute u and v we need information in the halo regions.
 set!(ψ, ψ₀)
 
-for region in [1, 3, 5]
+# Note that set! fills only interior points; to compute u and v, we need information in the halo regions.
+fill_halo_regions!(ψ)
+
+# Note that fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not
+# correspond to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not
+# have a corresponding interior point.
+
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Utils
+
+@kernel function _set_ψ_missing_corners!(ψ, grid, region)
+    k = @index(Global, Linear)
     i = 1
     j = Ny+1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψ₀(λ, φ, 0)
+    if region in (1, 3, 5)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψ₀(λ, φ, z)
     end
-end
-
-for region in [2, 4, 6]
     i = Nx+1
     j = 1
-    for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψ₀(λ, φ, 0)
+    if region in (2, 4, 6)
+        λ, φ, z = node(i, j, k, grid, Face(), Face(), Center())
+        @inbounds ψ[i, j, k] = ψ₀(λ, φ, z)
     end
 end
 
-fill_halo_regions!(ψ)
+region = Iterate(1:6)
+@apply_regionally launch!(arch, grid, Nz, _set_ψ_missing_corners!, ψ, grid, region)
 
 u = XFaceField(grid)
 v = YFaceField(grid)
 
-for region in 1:number_of_regions(grid)
-    for j in 1:Ny, i in 1:Nx, k in 1:Nz
-        u[region][i, j, k] = - (ψ[region][i, j+1, k] - ψ[region][i, j, k]) / grid[region].Δyᶠᶜᵃ[i, j]
-        v[region][i, j, k] =   (ψ[region][i+1, j, k] - ψ[region][i, j, k]) / grid[region].Δxᶜᶠᵃ[i, j]
-    end
+@kernel function _set_prescribed_velocities!(ψ, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds u[i, j, k] = - ∂y(ψ)[i, j, k]
+    @inbounds v[i, j, k] = + ∂x(ψ)[i, j, k]
 end
+
+@apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_prescribed_velocities!, ψ, u, v)
 
 fill_halo_regions!((u, v))
 
-for region in 1:number_of_regions(grid)
-    for j in 1-Hy:Ny+Hy, i in 1-Hx:Nx+Hx, k in 1:Nz
-        model.velocities.u[region][i,j,k] = u[region][i, j, k]
-        model.velocities.v[region][i,j,k] = v[region][i, j, k]
-    end
-    
-    for j in 1:Ny, i in 1:Nx, k in Nz+1:Nz+1
-        λ = λnode(i, j, k, grid[region], Center(), Center(), Face())
-        φ = φnode(i, j, k, grid[region], Center(), Center(), Face())
-        model.free_surface.η[region][i, j, k] = η₀(λ, φ)
-    end
+@kernel function _set_initial_velocities!(model_u, model_v, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds model_u[i, j, k] = u[i, j, k]
+    @inbounds model_v[i, j, k] = v[i, j, k]
+end
+
+@kernel function _set_initial_surface_elevation!(model_η, grid)
+    k = Nz+1
+    i, j = @index(Global, NTuple)
+    λ, φ, z = node(i, j, k, grid, Center(), Center(), Face())
+    @inbounds model_η[i, j, k] = η₀(λ, φ)
+end
+
+kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy, Nz), (-Hx, -Hy, 0))
+@apply_regionally begin
+    launch!(model.architecture, grid, kernel_parameters, _set_initial_velocities!, model.velocities.u,
+            model.velocities.v, u, v)
+    launch!(model.architecture, grid, (Nx, Ny), _set_initial_surface_elevation!, model.free_surface.η, grid)
 end
 
 fill_halo_regions!(model.free_surface.η)
@@ -179,9 +194,6 @@ v_fields = Field[]
 save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
 
 # Now, compute the vorticity.
-using Oceananigans.Utils
-using KernelAbstractions: @kernel, @index
-
 ζ = Field{Face, Face, Center}(grid)
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
@@ -192,8 +204,8 @@ end
 offset = -1 .* halo_size(grid)
 
 @apply_regionally begin
-    params = KernelParameters(total_size(ζ[1]), offset)
-    launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+    kernel_parameters = KernelParameters(total_size(ζ[1]), offset)
+    launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, u, v)
 end
 
 ζ_fields = Field[]
@@ -208,8 +220,8 @@ function save_ζ(sim)
     fill_halo_regions!((u, v))
 
     @apply_regionally begin
-        params = KernelParameters(total_size(ζ[1]), offset)
-        launch!(CPU(), grid, params, _compute_vorticity!, ζ, grid, u, v)
+        kernel_parameters = KernelParameters(total_size(ζ[1]), offset)
+        launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, u, v)
     end
 
     push!(ζ_fields, deepcopy(ζ))
