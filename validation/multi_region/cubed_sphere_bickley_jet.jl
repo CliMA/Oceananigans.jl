@@ -80,39 +80,36 @@ function set_bickley_jet!(model; Lx = 4π, Ly = 4π, ϵ = 0.1, ℓ₀ = 0.5, k�
     region = Iterate(1:6)
     @apply_regionally launch!(arch, grid, Nz, _set_ψ_missing_corners!, ψ, grid, region)
 
-    u = XFaceField(grid)
-    v = YFaceField(grid)
-
-    @kernel function _set_prescribed_velocities!(ψ, u, v)
+    @kernel function _set_initial_velocities!(ψ, u, v)
         i, j, k = @index(Global, NTuple)
         @inbounds u[i, j, k] = - ∂y(ψ)[i, j, k]
         @inbounds v[i, j, k] = + ∂x(ψ)[i, j, k]
     end
 
-    @apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_prescribed_velocities!, ψ, u, v)
+    @apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_initial_velocities!, ψ, model.velocities.u,
+                              model.velocities.v)
 
-    fill_halo_regions!((u, v))
+    u_v_max = max(maximum(abs, model.velocities.u), maximum(abs, model.velocities.v))
 
-    u_v_max = max(maximum(abs, u), maximum(abs, v))
-
-    @kernel function _set_initial_velocities!(model_u, model_v, u, v)
+    @kernel function _normalize_initial_velocities!(u, v)
         i, j, k = @index(Global, NTuple)
-        @inbounds model_u[i, j, k] = u[i, j, k] / u_v_max
-        @inbounds model_v[i, j, k] = v[i, j, k] / u_v_max
+        @inbounds u[i, j, k] /= u_v_max
+        @inbounds v[i, j, k] /= u_v_max
     end
 
-    @kernel function _set_initial_tracer_distribution!(model_c, grid)
+    @apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _normalize_initial_velocities!, model.velocities.u,
+                              model.velocities.v)
+
+    fill_halo_regions!((model.velocities.u, model.velocities.v))
+
+    @kernel function _set_initial_tracer_distribution!(c, grid)
         i, j, k = @index(Global, NTuple)
         λ, φ, z = node(i, j, k, grid, Center(), Center(), Center())
-        @inbounds model_c[i, j, k] = cᵢ(λ, φ, z)
+        @inbounds c[i, j, k] = cᵢ(λ, φ, z)
     end
 
-    kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy, Nz), (-Hx, -Hy, 0))
-    @apply_regionally begin
-        launch!(model.architecture, grid, kernel_parameters, _set_initial_velocities!, model.velocities.u,
-                model.velocities.v, u, v)
-        launch!(model.architecture, grid, (Nx, Ny, Nz), _set_initial_tracer_distribution!, model.tracers.c, grid)
-    end
+    @apply_regionally launch!(model.architecture, grid, (Nx, Ny, Nz), _set_initial_tracer_distribution!,
+                              model.tracers.c, grid)
 
     fill_halo_regions!(model.tracers.c)
 

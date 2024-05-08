@@ -109,38 +109,25 @@ end
 region = Iterate(1:6)
 @apply_regionally launch!(arch, grid, Nz, _set_ψ_missing_corners!, ψ, grid, region)
 
-u = XFaceField(grid)
-v = YFaceField(grid)
-
-@kernel function _set_prescribed_velocities!(ψ, u, v)
+@kernel function _set_initial_velocities!(ψ, u, v)
     i, j, k = @index(Global, NTuple)
     @inbounds u[i, j, k] = - ∂y(ψ)[i, j, k]
     @inbounds v[i, j, k] = + ∂x(ψ)[i, j, k]
 end
 
-@apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_prescribed_velocities!, ψ, u, v)
+@apply_regionally launch!(arch, grid, (Nx, Ny, Nz), _set_initial_velocities!, ψ, model.velocities.u, model.velocities.v)
 
-fill_halo_regions!((u, v))
+fill_halo_regions!((model.velocities.u, model.velocities.v))
 
-@kernel function _set_initial_velocities!(model_u, model_v, u, v)
-    i, j, k = @index(Global, NTuple)
-    @inbounds model_u[i, j, k] = u[i, j, k]
-    @inbounds model_v[i, j, k] = v[i, j, k]
-end
-
-@kernel function _set_initial_surface_elevation!(model_η, grid)
+@kernel function _set_initial_surface_elevation!(η, grid)
     k = Nz+1
     i, j = @index(Global, NTuple)
     λ, φ, z = node(i, j, k, grid, Center(), Center(), Face())
-    @inbounds model_η[i, j, k] = η₀(λ, φ)
+    @inbounds η[i, j, k] = η₀(λ, φ)
 end
 
-kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy, Nz), (-Hx, -Hy, 0))
-@apply_regionally begin
-    launch!(model.architecture, grid, kernel_parameters, _set_initial_velocities!, model.velocities.u,
-            model.velocities.v, u, v)
-    launch!(model.architecture, grid, (Nx, Ny), _set_initial_surface_elevation!, model.free_surface.η, grid)
-end
+@apply_regionally launch!(model.architecture, grid, (Nx, Ny), _set_initial_surface_elevation!, model.free_surface.η,
+                          grid)
 
 fill_halo_regions!(model.free_surface.η)
 
@@ -205,7 +192,7 @@ offset = -1 .* halo_size(grid)
 
 @apply_regionally begin
     kernel_parameters = KernelParameters(total_size(ζ[1]), offset)
-    launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, u, v)
+    launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, model.velocities.u, model.velocities.v)
 end
 
 ζ_fields = Field[]
