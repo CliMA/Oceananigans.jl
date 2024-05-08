@@ -226,7 +226,8 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    return ifelse(N² ≤ 0, zero(grid), Ri)
+    #return ifelse(N² ≤ 0, zero(grid), Ri)
+    return ifelse(N² == 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)

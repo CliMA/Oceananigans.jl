@@ -192,7 +192,15 @@ end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
-@inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+
+# @inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(clip(Ri), c, w)
+
+@inline function scale(Ri, σ₀, σ⁺ , γ⁻, γ⁺)
+    γ = γ⁻ * (Ri < 0) + γ⁺ * (Ri > 0)
+    σ = σ₀ - γ * Ri
+    @show max(σ⁺, σ)
+    return max(σ⁺, σ)
+end
 
 @inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
