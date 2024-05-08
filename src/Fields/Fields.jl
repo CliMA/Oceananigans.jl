@@ -6,7 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
+export VelocityFields, TracerFields, TendencyFields, tracernames
 export interpolate
 
 using Oceananigans.Architectures
@@ -32,7 +32,7 @@ include("broadcasting_abstract_fields.jl")
 """
     field(loc, a, grid)
 
-Build a field from `a` at `loc` and on `grid`.
+Build a field from array `a` at `loc` and on `grid`.
 """
 @inline function field(loc, a::AbstractArray, grid)
     f = Field(loc, grid)
