@@ -158,8 +158,9 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded to a different grid than `model.grid`.
-To use this functionality, the `output_grid` must be passed explicitly when constructing `NetCDFOutputWriter` along with the regridded / interpolated `outputs`.
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+to a different grid than `model.grid`. To use this functionality, include the keyword argument
+`grid = output_grid`.
 
 ```jldoctest
 using Oceananigans
@@ -312,3 +313,4 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── file_splitting: NoFileSplitting
 └── file size: 26.5 KiB
 ```
+

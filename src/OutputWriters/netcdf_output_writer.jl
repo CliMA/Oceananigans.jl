@@ -163,28 +163,34 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter(model, outputs, grid; filename, schedule
-                                          dir = ".",
-                                   array_type = Array{Float64},
-                                      indices = nothing,
-                                   with_halos = false,
-                            global_attributes = Dict(),
-                            output_attributes = Dict(),
-                                   dimensions = Dict(),
-                           overwrite_existing = false,
-                                 deflatelevel = 0,
-                                         part = 1,
-                               file_splitting = NoFileSplitting(),
-                                      verbose = false)
+    NetCDFOutputWriter(model, outputs; filename, schedule
+                       grid = model.grid,
+                       dir = ".",
+                       array_type = Array{Float64},
+                       indices = nothing,
+                       with_halos = false,
+                       global_attributes = Dict(),
+                       output_attributes = Dict(),
+                       dimensions = Dict(),
+                       overwrite_existing = false,
+                       deflatelevel = 0,
+                       part = 1,
+                       file_splitting = NoFileSplitting(),
+                       verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
 either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
-returns something to be written to disk. Custom output requires the spatial `dimensions` (a
-`Dict`) or `grid` to be manually specified (see examples).
+returns something to be written to disk.
+
+If any of `outputs` are not `AbstractField`, their spatial `dimensions` must be provided.
+
+To use `outputs` on a `grid` not equal to `model.grid`, provide the keyword argument `grid.`
 
 Keyword arguments
 =================
+
+- `grid`: The grid associated with `outputs`. Defaults to `model.grid`.
 
 ## Filenaming
 
@@ -356,12 +362,9 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 17.8 KiB
 ```
 
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded to a different grid than `model.grid`.
-To use this functionality, the `output_grid` must be passed explicitly when constructing `NetCDFOutputWriter` along with the regridded / interpolated `outputs`.
-
-```jldoctest
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded to a different grid than `model.grid`.
-To use this functionality, the `output_grid` must be passed explicitly when constructing `NetCDFOutputWriter` along with the regridded / interpolated `outputs`.
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+to a different grid than `model.grid`. To use this functionality, include the keyword argument
+`grid = output_grid`.
 
 ```jldoctest
 using Oceananigans
@@ -376,9 +379,10 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-output_writer = NetCDFOutputWriter(model, outputs, coarse_grid;
-                                    filename = "coarse_u.nc",
-                                    schedule = IterationInterval(1))
+output_writer = NetCDFOutputWriter(model, outputs;
+                                   grid = coarse_grid,
+                                   filename = "coarse_u.nc",
+                                   schedule = IterationInterval(1))
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
@@ -390,9 +394,10 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── file size: 14.6 KiB
 ```
 """
-function NetCDFOutputWriter(model, outputs, grid=model.grid;
+function NetCDFOutputWriter(model, outputs;
                             filename,
                             schedule,
+                            grid = model.grid;
                             dir = ".",
                             array_type = Array{Float64},
                             indices = (:, :, :),
