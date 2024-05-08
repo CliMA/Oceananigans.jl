@@ -397,7 +397,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 function NetCDFOutputWriter(model, outputs;
                             filename,
                             schedule,
-                            grid = model.grid;
+                            grid = model.grid,
                             dir = ".",
                             array_type = Array{Float64},
                             indices = (:, :, :),
