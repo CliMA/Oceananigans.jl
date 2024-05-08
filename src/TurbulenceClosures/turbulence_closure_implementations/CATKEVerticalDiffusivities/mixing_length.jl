@@ -112,7 +112,6 @@ end
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★²      = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
     w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
     S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
     N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
@@ -124,12 +123,16 @@ end
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Model for shear-convection interaction
+    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
     Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
     ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
-    
-    # Reduce convective and entraining mixing lengths by sheared convection factor
-    # end ensure non-negativity
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
+    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)              # ensure non-negativity
+
+    # Model for shear-convection interaction
+    # d = depthᶜᶜᶠ(i, j, k, grid)
+    # Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    # ϵᴿⁱ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
+    # ℓᶜ = clip(ϵᴿⁱ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
@@ -155,7 +158,6 @@ end
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
-    w★²      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
     S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
     N²       = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
@@ -170,12 +172,16 @@ end
     convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
 
     # Model for shear-convection interaction
+    w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
-    ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
+    ϵˢᵖ = 1 - Cˢᵖ * Sp        # ϵ = Sheared convection factor
+    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)       # ensure non-negativity
 
-    # Reduce convective and entraining mixing lengths by sheared convection factor
-    # end ensure non-negativity
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)
+    # Model for shear-convection interaction
+    # d = depthᶜᶜᶜ(i, j, k, grid)
+    # Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    # ϵᴿⁱ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
+    # ℓᶜ = clip(ϵᴿⁱ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
