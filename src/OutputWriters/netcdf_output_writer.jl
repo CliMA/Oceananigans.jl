@@ -493,12 +493,17 @@ get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
 materialize_output(func, model) = func(model)
 materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
+materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(dataset, output, name, array_type,
-                                 deflatelevel, attrib, dimensions)
+                                 deflatelevel, attrib, dimensions, filepath)
 
-    name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
+    if name ∉ keys(dimensions)
+        msg = string("dimensions[$name] for output $name=", typeof(output), " into ", filepath, '\n',
+                     " must be provided when constructing NetCDFOutputWriter")
+        throw(ArgumentError(msg))
+    end
 
     dims = dimensions[name]
     FT = eltype(array_type)
@@ -510,7 +515,7 @@ end
 
 """ Defines empty field variable. """
 function define_output_variable!(dataset, output::AbstractField, name, array_type,
-                                 deflatelevel, attrib, dimensions)
+                                 deflatelevel, attrib, dimensions, filepath)
 
     dims = netcdf_spatial_dimensions(output)
     FT = eltype(array_type)
@@ -522,7 +527,6 @@ end
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
     define_output_variable!(dataset, output.operand, args...)
-
 
 #####
 ##### Write output
@@ -750,7 +754,8 @@ function initialize_nc_file!(filepath,
                                     array_type,
                                     deflatelevel,
                                     attributes,
-                                    dimensions)
+                                    dimensions,
+                                    filepath) # for better error messages
         end
 
         sync(dataset)
