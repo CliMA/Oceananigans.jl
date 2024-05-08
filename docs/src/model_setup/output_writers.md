@@ -175,8 +175,8 @@ interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
 output_writer = NetCDFOutputWriter(model, outputs, coarse_grid;
-                                    filename = "coarse_u.nc",
-                                    schedule = IterationInterval(1))
+                                   filename = "coarse_u.nc",
+                                   schedule = IterationInterval(1))
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
