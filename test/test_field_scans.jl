@@ -199,16 +199,35 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute Tx = CUDA.@allowscalar Field(Average(T, dims=1, condition=T.>2))
 
                 @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3.75
-                @test Array(interior(Txy))[1, 1, :] ≈ [3.5, 11.5/3]
-                @test Array(interior(Tx))[1, :, :] ≈ [[2.5, 3] [3, 4]]
+                @test interior_array(Txy, 1, 1, :) ≈ [3.5, 11.5/3]
+                @test interior_array(Tx, 1, :, :) ≈ [[2.5, 3] [3, 4]]
 
                 @compute wxyz = CUDA.@allowscalar Field(Average(w, condition=w.>3))
                 @compute wxy = CUDA.@allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
                 @compute wx = CUDA.@allowscalar Field(Average(w, dims=1, condition=w.>1))
 
                 @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 4.25
-                @test Array(interior(wxy))[1, 1, :] ≈ [3, 10/3, 4]
-                @test Array(interior(wx))[1, :, :] ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
+                @test interior_array(wxy, 1, 1, :) ≈ [3, 10/3, 4]
+                @test interior_array(wx, 1, :, :) ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                # A bit more for cumulative integral
+                @compute T2cx = Field(CumulativeIntegral(2 * T, dims=1))
+                @compute T2cy = Field(CumulativeIntegral(2 * T, dims=2))
+                @compute T2cz = Field(CumulativeIntegral(2 * T, dims=3))
+
+                @compute T2rx = Field(CumulativeIntegral(2 * T, dims=1, reverse=true))
+                @compute T2ry = Field(CumulativeIntegral(2 * T, dims=2, reverse=true))
+                @compute T2rz = Field(CumulativeIntegral(2 * T, dims=3, reverse=true))
+
+                # T(x, y, z) = x + y + z
+                # 2 * T(0.5, 0.5, z) = [3, 5]
+                @test interior_array(T2cx, :, 1, 1) ≈ [3, 8]
+                @test interior_array(T2cy, 1, :, 1) ≈ [3, 8]
+                @test interior_array(T2cz, 1, 1, :) ≈ [3, 8]
+
+                @test interior_array(T2rx, :, 1, 1) ≈ [8, 5]
+                @test interior_array(T2ry, 1, :, 1) ≈ [8, 5]
+                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5]
             end
 
             # Test whether a race condition gets hit for averages over large fields

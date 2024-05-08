@@ -651,6 +651,19 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
 
+function Base.cumsum!(f::Function,
+                      b::Field,
+                      a::AbstractField;
+                      condition = nothing,
+                      mask = get_neutral_mask(Base.sum!),
+                      kwargs...)
+
+    return Base.cumsum!(identity,
+                        interior(b),
+                        condition_operand(f, a, condition, mask);
+                        kwargs...)
+end
+
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 

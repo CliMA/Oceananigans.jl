@@ -117,7 +117,7 @@ end
 #####
 
 struct CumulativelyIntegrating <: AbstractAccumulating end
-const CumulativeIntegral = Reduction{<:CumulativelyIntegrating}
+const CumulativeIntegral = Scan{<:CumulativelyIntegrating}
 Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c.operand), " over dims ", c.dims)
 
 """
