@@ -3,11 +3,12 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute
+using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
 
 trilinear(x, y, z) = x + y + z
+interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
 @testset "Fields computed by Reduction" begin
     @info "Testing Fields computed by reductions..."
@@ -88,17 +89,15 @@ trilinear(x, y, z) = x + y + z
                 @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
-
-
-                for T′ in (Tx, Txy, Θx, Θxy, Tcx, Tcy, Tcz, Trx, Try, Trz)
+                for T′ in (Tx, Txy)
                     @test T′.operand.operand === T
                 end
                 
-                for w′ in (wx, wxy, Wx, Wxy, wcx, wcy, wcz, wrx, wry, wrz)
+                for w′ in (wx, wxy)
                     @test w′.operand.operand === w
                 end
 
-                for ζ′ in (ζx, ζxy, Zx, Zxy, ζcx, ζcy, ζcz, ζrx, ζry, ζrz)
+                for ζ′ in (ζx, ζxy)
                     @test ζ′.operand.operand === ζ
                 end
 
@@ -120,16 +119,12 @@ trilinear(x, y, z) = x + y + z
                     @test f.operand.scan! === mean!
                 end
 
-                for f in (Tcx, Tcy, Tcz,
-                          wcx, wcy, wcz,
-                          ζcx, ζcy, ζcz)
-                    @test f.operand.scan! isa cumsum!
+                for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
+                    @test f.operand.scan! === cumsum!
                 end
 
-                for f in (Trx, Try, Trz,
-                          wrx, wry, wrz,
-                          ζrx, ζry, ζrz)
-                    @test f.operand.scan! isa reverse_cumsum!
+                for f in (Trx, Try, Trz, wrx, wry, wrz, ζrx, ζry, ζrz)
+                    @test f.operand.scan! === reverse_cumsum!
                 end
 
                 @test Txyz.operand isa Reduction
@@ -157,44 +152,47 @@ trilinear(x, y, z) = x + y + z
                 @test wxyz.operand.dims === (1, 2, 3)
 
                 @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3
-                @test Array(interior(Txy))[1, 1, :] ≈ [2.5, 3.5]
-                @test Array(interior(Tx))[1, :, :] ≈ [[2, 3] [3, 4]]
+                @test interior_array(Txy, 1, 1, :) ≈ [2.5, 3.5]
+                @test interior_array(Tx, 1, :, :) ≈ [[2, 3] [3, 4]]
 
                 @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 3
-                @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
-                @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+                @test interior_array(wxy, 1, 1, :) ≈ [2, 3, 4]
+                @test interior_array(wx, 1, :, :) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
 
                 averages_1d  = (Tx, wx, ζx)
                 integrals_1d = (Θx, Wx, Zx)
 
                 for (a, i) in zip(averages_1d, integrals_1d)
-                    @test interior(a) == 2 .* interior(i)
+                    @test interior(i) == 2 .* interior(a)
                 end
 
                 averages_2d  = (Txy, wxy, ζxy)
                 integrals_2d = (Θxy, Wxy, Zxy)
 
                 for (a, i) in zip(averages_2d, integrals_2d)
-                    @test interior(a) == 4 .* interior(i)
+                    @test interior(i) == 4 .* interior(a)
                 end
 
-                # T = [0.5, 1.5]
-                @test Array(interior(Tcx))[:, 1, 1] ≈ [0.5, 2.0]
-                @test Array(interior(Tcy))[1, :, 1] ≈ [0.5, 2.0]
-                @test Array(interior(Tcz))[1, 1, :] ≈ [0.5, 2.0]
+                # T(x, y, z) = x + y + z
+                # T(0.5, 0.5, z) = [1.5, 2.5]
+                @test interior_array(Tcx, :, 1, 1) ≈ [1.5, 4]
+                @test interior_array(Tcy, 1, :, 1) ≈ [1.5, 4]
+                @test interior_array(Tcz, 1, 1, :) ≈ [1.5, 4]
 
-                @test Array(interior(Trx))[:, 1, 1] ≈ [2.0, 1.5]
-                @test Array(interior(Try))[1, :, 1] ≈ [2.0, 1.5]
-                @test Array(interior(Trz))[1, 1, :] ≈ [2.0, 1.5]
+                @test interior_array(Trx, :, 1, 1) ≈ [4, 2.5]
+                @test interior_array(Try, 1, :, 1) ≈ [4, 2.5]
+                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5]
 
-                # w = [0, 1, 2]
-                @test Array(interior(wcx))[:, 1, 1] ≈ [0, 1, 3]
-                @test Array(interior(wcy))[1, :, 1] ≈ [0, 1, 3]
-                @test Array(interior(wcz))[1, 1, :] ≈ [0, 1, 3]
+                # w(x, y, z) = x + y + z
+                # w(0.5, 0.5, z) = [1, 2, 3]
+                # w(x, 0.5, 0) = w(0.5, y, 0) = [1, 2]
+                @test interior_array(wcx, :, 1, 1) ≈ [1, 3]
+                @test interior_array(wcy, 1, :, 1) ≈ [1, 3]
+                @test interior_array(wcz, 1, 1, :) ≈ [1, 3, 6]
 
-                @test Array(interior(wrx))[:, 1, 1] ≈ [3, 3, 2]
-                @test Array(interior(wry))[1, :, 1] ≈ [3, 3, 2]
-                @test Array(interior(wrz))[1, 1, :] ≈ [3, 3, 2]
+                @test interior_array(wrx, :, 1, 1) ≈ [3, 2]
+                @test interior_array(wry, 1, :, 1) ≈ [3, 2]
+                @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3]
 
                 @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
                 @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))

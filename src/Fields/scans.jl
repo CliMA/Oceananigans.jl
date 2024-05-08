@@ -190,6 +190,12 @@ location(a::Accumulation) = location(a.operand)
 ##### Some custom scans
 #####
 
+"""
+    reverse_cumsum!(b::Field, a::AbstractField; dims)
+
+Compute the "reversed" cumulative sum of `a` over `dims` and store in `b`,
+starting at the end of `dims` and accumulating sums to the first element.
+"""
 function reverse_cumsum!(b::Field, a::AbstractField; dims)
 
     # First compute the cumsum
@@ -201,16 +207,16 @@ function reverse_cumsum!(b::Field, a::AbstractField; dims)
     Nx, Ny, Nz = size(b)
 
     if dims == 1
-        Ai = interior(b, Nx, :, :)
+        Σa = interior(b, Nx:Nx, :, :)
     elseif dims == 2
-        Ai = interior(b, :, Ny, :)
+        Σa = interior(b, :, Ny:Ny, :)
     elseif dims == 3
-        Ai = interior(b, :, :, Nz)
+        Σa = interior(b, :, :, Nz:Nz)
     else
         throw(ArgumentError("reverse_cumsum! does not support dims=$dims"))
     end
 
-    @. bi = Ai - bi + ai
+    @. bi = Σa - bi + ai
 
     return b
 end
