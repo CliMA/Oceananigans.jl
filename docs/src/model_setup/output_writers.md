@@ -175,7 +175,7 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-output_writer = NetCDFOutputWriter(model, outputs, coarse_grid;
+output_writer = NetCDFOutputWriter(model, outputs; grid = coarse_grid;
                                    filename = "coarse_u.nc",
                                    schedule = IterationInterval(1))
 
