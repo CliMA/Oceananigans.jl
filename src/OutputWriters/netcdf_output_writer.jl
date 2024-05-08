@@ -641,7 +641,7 @@ end
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
-                                 deflatelevel, output_attributes, dimensions)
+                                 deflatelevel, output_attributes, dimensions, filepath)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     T = eltype(array_type)
