@@ -1,3 +1,5 @@
+using KernelAbstractions: @kernel, @index
+
 #####
 ##### "Scans" of AbstractField.
 #####
@@ -190,34 +192,99 @@ location(a::Accumulation) = location(a.operand)
 ##### Some custom scans
 #####
 
-"""
-    reverse_cumsum!(b::Field, a::AbstractField; dims)
+# directions
+struct Forward end
+struct Reverse end
 
-Compute the "reversed" cumulative sum of `a` over `dims` and store in `b`,
-starting at the end of `dims` and accumulating sums to the first element.
-"""
-function reverse_cumsum!(b::Field, a::AbstractField; dims)
+@inline increment(::Forward, idx) = idx + 1
+@inline decrement(::Forward, idx) = idx - 1
 
-    # First compute the cumsum
-    cumsum!(b, a; dims)
+@inline increment(::Reverse, idx) = idx - 1
+@inline decrement(::Reverse, idx) = idx + 1
 
-    # Now reverse it
-    ai = interior(a)
-    bi = interior(b)
-    Nx, Ny, Nz = size(b)
+# TODO: if there is a way to re-use Base stuff rather than write ourselves, that might be preferred.
+Base.accumulate!(op, B::Field, A::AbstractField; dims::Integer) =
+    directional_accumulate!(op, B, A, dims, Forward())
 
-    if dims == 1
-        Σa = interior(b, Nx:Nx, :, :)
-    elseif dims == 2
-        Σa = interior(b, :, Ny:Ny, :)
-    elseif dims == 3
-        Σa = interior(b, :, :, Nz:Nz)
-    else
-        throw(ArgumentError("reverse_cumsum! does not support dims=$dims"))
+reverse_accumulate!(op, B::Field, A::AbstractField; dims::Integer) =
+    directional_accumulate!(op, B, A, dims, Reverse())
+
+Base.cumsum!(B::Field, A::AbstractField; dims) =
+    directional_accumulate!(Base.add_sum, B, A, dims, Forward())
+
+reverse_cumsum!(B::Field, A::AbstractField; dims) =
+    directional_accumulate!(Base.add_sum, B, A, dims, Reverse())
+
+function directional_accumulate!(op, B, A, dim, direction)
+
+    grid = B.grid
+    arch = architecture(B)
+    
+    # TODO: this won't work on windowed fields
+    # To fix this we can change config, start, and finish.
+    if dim == 1
+        config = :yz
+        kernel = accumulate_x
+    elseif dim == 2
+        config = :xz
+        kernel = accumulate_y
+    elseif dim == 3
+        config = :xy
+        kernel = accumulate_z
     end
 
-    @. bi = Σa - bi + ai
+    if direction isa Forward
+        start = 1
+        finish = size(B, dim)
+    elseif direction isa Reverse
+        start = size(B, dim)
+        finish = 1
+    end
 
-    return b
+    launch!(arch, grid, config, kernel, op, B, A, start, finish, direction)
+
+    return B
+end
+
+@inline function accumulation_range(dir, start, finish)
+    by = increment(dir, 0)
+    from = increment(dir, start)
+    return StepRange(from, by, finish)
+end
+
+@kernel function accumulate_x(op, B, A, start, finish, dir)
+    j, k = @index(Global, NTuple)
+
+    # Initialize
+    @inbounds B[start, j, k] = Base.reduce_first(op, A[start, j, k])
+
+    for i in accumulation_range(dir, start, finish)
+        pr = decrement(dir, i)
+        @inbounds B[i, j, k] = op(B[pr, j, k], A[i, j, k])
+    end
+end
+
+@kernel function accumulate_y(op, B, A, start, finish, dir)
+    i, k = @index(Global, NTuple)
+
+    # Initialize
+    @inbounds B[i, start, k] = Base.reduce_first(op, A[i, start, k])
+
+    for j in accumulation_range(dir, start, finish)
+        pr = decrement(dir, j)
+        @inbounds B[i, j, k] = op(B[i, pr, k], A[i, j, k])
+    end
+end
+
+@kernel function accumulate_z(op, B, A, start, finish, dir)
+    i, j = @index(Global, NTuple)
+
+    # Initialize
+    @inbounds B[i, j, start] = Base.reduce_first(op, A[i, j, start])
+
+    for k in accumulation_range(dir, start, finish)
+        pr = decrement(dir, k)
+        @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
+    end
 end
 
