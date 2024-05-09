@@ -123,21 +123,27 @@ end
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Model for shear-convection interaction
-    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
-    Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
-    ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)              # ensure non-negativity
+    # w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    # Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
+    # ϵˢᵖ = 1 - Cˢᵖ * Sp               # ϵ = Sheared convection factor
+    # ℓᶜ = clip(ϵˢᵖ * ℓᶜ)              # ensure non-negativity
 
     # Model for shear-convection interaction
-    # d = depthᶜᶜᶠ(i, j, k, grid)
-    # Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
-    # ϵᴿⁱ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
-    # ℓᶜ = clip(ϵᴿⁱ * ℓᶜ)            # ensure non-negativity
+    d = depthᶜᶜᶠ(i, j, k, grid)
+    Riᶠ = d * w★ * S² / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    ϵˢᵖ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
+    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
     ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
+
+    #=
+    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    Riᶠ = w★² * S² / sqrt(N²) / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    ϵˢᵖ = 1 - Cˢᵖ * Riᶠ                    # ϵ = Sheared convection factor
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
+    =#
     
     # Figure out which mixing length applies
     convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
@@ -172,21 +178,24 @@ end
     convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
 
     # Model for shear-convection interaction
-    w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
-    Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
-    ϵˢᵖ = 1 - Cˢᵖ * Sp        # ϵ = Sheared convection factor
-    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)       # ensure non-negativity
+    # w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
+    # Sp = sqrt(S²) * w★² / (Jᵇ + Jᵇᵋ) # Sp = "Sheared convection number"
+    # ϵˢᵖ = 1 - Cˢᵖ * Sp        # ϵ = Sheared convection factor
 
     # Model for shear-convection interaction
-    # d = depthᶜᶜᶜ(i, j, k, grid)
-    # Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
-    # ϵᴿⁱ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
-    # ℓᶜ = clip(ϵᴿⁱ * ℓᶜ)            # ensure non-negativity
+    d = depthᶜᶜᶜ(i, j, k, grid)
+    Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    ϵˢᵖ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
+    ℓᶜ = clip(ϵˢᵖ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
     ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
-    ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
+
+    # w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
+    # Riᶠ = w★² / sqrt(N²) / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    # ϵˢᵖ = 1 - Cˢᵖ * Riᶠ               # ϵ = Sheared convection factor
+    # ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
 
     entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
 
@@ -199,13 +208,16 @@ end
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
 
-# @inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(clip(Ri), c, w)
+@inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(clip(Ri), c, w)
 
-@inline function scale(Ri, σ₀, σ⁺ , γ⁻, γ⁺)
-    γ = γ⁻ * (Ri < 0) + γ⁺ * (Ri > 0)
-    σ = σ₀ - γ * Ri
-    return max(σ⁺, σ)
+#=
+@inline function scale(Ri, σ₀, σ∞ , Δσ, δRi)
+    σ⁺ = σ₀ * (1 - Ri / δRi)
+    σ⁻ = σ₀ + Δσ
+    σ = σ⁻ * (Ri < 0) + σ⁺ * (Ri > 0)
+    return max(σ, σ∞)
 end
+=#
 
 @inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
