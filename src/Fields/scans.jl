@@ -172,17 +172,28 @@ c = CenterField(grid)
 
 set!(c, (x, y, z) -> x + y + z)
 
-max_c² = Field(Accumulation(cumsum!, c^2, dims=3))
+cumsum_c² = Field(Accumulation(cumsum!, c^2, dims=3))
 
-compute!(max_c²)
+compute!(cumsum_c²)
 
-max_c²[1:Nx, 1:Ny]
+cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 
 # output
-3×3 Matrix{Float64}:
- 1.36111  2.25     3.36111
- 2.25     3.36111  4.69444
- 3.36111  4.69444  6.25
+3×3×3 Array{Float64, 3}:
+[:, :, 1] =
+ 0.25      0.694444  1.36111
+ 0.694444  1.36111   2.25
+ 1.36111   2.25      3.36111
+
+[:, :, 2] =
+ 0.944444  2.05556  3.61111
+ 2.05556   3.61111  5.61111
+ 3.61111   5.61111  8.05556
+
+[:, :, 3] =
+ 2.30556   4.30556   6.97222
+ 4.30556   6.97222  10.3056
+ 6.97222  10.3056   14.3056
 ```
 """
 Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
@@ -203,17 +214,23 @@ struct Reverse end
 @inline decrement(::Reverse, idx) = idx + 1
 
 # TODO: if there is a way to re-use Base stuff rather than write ourselves, that might be preferred.
+# Also: these don't work on ImmersedBoundaryGrid out of the box,
+# we need to somehow find the neutral element for `op`
 Base.accumulate!(op, B::Field, A::AbstractField; dims::Integer) =
     directional_accumulate!(op, B, A, dims, Forward())
 
 reverse_accumulate!(op, B::Field, A::AbstractField; dims::Integer) =
     directional_accumulate!(op, B, A, dims, Reverse())
 
-Base.cumsum!(B::Field, A::AbstractField; dims) =
-    directional_accumulate!(Base.add_sum, B, A, dims, Forward())
+function Base.cumsum!(B::Field, A::AbstractField; dims, condition=nothing, mask=get_neutral_mask(Base.sum!))
+    Ac = condition_operand(A, condition, mask)
+    return directional_accumulate!(Base.add_sum, B, Ac, dims, Forward())
+end
 
-reverse_cumsum!(B::Field, A::AbstractField; dims) =
-    directional_accumulate!(Base.add_sum, B, A, dims, Reverse())
+function reverse_cumsum!(B::Field, A::AbstractField; dims, condition=nothing, mask=get_neutral_mask(Base.sum!))
+    Ac = condition_operand(A, condition, mask)
+    return directional_accumulate!(Base.add_sum, B, Ac, dims, Reverse())
+end
 
 function directional_accumulate!(op, B, A, dim, direction)
 
