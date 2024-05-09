@@ -391,7 +391,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.6 KiB
+└── file size: 14.5 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs;
