@@ -11,7 +11,7 @@ topo = (Bounded, Periodic, Bounded)
 
 arch = CPU()
 
-# Distribute problem irregularly
+# Distribute the problem irregularly.
 Nx = 80
 Lh = 100kilometers
 Lz = 400meters
@@ -23,7 +23,6 @@ grid = RectilinearGrid(arch,
                        z = (-Lz, 0),
                        halo = (2, 2, 2),
                        topology = topo)
-
 
 grid = MultiRegionGrid(grid, partition = XPartition(4))
 
@@ -40,15 +39,17 @@ model = HydrostaticFreeSurfaceModel(; grid,
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
 U = 0.1 # geostrophic velocity
-L = Lh / 40 # gaussian width
-x₀ = Lh / 4 # gaussian center
-vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+L = Lh / 40 # Gaussian width
+x₀ = Lh / 4 # Gaussian center
 
 g = model.free_surface.gravitational_acceleration
 η = model.free_surface.η
-η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude
+η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude based on scaling analysis
 
 ηᵍ(x) = η₀ * gaussian(x - x₀, L)
+ηᵍₓ(x) = -(x - x₀) / L^2 * ηᵍ(x)
+vᵍ(x, y, z) = g / coriolis.f * ηᵍₓ(x)
+
 ηⁱ(x, y, z) = 2 * ηᵍ(x)
 
 set!(model, v = vᵍ)
@@ -80,4 +81,3 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 run!(simulation)
 
 # jldsave("variables_rank$(rank).jld2", v=vt, η=ηt, u=ut)
-
