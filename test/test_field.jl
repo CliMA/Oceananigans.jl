@@ -454,12 +454,16 @@ end
     @testset "Views of field views" begin
         @info "  Testing views of field views..."
 
+        Nx, Ny, Nz = 1, 1, 7
+
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
         ZTopologies = (Periodic, Bounded)
 
         for arch in archs, FT in float_types, FieldType in FieldTypes, ZTopology in ZTopologies
-            grid = RectilinearGrid(arch, FT, size=(1, 1, 7), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, ZTopology))
+            grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, ZTopology))
             Hx, Hy, Hz = halo_size(grid)
+
+            k_top = (FieldType == ZFaceField && ZTopology == Bounded) ? Nz+1 : Nz 
 
             c = FieldType(grid)
             size_c = size(c)
@@ -467,50 +471,44 @@ end
             set!(c, (x, y, z) -> rand())
 
             # First test that the regular view is correct
-            cv = view(c, :, :, firstindex(interior(c), 3)+1:lastindex(interior(c), 3)-1)
-            # cv = view(c, :, :, 2:6) for periodic topology in z and cv = view(c, :, :, 2:7) for bounded topology in z.
+            cv = view(c, :, :, 1+1:k_top-1)
+            # cv = view(c, :, :, 2:7) for a ZFaceField with bounded topology in z else cv = view(c, :, :, 2:6).
             @test size(cv) == (1, 1, size_c[3]-2)
             @test size(parent(cv)) == (1+2Hx, 1+2Hy, size_c[3]-2)
-            @test all(cv[1, 1, i] == c[1, 1, i] for i in firstindex(interior(c), 3)+1:lastindex(interior(c), 3)-1)
+            @test all(cv[1, 1, i] == c[1, 1, i] for i in 1+1:k_top-1)
 
             # Now test the views of views
-            cvv = view(cv, :, :, firstindex(interior(c), 3)+2:lastindex(interior(c), 3)-2)
-            # cvv = view(cv, :, :, 3:5) for periodic topology in z and cvv = view(cv, :, :, 3:6) for bounded topology in z.
+            cvv = view(cv, :, :, 1+2:k_top-2)
+            # cvv = view(cv, :, :, 3:6) for a ZFaceField with bounded topology in z else cvv = view(cv, :, :, 3:5).
             @test size(cvv) == (1, 1, size_c[3]-4)
             @test size(parent(cvv)) == (1+2Hx, 1+2Hy, size_c[3]-4)
-            @test all(cvv[1, 1, i] == cv[1, 1, i] for i in firstindex(interior(c), 3)+2:lastindex(interior(c), 3)-2)
+            @test all(cvv[1, 1, i] == cv[1, 1, i] for i in 1+2:k_top-2)
 
-            cvvv = view(cvv, :, :, firstindex(interior(c), 3)+3:lastindex(interior(c), 3)-3)
-            # cvvv = view(cvv, :, :, 4:4) for periodic topology in z and cvvv = view(cvv, :, :, 4:5) for bounded topology in z.
+            cvvv = view(cvv, :, :, 1+3:k_top-3)
+            # cvvv = view(cvv, :, :, 4:5) for a ZFaceField with bounded topology in z else cvvv = view(cvv, :, :, 4:4).
             @test size(cvvv) == (1, 1, size_c[3]-6)
             @test size(parent(cvvv)) == (1+2Hx, 1+2Hy, size_c[3]-6)
-            @test all(cvvv[1, 1, i] == cvv[1, 1, i] for i in firstindex(interior(c), 3)+3:lastindex(interior(c), 3)-3)
+            @test all(cvvv[1, 1, i] == cvv[1, 1, i] for i in 1+3:k_top-3)
 
-            @test_throws ArgumentError view(cv, :, :, firstindex(interior(c), 3))
-            # @test_throws ArgumentError view(c, :, :, 1).
-            @test_throws ArgumentError view(cv, :, :, lastindex(interior(c), 3))
-            # @test_throws ArgumentError view(c, :, :, 7) for periodic topology in z and @test_throws ArgumentError view(c, :, :, 8) for bounded topology in z.
-            @test_throws ArgumentError view(cvv, :, :, firstindex(interior(c), 3):firstindex(interior(c), 3)+1)
-            # @test_throws ArgumentError view(cvv, :, :, 1:2).
-            @test_throws ArgumentError view(cvv, :, :, lastindex(interior(c), 3)-1:lastindex(interior(c), 3))
-            # @test_throws ArgumentError view(cvv, :, :, 5:6) for periodic topology in z and @test_throws ArgumentError view(cvv, :, :, 6:7) for bounded topology in z.
-            @test_throws ArgumentError view(cvvv, :, :, firstindex(interior(c), 3):firstindex(interior(c), 3)+2)
-            # @test_throws ArgumentError view(cvvv, :, :, 1:3).
-            @test_throws ArgumentError view(cvvv, :, :, lastindex(interior(c), 3)-2:lastindex(interior(c), 3))
-            # @test_throws ArgumentError view(cvvv, :, :, 5:7) for periodic topology in z and @test_throws ArgumentError view(cvvv, :, :, 6:8) for bounded topology in z.
+            @test_throws ArgumentError view(cv, :, :, 1)
+            @test_throws ArgumentError view(cv, :, :, k_top)
+            # @test_throws ArgumentError view(cv, :, :, 8) for a ZFaceField with bounded topology in z else @test_throws ArgumentError view(cv, :, :, 7).
+            @test_throws ArgumentError view(cvv, :, :, 1:1+1)
+            @test_throws ArgumentError view(cvv, :, :, k_top-1:k_top)
+            # @test_throws ArgumentError view(cvv, :, :, 6:7) for a ZFaceField with bounded topology in z else @test_throws ArgumentError view(cvv, :, :, 5:6).
+            @test_throws ArgumentError view(cvvv, :, :, 1:1+2)
+            @test_throws ArgumentError view(cvvv, :, :, k_top-2:k_top)
+            # @test_throws ArgumentError view(cvvv, :, :, 6:8) for a ZFaceField with bounded topology in z else @test_throws ArgumentError view(cvvv, :, :, 5:7).
 
-            @test_throws BoundsError cv[:, :, firstindex(interior(c), 3)]
-            # @test_throws BoundsError cv[:, :, 1].
-            @test_throws BoundsError cv[:, :, lastindex(interior(c), 3)]
-            # @test_throws BoundsError cv[:, :, 7] for periodic topology in z and @test_throws BoundsError cv[:, :, 8] for bounded topology in z.
-            @test_throws BoundsError cvv[:, :, firstindex(interior(c), 3):firstindex(interior(c), 3)+1]
-            # @test_throws BoundsError cvv[:, :, 1:2].
-            @test_throws BoundsError cvv[:, :, lastindex(interior(c), 3)-1:lastindex(interior(c), 3)]
-            # @test_throws BoundsError cvv[:, :, 6:7] for periodic topology in z and @test_throws BoundsError cvv[:, :, 7:8] for bounded topology in z.
-            @test_throws BoundsError cvvv[:, :, firstindex(interior(c), 3):firstindex(interior(c), 3)+2]
-            # @test_throws BoundsError cvvv[:, :, 1:3].
-            @test_throws BoundsError cvvv[:, :, lastindex(interior(c), 3)-2:lastindex(interior(c), 3)]
-            # @test_throws BoundsError cvvv[:, :, 5:7] for periodic topology in z and @test_throws BoundsError cvvv[:, :, 6:8] for bounded topology in z.
+            @test_throws BoundsError cv[:, :, 1]
+            @test_throws BoundsError cv[:, :, k_top]
+            # @test_throws BoundsError cv[:, :, 8] for a ZFaceField with bounded topology in z else @test_throws BoundsError cv[:, :, 7].
+            @test_throws BoundsError cvv[:, :, 1:1+1]
+            @test_throws BoundsError cvv[:, :, k_top-1:k_top]
+            # @test_throws BoundsError cvv[:, :, 7:8] for a ZFaceField with bounded topology in z else @test_throws BoundsError cvv[:, :, 6:7].
+            @test_throws BoundsError cvvv[:, :, 1:1+2]
+            @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
+            # @test_throws BoundsError cvvv[:, :, 6:8] for a ZFaceField with bounded topology in z else @test_throws BoundsError cvvv[:, :, 5:7].
         end
     end
 end
