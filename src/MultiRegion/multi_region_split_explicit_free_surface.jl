@@ -169,4 +169,4 @@ function fill_halo_iterate_split_explicit!(free_surface, grid::MultiRegionGrids,
 end
 
 advance_free_surface_step!(arch, grid, η_args)        = launch!(arch, grid, :xy, _split_explicit_free_surface!, η_args...)
-advance_barotropic_velocity_step!(arch, grid, η_args) = launch!(arch, grid, :xy, _split_explicit_barotropic_velocity!, averaging_weight, U_args...)
+advance_barotropic_velocity_step!(arch, grid, averaging_weight, U_args) = launch!(arch, grid, :xy, _split_explicit_barotropic_velocity!, averaging_weight, U_args...)
