@@ -122,7 +122,7 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)) # single-column profile output (vector)
+g(model) = model.clock.time .* exp.(znodes(grid, Center())) # single-column profile output (vector)
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
