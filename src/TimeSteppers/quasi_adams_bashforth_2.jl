@@ -5,7 +5,6 @@ using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tu
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
-        previous_Δt :: FT
                  Gⁿ :: GT
                  G⁻ :: GT
     implicit_solver :: IT
@@ -53,10 +52,7 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
 end
 
-function reset!(timestepper::QuasiAdamsBashforth2TimeStepper)
-    timestepper.previous_Δt = Inf
-    return nothing
-end
+reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
 #####
 ##### Time steppping
@@ -73,7 +69,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
-    euler = euler || (Δt != model.timestepper.previous_Δt)
+    euler = euler || (Δt != model.clock.last_Δt)
     
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
@@ -86,8 +82,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         end
     end
 
-    model.timestepper.previous_Δt = Δt
-
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
     
@@ -97,6 +91,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
+    clock.last_Δt = Δt
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, Δt)
     

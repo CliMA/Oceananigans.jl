@@ -61,8 +61,6 @@ function tick!(clock, Δt; stage=false)
 
     tick_time!(clock, Δt)
 
-    clock.last_Δt = Δt
-
     if stage # tick a stage update
         clock.stage += 1
     else # tick an iteration and reset stage

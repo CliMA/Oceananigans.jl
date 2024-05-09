@@ -133,6 +133,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
+    clock.last_Δt = Δt
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, third_stage_Δt)
 
