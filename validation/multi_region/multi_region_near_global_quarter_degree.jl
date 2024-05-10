@@ -55,7 +55,7 @@ pickup_file   = false
 
 using DataDeps
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
+path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/quarter_degree_near_global_input_data/"
 
 datanames = ["z_faces-50-levels",
              "bathymetry-1440x600",

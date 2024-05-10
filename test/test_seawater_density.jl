@@ -1,23 +1,27 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models
+
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height
-using Oceananigans.Models: ConstantTemperatureSB, ConstantSalinitySB
-using SeawaterPolynomials: ρ, BoussinesqEquationOfState
-using SeawaterPolynomials: SecondOrderSeawaterPolynomial, RoquetEquationOfState
-using SeawaterPolynomials: TEOS10EquationOfState, TEOS10SeawaterPolynomial
 using Oceananigans.BuoyancyModels: Zᶜᶜᶜ
+using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height, 
+                           ConstantTemperatureSB, ConstantSalinitySB
+
+using SeawaterPolynomials: ρ, BoussinesqEquationOfState, SecondOrderSeawaterPolynomial, RoquetEquationOfState,
+                           TEOS10EquationOfState, TEOS10SeawaterPolynomial
 
 tracers = (:S, :T)
 ST_testvals = (S = 34.7, T = 0.5)
-Roquet_eos = (RoquetEquationOfState(:Linear), RoquetEquationOfState(:Cabbeling),
-              RoquetEquationOfState(:CabbelingThermobaricity), RoquetEquationOfState(:Freezing),
-              RoquetEquationOfState(:SecondOrder), RoquetEquationOfState(:SimplestRealistic))
+Roquet_eos = (RoquetEquationOfState(:Linear),
+              RoquetEquationOfState(:Cabbeling),
+              RoquetEquationOfState(:CabbelingThermobaricity),
+              RoquetEquationOfState(:Freezing),
+              RoquetEquationOfState(:SecondOrder),
+              RoquetEquationOfState(:SimplestRealistic))
 
 TEOS10_eos = TEOS10EquationOfState()
 
-"Return and `Array` on `arch` that is `size(grid)` flled with `value`."
+"Return an `Array` on `arch` that is `size(grid)` flled with `value`."
 function grid_size_value(arch, grid, value)
 
     value_array = fill(value, size(grid))
@@ -38,7 +42,9 @@ function error_non_Boussinesq(arch, FT)
 end
 
 """
-    function eos_works(arch, FT, eos::BoussinesqEquationOfState)
+    eos_works(arch, FT, eos::BoussinesqEquationOfState;
+              constant_temperature = nothing, constant_salinity = nothing)
+
 Check if using a `BoussinesqEquationOfState` returns a `KernelFunctionOperation`.
 """
 function eos_works(arch, FT, eos::BoussinesqEquationOfState;
@@ -52,10 +58,13 @@ function eos_works(arch, FT, eos::BoussinesqEquationOfState;
 end
 
 """
-    function insitu_density(arch, FT, eos)
-Use the `KernelFunctionOperation` returned from `seawater_density` to compute a density `Field`
-and compare the computed values to density values explicitly calculate using
-`SeawaterPolynomials.ρ`. Similar function is used to test the potential density computation.
+    insitu_density(arch, FT, eos::BoussinesqEquationOfState;
+                   constant_temperature = nothing, constant_salinity = nothing)
+
+Use the `KernelFunctionOperation` returned from `seawater_density` to compute
+a density `Field` and compare the computed values to density values explicitly
+calculate using `SeawaterPolynomials.ρ`. Similar function is used to test the
+potential density computation.
 """
 function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
                         constant_temperature = nothing, constant_salinity = nothing)
@@ -80,9 +89,9 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
     S_vec = grid_size_value(arch, grid, ST_testvals.S)
     eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
+    @. SWP_ρ = SeawaterPolynomials.ρ(T_vec, S_vec, geopotential_height, eos_vec)
 
-    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
+    return all(interior(d_field) .≈ SWP_ρ)
 end
 
 function potential_density(arch, FT, eos::BoussinesqEquationOfState;
@@ -108,9 +117,9 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
     S_vec = grid_size_value(arch, grid, ST_testvals.S)
     eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
     SWP_ρ = similar(interior(d_field))
-    SWP_ρ .= SeawaterPolynomials.ρ.(T_vec, S_vec, geopotential_height, eos_vec)
+    @. SWP_ρ = SeawaterPolynomials.ρ(T_vec, S_vec, geopotential_height, eos_vec)
 
-    return all(CUDA.@allowscalar interior(d_field) .== SWP_ρ)
+    return all(interior(d_field) .≈ SWP_ρ)
 end
 
 @testset "Density models" begin
@@ -143,7 +152,7 @@ end
     end
 
     @testset "In-situ density computation tests" begin
-        @info "Testing in-situ density compuation..."
+        @info "Testing in-situ density computation..."
 
         for FT in float_types
             for arch in archs
