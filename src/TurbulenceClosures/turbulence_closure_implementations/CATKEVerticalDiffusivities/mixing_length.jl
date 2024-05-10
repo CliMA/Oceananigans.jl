@@ -208,7 +208,7 @@ end
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
 
-@inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(clip(Ri), c, w)
+@inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
 #=
 @inline function scale(Ri, σ₀, σ∞ , Δσ, δRi)

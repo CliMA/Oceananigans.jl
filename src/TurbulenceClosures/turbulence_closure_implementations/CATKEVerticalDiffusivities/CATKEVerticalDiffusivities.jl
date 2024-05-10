@@ -218,7 +218,7 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 #####
 
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
+    ℑbzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
@@ -226,8 +226,8 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    #return ifelse(N² ≤ 0, zero(grid), Ri)
-    return ifelse(N² == 0, zero(grid), Ri)
+    return ifelse(N² ≤ 0, zero(grid), Ri)
+    #return ifelse(N² == 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
