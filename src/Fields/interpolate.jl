@@ -354,5 +354,5 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     fill_halo_regions!(to_field)
 
-    return nothing
+    return to_field
 end
