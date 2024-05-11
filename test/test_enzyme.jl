@@ -1,10 +1,14 @@
 using Oceananigans
 using Enzyme
+using Oceananigans.Fields: FunctionField
+using Oceananigans: architecture
+using KernelAbstractions
 
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Grids.AbstractGrid}) = true
+EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
 f(grid) = CenterField(grid)
 
@@ -24,16 +28,37 @@ f(grid) = CenterField(grid)
     @test size(primal) == size(shadow)
 end
 
-@testset "Test Constructor Any Bug" begin
-    using Oceananigans.Fields: FunctionField
-    using Oceananigans: architecture
-    using KernelAbstractions
+function set_initial_condition_via_launch!(model_tracer, amplitude)
+    # Set initial condition
+    amplitude = Ref(amplitude)
 
-    Enzyme.API.runtimeActivity!(true)
+    # This has a "width" of 0.1
+    cᵢ(x, y, z) = amplitude[]
+    temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
+
+    temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
+    grid = model_tracer.grid
+    arch = architecture(model_tracer)
+
+    param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
+    Oceananigans.Utils.launch!(arch, grid, param, Oceananigans.Fields._broadcast_kernel!, model_tracer, temp)
+
+    return nothing
+end
+
+function set_initial_condition!(model, amplitude)
+    amplitude = Ref(amplitude)
+
+    # This has a "width" of 0.1
+    cᵢ(x, y, z) = amplitude[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
+    set!(model, c=cᵢ)
+
+    return nothing
+end
+
+@testset "Enzyme + Oceananigans Initialization Broadcast Kernel" begin
+
     Enzyme.API.looseTypeAnalysis!(true)
-    Enzyme.EnzymeRules.inactive_type(::Type{<:Oceananigans.Grids.AbstractGrid}) = true
-    Enzyme.EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
-    Enzyme.EnzymeRules.inactive_noinl(::typeof(Core._compute_sparams), args...) = nothing
 
     Nx = Ny = 64
     Nz = 8
@@ -48,35 +73,7 @@ end
                                         tracers = :c,
                                         buoyancy = nothing)
 
-    function set_initial_condition!(model_tracer, amplitude)
-        # Set initial condition
-        amplitude = Ref(amplitude)
-
-        # This has a "width" of 0.1
-        cᵢ(x, y, z) = amplitude[]
-        temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
-
-        temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
-        grid = model_tracer.grid
-        arch = architecture(model_tracer)
-        bc′ = temp
-
-        param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(offset_index, model_tracer.indices))
-        Oceananigans.Utils.launch!(arch, grid, param, _broadcast_kernel!, model_tracer, bc′)
-
-        return nothing
-    end
-
-    @inline offset_index(::Colon) = 0
-    @inline offset_index(range::UnitRange) = range[1] - 1
-
-    @kernel function _broadcast_kernel!(dest, bc)
-    i, j, k = @index(Global, NTuple)
-    @inbounds dest[i, j, k] = bc[i, j, k]
-    end
-
     model_tracer = model.tracers.c
-    dmodel_tracer = Enzyme.make_zero(model_tracer)
 
     amplitude = 1.0
     amplitude = Ref(amplitude)
@@ -87,22 +84,50 @@ end
 
     temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
     grid = model_tracer.grid
-    arch = architecture(model_tracer)
-    bc′ = temp
+    arch = CPU()
 
-    param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(offset_index, model_tracer.indices))
-    Oceananigans.Utils.launch!(arch, grid, param, _broadcast_kernel!, model_tracer, bc′)
+    param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
 
-    try
+    dmodel_tracer = Enzyme.make_zero(model_tracer)
+    # Test the individual kernel launch
+    @test try
         autodiff(Enzyme.Reverse,
                 Oceananigans.Utils.launch!,
                 Const(arch),
                 Const(grid),
                 Const(param),
-                Const(_broadcast_kernel!),
+                Const(Oceananigans.Fields._broadcast_kernel!),
                 Duplicated(model_tracer, dmodel_tracer),
-                Const(bc′))
+                Const(temp))
+        true
     catch
-        @show "Constructor for type 'Any' bug in Enzyme - it is likely something in Julia or KernelAbstractions.jl is causing broadcasted arrays in Oceananigans to break with AD."
+        @warn "Failed to differentiate Oceananigans.Utils.launch!"
+        false
+    end
 
+    # Test out differentiation of the broadcast infrastructure
+    @test try
+        autodiff(Enzyme.Reverse,
+                set_initial_condition_via_launch!,
+                Duplicated(model_tracer, dmodel_tracer),
+                Active(1.0))
+        true
+    catch
+        @warn "Failed to differentiate set_initial_condition_via_launch!"
+        false
+    end
+
+    # Test differentiation of the high-level set interface
+    @test try
+        autodiff(Enzyme.Reverse,
+                set_initial_condition!,
+                Duplicated(model_tracer, dmodel_tracer),
+                Active(1.0))
+        true
+    catch
+        @warn "Failed to differentiate set_initial_condition!"
+        false
+    end
+
+    Enzyme.API.looseTypeAnalysis!(false)
 end
