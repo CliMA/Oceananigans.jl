@@ -84,7 +84,7 @@ end
 
     temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
     grid = model_tracer.grid
-    arch = CPU()
+    arch = architecture(model_tracer)
 
     param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
 
