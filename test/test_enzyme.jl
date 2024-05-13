@@ -89,9 +89,9 @@ end
     param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
 
     dmodel_tracer = Enzyme.make_zero(model_tracer)
+
     # Test the individual kernel launch
-    @test try
-        autodiff(Enzyme.Reverse,
+    autodiff(Enzyme.Reverse,
                 Oceananigans.Utils.launch!,
                 Const(arch),
                 Const(grid),
@@ -99,35 +99,18 @@ end
                 Const(Oceananigans.Fields._broadcast_kernel!),
                 Duplicated(model_tracer, dmodel_tracer),
                 Const(temp))
-        true
-    catch
-        @warn "Failed to differentiate Oceananigans.Utils.launch!"
-        false
-    end
 
     # Test out differentiation of the broadcast infrastructure
-    @test try
-        autodiff(Enzyme.Reverse,
+    autodiff(Enzyme.Reverse,
                 set_initial_condition_via_launch!,
                 Duplicated(model_tracer, dmodel_tracer),
                 Active(1.0))
-        true
-    catch
-        @warn "Failed to differentiate set_initial_condition_via_launch!"
-        false
-    end
 
     # Test differentiation of the high-level set interface
-    @test try
-        autodiff(Enzyme.Reverse,
+    autodiff(Enzyme.Reverse,
                 set_initial_condition!,
                 Duplicated(model_tracer, dmodel_tracer),
                 Active(1.0))
-        true
-    catch
-        @warn "Failed to differentiate set_initial_condition!"
-        false
-    end
 
     Enzyme.API.looseTypeAnalysis!(false)
 end
