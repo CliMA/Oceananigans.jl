@@ -9,7 +9,11 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
+# currently uses CodecZlib, ZlibCompressor as default
+# TODO: update to ZstdCompressor with https://github.com/JuliaIO/JLD2.jl/pull/560 merged
+default_jld2_kwargs() = (; compress=true)
+
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, BR, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -17,6 +21,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     init :: IF
     including :: IN
     part :: Int
+    bit_rounder :: BR
     file_splitting :: FS
     overwrite_existing :: Bool
     verbose :: Bool
@@ -33,6 +38,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                        with_halos = false,
                        array_type = Array{Float64},
                    file_splitting = NoFileSplitting(),
+                      bit_rounder = nothing,
                overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
@@ -96,6 +102,10 @@ Keyword arguments
 
 - `including`: List of model properties to save with every file.
                Default: `[:grid, :coriolis, :buoyancy, :closure]`
+
+## Compressing the output
+
+- `bit_rounder`: Number of keepbits per variable and vertical level, applies bitrounding
 
 ## Miscellaneous keywords
 
@@ -170,10 +180,11 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                         file_splitting = NoFileSplitting(),
                     overwrite_existing = false,
                                   init = noinit,
+                           bit_rounder = nothing,
                              including = default_included_properties(model),
                                verbose = false,
                                   part = 1,
-                               jld2_kw = Dict{Symbol, Any}())
+                               jld2_kw = default_jld2_kwargs())
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
@@ -184,12 +195,17 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
+    # No rounding for any variable!
+    if isnothing(bit_rounder)
+        bit_rounder = Dict{Symbol, Any}(Symbol(name) => nothing for name in keys(outputs))
+    end
+
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
 
-    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
+    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init, bit_rounder,
                             including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
 
