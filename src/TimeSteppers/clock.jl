@@ -13,19 +13,31 @@ The `stage` is updated only for multi-stage time-stepping methods. The `time::T`
 either a number or a `DateTime` object.
 """
 mutable struct Clock{TT, DT}
-         time :: TT
-      last_Δt :: DT
+    time :: TT
+    last_Δt :: DT
+    last_stage_Δt :: DT
     iteration :: Int
-        stage :: Int
+    stage :: Int
 end
 
 """
-    Clock(; time, last_Δt = Inf, iteration=0, stage=1)
+    Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
 
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
-and first time step `stage` with `last_Δt`.
+and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.
 """
-Clock(; time::TT, last_Δt::DT=Inf, iteration=0, stage=1) where {TT, DT} = Clock{TT, DT}(time, last_Δt, iteration, stage)
+function Clock(; time,
+               last_Δt = Inf,
+               last_stage_Δt = Inf,
+               iteration = 0,
+               stage = 1)
+
+    TT = typeof(time)
+    DT = typeof(last_Δt)
+    last_stage_Δt = convert(DT, last_Δt)
+    return Clock{TT, DT}(time, last_Δt, last_stage_Δt, iteration, stage)
+end
+
 # TODO: when supporting DateTime, this function will have to be extended
 time_step_type(TT) = TT
 
@@ -35,10 +47,20 @@ function Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT
     return Clock{TT, DT}(time, last_Δt, iteration, stage)
 end
 
-Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), last_Δt=$(prettytime(clock.last_Δt)))")
+function Base.summary(clock::Clock)
+    TT = typeof(clock.time)
+    DT = typeof(clock.last_Δt)
+    return string("Clock{", TT, ", ", DT, "}",
+                  "(time=", prettytime(clock.time),
+                  " iteration=", clock.iteration,
+                  " last_Δt=", prettytime(clock.last_Δt), ")")
+end
 
-Base.show(io::IO, c::Clock{TT, DT}) where {TT, DT} =
-    println(io, "Clock{$TT, $DT}: time = $(prettytime(c.time)), last_Δt = $(prettytime(c.last_Δt)), iteration = $(c.iteration), stage = $(c.stage)")
+function Base.show(io::IO, clock::Clock)
+    return print(io, summary(clock), '\n',
+                 "├── stage: ", clock.stage, '\n',
+                 "└── last_stage_Δt: ", prettytime(clock.last_stage_Δt))
+end
 
 next_time(clock, Δt) = clock.time + Δt
 next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
@@ -71,7 +93,11 @@ function tick!(clock, Δt; stage=false)
     return nothing
 end
 
-"Adapt `Clock` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, clock::Clock) =
-    (time=clock.time, last_Δt=clock.last_Δt, iteration=clock.iteration, stage=clock.stage)
+"""Adapt `Clock` for GPU."""
+Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
+                                           last_Δt       = clock.last_Δt,
+                                           last_stage_Δt = clock.last_stage_Δt,
+                                           iteration     = clock.iteration,
+                                           stage         = clock.stage)
+    
 
