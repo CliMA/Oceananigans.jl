@@ -107,9 +107,10 @@ end
                 Active(1.0))
 
     # Test differentiation of the high-level set interface
+    dmodel = Enzyme.make_zero(model)
     autodiff(Enzyme.Reverse,
                 set_initial_condition!,
-                Duplicated(model_tracer, dmodel_tracer),
+                Duplicated(model, dmodel),
                 Active(1.0))
 
     Enzyme.API.looseTypeAnalysis!(false)
