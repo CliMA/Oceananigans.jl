@@ -45,7 +45,7 @@ function Clock{TT}(; time,
                    last_Δt = Inf,
                    last_stage_Δt = Inf,
                    iteration = 0,
-                   stage = 1)
+                   stage = 1) where TT
 
     DT = time_step_type(TT)
     last_Δt = convert(DT, last_Δt)
