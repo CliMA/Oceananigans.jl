@@ -54,10 +54,8 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     number_of_tasks  = length(fill_halos!)
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    ntuple(Val(number_of_tasks)) do task
-        Base.@_inline_meta
+    for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
-        nothing
     end
 
     return nothing
