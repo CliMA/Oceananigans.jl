@@ -222,12 +222,12 @@ end
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
 
-        coeff_xᶠᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[1], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_xᶜᵃᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[2], new_grid), arch, new_grid.Nx, Val(method); order)
-        coeff_yᵃᶠᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Ny, Val(method); order)
-        coeff_yᵃᶜᵃ = calc_reconstruction_coefficients(FT, getproperty(metrics[4], new_grid), arch, new_grid.Ny, Val(method); order)
-        coeff_zᵃᵃᶠ = calc_reconstruction_coefficients(FT, getproperty(metrics[5], new_grid), arch, new_grid.Nz, Val(method); order)
-        coeff_zᵃᵃᶜ = calc_reconstruction_coefficients(FT, getproperty(metrics[6], new_grid), arch, new_grid.Nz, Val(method); order)
+        coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, getproperty(metrics[1], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, getproperty(metrics[2], new_grid), arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶠᵃ = reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Ny, Val(method); order)
+        coeff_yᵃᶜᵃ = reconstruction_coefficients(FT, getproperty(metrics[4], new_grid), arch, new_grid.Ny, Val(method); order)
+        coeff_zᵃᵃᶠ = reconstruction_coefficients(FT, getproperty(metrics[5], new_grid), arch, new_grid.Nz, Val(method); order)
+        coeff_zᵃᵃᶜ = reconstruction_coefficients(FT, getproperty(metrics[6], new_grid), arch, new_grid.Nz, Val(method); order)
     end
 
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
@@ -236,13 +236,13 @@ end
 # Fallback for uniform directions
 for val in [1, 2, 3]
     @eval begin
-        @inline calc_reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
-        @inline calc_reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
+        @inline reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
+        @inline reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
     end
 end
 
 # Stretched reconstruction coefficients for `Centered` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
     cpu_coord = on_architecture(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
@@ -250,7 +250,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
     cpu_coord = on_architecture(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
     rright = ((order + 1) ÷ 2) - 1
@@ -262,7 +262,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `WENO` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
 
     cpu_coord = on_architecture(CPU(), coord)
     s = []
