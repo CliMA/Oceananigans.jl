@@ -1,6 +1,6 @@
 using BitInformation
 
-struct BitRounding{K}
+struct BitRounder{K}
     keepbits :: K
 end
 
