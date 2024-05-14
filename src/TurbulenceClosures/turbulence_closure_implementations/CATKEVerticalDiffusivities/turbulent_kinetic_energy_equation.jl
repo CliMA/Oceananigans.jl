@@ -7,6 +7,7 @@ isotropic turbulence and diapycnal mixing.
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     CˡᵒD  :: FT = 2.52  # Dissipation length scale shear coefficient for low Ri
     CʰⁱD  :: FT = 0.614 # Dissipation length scale shear coefficient for high Ri
+    CᵘⁿD  :: FT = 2.52  # Dissipation length scale shear coefficient for high Ri
     CᶜD   :: FT = 2.55  # Dissipation length scale convecting layer coefficient
     CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficient
     Cᵂu★  :: FT = 0.138 # Surface shear-driven TKE flux coefficient
@@ -88,7 +89,8 @@ end
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
     Cʰⁱ = closure.turbulent_kinetic_energy_equation.CʰⁱD
-    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    Cᵘⁿ = closure.turbulent_kinetic_energy_equation.CᵘⁿD
+    σᴰ = stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = stable_length_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
     ℓ★ = ℓ★ / σᴰ
 
