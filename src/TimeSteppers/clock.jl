@@ -41,10 +41,17 @@ end
 # TODO: when supporting DateTime, this function will have to be extended
 time_step_type(TT) = TT
 
-function Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT
+function Clock{TT}(; time,
+                   last_Δt = Inf,
+                   last_stage_Δt = Inf,
+                   iteration = 0,
+                   stage = 1)
+
     DT = time_step_type(TT)
     last_Δt = convert(DT, last_Δt)
-    return Clock{TT, DT}(time, last_Δt, iteration, stage)
+    last_stage_Δt = convert(DT, last_stage_Δt)
+
+    return Clock{TT, DT}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 function Base.summary(clock::Clock)
