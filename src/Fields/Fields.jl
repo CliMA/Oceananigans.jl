@@ -1,7 +1,7 @@
 module Fields
 
 export Face, Center
-export AbstractField, Field, Average, Integral, Reduction, field
+export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
@@ -21,7 +21,7 @@ include("constant_field.jl")
 include("function_field.jl")
 include("field_boundary_buffers.jl")
 include("field.jl")
-include("field_reductions.jl")
+include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
