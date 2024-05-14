@@ -232,23 +232,14 @@ julia> zspacings(grid, Center(), Center(), Center())
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
-function minimum_spacing(::Val{:x}, grid, ℓx, ℓy, ℓz)
+spacing_function(::Val{:x}) = xspacing
+spacing_function(::Val{:y}) = yspacing
+spacing_function(::Val{:z}) = zspacing
+
+function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
+    spacing = spacing_function(s)
     LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(xpacing, grid, ℓx, ℓy, ℓz)
-
-    return minimum(Δ)
-end
-
-function minimum_spacing(::Val{:y}, grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
-
-    return minimum(Δ)
-end
-
-function minimum_spacing(::Val{:z}, grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
+    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
 
     return minimum(Δ)
 end
