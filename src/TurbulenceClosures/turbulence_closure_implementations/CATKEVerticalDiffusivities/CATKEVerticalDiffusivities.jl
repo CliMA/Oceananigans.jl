@@ -122,7 +122,7 @@ include("time_step_turbulent_kinetic_energy.jl")
                              minimum_turbulent_kinetic_energy = 1e-9,
                              minimum_convective_buoyancy_flux = 1e-11,
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
-                             turbulent_kinetic_energy_time_step = 10)
+                             turbulent_kinetic_energy_time_step = nothing)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
@@ -176,7 +176,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   minimum_turbulent_kinetic_energy = 1e-9,
                                   minimum_convective_buoyancy_flux = 1e-11,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
-                                  turbulent_kinetic_energy_time_step = 10) where TD
+                                  turbulent_kinetic_energy_time_step = nothing) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
