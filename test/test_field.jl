@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
+using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
@@ -463,27 +464,27 @@ end
             grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1), topology = (Periodic, Periodic, ZTopology))
             Hx, Hy, Hz = halo_size(grid)
 
-            k_top = (FieldType == ZFaceField && ZTopology == Bounded) ? Nz+1 : Nz 
-
             c = FieldType(grid)
             set!(c, (x, y, z) -> rand())
 
+            k_top = total_length(location(c, 3)(), topology(c, 3)(), size(grid, 3))
+
             # First test that the regular view is correct
             cv = view(c, :, :, 1+1:k_top-1)
-            @test size(cv) == (1, 1, k_top-2)
-            @test size(parent(cv)) == (1+2Hx, 1+2Hy, k_top-2)
-            CUDA.@allowscalar @test all(cv[1, 1, i] == c[1, 1, i] for i in 1+1:k_top-1)
+            @test size(cv) == (Nx, Ny, k_top-2)
+            @test size(parent(cv)) == (Nx+2Hx, Ny+2Hy, k_top-2)
+            CUDA.@allowscalar @test all(cv[i, j, k] == c[i, j, k] for k in 1+1:k_top-1, j in 1:Ny, i in 1:Nx)
 
             # Now test the views of views
             cvv = view(cv, :, :, 1+2:k_top-2)
-            @test size(cvv) == (1, 1, k_top-4)
-            @test size(parent(cvv)) == (1+2Hx, 1+2Hy, k_top-4)
-            CUDA.@allowscalar @test all(cvv[1, 1, i] == cv[1, 1, i] for i in 1+2:k_top-2)
+            @test size(cvv) == (Nx, Ny, k_top-4)
+            @test size(parent(cvv)) == (Nx+2Hx, Ny+2Hy, k_top-4)
+            CUDA.@allowscalar @test all(cvv[i, j, k] == cv[i, j, k] for k in 1+2:k_top-2, j in 1:Ny, i in 1:Nx)
 
             cvvv = view(cvv, :, :, 1+3:k_top-3)
             @test size(cvvv) == (1, 1, k_top-6)
-            @test size(parent(cvvv)) == (1+2Hx, 1+2Hy, k_top-6)
-            CUDA.@allowscalar @test all(cvvv[1, 1, i] == cvv[1, 1, i] for i in 1+3:k_top-3)
+            @test size(parent(cvvv)) == (Nx+2Hx, Ny+2Hy, k_top-6)
+            CUDA.@allowscalar @test all(cvvv[i, j, k] == cvv[i, j, k] for k in 1+3:k_top-3, j in 1:Ny, i in 1:Nx)
 
             @test_throws ArgumentError view(cv, :, :, 1)
             @test_throws ArgumentError view(cv, :, :, k_top)
