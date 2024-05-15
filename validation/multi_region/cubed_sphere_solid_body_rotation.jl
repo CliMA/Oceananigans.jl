@@ -31,15 +31,17 @@ grid = ConformalCubedSphereGrid(arch;
 
 Hx, Hy, Hz = halo_size(grid)
 
-my_Coriolis = HydrostaticSphericalCoriolis(rotation_rate = Ω,
+substeps = 10
+my_free_surface = SplitExplicitFreeSurface(grid; gravitational_acceleration = g, substeps = substeps,
+                                           extended_halos = false)
+
+my_coriolis = HydrostaticSphericalCoriolis(rotation_rate = Ω,
                                            scheme = EnstrophyConserving())
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       momentum_advection = VectorInvariant(vorticity_scheme = EnergyConserving(),
                                                                            vertical_scheme = EnergyConserving()),
-                                      free_surface = ExplicitFreeSurface(; gravitational_acceleration = g),
-                                      coriolis = my_Coriolis,
-                                      buoyancy = nothing)
+                                      free_surface = my_free_surface, coriolis = my_coriolis, buoyancy = nothing)
 
 #=
 Specify
@@ -115,7 +117,7 @@ end
 
 fill_halo_regions!(model.free_surface.η)
 
-Δt = 600
+Δt = 600 * 32 / Nx
 stop_time = 10*86400 # 10 days, close to revolution period = 11.58 days
 
 Ntime = round(Int, stop_time/Δt)

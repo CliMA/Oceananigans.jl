@@ -322,7 +322,7 @@ end
     end
 end
 
-fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = true) = fill_halo_regions!(fields...; signed)
+fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = true, kwargs...) = fill_halo_regions!(fields...; signed)
 
 function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
                             field_2::CubedSphereField{<:Center, <:Center}; signed = true)
