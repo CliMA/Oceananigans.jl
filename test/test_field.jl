@@ -468,38 +468,36 @@ end
             c = FieldType(grid)
             set!(c, (x, y, z) -> rand())
 
-            CUDA.@allowscalar begin
-                # First test that the regular view is correct
-                cv = view(c, :, :, 1+1:k_top-1)
-                @test size(cv) == (1, 1, k_top-2)
-                @test size(parent(cv)) == (1+2Hx, 1+2Hy, k_top-2)
-                @test all(cv[1, 1, i] == c[1, 1, i] for i in 1+1:k_top-1)
+            # First test that the regular view is correct
+            cv = view(c, :, :, 1+1:k_top-1)
+            @test size(cv) == (1, 1, k_top-2)
+            @test size(parent(cv)) == (1+2Hx, 1+2Hy, k_top-2)
+            CUDA.@allowscalar @test all(cv[1, 1, i] == c[1, 1, i] for i in 1+1:k_top-1)
 
-                # Now test the views of views
-                cvv = view(cv, :, :, 1+2:k_top-2)
-                @test size(cvv) == (1, 1, k_top-4)
-                @test size(parent(cvv)) == (1+2Hx, 1+2Hy, k_top-4)
-                @test all(cvv[1, 1, i] == cv[1, 1, i] for i in 1+2:k_top-2)
+            # Now test the views of views
+            cvv = view(cv, :, :, 1+2:k_top-2)
+            @test size(cvv) == (1, 1, k_top-4)
+            @test size(parent(cvv)) == (1+2Hx, 1+2Hy, k_top-4)
+            CUDA.@allowscalar @test all(cvv[1, 1, i] == cv[1, 1, i] for i in 1+2:k_top-2)
 
-                cvvv = view(cvv, :, :, 1+3:k_top-3)
-                @test size(cvvv) == (1, 1, k_top-6)
-                @test size(parent(cvvv)) == (1+2Hx, 1+2Hy, k_top-6)
-                @test all(cvvv[1, 1, i] == cvv[1, 1, i] for i in 1+3:k_top-3)
+            cvvv = view(cvv, :, :, 1+3:k_top-3)
+            @test size(cvvv) == (1, 1, k_top-6)
+            @test size(parent(cvvv)) == (1+2Hx, 1+2Hy, k_top-6)
+            CUDA.@allowscalar @test all(cvvv[1, 1, i] == cvv[1, 1, i] for i in 1+3:k_top-3)
 
-                @test_throws ArgumentError view(cv, :, :, 1)
-                @test_throws ArgumentError view(cv, :, :, k_top)
-                @test_throws ArgumentError view(cvv, :, :, 1:1+1)
-                @test_throws ArgumentError view(cvv, :, :, k_top-1:k_top)
-                @test_throws ArgumentError view(cvvv, :, :, 1:1+2)
-                @test_throws ArgumentError view(cvvv, :, :, k_top-2:k_top)
+            @test_throws ArgumentError view(cv, :, :, 1)
+            @test_throws ArgumentError view(cv, :, :, k_top)
+            @test_throws ArgumentError view(cvv, :, :, 1:1+1)
+            @test_throws ArgumentError view(cvv, :, :, k_top-1:k_top)
+            @test_throws ArgumentError view(cvvv, :, :, 1:1+2)
+            @test_throws ArgumentError view(cvvv, :, :, k_top-2:k_top)
 
-                @test_throws BoundsError cv[:, :, 1]
-                @test_throws BoundsError cv[:, :, k_top]
-                @test_throws BoundsError cvv[:, :, 1:1+1]
-                @test_throws BoundsError cvv[:, :, k_top-1:k_top]
-                @test_throws BoundsError cvvv[:, :, 1:1+2]
-                @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
-            end
+            @test_throws BoundsError cv[:, :, 1]
+            @test_throws BoundsError cv[:, :, k_top]
+            @test_throws BoundsError cvv[:, :, 1:1+1]
+            @test_throws BoundsError cvv[:, :, k_top-1:k_top]
+            @test_throws BoundsError cvvv[:, :, 1:1+2]
+            @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
         end
     end
 end
