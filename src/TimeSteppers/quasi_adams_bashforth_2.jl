@@ -92,6 +92,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     tick!(model.clock, Δt)
     clock.last_Δt = Δt
+    clock.last_stage_Δt = Δt # just one stage
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, Δt)
     
