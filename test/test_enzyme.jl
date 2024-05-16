@@ -86,6 +86,8 @@ end
     grid = model_tracer.grid
     arch = architecture(model_tracer)
 
+    if arch == CPU()
+
     param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
 
     dmodel_tracer = Enzyme.make_zero(model_tracer)
@@ -112,6 +114,7 @@ end
                 set_initial_condition!,
                 Duplicated(model, dmodel),
                 Active(1.0))
+    end
 
     Enzyme.API.looseTypeAnalysis!(false)
 end
