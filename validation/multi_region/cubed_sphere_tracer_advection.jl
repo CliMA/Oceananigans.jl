@@ -1,14 +1,12 @@
 using Oceananigans, Printf
 
-using Oceananigans.Grids: φnode, λnode, halo_size
-using Oceananigans.MultiRegion: getregion, number_of_regions
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Grids: node
+using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!
+using JLD2
 
-Nx = 30
-Ny = 30
-Nz = 1
+## Grid setup
 
+Nx, Ny, Nz = 32, 32, 1
 R = 1 # sphere's radius
 U = 1 # velocity scale
 
@@ -18,43 +16,42 @@ grid = ConformalCubedSphereGrid(; panel_size = (Nx, Ny, Nz),
                                   horizontal_direction_halo = 6,
                                   partition = CubedSpherePartition(; R = 1))
 
-
 # Solid body rotation
-φʳ = 0        # Latitude pierced by the axis of rotation
-α  = 90 - φʳ  # Angle between axis of rotation and north pole (degrees)
-ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+φʳ = 0       # Latitude pierced by the axis of rotation
+α  = 90 - φʳ # Angle between axis of rotation and north pole (degrees)
+
+@inline ψᵣ(λ, φ, z) = - U * R * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
 ψ = Field{Face, Face, Center}(grid)
 
-# set fills only interior points; to compute u and v we need information in the halo regions
 set!(ψ, ψᵣ)
 
-# Note: fill_halo_regions! works for (Face, Face, Center) field, *except* for the
-# two corner points that do not correspond to an interior point!
-# We need to manually fill the Face-Face halo points of the two corners
-# that do not have a corresponding interior point.
+# Note that set! fills only interior points; to compute u and v, we need information in the halo regions.
+fill_halo_regions!(ψ)
+
+# Note that fill_halo_regions! works for (Face, Face, Center) field, *except* for the two corner points that do not
+# correspond to an interior point! We need to manually fill the Face-Face halo points of the two corners that do not 
+# have a corresponding interior point.
+
 for region in [1, 3, 5]
     i = 1
     j = Ny+1
     for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+        λ, φ, z = node(i, j, k, grid[region], Face(), Face(), Center())
+        @inbounds ψ[region][i, j, k] = ψᵣ(λ, φ, z)
     end
 end
+
 for region in [2, 4, 6]
     i = Nx+1
     j = 1
     for k in 1:Nz
-        λ = λnode(i, j, k, grid[region], Face(), Face(), Center())
-        φ = φnode(i, j, k, grid[region], Face(), Face(), Center())
-        ψ[region][i, j, k] = ψᵣ(λ, φ, 0)
+        λ, φ, z = node(i, j, k, grid[region], Face(), Face(), Center())
+        @inbounds ψ[region][i, j, k] = ψᵣ(λ, φ, z)
     end
 end
 
-for passes in 1:3
-    fill_halo_regions!(ψ)
-end
+fill_halo_regions!(ψ)
 
 u = XFaceField(grid)
 v = YFaceField(grid)
@@ -71,6 +68,7 @@ end
 model = HydrostaticFreeSurfaceModel(; grid,
                                     velocities = PrescribedVelocityFields(; u, v),
                                     momentum_advection = nothing,
+                                    free_surface = ExplicitFreeSurface(; gravitational_acceleration = 10),
                                     tracer_advection = WENO(order=9),
                                     tracers = :θ,
                                     buoyancy = nothing)
@@ -78,6 +76,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # Initial condition for tracer
 
 #=
+using Oceananigans.Grids: λnode, φnode
 
 # 4 Gaussians with width δR (degrees) and magnitude θ₀
 δR = 2
@@ -123,50 +122,113 @@ panel = 6
 
 set!(model, θ = θᵢ)
 
-# estimate time-step from the minimum grid spacing
+# Estimate time step from the minimum grid spacing based on the CFL condition.
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
 Δt = 0.2 * min(Δx, Δy) / U # CFL for tracer advection
 
 stop_time = 2π * U / R
+
+Ntime = round(Int, stop_time / Δt)
+
+print_output_to_jld2_file = false
+if print_output_to_jld2_file
+    Ntime = 500
+    stop_time = Ntime * Δt
+end
+
+@info "Stop time = $(prettytime(stop_time))"
+@info "Number of time steps = $Ntime"
+
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message
-
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, wall time: %s\n",
-                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+progress_message_iteration_interval = 10
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|θ|): %.2e, wall time: %s\n", iteration(sim),
+                                prettytime(sim), prettytime(sim.Δt), maximum(abs, sim.model.tracers.θ),
                                 prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
-tracer_fields = Field[]
-save_tracer(sim) = push!(tracer_fields, deepcopy(sim.model.tracers.θ))
-simulation.callbacks[:save_tracer] = Callback(save_tracer, IterationInterval(20))
+θ_fields = Field[]
+save_θ(sim) = push!(θ_fields, deepcopy(sim.model.tracers.θ))
+
+θ_initial = deepcopy(simulation.model.tracers.θ)
+
+include("cubed_sphere_visualization.jl")
+
+plot_initial_field = false
+if plot_initial_field
+    # Plot the initial tracer field.
+    fig = panel_wise_visualization_with_halos(grid, θ_initial; k = Nz)
+    save("cubed_sphere_tracer_advection_θ₀_with_halos.png", fig)
+
+    fig = panel_wise_visualization(grid, θ_initial; k = Nz)
+    save("cubed_sphere_tracer_advection_θ₀.png", fig)
+end
+
+animation_time = 15 # seconds
+framerate = 5
+n_frames = animation_time * framerate # excluding the initial condition frame
+simulation_time_per_frame = stop_time / n_frames
+save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
+# Redefine the simulation time per frame.
+simulation_time_per_frame = save_fields_iteration_interval * Δt
+# Redefine the number of frames.
+n_frames = floor(Int, Ntime / save_fields_iteration_interval) # excluding the initial condition frame
+# Redefine the animation time.
+animation_time = n_frames / framerate
+simulation.callbacks[:save_θ] = Callback(save_θ, IterationInterval(save_fields_iteration_interval))
 
 run!(simulation)
 
-@info "Making an animation from the saved data..."
+if print_output_to_jld2_file
+    jldopen("cubed_sphere_tracer_advection_initial_condition.jld2", "w") do file
+        for region in 1:6
+            file["θ/"*string(region)] = θ_fields[1][region][:, :, Nz]
+        end
+    end
+    jldopen("cubed_sphere_tracer_advection_output.jld2", "w") do file
+        for region in 1:6
+            file["θ/"*string(region)] = θ_fields[end][region][:, :, Nz]
+        end
+    end
+end
 
-# install Imaginocean.jl from GitHub
-# using Pkg; Pkg.add(url="https://github.com/navidcy/Imaginocean.jl", rev="main")
-using Imaginocean
+plot_final_field = false
+if plot_final_field
+    fig = panel_wise_visualization_with_halos(grid, θ_fields[end]; k = Nz)
+    save("cubed_sphere_tracer_advection_θ_with_halos.png", fig)
 
-using GLMakie, GeoMakie
+    fig = panel_wise_visualization(grid, θ_fields[end]; k = Nz)
+    save("cubed_sphere_tracer_advection_θ.png", fig)
+end
 
-n = Observable(1)
+θ_colorrange = [-θ₀, θ₀]
 
-Θₙ = @lift tracer_fields[$n]
+plot_snapshots = false
+if plot_snapshots
+    n_snapshots = 3
 
-fig = Figure(size=(1600, 1200), fontsize=30)
-ax = GeoAxis(fig[1, 1], coastlines = true, lonlims = automatic)
-heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
+    for i_snapshot in 0:n_snapshots
+        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
+        simulation_time = simulation_time_per_frame * (frame_index - 1)
+        title = "Tracer distribution after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, θ_fields[frame_index], title; cbar_label = "tracer level",
+                                           specify_plot_limits = true, plot_limits = θ_colorrange)
+        save(@sprintf("cubed_sphere_tracer_advection_θ_%d.png", i_snapshot), fig)
+    end
+end
 
-fig
+make_animation = false
+if make_animation
+    create_panel_wise_visualization_animation(grid, θ_fields, framerate, "cubed_sphere_tracer_advection_θ"; k = Nz)
 
-frames = 1:length(tracer_fields)
+    prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
-GLMakie.record(fig, "cubed_sphere_tracer_advection.mp4", frames, framerate = 12) do i
-    @info string("Plotting frame ", i, " of ", frames[end])
-    Θₙ[] = tracer_fields[i]
-    heatlatlon!(ax, Θₙ, colorrange=(-θ₀, θ₀), colormap = :balance)
+    θ_colorrange = specify_colorrange_timeseries(grid, θ_fields)
+    geo_heatlatlon_visualization_animation(grid, θ_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
+                                           cbar_label = "tracer level", specify_plot_limits = true,
+                                           plot_limits = θ_colorrange, framerate = framerate,
+                                           filename = "cubed_sphere_tracer_advection_θ_geo_heatlatlon_animation")
 end
