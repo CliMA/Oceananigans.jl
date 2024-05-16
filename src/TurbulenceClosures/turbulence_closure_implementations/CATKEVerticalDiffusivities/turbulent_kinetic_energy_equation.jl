@@ -272,11 +272,12 @@ end
 
 Base.summary(::TurbulentKineticEnergyEquation) = "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation"
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
-    print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
-              "    CˡᵒD: $(tke.CˡᵒD),  \n" *
-              "    CʰⁱD: $(tke.CʰⁱD),  \n" *
-              "    CᶜD:  $(tke.CᶜD),  \n" *
-              "    CᵉD:  $(tke.CᵉD),  \n" *
-              "    Cᵂu★: $(tke.Cᵂu★), \n" *
-              "    CᵂwΔ: $(tke.CᵂwΔ)")
+    print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters:", '\n',
+              "├── CʰⁱD: ", tke.CʰⁱD, '\n',
+              "├── CˡᵒD: ", tke.CˡᵒD, '\n',
+              "├── CᵘⁿD: ", tke.CᵘⁿD, '\n',
+              "├── CᶜD:  ", tke.CᶜD,  '\n',
+              "├── CᵉD:  ", tke.CᵉD,  '\n',
+              "├── Cᵂu★: ", tke.Cᵂu★, '\n',
+              "└── CᵂwΔ: ", tke.CᵂwΔ)
 
