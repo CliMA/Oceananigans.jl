@@ -122,7 +122,7 @@ include("time_step_turbulent_kinetic_energy.jl")
                              minimum_turbulent_kinetic_energy = 1e-9,
                              minimum_convective_buoyancy_flux = 1e-11,
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
-                             turbulent_kinetic_energy_time_step = 10)
+                             turbulent_kinetic_energy_time_step = nothing)
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
@@ -176,7 +176,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                   minimum_turbulent_kinetic_energy = 1e-9,
                                   minimum_convective_buoyancy_flux = 1e-11,
                                   negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
-                                  turbulent_kinetic_energy_time_step = 10) where TD
+                                  turbulent_kinetic_energy_time_step = nothing) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
@@ -226,8 +226,8 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    return ifelse(N² ≤ 0, zero(grid), Ri)
-    #return ifelse(N² == 0, zero(grid), Ri)
+    #return ifelse(N² ≤ 0, zero(grid), Ri)
+    return ifelse(N² == 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
@@ -406,41 +406,46 @@ function Base.summary(closure::CATKEVD)
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 
-function Base.show(io::IO, closure::FlavorOfCATKE)
-    print(io, summary(closure))
+function Base.show(io::IO, clo::FlavorOfCATKE)
+    print(io, summary(clo))
     print(io, '\n')
-    print(io, "├── maximum_tracer_diffusivity: ", prettysummary(closure.maximum_tracer_diffusivity), '\n',
-              "├── maximum_tke_diffusivity: ", prettysummary(closure.maximum_tke_diffusivity), '\n',
-              "├── maximum_viscosity: ", prettysummary(closure.maximum_viscosity), '\n',
-              "├── minimum_turbulent_kinetic_energy: ", prettysummary(closure.minimum_turbulent_kinetic_energy), '\n',
-              "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(closure.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
-              "├── minimum_convective_buoyancy_flux: ", prettysummary(closure.minimum_convective_buoyancy_flux), '\n',
-              "├── turbulent_kinetic_energy_time_step: ", prettysummary(closure.turbulent_kinetic_energy_time_step), '\n',
-              "├── mixing_length: ", prettysummary(closure.mixing_length), '\n',
-              "│   ├── Cˢ:   ", prettysummary(closure.mixing_length.Cˢ), '\n',
-              "│   ├── Cᵇ:   ", prettysummary(closure.mixing_length.Cᵇ), '\n',
-              "│   ├── Cᶜu:  ", prettysummary(closure.mixing_length.Cᶜu), '\n',
-              "│   ├── Cᶜc:  ", prettysummary(closure.mixing_length.Cᶜc), '\n',
-              "│   ├── Cᶜe:  ", prettysummary(closure.mixing_length.Cᶜe), '\n',
-              "│   ├── Cᵉc:  ", prettysummary(closure.mixing_length.Cᵉc), '\n',
-              "│   ├── Cᵉe:  ", prettysummary(closure.mixing_length.Cᵉe), '\n',
-              "│   ├── Cˡᵒu: ", prettysummary(closure.mixing_length.Cˡᵒu), '\n',
-              "│   ├── Cˡᵒc: ", prettysummary(closure.mixing_length.Cˡᵒc), '\n',
-              "│   ├── Cˡᵒe: ", prettysummary(closure.mixing_length.Cˡᵒe), '\n',
-              "│   ├── Cʰⁱu: ", prettysummary(closure.mixing_length.Cʰⁱu), '\n',
-              "│   ├── Cʰⁱc: ", prettysummary(closure.mixing_length.Cʰⁱc), '\n',
-              "│   ├── Cʰⁱe: ", prettysummary(closure.mixing_length.Cʰⁱe), '\n',
-              "│   ├── Cˢᵖ:  ", prettysummary(closure.mixing_length.Cˢᵖ), '\n',
-              "│   ├── CRiᵟ: ", prettysummary(closure.mixing_length.CRiᵟ), '\n',
-              "│   └── CRi⁰: ", prettysummary(closure.mixing_length.CRi⁰), '\n',
-              "└── turbulent_kinetic_energy_equation: ", prettysummary(closure.turbulent_kinetic_energy_equation), '\n',
-              "    ├── CˡᵒD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CˡᵒD),  '\n',
-              "    ├── CʰⁱD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CʰⁱD),  '\n',
-              "    ├── CᶜD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᶜD),  '\n',
-              "    ├── CᵉD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵉD),  '\n',
-              "    ├── Cᵂu★: ", prettysummary(closure.turbulent_kinetic_energy_equation.Cᵂu★), '\n',
-              "    ├── CᵂwΔ: ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
-              "    └── Cᵂϵ:  ", prettysummary(closure.turbulent_kinetic_energy_equation.Cᵂϵ))
+    print(io, "├── maximum_tracer_diffusivity: ", prettysummary(clo.maximum_tracer_diffusivity), '\n',
+              "├── maximum_tke_diffusivity: ", prettysummary(clo.maximum_tke_diffusivity), '\n',
+              "├── maximum_viscosity: ", prettysummary(clo.maximum_viscosity), '\n',
+              "├── minimum_turbulent_kinetic_energy: ", prettysummary(clo.minimum_turbulent_kinetic_energy), '\n',
+              "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(clo.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
+              "├── minimum_convective_buoyancy_flux: ", prettysummary(clo.minimum_convective_buoyancy_flux), '\n',
+              "├── turbulent_kinetic_energy_time_step: ", prettysummary(clo.turbulent_kinetic_energy_time_step), '\n',
+              "├── mixing_length: ", prettysummary(clo.mixing_length), '\n',
+              "│   ├── Cˢ:   ", prettysummary(clo.mixing_length.Cˢ), '\n',
+              "│   ├── Cᵇ:   ", prettysummary(clo.mixing_length.Cᵇ), '\n',
+              "│   ├── Cʰⁱu: ", prettysummary(clo.mixing_length.Cʰⁱu), '\n',
+              "│   ├── Cʰⁱc: ", prettysummary(clo.mixing_length.Cʰⁱc), '\n',
+              "│   ├── Cʰⁱe: ", prettysummary(clo.mixing_length.Cʰⁱe), '\n',
+              "│   ├── Cˡᵒu: ", prettysummary(clo.mixing_length.Cˡᵒu), '\n',
+              "│   ├── Cˡᵒc: ", prettysummary(clo.mixing_length.Cˡᵒc), '\n',
+              "│   ├── Cˡᵒe: ", prettysummary(clo.mixing_length.Cˡᵒe), '\n',
+              "│   ├── Cᵘⁿu: ", prettysummary(clo.mixing_length.Cᵘⁿu), '\n',
+              "│   ├── Cᵘⁿc: ", prettysummary(clo.mixing_length.Cᵘⁿc), '\n',
+              "│   ├── Cᵘⁿe: ", prettysummary(clo.mixing_length.Cᵘⁿe), '\n',
+              "│   ├── Cᶜu:  ", prettysummary(clo.mixing_length.Cᶜu), '\n',
+              "│   ├── Cᶜc:  ", prettysummary(clo.mixing_length.Cᶜc), '\n',
+              "│   ├── Cᶜe:  ", prettysummary(clo.mixing_length.Cᶜe), '\n',
+              "│   ├── Cᵉc:  ", prettysummary(clo.mixing_length.Cᵉc), '\n',
+              "│   ├── Cᵉe:  ", prettysummary(clo.mixing_length.Cᵉe), '\n',
+              "│   ├── Cˢᵖ:  ", prettysummary(clo.mixing_length.Cˢᵖ), '\n',
+              "│   ├── CRiᵟ: ", prettysummary(clo.mixing_length.CRiᵟ), '\n',
+              "│   └── CRi⁰: ", prettysummary(clo.mixing_length.CRi⁰), '\n',
+              "└── turbulent_kinetic_energy_equation: ", prettysummary(clo.turbulent_kinetic_energy_equation), '\n',
+              "    ├── CʰⁱD: ", prettysummary(clo.turbulent_kinetic_energy_equation.CʰⁱD),  '\n',
+              "    ├── CˡᵒD: ", prettysummary(clo.turbulent_kinetic_energy_equation.CˡᵒD),  '\n',
+              "    ├── CᵘⁿD: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵘⁿD),  '\n',
+              "    ├── CᶜD:  ", prettysummary(clo.turbulent_kinetic_energy_equation.CᶜD),  '\n',
+              "    ├── CᵉD:  ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵉD),  '\n',
+              "    ├── Cᵂu★: ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂu★), '\n',
+              "    ├── CᵂwΔ: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
+              "    └── Cᵂϵ:  ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂϵ))
 end
 
 end # module
+

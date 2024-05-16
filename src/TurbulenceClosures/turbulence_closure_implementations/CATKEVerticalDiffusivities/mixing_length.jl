@@ -13,23 +13,26 @@ using ..TurbulenceClosures:
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cˢ   :: FT = 1.03   # Surface distance coefficient for shear length scale
+    Cˢ   :: FT = 1.45   # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
-    Cᶜu  :: FT = 0.0    # Convective mixing length coefficient for tracers
-    Cᶜc  :: FT = 3.72   # Convective mixing length coefficient for tracers
-    Cᶜe  :: FT = 1.40   # Convective mixing length coefficient for TKE
+    Cˢᵖ  :: FT = 0.197  # Sheared convective plume coefficient
+    CRiᵟ :: FT = 0.301  # Stability function width 
+    CRi⁰ :: FT = 0.614  # Stability function lower Ri
+    Cʰⁱu :: FT = 0.174  # Shear mixing length coefficient for momentum at high Ri
+    Cˡᵒu :: FT = 0.270  # Shear mixing length coefficient for momentum at low Ri
+    Cᵘⁿu :: FT = 0.267  # Shear mixing length coefficient for momentum at negative Ri
+    Cᶜu  :: FT = 0.814  # Convective mixing length coefficient for tracers
     Cᵉu  :: FT = 0.0    # Convective penetration mixing length coefficient for tracers
-    Cᵉc  :: FT = 0.841  # Convective penetration mixing length coefficient for tracers
+    Cʰⁱc :: FT = 0.072  # Shear mixing length coefficient for tracers at high Ri
+    Cˡᵒc :: FT = 0.246  # Shear mixing length coefficient for tracers at low Ri
+    Cᵘⁿc :: FT = 1.711  # Shear mixing length coefficient for tracers at negative Ri
+    Cᶜc  :: FT = 7.328  # Convective mixing length coefficient for tracers
+    Cᵉc  :: FT = 0.054  # Convective penetration mixing length coefficient for tracers
+    Cʰⁱe :: FT = 1.186  # Shear mixing length coefficient for TKE at high Ri
+    Cˡᵒe :: FT = 2.886  # Shear mixing length coefficient for TKE at low Ri
+    Cᵘⁿe :: FT = 5.498  # Shear mixing length coefficient for TKE at negative Ri
+    Cᶜe  :: FT = 0.891  # Convective mixing length coefficient for TKE
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
-    Cˢᵖ  :: FT = 1.02   # Sheared convective plume coefficient
-    Cˡᵒu :: FT = 0.775  # Shear mixing length coefficient for momentum at low Ri
-    Cʰⁱu :: FT = 0.765  # Shear mixing length coefficient for momentum at high Ri
-    Cˡᵒc :: FT = 0.786  # Shear mixing length coefficient for tracers at low Ri
-    Cʰⁱc :: FT = 0.378  # Shear mixing length coefficient for tracers at high Ri
-    Cˡᵒe :: FT = 2.68   # Shear mixing length coefficient for TKE at low Ri
-    Cʰⁱe :: FT = 2.16   # Shear mixing length coefficient for TKE at high Ri
-    CRiᵟ :: FT = 0.421  # Stability function width 
-    CRi⁰ :: FT = 0.261  # Stability function lower Ri
 end
 
 #####
@@ -208,7 +211,11 @@ end
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
 
-@inline scale(Ri, σ⁻, σ⁺ , c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+@inline function scale(Ri, σ⁻, σ⁰, σ∞, c, w)
+    σ⁺ = σ⁰ + (σ∞ - σ⁰) * step(Ri, c, w)
+    σ = σ⁻ * (Ri < 0) + σ⁺ * (Ri ≥ 0)
+    return σ
+end
 
 #=
 @inline function scale(Ri, σ₀, σ∞ , Δσ, δRi)
@@ -219,18 +226,18 @@ end
 end
 =#
 
-@inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+@inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
-    return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
+    return scale(Ri, Cᵘⁿ, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
-@inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+@inline function stability_functionᶜᶜᶜ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     CRi⁰ = closure.mixing_length.CRi⁰
     CRiᵟ = closure.mixing_length.CRiᵟ
-    return scale(Ri, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
+    return scale(Ri, Cᵘⁿ, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
 @inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -239,9 +246,10 @@ end
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
+    Cᵘⁿ = closure.mixing_length.Cᵘⁿu
     Cˡᵒ = closure.mixing_length.Cˡᵒu
     Cʰⁱ = closure.mixing_length.Cʰⁱu
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
 
     ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
@@ -259,9 +267,10 @@ end
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
+    Cᵘⁿ = closure.mixing_length.Cᵘⁿc
     Cˡᵒ = closure.mixing_length.Cˡᵒc
     Cʰⁱ = closure.mixing_length.Cʰⁱc
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
@@ -278,9 +287,10 @@ end
     Cˢᵖ = closure.mixing_length.Cˢᵖ
     ℓʰ  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
 
+    Cᵘⁿ = closure.mixing_length.Cᵘⁿe
     Cˡᵒ = closure.mixing_length.Cˡᵒe
     Cʰⁱ = closure.mixing_length.Cʰⁱe
-    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
+    σ = stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     ℓ★ = σ * stable_length_scaleᶜᶜᶠ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
@@ -295,19 +305,23 @@ Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
 
 Base.show(io::IO, ml::MixingLength) =
     print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", '\n',
-              "    Cˢ:   $(ml.Cˢ)",   '\n',
-              "    Cᵇ:   $(ml.Cᵇ)",   '\n',
-              "    Cᶜc:  $(ml.Cᶜc)",  '\n',
-              "    Cᶜe:  $(ml.Cᶜe)",  '\n',
-              "    Cᵉc:  $(ml.Cᵉc)",  '\n',
-              "    Cᵉe:  $(ml.Cᵉe)",  '\n',
-              "    Cˡᵒu: $(ml.Cˡᵒu)", '\n',
-              "    Cˡᵒc: $(ml.Cˡᵒc)", '\n',
-              "    Cˡᵒe: $(ml.Cˡᵒe)", '\n',
-              "    Cʰⁱu: $(ml.Cʰⁱu)", '\n',
-              "    Cʰⁱc: $(ml.Cʰⁱc)", '\n',
-              "    Cʰⁱe: $(ml.Cʰⁱe)", '\n',
-              "    Cˢᵖ:  $(ml.Cˢᵖ)", '\n',
-              "    CRiᵟ: $(ml.CRiᵟ)", '\n',
-              "    CRi⁰: $(ml.CRi⁰)")
+              " ├── Cˢ:   ", ml.Cˢ,   '\n',
+              " ├── Cᵇ:   ", ml.Cᵇ,   '\n',
+              " ├── Cʰⁱu: ", ml.Cʰⁱu, '\n',
+              " ├── Cʰⁱc: ", ml.Cʰⁱc, '\n',
+              " ├── Cʰⁱe: ", ml.Cʰⁱe, '\n',
+              " ├── Cˡᵒu: ", ml.Cˡᵒu, '\n',
+              " ├── Cˡᵒc: ", ml.Cˡᵒc, '\n',
+              " ├── Cˡᵒe: ", ml.Cˡᵒe, '\n',
+              " ├── Cᵘⁿu: ", ml.Cᵘⁿu, '\n',
+              " ├── Cᵘⁿc: ", ml.Cᵘⁿc, '\n',
+              " ├── Cᵘⁿe: ", ml.Cᵘⁿe, '\n',
+              " ├── Cᶜu:  ", ml.Cᶜu,  '\n',
+              " ├── Cᶜc:  ", ml.Cᶜc,  '\n',
+              " ├── Cᶜe:  ", ml.Cᶜe,  '\n',
+              " ├── Cᵉc:  ", ml.Cᵉc,  '\n',
+              " ├── Cᵉe:  ", ml.Cᵉe,  '\n',
+              " ├── Cˢᵖ:  ", ml.Cˢᵖ, '\n',
+              " ├── CRiᵟ: ", ml.CRiᵟ, '\n',
+              " └── CRi⁰: ", ml.CRi⁰)
 
