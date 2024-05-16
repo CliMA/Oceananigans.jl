@@ -269,7 +269,8 @@ left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 
     i⁻ = Base.unsafe_trunc(Int, fractional_idx)
     i⁻ = Int(i⁻ + 1) # convert to "proper" integer?
-    i⁺ = i⁻ + 1
+    shift = Int(sign(fractional_idx))
+    i⁺ = i⁻ + shift
     ξ = mod(fractional_idx, 1)
 
     return (i⁻, i⁺, ξ)
@@ -353,5 +354,5 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     fill_halo_regions!(to_field)
 
-    return nothing
+    return to_field
 end
