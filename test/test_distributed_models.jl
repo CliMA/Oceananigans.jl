@@ -362,7 +362,7 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
     grid  = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in (fields(model)..., model.pressures.pNHS)
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 

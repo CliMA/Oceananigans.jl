@@ -1,4 +1,4 @@
-# # [Simple diffusion example]](@id one_dimensional_diffusion_example)
+# # [Simple diffusion example](@id one_dimensional_diffusion_example)
 #
 # This is Oceananigans.jl's simplest example:
 # the diffusion of a one-dimensional Gaussian. This example demonstrates

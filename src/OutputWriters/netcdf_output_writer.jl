@@ -10,7 +10,8 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
-mutable struct NetCDFOutputWriter{D, O, T, A, FS} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
+    grid :: G
     filepath :: String
     dataset :: D
     outputs :: O
@@ -162,28 +163,34 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, schedule
-                                          dir = ".",
-                                   array_type = Array{Float64},
-                                      indices = nothing,
-                                   with_halos = false,
-                            global_attributes = Dict(),
-                            output_attributes = Dict(),
-                                   dimensions = Dict(),
-                           overwrite_existing = false,
-                                 deflatelevel = 0,
-                                         part = 1,
-                               file_splitting = NoFileSplitting(),
-                                      verbose = false)
+    NetCDFOutputWriter(model, outputs; filename, schedule,
+                       grid = model.grid,
+                       dir = ".",
+                       array_type = Array{Float64},
+                       indices = nothing,
+                       with_halos = false,
+                       global_attributes = Dict(),
+                       output_attributes = Dict(),
+                       dimensions = Dict(),
+                       overwrite_existing = false,
+                       deflatelevel = 0,
+                       part = 1,
+                       file_splitting = NoFileSplitting(),
+                       verbose = false)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
 either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
-returns something to be written to disk. Custom output requires the spatial `dimensions` (a
-`Dict`) to be manually specified (see examples).
+returns something to be written to disk.
+
+If any of `outputs` are not `AbstractField`, their spatial `dimensions` must be provided.
+
+To use `outputs` on a `grid` not equal to `model.grid`, provide the keyword argument `grid.`
 
 Keyword arguments
 =================
+
+- `grid`: The grid associated with `outputs`. Defaults to `model.grid`.
 
 ## Filenaming
 
@@ -319,7 +326,7 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
+g(model) = model.clock.time .* exp.(znodes(grid, Center())) # vector/profile output
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
@@ -354,20 +361,55 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── file_splitting: NoFileSplitting
 └── file size: 17.8 KiB
 ```
+
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+to a different grid than `model.grid`. To use this functionality, include the keyword argument
+`grid = output_grid`.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Fields: interpolate!
+
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
+model = NonhydrostaticModel(; grid)
+
+coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
+coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+outputs = (; u = interpolate_u)
+
+output_writer = NetCDFOutputWriter(model, outputs;
+                                   grid = coarse_grid,
+                                   filename = "coarse_u.nc",
+                                   schedule = IterationInterval(1))
+
+# output
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: ./coarse_u.nc
+├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 1 outputs: u
+└── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.5 KiB
+```
 """
-function NetCDFOutputWriter(model, outputs; filename, schedule,
-                                          dir = ".",
-                                   array_type = Array{Float64},
-                                      indices = (:, :, :),
-                                   with_halos = false,
+function NetCDFOutputWriter(model, outputs;
+                            filename,
+                            schedule,
+                            grid = model.grid,
+                            dir = ".",
+                            array_type = Array{Float64},
+                            indices = (:, :, :),
+                            with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
-                                   dimensions = Dict(),
-                           overwrite_existing = nothing,
-                                 deflatelevel = 0,
-                                         part = 1,
-                               file_splitting = NoFileSplitting(),
-                                      verbose = false)
+                            dimensions = Dict(),
+                            overwrite_existing = nothing,
+                            deflatelevel = 0,
+                            part = 1,
+                            file_splitting = NoFileSplitting(),
+                            verbose = false)
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
@@ -394,7 +436,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # with LagrangianParticles output (see the end of the file).
     # We shouldn't support this in the future; we should require users to 'name' LagrangianParticles output.
     outputs = dictify(outputs)
-    outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -414,9 +456,11 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                                      dimensions,
                                                      overwrite_existing,
                                                      deflatelevel,
+                                                     grid,
                                                      model)
 
-    return NetCDFOutputWriter(filepath,
+    return NetCDFOutputWriter(grid,
+                              filepath,
                               dataset,
                               outputs,
                               schedule,
@@ -446,27 +490,43 @@ get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
 ##### Variable definition
 #####
 
-""" Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, deflatelevel, output_attributes, dimensions)
-    name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
+materialize_output(func, model) = func(model)
+materialize_output(field::AbstractField, model) = field
+materialize_output(particles::LagrangianParticles, model) = particles
+materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
-    defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
-           deflatelevel=deflatelevel, attrib=output_attributes)
+""" Defines empty variables for 'custom' user-supplied `output`. """
+function define_output_variable!(dataset, output, name, array_type,
+                                 deflatelevel, attrib, dimensions, filepath)
+
+    if name ∉ keys(dimensions)
+        msg = string("dimensions[$name] for output $name=", typeof(output), " into ", filepath, '\n',
+                     " must be provided when constructing NetCDFOutputWriter")
+        throw(ArgumentError(msg))
+    end
+
+    dims = dimensions[name]
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
 
     return nothing
 end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, deflatelevel, output_attributes, dimensions) =
-    defVar(dataset, name, eltype(array_type),
-           (netcdf_spatial_dimensions(output)..., "time"),
-           deflatelevel=deflatelevel, attrib=output_attributes)
+function define_output_variable!(dataset, output::AbstractField, name, array_type,
+                                 deflatelevel, attrib, dimensions, filepath)
+
+    dims = netcdf_spatial_dimensions(output)
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+
+    return nothing
+end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
     define_output_variable!(dataset, output.operand, args...)
-
 
 #####
 ##### Write output
@@ -580,12 +640,17 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, deflatelevel, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
+                                 deflatelevel, output_attributes, dimensions, filepath)
+
     particle_fields = eltype(output.properties) |> fieldnames .|> string
+    T = eltype(array_type)
+
     for particle_field in particle_fields
-        defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), deflatelevel=deflatelevel)
+        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
     end
+
+    return nothing
 end
 
 dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
@@ -633,6 +698,7 @@ function initialize_nc_file!(filepath,
                              dimensions,
                              overwrite_existing,
                              deflatelevel,
+                             grid,
                              model)
 
     mode = overwrite_existing ? "c" : "a"
@@ -648,12 +714,12 @@ function initialize_nc_file!(filepath,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, model.grid, indices, with_halos)
+    dims = default_dimensions(outputs, grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    default_dimension_attributes = get_default_dimension_attributes(model.grid)
+    default_dimension_attributes = get_default_dimension_attributes(grid)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -669,7 +735,7 @@ function initialize_nc_file!(filepath,
 
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
+        defVar(dataset, "time", eltype(grid), ("time",), attrib=time_attrib)
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
@@ -681,7 +747,15 @@ function initialize_nc_file!(filepath,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, deflatelevel, attributes, dimensions)
+            materialized = materialize_output(output, model) 
+            define_output_variable!(dataset,
+                                    materialized,
+                                    name,
+                                    array_type,
+                                    deflatelevel,
+                                    attributes,
+                                    dimensions,
+                                    filepath) # for better error messages
         end
 
         sync(dataset)
@@ -704,4 +778,5 @@ initialize_nc_file!(ow::NetCDFOutputWriter, model) =
                         ow.dimensions,
                         ow.overwrite_existing,
                         ow.deflatelevel,
+                        ow.grid,
                         model)
