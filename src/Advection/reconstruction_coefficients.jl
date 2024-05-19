@@ -209,7 +209,7 @@ end
 @inline function compute_reconstruction_coefficients(grid, FT, scheme; order)
 
     method = scheme == :Centered ? 1 : scheme == :Upwind ? 2 : 3
-
+    
     if grid isa Nothing
         coeff_xᶠᵃᵃ = nothing
         coeff_xᶜᵃᵃ = nothing
@@ -221,7 +221,8 @@ end
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
-
+        metrics    = coordinates(grid)
+    
         coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, getproperty(metrics[1], new_grid), arch, new_grid.Nx, Val(method); order)
         coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, getproperty(metrics[2], new_grid), arch, new_grid.Nx, Val(method); order)
         coeff_yᵃᶠᵃ = reconstruction_coefficients(FT, getproperty(metrics[3], new_grid), arch, new_grid.Ny, Val(method); order)
