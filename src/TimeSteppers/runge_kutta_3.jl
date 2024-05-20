@@ -105,7 +105,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, first_stage_Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
-    clock.last_stage_Δt = first_stage_Δt
+    model.clock.last_stage_Δt = first_stage_Δt
     store_tendencies!(model)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, first_stage_Δt)
@@ -120,7 +120,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, second_stage_Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
-    clock.last_stage_Δt = second_stage_Δt
+    model.clock.last_stage_Δt = second_stage_Δt
     store_tendencies!(model)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, second_stage_Δt)
@@ -135,8 +135,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    clock.last_stage_Δt = third_stage_Δt
-    clock.last_Δt = Δt
+    model.clock.last_stage_Δt = third_stage_Δt
+    model.clock.last_Δt = Δt
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, third_stage_Δt)
 
