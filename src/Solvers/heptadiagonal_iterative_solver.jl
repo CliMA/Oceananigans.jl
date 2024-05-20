@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array, unsafe_free!
+using Oceananigans.Architectures: architecture, on_architecture, unsafe_free!
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
@@ -9,7 +9,7 @@ using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture
 
-mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F}
+mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F} 
                        grid :: G
                problem_size :: R
         matrix_constructors :: L
@@ -36,7 +36,7 @@ end
                                  placeholder_timestep = -1.0, 
                                  preconditioner_method = :Default, 
                                  preconditioner_settings = nothing,
-                                 template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                 template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
                                  verbose = false)
 
 Return a `HeptadiagonalIterativeSolver` to solve the problem `A * x = b`, provided
@@ -90,7 +90,7 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
                                       preconditioner_settings = nothing,
-                                      template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                      template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
                                       verbose = false)
 
     arch = architecture(grid)
@@ -138,11 +138,11 @@ Return the sparse matrix constructors based on the pentadiagonal coeffients (`co
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
-    Ax = arch_array(CPU(), Ax)
-    Ay = arch_array(CPU(), Ay)
-    Az = arch_array(CPU(), Az)
-    C  = arch_array(CPU(), C)
-    D  = arch_array(arch,  D)
+    Ax = on_architecture(CPU(), Ax)
+    Ay = on_architecture(CPU(), Ay)
+    Az = on_architecture(CPU(), Az)
+    C  = on_architecture(CPU(), C)
+    D  = on_architecture(arch,  D)
 
     N = size(grid)
 
@@ -151,7 +151,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     dims = validate_laplacian_direction.(N, topo, reduced_dim)
     Nx, Ny, Nz = N = validate_laplacian_size.(N, dims)
     M    = prod(N)
-    diag = arch_array(arch, zeros(eltype(grid), M))
+    diag = on_architecture(arch, zeros(eltype(grid), M))
 
     # the following coefficients are the diagonals of the sparse matrix:
     #  - coeff_d is the main diagonal (coefficents of ηᵢⱼₖ)

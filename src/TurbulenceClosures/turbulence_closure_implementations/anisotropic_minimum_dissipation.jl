@@ -4,10 +4,10 @@ using Oceananigans.Operators
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
 Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), then modified by [Verstappen18](@cite),
-and finally described and validated for by [Vreugdenhil18](@cite).
+proposed originally by [Rozema15](@citet) and [Abkar16](@citet), then modified by [Verstappen18](@citet),
+and finally described and validated for by [Vreugdenhil18](@citet).
 """
-struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
+struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -36,30 +36,37 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                         which integrates the terms involving only ``z``-derivatives in the
+                         viscous and diffusive fluxes with an implicit time discretization.
+                         Default `ExplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
+
+
 Keyword arguments
 =================
-  - `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
-         for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+* `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+       for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
 
-  - `Cν`: Poincaré constant for momentum eddy viscosity.
+* `Cν`: Poincaré constant for momentum eddy viscosity.
 
-  - `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
-          number or function is applied to all tracers. If a `NamedTuple`, it must possess
-          a field specifying the Poncaré constant for every tracer.
+* `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
+        number or function is applied to all tracers. If a `NamedTuple`, it must possess
+        a field specifying the Poncaré constant for every tracer.
 
-  - `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
-          *Note*: that we _do not_ subtract the horizontally-average component before computing this
-          buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
-          and the impact of this approximation has not been tested or validated.
+* `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@citet)).
+        *Note*: that we _do not_ subtract the horizontally-average component before computing this
+        buoyancy modification term. This implementation differs from [Abkar16](@citet)'s proposal
+        and the impact of this approximation has not been tested or validated.
 
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                           which integrates the terms involving only z-derivatives in the
-                           viscous and diffusive fluxes with an implicit time discretization.
+By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
+second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy modification term.
 
-By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
-second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term.
-
-`Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
+`Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
 
 Examples
 ========
@@ -136,7 +143,9 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, velocities, tracers)
+@kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
+    i, j, k = @index(Global, NTuple)
+    
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
@@ -155,10 +164,11 @@ end
         νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
-    return max(zero(FT), νˢᵍˢ)
+    @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
+@kernel function _compute_AMD_diffusivity!(κₑ, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
+    i, j, k = @index(Global, NTuple)
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
@@ -175,25 +185,23 @@ end
         κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
-    return max(zero(FT), κˢᵍˢ)
+    @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model)
+function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel!   = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
-    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
-
-    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+    launch!(arch, grid, parameters, _compute_AMD_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        diffusivity_kernel!(κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
+                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
     return nothing
@@ -295,13 +303,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end

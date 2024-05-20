@@ -59,5 +59,5 @@ the locally vertical and the locally horizontal components of the rotation vecto
     \boldsymbol{f} = \left[ 2\Omega\cos\varphi_0 \left( 1 -  \frac{z}{R} \right) + \gamma y \right] \boldsymbol{\hat y}
            + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \boldsymbol{\hat z} \, ,
 ```
-as can be found in the paper by [DellarJFM2011](@cite) where 
+as can be found in the paper by [Dellar2011](@citet), where
 ``\beta = 2 \Omega \cos \varphi_0 / R`` and ``\gamma = -4 \Omega \sin \varphi_0 / R``.

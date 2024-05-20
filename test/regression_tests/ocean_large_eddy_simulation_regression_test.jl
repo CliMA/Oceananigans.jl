@@ -16,10 +16,10 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     # Grid
     N = L = 16
     if grid_type == :regular
-        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L), halo=(1, 1, 1))
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L), halo=(2, 2, 2))
     elseif grid_type == :vertically_unstretched
         zF = range(-L, 0, length=N+1)
-        grid = RectilinearGrid(arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF, halo=(1, 1, 1))
+        grid = RectilinearGrid(arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF, halo=(2, 2, 2))
     end
 
     # Boundary conditions
@@ -30,15 +30,12 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = NonhydrostaticModel(; grid, 
+    model = NonhydrostaticModel(; grid, closure,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(; equation_of_state),
                                 tracers = (:T, :S),
-                                closure = closure,
+                                hydrostatic_pressure_anomaly = CenterField(grid),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
-
-    # We will manually change the stop_iteration as needed.
-    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
@@ -80,28 +77,31 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     Nz = grid.Nz
 
-    model.velocities.u.data.parent .= ArrayType(solution₀.u)
-    model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
-    model.tracers.T.data.parent    .= ArrayType(solution₀.T)
-    model.tracers.S.data.parent    .= ArrayType(solution₀.S)
+    solution_indices   = [2:N+3, 2:N+3, 2:N+3]
+    w_solution_indices = [2:N+3, 2:N+3, 2:N+4]
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
-    model.timestepper.Gⁿ.T.data.parent .= ArrayType(Gⁿ₀.T)
-    model.timestepper.Gⁿ.S.data.parent .= ArrayType(Gⁿ₀.S)
+    parent(model.velocities.u)[solution_indices...]   .= ArrayType(solution₀.u)
+    parent(model.velocities.v)[solution_indices...]   .= ArrayType(solution₀.v)
+    parent(model.velocities.w)[w_solution_indices...] .= ArrayType(solution₀.w)
+    parent(model.tracers.T)[solution_indices...]      .= ArrayType(solution₀.T)
+    parent(model.tracers.S)[solution_indices...]      .= ArrayType(solution₀.S)
 
-    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
-    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
-    model.timestepper.G⁻.T.data.parent .= ArrayType(G⁻₀.T)
-    model.timestepper.G⁻.S.data.parent .= ArrayType(G⁻₀.S)
+    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= ArrayType(Gⁿ₀.u)
+    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= ArrayType(Gⁿ₀.v)
+    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= ArrayType(Gⁿ₀.w)
+    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= ArrayType(Gⁿ₀.T)
+    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= ArrayType(Gⁿ₀.S)
+
+    parent(model.timestepper.G⁻.u)[solution_indices...]   .= ArrayType(G⁻₀.u)
+    parent(model.timestepper.G⁻.v)[solution_indices...]   .= ArrayType(G⁻₀.v)
+    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= ArrayType(G⁻₀.w)
+    parent(model.timestepper.G⁻.T)[solution_indices...]   .= ArrayType(G⁻₀.T)
+    parent(model.timestepper.G⁻.S)[solution_indices...]   .= ArrayType(G⁻₀.S)
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
 
-    update_state!(model)
+    update_state!(model; compute_tendencies = true)
     model.timestepper.previous_Δt = Δt
 
     for n in 1:test_steps
@@ -115,15 +115,15 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
                                      v = Array(interior(model.velocities.v)),
-                                     w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:N]),
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
-                      v = Array(interior(solution₁.v, model.grid)),
-                      w = Array(interior(solution₁.w, model.grid)),
-                      T = Array(interior(solution₁.T, model.grid)),
-                      S = Array(interior(solution₁.S, model.grid)))
+    correct_fields = (u = Array(solution₁.u)[2:N+1, 2:N+1, 2:N+1],
+                      v = Array(solution₁.v)[2:N+1, 2:N+1, 2:N+1],
+                      w = Array(solution₁.w)[2:N+1, 2:N+1, 2:N+1],
+                      T = Array(solution₁.T)[2:N+1, 2:N+1, 2:N+1],
+                      S = Array(solution₁.S)[2:N+1, 2:N+1, 2:N+1])
 
     summarize_regression_test(test_fields, correct_fields)
 

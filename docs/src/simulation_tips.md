@@ -1,4 +1,4 @@
-# Simulation tips
+# [Simulation tips](@id simulation_tips)
 
 Oceananigans attempts to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,
@@ -45,7 +45,7 @@ its definition. This is more suited for small functions that are called often. H
 an implementation of the Heaviside function that forces it to be inlined:
 
 ```julia
-@inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
+@inline heaviside(x) = ifelse(x < 0, zero(x), one(x))
 ```
 
 In practice it's hard to say whether inlining a function will bring runtime benefits _with
@@ -86,12 +86,13 @@ fixes the issue by indicating to the compiler that `T₀` will not change.
 Note that the _literal_ `2π / 86400` is not an issue -- it's only the
 _variable_ `T₀` that must be declared `const`.
 
-Alternatively, passing the variable as a parameter to `GradientBoundaryCondition` also works:
+Alternatively, we can pass the variable as a parameter to `GradientBoundaryCondition`. To do that
+we need to pass a named tuple as `parameter` keyword argument:
 
 ```julia
 T₀ = 20 # ᵒC
 surface_temperature(x, y, t, p) = p.T₀ * sin(2π / 86400 * t)
-T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature, parameters=(T₀=T₀,)))
+T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature, parameters=(; T₀)))
 ```
 
 ### Complex diagnostics using computed `Field`s may not work on GPUs
@@ -134,7 +135,7 @@ operators.
 using Oceananigans.Operators
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
-@inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
+@inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
 
 function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣˣ² = ∂xᶜᶜᶜ(i, j, k, grid, u)^2
@@ -145,7 +146,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶠᶜᶠ, u, ∂xᶠᶜᶠ, w) / 4
     Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶜᶠᶠ, v, ∂yᶜᶠᶠ, w) / 4
 
-    return ν * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+    return 2ν * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
 
 ε_op = KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc,
@@ -181,14 +182,16 @@ For large simulations on the GPU, careful management of memory allocation may be
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
   on your GPU and how much of it you're using and you can run it from Julia via
+
   ```julia
   julia> ;
   shell> run(`nvidia-smi`)
   ```
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
-  fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
-  provides two high-order advection schemes: 5th-order WENO method (WENO) and 3rd-order upwind.
+  fewer grid points to achieve the same accuracy that you would with a lower-order one. Refer to the
+  [documentation](https://clima.github.io/OceananigansDocumentation/stable/appendix/library/#Advection)
+  for available advection schemes.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
   diagnostic is calculated the compiler reserves a new chunk of memory for that calculation, usually
@@ -198,6 +201,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   calculations by reusing the same chunk of memory. Have a look at an
   [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
   [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
+
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
@@ -219,7 +223,7 @@ its elements to do that. Consider the example below:
 ```julia
 julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(GPU(); size=(1,1,1), extent=(1,1,1))
+julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
 ├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
 ├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
@@ -235,7 +239,7 @@ NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
 
 julia> adapt(Array, model.velocities.u.data)
 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
@@ -261,9 +265,9 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}:
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
 ERROR: Scalar indexing is disallowed.
 ```
 
@@ -272,7 +276,6 @@ overcome this limitation and allow scalar indexing (more about that
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
 prototyping --- never in production-ready scripts.
-
 
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or

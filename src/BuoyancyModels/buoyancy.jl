@@ -15,28 +15,24 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest; filter = r"└ @ Oceananigans.BuoyancyModels.*"
-
+```jldoctest
 using Oceananigans
 
 grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1))
 
 θ = 45 # degrees
-g̃ = (0, sind(θ), cosd(θ));
+g̃ = (0, -sind(θ), -cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
-model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 
 # output
 
-┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
-│ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
@@ -44,10 +40,6 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 """
 function Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
-    gravity_unit_vector != NegativeZDirection() &&
-        @warn """The meaning of `gravity_unit_vector` changed in version 0.80.0.
-                 In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-                 In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration."""
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return Buoyancy(model, gravity_unit_vector)
 end

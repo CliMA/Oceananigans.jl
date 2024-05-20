@@ -11,11 +11,13 @@ using Oceananigans.Fields
 using Oceananigans.Operators
 
 using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
 using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
+using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -23,7 +25,7 @@ using Oceananigans.TurbulenceClosures:
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
-
+    
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
@@ -32,73 +34,47 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_flux,
     dissipation,
     add_closure_specific_boundary_conditions,
-    calculate_diffusivities!,
+    compute_diffusivities!,
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
     diffusivity,
+    viscosity_location,
+    diffusivity_location,
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z
 
-struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
-    maximum_diffusivity :: FT
+    maximum_tracer_diffusivity :: FT
+    maximum_tke_diffusivity :: FT
+    maximum_viscosity :: FT
     minimum_turbulent_kinetic_energy :: FT
     minimum_convective_buoyancy_flux :: FT
     negative_turbulent_kinetic_energy_damping_time_scale :: FT
 end
 
-function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
-                                      turbulent_kinetic_energy_equation::TKE,
-                                      maximum_diffusivity::FT,
-                                      minimum_turbulent_kinetic_energy::FT,
-                                      minimum_convective_buoyancy_flux::FT,
-                                      negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT}
+CATKEVerticalDiffusivity{TD}(mixing_length::CL,
+                             turbulent_kinetic_energy_equation::TKE,
+                             maximum_tracer_diffusivity::FT,
+                             maximum_tke_diffusivity::FT,
+                             maximum_viscosity::FT,
+                             minimum_turbulent_kinetic_energy::FT,
+                             minimum_convective_buoyancy_flux::FT,
+                             negative_turbulent_kinetic_energy_damping_time_scale::FT) where {TD, CL, TKE, FT} =
+    CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
+                                              turbulent_kinetic_energy_equation,
+                                              maximum_tracer_diffusivity,
+                                              maximum_tke_diffusivity,
+                                              maximum_viscosity,
+                                              minimum_turbulent_kinetic_energy,
+                                              minimum_convective_buoyancy_flux,
+                                              negative_turbulent_kinetic_energy_damping_time_scale)
 
-    return CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
-                                                     turbulent_kinetic_energy_equation,
-                                                     maximum_diffusivity,
-                                                     minimum_turbulent_kinetic_energy,
-                                                     minimum_convective_buoyancy_flux,
-                                                     negative_turbulent_kinetic_energy_damping_time_scale)
-end
-
-"""
-    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
-                             mixing_length = MixingLength{FT}(),
-                             turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation{FT}(),
-                             maximum_diffusivity = Inf,
-                             minimum_turbulent_kinetic_energy = zero(FT),
-                             negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
-
-Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
-small-scale ocean turbulence based on the prognostic evolution of subgrid
-Turbulent Kinetic Energy (TKE).
-
-Keyword arguments
-=================
-  - `maximum_diffusivity`: Maximum value for tracer, momentum, and TKE diffusivities.
-                           Used to clip the diffusivity when/if CATKE predicts
-                           diffusivities that are too large.
-                           Default: `Inf`.
-
-  - `minimum_turbulent_kinetic_energy`: Minimum value for the turbulent kinetic energy.
-                                        Can be used to model the presence "background" TKE
-                                        levels due to, for example, mixing by breaking internal waves.
-                                        Default: 0.
-
-  - `negative_turbulent_kinetic_energy_damping_time_scale`: Damping time-scale for spurious negative values of TKE,
-                                                            typically generated by oscillatory errors associated
-                                                            with TKE advection.
-                                                            Default: 1 minute.
-
-Note that for numerical stability, it is recommended to either have a relative short
-`negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
-`minimum_turbulent_kinetic_energy`, or both.
-"""
-CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
+CATKEVerticalDiffusivity(FT::DataType; kw...) =
+    CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
@@ -107,58 +83,82 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 include("mixing_length.jl")
 include("turbulent_kinetic_energy_equation.jl")
 
-# Optimal parameters for "favorite CATKE" from Wagner et al. 2023 (in prep)
-optimal_turbulent_kinetic_energy_equation(FT) = TurbulentKineticEnergyEquation(
-    C⁻D  = FT(4.4),
-    C⁺D  = FT(3.3),
-    CᶜD  = FT(0.23),
-    CᵉD  = FT(0.0),
-    Cᵂu★ = FT(1.8),
-    CᵂwΔ = FT(12.0))
+"""
+    CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
+                             FT = Float64;]
+                             mixing_length = MixingLength(),
+                             turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
+                             maximum_tracer_diffusivity = Inf,
+                             maximum_tke_diffusivity = Inf,
+                             maximum_viscosity = Inf,
+                             minimum_turbulent_kinetic_energy = 1e-6,
+                             minimum_convective_buoyancy_flux = 1e-8,
+                             negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
 
-optimal_mixing_length(FT) = MixingLength(
-    Cᵇ   = FT(0.37), 
-    Cᶜc  = FT(4.8),
-    Cᶜe  = FT(1.1),
-    Cᵉc  = FT(0.049),
-    Cᵉe  = FT(0.0),
-    Cˢᶜ  = FT(0.29),
-    C⁻u  = FT(0.36),
-    C⁺u  = FT(0.24),
-    C⁻c  = FT(0.41),
-    C⁺c  = FT(0.12),
-    C⁻e  = FT(6.7),
-    C⁺e  = FT(5.4),
-    CRiʷ = FT(0.011),
-    CRiᶜ = FT(0.76))
+Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
+small-scale ocean turbulence based on the prognostic evolution of subgrid
+Turbulent Kinetic Energy (TKE).
 
-function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(), FT=Float64;
-                                  mixing_length = optimal_mixing_length(FT),
-                                  turbulent_kinetic_energy_equation = optimal_turbulent_kinetic_energy_equation(FT),
-                                  maximum_diffusivity = Inf,
-                                  minimum_turbulent_kinetic_energy = 0,
+!!! note "CATKE vertical diffusivity"
+    `CATKEVerticalDiffusivity` is new turbulence closure diffusivity. The default
+    values for its free parameters are obtained from calibration against large eddy
+    simulations. For more details please refer to [Wagner23catke](@cite).
+
+    Use with caution and report any issues with the physics at https://github.com/CliMA/Oceananigans.jl/issues.
+
+Arguments
+=========
+
+- `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`;
+                         default `VerticallyImplicitTimeDiscretization()`.
+
+- `FT`: Float type; default `Float64`.
+
+
+Keyword arguments
+=================
+
+- `maximum_diffusivity`: Maximum value for tracer, momentum, and TKE diffusivities.
+                        Used to clip the diffusivity when/if CATKE predicts
+                        diffusivities that are too large.
+                        Default: `Inf`.
+
+- `minimum_turbulent_kinetic_energy`: Minimum value for the turbulent kinetic energy.
+                                    Can be used to model the presence "background" TKE
+                                    levels due to, for example, mixing by breaking internal waves.
+                                    Default: 0.
+
+- `negative_turbulent_kinetic_energy_damping_time_scale`: Damping time-scale for spurious negative values of TKE,
+                                                        typically generated by oscillatory errors associated
+                                                        with TKE advection.
+                                                        Default: 1 minute.
+
+Note that for numerical stability, it is recommended to either have a relative short
+`negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
+`minimum_turbulent_kinetic_energy`, or both.
+"""
+function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
+                                  FT = Float64;
+                                  mixing_length = MixingLength(),
+                                  turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
+                                  maximum_tracer_diffusivity = Inf,
+                                  maximum_tke_diffusivity = Inf,
+                                  maximum_viscosity = Inf,
+                                  minimum_turbulent_kinetic_energy = 1e-6,
                                   minimum_convective_buoyancy_flux = 1e-11,
-                                  negative_turbulent_kinetic_energy_damping_time_scale = 1minute,
-                                  warning = true) where TD
-
-    if warning
-        @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
-              "is unvalidated and whose default parameters are not calibrated for \n" * 
-              "realistic ocean conditions or for use in a three-dimensional \n" *
-              "simulation. Use with caution and report bugs and problems with physics \n" *
-              "to https://github.com/CliMA/Oceananigans.jl/issues."
-    end
+                                  negative_turbulent_kinetic_energy_damping_time_scale = 1minute) where TD
 
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
     return CATKEVerticalDiffusivity{TD}(mixing_length,
                                         turbulent_kinetic_energy_equation,
-                                        FT(maximum_diffusivity),
+                                        FT(maximum_tracer_diffusivity),
+                                        FT(maximum_tke_diffusivity),
+                                        FT(maximum_viscosity),
                                         FT(minimum_turbulent_kinetic_energy),
                                         FT(minimum_convective_buoyancy_flux),
                                         FT(negative_turbulent_kinetic_energy_damping_time_scale))
-                                  
 end
 
 function with_tracers(tracer_names, closure::FlavorOfCATKE)
@@ -195,7 +195,7 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
-    return ifelse(N² <= 0, zero(grid), Ri)
+    return ifelse(N² ≤ 0, zero(grid), Ri)
 end
 
 for S in (:MixingLength, :TurbulentKineticEnergyEquation)
@@ -218,21 +218,26 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     κᵘ = ZFaceField(grid, boundary_conditions=bcs.κᵘ)
     κᶜ = ZFaceField(grid, boundary_conditions=bcs.κᶜ)
     κᵉ = ZFaceField(grid, boundary_conditions=bcs.κᵉ)
-    Lᵉ = CenterField(grid) #, boundary_conditions=nothing)
+    Lᵉ = CenterField(grid)
+    Qᵇ = Field{Center, Center, Nothing}(grid)
+    previous_compute_time = Ref(zero(grid))
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κᵉ : κᶜ          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Lᵉ : ZeroField() for name in tracer_names)
 
-    return (; κᵘ, κᶜ, κᵉ, Lᵉ, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+    return (; κᵘ, κᶜ, κᵉ, Lᵉ, Qᵇ, previous_compute_time, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
-@inline viscosity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
-@inline diffusivity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
+const c = Center()
+const f = Face()
+
+@inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
+@inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 @inline clip(x) = max(zero(x), x)
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
@@ -241,37 +246,114 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    diffusivities.previous_compute_time[] = model.clock.time
 
-    launch!(arch, grid, :xyz,
-            calculate_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+    launch!(arch, grid, :xy,
+            compute_average_surface_buoyancy_flux!,
+            diffusivities.Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+
+    launch!(arch, grid, parameters,
+            compute_CATKE_diffusivities!,
+            diffusivities, grid, closure, velocities, tracers, buoyancy)
 
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    i, j, k, = @index(Global, NTuple)
+@kernel function compute_average_surface_buoyancy_flux!(Qᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+    i, j = @index(Global, NTuple)
+
+    closure = getclosure(i, j, closure)
+
+    Qᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers))
+
+    k = grid.Nz
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Qᵇ)
+
+    Qᵇᵋ = closure.minimum_convective_buoyancy_flux
+    Qᵇᵢⱼ = @inbounds Qᵇ[i, j, 1]
+    Qᵇ⁺ = max(Qᵇᵋ, Qᵇᵢⱼ, Qᵇ★) # selects fastest (dominant) time-scale
+    t★ = (ℓᴰ^2 / Qᵇ⁺)^(1/3)
+    ϵ = Δt / t★
+
+    @inbounds Qᵇ[i, j, 1] = (Qᵇᵢⱼ + ϵ * Qᵇ★) / (1 + ϵ)
+end
+
+@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+    i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
-
-    max_K = closure_ij.maximum_diffusivity
+    Qᵇ = diffusivities.Qᵇ
 
     @inbounds begin
-        diffusivities.κᵘ[i, j, k] = min(max_K, κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
-        diffusivities.κᶜ[i, j, k] = min(max_K, κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
-        diffusivities.κᵉ[i, j, k] = min(max_K, κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs))
+        κᵘ★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
+        κᶜ★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
+        κᵉ★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Qᵇ)
+
+        on_periphery = peripheral_node(i, j, k, grid, c, c, f)
+        within_inactive = inactive_node(i, j, k, grid, c, c, f)
+        nan = convert(eltype(grid), NaN)
+        κᵘ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᵘ★))
+        κᶜ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᶜ★))
+        κᵉ★ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, nan, κᵉ★))
+
+        diffusivities.κᵘ[i, j, k] = κᵘ★
+        diffusivities.κᶜ[i, j, k] = κᶜ★
+        diffusivities.κᵉ[i, j, k] = κᵉ★
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        wb = buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
+        wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
+        eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
 
         # See `buoyancy_flux`
-        dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
+        dissipative_buoyancy_flux = (sign(wb) * sign(eⁱʲᵏ) < 0) & (eⁱʲᵏ > eᵐⁱⁿ)
         wb_e = ifelse(dissipative_buoyancy_flux, wb / eⁱʲᵏ, zero(grid))
+
+        # Treat the divergence of TKE flux at solid bottoms implicitly.
+        # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
+        #
+        #       ∂t e = - δ(z + h) ∇ ⋅ Jᵉ + ⋯
+        #       ∂t e = + δ(z + h) Jᵉ / Δz + ⋯
+        #
+        # where δ(z + h) is a δ-function that is 0 everywhere except adjacent to the bottom boundary
+        # at $z = -h$ and Δz is the grid spacing at the bottom
+        #
+        # Thus if
+        #
+        #       Jᵉ ≡ - Cᵂϵ * √e³
+        #          = - (Cᵂϵ * √e) e
+        #
+        # Then the contribution of Jᵉ to the implicit flux is
+        #
+        #       Lᵂ = - Cᵂϵ * √e / Δz.
+        #
+        on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+        Δz = Δzᶜᶜᶜ(i, j, k, grid)
+        Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
+        e⁺ = clip(eⁱʲᵏ)
+        w★ = sqrt(e⁺)
+        div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
+
+        # Implicit TKE dissipation
+        ω = dissipation_rate(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         
-        diffusivities.Lᵉ[i, j, k] = - wb_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+        # The interior contributions to the linear implicit term `L` are defined via
+        #
+        #       ∂t e = Lⁱ e + ⋯,
+        #
+        # So
+        #
+        #       Lⁱ e = wb - ϵ
+        #            = (wb / e - ω) e,
+        #               ↖--------↗
+        #                  = Lⁱ
+        #
+        # where ω = ϵ / e ∼ √e / ℓ.
+        
+        diffusivities.Lᵉ[i, j, k] = wb_e - ω + div_Jᵉ_e
     end
 end
 
@@ -280,29 +362,50 @@ end
     return @inbounds L[i, j, k]
 end
 
-@inline function turbulent_velocity(i, j, k, grid, closure, e)
+@inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     eᵢ = @inbounds e[i, j, k]
     eᵐⁱⁿ = closure.minimum_turbulent_kinetic_energy
     return sqrt(max(eᵐⁱⁿ, eᵢ))
 end
-@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
-@inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, closure, tracers.e)
-    ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓu * u★
+@inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᵘ = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵘ = ℓᵘ * w★
+    κᵘ_max = closure.maximum_viscosity
+    return min(κᵘ, κᵘ_max)
 end
 
-@inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, closure, tracers.e)
-    ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓc * u★
+@inline function κuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    ℓᵘ = momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵘ = ℓᵘ * w★
+    κᵘ_max = closure.maximum_viscosity
+    return min(κᵘ, κᵘ_max)
 end
 
-@inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, closure, tracers.e)
-    ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓe * u★
+@inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᶜ = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᶜ = ℓᶜ * w★
+    κᶜ_max = closure.maximum_tracer_diffusivity
+    return min(κᶜ, κᶜ_max)
+end
+
+@inline function κcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
+    ℓᶜ = tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᶜ = ℓᶜ * w★
+    κᶜ_max = closure.maximum_tracer_diffusivity
+    return min(κᶜ, κᶜ_max)
+end
+
+@inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    ℓᵉ = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    κᵉ = ℓᵉ * w★
+    κᵉ_max = closure.maximum_tke_diffusivity
+    return min(κᵉ, κᵉ_max)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κᵘ
@@ -318,34 +421,37 @@ function Base.summary(closure::CATKEVD)
 end
 
 function Base.show(io::IO, closure::FlavorOfCATKE)
-    # └
     print(io, summary(closure))
     print(io, '\n')
-    print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n',
+    print(io, "├── maximum_tracer_diffusivity: ", prettysummary(closure.maximum_tracer_diffusivity), '\n',
+              "├── maximum_tke_diffusivity: ", prettysummary(closure.maximum_tke_diffusivity), '\n',
+              "├── maximum_viscosity: ", prettysummary(closure.maximum_viscosity), '\n',
               "├── minimum_turbulent_kinetic_energy: ", prettysummary(closure.minimum_turbulent_kinetic_energy), '\n',
               "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(closure.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
               "├── minimum_convective_buoyancy_flux: ", prettysummary(closure.minimum_convective_buoyancy_flux), '\n',
               "├── mixing_length: ", prettysummary(closure.mixing_length), '\n',
+              "│   ├── Cˢ:   ", prettysummary(closure.mixing_length.Cˢ), '\n',
               "│   ├── Cᵇ:   ", prettysummary(closure.mixing_length.Cᵇ), '\n',
               "│   ├── Cᶜc:  ", prettysummary(closure.mixing_length.Cᶜc), '\n',
               "│   ├── Cᶜe:  ", prettysummary(closure.mixing_length.Cᶜe), '\n',
               "│   ├── Cᵉc:  ", prettysummary(closure.mixing_length.Cᵉc), '\n',
               "│   ├── Cᵉe:  ", prettysummary(closure.mixing_length.Cᵉe), '\n',
-              "│   ├── C⁻u:  ", prettysummary(closure.mixing_length.C⁻u), '\n',
-              "│   ├── C⁻c:  ", prettysummary(closure.mixing_length.C⁻c), '\n',
-              "│   ├── C⁻e:  ", prettysummary(closure.mixing_length.C⁻e), '\n',
-              "│   ├── C⁺u:  ", prettysummary(closure.mixing_length.C⁺u), '\n',
-              "│   ├── C⁺c:  ", prettysummary(closure.mixing_length.C⁺c), '\n',
-              "│   ├── C⁺e:  ", prettysummary(closure.mixing_length.C⁺e), '\n',
-              "│   ├── CRiʷ: ", prettysummary(closure.mixing_length.CRiʷ), '\n',
-              "│   └── CRiᶜ: ", prettysummary(closure.mixing_length.CRiᶜ), '\n',
+              "│   ├── Cˡᵒu: ", prettysummary(closure.mixing_length.Cˡᵒu), '\n',
+              "│   ├── Cˡᵒc: ", prettysummary(closure.mixing_length.Cˡᵒc), '\n',
+              "│   ├── Cˡᵒe: ", prettysummary(closure.mixing_length.Cˡᵒe), '\n',
+              "│   ├── Cʰⁱu: ", prettysummary(closure.mixing_length.Cʰⁱu), '\n',
+              "│   ├── Cʰⁱc: ", prettysummary(closure.mixing_length.Cʰⁱc), '\n',
+              "│   ├── Cʰⁱe: ", prettysummary(closure.mixing_length.Cʰⁱe), '\n',
+              "│   ├── CRiᵟ: ", prettysummary(closure.mixing_length.CRiᵟ), '\n',
+              "│   └── CRi⁰: ", prettysummary(closure.mixing_length.CRi⁰), '\n',
               "└── turbulent_kinetic_energy_equation: ", prettysummary(closure.turbulent_kinetic_energy_equation), '\n',
-              "    ├── C⁻D:  ", prettysummary(closure.turbulent_kinetic_energy_equation.C⁻D),  '\n',
-              "    ├── C⁺D:  ", prettysummary(closure.turbulent_kinetic_energy_equation.C⁺D),  '\n',
+              "    ├── CˡᵒD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CˡᵒD),  '\n',
+              "    ├── CʰⁱD: ", prettysummary(closure.turbulent_kinetic_energy_equation.CʰⁱD),  '\n',
               "    ├── CᶜD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᶜD),  '\n',
               "    ├── CᵉD:  ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵉD),  '\n',
               "    ├── Cᵂu★: ", prettysummary(closure.turbulent_kinetic_energy_equation.Cᵂu★), '\n',
-              "    └── CᵂwΔ: ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵂwΔ))
+              "    ├── CᵂwΔ: ", prettysummary(closure.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
+              "    └── Cᵂϵ:  ", prettysummary(closure.turbulent_kinetic_energy_equation.Cᵂϵ))
 end
 
 end # module

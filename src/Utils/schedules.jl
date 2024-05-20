@@ -146,7 +146,7 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+SpecifiedTimes(times::Vararg{T}) where T<:Number = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 SpecifiedTimes(times) = SpecifiedTimes(times...)
 
 function next_appointment_time(st::SpecifiedTimes)
@@ -174,8 +174,13 @@ align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointmen
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
-    str_elems = str_elems[1:end-2]
-    return string("[", str_elems..., "]")
+    str = string("[", str_elems...)
+
+    # Remove final separator ", "
+    str = str[1:end-2]
+
+    # Add closing bracket
+    return string(str, "]")
 end
 
 #####

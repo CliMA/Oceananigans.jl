@@ -1,13 +1,56 @@
 using StructArrays: StructArray, replace_storage
-using Oceananigans.Grids: on_architecture
+using Oceananigans.Grids: on_architecture, architecture
+using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Utils: AbstractSchedule
 
 #####
 ##### Output writer utilities
 #####
+
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+
+mutable struct FileSizeLimit <: AbstractSchedule
+    size_limit :: Float64
+    path :: String
+end
+
+"""
+    FileSizeLimit(size_limit [, path=""])
+
+Return a schedule that actuates when the file at `path` exceeds
+the `size_limit`.
+
+The `path` is automatically added and updated when `FileSizeLimit` is
+used with an output writer, and should not be provided manually.
+"""
+FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
+
+(fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
+
+function Base.summary(fsl::FileSizeLimit)
+    current_size_str = pretty_filesize(filesize(fsl.path))
+    size_limit_str = pretty_filesize(fsl.size_limit)
+    return string("FileSizeLimit(size_limit=", size_limit_str,
+                              ", path=", fsl.path, " (", current_size_str, ")")
+end
+
+Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
+
+# Update schedule based on user input
+update_file_splitting_schedule!(schedule, filepath) = nothing
+
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+    schedule.path = filepath
+    return nothing
+end 
 
 """
     ext(ow)
@@ -39,6 +82,12 @@ saveproperty!(file, address, p::AbstractArray)        = file[address] = Array(pa
 saveproperty!(file, address, p::Function)             = nothing
 saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
 saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
+
+function saveproperty!(file, address, grid::DistributedGrid) 
+    arch = architecture(grid)
+    cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
+    _saveproperty!(file, address, on_architecture(cpu_arch, grid))
+end
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
@@ -74,6 +123,12 @@ serializeproperty!(file, address, p::CantSerializeThis) = nothing
 # Convert to CPU please!
 # TODO: use on_architecture for more stuff?
 serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
+
+function serializeproperty!(file, address, grid::DistributedGrid) 
+    arch = architecture(grid)
+    cpu_arch = Distributed(CPU(); partition = arch.partition)
+    file[address] = on_architecture(cpu_arch, grid)
+end
 
 function serializeproperty!(file, address, p::FieldBoundaryConditions)
     # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize

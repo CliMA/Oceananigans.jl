@@ -7,6 +7,10 @@ using Logging
 
 using CUDA
 using MPI
+
+MPI.versioninfo()
+MPI.Initialized() || MPI.Init()
+
 using JLD2
 using FFTW
 using OffsetArrays
@@ -29,12 +33,13 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: on_architecture
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
@@ -52,26 +57,16 @@ Logging.global_logger(OceananigansLogger())
 ##### Testing parameters
 #####
 
-float_types = (Float32, Float64)
-
 closures = (
     :ScalarDiffusivity,
     :ScalarBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :ConvectiveAdjustmentVerticalDiffusivity
+    :ConvectiveAdjustmentVerticalDiffusivity,
 )
-
-#####
-##### Run tests!
-#####
-
-float_types = (Float32, Float64)
 
 include("utils_for_runtests.jl")
 
+float_types = (Float32, Float64)
 archs = test_architectures()
-
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
-test_file = get(ENV, "TEST_FILE", :none) |> Symbol

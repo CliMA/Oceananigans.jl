@@ -6,7 +6,7 @@ using Statistics
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
-using Oceananigans.Advection: boundary_buffer, VelocityStencil, VorticityStencil, MultiDimensionalScheme
+using Oceananigans.Advection: required_halo_size, VelocityStencil
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation, shallow_water_velocities
 using Oceananigans.Fields: interior
 
@@ -36,8 +36,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VorticityStencil(), order = order),
-                     mass_advection = WENO(order = order),
+                 momentum_advection = VectorInvariant(vorticity_scheme = WENO(; order)),
+                     mass_advection = WENO(; order),
                            coriolis = nothing,
                             closure = nothing,
                         formulation = VectorInvariantFormulation())
@@ -75,37 +75,6 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
 
     hvi_simulation = interior(model.solution.h)[:, :, 1] |> Array
     hvi_errors = compute_error(hvi_simulation, h_analytical)
-
-    #####
-    ##### Test advection of an isoentropic vortex with a VectorInvariantFormulation
-    #####
-
-    model = ShallowWaterModel( grid = grid,
-         gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
-                     mass_advection = WENO(order = order),
-                           coriolis = nothing,
-                            closure = nothing,
-                        formulation = VectorInvariantFormulation())
-
-    set!(model, u = (x, y, z) -> U + δu(x, y, 0, U, β, xᵥ, yᵥ),
-                v = (x, y, z) -> δv(x, y, 0, U, β, xᵥ, yᵥ),
-                h = (x, y, z) -> δh(x, y, 0, U, β, xᵥ, yᵥ))
-
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
-
-    @info "Running Isoentropic vortex advection with Ny = $Nx and Δt = $Δt order $order and a VectorInvariantFormulation VelocityStencil..."
-    run!(simulation)
-
-    # Calculate errors
-    uvv_simulation = interior(model.solution.u)[:, :, 1] |> Array
-    uvv_errors = compute_error(uvv_simulation, u_analytical)
-
-    vvv_simulation = interior(model.solution.v)[:, :, 1] |> Array
-    vvv_errors = compute_error(vvv_simulation, v_analytical)
-
-    hvv_simulation = interior(model.solution.h)[:, :, 1] |> Array
-    hvv_errors = compute_error(hvv_simulation, h_analytical)
 
     #####
     ##### Test advection of an isoentropic vortex with a ConservativeFormulation
@@ -157,7 +126,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
                            L₁ = hvi_errors.L₁,
                            L∞ = hvi_errors.L∞),
 
-            uvv = (simulation = uvv_simulation,
+            uvv = (simulation = uvi_simulation,
                    analytical = u_analytical,
                            L₁ = uvv_errors.L₁,
                            L∞ = uvv_errors.L∞),
@@ -167,7 +136,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
                            L₁ = vvi_errors.L₁,
                            L∞ = vvi_errors.L∞),
 
-            hvv = (simulation = hvv_simulation,
+            hvv = (simulation = hvi_simulation,
                    analytical = h_analytical,
                            L₁ = hvv_errors.L₁,
                            L∞ = hvv_errors.L∞),

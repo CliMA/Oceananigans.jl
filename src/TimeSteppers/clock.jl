@@ -3,38 +3,50 @@ using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
 
 import Base: show
+import Oceananigans.Units: Time
 
 """
-    mutable struct Clock{T<:Number}
+    mutable struct Clock{T, FT}
 
-Keeps track of the current `time`, `iteration` number, and time-stepping `stage`.
+Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
-mutable struct Clock{T}
-         time :: T
+mutable struct Clock{TT, DT}
+         time :: TT
+      last_Δt :: DT
     iteration :: Int
         stage :: Int
 end
 
 """
-    Clock(; time, iteration=0, stage=1)
+    Clock(; time, last_Δt = Inf, iteration=0, stage=1)
 
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
-and first time step `stage`.
+and first time step `stage` with `last_Δt`.
 """
-Clock(; time::T, iteration=0, stage=1) where T = Clock{T}(time, iteration, stage)
+Clock(; time::TT, last_Δt::DT=Inf, iteration=0, stage=1) where {TT, DT} = Clock{TT, DT}(time, last_Δt, iteration, stage)
+# TODO: when supporting DateTime, this function will have to be extended
+time_step_type(TT) = TT
 
-Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration))")
+function Clock{TT}(; time, last_Δt=Inf, iteration=0, stage=1) where TT
+    DT = time_step_type(TT)
+    last_Δt = convert(DT, last_Δt)
+    return Clock{TT, DT}(time, last_Δt, iteration, stage)
+end
 
-Base.show(io::IO, c::Clock{T}) where T =
-    println(io, "Clock{$T}: time = $(prettytime(c.time)), iteration = $(c.iteration), stage = $(c.stage)")
+Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration), last_Δt=$(prettytime(clock.last_Δt)))")
+
+Base.show(io::IO, c::Clock{TT, DT}) where {TT, DT} =
+    println(io, "Clock{$TT, $DT}: time = $(prettytime(c.time)), last_Δt = $(prettytime(c.last_Δt)), iteration = $(c.iteration), stage = $(c.stage)")
 
 next_time(clock, Δt) = clock.time + Δt
 next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
 
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
+
+Time(clock::Clock) = Time(clock.time)
 
 # Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t
@@ -49,6 +61,8 @@ function tick!(clock, Δt; stage=false)
 
     tick_time!(clock, Δt)
 
+    clock.last_Δt = Δt
+
     if stage # tick a stage update
         clock.stage += 1
     else # tick an iteration and reset stage
@@ -60,4 +74,6 @@ function tick!(clock, Δt; stage=false)
 end
 
 "Adapt `Clock` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, clock::Clock) = (time=clock.time, iteration=clock.iteration, stage=clock.stage)
+Adapt.adapt_structure(to, clock::Clock) =
+    (time=clock.time, last_Δt=clock.last_Δt, iteration=clock.iteration, stage=clock.stage)
+

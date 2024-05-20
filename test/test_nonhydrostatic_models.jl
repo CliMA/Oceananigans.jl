@@ -19,7 +19,7 @@ include("dependencies_for_runtests.jl")
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
+                arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
@@ -32,8 +32,8 @@ include("dependencies_for_runtests.jl")
     @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
         @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
-        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
-          funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+        minimal_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 1, 1))
+          funny_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
         model = NonhydrostaticModel(grid=minimal_grid)
@@ -148,10 +148,10 @@ include("dependencies_for_runtests.jl")
 
             # Test whether set! copies boundary conditions
             # Note: we need to cleanup broadcasting for this -- see https://github.com/CliMA/Oceananigans.jl/pull/2786/files#r1008955571
-            @test_skip u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
-            @test_skip u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
-            @test_skip all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
-            @test_skip all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
+            @test u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
+            @test u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
+            @test all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
+            @test all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
             # Test that enforce_incompressibility works
             set!(model, u=0, v=0, w=1, T=0, S=0)

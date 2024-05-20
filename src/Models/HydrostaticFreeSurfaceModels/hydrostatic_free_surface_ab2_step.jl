@@ -1,6 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.ImmersedBoundaries: active_interior_map, active_surface_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -8,7 +9,11 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
+setup_free_surface!(model, free_surface, χ) = nothing
+
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
+
+    setup_free_surface!(model, model.free_surface, χ)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
@@ -20,11 +25,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 end
 
 function local_ab2_step!(model, Δt, χ)
-
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
-    
-    return nothing
+    return nothing    
 end
 
 #####
@@ -87,4 +90,3 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     return nothing
 end
-

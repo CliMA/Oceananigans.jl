@@ -47,14 +47,34 @@ vᵢ .-= mean(vᵢ)
 
 set!(model, u=uᵢ, v=vᵢ)
 
+# ## Setting up a simulation
+#
+# We set-up a simulation that stops at 50 time units, with an initial
+# time-step of 0.1, and with adaptive time-stepping and progress printing.
+
 simulation = Simulation(model, Δt=0.2, stop_time=50)
+
+# The `TimeStepWizard` helps ensure stable time-stepping
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
+
+wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ## Logging simulation progress
 #
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
-progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+using Printf
+
+function progress_message(sim)
+    max_abs_u = maximum(abs, sim.model.velocities.u)
+    walltime = prettytime(sim.run_wall_time)
+
+    return @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
+                          iteration(sim), time(sim), sim.Δt, max_abs_u, walltime)
+end
+
+add_callback!(simulation, progress_message, IterationInterval(100))
 
 # ## Output
 #
@@ -111,16 +131,14 @@ times = ω_timeseries.times
 
 xω, yω, zω = nodes(ω_timeseries)
 xs, ys, zs = nodes(s_timeseries)
-nothing # hide
+nothing #hide
 
 # and animate the vorticity and fluid speed.
 
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-@info "Making a neat movie of vorticity and speed..."
-
-fig = Figure(resolution = (800, 500))
+fig = Figure(size = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
@@ -147,7 +165,7 @@ heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -157,8 +175,6 @@ frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."
 
 record(fig, filename * ".mp4", frames, framerate=24) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide

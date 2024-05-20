@@ -4,6 +4,8 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 ##### `fill_halo_regions!` for tuples of `Field`
 #####
 
+@inline flattened_unique_values(::Tuple{}) = tuple()
+
 """
     flattened_unique_values(a::NamedTuple)
 
@@ -38,18 +40,18 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 
 Fill halo regions for all `fields`. The algorithm:
 
-    1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-       duplicate entries to avoid "repeated" halo filling.
+  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+     duplicate entries to avoid "repeated" halo filling.
     
-    2. Filters fields into three categories:
-        i. ReducedFields with non-trivial boundary conditions;
-        ii. Fields with non-trivial indices and boundary conditions;
-        iii. Fields spanning the whole grid with non-trivial boundary conditions.
+  2. Filters fields into three categories:
+     i. ReducedFields with non-trivial boundary conditions;
+     ii. Fields with non-trivial indices and boundary conditions;
+     iii. Fields spanning the whole grid with non-trivial boundary conditions.
     
-    3. Halo regions for every `ReducedField` and windowed fields are filled independently.
+  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
     
-    4. In every direction, the halo regions in each of the remaining Field tuple
-       are filled simultaneously.
+  4. In every direction, the halo regions in each of the remaining `Field` tuple
+     are filled simultaneously.
 """
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
@@ -58,12 +60,16 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
     reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
     
+    for field in reduced_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+
     # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
     windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
     ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
 
     # Fill halo regions for reduced and windowed fields
-    for field in (reduced_fields..., windowed_fields...)
+    for field in windowed_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
@@ -76,12 +82,17 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     return nothing
 end
 
-tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
-    fill_halo_regions!(data.(fields),
-                       boundary_conditions.(fields),
-                       default_indices(3),         # We cannot group windowed fields together, the indices must be (:, :, :)!
-                       instantiated_location.(fields),
-                       grid, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
+
+    # We cannot group windowed fields together, the indices must be (:, :, :)!
+    indices = default_indices(3)        
+
+    return fill_halo_regions!(map(data, fields),
+                              map(boundary_conditions, fields),
+                              indices,
+                              map(instantiated_location, fields),
+                              grid, args...; kwargs...)
+end
 
 #####
 ##### Tracer names
@@ -112,7 +123,7 @@ validate_field_grid(grid, field_tuple::NamedTuple) =
     all(validate_field_grid(grid, field) for field in field_tuple)
 
 """
-    validate_field_tuple_grid(tuple_name, field_tuple, arch, grid, bcs)
+    validate_field_tuple_grid(tuple_name, field_tuple, grid)
 
 Validates the grids associated with grids in the (possibly nested) `field_tuple`,
 and returns `field_tuple` if validation succeeds.
@@ -192,42 +203,6 @@ TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
 "Shortcut constructor for empty tracer fields."
 TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
 
-#####
-##### Pressure fields tuples
-#####
-
-"""
-    PressureFields(grid, bcs::NamedTuple)
-
-Return a `NamedTuple` with pressure fields `pHY′` and `pNHS` initialized as
-`CenterField`s on `grid`.  Boundary conditions `bcs`
-may be specified via a named tuple of `FieldBoundaryCondition`s.
-"""
-function PressureFields(grid, bcs=NamedTuple())
-
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
-    bcs = merge(default_pressure_boundary_conditions, bcs)
-
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (pHY′=pHY′, pNHS=pNHS)
-end
-
-function PressureFields(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
-    default_pressure_boundary_conditions =
-        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
-
-    bcs = merge(default_pressure_boundary_conditions, bcs)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS)
-
-    return (; pHY′=nothing, pNHS=pNHS)
-end
-
 """
     TendencyFields(grid, tracer_names;
                    u = XFaceField(grid),
@@ -257,7 +232,6 @@ end
 #####
 
 VelocityFields(::Nothing, grid, bcs) = VelocityFields(grid, bcs)
-PressureFields(::Nothing, grid, bcs) = PressureFields(grid, bcs)
 
 """
     VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs)
@@ -290,19 +264,4 @@ function TracerFields(proposed_tracers::NamedTuple, grid, bcs)
     tracer_fields = Tuple(CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data) for c in tracer_names)
 
     return NamedTuple{tracer_names}(tracer_fields)
-end
-
-"""
-    PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
-
-Return a `NamedTuple` of pressure fields with, overwriting boundary conditions
-in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
-"""
-function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, grid, bcs)
-    validate_field_tuple_grid("pressures", proposed_pressures, grid)
-
-    pHY′ = CenterField(grid, boundary_conditions=bcs.pHY′, data=proposed_pressures.pHY′.data)
-    pNHS = CenterField(grid, boundary_conditions=bcs.pNHS, data=proposed_pressures.pNHS.data)
-
-    return (pHY′=pHY′, pNHS=pNHS)
 end

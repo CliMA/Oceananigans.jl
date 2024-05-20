@@ -32,21 +32,25 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=default_indices(length(loc)))
+# The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
+function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
-    extra_ii = Tuple(axes(underlying_data, d) for d in length(ii)+1:ndims(underlying_data))
+    # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
+    extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
+        Base.@_inline_meta
+        axes(underlying_data, i+length(ii))
+    end
     return OffsetArray(underlying_data, ii..., extra_ii...)
 end
 
 """
-    offset_data(underlying_data, grid::AbstractGrid, loc)
+    offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
 
-Returns an `OffsetArray` that maps to `underlying_data` in memory,
-with offset indices appropriate for the `data` of a field on
-a `grid` of `size(grid)` and located at `loc`.
+Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
+appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -54,7 +58,7 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
 """
     new_data(FT, arch, loc, topo, sz, halo_sz, indices)
 
-Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
+Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))

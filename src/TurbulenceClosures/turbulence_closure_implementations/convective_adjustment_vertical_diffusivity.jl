@@ -1,9 +1,9 @@
-using Oceananigans.Architectures: architecture, arch_array
+using Oceananigans.Architectures: architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     convective_κz :: CK
     convective_νz :: CN
     background_κz :: BK
@@ -88,14 +88,14 @@ DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = Z
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κᶜ
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             ## If we can figure out how to only precompute the "stability" of a cell:
             # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
             compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy)
@@ -106,7 +106,7 @@ end
 @inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
 @kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
-    i, j, k, = @index(Global, NTuple)
+    i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
