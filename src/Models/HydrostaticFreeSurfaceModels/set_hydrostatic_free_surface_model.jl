@@ -46,6 +46,7 @@ model.velocities.u
 ```
 """
 @inline function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
