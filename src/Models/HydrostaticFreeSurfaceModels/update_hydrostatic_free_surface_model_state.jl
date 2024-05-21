@@ -34,6 +34,17 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
+    @apply_regionally compute_auxiliaries!(model)
+
+    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
+
+    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
+
+    update_biogeochemical_state!(model.biogeochemistry, model)
+
+    compute_tendencies &&
+        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
