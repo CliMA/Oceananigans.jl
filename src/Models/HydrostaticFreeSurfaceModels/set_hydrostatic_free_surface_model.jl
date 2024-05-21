@@ -46,21 +46,8 @@ model.velocities.u
 ```
 """
 @inline function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
-    for (fldname, value) in kwargs
-        if fldname ∈ propertynames(model.velocities)
-            ϕ = getproperty(model.velocities, fldname)
-        elseif fldname ∈ propertynames(model.tracers)
-            ϕ = getproperty(model.tracers, fldname)
-        elseif fldname ∈ propertynames(model.free_surface)
-            ϕ = getproperty(model.free_surface, fldname)
-        else
-            throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
-        end
 
-        @apply_regionally set!(ϕ, value)
-    end
-
-    initialize!(model)
+    #initialize!(model)
     update_state!(model)
 
     return nothing
