@@ -1,14 +1,13 @@
 agents:
   queue: new-central
   slurm_mem: 8G
-  modules: climacommon/2024_03_18
+  modules: climacommon/2024_04_30
 
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
-  JULIA_CPU_TARGET: 'broadwell;skylake'
 
 steps:
   - label: "initialize"

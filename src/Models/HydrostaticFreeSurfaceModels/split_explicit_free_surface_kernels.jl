@@ -347,7 +347,7 @@ const FTS = FixedTimeStepSize
 # we set a minimum number of substeps to execute to avoid numerical issues
 const MINIMUM_SUBSTEPS = 5
 
-@inline calculate_substeps(substepping::FNS, Δt) = length(substepping.averaging_weights)
+@inline calculate_substeps(substepping::FNS, Δt=nothing) = length(substepping.averaging_weights)
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights

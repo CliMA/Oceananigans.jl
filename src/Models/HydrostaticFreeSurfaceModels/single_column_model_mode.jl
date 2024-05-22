@@ -43,8 +43,8 @@ end
 validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
 validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
-validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
-validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothing, NamedTuple()
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
 compute_w_from_continuity!(velocities, arch, ::SingleColumnGrid; kwargs...) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, arch, ::SingleColumnGrid; kwargs...) = nothing
@@ -108,7 +108,7 @@ end
 ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, Nz, Hz)
 
 validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
-validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
+validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 @inline function time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization

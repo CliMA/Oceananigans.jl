@@ -34,6 +34,9 @@ update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; param
 update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
+update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
+update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothing
+
 # extend p kernel to compute also the boundaries
 @inline function p_kernel_parameters(grid) 
     Nx, Ny, _ = size(grid)

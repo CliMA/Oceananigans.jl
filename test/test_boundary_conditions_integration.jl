@@ -222,7 +222,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             bottom(x, y) = 0
             ib = GridFittedBottom(bottom)
-            grid_kw = (size = (1, 1, 2), x = (0, Lx), y = (0, Ly))
+            grid_kw = (size = (2, 2, 2), x = (0, Lx), y = (0, Ly))
 
             rectilinear_grid(topology) = RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...)
             immersed_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)
