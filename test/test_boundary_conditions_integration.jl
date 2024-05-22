@@ -70,7 +70,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     set!(model, b=b₀)
 
     b = model.tracers.b
-    mean_b₀ = mean(interior(b))
+    mean_b₀ = mean(b)
 
     τκ = Lz^2 / κ₀  # Diffusion time-scale
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
@@ -98,7 +98,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
     
-    return isapprox(mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+    return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
