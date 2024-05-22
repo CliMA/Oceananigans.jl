@@ -58,7 +58,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
-    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=Value()BoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = NonhydrostaticModel(
@@ -123,34 +123,34 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Bounded, Bounded, Bounded))
 
-        u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
-                                                        top    = simple_function_bc(Value),
-                                                        north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Open{Nothing}),
-                                                         west  = simple_function_bc(Open{Nothing}))
+        u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value()),
+                                                        top    = simple_function_bc(Value()),
+                                                        north  = simple_function_bc(Value()),
+                                                        south  = simple_function_bc(Value()),
+                                                         east  = simple_function_bc(Open()),
+                                                         west  = simple_function_bc(Open()))
 
-        v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
-                                                        top    = simple_function_bc(Value),
-                                                        north  = simple_function_bc(Open{Nothing}),
-                                                        south  = simple_function_bc(Open{Nothing}),
-                                                         east  = simple_function_bc(Value),
-                                                         west  = simple_function_bc(Value))
+        v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value()),
+                                                        top    = simple_function_bc(Value()),
+                                                        north  = simple_function_bc(Open()),
+                                                        south  = simple_function_bc(Open()),
+                                                         east  = simple_function_bc(Value()),
+                                                         west  = simple_function_bc(Value()))
 
 
-        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open{Nothing}),
-                                                        top    = simple_function_bc(Open{Nothing}),
-                                                        north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Value),
-                                                         west  = simple_function_bc(Value))
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open()),
+                                                        top    = simple_function_bc(Open()),
+                                                        north  = simple_function_bc(Value()),
+                                                        south  = simple_function_bc(Value()),
+                                                         east  = simple_function_bc(Value()),
+                                                         west  = simple_function_bc(Value()))
 
-        T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
-                                                        top    = simple_function_bc(Value),
-                                                        north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Value),
-                                                         west  = simple_function_bc(Value))
+        T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value()),
+                                                        top    = simple_function_bc(Value()),
+                                                        north  = simple_function_bc(Value()),
+                                                        south  = simple_function_bc(Value()),
+                                                         east  = simple_function_bc(Value()),
+                                                         west  = simple_function_bc(Value()))
 
         boundary_conditions = (u=u_boundary_conditions,
                                v=v_boundary_conditions,
@@ -197,13 +197,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             topo = (Bounded, Bounded, Bounded)
 
-            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+            for C in (Gradient(), Flux(), Value()), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(Open{Nothing}, FT, array_type(arch))
+            for boundary_condition in test_boundary_conditions(Open(), FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)

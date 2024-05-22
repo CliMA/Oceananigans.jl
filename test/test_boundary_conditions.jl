@@ -21,7 +21,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux)
+        for C in (Value(), Gradient(), Flux())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
@@ -235,7 +235,7 @@ end
         @test T_bcs.top.condition.func === simple_bc
         @test T_bcs.bottom.condition.func === simple_bc
 
-        one_bc = BoundaryCondition(Value, 1.0)
+        one_bc = BoundaryCondition(Value(), 1.0)
 
         T_bcs = FieldBoundaryConditions(   east = one_bc,
                                            west = one_bc,
