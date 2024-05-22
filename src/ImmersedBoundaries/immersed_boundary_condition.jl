@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, h_diffusivity, z_diffusivity
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
-import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str
+import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str, update_boundary_condition!
 
 import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
                                         immersed_∂ⱼ_τ₂ⱼ,
@@ -272,6 +272,9 @@ Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondi
                                                                                      Adapt.adapt(to, bc.north),
                                                                                      Adapt.adapt(to, bc.bottom),
                                                                                      Adapt.adapt(to, bc.top))
+
+update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
+
 #####
 ##### Alternative implementation for immersed flux divergence
 #####
