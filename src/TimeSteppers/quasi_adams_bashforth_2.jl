@@ -84,8 +84,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #     initialized as Inf
     #   * The user has passed euler=true to time_step!
     χ₀ = ab2_timestepper.χ
-    euler = euler || (Δt != model.clock.last_Δt)
-    ab2_timestepper.previous_Δt = Δt
+    euler = euler || (Δt != ab2_timestepper.previous_Δt)
     
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
@@ -93,6 +92,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     # Set time-stepper χ (this is used in ab2_step!, but may also be used elsewhere)
     ab2_timestepper.χ = χ
+    ab2_timestepper.previous_Δt = Δt
 
     # Ensure zeroing out all previous tendency fields to avoid errors in
     # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
@@ -102,6 +102,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
             !isnothing(field) && @apply_regionally fill!(field, 0)
         end
     end
+
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
     ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
