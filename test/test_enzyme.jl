@@ -180,8 +180,13 @@ end
                 Duplicated(model, dmodel),
                 Active(1.0))
     end
+end
 
-    Enzyme.API.looseTypeAnalysis!(false)
+@inline function tracer_flux(x, y, t, c, p)
+    c₀ = p.surface_tracer_concentration
+    u★ = p.piston_velocity
+    return - u★ * (c₀ - c)
+end
 
 @testset "Enzyme on advection and diffusion" begin
     Nx = Ny = 64
@@ -208,12 +213,6 @@ end
     set!(v, v₀)
     fill_halo_regions!(u)
     fill_halo_regions!(v)
-
-    @inline function tracer_flux(x, y, t, c, p)
-        c₀ = p.surface_tracer_concentration
-        u★ = p.piston_velocity
-        return - u★ * (c₀ - c)
-    end
 
     parameters = (surface_tracer_concentration = 1,
                   piston_velocity = 0.1)
