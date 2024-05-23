@@ -173,7 +173,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
-using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
+using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")

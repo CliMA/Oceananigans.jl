@@ -5,6 +5,7 @@ using Printf
 
 using Oceananigans.TurbulenceClosures:
     RiBasedVerticalDiffusivity,
+    TKEDissipationVerticalDiffusivity,
     CATKEVerticalDiffusivity
 
 # Parameters
@@ -15,8 +16,9 @@ f₀ = 1e-4       # Coriolis parameter (s⁻¹)
 N² = 1e-5       # Buoyancy gradient (s⁻²)
 Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
 τˣ = -2e-3      # Surface kinematic momentum flux (m s⁻¹)
-stop_time = 4days
+stop_time = 1days
 
+tke_dissipation = TKEDissipationVerticalDiffusivity()
 catke = CATKEVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
@@ -26,19 +28,36 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-closures_to_run = [catke, ri_based]
+closures_to_run = [tke_dissipation, catke] #, ri_based]
+closure = tke_dissipation
+
+function progress(sim)
+    model = sim.model
+
+    msg = @sprintf("Iter: % 5d, time: % 16s, max(b): %6.2e",
+                   iteration(sim), prettytime(sim), maximum(model.tracers.b))
+
+    msg *= @sprintf(", max(κ): %6.2e, max(e): %6.2e, max(ϵ): %6.2e",
+                    maximum(model.diffusivity_fields.κc),
+                    maximum(model.tracers.e),
+                    maximum(model.tracers.ϵ))
+
+    @info msg
+
+    return nothing
+end
 
 for closure in closures_to_run
 
     model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                        tracers = (:b, :e),
+                                        tracers = (:b, :e, :ϵ),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
                                         
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
-    simulation = Simulation(model; Δt=10minutes, stop_time)
+    simulation = Simulation(model; Δt=10.0, stop_time)
 
     closurename = string(nameof(typeof(closure)))
 
@@ -54,11 +73,8 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = output_writer
 
-    progress(sim) = @info string("Iter: ", iteration(sim),
-                                 " t: ", prettytime(sim),
-                                 ", max(b): ", maximum(model.tracers.b))
-
-    add_callback!(simulation, progress, IterationInterval(100))
+    
+    add_callback!(simulation, progress, IterationInterval(10))
 
     @info "Running a simulation of "
     @info "$model"
