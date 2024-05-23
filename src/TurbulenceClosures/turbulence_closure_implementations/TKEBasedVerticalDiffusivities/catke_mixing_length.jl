@@ -8,11 +8,11 @@ using ..TurbulenceClosures:
     total_depthᶜᶜᵃ
 
 """
-    struct MixingLength{FT}
+    struct CATKEMixingLength{FT}
 
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
-Base.@kwdef struct MixingLength{FT}
+Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.45   # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.197  # Sheared convective plume coefficient
@@ -301,10 +301,10 @@ end
     return min(H, ℓe)
 end
 
-Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
+Base.summary(::CATKEMixingLength) = "TKEBasedVerticalDiffusivities.CATKEMixingLength"
 
-Base.show(io::IO, ml::MixingLength) =
-    print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", '\n',
+Base.show(io::IO, ml::CATKEMixingLength) =
+    print(io, "TKEBasedVerticalDiffusivities.CATKEMixingLength parameters:", '\n',
               " ├── Cˢ:   ", ml.Cˢ,   '\n',
               " ├── Cᵇ:   ", ml.Cᵇ,   '\n',
               " ├── Cʰⁱu: ", ml.Cʰⁱu, '\n',

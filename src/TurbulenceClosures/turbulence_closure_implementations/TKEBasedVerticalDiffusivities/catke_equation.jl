@@ -1,10 +1,10 @@
 """
-    struct TurbulentKineticEnergyEquation{FT}
+    struct CATKEEquation{FT}
 
 Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) scales associated with
 isotropic turbulence and diapycnal mixing.
 """
-Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
+Base.@kwdef struct CATKEEquation{FT}
     CʰⁱD  :: FT = 0.357 # Dissipation length scale shear coefficient for high Ri
     CˡᵒD  :: FT = 0.926 # Dissipation length scale shear coefficient for low Ri
     CᵘⁿD  :: FT = 1.437 # Dissipation length scale shear coefficient for high Ri
@@ -164,7 +164,7 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
 
 @inline function _top_tke_flux(i, j, grid, clock, fields,
-                               tke::TurbulentKineticEnergyEquation, closure::CATKEVD,
+                               tke::CATKEEquation, closure::CATKEVD,
                                buoyancy, top_tracer_bcs, top_velocity_bcs)
 
     wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
@@ -270,9 +270,9 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
     return new_boundary_conditions
 end
 
-Base.summary(::TurbulentKineticEnergyEquation) = "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation"
-Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
-    print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters:", '\n',
+Base.summary(::CATKEEquation) = "TKEBasedVerticalDiffusivities.CATKEEquation"
+Base.show(io::IO, tke::CATKEEquation) =
+    print(io, "TKEBasedVerticalDiffusivities.CATKEEquation parameters:", '\n',
               "├── CʰⁱD: ", tke.CʰⁱD, '\n',
               "├── CˡᵒD: ", tke.CˡᵒD, '\n',
               "├── CᵘⁿD: ", tke.CᵘⁿD, '\n',

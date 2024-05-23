@@ -5,12 +5,10 @@ using Printf
 
 using Oceananigans.TurbulenceClosures:
     RiBasedVerticalDiffusivity,
-    CATKEVerticalDiffusivity,
-    ConvectiveAdjustmentVerticalDiffusivity,
-    ExplicitTimeDiscretization
+    CATKEVerticalDiffusivity
 
 # Parameters
-Δz = 1          # Vertical resolution
+Δz = 2          # Vertical resolution
 Lz = 256        # Extent of vertical domain
 Nz = Int(Lz/Δz) # Vertical resolution
 f₀ = 1e-4       # Coriolis parameter (s⁻¹)
@@ -19,7 +17,6 @@ Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
 τˣ = -2e-3      # Surface kinematic momentum flux (m s⁻¹)
 stop_time = 4days
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
 catke = CATKEVerticalDiffusivity()
 ri_based = RiBasedVerticalDiffusivity()
 
@@ -29,8 +26,7 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-#closures_to_run = [catke, ri_based, convective_adjustment]
-closures_to_run = [catke] #, ri_based] #, convective_adjustment]
+closures_to_run = [catke, ri_based]
 
 for closure in closures_to_run
 
@@ -42,7 +38,7 @@ for closure in closures_to_run
     bᵢ(z) = N² * z
     set!(model, b=bᵢ, e=1e-6)
 
-    simulation = Simulation(model; Δt=20minutes, stop_time)
+    simulation = Simulation(model; Δt=10minutes, stop_time)
 
     closurename = string(nameof(typeof(closure)))
 
@@ -51,17 +47,21 @@ for closure in closures_to_run
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          schedule = TimeInterval(20minutes),
-                                                          #schedule = IterationInterval(1),
-                                                          filename = "windy_convection_" * closurename,
-                                                          overwrite_existing = true)
+    output_writer = JLD2OutputWriter(model, outputs,
+                                     schedule = TimeInterval(20minutes),
+                                     filename = "windy_convection_" * closurename,
+                                     overwrite_existing = true)
 
-    progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim),
+    simulation.output_writers[:fields] = output_writer
+
+    progress(sim) = @info string("Iter: ", iteration(sim),
+                                 " t: ", prettytime(sim),
                                  ", max(b): ", maximum(model.tracers.b))
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-    @info "Running a simulation of $model..."
+    add_callback!(simulation, progress, IterationInterval(100))
+
+    @info "Running a simulation of "
+    @info "$model"
 
     run!(simulation)
 end
@@ -94,13 +94,12 @@ end
 b1 = first(b_ts)
 e1 = first(e_ts)
 κ1 = first(κc_ts)
-@show maximum(e1)
 
 zc = znodes(b1)
 zf = znodes(κ1)
 Nt = length(b1.times)
 
-fig = Figure(size=(1800, 600))
+fig = Figure(size=(1400, 600))
 
 slider = Slider(fig[2, 1:4], range=1:Nt, startvalue=1)
 n = slider.value
@@ -116,9 +115,9 @@ axe = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z (m)")
 axκ = Axis(fig[1, 4], xlabel=diffusivities_label, ylabel="z (m)")
 
 xlims!(axb, -grid.Lz * N², 0)
-xlims!(axu, -0.1, 0.1)
-xlims!(axe, -1e-4, 2e-4)
-xlims!(axκ, -1e-1, 5e-1)
+xlims!(axu, -0.2, 0.2)
+xlims!(axe, -1e-4, 1e-2)
+xlims!(axκ, -1e-1, 1e1)
 
 colors = [:black, :blue, :red, :orange]
 

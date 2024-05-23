@@ -1,71 +1,3 @@
-module CATKEVerticalDiffusivities
-
-using Adapt
-using KernelAbstractions: @kernel, @index
-
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Utils
-using Oceananigans.Units
-using Oceananigans.Fields
-using Oceananigans.Operators
-
-using Oceananigans.Utils: prettysummary
-using Oceananigans.Grids: peripheral_node, inactive_node, inactive_cell
-using Oceananigans.Fields: ZeroField
-using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
-using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
-using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
-using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
-using Oceananigans.Grids: inactive_cell
-
-using Oceananigans.TurbulenceClosures:
-    getclosure,
-    time_discretization,
-    AbstractScalarDiffusivity,
-    VerticallyImplicitTimeDiscretization,
-    VerticalFormulation
-    
-import Oceananigans.BoundaryConditions: getbc
-import Oceananigans.Utils: with_tracers
-import Oceananigans.TurbulenceClosures:
-    validate_closure,
-    shear_production,
-    buoyancy_flux,
-    dissipation,
-    add_closure_specific_boundary_conditions,
-    compute_diffusivities!,
-    DiffusivityFields,
-    implicit_linear_coefficient,
-    viscosity,
-    diffusivity,
-    viscosity_location,
-    diffusivity_location,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
-
-const c = Center()
-const f = Face()
-
-# @inline ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...) = ℑzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
-
-# A particular kind of reconstruction that ignores peripheral nodes
-@inline function ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
-    k⁺ = k + 1
-    k⁻ = k
-
-    f⁺ = fᵃᵃᶠ(i, j, k⁺, grid, args...)
-    f⁻ = fᵃᵃᶠ(i, j, k⁻, grid, args...)
-
-    p⁺ = peripheral_node(i, j, k⁺, grid, c, c, f)
-    p⁻ = peripheral_node(i, j, k⁻, grid, c, c, f)
-
-    f⁺ = ifelse(p⁺, f⁻, f⁺)
-    f⁻ = ifelse(p⁻, f⁺, f⁻)
-
-    return (f⁺ + f⁻) / 2
-end
 
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
@@ -107,15 +39,11 @@ const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
 const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 
-include("mixing_length.jl")
-include("turbulent_kinetic_energy_equation.jl")
-include("time_step_turbulent_kinetic_energy.jl")
-
 """
     CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                              FT = Float64;]
-                             mixing_length = MixingLength(),
-                             turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
+                             mixing_length = CATKEMixingLength(),
+                             turbulent_kinetic_energy_equation = CATKEEquation(),
                              maximum_tracer_diffusivity = Inf,
                              maximum_tke_diffusivity = Inf,
                              maximum_viscosity = Inf,
@@ -168,8 +96,8 @@ Note that for numerical stability, it is recommended to either have a relative s
 """
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                   FT = Float64;
-                                  mixing_length = MixingLength(),
-                                  turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation(),
+                                  mixing_length = CATKEMixingLength(),
+                                  turbulent_kinetic_energy_equation = CATKEEquation(),
                                   maximum_tracer_diffusivity = Inf,
                                   maximum_tke_diffusivity = Inf,
                                   maximum_viscosity = Inf,
@@ -214,29 +142,6 @@ catke_first(closure1, closure2) = false
 catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have two CATKEs in one closure tuple.")
 
 #####
-##### Mixing length and TKE equation
-#####
-
-@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑbzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    S² = ∂z_u² + ∂z_v²
-    Ri = N² / S²
-    #return ifelse(N² ≤ 0, zero(grid), Ri)
-    return ifelse(N² == 0, zero(grid), Ri)
-end
-
-for S in (:MixingLength, :TurbulentKineticEnergyEquation)
-    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT =
-        $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
-    @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
-end
-
-#####
 ##### Diffusivities and diffusivity fields utilities
 #####
 
@@ -269,9 +174,6 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
             previous_compute_time, previous_velocities,
             _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
-
-const c = Center()
-const f = Face()
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
@@ -412,10 +314,10 @@ function Base.show(io::IO, clo::FlavorOfCATKE)
     print(io, "├── maximum_tracer_diffusivity: ", prettysummary(clo.maximum_tracer_diffusivity), '\n',
               "├── maximum_tke_diffusivity: ", prettysummary(clo.maximum_tke_diffusivity), '\n',
               "├── maximum_viscosity: ", prettysummary(clo.maximum_viscosity), '\n',
-              "├── minimum_turbulent_kinetic_energy: ", prettysummary(clo.minimum_turbulent_kinetic_energy), '\n',
-              "├── negative_turbulent_kinetic_energy_damping_time_scale: ", prettysummary(clo.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
+              "├── minimum_tke: ", prettysummary(clo.minimum_turbulent_kinetic_energy), '\n',
+              "├── negative_tke_time_scale: ", prettysummary(clo.negative_turbulent_kinetic_energy_damping_time_scale), '\n',
               "├── minimum_convective_buoyancy_flux: ", prettysummary(clo.minimum_convective_buoyancy_flux), '\n',
-              "├── turbulent_kinetic_energy_time_step: ", prettysummary(clo.turbulent_kinetic_energy_time_step), '\n',
+              "├── tke_time_step: ", prettysummary(clo.turbulent_kinetic_energy_time_step), '\n',
               "├── mixing_length: ", prettysummary(clo.mixing_length), '\n',
               "│   ├── Cˢ:   ", prettysummary(clo.mixing_length.Cˢ), '\n',
               "│   ├── Cᵇ:   ", prettysummary(clo.mixing_length.Cᵇ), '\n',
@@ -446,6 +348,4 @@ function Base.show(io::IO, clo::FlavorOfCATKE)
               "    ├── CᵂwΔ: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
               "    └── Cᵂϵ:  ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂϵ))
 end
-
-end # module
 

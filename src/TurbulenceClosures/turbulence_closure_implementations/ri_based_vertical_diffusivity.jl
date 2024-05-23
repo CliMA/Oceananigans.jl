@@ -7,7 +7,7 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT
-    κᶜᵃ :: FT
+    κcᵃ :: FT
     Cᵉⁿ :: FT
     Cᵃᵛ :: FT
     Ri₀ :: FT
@@ -21,7 +21,7 @@ end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
-                                        κᶜᵃ::FT,
+                                        κcᵃ::FT,
                                         Cᵉⁿ::FT,
                                         Cᵃᵛ::FT,
                                         Ri₀::FT,
@@ -33,7 +33,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
 
-    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
+    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κcᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                      Ri_dependent_tapering,
                                                      horizontal_Ri_filter,
                                                      minimum_entrainment_buoyancy_gradient,
@@ -65,7 +65,7 @@ struct FivePointHorizontalFilter end
                                maximum_viscosity = Inf,
                                ν₀  = 0.7,
                                κ₀  = 0.5,
-                               κᶜᵃ = 1.7,
+                               κcᵃ = 1.7,
                                Cᵉⁿ = 0.1,
                                Cᵃᵛ = 0.6,
                                Ri₀ = 0.1,
@@ -98,7 +98,7 @@ Keyword arguments
 
 * `κ₀`: Non-convective diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
-* `κᶜᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
+* `κcᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
 * `Cᵉⁿ`: Entrainment coefficient for tracers (non-dimensional).
          Set `Cᵉⁿ = 0` to turn off the penetrative entrainment diffusivity.
@@ -131,7 +131,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     maximum_viscosity = Inf,
                                     ν₀  = 0.7,
                                     κ₀  = 0.5,
-                                    κᶜᵃ = 1.7,
+                                    κcᵃ = 1.7,
                                     Cᵉⁿ = 0.1,
                                     Cᵃᵛ = 0.6,
                                     Ri₀ = 0.1,
@@ -149,7 +149,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     return RiBasedVerticalDiffusivity{TD}(convert(FT, ν₀),
                                           convert(FT, κ₀),
-                                          convert(FT, κᶜᵃ),
+                                          convert(FT, κcᵃ),
                                           convert(FT, Cᵉⁿ),
                                           convert(FT, Cᵃᵛ),
                                           convert(FT, Ri₀),
@@ -177,17 +177,17 @@ const f = Face()
 @inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
 @inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κᶜ = Field((Center, Center, Face), grid)
-    κᵘ = Field((Center, Center, Face), grid)
+    κc = Field((Center, Center, Face), grid)
+    κu = Field((Center, Center, Face), grid)
     Ri = Field((Center, Center, Face), grid)
-    return (; κᶜ, κᵘ, Ri)
+    return (; κc, κu, Ri)
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
@@ -282,7 +282,7 @@ end
 
     ν₀  = closure_ij.ν₀
     κ₀  = closure_ij.κ₀
-    κᶜᵃ = closure_ij.κᶜᵃ
+    κcᵃ = closure_ij.κcᵃ
     Cᵉⁿ = closure_ij.Cᵉⁿ
     Cᵃᵛ = closure_ij.Cᵃᵛ
     Ri₀ = closure_ij.Ri₀
@@ -302,7 +302,7 @@ end
     entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Jᵇ > 0)
 
     # Convective adjustment diffusivity
-    κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
+    κcᵃ = ifelse(convecting, κcᵃ, zero(grid))
 
     # Entrainment diffusivity
     κᵉⁿ = ifelse(entraining, Cᵉⁿ * Jᵇ / N², zero(grid))
@@ -312,30 +312,30 @@ end
 
     # Shear mixing diffusivity and viscosity
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κᶜ★ = κ₀ * τ
-    κᵘ★ = ν₀ * τ
+    κc★ = κ₀ * τ
+    κu★ = ν₀ * τ
 
     # Previous diffusivities
-    κᶜ = diffusivities.κᶜ
-    κᵘ = diffusivities.κᵘ
+    κc = diffusivities.κc
+    κu = diffusivities.κu
 
     # New diffusivities
-    κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
-    κᵘ⁺ = κᵘ★
+    κc⁺ = κcᵃ + κᵉⁿ + κc★
+    κu⁺ = κu★
 
     # Limit by specified maximum
-    κᶜ⁺ = min(κᶜ⁺, closure_ij.maximum_diffusivity) 
-    κᵘ⁺ = min(κᵘ⁺, closure_ij.maximum_viscosity) 
+    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity) 
+    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity) 
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
     within_inactive = inactive_node(i, j, k, grid, c, c, f)
-    κᶜ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ⁺))
-    κᵘ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵘ⁺))
+    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κc⁺))
+    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κu⁺))
 
     # Update by averaging in time
-    @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
-    @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
+    @inbounds κc[i, j, k] = (Cᵃᵛ * κc[i, j, k] + κc⁺) / (1 + Cᵃᵛ)
+    @inbounds κu[i, j, k] = (Cᵃᵛ * κu[i, j, k] + κu⁺) / (1 + Cᵃᵛ)
 
     return nothing
 end
@@ -351,7 +351,7 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── Ri_dependent_tapering: ", prettysummary(closure.Ri_dependent_tapering), '\n')
     print(io, "├── κ₀: ", prettysummary(closure.κ₀), '\n')
     print(io, "├── ν₀: ", prettysummary(closure.ν₀), '\n')
-    print(io, "├── κᶜᵃ: ", prettysummary(closure.κᶜᵃ), '\n')
+    print(io, "├── κcᵃ: ", prettysummary(closure.κcᵃ), '\n')
     print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
     print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
     print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')

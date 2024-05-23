@@ -178,7 +178,7 @@ end
 end
 
 #=
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 
 @inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
