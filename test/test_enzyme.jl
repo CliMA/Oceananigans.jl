@@ -174,6 +174,7 @@ end
                 Active(1.0))
 
     # Test differentiation of the high-level set interface
+    # This part is commented out for now.
     dmodel = Enzyme.make_zero(model)
     # TODO end-to-end requires mutable struct, separating that into separate PR
     # autodiff(Enzyme.Reverse,
