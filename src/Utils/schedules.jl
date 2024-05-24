@@ -62,7 +62,6 @@ function (schedule::TimeInterval)(model)
 end
 
 next_actuation_time(schedule::TimeInterval) = schedule.previous_actuation_time + schedule.interval
-next_actuation_time(schedule::IterationInterval) = Inf
 
 function aligned_time_step(schedule::TimeInterval, clock, Δt)
     return min(Δt, next_actuation_time(schedule::TimeInterval) - clock.time)
@@ -91,6 +90,8 @@ For example,
 IterationInterval(interval; offset=0) = IterationInterval(interval, offset)
 
 (schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
+
+next_actuation_time(schedule::IterationInterval) = Inf
 
 #####
 ##### WallTimeInterval
