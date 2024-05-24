@@ -7,7 +7,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 import Oceananigans: initialize!
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: aligned_time_step
+import Oceananigans.Utils: aligned_time_step, next_actuation_time
 
 # Simulations are for running
 
@@ -19,6 +19,15 @@ function collect_scheduled_activities(sim)
     writers = values(sim.output_writers)
     callbacks = values(sim.callbacks)
     return tuple(writers..., callbacks...)
+end
+
+function next_actuation_time(sim::Simulation)
+    activities = collect_scheduled_activities(sim)
+    nearest_next_actuation_time = Inf
+    for activity in activities
+        nearest_next_actuation_time = min(nearest_next_actuation_time, next_actuation_time(activity.schedule))
+    end
+    return nearest_next_actuation_time
 end
 
 function schedule_aligned_Δt(sim, aligned_Δt)
@@ -131,7 +140,12 @@ function time_step!(sim::Simulation)
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt, callbacks=model_callbacks)
+        if Δt > (sim.Δt / 1e10)
+            time_step!(sim.model, Δt, callbacks=model_callbacks)
+        else
+            println("Skipping aligned time step, which is of ", Δt)
+            sim.model.clock.time = next_actuation_time(sim)
+        end
     end
 
     # Callbacks and callback-like things
