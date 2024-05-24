@@ -11,5 +11,6 @@ function update_boundary_conditions!(bcs::FieldBoundaryConditions, field, model)
 end
 
 update_boundary_conditions!(fields::Union{NamedTuple, Tuple}, model) = 
-    Tuple(update_boundary_conditions!(field.boundary_conditions, field, model) for field in fields)
+    Tuple(update_boundary_conditions!(get_boundary_conditions(field), field, model) for field in fields)
 
+get_boundary_conditions(field) = nothing
