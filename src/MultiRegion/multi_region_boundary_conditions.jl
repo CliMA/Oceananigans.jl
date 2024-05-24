@@ -352,7 +352,7 @@ end
 @inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
 @inline getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 _getregion(cf.parameters, i),
                                                 cf.field_dependencies,
                                                 cf.field_dependencies_indices,
@@ -373,7 +373,7 @@ end
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+            ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 getregion(cf.parameters, i),
                                                 cf.field_dependencies,
                                                 cf.field_dependencies_indices,
