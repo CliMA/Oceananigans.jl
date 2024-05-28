@@ -49,7 +49,7 @@ end
 Lz = 3000
 h = 0.25 * Lz
 
-Nx, Ny, Nz = 128, 128, 20
+Nx, Ny, Nz = 32, 32, 20
 Nhalo = 4
 
 ratio = 0.8
@@ -68,7 +68,7 @@ my_parameters = (Lz        = Lz,
                  Δ         = 0.05,
                  φ_max_par = 90,
                  φ_max_cos = 75,
-                 λ_rts     = 20days,    # Restoring time scale
+                 λ_rts     = 10days,    # Restoring time scale
                  Cᴰ        = 1e-3       # Drag coefficient
 )
 
@@ -161,19 +161,26 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 ####
 
 momentum_advection = VectorInvariant()
-tracer_advection   = WENO(; order = 7)
+tracer_advection   = CenteredSecondOrder()
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
+νh = 5e+4
+νz = 2e-4
+κh = 1e+3
+κz = 2e-5
+
 # Filter width squared, expressed as a harmonic mean of x and y spacings
-@inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx,
-                                                                                                   ly, lz)^2))
+@inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2
+                                                      + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
 
 # Use a biharmonic diffusivity for momentum. Define the diffusivity function as gridsize^4 divided by the timescale.
-@inline geometric_νhb(i, j, k, grid, lx, ly, lz, clock, fields, λ) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / λ
+@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, λ) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / λ
 
-closure = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true,
-                                                parameters = my_parameters.λ_rts)
+horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
+vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
+convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters = (; my_parameters.λ_rts))
 
 coriolis = HydrostaticSphericalCoriolis()
 
@@ -182,7 +189,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      closure,
+                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
                                       boundary_conditions = (u = u_bcs, b = b_bcs, v = v_bcs))
