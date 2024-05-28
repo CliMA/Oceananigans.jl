@@ -776,4 +776,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 end
 
 # return a fields boundary conditions
-get_boundary_conditions(field::Field) = field.boundary_conditions
+@inline get_boundary_conditions(field::Field) = field.boundary_conditions

@@ -1,16 +1,16 @@
-update_boundary_condition!(bc::Union{BoundaryCondition, Nothing}, args...) = nothing
+update_boundary_condition!(bc::Union{BoundaryCondition, Nothing}, args...; kwargs...) = nothing
 
-function update_boundary_conditions!(bcs::FieldBoundaryConditions, field, model)
-    update_boundary_condition!(bcs.west, field, model, Val(:west))
-    update_boundary_condition!(bcs.east, field, model, Val(:east))
-    update_boundary_condition!(bcs.south, field, model, Val(:south))
-    update_boundary_condition!(bcs.north, field, model, Val(:north))
-    update_boundary_condition!(bcs.bottom, field, model, Val(:bottom))
-    update_boundary_condition!(bcs.top, field, model, Val(:top))
-    update_boundary_condition!(bcs.immersed, field, model, Val(:immersed))
+function update_boundary_conditions!(bcs::FieldBoundaryConditions, field, model; kwargs...)
+    update_boundary_condition!(bcs.west, field, model, Val(:west); kwargs...)
+    update_boundary_condition!(bcs.east, field, model, Val(:east); kwargs...)
+    update_boundary_condition!(bcs.south, field, model, Val(:south); kwargs...)
+    update_boundary_condition!(bcs.north, field, model, Val(:north); kwargs...)
+    update_boundary_condition!(bcs.bottom, field, model, Val(:bottom); kwargs...)
+    update_boundary_condition!(bcs.top, field, model, Val(:top); kwargs...)
+    update_boundary_condition!(bcs.immersed, field, model, Val(:immersed); kwargs...)
 end
 
-update_boundary_conditions!(fields::Union{NamedTuple, Tuple}, model) = 
-    Tuple(update_boundary_conditions!(get_boundary_conditions(field), field, model) for field in fields)
+update_boundary_conditions!(fields::Union{NamedTuple, Tuple}, model; kwargs...) = 
+    Tuple(update_boundary_conditions!(get_boundary_conditions(field), field, model; kwargs...) for field in fields)
 
-get_boundary_conditions(field) = nothing
+@inline get_boundary_conditions(field) = nothing
