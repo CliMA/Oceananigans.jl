@@ -232,6 +232,15 @@ end
 
 include("cubed_sphere_visualization.jl")
 
+cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, "cc"; k = 1)
+
+orient_panel_wise_velocity_plots_in_global_direction = true
+if orient_panel_wise_velocity_plots_in_global_direction
+    uᵢ = interpolate_cubed_sphere_field_to_cell_centers(grid, uᵢ, "fc")
+    vᵢ = interpolate_cubed_sphere_field_to_cell_centers(grid, vᵢ, "cf")
+    orient_in_global_direction!(grid, uᵢ, vᵢ, cos_θ, sin_θ; k = 1)
+end
+
 plot_initial_field = false
 if plot_initial_field
     # Plot the initial velocity field.
@@ -308,6 +317,21 @@ for i_frame in 1:n_frames+1
     end
 end
 
+function orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields)
+    n_frames = length(u_fields) - 1
+    for i_frame in 1:n_frames+1
+        u_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, u_fields[i_frame], "fc")
+        v_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, v_fields[i_frame], "cf")
+        orient_in_global_direction!(grid, u_fields[i_frame], v_fields[i_frame], cos_θ, sin_θ; k = 1)
+    end
+end
+
+orientation_complete = false
+if orient_panel_wise_velocity_plots_in_global_direction
+    orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields)
+    orientation_complete = true
+end
+
 plot_final_field = false
 if plot_final_field
     fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
@@ -334,6 +358,8 @@ if plot_final_field
     fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
     save("cubed_sphere_rossby_haurwitz_wave_η.png", fig)
 end
+
+!orientation_complete ? orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields) : nothing
 
 plot_snapshots = false
 if plot_snapshots
@@ -370,22 +396,14 @@ if plot_snapshots
     for i_snapshot in 0:n_snapshots
         frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
         simulation_time = simulation_time_per_frame * (frame_index - 1)
-        #=
         title = "Zonal velocity after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid,
-                                           interpolate_cubed_sphere_field_to_cell_centers(grid, u_fields[frame_index],
-                                                                                          "fc"), title;
-                                           cbar_label = "zonal velocity", specify_plot_limits = true,
-                                           plot_limits = u_colorrange)
+        fig = geo_heatlatlon_visualization(grid, u_fields[frame_index], title; cbar_label = "zonal velocity",
+                                           specify_plot_limits = true, plot_limits = u_colorrange)
         save(@sprintf("cubed_sphere_rossby_haurwitz_wave_u_%d.png", i_snapshot), fig)
         title = "Meridional velocity after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid,
-                                           interpolate_cubed_sphere_field_to_cell_centers(grid, v_fields[frame_index],
-                                                                                          "cf"), title;
-                                           cbar_label = "meridional velocity", specify_plot_limits = true,
-                                           plot_limits = v_colorrange)
+        fig = geo_heatlatlon_visualization(grid, v_fields[frame_index], title; cbar_label = "meridional velocity",
+                                           specify_plot_limits = true, plot_limits = v_colorrange)
         save(@sprintf("cubed_sphere_rossby_haurwitz_wave_v_%d.png", i_snapshot), fig)
-        =#
         title = "Relative vorticity after $(prettytime(simulation_time))"
         fig = geo_heatlatlon_visualization(grid,
                                            interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[frame_index],
@@ -412,13 +430,13 @@ if make_animations
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
     u_colorrange = specify_colorrange_timeseries(grid, u_fields)
-    geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity"; k = Nz,
                                            cbar_label = "zonal velocity", specify_plot_limits = true,
                                            plot_limits = u_colorrange, framerate = framerate,
                                            filename = "cubed_sphere_rossby_haurwitz_wave_u_geo_heatlatlon_animation")
 
     v_colorrange = specify_colorrange_timeseries(grid, v_fields)
-    geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, v_fields, "cc", prettytimes, "Meridional velocity"; k = Nz,
                                            cbar_label = "meridional velocity", specify_plot_limits = true,
                                            plot_limits = v_colorrange, framerate = framerate,
                                            filename = "cubed_sphere_rossby_haurwitz_wave_v_geo_heatlatlon_animation")
@@ -429,11 +447,10 @@ if make_animations
                                            plot_limits = ζ_colorrange, framerate = framerate,
                                            filename = "cubed_sphere_rossby_haurwitz_wave_ζ_geo_heatlatlon_animation")
 
-    #=
     η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
-    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; k = Nz+1,
-                                           ssh = true, cbar_label = "surface elevation", specify_plot_limits = true,
+    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; ssh = true,
+                                           cbar_label = "surface elevation", specify_plot_limits = true,
                                            plot_limits = η_colorrange, framerate = framerate,
                                            filename = "cubed_sphere_rossby_haurwitz_wave_η_geo_heatlatlon_animation")
-    =#
+
 end
