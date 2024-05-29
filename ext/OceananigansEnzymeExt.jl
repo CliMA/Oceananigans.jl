@@ -421,10 +421,24 @@ end
 ##### top_tracer_boundary_conditions
 #####
 
+#
+# ... so if I'm understanding this correctly, the issue is that RT is just literally datatype, when P and B should both be the
+# types of the primal and shadow respectively
+#
+
 function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  func::EnzymeCore.Const{typeof(Oceananigans.Models.HydrostaticFreeSurfaceModels.top_tracer_boundary_conditions)},
                                                  ::RT, grid,
                                                  tracers) where RT
+    
+    @show EnzymeCore.EnzymeRules.needs_primal(config)
+    @show EnzymeCore.EnzymeRules.needs_shadow(config)
+    @show EnzymeCore.EnzymeRules.width(config)
+    @show tracers
+    @show typeof(tracers)
+    @show RT
+    @show Val(EnzymeCore.EnzymeRules.width(config))
+    @show batch(Val(EnzymeCore.EnzymeRules.width(config)), RT)
 
     primal = if EnzymeCore.EnzymeRules.needs_primal(config)
         func.val(grid.val, tracers.val)
@@ -432,17 +446,23 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
         nothing
     end
 
-    shadow = if EnzymeCore.EnzymeRules.width(config) == 1
-        func.val(grid.val, tracers.dval)
-    else
-        ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
-            Base.@_inline_meta
+    # Check if a shadow is needed here. Don't think this is quite right:
+    shadow = if EnzymeCore.EnzymeRules.needs_shadow(config) == 1
+        if EnzymeCore.EnzymeRules.width(config) == 1
             func.val(grid.val, tracers.dval)
+        else
+            ntuple(Val(EnzymeCore.EnzymeRules.width(config))) do i
+                Base.@_inline_meta
+                func.val(grid.val, tracers.dval)
+            end
         end
+    else
+        nothing
     end
 
-    P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
-    B = batch(Val(EnzymeCore.EnzymeRules.width(config)), RT)
+    P = EnzymeCore.EnzymeRules.needs_primal(config) ? typeof(primal) : Nothing
+    # This line might be bugged too:
+    B = EnzymeCore.EnzymeRules.needs_shadow(config) ? batch(Val(EnzymeCore.EnzymeRules.width(config)), typeof(shadow)) : Nothing
     return EnzymeCore.EnzymeRules.AugmentedReturn{P, B, Nothing}(primal, shadow, nothing)
 end
 
