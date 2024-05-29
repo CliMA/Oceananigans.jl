@@ -12,22 +12,60 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; k
 
     interpolated_field = Field{Center, Center, Center}(grid)
 
-    for region in 1:number_of_regions(grid)
-        for j in 1:Ny
-            for i in 1:Nx
-                if location == "fc"
-                    interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i + 1, j, k])
-                elseif location == "cf"
-                    interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i, j + 1, k])
-                elseif location == "ff"
-                    interpolated_field[region][i, j, k] = 0.25(field[region][i, j, k] + field[region][i + 1, j, k]
-                                                               + field[region][i + 1, j + 1, k] + field[region][i, j + 1, k])
-                end
-            end
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        if location == "fc"
+            interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i + 1, j, k])
+        elseif location == "cf"
+            interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i, j + 1, k])
+        elseif location == "ff"
+            interpolated_field[region][i, j, k] = 0.25(field[region][i, j, k] + field[region][i + 1, j, k]
+                                                       + field[region][i + 1, j + 1, k] + field[region][i, j + 1, k])
         end
     end
 
     return interpolated_field
+end
+
+function calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, location; k = 1)
+    Nx, Ny, Nz = size(grid)
+
+    cos_θ = zeros(Nx, Ny, number_of_regions(grid))
+    sin_θ = zeros(Nx, Ny, number_of_regions(grid))
+
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        if location == "cc"
+            u_Pseudo = deg2rad(grid[region].φᶜᶠᵃ[i, j+1] - grid[region].φᶜᶠᵃ[i, j])/grid[region].Δyᶜᶜᵃ[i, j, k]
+            v_Pseudo = -deg2rad(grid[region].φᶠᶜᵃ[i+1, j] - grid[region].φᶠᶜᵃ[i, j])/grid[region].Δxᶜᶜᵃ[i, j, k]
+        elseif location == "fc"
+            u_Pseudo = deg2rad(grid[region].φᶠᶠᵃ[i, j+1] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δyᶠᶜᵃ[i, j, k]
+            v_Pseudo = -deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i-1, j])/grid[region].Δxᶠᶜᵃ[i, j, k]
+        elseif location == "cf"
+            u_Pseudo = deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i, j-1])/grid[region].Δyᶜᶠᵃ[i, j, k]
+            v_Pseudo = -deg2rad(grid[region].φᶠᶠᵃ[i+1, j] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δxᶜᶠᵃ[i, j, k]
+        end
+        cos_θ[i, j, region] = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+        sin_θ[i, j, region] = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+    end
+
+    return cos_θ, sin_θ
+end
+
+function orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; k = 1)
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        uAtPoint = u[region][i, j, k]
+        vAtPoint = v[region][i, j, k]
+        u[region][i, j, k] = uAtPoint * cos_θ[i, j, region] + vAtPoint * sin_θ[i, j, region]
+        v[region][i, j, k] = vAtPoint * cos_θ[i, j, region] - uAtPoint * sin_θ[i, j, region]
+    end
+end
+
+function orient_in_local_direction!(grid, u, v, cos_θ, sin_θ; k = 1)
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        uAtPoint = u[region][i, j, k]
+        vAtPoint = v[region][i, j, k]
+        u[region][i, j, k] = uAtPoint * cos_θ[i, j, region] - vAtPoint * sin_θ[i, j, region]
+        v[region][i, j, k] = vAtPoint * cos_θ[i, j, region] + uAtPoint * sin_θ[i, j, region]
+    end
 end
 
 function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, labels, title, file_name, resolution, 
