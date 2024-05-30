@@ -4,15 +4,16 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
     grid = field.grid
+    Nz_grid = grid.Nz
 
     Nx, Ny, Nz = size(field)
     Hx, Hy, _ = halo_size(grid)
 
     # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
     Nc, Hc = Nx, Hx
-    
-    if size(field[1].data)[3] == 1 && first.(axes(field[1].data))[3] == grid.Nz + 1 # take ssh into consideration
-        kernel_parameters = KernelParameters((Nc, 1), (0, Nz))
+
+    if Nz == 1 && first.(axes(field[1].data))[3] == Nz_grid + 1 # take ssh into consideration
+        kernel_parameters = KernelParameters((Nc, 1), (0, Nz_grid))
     else
         kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
     end
@@ -94,121 +95,6 @@ end
         end
     end
 end
-
-#=
-function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center})
-    grid = field.grid
-
-    Nx, Ny, Nz = size(field)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Remember that for a cubed sphere grid, `Nx == Ny` and `Hx == Hy`.
-    Nc, Hc = Nx, Hx
-
-    if size(field[1].data)[3] == 1 && first.(axes(field[1].data))[3] == grid.Nz + 1 # take ssh into consideration
-        kernel_parameters = KernelParameters((Nc, 1), (0, Nz))
-    else
-        kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
-    end
-
-    for region in 1:number_of_regions(grid)
-        connections = getregion(grid.connectivity.connections, region)
-        region_E = connections.east.from_rank
-        region_W = connections.west.from_rank
-        region_N = connections.north.from_rank
-        region_S = connections.south.from_rank
-        field_E = field.data.regional_objects[region_E]
-        field_W = field.data.regional_objects[region_W]
-        field_N = field.data.regional_objects[region_N]
-        field_S = field.data.regional_objects[region_S]
-        if isodd(region)
-            launch!(grid.architecture, grid[region], kernel_parameters,
-                    _fill_cubed_sphere_odd_panel_center_center_field_east_west_halo_regions!,
-                    field.data.regional_objects[region], field_E, field_W, Nc, Hc)
-            launch!(grid.architecture, grid[region], kernel_parameters,
-                    _fill_cubed_sphere_odd_panel_center_center_field_north_south_halo_regions!,
-                    field.data.regional_objects[region], field_N, field_S, Nc, Hc)
-        else
-            launch!(grid.architecture, grid[region], kernel_parameters,
-                    _fill_cubed_sphere_even_panel_center_center_field_east_west_halo_regions!,
-                    field.data.regional_objects[region], field_E, field_W, Nc, Hc)
-            launch!(grid.architecture, grid[region], kernel_parameters,
-                    _fill_cubed_sphere_even_panel_center_center_field_north_south_halo_regions!,
-                    field.data.regional_objects[region], field_N, field_S, Nc, Hc)
-        end
-    end
-
-    return nothing
-end
-
-@kernel function _fill_cubed_sphere_odd_panel_center_center_field_east_west_halo_regions!(field, field_E, field_W, Nc,
-                                                                                          Hc)
-    j, k = @index(Global, NTuple)
-
-    #- E + W Halo for field:
-    for i in 1:Hc
-        @inbounds begin
-            #=
-            field[Nc+1:Nc+Hc, 1:Nc, k] .=         field_E[1:Hc, 1:Nc, k]
-            field[1-Hc:0, 1:Nc, k]     .= reverse(field_W[1:Nc, Nc+1-Hc:Nc, k], dims=1)'
-            =#
-            field[Nc+i, j, k] = field_E[i, j, k]
-            field[i-Hc, j, k] = field_W[Nc+1-j, Nc+i-Hc, k]
-        end
-    end
-end
-
-@kernel function _fill_cubed_sphere_even_panel_center_center_field_east_west_halo_regions!(field, field_E, field_W, Nc,
-                                                                                           Hc)
-    j, k = @index(Global, NTuple)
-
-    #- E + W Halo for field:
-    for i in 1:Hc
-        @inbounds begin
-            #=
-            field[Nc+1:Nc+Hc, 1:Nc, k] .= reverse(field_E[1:Nc, 1:Hc, k], dims=1)'
-            field[1-Hc:0, 1:Nc, k]     .=         field_W[Nc+1-Hc:Nc, 1:Nc, k]
-            =#
-            field[Nc+i, j, k] = field_E[Nc+1-j, i, k]
-            field[i-Hc, j, k] = field_W[Nc+i-Hc, j, k]
-        end
-    end
-end
-
-@kernel function _fill_cubed_sphere_odd_panel_center_center_field_north_south_halo_regions!(field, field_N, field_S, Nc,
-                                                                                            Hc)
-    i, k = @index(Global, NTuple)
-
-    #- N + S Halo for field:
-    for j in 1:Hc
-        @inbounds begin
-            #=
-            field[1:Nc, Nc+1:Nc+Hc, k] .= reverse(field_N[1:Hc, 1:Nc, k], dims=2)'
-            field[1:Nc, 1-Hc:0, k]     .=         field_S[1:Nc, Nc+1-Hc:Nc, k]
-            =#
-            field[i, Nc+j, k] = field_N[j, Nc+1-i, k]
-            field[i, j-Hc, k] = field_S[i, Nc+j-Hc, k]
-        end
-    end
-end
-
-@kernel function _fill_cubed_sphere_even_panel_center_center_field_north_south_halo_regions!(field, field_N, field_S, Nc,
-                                                                                             Hc)
-    i, k = @index(Global, NTuple)
-
-    #- N + S Halo for field:
-    for j in 1:Hc
-        @inbounds begin
-            #=
-            field[1:Nc, Nc+1:Nc+Hc, k] .=         field_N[1:Nc, 1:Hc, k]
-            field[1:Nc, 1-Hc:0, k]     .= reverse(field_S[Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-            =#
-            field[i, Nc+j, k] = field_N[i, j, k]
-            field[i, j-Hc, k] = field_S[Nc+j-Hc, Nc+1-i, k]
-        end
-    end
-end
-=#
 
 function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face})
     grid = field.grid
@@ -450,6 +336,7 @@ end
 function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
                             field_2::CubedSphereField{<:Center, <:Face}; signed = true)
     grid = field_1.grid
+    Nz_grid = grid.Nz
 
     Nx, Ny, Nz = size(field_1)
     Hx, Hy, _ = halo_size(grid)
@@ -463,14 +350,20 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     multiregion_field_2 = Reference(field_2.data.regional_objects)
     region = Iterate(1:6)
 
+    if Nz == 1 && first.(axes(field_1[1].data))[3] == Nz_grid # take barotropic velocities into consideration
+        kernel_parameters = KernelParameters((Nc, 1), (0, Nz_grid-1))
+    else
+        kernel_parameters = KernelParameters((Nc, Nz), (0, 0))
+    end
+
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_east_west_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
 
     @apply_regionally begin
-        launch!(grid.architecture, grid, (Nc, Nz),
+        launch!(grid.architecture, grid, kernel_parameters,
                 _fill_cubed_sphere_face_center_center_face_field_pairs_north_south_halo_regions!, field_1,
                 multiregion_field_1, field_2, multiregion_field_2, region, grid.connectivity.connections, Nc, Hc, plmn)
     end
@@ -479,15 +372,21 @@ function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
     Add one valid field_1, field_2 value next to the corner, that allows us to compute vorticity on a wider stencil
     (e.g., vort3(0,1) & (1,0)).
     =#
+
+    if Nz == 1 && first.(axes(field_1[1].data))[3] == Nz_grid # take barotropic velocities into consideration
+        kernel_parameters = KernelParameters((1, 1), (Nz_grid-1, 0))
+    else
+        kernel_parameters = KernelParameters((Nz, 1), (0, 0))
+    end
+
     if Hc > 1
         @apply_regionally begin
-            launch!(grid.architecture, grid, Nz, _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1,
-                    field_2, Nc, Hc, plmn)
+            launch!(grid.architecture, grid, kernel_parameters,
+                    _fill_cubed_sphere_face_center_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
         end
-
         @apply_regionally begin
-            launch!(grid.architecture, grid, Nz, _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1,
-                    field_2, Nc, Hc, plmn)
+            launch!(grid.architecture, grid, kernel_parameters,
+                    _fill_cubed_sphere_center_face_field_corner_halo_regions!, field_1, field_2, Nc, Hc, plmn)
         end
     end
 
@@ -609,7 +508,7 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
 end
 
 @kernel function _fill_cubed_sphere_face_center_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k = @index(Global, Linear)
+    k, _ = @index(Global, NTuple)
 
     for i in 1:Hc
         @inbounds begin
@@ -638,7 +537,7 @@ end
 end
 
 @kernel function _fill_cubed_sphere_center_face_field_corner_halo_regions!(field_1, field_2, Nc, Hc, plmn)
-    k = @index(Global, Linear)
+    k, _ = @index(Global, NTuple)
 
     for j in 1:Hc
         @inbounds begin
