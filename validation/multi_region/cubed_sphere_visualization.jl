@@ -2,31 +2,35 @@ using LinearAlgebra
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
-function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; k = 1)
+function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; levels = 1:1)
     if location == "cc"
         return field
     end
     
-    Nx = grid.Nx
-    Ny = grid.Ny
+    Nx, Ny, Nz = size(grid)
 
     interpolated_field = Field{Center, Center, Center}(grid)
 
-    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
-        if location == "fc"
-            interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i + 1, j, k])
-        elseif location == "cf"
-            interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i, j + 1, k])
-        elseif location == "ff"
-            interpolated_field[region][i, j, k] = 0.25(field[region][i, j, k] + field[region][i + 1, j, k]
-                                                       + field[region][i + 1, j + 1, k] + field[region][i, j + 1, k])
+    for region in 1:number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
+        if k in levels
+            if location == "fc"
+                interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i + 1, j, k])
+            elseif location == "cf"
+                interpolated_field[region][i, j, k] = 0.5(field[region][i, j, k] + field[region][i, j + 1, k])
+            elseif location == "ff"
+                interpolated_field[region][i, j, k] = 0.25(field[region][i, j, k] + field[region][i + 1, j, k]
+                                                           + field[region][i + 1, j + 1, k]
+                                                           + field[region][i, j + 1, k])
+            end
+        else
+            interpolated_field[region][i, j, k] = field[region][i, j, k]
         end
     end
 
     return interpolated_field
 end
 
-function calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, location; k = 1)
+function calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, location)
     Nx, Ny, Nz = size(grid)
 
     cos_θ = zeros(Nx, Ny, number_of_regions(grid))
@@ -34,14 +38,14 @@ function calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, location;
 
     for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
         if location == "cc"
-            u_Pseudo = deg2rad(grid[region].φᶜᶠᵃ[i, j+1] - grid[region].φᶜᶠᵃ[i, j])/grid[region].Δyᶜᶜᵃ[i, j, k]
-            v_Pseudo = -deg2rad(grid[region].φᶠᶜᵃ[i+1, j] - grid[region].φᶠᶜᵃ[i, j])/grid[region].Δxᶜᶜᵃ[i, j, k]
+            u_Pseudo = deg2rad(grid[region].φᶜᶠᵃ[i, j+1] - grid[region].φᶜᶠᵃ[i, j])/grid[region].Δyᶜᶜᵃ[i, j]
+            v_Pseudo = -deg2rad(grid[region].φᶠᶜᵃ[i+1, j] - grid[region].φᶠᶜᵃ[i, j])/grid[region].Δxᶜᶜᵃ[i, j]
         elseif location == "fc"
-            u_Pseudo = deg2rad(grid[region].φᶠᶠᵃ[i, j+1] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δyᶠᶜᵃ[i, j, k]
-            v_Pseudo = -deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i-1, j])/grid[region].Δxᶠᶜᵃ[i, j, k]
+            u_Pseudo = deg2rad(grid[region].φᶠᶠᵃ[i, j+1] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δyᶠᶜᵃ[i, j]
+            v_Pseudo = -deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i-1, j])/grid[region].Δxᶠᶜᵃ[i, j]
         elseif location == "cf"
-            u_Pseudo = deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i, j-1])/grid[region].Δyᶜᶠᵃ[i, j, k]
-            v_Pseudo = -deg2rad(grid[region].φᶠᶠᵃ[i+1, j] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δxᶜᶠᵃ[i, j, k]
+            u_Pseudo = deg2rad(grid[region].φᶜᶜᵃ[i, j] - grid[region].φᶜᶜᵃ[i, j-1])/grid[region].Δyᶜᶠᵃ[i, j]
+            v_Pseudo = -deg2rad(grid[region].φᶠᶠᵃ[i+1, j] - grid[region].φᶠᶠᵃ[i, j])/grid[region].Δxᶜᶠᵃ[i, j]
         end
         cos_θ[i, j, region] = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
         sin_θ[i, j, region] = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
@@ -50,8 +54,10 @@ function calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, location;
     return cos_θ, sin_θ
 end
 
-function orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; k = 1)
-    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+function orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; levels = 1:1)
+    Nx, Ny, Nz = size(grid)
+
+    for region in 1:number_of_regions(grid), k in levels, j in 1:Ny, i in 1:Nx
         uAtPoint = u[region][i, j, k]
         vAtPoint = v[region][i, j, k]
         u[region][i, j, k] = uAtPoint * cos_θ[i, j, region] + vAtPoint * sin_θ[i, j, region]
@@ -59,8 +65,10 @@ function orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; k = 1)
     end
 end
 
-function orient_in_local_direction!(grid, u, v, cos_θ, sin_θ; k = 1)
-    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+function orient_in_local_direction!(grid, u, v, cos_θ, sin_θ; levels = 1:1)
+    Nx, Ny, Nz = size(grid)
+
+    for region in 1:number_of_regions(grid), k in levels, j in 1:Ny, i in 1:Nx
         uAtPoint = u[region][i, j, k]
         vAtPoint = v[region][i, j, k]
         u[region][i, j, k] = uAtPoint * cos_θ[i, j, region] - vAtPoint * sin_θ[i, j, region]
@@ -146,21 +154,24 @@ function specify_colorrange(φ; use_symmetric_colorrange = true)
     return colorrange
 end
 
-function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = false)
-    Nx = grid.Nx
-    Ny = grid.Ny
-    Nz = grid.Nz
+function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = false, consider_all_levels = true,
+                            vertical_dimensions = 1:1)
+    Nx, Ny, Nz = size(grid)
     
     if ssh
         φ_array = zeros(Nx, Ny, 1, 6)
-        φ_array_vertical_dimension_limits = Nz+1:Nz+1
+        vertical_dimensions = Nz+1:Nz+1
     else
-        φ_array = zeros(Nx, Ny, Nz, 6)
-        φ_array_vertical_dimension_limits = 1:Nz
+        if consider_all_levels
+            φ_array = zeros(Nx, Ny, Nz, 6)
+            vertical_dimensions = 1:Nz
+        else
+            φ_array = zeros(Nx, Ny, length(vertical_dimensions), 6)
+        end
     end
     
     for region in 1:6
-        φ_array[:, :, :, region] = φ[region].data[1:Nx, 1:Ny, φ_array_vertical_dimension_limits]
+        φ_array[:, :, :, region] = φ[region].data[1:Nx, 1:Ny, vertical_dimensions]
     end
     
     φ_maximum = maximum(φ_array)
@@ -176,25 +187,27 @@ function specify_colorrange(grid, φ; use_symmetric_colorrange = true, ssh = fal
     return colorrange
 end
 
-function specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = true, ssh = false)
-    Nx = grid.Nx
-    Ny = grid.Ny
-    Nz = grid.Nz
+function specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = true, ssh = false,
+                                       consider_all_levels = true, vertical_dimensions = 1:1)
+    Nx, Ny, Nz = size(grid)
     
     n = length(φ_series)
     
     if ssh
         φ_series_array = zeros(Nx, Ny, 1, 6, n)
-        φ_series_array_vertical_dimension_limits = Nz+1:Nz+1
+        vertical_dimensions = Nz+1:Nz+1
     else
-        φ_series_array = zeros(Nx, Ny, Nz, 6, n)
-        φ_series_array_vertical_dimension_limits = 1:Nz
+        if consider_all_levels
+            φ_series_array = zeros(Nx, Ny, Nz, 6, n)
+            vertical_dimensions = 1:Nz
+        else
+            φ_series_array = zeros(Nx, Ny, length(vertical_dimensions), 6, n)
+        end
     end
     
     for i in 1:n
         for region in 1:6
-            φ_series_array[:, :, :, region, i] = φ_series[i][region].data[1:Nx, 1:Ny, 
-                                                                          φ_series_array_vertical_dimension_limits]
+            φ_series_array[:, :, :, region, i] = φ_series[i][region].data[1:Nx, 1:Ny, vertical_dimensions]
         end
     end
     
@@ -252,14 +265,23 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetr
     return fig
 end
 
-function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false)
+function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
+                                             consider_all_levels = true, vertical_dimensions = 1:1,
+                                             specify_plot_limits = false, plot_limits = [])
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
+                                        consider_all_levels = consider_all_levels,
+                                        vertical_dimensions = vertical_dimensions)
+    end
+
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -293,17 +315,25 @@ function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_c
     return fig
 end
 
-function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false)
+function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
+                                  consider_all_levels = true, vertical_dimensions = 1:1, specify_plot_limits = false,
+                                  plot_limits = [])
     fig = Figure(resolution = (2450, 1400))
     
-    Nx = grid.Nx
-    Ny = grid.Ny
+    Nx, Ny, Nz = size(grid)
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
                    xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
                    xlabel = "Local x direction", ylabel = "Local y direction")
     
-    colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
+                                        consider_all_levels = consider_all_levels,
+                                        vertical_dimensions = vertical_dimensions)
+    end
+
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -338,7 +368,8 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
 end
 
 function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_colorrange = true, ssh = false,
-                                      cbar_label = "", specify_plot_limits = false, plot_limits = [])
+                                      consider_all_levels = true, vertical_dimensions = 1:1, cbar_label = "",
+                                      specify_plot_limits = false, plot_limits = [])
     fig = Figure(resolution = (1350, 650))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
@@ -347,7 +378,9 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     if specify_plot_limits
         colorrange = plot_limits
     else
-        colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
+        colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
+                                        consider_all_levels = consider_all_levels,
+                                        vertical_dimensions = vertical_dimensions)
     end
 
     if use_symmetric_colorrange
@@ -366,64 +399,6 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     colgap!(fig.layout, 75)
 
     return fig
-end
-
-function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix; start_index = 1,
-                                                k = 1, use_symmetric_colorrange = true, ssh = false, cbar_label = "",
-                                                specify_plot_limits = false, plot_limits = [], framerate = 10,
-                                                filename = "animation")
-    n = Observable(start_index)
-    
-    fig = Figure(resolution=(1350, 650))
-
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
-
-    if specify_plot_limits
-        colorrange = plot_limits
-    else
-        colorrange = specify_colorrange_timeseries(grid, fields; use_symmetric_colorrange = use_symmetric_colorrange,
-                                                   ssh = ssh)
-    end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-    
-    field = @lift fields[$n]
-    prettytime = @lift prettytimes[$n]
-
-    ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
-    ax.title = title_prefix * " after " * prettytime[]
-    interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; k = k)
-    heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
-    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
-             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
-    colsize!(fig.layout, 1, Auto(0.8))
-    colgap!(fig.layout, 75)
-    
-    frames = 1:length(fields)
-
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
-        msg = string("Plotting frame ", i, " of ", frames[end])
-        print(msg * " \r")
-
-        field[] = fields[i]
-        prettytime[] = prettytimes[i]
-
-        # Update the title of the plot
-        ax.title = title_prefix * " after " * prettytime[]
-
-        # Update the plot
-        interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; k = k)
-        heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
-        Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
-                 labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
-        colsize!(fig.layout, 1, Auto(0.8))
-        colgap!(fig.layout, 75)
-    end
 end
 
 function create_heat_map_or_contour_plot_animation(plot_type, x, y, φ_series, resolution, axis_kwargs, contourlevels,
@@ -490,10 +465,19 @@ function test_create_heat_map_or_contour_plot_animation()
 end
 
 function create_panel_wise_visualization_animation_with_halos(grid, φ_series, framerate, filename; start_index = 1,
-                                                              k = 1, use_symmetric_colorrange = true, ssh = false)
+                                                              k = 1, use_symmetric_colorrange = true, ssh = false,
+                                                              consider_all_levels = true, vertical_dimensions = 1:1,
+                                                              specify_plot_limits = false, plot_limits = [])
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh)
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange,
+                                                   ssh = ssh, consider_all_levels = consider_all_levels,
+                                                   vertical_dimensions = vertical_dimensions)
+    end
+
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -562,14 +546,21 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
 end
 
 function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,
-                                                   use_symmetric_colorrange = true, ssh = false)
-    Nx = grid.Nx
-    Ny = grid.Ny
+                                                   use_symmetric_colorrange = true, ssh = false,
+                                                   consider_all_levels = true, vertical_dimensions = 1:1,
+                                                   specify_plot_limits = false, plot_limits = [])
+    Nx, Ny, Nz = size(grid)
 
     n = Observable(start_index) # the current index
 
-    colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange=use_symmetric_colorrange,
-                                               ssh = ssh)
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange_timeseries(grid, φ_series; use_symmetric_colorrange = use_symmetric_colorrange,
+                                                   ssh = ssh, consider_all_levels = consider_all_levels,
+                                                   vertical_dimensions = vertical_dimensions)
+    end
+
     if use_symmetric_colorrange
         colormap = :balance
     else
@@ -633,5 +624,65 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
 
         hm_6 = heatmap!(ax_6, φ[][6].data[1:Nx, 1:Ny, k]; colorrange, colormap)
         Colorbar(fig[1, 8], hm_6)
+    end
+end
+
+function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix; start_index = 1,
+                                                k = 1, use_symmetric_colorrange = true, ssh = false,
+                                                consider_all_levels = true, vertical_dimensions = 1:1, cbar_label = "",
+                                                specify_plot_limits = false, plot_limits = [], framerate = 10,
+                                                filename = "animation")
+    n = Observable(start_index)
+
+    fig = Figure(resolution=(1350, 650))
+
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
+
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange_timeseries(grid, fields; use_symmetric_colorrange = use_symmetric_colorrange,
+                                                   ssh = ssh, consider_all_levels = consider_all_levels,
+                                                   vertical_dimensions = vertical_dimensions)
+    end
+
+    if use_symmetric_colorrange
+        colormap = :balance
+    else
+        colormap = :amp
+    end
+
+    field = @lift fields[$n]
+    prettytime = @lift prettytimes[$n]
+
+    ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
+    ax.title = title_prefix * " after " * prettytime[]
+    interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
+    heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
+    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
+             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+    colsize!(fig.layout, 1, Auto(0.8))
+    colgap!(fig.layout, 75)
+
+    frames = 1:length(fields)
+
+    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+        msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+
+        field[] = fields[i]
+        prettytime[] = prettytimes[i]
+
+        # Update the title of the plot
+        ax.title = title_prefix * " after " * prettytime[]
+
+        # Update the plot
+        interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
+        heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
+        Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
+                 labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+        colsize!(fig.layout, 1, Auto(0.8))
+        colgap!(fig.layout, 75)
     end
 end
