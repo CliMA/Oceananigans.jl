@@ -10,8 +10,6 @@ function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
 
-    update_boundary_conditions!(fields(model), model; pressure_corrected = false)
-
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)

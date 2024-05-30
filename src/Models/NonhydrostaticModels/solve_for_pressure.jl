@@ -3,8 +3,6 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolv
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
-using Statistics: mean
-
 using PencilArrays: Permutation
 
 #####
