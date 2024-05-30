@@ -46,7 +46,6 @@ const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
-
     arch = architecture(grid)
 
     fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
@@ -66,6 +65,7 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...
     # We assume that the kernel size is the same for west and east boundaries, 
     # south and north boundaries, and bottom and top boundaries
     size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
+
     offset = fill_halo_offset(size, fill_halos!, indices)
 
     fill_halos!(c, bcs..., size, offset, loc, arch, grid, args...; kwargs...)
@@ -191,22 +191,22 @@ fill_first(bc1, bc2)               = true
 ##### Double-sided fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args) 
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, pressure_corrected, args) 
     j, k = @index(Global, NTuple)
-    _fill_west_halo!(j, k, grid, c, west_bc, loc, args...)
-    _fill_east_halo!(j, k, grid, c, east_bc, loc, args...)
+    _fill_west_halo!(j, k, grid, c, west_bc, loc, pressure_corrected, args...)
+    _fill_east_halo!(j, k, grid, c, east_bc, loc, pressure_corrected, args...)
 end
 
-@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args)
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, loc, grid, pressure_corrected, args)
     i, k = @index(Global, NTuple)
-    _fill_south_halo!(i, k, grid, c, south_bc, loc, args...)
-    _fill_north_halo!(i, k, grid, c, north_bc, loc, args...)
+    _fill_south_halo!(i, k, grid, c, south_bc, loc, pressure_corrected, args...)
+    _fill_north_halo!(i, k, grid, c, north_bc, loc, pressure_corrected, args...)
 end
 
-@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, args)
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, pressure_corrected, args)
     i, j = @index(Global, NTuple)
-    _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
-       _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
+    _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, pressure_corrected, args...)
+       _fill_top_halo!(i, j, grid, c, top_bc,    loc, pressure_corrected, args...)
 end
 
 #####
@@ -251,38 +251,38 @@ end
 # support tupled halo filling
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args)
+@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, pressure_corrected, args)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], args...)
-            _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], args...)
+            _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], pressure_corrected, args...)
+            _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], pressure_corrected, args...)
         end
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, args) 
+@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, pressure_corrected, args) 
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], args...)
-            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], args...)
+            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], pressure_corrected, args...)
+            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], pressure_corrected, args...)
         end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args) 
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, pressure_corrected, args) 
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
-               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
+            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], pressure_corrected, args...)
+               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], pressure_corrected, args...)
         end
     end
 end
@@ -319,19 +319,19 @@ fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) =
 ##### Kernel launchers for double-sided fill_halos
 #####
 
-function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; pressure_corrected = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Val(pressure_corrected), Tuple(args); kwargs...)
 end
 
-function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; pressure_corrected = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Val(pressure_corrected), Tuple(args); kwargs...)
 end
 
-function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; pressure_corrected = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Val(pressure_corrected), Tuple(args); kwargs...)
 end
 
 #####

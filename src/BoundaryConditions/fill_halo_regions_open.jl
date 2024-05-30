@@ -24,16 +24,18 @@ end
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
 end
 
-@inline   fill_west_halo!(u, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_west_or_east_u!,   u,           1, bc, grid, Tuple(args); kwargs...)
-@inline   fill_east_halo!(u, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_west_or_east_u!,   u, grid.Nx + 1, bc, grid, Tuple(args); kwargs...)
-@inline  fill_south_halo!(v, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_south_or_north_v!, v,           1, bc, grid, Tuple(args); kwargs...)
-@inline  fill_north_halo!(v, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_south_or_north_v!, v, grid.Ny + 1, bc, grid, Tuple(args); kwargs...)
-@inline fill_bottom_halo!(w, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_bottom_or_top_w!,  w,           1, bc, grid, Tuple(args); kwargs...)
-@inline    fill_top_halo!(w, bc::OBC, kernel_size, offset, loc, arch, grid, args...; kwargs...) = launch!(arch, grid, KernelParameters(kernel_size, offset), set_bottom_or_top_w!,  w, grid.Nz + 1, bc, grid, Tuple(args); kwargs...)
+@inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
+@inline   _fill_east_halo!(j, k, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
+@inline  _fill_south_halo!(i, k, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
+@inline  _fill_north_halo!(i, k, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
+@inline    _fill_top_halo!(i, j, grid, c, bc::OBC, loc, pressure_corrected, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
-@inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
-@inline   _fill_east_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
-@inline  _fill_south_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
-@inline  _fill_north_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
-@inline    _fill_top_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
+# refuse if wall normal
+
+@inline   _fill_west_halo!(j, k, grid::AbstractGrid{<:Any, Bounded}, c, bc::OBC, loc::Tuple{Face, Center, Center}, pressure_corrected::Val{true}, args...) = nothing
+@inline   _fill_east_halo!(j, k, grid::AbstractGrid{<:Any, Bounded}, c, bc::OBC, loc::Tuple{Face, Center, Center}, pressure_corrected::Val{true}, args...) = nothing
+@inline   _fill_south_halo!(j, k, grid::AbstractGrid{<:Any, <:Any, Bounded}, c, bc::OBC, loc::Tuple{Center, Face, Center}, pressure_corrected::Val{true}, args...) = nothing
+@inline   _fill_north_halo!(j, k, grid::AbstractGrid{<:Any, <:Any, Bounded}, c, bc::OBC, loc::Tuple{Center, Face, Center}, pressure_corrected::Val{true}, args...) = nothing
+@inline   _fill_bottom_halo!(j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Bounded}, c, bc::OBC, loc::Tuple{Center, Center, Face}, pressure_corrected::Val{true}, args...) = nothing
+@inline   _fill_top_halo!(j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Bounded}, c, bc::OBC, loc::Tuple{Center, Center, Face}, pressure_corrected::Val{true}, args...) = nothing
