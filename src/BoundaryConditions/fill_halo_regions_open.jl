@@ -20,11 +20,11 @@ end
 
 function fill_u_open_halo_regions!(u, grid, args...)
     arch = architecture(grid)
-    
+
     west_bc = u.boundary_conditions.west
     east_bc = u.boundary_conditions.east
 
-    launch!(arch, grid, :yz, _fill_west_and_east_open_halo!, u, west_bc, east_bc, location(u), grid, args)
+    launch!(arch, grid, :yz, _fill_west_and_east_open_halo!, u, west_bc, east_bc, instantiated_location(u), grid, args)
 end
 
 function fill_v_open_halo_regions!(v, grid, args...)
@@ -33,7 +33,7 @@ function fill_v_open_halo_regions!(v, grid, args...)
     south_bc = v.boundary_conditions.south
     north_bc = v.boundary_conditions.north
 
-    launch!(arch, grid, :yz, _fill_south_and_north_open_halo!, v, south_bc, north_bc, location(v), grid, args)
+    launch!(arch, grid, :yz, _fill_south_and_north_open_halo!, v, south_bc, north_bc, instantiated_location(v), grid, args)
 end
 
 function fill_w_open_halo_regions!(w, grid, args...)
@@ -42,7 +42,7 @@ function fill_w_open_halo_regions!(w, grid, args...)
     bottom_bc = w.boundary_conditions.bottom
     top_bc = w.boundary_conditions.top
 
-    launch!(arch, grid, :yz, _fill_bottom_and_top_open_halo!, w, bottom_bc, top_bc, location(w), grid, args)
+    launch!(arch, grid, :yz, _fill_bottom_and_top_open_halo!, w, bottom_bc, top_bc, instantiated_location(w), grid, args)
 end
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
