@@ -76,81 +76,115 @@ function orient_in_local_direction!(grid, u, v, cos_θ, sin_θ; levels = 1:1)
     end
 end
 
-function make_single_line_or_scatter_plot(output_directory, plot_type, x, y, labels, title, file_name, resolution, 
-                                          linewidth, linecolor, marker, markersize, labelsizes, ticklabelsizes, 
-                                          labelpaddings, aspect, titlesize, titlegap)
-    cwd = pwd()
-    path = joinpath(cwd, output_directory)
-    if !isdir(path) 
-        mkdir(path) 
-    end
-    cd(path)
-
+function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, plot_kwargs, file_name;
+                                            format = ".png")
     fig = Figure(resolution = resolution)
-    ax = Axis(fig[1,1]; xlabel = labels[1], ylabel = labels[2], xlabelsize = labelsizes[1], ylabelsize = labelsizes[2], 
-    xticklabelsize = ticklabelsizes[1], yticklabelsize = ticklabelsizes[2], xlabelpadding = labelpaddings[1], 
-    ylabelpadding = labelpaddings[2], aspect = aspect, title = title, titlesize = titlesize, 
-    titlegap = titlegap, titlefont = :bold)
+    ax = Axis(fig[1,1]; axis_kwargs...)
 
     if plot_type == "line_plot"
-        lines!(ax, x, y, linewidth = linewidth, color = linecolor)
+        lines!(ax, x, y, linewidth = plot_kwargs.linewidth, color = plot_kwargs.linecolor)
     elseif plot_type == "scatter_plot"
-        scatter!(ax, x, y, marker = marker, markersize = markersize, color = linecolor)
+        scatter!(ax, x, y, marker = plot_kwargs.marker, markersize = plot_kwargs.markersize,
+                 color = plot_kwargs.linecolor)
     elseif plot_type == "scatter_line_plot"
-        scatterlines!(ax, x, y, linewidth = linewidth, marker = marker, markersize = markersize, color = linecolor)
+        scatterlines!(ax, x, y, linewidth = plot_kwargs.linewidth, marker = plot_kwargs.marker,
+                      markersize = plot_kwargs.markersize, color = plot_kwargs.linecolor)
     end
 
-    save(file_name, fig)
-    cd(cwd)
+    save(file_name * format, fig)
 end
 
-function make_heat_map_or_contour_plot(output_directory, plot_type, x, y, φ, φ_limits, file_name, labels, title,
-                                       resolution, labelsizes, ticklabelsizes, labelpaddings, aspect, titlesize, 
-                                       titlegap, colormap, contourlevels; specify_axis_limits = true, 
-                                       use_specified_limits = false)
-    cwd = pwd()
-    path = joinpath(cwd, output_directory)
-    if !isdir(path) 
-        mkdir(path) 
-    end
-    cd(path)
+function test_create_single_line_or_scatter_plot()
+    x = range(0, 2π, length = 100)
+    y = sin.(x)
 
+    resolution = (850, 750)
+
+    axis_kwargs = (xlabel = "x", ylabel = "sin(x)", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
+                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, title = "sin(x) vs x",
+                   titlesize = 27.5, titlegap = 15, titlefont = :bold)
+    plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 10)
+
+    plot_types = ["line_plot", "scatter_plot", "scatter_line_plot"]
+    file_names = ["LinePlotExample", "ScatterPlotExample", "ScatterLinePlotExample"]
+
+    for i in 1:3
+        plot_type = plot_types[i]
+        file_name = file_names[i]
+        create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, plot_kwargs, file_name)
+    end
+end
+
+function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, contourlevels, cbar_kwargs,
+                                         file_name; use_symmetric_colorrange = true, specify_plot_limits = false,
+                                         plot_limits = [], format = ".png")
     fig = Figure(resolution = resolution)
-    ax = Axis(fig[1,1]; xlabel = labels[1], ylabel = labels[2], xlabelsize = labelsizes[1], ylabelsize = labelsizes[2], 
-    xticklabelsize = ticklabelsizes[1], yticklabelsize = ticklabelsizes[2], xlabelpadding = labelpaddings[1], 
-    ylabelpadding = labelpaddings[2], aspect = aspect, title = title, titlesize = titlesize, 
-    titlegap = titlegap, titlefont = :bold)
 
-    if specify_axis_limits
-        xlims!(ax, (minimum(x), maximum(x)))
-        ylims!(ax, (minimum(y), maximum(y)))
-    end
+    ax = Axis(fig[1,1]; axis_kwargs...)
 
-    if !use_specified_limits
-        φ_limits = [minimum(φ), maximum(φ)]
+    if specify_plot_limits
+        colorrange = plot_limits
+    else
+        colorrange = specify_colorrange(φ; use_symmetric_colorrange = use_symmetric_colorrange)
     end
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     if plot_type == "heat_map"
-        hm = heatmap!(ax, x, y, φ; colorrange = φ_limits, colormap = colormap)
+        myplot = heatmap!(ax, x, y, φ; colorrange = colorrange, colormap = colormap)
     elseif plot_type == "filled_contour_plot"
-        hm = contourf!(ax, x, y, φ; levels = range(φ_limits..., length=contourlevels), colormap = colormap)  
+        myplot = contourf!(ax, x, y, φ; levels = range(colorrange..., length=contourlevels), colormap = colormap)
+    end
+    Colorbar(fig[1,2], myplot; cbar_kwargs...)
+
+    save(file_name * format, fig)
+end
+
+function test_create_heat_map_or_contour_plot()
+    resolution = (850, 750)
+
+    nPoints = 50
+    x = range(0, 2π, length = nPoints)
+    y = range(0, 2π, length = nPoints)
+    t = range(0, 2π, length = nPoints)
+
+    k = 1
+    l = 1
+
+    φ = zeros(nPoints, nPoints)
+    for j in 1:nPoints
+        for i in 1:nPoints
+            φ[i, j] = sin(k * x[i] + l * y[j])
+        end
     end
 
-    Colorbar(fig[1,2], hm)
+    axis_kwargs = (xlabel = "x", ylabel = "y", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
+                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
+                   title = "sin(kx + ly - ωt)", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+    contourlevels = 50
+    cbar_kwargs = (label = "sin(kx + ly - ωt)", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
 
-    save(file_name, fig)
-    cd(cwd)
+    plot_types = ["heat_map", "filled_contour_plot"]
+    file_names = ["HeatMapExample", "FilledContourPlotExample"]
+
+    for i in 1:2
+        plot_type = plot_types[i]
+        file_name = file_names[i]
+        create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, contourlevels, cbar_kwargs,
+                                        file_name)
+    end
 end
 
 function specify_colorrange(φ; use_symmetric_colorrange = true)
     φ_maximum = maximum(φ)
     φ_minimum = minimum(φ)
+
     if use_symmetric_colorrange
         colorrange_limit = max(abs(φ_maximum), abs(φ_minimum))
         colorrange = (-colorrange_limit, colorrange_limit)
     else
         colorrange = (φ_minimum, φ_maximum)
     end
+
     return colorrange
 end
 
@@ -232,11 +266,7 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetr
                    xlabel = "Local x direction", ylabel = "Local y direction")
 
     colorrange = specify_colorrange(metric; use_symmetric_colorrange = use_symmetric_colorrange)
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, metric[:, :, 1]; colorrange, colormap)
@@ -281,12 +311,7 @@ function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_c
                                         consider_all_levels = consider_all_levels,
                                         vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
+    colormap = use_symmetric_colorrange ? :balance : :amp
     
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[:, :, k]); colorrange, colormap)
@@ -333,12 +358,7 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
                                         consider_all_levels = consider_all_levels,
                                         vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
+    colormap = use_symmetric_colorrange ? :balance : :amp
     
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[1:Nx, 1:Ny, k]); colorrange, colormap)
@@ -382,12 +402,7 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
                                         consider_all_levels = consider_all_levels,
                                         vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, title = title, axis_kwargs...)
     heatlatlon!(ax, field, k; colorrange, colormap)
@@ -401,74 +416,94 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     return fig
 end
 
-function create_heat_map_or_contour_plot_animation(plot_type, x, y, φ_series, resolution, axis_kwargs, contourlevels,
+function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, contourlevels,
                                                    cbar_kwargs, framerate, filename; start_index = 1,
-                                                   use_symmetric_colorrange = true)
-
+                                                   use_symmetric_colorrange = true, specify_plot_limits = false,
+                                                   plot_limits = [], use_prettytimes = false, prettytimes = [],
+                                                   format = ".mp4")
     n = Observable(start_index)
-    φ = @lift begin
-        φ_series[:, :, $n]
-    end
+    φ = @lift φ_series[$n, :, :]
+    use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
 
     fig = Figure(resolution = resolution)
     # Specify the title of every frame if desired.
     ax = Axis(fig[1,1]; axis_kwargs...)
-    colorrange = specify_colorrange(φ_series; use_symmetric_colorrange = use_symmetric_colorrange)
-    if use_symmetric_colorrange
-        colormap = :balance
+    use_prettytimes ? (ax.title = axis_kwargs.title * " after " * prettytime[]) : nothing
+
+    if specify_plot_limits
+        colorrange = plot_limits
     else
-        colormap = :amp
+        colorrange = specify_colorrange(φ_series; use_symmetric_colorrange = use_symmetric_colorrange)
     end
-    
-    if plot_type == "filled_contour_plot"
-        myplot = contourf!(ax, x, y, φ; levels = range(colorrange..., length=contourlevels), colormap = colormap)  
-    elseif plot_type == "heat_map"
+    colormap = use_symmetric_colorrange ? :balance : :amp
+
+    if plot_type == "heat_map"
         myplot = heatmap!(ax, x, y, φ; colorrange = colorrange, colormap = colormap)
+    elseif plot_type == "filled_contour_plot"
+        myplot = contourf!(ax, x, y, φ; levels = range(colorrange..., length=contourlevels), colormap = colormap)
     end
     Colorbar(fig[1,2], myplot; cbar_kwargs...)
-    
-    frames = 1:size(φ_series, 3)
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+
+    frames = 1:size(φ_series, 1)
+    CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
         n[] = i
     end
-
 end
 
 function test_create_heat_map_or_contour_plot_animation()
+    resolution = (850, 750)
+
     nPoints = 50
     x = range(0, 2π, length = nPoints)
     y = range(0, 2π, length = nPoints)
     t = range(0, 2π, length = nPoints)
+
     k = 1
     l = 1
     ω = 1
+
     φ_series = zeros(nPoints, nPoints, nPoints)
-    for i in 1:nPoints
-        for j in 1:nPoints
+    for j in 1:nPoints
+        for i in 1:nPoints
             for m in 1:nPoints
-                φ_series[i, j, m] = sin(k * x[i] + l * y[j] - ω * t[m])
+                φ_series[m, i, j] = sin(k * x[i] + l * y[j] - ω * t[m])
             end
         end
     end
-    axis_kwargs = (xlabel = "x", ylabel = "y", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, 
-                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1, 
+
+    axis_kwargs = (xlabel = "x", ylabel = "y", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
+                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
                    title = "sin(kx + ly - ωt)", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     contourlevels = 50
     cbar_kwargs = (label = "sin(kx + ly - ωt)", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
     framerate = 10
-    create_heat_map_or_contour_plot_animation("heat_map", x, y, φ_series, (850, 750), axis_kwargs, contourlevels,
-                                              cbar_kwargs, framerate, "sine_wave_heat_map")
-    create_heat_map_or_contour_plot_animation("filled_contour_plot", x, y, φ_series, (850, 750), axis_kwargs, 
-                                              contourlevels, cbar_kwargs, framerate, "sine_wave_filled_contour_plot")
+
+    plot_types = ["heat_map", "filled_contour_plot"]
+    file_names = ["sine_wave_heat_map_animation", "sine_wave_filled_contour_plot_animation"]
+
+    for i in 1:2
+        plot_type = plot_types[i]
+        file_name = file_names[i]
+        create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, contourlevels,
+                                                  cbar_kwargs, framerate, file_name)
+    end
 end
 
 function create_panel_wise_visualization_animation_with_halos(grid, φ_series, framerate, filename; start_index = 1,
                                                               k = 1, use_symmetric_colorrange = true, ssh = false,
                                                               consider_all_levels = true, vertical_dimensions = 1:1,
-                                                              specify_plot_limits = false, plot_limits = [])
+                                                              specify_plot_limits = false, plot_limits = [],
+                                                              format = ".mp4")
     n = Observable(start_index) # the current index
+    φ = @lift φ_series[$n]
+
+    # Create the initial visualization.
+    fig = Figure(resolution = (2450, 1400))
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
 
     if specify_plot_limits
         colorrange = plot_limits
@@ -477,20 +512,7 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-
-    # Create the initial visualization.
-    fig = Figure(resolution = (2450, 1400))
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-                   xlabel = "Local x direction", ylabel = "Local y direction")
-    
-    φ = @lift φ_series[$n]
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(φ[][1].data[:, :, k]); colorrange, colormap)
@@ -517,8 +539,7 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
     Colorbar(fig[1, 8], hm_6)
 
     frames = 1:length(φ_series)
-
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+    CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
 
@@ -548,10 +569,17 @@ end
 function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,
                                                    use_symmetric_colorrange = true, ssh = false,
                                                    consider_all_levels = true, vertical_dimensions = 1:1,
-                                                   specify_plot_limits = false, plot_limits = [])
+                                                   specify_plot_limits = false, plot_limits = [], format = ".mp4")
     Nx, Ny, Nz = size(grid)
 
     n = Observable(start_index) # the current index
+    φ = @lift φ_series[$n]
+
+    # Create the initial visualization.
+    fig = Figure(resolution = (2450, 1400))
+    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0,
+                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
+                   xlabel = "Local x direction", ylabel = "Local y direction")
 
     if specify_plot_limits
         colorrange = plot_limits
@@ -560,20 +588,7 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-
-    # Create the initial visualization.
-    fig = Figure(resolution = (2450, 1400))
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 27.5, titlegap = 15, titlefont = :bold,
-                   xlabel = "Local x direction", ylabel = "Local y direction")
-
-    φ = @lift φ_series[$n]
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     ax_1 = Axis(fig[3, 1]; title="Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, φ[][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
@@ -600,8 +615,7 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
     Colorbar(fig[1, 8], hm_6)
 
     frames = 1:length(φ_series)
-
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+    CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
 
@@ -627,12 +641,14 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
     end
 end
 
-function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix; start_index = 1,
-                                                k = 1, use_symmetric_colorrange = true, ssh = false,
+function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix, filename;
+                                                start_index = 1, k = 1, use_symmetric_colorrange = true, ssh = false,
                                                 consider_all_levels = true, vertical_dimensions = 1:1, cbar_label = "",
                                                 specify_plot_limits = false, plot_limits = [], framerate = 10,
-                                                filename = "animation")
+                                                format = ".mp4")
     n = Observable(start_index)
+    field = @lift fields[$n]
+    prettytime = @lift prettytimes[$n]
 
     fig = Figure(resolution=(1350, 650))
 
@@ -646,28 +662,21 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    vertical_dimensions = vertical_dimensions)
     end
-
-    if use_symmetric_colorrange
-        colormap = :balance
-    else
-        colormap = :amp
-    end
-
-    field = @lift fields[$n]
-    prettytime = @lift prettytimes[$n]
+    colormap = use_symmetric_colorrange ? :balance : :amp
 
     ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
     ax.title = title_prefix * " after " * prettytime[]
+
     interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
     heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
+
     Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
              labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
     colsize!(fig.layout, 1, Auto(0.8))
     colgap!(fig.layout, 75)
 
     frames = 1:length(fields)
-
-    CairoMakie.record(fig, filename * ".mp4", frames, framerate = framerate) do i
+    CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
 
@@ -680,6 +689,7 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
         # Update the plot
         interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
         heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
+
         Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
                  labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
         colsize!(fig.layout, 1, Auto(0.8))
