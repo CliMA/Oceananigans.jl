@@ -494,4 +494,57 @@ if make_animations
                                            "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "buoyancy", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
+
+    Nc = Nx
+    panel_index = 1 # Choose panel index to be 1 or 2.
+    north_panel_index = grid.connectivity.connections[panel_index].north.from_rank
+    south_panel_index = grid.connectivity.connections[panel_index].south.from_rank
+    b_fields_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nc, Nz)
+    latitudes = zeros(2*Nc)
+    depths = grid[1].zᵃᵃᶜ[1:Nz]
+
+    if panel_index == 1
+        latitudes[1:round(Int, Nc/2)] = grid[south_panel_index].φᶜᶜᵃ[round(Int, Nc/2), round(Int, Nc/2)+1:Nc]
+        latitudes[round(Int, Nc/2)+1:round(Int, 3Nc/2)] = grid[panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:Nc]
+        latitudes[round(Int, 3Nc/2)+1:2*Nc] = grid[north_panel_index].φᶜᶜᵃ[1:round(Int, Nc/2), round(Int, Nc/2)]
+        for i_frame in 1:n_frames+1
+            b_fields_at_specific_longitude_through_panel_center[i_frame, 1:round(Int, Nc/2), :] = (
+            b_fields[i_frame][south_panel_index][round(Int, Nc/2), round(Int, Nc/2)+1:Nc, 1:Nz])
+            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, Nc/2)+1:round(Int, 3Nc/2), :] = (
+            b_fields[i_frame][panel_index][round(Int, Nc/2), 1:Nc, 1:Nz])
+            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, 3Nc/2)+1:2*Nc, :] = (
+            b_fields[i_frame][north_panel_index][1:round(Int, Nc/2), round(Int, Nc/2), 1:Nz])
+        end
+    elseif panel_index == 2
+        latitudes[1:round(Int, Nc/2)] = grid[south_panel_index].φᶜᶜᵃ[round(Int, Nc/2)+1:Nc, round(Int, Nc/2)]
+        latitudes[round(Int, Nc/2)+1:round(Int, 3Nc/2)] = grid[panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:Nc]
+        latitudes[round(Int, 3Nc/2)+1:2*Nc] = grid[north_panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:round(Int, Nc/2)]
+        for i_frame in 1:n_frames+1
+            b_fields_at_specific_longitude_through_panel_center[i_frame, 1:round(Int, Nc/2), :] = (
+            b_fields[i_frame][south_panel_index][round(Int, Nc/2)+1:Nc, round(Int, Nc/2), 1:Nz])
+            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, Nc/2)+1:round(Int, 3Nc/2), :] = (
+            b_fields[i_frame][panel_index][round(Int, Nc/2), 1:Nc, 1:Nz])
+            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, 3Nc/2)+1:2*Nc, :] = (
+            b_fields[i_frame][north_panel_index][round(Int, Nc/2), 1:round(Int, Nc/2), 1:Nz])
+        end
+    end
+
+    resolution = (875, 750)
+    plot_type = "heat_map"
+    axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth", xlabelsize = 22.5, ylabelsize = 22.5,
+                   xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
+                   title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+    contourlevels = 50
+    cbar_kwargs = (label = "buoyancy", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+    create_heat_map_or_contour_plot(resolution, plot_type, latitudes, depths,
+                                    b_fields_at_specific_longitude_through_panel_center[1, :, :], axis_kwargs,
+                                    contourlevels, cbar_kwargs, "cubed_sphere_aquaplanet_b₀_latitude-depth_section")
+    create_heat_map_or_contour_plot(resolution, plot_type, latitudes, depths,
+                                    b_fields_at_specific_longitude_through_panel_center[end, :, :], axis_kwargs,
+                                    contourlevels, cbar_kwargs, "cubed_sphere_aquaplanet_b_latitude-depth_section")
+    create_heat_map_or_contour_plot_animation(resolution, plot_type, latitudes, depths,
+                                              b_fields_at_specific_longitude_through_panel_center, axis_kwargs,
+                                              contourlevels, cbar_kwargs, framerate,
+                                              "cubed_sphere_aquaplanet_b_latitude-depth_animation";
+                                              use_prettytimes = true, prettytimes = prettytimes)
 end
