@@ -1,49 +1,43 @@
 function fill_bounded_wall_normal_halo_regions!(velocities, clock, fields)
     grid = velocities.u.grid
 
-    TX, TY, TZ = topology(grid)
-
-    if TX() isa Bounded
-        fill_u_open_halo_regions!(velocities.u, grid, clock, fields)
-    end
-
-    if TY() isa Bounded
-        fill_v_open_halo_regions!(velocities.v, grid, clock, fields)
-    end
-
-    if TZ() isa Bounded
-        fill_w_open_halo_regions!(velocities.w, grid, clock, fields)
-    end
+    fill_open_halo_regions!(velocities.u, grid, clock, fields)
+    fill_open_halo_regions!(velocities.v, grid, clock, fields)
+    fill_open_halo_regions!(velocities.w, grid, clock, fields)
 
     return nothing
 end
 
-function fill_u_open_halo_regions!(u, grid, args...)
+const bounded_grid = Union{AbstractGrid{Any, Bounded}, AbstractGrid{Any, Any, Bounded}, AbstractGrid{Any, Any, Any, Bounded}}
+
+@inline fill_open_halo_regions!(field, grid, args...) = nothing
+
+function fill_open_halo_regions!(field, grid::bounded_grid, loc, args...)
     arch = architecture(grid)
 
-    west_bc = u.boundary_conditions.west
-    east_bc = u.boundary_conditions.east
+    left_bc = left_boundary_condition(field)
+    right_bc = right_boundary_condition(field)
 
-    launch!(arch, grid, :yz, _fill_west_and_east_open_halo!, u, west_bc, east_bc, instantiated_location(u), grid, args)
+    launch!(arch, grid, side_plan(field), fill_open_halo!(field), field, left_bc, right_bc, loc, grid, args)
+
+    return nothing
 end
 
-function fill_v_open_halo_regions!(v, grid, args...)
-    arch = architecture(grid)
+@inline left_boundary_condition(field, loc::Tuple{Face, Center, Center}) = field.boundary_conditions.west
+@inline left_boundary_condition(field, loc::Tuple{Center, Face, Center}) = field.boundary_conditions.south
+@inline left_boundary_condition(field, loc::Tuple{Center, Center, Face}) = field.boundary_conditions.bottom
 
-    south_bc = v.boundary_conditions.south
-    north_bc = v.boundary_conditions.north
+@inline right_boundary_condition(field, loc::Tuple{Face, Center, Center}) = field.boundary_conditions.east
+@inline right_boundary_condition(field, loc::Tuple{Center, Face, Center}) = field.boundary_conditions.north
+@inline right_boundary_condition(field, loc::Tuple{Center, Center, Face}) = field.boundary_conditions.top
 
-    launch!(arch, grid, :yz, _fill_south_and_north_open_halo!, v, south_bc, north_bc, instantiated_location(v), grid, args)
-end
+@inline side_plan(loc::Tuple{Face, Center, Center}) = :yz
+@inline side_plan(loc::Tuple{Center, Face, Center}) = :xz
+@inline side_plan(loc::Tuple{Center, Center, Face}) = :xy
 
-function fill_w_open_halo_regions!(w, grid, args...)
-    arch = architecture(grid)
-
-    bottom_bc = w.boundary_conditions.bottom
-    top_bc = w.boundary_conditions.top
-
-    launch!(arch, grid, :yz, _fill_bottom_and_top_open_halo!, w, bottom_bc, top_bc, instantiated_location(w), grid, args)
-end
+@inline fill_open_halo!(loc::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!
+@inline fill_open_halo!(loc::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!
+@inline fill_open_halo!(loc::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
     j, k = @index(Global, NTuple)
