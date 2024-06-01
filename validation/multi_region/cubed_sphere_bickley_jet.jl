@@ -457,35 +457,35 @@ if make_animations
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
     u_colorrange = specify_colorrange_timeseries(grid, u_fields)
-    geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, u_fields, "fc", prettytimes, "Zonal velocity",
+                                           "cubed_sphere_bickley_jet_u_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "zonal velocity", specify_plot_limits = true,
-                                           plot_limits = u_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_bickley_jet_u_geo_heatlatlon_animation")
+                                           plot_limits = u_colorrange, framerate = framerate)
 
     v_colorrange = specify_colorrange_timeseries(grid, v_fields)
-    geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, v_fields, "cf", prettytimes, "Meridional velocity",
+                                           "cubed_sphere_bickley_jet_v_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "meridional velocity", specify_plot_limits = true,
-                                           plot_limits = v_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_bickley_jet_v_geo_heatlatlon_animation")
+                                           plot_limits = v_colorrange, framerate = framerate)
 
     ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields)
-    geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, ζ_fields, "ff", prettytimes, "Relative vorticity",
+                                           "cubed_sphere_bickley_jet_ζ_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "relative vorticity", specify_plot_limits = true,
-                                           plot_limits = ζ_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_bickley_jet_ζ_geo_heatlatlon_animation")
+                                           plot_limits = ζ_colorrange, framerate = framerate)
 
     #=
     η_colorrange = specify_colorrange_timeseries(grid, η_fields; use_symmetric_colorrange = false, ssh = true)
-    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; k = Nz+1,
+    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation",
+                                           "cubed_sphere_bickley_jet_η_geo_heatlatlon_animation"; k = Nz+1,
                                            ssh = true, use_symmetric_colorrange = false,
                                            cbar_label = "surface elevation", specify_plot_limits = true,
-                                           plot_limits = η_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_bickley_jet_η_geo_heatlatlon_animation")
+                                           plot_limits = η_colorrange, framerate = framerate)
     =#
 
     c_colorrange = specify_colorrange_timeseries(grid, c_fields)
-    geo_heatlatlon_visualization_animation(grid, c_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, c_fields, "cc", prettytimes, "Tracer distribution",
+                                           "cubed_sphere_bickley_jet_c_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "tracer level", specify_plot_limits = true,
-                                           plot_limits = c_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_bickley_jet_c_geo_heatlatlon_animation")
+                                           plot_limits = c_colorrange, framerate = framerate)
 end

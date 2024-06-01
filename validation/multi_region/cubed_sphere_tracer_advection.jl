@@ -230,8 +230,8 @@ if make_animation
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
     θ_colorrange = specify_colorrange_timeseries(grid, θ_fields)
-    geo_heatlatlon_visualization_animation(grid, θ_fields, "cc", prettytimes, "Tracer distribution"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, θ_fields, "cc", prettytimes, "Tracer distribution",
+                                           "cubed_sphere_tracer_advection_θ_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "tracer level", specify_plot_limits = true,
-                                           plot_limits = θ_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_tracer_advection_θ_geo_heatlatlon_animation")
+                                           plot_limits = θ_colorrange, framerate = framerate)
 end

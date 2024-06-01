@@ -65,10 +65,10 @@ my_parameters = (Lz        = Lz,
                  ρ₀        = 1020,      # Boussinesq density
                  φs        = φs,  
                  τs        = τs,
-                 Δ         = 0.05,
+                 Δ         = 0.06,
                  φ_max_lin = 90,
                  φ_max_par = 90,
-                 φ_max_cos = 75,
+                 φ_max_cos = 90,
                  λ_rts     = 10days,    # Restoring time scale
                  Cᴰ        = 1e-3       # Drag coefficient
 )
@@ -116,12 +116,10 @@ end
 
 @inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_lin
 @inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_par)^2
-@inline cosine_profile_in_y(φ, p) = 1 + cos(π * min(max(φ/p.φ_max_cos, -1), 1))
+@inline cosine_profile_in_y(φ, p) = 0.5(1 + cos(π * min(max(φ/p.φ_max_cos, -1), 1)))
 
 @inline function buoyancy_restoring(λ, φ, z, b, p)
     B = p.Δ * cosine_profile_in_y(φ, p) * linear_profile_in_z(z, p)
-    # Define a parabolic function of latitude φ and parameters specified in p (representing the desired profile to 
-    # restore to).
     return p.𝓋 * (b - B)
 end
 
@@ -207,8 +205,8 @@ set!(model, b = initial_buoyancy)
 
 Δt = 5minutes
 
-Ntime = 15000
-stop_time = Ntime * Δt
+stop_time = 100days
+Ntime = round(Int, stop_time/Δt)
 
 print_output_to_jld2_file = true
 if print_output_to_jld2_file
@@ -468,32 +466,32 @@ if make_animations
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
 
     u_colorrange = specify_colorrange_timeseries(grid, u_fields; common_kwargs...)
-    geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity",
+                                           "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "zonal velocity", specify_plot_limits = true,
-                                           plot_limits = u_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation")
+                                           plot_limits = u_colorrange, framerate = framerate)
 
     v_colorrange = specify_colorrange_timeseries(grid, v_fields; common_kwargs...)
-    geo_heatlatlon_visualization_animation(grid, v_fields, "cc", prettytimes, "Meridional velocity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, v_fields, "cc", prettytimes, "Meridional velocity",
+                                           "cubed_sphere_aquaplanet_v_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "meridional velocity", specify_plot_limits = true,
-                                           plot_limits = v_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_aquaplanet_v_geo_heatlatlon_animation")
+                                           plot_limits = v_colorrange, framerate = framerate)
 
     ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields; common_kwargs...)
-    geo_heatlatlon_visualization_animation(grid, ζ_fields, "cc", prettytimes, "Relative vorticity"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, ζ_fields, "cc", prettytimes, "Relative vorticity",
+                                           "cubed_sphere_aquaplanet_ζ_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "relative vorticity", specify_plot_limits = true,
-                                           plot_limits = ζ_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_aquaplanet_ζ_geo_heatlatlon_animation")
+                                           plot_limits = ζ_colorrange, framerate = framerate)
 
     η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
-    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation"; ssh = true,
+    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation",
+                                           "cubed_sphere_aquaplanet_η_geo_heatlatlon_animation"; ssh = true,
                                            cbar_label = "surface elevation", specify_plot_limits = true,
-                                           plot_limits = η_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_aquaplanet_η_geo_heatlatlon_animation")
+                                           plot_limits = η_colorrange, framerate = framerate)
 
     b_colorrange = specify_colorrange_timeseries(grid, b_fields; common_kwargs...)
-    geo_heatlatlon_visualization_animation(grid, b_fields, "cc", prettytimes, "Buoyancy"; k = Nz,
+    geo_heatlatlon_visualization_animation(grid, b_fields, "cc", prettytimes, "Buoyancy",
+                                           "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "buoyancy", specify_plot_limits = true,
-                                           plot_limits = b_colorrange, framerate = framerate,
-                                           filename = "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation")
+                                           plot_limits = b_colorrange, framerate = framerate)
 end
