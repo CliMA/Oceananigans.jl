@@ -563,7 +563,6 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
         hm_6 = heatmap!(ax_6, parent(φ[][6].data[:, :, k]); colorrange, colormap)
         Colorbar(fig[1, 8], hm_6)
     end
-
 end
 
 function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,

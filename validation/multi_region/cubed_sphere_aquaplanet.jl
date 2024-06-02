@@ -203,6 +203,32 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
+fill_halo_regions!(model.tracers.b)
+
+Ω = model.coriolis.rotation_rate
+for region in number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
+    numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i, j-1, k]
+    denominator = -2Ω * sind(grid[region].φᶠᶜᵃ[i, j]) * grid[region].Δyᶠᶜᵃ[i, j]
+    if k == 1
+        Δz = grid[region].zᵃᵃᶜ[k] - grid[region].zᵃᵃᶠ[k]
+        u_below = 0 # no slip boundary condition
+    else
+        Δz = grid[region].Δzᵃᵃᶠ[k]
+        u_below = model.velocities.u[region][i, j, k-1]
+    end
+    model.velocities.u[region][i, j, k] = u_below + numerator/denominator * Δz
+    numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i-1, j, k]
+    denominator = 2Ω * sind(grid[region].φᶜᶠᵃ[i, j]) * grid[region].Δxᶜᶠᵃ[i, j]
+    if k == 1
+        v_below = 0 # no slip boundary condition
+    else
+        v_below = model.velocities.v[region][i, j, k-1]
+    end
+    model.velocities.v[region][i, j, k] = v_below + numerator/denominator * Δz
+end
+
+fill_halo_regions!((model.velocities.u, model.velocities.v))
+
 Δt = 5minutes
 
 stop_time = 100days
@@ -210,7 +236,7 @@ Ntime = round(Int, stop_time/Δt)
 
 print_output_to_jld2_file = true
 if print_output_to_jld2_file
-    Ntime = 500
+    Ntime = 1500
     stop_time = Ntime * Δt
 end
 
