@@ -82,9 +82,8 @@ grid = ConformalCubedSphereGrid(arch;
 
 Hx, Hy, Hz = halo_size(grid)
 
-Δz = minimum_zspacing(grid)
-
-my_parameters = merge(my_parameters, (Δz = minimum_zspacing(grid), 𝓋 = Δz/my_parameters.λ_rts,))
+Δz_min = minimum_zspacing(grid)
+my_parameters = merge(my_parameters, (Δz = Δz_min, 𝓋 = Δz_min/my_parameters.λ_rts,))
 
 @inline function cubic_interpolate(x, x₁, x₂, y₁, y₂, d₁ = 0, d₂ = 0)
     A = [x₁^3   x₁^2 x₁  1
@@ -120,7 +119,7 @@ end
 
 @inline function buoyancy_restoring(λ, φ, z, b, p)
     B = p.Δ * cosine_profile_in_y(φ, p) * linear_profile_in_z(z, p)
-    return p.𝓋 * (b - B)
+    return -p.𝓋 * (b - B)
 end
 
 ####
@@ -137,9 +136,6 @@ end
 @inline v_drag(i, j, grid, clock, fields, p) = (
 @inbounds - p.Cᴰ * speedᶜᶠᶜ(i, j, 1, grid, fields.u, fields.v) * fields.v[i, j, 1])
 
-no_slip = ValueBoundaryCondition(0)
-u_bcs = FieldBoundaryConditions(bottom = no_slip)
-v_bcs = FieldBoundaryConditions(bottom = no_slip)
 #=
 u_bot_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
 v_bot_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
@@ -179,8 +175,10 @@ free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = f
 
 horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
-convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters = (; my_parameters.λ_rts))
+convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                                 convective_κz = 1.0)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true,
+                                                               parameters = (; my_parameters.λ_rts))
 
 coriolis = HydrostaticSphericalCoriolis()
 
@@ -192,7 +190,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
-                                      boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
+                                      boundary_conditions = (; b = b_bcs))
 
 #####
 ##### Model initialization
@@ -203,38 +201,50 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
-fill_halo_regions!(model.tracers.b)
+initialize_velocities_based_on_thermal_wind_balance = true
+if initialize_velocities_based_on_thermal_wind_balance
+    f₀ = 1e-4
+    fill_halo_regions!(model.tracers.b)
 
-Ω = model.coriolis.rotation_rate
-for region in number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
-    numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i, j-1, k]
-    denominator = -2Ω * sind(grid[region].φᶠᶜᵃ[i, j]) * grid[region].Δyᶠᶜᵃ[i, j]
-    if k == 1
-        Δz = grid[region].zᵃᵃᶜ[k] - grid[region].zᵃᵃᶠ[k]
-        u_below = 0 # no slip boundary condition
-    else
-        Δz = grid[region].Δzᵃᵃᶠ[k]
-        u_below = model.velocities.u[region][i, j, k-1]
+    Ω = model.coriolis.rotation_rate
+    radius = grid.radius
+
+    for region in 1:number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
+        numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i, j-1, k]
+        #=
+        denominator = -2Ω * sind(grid[region].φᶠᶜᵃ[i, j]) * grid[region].Δyᶠᶜᵃ[i, j]
+        =#
+        denominator = -f₀ * grid[region].Δyᶠᶜᵃ[i, j]
+        if k == 1
+            Δz_below = grid[region].zᵃᵃᶜ[k] - grid[region].zᵃᵃᶠ[k]
+            u_below = 0 # no slip boundary condition
+        else
+            Δz_below = grid[region].Δzᵃᵃᶠ[k]
+            u_below = model.velocities.u[region][i, j, k-1]
+        end
+        model.velocities.u[region][i, j, k] = u_below + numerator/denominator * Δz_below
+        numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i-1, j, k]
+        #=
+        denominator = 2Ω * sind(grid[region].φᶜᶠᵃ[i, j]) * grid[region].Δxᶜᶠᵃ[i, j]
+        =#
+        denominator = f₀ * grid[region].Δxᶜᶠᵃ[i, j]
+        if k == 1
+            v_below = 0 # no slip boundary condition
+        else
+            v_below = model.velocities.v[region][i, j, k-1]
+        end
+        model.velocities.v[region][i, j, k] = v_below + numerator/denominator * Δz_below
     end
-    model.velocities.u[region][i, j, k] = u_below + numerator/denominator * Δz
-    numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i-1, j, k]
-    denominator = 2Ω * sind(grid[region].φᶜᶠᵃ[i, j]) * grid[region].Δxᶜᶠᵃ[i, j]
-    if k == 1
-        v_below = 0 # no slip boundary condition
-    else
-        v_below = model.velocities.v[region][i, j, k-1]
-    end
-    model.velocities.v[region][i, j, k] = v_below + numerator/denominator * Δz
+
+    fill_halo_regions!((model.velocities.u, model.velocities.v))
 end
-
-fill_halo_regions!((model.velocities.u, model.velocities.v))
 
 Δt = 5minutes
 
-stop_time = 100days
+stop_time = 7days
 Ntime = round(Int, stop_time/Δt)
 
-print_output_to_jld2_file = true
+print_output_to_jld2_file = false
 if print_output_to_jld2_file
     Ntime = 1500
     stop_time = Ntime * Δt
@@ -245,12 +255,12 @@ end
 
 simulation = Simulation(model; Δt, stop_time)
 
-# Print a progress message
+# Print a progress message.
 progress_message_iteration_interval = 10
-progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
-                                iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
-                                maximum(abs, model.free_surface.η) - Lz, maximum(abs, model.tracers.b),
-                                prettytime(sim.run_wall_time))
+progress_message(sim) = (
+@printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
+        iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
+        maximum(abs, model.free_surface.η) - Lz, maximum(abs, model.tracers.b), prettytime(sim.run_wall_time)))
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
@@ -300,6 +310,111 @@ save_η(sim) = push!(η_fields, deepcopy(sim.model.free_surface.η))
 b_fields = Field[]
 save_b(sim) = push!(b_fields, deepcopy(sim.model.tracers.b))
 
+uᵢ = deepcopy(simulation.model.velocities.u)
+vᵢ = deepcopy(simulation.model.velocities.v)
+ζᵢ = deepcopy(ζ)
+bᵢ = deepcopy(simulation.model.tracers.b)
+
+include("cubed_sphere_visualization.jl")
+
+latitude = extract_latitude(grid)
+cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, "cc")
+
+function orient_velocities_in_global_direction(grid, u, v, cos_θ, sin_θ; levels = 1:1)
+    u = interpolate_cubed_sphere_field_to_cell_centers(grid, u, "fc"; levels = levels)
+    v = interpolate_cubed_sphere_field_to_cell_centers(grid, v, "cf"; levels = levels)
+    orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; levels = levels)
+    return u, v
+end
+
+cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
+sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
+latitude_at_specific_longitude_through_panel_center = zeros(2*Nx, 4)
+
+for (index, panel_index) in enumerate([1, 2, 4, 5])
+    cos_θ_at_specific_longitude_through_panel_center[:, index] = (
+    extract_scalar_at_specific_longitude_through_panel_center(grid, cos_θ, panel_index))
+    sin_θ_at_specific_longitude_through_panel_center[:, index] = (
+    extract_scalar_at_specific_longitude_through_panel_center(grid, sin_θ, panel_index))
+    latitude_at_specific_longitude_through_panel_center[:, index] = (
+    extract_scalar_at_specific_longitude_through_panel_center(grid, latitude, panel_index))
+end
+
+depths = grid[1].zᵃᵃᶜ[1:Nz]
+
+uᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+ζᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+bᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+
+resolution = (875, 750)
+plot_type = "heat_map"
+axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth", xlabelsize = 22.5, ylabelsize = 22.5,
+               xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
+               title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+contourlevels = 50
+cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+
+plot_initial_field = true
+if plot_initial_field
+    if initialize_velocities_based_on_thermal_wind_balance
+        uᵢ, vᵢ = orient_velocities_in_global_direction(grid, uᵢ, vᵢ, cos_θ, sin_θ; levels = 1:Nz)
+
+        fig = panel_wise_visualization(grid, uᵢ; k = Nz)
+        save("cubed_sphere_aquaplanet_uᵢ.png", fig)
+
+        fig = panel_wise_visualization(grid, vᵢ; k = Nz)
+        save("cubed_sphere_aquaplanet_vᵢ.png", fig)
+
+        ζᵢ = interpolate_cubed_sphere_field_to_cell_centers(grid, ζᵢ, "ff"; levels = 1:Nz)
+
+        fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
+        save("cubed_sphere_aquaplanet_ζᵢ.png", fig)
+
+        fig = panel_wise_visualization(grid, bᵢ; k = Nz)
+        save("cubed_sphere_aquaplanet_bᵢ.png", fig)
+
+        for (index, panel_index) in enumerate([1, 2, 4, 5])
+            uᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, uᵢ, panel_index; levels = 1:Nz))
+            vᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, vᵢ, panel_index; levels = 1:Nz))
+            ζᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, ζᵢ, panel_index; levels = 1:Nz))
+            bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
+            title = "Zonal velocity versus depth"
+            cbar_label = "zonal velocity"
+            create_heat_map_or_contour_plot(resolution, plot_type,
+                                            latitude_at_specific_longitude_through_panel_center[:, index],
+                                            depths, uᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                            "cubed_sphere_aquaplanet_uᵢ_latitude-depth_section_$panel_index" )
+            title = "Meridional velocity versus depth"
+            cbar_label = "meridional velocity"
+            create_heat_map_or_contour_plot(resolution, plot_type,
+                                            latitude_at_specific_longitude_through_panel_center[:, index],
+                                            depths, vᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                            "cubed_sphere_aquaplanet_vᵢ_latitude-depth_section_$panel_index")
+            title = "Relative vorticity versus depth"
+            cbar_label = "relative vorticity"
+            create_heat_map_or_contour_plot(resolution, plot_type,
+                                            latitude_at_specific_longitude_through_panel_center[:, index],
+                                            depths, ζᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                            "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
+            title = "Buoyancy versus depth"
+            cbar_label = "buoyancy"
+            create_heat_map_or_contour_plot(resolution, plot_type,
+                                            latitude_at_specific_longitude_through_panel_center[:, index],
+                                            depths, bᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                            "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
+        end
+    end
+end
+
 animation_time = 15 # seconds
 framerate = 5
 n_frames = animation_time * framerate # excluding the initial condition frame
@@ -340,71 +455,75 @@ if print_output_to_jld2_file
     end
 end
 
-include("cubed_sphere_visualization.jl")
-
-cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, "cc")
-
-function orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields; levels = 1:1)
-    n_frames = length(u_fields) - 1
-    for i_frame in 1:n_frames+1
-        u_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, u_fields[i_frame], "fc";
-                                                                           levels = levels)
-        v_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, v_fields[i_frame], "cf";
-                                                                           levels = levels)
-        orient_in_global_direction!(grid, u_fields[i_frame], v_fields[i_frame], cos_θ, sin_θ; levels = levels)
-    end
-end
-
-orient_panel_wise_velocity_plots_in_global_direction = true
-
-orientation_complete = false
-if orient_panel_wise_velocity_plots_in_global_direction
-    orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields; levels = Nz:Nz)
-    orientation_complete = true
-end
-
 for i_frame in 1:n_frames+1
-    ζ_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[i_frame], "ff"; levels = Nz:Nz)
+    u_fields[i_frame], v_fields[i_frame] = (
+    orient_velocities_in_global_direction(grid, u_fields[i_frame], v_fields[i_frame], cos_θ, sin_θ; levels = 1:Nz))
+    ζ_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[i_frame], "ff"; levels = 1:Nz)
 end
 
-plot_final_field = false
-if plot_final_field
-    fig = panel_wise_visualization_with_halos(grid, u_fields[end]; k = Nz)
-    save("cubed_sphere_aquaplanet_u_with_halos.png", fig)
+u_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+v_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+ζ_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+b_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 
+plot_final_field = true
+if plot_final_field
     fig = panel_wise_visualization(grid, u_fields[end]; k = Nz)
     save("cubed_sphere_aquaplanet_u.png", fig)
-
-    fig = panel_wise_visualization_with_halos(grid, v_fields[end]; k = Nz)
-    save("cubed_sphere_aquaplanet_v_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, v_fields[end]; k = Nz)
     save("cubed_sphere_aquaplanet_v.png", fig)
 
-    fig = panel_wise_visualization_with_halos(grid, ζ_fields[end]; k = Nz)
-    save("cubed_sphere_aquaplanet_ζ_with_halos.png", fig)
-
     fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz)
     save("cubed_sphere_aquaplanet_ζ.png", fig)
-
-    fig = panel_wise_visualization_with_halos(grid, η_fields[end]; k = Nz + 1, ssh = true)
-    save("cubed_sphere_aquaplanet_η_with_halos.png", fig)
 
     fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
     save("cubed_sphere_aquaplanet_η.png", fig)
 
-    fig = panel_wise_visualization_with_halos(grid, b_fields[end]; k = Nz)
-    save("cubed_sphere_aquaplanet_b_with_halos.png", fig)
-
     fig = panel_wise_visualization(grid, b_fields[end]; k = Nz)
     save("cubed_sphere_aquaplanet_b.png", fig)
+
+    for (index, panel_index) in enumerate([1, 2, 4, 5])
+        u_f_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, u_fields[end], panel_index; levels = 1:Nz))
+        v_f_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, v_fields[end], panel_index; levels = 1:Nz))
+        ζ_f_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[end], panel_index; levels = 1:Nz))
+        b_f_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, b_fields[end], panel_index; levels = 1:Nz))
+        title = "Zonal velocity versus depth"
+        cbar_label = "zonal velocity"
+        create_heat_map_or_contour_plot(resolution, plot_type,
+                                        latitude_at_specific_longitude_through_panel_center[:, index],
+                                        depths, u_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                        "cubed_sphere_aquaplanet_u_f_latitude-depth_section_$panel_index" )
+        title = "Meridional velocity versus depth"
+        cbar_label = "meridional velocity"
+        create_heat_map_or_contour_plot(resolution, plot_type,
+                                        latitude_at_specific_longitude_through_panel_center[:, index],
+                                        depths, v_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                        "cubed_sphere_aquaplanet_v_f_latitude-depth_section_$panel_index")
+        title = "Relative vorticity versus depth"
+        cbar_label = "relative vorticity"
+        create_heat_map_or_contour_plot(resolution, plot_type,
+                                        latitude_at_specific_longitude_through_panel_center[:, index],
+                                        depths, ζ_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                        "cubed_sphere_aquaplanet_ζ_f_latitude-depth_section_$panel_index")
+        title = "Buoyancy versus depth"
+        cbar_label = "buoyancy"
+        create_heat_map_or_contour_plot(resolution, plot_type,
+                                        latitude_at_specific_longitude_through_panel_center[:, index],
+                                        depths, b_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
+                                        "cubed_sphere_aquaplanet_b_f_latitude-depth_section_$panel_index")
+    end
 end
 
-if !orientation_complete
-    orient_velocities_in_global_direction!(grid, cos_θ, sin_θ, u_fields, v_fields; levels = Nz:Nz)
-end
-
-plot_snapshots = false
+plot_snapshots = true
 if plot_snapshots
     n_snapshots = 3
 
@@ -446,7 +565,8 @@ if plot_snapshots
     for i_snapshot in 0:n_snapshots
         frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
         simulation_time = simulation_time_per_frame * (frame_index - 1)
-        if i_snapshot > 0
+        if (initialize_velocities_based_on_thermal_wind_balance
+            || (!initialize_velocities_based_on_thermal_wind_balance && i_snapshot > 0))
             title = "Zonal velocity after $(prettytime(simulation_time))"
             fig = geo_heatlatlon_visualization(grid, u_fields[frame_index], title; k = Nz,
                                                cbar_label = "zonal velocity", specify_plot_limits = true,
@@ -475,7 +595,7 @@ if plot_snapshots
     end
 end
 
-make_animations = false
+make_animations = true
 if make_animations
     common_kwargs = (consider_all_levels = false, vertical_dimensions = Nz:Nz)
     create_panel_wise_visualization_animation(grid, u_fields, framerate, "cubed_sphere_aquaplanet_u"; k = Nz,
@@ -521,56 +641,58 @@ if make_animations
                                            cbar_label = "buoyancy", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
 
-    Nc = Nx
-    panel_index = 1 # Choose panel index to be 1 or 2.
-    north_panel_index = grid.connectivity.connections[panel_index].north.from_rank
-    south_panel_index = grid.connectivity.connections[panel_index].south.from_rank
-    b_fields_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nc, Nz)
-    latitudes = zeros(2*Nc)
-    depths = grid[1].zᵃᵃᶜ[1:Nz]
+    u_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
+    v_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
+    ζ_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
+    b_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
 
-    if panel_index == 1
-        latitudes[1:round(Int, Nc/2)] = grid[south_panel_index].φᶜᶜᵃ[round(Int, Nc/2), round(Int, Nc/2)+1:Nc]
-        latitudes[round(Int, Nc/2)+1:round(Int, 3Nc/2)] = grid[panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:Nc]
-        latitudes[round(Int, 3Nc/2)+1:2*Nc] = grid[north_panel_index].φᶜᶜᵃ[1:round(Int, Nc/2), round(Int, Nc/2)]
+    for (index, panel_index) in enumerate([1, 2, 4, 5])
         for i_frame in 1:n_frames+1
-            b_fields_at_specific_longitude_through_panel_center[i_frame, 1:round(Int, Nc/2), :] = (
-            b_fields[i_frame][south_panel_index][round(Int, Nc/2), round(Int, Nc/2)+1:Nc, 1:Nz])
-            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, Nc/2)+1:round(Int, 3Nc/2), :] = (
-            b_fields[i_frame][panel_index][round(Int, Nc/2), 1:Nc, 1:Nz])
-            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, 3Nc/2)+1:2*Nc, :] = (
-            b_fields[i_frame][north_panel_index][1:round(Int, Nc/2), round(Int, Nc/2), 1:Nz])
+            u_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, u_fields[i_frame], panel_index;
+                                                                     levels = 1:Nz))
+            v_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, v_fields[i_frame], panel_index;
+                                                                     levels = 1:Nz))
+            ζ_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[i_frame], panel_index;
+                                                                     levels = 1:Nz))
+            b_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, b_fields[i_frame], panel_index;
+                                                                     levels = 1:Nz))
         end
-    elseif panel_index == 2
-        latitudes[1:round(Int, Nc/2)] = grid[south_panel_index].φᶜᶜᵃ[round(Int, Nc/2)+1:Nc, round(Int, Nc/2)]
-        latitudes[round(Int, Nc/2)+1:round(Int, 3Nc/2)] = grid[panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:Nc]
-        latitudes[round(Int, 3Nc/2)+1:2*Nc] = grid[north_panel_index].φᶜᶜᵃ[round(Int, Nc/2), 1:round(Int, Nc/2)]
-        for i_frame in 1:n_frames+1
-            b_fields_at_specific_longitude_through_panel_center[i_frame, 1:round(Int, Nc/2), :] = (
-            b_fields[i_frame][south_panel_index][round(Int, Nc/2)+1:Nc, round(Int, Nc/2), 1:Nz])
-            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, Nc/2)+1:round(Int, 3Nc/2), :] = (
-            b_fields[i_frame][panel_index][round(Int, Nc/2), 1:Nc, 1:Nz])
-            b_fields_at_specific_longitude_through_panel_center[i_frame, round(Int, 3Nc/2)+1:2*Nc, :] = (
-            b_fields[i_frame][north_panel_index][round(Int, Nc/2), 1:round(Int, Nc/2), 1:Nz])
-        end
+
+        title = "Zonal velocity versus depth"
+        cbar_label = "zonal velocity"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+                                                  latitude_at_specific_longitude_through_panel_center[:, index],
+                                                  depths, u_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
+                                                  "cubed_sphere_aquaplanet_u_latitude-depth_section_$panel_index";
+                                                  use_prettytimes = true, prettytimes = prettytimes)
+        title = "Meridional velocity versus depth"
+        cbar_label = "meridional velocity"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+                                                  latitude_at_specific_longitude_through_panel_center[:, index],
+                                                  depths, v_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
+                                                  "cubed_sphere_aquaplanet_v_latitude-depth_section_$panel_index";
+                                                  use_prettytimes = true, prettytimes = prettytimes)
+        title = "Relative vorticity versus depth"
+        cbar_label = "relative vorticity"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+                                                  latitude_at_specific_longitude_through_panel_center[:, index],
+                                                  depths, ζ_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
+                                                  "cubed_sphere_aquaplanet_ζ_latitude-depth_section_$panel_index";
+                                                  use_prettytimes = true, prettytimes = prettytimes)
+        title = "Buoyancy versus depth"
+        cbar_label = "buoyancy"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+                                                  latitude_at_specific_longitude_through_panel_center[:, index],
+                                                  depths, b_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
+                                                  "cubed_sphere_aquaplanet_b_latitude-depth_section_$panel_index";
+                                                  use_prettytimes = true, prettytimes = prettytimes)
     end
-
-    resolution = (875, 750)
-    plot_type = "heat_map"
-    axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth", xlabelsize = 22.5, ylabelsize = 22.5,
-                   xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
-                   title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
-    contourlevels = 50
-    cbar_kwargs = (label = "buoyancy", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
-    create_heat_map_or_contour_plot(resolution, plot_type, latitudes, depths,
-                                    b_fields_at_specific_longitude_through_panel_center[1, :, :], axis_kwargs,
-                                    contourlevels, cbar_kwargs, "cubed_sphere_aquaplanet_b₀_latitude-depth_section")
-    create_heat_map_or_contour_plot(resolution, plot_type, latitudes, depths,
-                                    b_fields_at_specific_longitude_through_panel_center[end, :, :], axis_kwargs,
-                                    contourlevels, cbar_kwargs, "cubed_sphere_aquaplanet_b_latitude-depth_section")
-    create_heat_map_or_contour_plot_animation(resolution, plot_type, latitudes, depths,
-                                              b_fields_at_specific_longitude_through_panel_center, axis_kwargs,
-                                              contourlevels, cbar_kwargs, framerate,
-                                              "cubed_sphere_aquaplanet_b_latitude-depth_animation";
-                                              use_prettytimes = true, prettytimes = prettytimes)
 end

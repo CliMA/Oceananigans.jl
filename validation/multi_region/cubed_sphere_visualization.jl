@@ -76,6 +76,124 @@ function orient_in_local_direction!(grid, u, v, cos_θ, sin_θ; levels = 1:1)
     end
 end
 
+function extract_latitude(grid; location = "cc")
+    Nx, Ny, Nz = size(grid)
+
+    latitude = zeros(Nx, Ny, number_of_regions(grid))
+
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        if location == "cc"
+            latitude[i, j, region] = grid[region].φᶜᶜᵃ[i, j]
+        elseif location == "fc"
+            latitude[i, j, region] = grid[region].φᶠᶜᵃ[i, j]
+        elseif location == "cf"
+            latitude[i, j, region] = grid[region].φᶜᶠᵃ[i, j]
+        elseif location == "ff"
+            latitude[i, j, region] = grid[region].φᶠᶠᵃ[i, j]
+        end
+    end
+
+    return latitude
+end
+
+function extract_longitude(grid; location = "cc")
+    Nx, Ny, Nz = size(grid)
+
+    longitude = zeros(Nx, Ny, number_of_regions(grid))
+
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        if location == "cc"
+            longitude[i, j, region] = grid[region].λᶜᶜᵃ[i, j]
+        elseif location == "fc"
+            longitude[i, j, region] = grid[region].λᶠᶜᵃ[i, j]
+        elseif location == "cf"
+            longitude[i, j, region] = grid[region].λᶜᶠᵃ[i, j]
+        elseif location == "ff"
+            longitude[i, j, region] = grid[region].λᶠᶠᵃ[i, j]
+        end
+    end
+
+    return longitude
+end
+
+function extract_scalar_at_specific_longitude_through_panel_center(grid, scalar, panel_index)
+    Nc = Nx
+    east_panel_index = grid.connectivity.connections[panel_index].east.from_rank
+    west_panel_index = grid.connectivity.connections[panel_index].west.from_rank
+    north_panel_index = grid.connectivity.connections[panel_index].north.from_rank
+    south_panel_index = grid.connectivity.connections[panel_index].south.from_rank
+    scalar_at_specific_longitude_through_panel_center = zeros(2*Nc)
+    NcBy2 = round(Int, Nc/2)
+    if panel_index == 1
+        scalar_at_specific_longitude_through_panel_center[1:NcBy2] = scalar[NcBy2, NcBy2+1:Nc, south_panel_index]
+        scalar_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2)] = scalar[NcBy2, 1:Nc, panel_index]
+        scalar_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc] = (
+        scalar[1:NcBy2, NcBy2+1, north_panel_index])
+    elseif panel_index == 2
+        scalar_at_specific_longitude_through_panel_center[1:NcBy2] = scalar[NcBy2+1:Nc, NcBy2+1, south_panel_index]
+        scalar_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2)] = scalar[NcBy2, 1:Nc, panel_index]
+        scalar_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc] = (
+        scalar[NcBy2, 1:NcBy2, north_panel_index])
+    elseif panel_index == 4
+        scalar_at_specific_longitude_through_panel_center[1:NcBy2] = scalar[NcBy2+1:Nc, NcBy2, west_panel_index]
+        scalar_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2)] = scalar[1:Nc, NcBy2, panel_index]
+        scalar_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc] = (
+        scalar[NcBy2+1, 1:NcBy2, east_panel_index])
+        scalar_at_specific_longitude_through_panel_center = reverse(scalar_at_specific_longitude_through_panel_center)
+    elseif panel_index == 5
+        scalar_at_specific_longitude_through_panel_center[1:NcBy2] = scalar[NcBy2+1, NcBy2+1:Nc, west_panel_index]
+        scalar_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2)] = scalar[1:Nc, NcBy2, panel_index]
+        scalar_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc] = (
+        scalar[1:NcBy2, NcBy2, east_panel_index])
+        scalar_at_specific_longitude_through_panel_center = reverse(scalar_at_specific_longitude_through_panel_center)
+    end
+    return scalar_at_specific_longitude_through_panel_center
+end
+
+function extract_field_at_specific_longitude_through_panel_center(grid, field, panel_index; levels = 1:1)
+    Nc = Nx
+    east_panel_index = grid.connectivity.connections[panel_index].east.from_rank
+    west_panel_index = grid.connectivity.connections[panel_index].west.from_rank
+    north_panel_index = grid.connectivity.connections[panel_index].north.from_rank
+    south_panel_index = grid.connectivity.connections[panel_index].south.from_rank
+    field_at_specific_longitude_through_panel_center = zeros(2*Nc, levels)
+    NcBy2 = round(Int, Nc/2)
+    if panel_index == 1
+        field_at_specific_longitude_through_panel_center[1:NcBy2, levels] = (
+        field[south_panel_index][NcBy2, NcBy2+1:Nc, levels])
+        field_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2), levels] = (
+        field[panel_index][NcBy2, 1:Nc, levels])
+        field_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc, levels] = (
+        field[north_panel_index][1:NcBy2, NcBy2+1, levels])
+    elseif panel_index == 2
+        field_at_specific_longitude_through_panel_center[1:NcBy2, levels] = (
+        field[south_panel_index][NcBy2+1:Nc, NcBy2+1, levels])
+        field_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2), levels] = (
+        field[panel_index][NcBy2, 1:Nc, levels])
+        field_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc, levels] = (
+        field[north_panel_index][NcBy2, 1:NcBy2, levels])
+    elseif panel_index == 4
+        field_at_specific_longitude_through_panel_center[1:NcBy2, levels] = (
+        field[west_panel_index][NcBy2+1:Nc, NcBy2, levels])
+        field_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2), levels] = (
+        field[panel_index][1:Nc, NcBy2, levels])
+        field_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc, levels] = (
+        field[east_panel_index][NcBy2+1, 1:NcBy2, levels])
+        field_at_specific_longitude_through_panel_center = reverse(field_at_specific_longitude_through_panel_center,
+                                                                   dims = 1)
+    elseif panel_index == 5
+        field_at_specific_longitude_through_panel_center[1:NcBy2, levels] = (
+        field[west_panel_index][NcBy2+1, NcBy2+1:Nc, levels])
+        field_at_specific_longitude_through_panel_center[NcBy2+1:round(Int, 3Nc/2), levels] = (
+        field[panel_index][1:Nc, NcBy2, levels])
+        field_at_specific_longitude_through_panel_center[round(Int, 3Nc/2)+1:2*Nc, levels] = (
+        field[east_panel_index][1:NcBy2, NcBy2, levels])
+        field_at_specific_longitude_through_panel_center = reverse(field_at_specific_longitude_through_panel_center,
+                                                                   dims = 1)
+    end
+    return field_at_specific_longitude_through_panel_center
+end
+
 function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, plot_kwargs, file_name;
                                             format = ".png")
     fig = Figure(resolution = resolution)
@@ -115,9 +233,9 @@ function test_create_single_line_or_scatter_plot()
     end
 end
 
-function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, contourlevels, cbar_kwargs,
-                                         file_name; use_symmetric_colorrange = true, specify_plot_limits = false,
-                                         plot_limits = [], format = ".png")
+function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, title, contourlevels, cbar_kwargs,
+                                         cbar_label, file_name; use_symmetric_colorrange = true,
+                                         specify_plot_limits = false, plot_limits = [], format = ".png")
     fig = Figure(resolution = resolution)
 
     ax = Axis(fig[1,1]; axis_kwargs...)
@@ -134,8 +252,8 @@ function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_k
     elseif plot_type == "filled_contour_plot"
         myplot = contourf!(ax, x, y, φ; levels = range(colorrange..., length=contourlevels), colormap = colormap)
     end
-    Colorbar(fig[1,2], myplot; cbar_kwargs...)
-
+    Colorbar(fig[1,2], myplot; label = cbar_label, cbar_kwargs...)
+    ax.title = title
     save(file_name * format, fig)
 end
 
@@ -159,18 +277,21 @@ function test_create_heat_map_or_contour_plot()
 
     axis_kwargs = (xlabel = "x", ylabel = "y", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
                    yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
-                   title = "sin(kx + ly - ωt)", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+                   titlesize = 27.5, titlegap = 15, titlefont = :bold)
     contourlevels = 50
-    cbar_kwargs = (label = "sin(kx + ly - ωt)", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+    cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+    cbar_label = "sin(kx + ly - ωt)"
 
     plot_types = ["heat_map", "filled_contour_plot"]
+    titles = ["Heatmap of sin(kx + ly - ωt)", "Filled contour plot of sin(kx + ly - ωt)"]
     file_names = ["HeatMapExample", "FilledContourPlotExample"]
 
     for i in 1:2
         plot_type = plot_types[i]
+        title = titles[i]
         file_name = file_names[i]
-        create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, contourlevels, cbar_kwargs,
-                                        file_name)
+        create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, title, contourlevels, cbar_kwargs,
+                                        cbar_label, file_name)
     end
 end
 
@@ -416,11 +537,11 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     return fig
 end
 
-function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, contourlevels,
-                                                   cbar_kwargs, framerate, filename; start_index = 1,
-                                                   use_symmetric_colorrange = true, specify_plot_limits = false,
-                                                   plot_limits = [], use_prettytimes = false, prettytimes = [],
-                                                   format = ".mp4")
+function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, title_prefix,
+                                                   contourlevels, cbar_kwargs, cbar_label, framerate, filename;
+                                                   start_index = 1, use_symmetric_colorrange = true,
+                                                   specify_plot_limits = false, plot_limits = [],
+                                                   use_prettytimes = false, prettytimes = [], format = ".mp4")
     n = Observable(start_index)
     φ = @lift φ_series[$n, :, :]
     use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
@@ -428,7 +549,7 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
     fig = Figure(resolution = resolution)
     # Specify the title of every frame if desired.
     ax = Axis(fig[1,1]; axis_kwargs...)
-    use_prettytimes ? (ax.title = axis_kwargs.title * " after " * prettytime[]) : nothing
+    ax.title = use_prettytimes ? (title_prefix * " after " * prettytime[]) : title_prefix
 
     if specify_plot_limits
         colorrange = plot_limits
@@ -442,7 +563,7 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
     elseif plot_type == "filled_contour_plot"
         myplot = contourf!(ax, x, y, φ; levels = range(colorrange..., length=contourlevels), colormap = colormap)
     end
-    Colorbar(fig[1,2], myplot; cbar_kwargs...)
+    Colorbar(fig[1,2], myplot; label = cbar_label, cbar_kwargs...)
 
     frames = 1:size(φ_series, 1)
     CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
@@ -477,17 +598,20 @@ function test_create_heat_map_or_contour_plot_animation()
                    yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
                    title = "sin(kx + ly - ωt)", titlesize = 27.5, titlegap = 15, titlefont = :bold)
     contourlevels = 50
-    cbar_kwargs = (label = "sin(kx + ly - ωt)", labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+    cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
+    cbar_label = "sin(kx + ly - ωt)"
     framerate = 10
 
     plot_types = ["heat_map", "filled_contour_plot"]
+    titles = ["Heatmap of sin(kx + ly - ωt)", "Filled contour plot of sin(kx + ly - ωt)"]
     file_names = ["sine_wave_heat_map_animation", "sine_wave_filled_contour_plot_animation"]
 
     for i in 1:2
         plot_type = plot_types[i]
+        title = titles[i]
         file_name = file_names[i]
-        create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, contourlevels,
-                                                  cbar_kwargs, framerate, file_name)
+        create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, title, contourlevels,
+                                                  cbar_kwargs, cbar_label, framerate, file_name)
     end
 end
 
