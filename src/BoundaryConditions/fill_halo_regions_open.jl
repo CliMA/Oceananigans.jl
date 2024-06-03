@@ -1,9 +1,9 @@
 function fill_bounded_wall_normal_halo_regions!(velocities, clock, fields)
     grid = velocities.u.grid
 
-    fill_open_halo_regions!(velocities.u, grid, clock, fields)
-    fill_open_halo_regions!(velocities.v, grid, clock, fields)
-    fill_open_halo_regions!(velocities.w, grid, clock, fields)
+    fill_open_halo_regions!(velocities.u, grid, instantiated_location(velocities.u), clock, fields)
+    fill_open_halo_regions!(velocities.v, grid, instantiated_location(velocities.v), clock, fields)
+    fill_open_halo_regions!(velocities.w, grid, instantiated_location(velocities.w), clock, fields)
 
     return nothing
 end
@@ -17,10 +17,10 @@ const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded},
 function fill_open_halo_regions!(field, grid::BoundedGrid, loc, args...)
     arch = architecture(grid)
 
-    left_bc = left_boundary_condition(field)
-    right_bc = right_boundary_condition(field)
+    left_bc = left_boundary_condition(field, loc)
+    right_bc = right_boundary_condition(field, loc)
 
-    launch!(arch, grid, side_plan(field), fill_open_halo!(field), field, left_bc, right_bc, loc, grid, args)
+    launch!(arch, grid, side_plan(loc), fill_open_halo!(loc), field, left_bc, right_bc, loc, grid, args)
 
     return nothing
 end
@@ -47,7 +47,7 @@ end
     _fill_east_open_halo!(j, k, grid, c, east_bc, loc, args...)
 end
 
-@kernel function _fill_south_and_top_open_halo!(c, south_bc, top_bc, loc, grid, args)
+@kernel function _fill_south_and_north_open_halo!(c, south_bc, north_bc, loc, grid, args)
     i, k = @index(Global, NTuple)
     _fill_south_open_halo!(i, k, grid, c, south_bc, loc, args...)
     _fill_north_open_halo!(i, k, grid, c, north_bc, loc, args...)
