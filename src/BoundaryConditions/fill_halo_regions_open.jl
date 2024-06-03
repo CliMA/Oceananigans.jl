@@ -8,11 +8,13 @@ function fill_bounded_wall_normal_halo_regions!(velocities, clock, fields)
     return nothing
 end
 
-const bounded_grid = Union{AbstractGrid{Any, Bounded}, AbstractGrid{Any, Any, Bounded}, AbstractGrid{Any, Any, Any, Bounded}}
+const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded}, 
+                          AbstractGrid{<:Any, <:Any, <:Bounded}, 
+                          AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}}
 
 @inline fill_open_halo_regions!(field, grid, args...) = nothing
 
-function fill_open_halo_regions!(field, grid::bounded_grid, loc, args...)
+function fill_open_halo_regions!(field, grid::BoundedGrid, loc, args...)
     arch = architecture(grid)
 
     left_bc = left_boundary_condition(field)
