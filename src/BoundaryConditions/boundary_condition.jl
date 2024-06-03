@@ -11,21 +11,12 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-    BoundaryCondition(Classification::DataType, condition)
-
-Construct a boundary condition of type `BC` with a number or array as a `condition`.
-
-Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `Open`.
-"""
-#BoundaryCondition(Classification::DataType, condition) = BoundaryCondition(Classification(), condition)
-
-"""
-    BoundaryCondition(Classification::DataType, condition::Function;
+    BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
                       parameters = nothing,
                       discrete_form = false,
                       field_dependencies=())
 
-Construct a boundary condition of type `Classification` with a function boundary `condition`.
+Construct a boundary condition of type `classification` with a function boundary `condition`.
 
 By default, the function boudnary `condition` is assumed to have the 'continuous form'
 `condition(ξ, η, t)`, where `t` is time and `ξ` and `η` vary along the boundary.
@@ -49,7 +40,7 @@ where `i`, and `j` are indices that vary along the boundary. If `discrete_form =
 condition(i, j, grid, clock, model_fields, parameters)
 ```
 """
-function BoundaryCondition(Classification::AbstractBoundaryConditionClassification, condition::Function;
+function BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
                            parameters = nothing,
                            discrete_form = false,
                            field_dependencies=())
@@ -62,8 +53,11 @@ function BoundaryCondition(Classification::AbstractBoundaryConditionClassificati
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
-    return BoundaryCondition(Classification, condition)
+    return BoundaryCondition(classification, condition)
 end
+
+# for backwards compatability, maybe we should remove...
+BoundaryCondition(Classification::DataType, condition; kwargs...) = BoundaryCondition(Classification(), condition; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
