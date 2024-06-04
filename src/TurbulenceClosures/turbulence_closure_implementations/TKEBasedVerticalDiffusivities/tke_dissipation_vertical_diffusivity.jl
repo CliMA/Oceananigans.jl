@@ -1,6 +1,7 @@
-struct TKEDissipationVerticalDiffusivity{TD, KE, ST, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
+struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     tke_dissipation_equations :: KE
     stability_functions :: ST
+    minimum_length_scale :: LMIN
     maximum_tracer_diffusivity :: FT
     maximum_tke_diffusivity :: FT
     maximum_dissipation_diffusivity :: FT
@@ -12,23 +13,25 @@ end
 
 function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                stability_functions::ST,
+                                               minimum_length_scale :: LMIN,
                                                maximum_tracer_diffusivity::FT,
                                                maximum_tke_diffusivity::FT,
                                                maximum_dissipation_diffusivity::FT,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
                                                negative_tke_damping_time_scale::FT, 
-                                               tke_dissipation_time_step::DT) where {TD, KE, ST, FT, DT}
+                                               tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 
-    return TKEDissipationVerticalDiffusivity{TD, KE, ST, FT, DT}(tke_dissipation_equations,
-                                                                 stability_functions,
-                                                                 maximum_tracer_diffusivity,
-                                                                 maximum_tke_diffusivity,
-                                                                 maximum_dissipation_diffusivity,
-                                                                 maximum_viscosity,
-                                                                 minimum_tke,
-                                                                 negative_tke_damping_time_scale,
-                                                                 tke_dissipation_time_step)
+    return TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT}(tke_dissipation_equations,
+                                                                       stability_functions,
+                                                                       minimum_length_scale,
+                                                                       maximum_tracer_diffusivity,
+                                                                       maximum_tke_diffusivity,
+                                                                       maximum_dissipation_diffusivity,
+                                                                       maximum_viscosity,
+                                                                       minimum_tke,
+                                                                       negative_tke_damping_time_scale,
+                                                                       tke_dissipation_time_step)
 end
 
 TKEDissipationVerticalDiffusivity(FT::DataType; kw...) =
@@ -42,12 +45,13 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
     TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                       FT = Float64;]
                                       tke_dissipation_equations = TKEDissipationEquations(),
-                                      stability_functions = ConstantStabilityFunctions(),
+                                      stability_functions = VariableStabilityFunctions(),
+                                      minimum_length_scale = StratifiedDisplacementScale(),
                                       maximum_tracer_diffusivity = Inf,
                                       maximum_tke_diffusivity = Inf,
                                       maximum_dissipation_diffusivity = Inf,
                                       maximum_viscosity = Inf,
-                                      minimum_tke = 1e-9,
+                                      minimum_tke = 1e-6,
                                       negative_tke_damping_time_scale = 1minute,
                                       tke_dissipation_time_step = nothing)
 
@@ -56,7 +60,7 @@ small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 
 !!! note "TKEDissipationVerticalDiffusivity"
-    `TKEDissipationVerticalDiffusivity` is new turbulence closure diffusivity. The default
+    `TKEDissipationVerticalDiffusivity` is a new turbulence closure diffusivity. The default
     values for its free parameters are obtained from calibration against large eddy
     simulations. For more details please refer to [Wagner23catke](@cite).
 
@@ -96,17 +100,21 @@ Note that for numerical stability, it is recommended to either have a relative s
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
                                            FT = Float64;
                                            tke_dissipation_equations = TKEDissipationEquations(),
-                                           stability_functions = ConstantStabilityFunctions(),
-                                           maximum_tracer_diffusivity = 1,
+                                           stability_functions = VariableStabilityFunctions(),
+                                           minimum_length_scale = StratifiedDisplacementScale(),
+                                           maximum_tracer_diffusivity = Inf,
                                            maximum_tke_diffusivity = Inf,
                                            maximum_dissipation_diffusivity = Inf,
                                            maximum_viscosity = Inf,
-                                           minimum_tke = 1e-9,
+                                           minimum_tke = 1e-6,
                                            negative_tke_damping_time_scale = 1minute,
                                            tke_dissipation_time_step = nothing) where TD
 
+    stability_functions = convert_eltype(FT, stability_functions)
+
     return TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations,
                                                  stability_functions,
+                                                 minimum_length_scale,
                                                  convert(FT, maximum_tracer_diffusivity),
                                                  convert(FT, maximum_tke_diffusivity),
                                                  convert(FT, maximum_dissipation_diffusivity),
@@ -122,6 +130,15 @@ function with_tracers(tracer_names, closure::FlavorOfTD)
                             "for `TKEDissipationVerticalDiffusivity`."))
 
     return closure
+end
+
+#####
+##### Stratified displacement length scale limiter
+#####
+
+Base.@kwdef struct StratifiedDisplacementScale{FT}
+    Cᴺ :: FT = 0.75
+    minimum_buoyancy_frequency :: FT = 1e-14
 end
 
 #####
@@ -180,6 +197,12 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
+    #=
+    ϵ = parent(model.tracers.ϵ)
+    ϵᵐⁱⁿ = 1e-12
+    @. ϵ = max(ϵ, ϵᵐⁱⁿ)
+    =#
+
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
@@ -231,23 +254,32 @@ end
     eᵐⁱⁿ = closure.minimum_tke
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     return max(eᵐⁱⁿ, eⁱʲᵏ)
+    #return eⁱʲᵏ
 end
+
+@inline max_a_b(i, j, k, grid, a::Number, b, args...) = max(a, b(i, j, k, grid, args...))
 
 @inline function maximum_dissipation(i, j, k, grid, closure, tracers, buoyancy)
     FT = eltype(grid)
-    d = depthᶜᶜᶠ(i, j, k, grid)
-    N² = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²⁺ = clip(N²)
+
+    N²min = closure.minimum_length_scale.minimum_buoyancy_frequency
+    #N² = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    #N²⁺ = max(N², N²min)
+    
+    N²⁺= ℑbzᵃᵃᶜ(i, j, k, grid, max_a_b, N²min, ∂z_b, buoyancy, tracers)
+
+    Cᴺ = closure.minimum_length_scale.Cᴺ
     eⁱʲᵏ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, tracers)
-    ℓst = ifelse(N²⁺ == 0, FT(Inf), sqrt(eⁱʲᵏ / N²⁺))
-    ℓmin = min(grid.Lz, ℓst)
+    ℓst = ifelse(N²⁺ == 0, FT(Inf), Cᴺ * sqrt(eⁱʲᵏ / N²⁺))
+
+    ℓmin = ℓst #min(grid.Lz, ℓst)
     return sqrt(eⁱʲᵏ)^3 / ℓmin
 end
 
 @inline function minimum_dissipation(i, j, k, grid, closure, tracers, buoyancy)
     eᵐⁱⁿ = closure.minimum_tke
     ℓmax = grid.Lz
-    return sqrt(eᵐⁱⁿ)^3 / ℓmax
+    return 1e-12 #zero(grid) #sqrt(eᵐⁱⁿ)^3 / ℓmax
 end
 
 @inline function dissipationᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
@@ -260,8 +292,8 @@ end
 @inline function κuᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    ςu = momentum_stability_function(i, j, k, grid, closure.stability_functions, velocities, tracers, buoyancy)
-    κu = ςu * e² / ϵ
+    𝕊u = momentum_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    κu = 𝕊u * e² / ϵ
     κu_max = closure.maximum_viscosity
     return min(κu, κu_max)
 end
@@ -269,8 +301,8 @@ end
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    ςc = tracer_stability_function(i, j, k, grid, closure.stability_functions, velocities, tracers, buoyancy)
-    κc = ςc * e² / ϵ
+    𝕊c = tracer_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    κc = 𝕊c * e² / ϵ
     κc_max = closure.maximum_tracer_diffusivity
     return min(κc, κc_max)
 end
@@ -278,8 +310,8 @@ end
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    ςe = tke_stability_function(i, j, k, grid, closure.stability_functions, velocities, tracers, buoyancy)
-    κe = ςe * e² / ϵ
+    𝕊e = tke_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    κe = 𝕊e * e² / ϵ
     κe_max = closure.maximum_tke_diffusivity
     return min(κe, κe_max)
 end
@@ -287,8 +319,8 @@ end
 @inline function κϵᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    ςϵ = dissipation_stability_function(i, j, k, grid, closure.stability_functions, velocities, tracers, buoyancy)
-    κϵ = ςϵ * e² / ϵ
+    𝕊ϵ = dissipation_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    κϵ = 𝕊ϵ * e² / ϵ
     κϵ_max = closure.maximum_dissipation_diffusivity
     return min(κϵ, κϵ_max)
 end
@@ -303,5 +335,24 @@ end
 function Base.summary(closure::TDVD)
     TD = nameof(typeof(time_discretization(closure)))
     return string("TKEDissipationVerticalDiffusivity{$TD}")
+end
+
+function Base.show(io::IO, clo::TDVD)
+    print(io, summary(clo))
+    print(io, '\n')
+    print(io, "├── maximum_tracer_diffusivity: ", prettysummary(clo.maximum_tracer_diffusivity), '\n',
+              "├── maximum_tke_diffusivity: ", prettysummary(clo.maximum_tke_diffusivity), '\n',
+              "├── maximum_dissipation_diffusivity: ", prettysummary(clo.maximum_dissipation_diffusivity), '\n',
+              "├── maximum_viscosity: ", prettysummary(clo.maximum_viscosity), '\n',
+              "├── minimum_tke: ", prettysummary(clo.minimum_tke), '\n',
+              "├── negative_tke_damping_time_scale: ", prettysummary(clo.negative_tke_damping_time_scale), '\n',
+              "├── tke_dissipation_time_step: ", prettysummary(clo.tke_dissipation_time_step), '\n',
+              "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
+              "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
+              "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
+              "│   ├── Cᵇϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ),  '\n',
+              "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
+              "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
+    print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
 

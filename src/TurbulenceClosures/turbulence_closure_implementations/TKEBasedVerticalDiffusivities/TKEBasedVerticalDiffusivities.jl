@@ -170,9 +170,15 @@ include("tke_dissipation_vertical_diffusivity.jl")
 include("tke_dissipation_stability_functions.jl")
 include("tke_dissipation_equations.jl")
 
-for S in (:CATKEMixingLength, :CATKEEquation)
+for S in (:CATKEMixingLength,
+          :CATKEEquation,
+          :StratifiedDisplacementScale,
+          :ConstantStabilityFunctions,
+          :VariableStabilityFunctions)
+
     @eval @inline convert_eltype(::Type{FT}, s::$S) where FT =
         $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
+
     @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
 end
 

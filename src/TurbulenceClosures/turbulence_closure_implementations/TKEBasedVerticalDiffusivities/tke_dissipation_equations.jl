@@ -148,8 +148,11 @@ end
     Cᵋϵ = closure_ij.tke_dissipation_equations.Cᵋϵ
     Cᵇϵ = closure_ij.tke_dissipation_equations.Cᵇϵ
 
+    Cᵇϵ_wb⁻ = min(zero(grid), Cᵇϵ * wb)
+    Cᵇϵ_wb⁺ = max(zero(grid), Cᵇϵ * wb)
+
     @inbounds Le[i, j, k] = wb⁻_e - ωe
-    @inbounds Lϵ[i, j, k] = Cᵇϵ * wb⁻_e - Cᵋϵ * ωϵ
+    @inbounds Lϵ[i, j, k] = Cᵇϵ_wb⁻ / e★ - Cᵋϵ * ωϵ
 
     # Compute fast TKE and dissipation RHSs
     u⁺ = next_velocities.u
@@ -164,8 +167,9 @@ end
     P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
 
     @inbounds begin
-        fast_Gⁿe = P + wb⁺                          # - ϵ (no implicit time stepping for now)
-        fast_Gⁿϵ = ω★ * (Cᴾϵ * P + Cᵇϵ * wb⁺) # - ϵ
+        fast_Gⁿe = P + wb⁺                    # - ϵ (no implicit time stepping for now)
+        #fast_Gⁿϵ = ω★ * (Cᴾϵ * P + Cᵇϵ_wb⁺) # - ϵ
+        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺) # - ϵ
     end
 
     # Advance TKE and store tendency
@@ -221,6 +225,32 @@ end
     return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
 end
 
+@inline function top_dissipation_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfTD, buoyancy)
+    closure = getclosure(i, j, closure)
+
+    top_tracer_bcs = parameters.top_tracer_boundary_conditions
+    top_velocity_bcs = parameters.top_velocity_boundary_conditions
+    dissipation_dissipation_parameters = closure.dissipation_dissipation_equations
+
+    return _top_dissipation_flux(i, j, grid, clock, fields, dissipation_dissipation_parameters, closure,
+                         buoyancy, top_tracer_bcs, top_velocity_bcs)
+end
+
+@inline function _top_dissipation_flux(i, j, grid, clock, fields,
+                               parameters::TKEDissipationEquations, closure::TDVD,
+                               buoyancy, top_tracer_bcs, top_velocity_bcs)
+
+    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
+
+    Cᵂu★ = parameters.Cᵂu★
+    CᵂwΔ = parameters.CᵂwΔ
+
+    return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
+end
+
+
+
 #####
 ##### Utilities for model constructors
 #####
@@ -234,10 +264,10 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
-
     parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
-
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
+
+    top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
@@ -253,7 +283,21 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
     end
 
-    new_boundary_conditions = merge(user_bcs, (; e = tke_bcs))
+    if :ϵ ∈ keys(user_bcs)
+        ϵ_bcs = user_bcs[:ϵ]
+        
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+                                                  top = top_dissipation_bc,
+                                                  bottom = e_bcs.bottom,
+                                                  north = e_bcs.north,
+                                                  south = e_bcs.south,
+                                                  east = e_bcs.east,
+                                                  west = e_bcs.west)
+    else
+        dissipation_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_dissipation_bc)
+    end
+
+    new_boundary_conditions = merge(user_bcs, (e=tke_bcs, ϵ=dissipation_bcs))
 
     return new_boundary_conditions
 end
