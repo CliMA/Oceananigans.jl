@@ -348,10 +348,13 @@ vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 bᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 
 resolution = (875, 750)
-plot_type = "heat_map"
-axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth", xlabelsize = 22.5, ylabelsize = 22.5,
+plot_type_1D = "line_plot"
+plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 10)
+plot_type_2D = "heat_map"
+axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth (km)", xlabelsize = 22.5, ylabelsize = 22.5,
                xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
                title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+
 contourlevels = 50
 cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
 
@@ -383,32 +386,32 @@ if plot_initial_field
             extract_field_at_specific_longitude_through_panel_center(grid, ζᵢ, panel_index; levels = 1:Nz))
             bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
-            title = "Zonal velocity versus depth"
-            cbar_label = "zonal velocity"
-            create_heat_map_or_contour_plot(resolution, plot_type,
+            title = "Zonal velocity"
+            cbar_label = "zonal velocity (m s⁻¹)"
+            create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                             latitude_at_specific_longitude_through_panel_center[:, index],
-                                            depths, uᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            depths/1000, uᵢ_at_specific_longitude_through_panel_center[:, :, index],
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_uᵢ_latitude-depth_section_$panel_index" )
-            title = "Meridional velocity versus depth"
-            cbar_label = "meridional velocity"
-            create_heat_map_or_contour_plot(resolution, plot_type,
+            title = "Meridional velocity"
+            cbar_label = "meridional velocity (m s⁻¹)"
+            create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                             latitude_at_specific_longitude_through_panel_center[:, index],
-                                            depths, vᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            depths/1000, vᵢ_at_specific_longitude_through_panel_center[:, :, index],
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_vᵢ_latitude-depth_section_$panel_index")
-            title = "Relative vorticity versus depth"
-            cbar_label = "relative vorticity"
-            create_heat_map_or_contour_plot(resolution, plot_type,
+            title = "Relative vorticity"
+            cbar_label = "relative vorticity (s⁻¹)"
+            create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                             latitude_at_specific_longitude_through_panel_center[:, index],
-                                            depths, ζᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            depths/1000, ζᵢ_at_specific_longitude_through_panel_center[:, :, index],
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
-            title = "Buoyancy versus depth"
-            cbar_label = "buoyancy"
-            create_heat_map_or_contour_plot(resolution, plot_type,
+            title = "Buoyancy"
+            cbar_label = "buoyancy (m s⁻²)"
+            create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                             latitude_at_specific_longitude_through_panel_center[:, index],
-                                            depths, bᵢ_at_specific_longitude_through_panel_center[:, :, index],
+                                            depths/1000, bᵢ_at_specific_longitude_through_panel_center[:, :, index],
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
         end
@@ -464,6 +467,7 @@ end
 u_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 v_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 ζ_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+η_f_at_specific_longitude_through_panel_center = zeros(2*Nx,  1, 4)
 b_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 
 plot_final_field = true
@@ -490,34 +494,42 @@ if plot_final_field
         extract_field_at_specific_longitude_through_panel_center(grid, v_fields[end], panel_index; levels = 1:Nz))
         ζ_f_at_specific_longitude_through_panel_center[:, :, index] = (
         extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[end], panel_index; levels = 1:Nz))
+        η_f_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, η_fields[end], panel_index; levels = Nz+1:Nz+1))
         b_f_at_specific_longitude_through_panel_center[:, :, index] = (
         extract_field_at_specific_longitude_through_panel_center(grid, b_fields[end], panel_index; levels = 1:Nz))
-        title = "Zonal velocity versus depth"
-        cbar_label = "zonal velocity"
-        create_heat_map_or_contour_plot(resolution, plot_type,
+        title = "Zonal velocity"
+        cbar_label = "zonal velocity (m s⁻¹)"
+        create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                         latitude_at_specific_longitude_through_panel_center[:, index],
-                                        depths, u_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        depths/1000, u_f_at_specific_longitude_through_panel_center[:, :, index],
                                         axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                         "cubed_sphere_aquaplanet_u_f_latitude-depth_section_$panel_index" )
-        title = "Meridional velocity versus depth"
-        cbar_label = "meridional velocity"
-        create_heat_map_or_contour_plot(resolution, plot_type,
+        title = "Meridional velocity"
+        cbar_label = "meridional velocity (m s⁻¹)"
+        create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                         latitude_at_specific_longitude_through_panel_center[:, index],
-                                        depths, v_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        depths/1000, v_f_at_specific_longitude_through_panel_center[:, :, index],
                                         axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                         "cubed_sphere_aquaplanet_v_f_latitude-depth_section_$panel_index")
-        title = "Relative vorticity versus depth"
-        cbar_label = "relative vorticity"
-        create_heat_map_or_contour_plot(resolution, plot_type,
+        title = "Relative vorticity"
+        cbar_label = "relative vorticity (s⁻¹)"
+        create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                         latitude_at_specific_longitude_through_panel_center[:, index],
-                                        depths, ζ_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        depths/1000, ζ_f_at_specific_longitude_through_panel_center[:, :, index],
                                         axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                         "cubed_sphere_aquaplanet_ζ_f_latitude-depth_section_$panel_index")
-        title = "Buoyancy versus depth"
-        cbar_label = "buoyancy"
-        create_heat_map_or_contour_plot(resolution, plot_type,
+        title = "Surface elevation"
+        cbar_label = "surface elevation (m)"
+        create_single_line_or_scatter_plot(resolution, plot_type_1D,
+                                           latitude_at_specific_longitude_through_panel_center[:, index],
+                                           η_f_at_specific_longitude_through_panel_center[:, 1, index], axis_kwargs,
+                                           title, plot_kwargs, "cubed_sphere_aquaplanet_η_f_latitude_$panel_index")
+        title = "Buoyancy"
+        cbar_label = "buoyancy (m s⁻²)"
+        create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                         latitude_at_specific_longitude_through_panel_center[:, index],
-                                        depths, b_f_at_specific_longitude_through_panel_center[:, :, index],
+                                        depths/1000, b_f_at_specific_longitude_through_panel_center[:, :, index],
                                         axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                         "cubed_sphere_aquaplanet_b_f_latitude-depth_section_$panel_index")
     end
@@ -569,27 +581,27 @@ if plot_snapshots
             || (!initialize_velocities_based_on_thermal_wind_balance && i_snapshot > 0))
             title = "Zonal velocity after $(prettytime(simulation_time))"
             fig = geo_heatlatlon_visualization(grid, u_fields[frame_index], title; k = Nz,
-                                               cbar_label = "zonal velocity", specify_plot_limits = true,
+                                               cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
                                                plot_limits = u_colorrange)
             save(@sprintf("cubed_sphere_aquaplanet_u_%d.png", i_snapshot), fig)
             title = "Meridional velocity after $(prettytime(simulation_time))"
             fig = geo_heatlatlon_visualization(grid, v_fields[frame_index], title; k = Nz,
-                                               cbar_label = "meridional velocity", specify_plot_limits = true,
+                                               cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
                                                plot_limits = v_colorrange)
             save(@sprintf("cubed_sphere_aquaplanet_v_%d.png", i_snapshot), fig)
             title = "Relative vorticity after $(prettytime(simulation_time))"
             fig = geo_heatlatlon_visualization(grid, ζ_fields[frame_index], title; k = Nz,
-                                               cbar_label = "relative vorticity", specify_plot_limits = true,
+                                               cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
                                                plot_limits = ζ_colorrange)
             save(@sprintf("cubed_sphere_aquaplanet_ζ_%d.png", i_snapshot), fig)
         end
         title = "Surface elevation after $(prettytime(simulation_time))"
         fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
-                                           cbar_label = "surface elevation", specify_plot_limits = true,
+                                           cbar_label = "surface elevation (m)", specify_plot_limits = true,
                                            plot_limits = η_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_η_%d.png", i_snapshot), fig)
-        title = "Tracer distribution after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid, b_fields[frame_index], title; k = Nz, cbar_label = "tracer level",
+        title = "Buoyancy after $(prettytime(simulation_time))"
+        fig = geo_heatlatlon_visualization(grid, b_fields[frame_index], title; k = Nz, cbar_label = "buoyancy (m s⁻²)",
                                            specify_plot_limits = true, plot_limits = b_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_b_%d.png", i_snapshot), fig)
     end
@@ -614,36 +626,37 @@ if make_animations
     u_colorrange = specify_colorrange_timeseries(grid, u_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity",
                                            "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "zonal velocity", specify_plot_limits = true,
+                                           cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
                                            plot_limits = u_colorrange, framerate = framerate)
 
     v_colorrange = specify_colorrange_timeseries(grid, v_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, v_fields, "cc", prettytimes, "Meridional velocity",
                                            "cubed_sphere_aquaplanet_v_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "meridional velocity", specify_plot_limits = true,
+                                           cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
                                            plot_limits = v_colorrange, framerate = framerate)
 
     ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, ζ_fields, "cc", prettytimes, "Relative vorticity",
                                            "cubed_sphere_aquaplanet_ζ_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "relative vorticity", specify_plot_limits = true,
+                                           cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
                                            plot_limits = ζ_colorrange, framerate = framerate)
 
     η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
     geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation",
                                            "cubed_sphere_aquaplanet_η_geo_heatlatlon_animation"; ssh = true,
-                                           cbar_label = "surface elevation", specify_plot_limits = true,
+                                           cbar_label = "surface elevation (m)", specify_plot_limits = true,
                                            plot_limits = η_colorrange, framerate = framerate)
 
     b_colorrange = specify_colorrange_timeseries(grid, b_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, b_fields, "cc", prettytimes, "Buoyancy",
                                            "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "buoyancy", specify_plot_limits = true,
+                                           cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
 
     u_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
     v_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
     ζ_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
+    η_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx,  1, 4)
     b_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
 
     for (index, panel_index) in enumerate([1, 2, 4, 5])
@@ -657,40 +670,51 @@ if make_animations
             ζ_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[i_frame], panel_index;
                                                                      levels = 1:Nz))
+            η_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, η_fields[i_frame], panel_index;
+                                                                     levels = Nz+1:Nz+1))
             b_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, b_fields[i_frame], panel_index;
                                                                      levels = 1:Nz))
         end
 
-        title = "Zonal velocity versus depth"
-        cbar_label = "zonal velocity"
-        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+        title = "Zonal velocity"
+        cbar_label = "zonal velocity (m s⁻¹)"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths, u_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, u_at_specific_longitude_through_panel_center[:, :, :, index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_u_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
-        title = "Meridional velocity versus depth"
-        cbar_label = "meridional velocity"
-        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+        title = "Meridional velocity"
+        cbar_label = "meridional velocity (m s⁻¹)"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths, v_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, v_at_specific_longitude_through_panel_center[:, :, :, index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_v_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
-        title = "Relative vorticity versus depth"
-        cbar_label = "relative vorticity"
-        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+        title = "Relative vorticity"
+        cbar_label = "relative vorticity (s⁻¹)"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths, ζ_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, ζ_at_specific_longitude_through_panel_center[:, :, :, index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_ζ_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
-        title = "Buoyancy versus depth"
-        cbar_label = "buoyancy"
-        create_heat_map_or_contour_plot_animation(resolution, plot_type,
+        title = "Surface elevation"
+        cbar_label = "surface elevation (m)"
+        create_single_line_or_scatter_plot_animation(resolution, plot_type_1D,
+                                                     latitude_at_specific_longitude_through_panel_center[:, index],
+                                                     η_at_specific_longitude_through_panel_center[:, :, 1, index],
+                                                     axis_kwargs, title, plot_kwargs, framerate,
+                                                     "cubed_sphere_aquaplanet_η_vs_latitude_$panel_index";
+                                                     use_prettytimes = true, prettytimes = prettytimes)
+        title = "Buoyancy"
+        cbar_label = "buoyancy (m s⁻²)"
+        create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths, b_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, b_at_specific_longitude_through_panel_center[:, :, :, index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_b_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)

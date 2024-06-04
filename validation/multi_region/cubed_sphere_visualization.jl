@@ -194,8 +194,9 @@ function extract_field_at_specific_longitude_through_panel_center(grid, field, p
     return field_at_specific_longitude_through_panel_center
 end
 
-function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, plot_kwargs, file_name;
-                                            format = ".png")
+function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, title, plot_kwargs, file_name;
+                                            specify_x_limits = false, x_limits = [0, 0], specify_y_limits = false,
+                                            y_limits = [0, 0], format = ".png")
     fig = Figure(resolution = resolution)
     ax = Axis(fig[1,1]; axis_kwargs...)
 
@@ -208,6 +209,10 @@ function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kw
         scatterlines!(ax, x, y, linewidth = plot_kwargs.linewidth, marker = plot_kwargs.marker,
                       markersize = plot_kwargs.markersize, color = plot_kwargs.linecolor)
     end
+    ax.title = title
+
+    specify_x_limits ? xlims!(ax, x_limits...) : nothing
+    specify_y_limits ? ylims!(ax, y_limits...) : nothing
 
     save(file_name * format, fig)
 end
@@ -219,8 +224,9 @@ function test_create_single_line_or_scatter_plot()
     resolution = (850, 750)
 
     axis_kwargs = (xlabel = "x", ylabel = "sin(x)", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
-                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, title = "sin(x) vs x",
-                   titlesize = 27.5, titlegap = 15, titlefont = :bold)
+                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, titlesize = 27.5,
+                   titlegap = 15, titlefont = :bold)
+    title = "sin(x) vs x"
     plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 10)
 
     plot_types = ["line_plot", "scatter_plot", "scatter_line_plot"]
@@ -229,7 +235,7 @@ function test_create_single_line_or_scatter_plot()
     for i in 1:3
         plot_type = plot_types[i]
         file_name = file_names[i]
-        create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, plot_kwargs, file_name)
+        create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, title, plot_kwargs, file_name)
     end
 end
 
@@ -537,6 +543,70 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     return fig
 end
 
+function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, y_series, axis_kwargs, title_prefix,
+                                                      plot_kwargs, framerate, filename; start_index = 1,
+                                                      specify_x_limits = false, x_limits = [0, 0],
+                                                      specify_y_limits = false, y_limits = [0, 0],
+                                                      use_symmetric_range = true, use_prettytimes = false,
+                                                      prettytimes = [], format = ".mp4")
+    n = Observable(start_index)
+    y = @lift y_series[$n, :]
+    use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
+
+    fig = Figure(resolution = resolution)
+    ax = Axis(fig[1,1]; axis_kwargs...)
+    ax.title = use_prettytimes ? (title_prefix * " after " * prettytime[]) : title_prefix
+
+    if !specify_y_limits
+        y_limits = specify_colorrange(y_series; use_symmetric_colorrange = use_symmetric_range)
+    end
+
+    if plot_type == "line_plot"
+        lines!(ax, x, y, linewidth = plot_kwargs.linewidth, color = plot_kwargs.linecolor)
+    elseif plot_type == "scatter_plot"
+        scatter!(ax, x, y, marker = plot_kwargs.marker, markersize = plot_kwargs.markersize,
+                 color = plot_kwargs.linecolor)
+    elseif plot_type == "scatter_line_plot"
+        scatterlines!(ax, x, y, linewidth = plot_kwargs.linewidth, marker = plot_kwargs.marker,
+                      markersize = plot_kwargs.markersize, color = plot_kwargs.linecolor)
+    end
+
+    specify_x_limits ? xlims!(ax, x_limits...) : nothing
+    ylims!(ax, y_limits...)
+
+    frames = 1:size(y_series, 1)
+    CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
+        msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+        n[] = i
+    end
+end
+
+function test_create_single_line_or_scatter_plot_animation()
+    x = range(0, 2π, length = 100)
+    t = range(0, 2π, length = 100)
+
+    y_series = [sin(x[i] - t[k]) for k in 1:100, i in 1:100]
+
+    resolution = (850, 750)
+    axis_kwargs = (xlabel = "x", ylabel = "sin(x)", xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5,
+                   yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1.0, titlesize = 27.5,
+                   titlegap = 15, titlefont = :bold)
+    title = "sin(x) vs x"
+    plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 10)
+    framerate = 10
+
+    plot_types = ["line_plot", "scatter_plot", "scatter_line_plot"]
+    file_names = ["LinePlotAnimationExample", "ScatterPlotAnimationExample", "ScatterLinePlotAnimationExample"]
+
+    for i in 1:3
+        plot_type = plot_types[i]
+        file_name = file_names[i]
+        create_single_line_or_scatter_plot_animation(resolution, plot_type, x, y_series, axis_kwargs, title,
+                                                     plot_kwargs, framerate, file_name)
+    end
+end
+
 function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, title_prefix,
                                                    contourlevels, cbar_kwargs, cbar_label, framerate, filename;
                                                    start_index = 1, use_symmetric_colorrange = true,
@@ -547,7 +617,6 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
     use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
 
     fig = Figure(resolution = resolution)
-    # Specify the title of every frame if desired.
     ax = Axis(fig[1,1]; axis_kwargs...)
     ax.title = use_prettytimes ? (title_prefix * " after " * prettytime[]) : title_prefix
 
