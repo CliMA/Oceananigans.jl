@@ -1,5 +1,3 @@
-using Oceananigans.BoundaryConditions: fill_boundary_normal_velocities!
-
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """

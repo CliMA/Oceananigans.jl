@@ -46,6 +46,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     foreach(mask_immersed_field!, model.velocities)
     update_state!(model)
 
+    fill_boundary_normal_velocities!(model.velocities, model.clock, fields(model))
+
     if enforce_incompressibility
         FT = eltype(model.grid)
         calculate_pressure_correction!(model, one(FT))
