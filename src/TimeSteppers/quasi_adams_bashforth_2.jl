@@ -77,7 +77,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     ab2_timestepper = model.timestepper
 
-    # Change the default χ if necessary, which occurs i
+    # Change the default χ if necessary, which occurs if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
     #     need to take an euler step. Note that model.clock.last_Δt is
