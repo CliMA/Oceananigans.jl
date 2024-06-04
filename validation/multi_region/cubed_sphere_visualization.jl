@@ -196,7 +196,8 @@ end
 
 function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, title, plot_kwargs, file_name;
                                             specify_x_limits = false, x_limits = [0, 0], specify_y_limits = false,
-                                            y_limits = [0, 0], format = ".png")
+                                            y_limits = [0, 0], tight_x_axis = false, tight_y_axis = false,
+                                            format = ".png")
     fig = Figure(resolution = resolution)
     ax = Axis(fig[1,1]; axis_kwargs...)
 
@@ -211,8 +212,17 @@ function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kw
     end
     ax.title = title
 
-    specify_x_limits ? xlims!(ax, x_limits...) : nothing
-    specify_y_limits ? ylims!(ax, y_limits...) : nothing
+    if specify_x_limits
+        xlims!(ax, x_limits...)
+    elseif tight_x_axis
+        xlims!(ax, extrema(x)...)
+    end
+
+    if specify_y_limits
+        ylims!(ax, y_limits...)
+    elseif tight_y_axis
+        ylims!(ax, extrema(y)...)
+    end
 
     save(file_name * format, fig)
 end
@@ -548,7 +558,7 @@ function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, 
                                                       specify_x_limits = false, x_limits = [0, 0],
                                                       specify_y_limits = false, y_limits = [0, 0],
                                                       use_symmetric_range = true, use_prettytimes = false,
-                                                      prettytimes = [], format = ".mp4")
+                                                      prettytimes = [], tight_x_axis = false, format = ".mp4")
     n = Observable(start_index)
     y = @lift y_series[$n, :]
     use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
@@ -571,7 +581,12 @@ function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, 
                       markersize = plot_kwargs.markersize, color = plot_kwargs.linecolor)
     end
 
-    specify_x_limits ? xlims!(ax, x_limits...) : nothing
+    if specify_x_limits
+        xlims!(ax, x_limits...)
+    elseif tight_x_axis
+        xlims!(ax, extrema(x)...)
+    end
+
     ylims!(ax, y_limits...)
 
     frames = 1:size(y_series, 1)

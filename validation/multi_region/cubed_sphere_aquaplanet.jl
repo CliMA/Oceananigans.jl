@@ -68,7 +68,7 @@ my_parameters = (Lz        = Lz,
                  Δ         = 0.06,
                  φ_max_lin = 90,
                  φ_max_par = 90,
-                 φ_max_cos = 90,
+                 φ_max_cos = 75,
                  λ_rts     = 10days,    # Restoring time scale
                  Cᴰ        = 1e-3       # Drag coefficient
 )
@@ -116,10 +116,12 @@ end
 @inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_lin
 @inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_par)^2
 @inline cosine_profile_in_y(φ, p) = 0.5(1 + cos(π * min(max(φ/p.φ_max_cos, -1), 1)))
+@inline double_cosine_profile_in_y(φ, p) = (
+0.5(1 + cos(π * min(max((deg2rad(abs(φ)) - π/4)/(deg2rad(p.φ_max_cos) - π/4), -1), 1))))
 
-@inline function buoyancy_restoring(λ, φ, z, b, p)
-    B = p.Δ * cosine_profile_in_y(φ, p) * linear_profile_in_z(z, p)
-    return -p.𝓋 * (b - B)
+@inline function buoyancy_restoring(λ, φ, t, b, p)
+    B = p.Δ * double_cosine_profile_in_y(φ, p)
+    return p.𝓋 * (b - B)
 end
 
 ####
@@ -196,14 +198,13 @@ model = HydrostaticFreeSurfaceModel(; grid,
 ##### Model initialization
 #####
 
-@inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * cosine_profile_in_y(φ, my_buoyancy_parameters)
-                                     * linear_profile_in_z(z, my_buoyancy_parameters))
+@inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * double_cosine_profile_in_y(φ, my_buoyancy_parameters)
+                                     * exponential_profile_in_z(z, my_buoyancy_parameters))
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
 initialize_velocities_based_on_thermal_wind_balance = true
 if initialize_velocities_based_on_thermal_wind_balance
-    f₀ = 1e-4
     fill_halo_regions!(model.tracers.b)
 
     Ω = model.coriolis.rotation_rate
@@ -211,10 +212,7 @@ if initialize_velocities_based_on_thermal_wind_balance
 
     for region in 1:number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
         numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i, j-1, k]
-        #=
         denominator = -2Ω * sind(grid[region].φᶠᶜᵃ[i, j]) * grid[region].Δyᶠᶜᵃ[i, j]
-        =#
-        denominator = -f₀ * grid[region].Δyᶠᶜᵃ[i, j]
         if k == 1
             Δz_below = grid[region].zᵃᵃᶜ[k] - grid[region].zᵃᵃᶠ[k]
             u_below = 0 # no slip boundary condition
@@ -224,10 +222,7 @@ if initialize_velocities_based_on_thermal_wind_balance
         end
         model.velocities.u[region][i, j, k] = u_below + numerator/denominator * Δz_below
         numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i-1, j, k]
-        #=
         denominator = 2Ω * sind(grid[region].φᶜᶠᵃ[i, j]) * grid[region].Δxᶜᶠᵃ[i, j]
-        =#
-        denominator = f₀ * grid[region].Δxᶜᶠᵃ[i, j]
         if k == 1
             v_below = 0 # no slip boundary condition
         else
@@ -348,12 +343,13 @@ vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 bᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 
 resolution = (875, 750)
-plot_type_1D = "line_plot"
+plot_type_1D = "scatter_line_plot"
 plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 10)
 plot_type_2D = "heat_map"
 axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth (km)", xlabelsize = 22.5, ylabelsize = 22.5,
                xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
                title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+axis_kwargs_ssh = (; axis_kwargs..., ylabel = "Surface elevation (m)")
 
 contourlevels = 50
 cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
@@ -374,9 +370,6 @@ if plot_initial_field
         fig = panel_wise_visualization(grid, ζᵢ; k = Nz)
         save("cubed_sphere_aquaplanet_ζᵢ.png", fig)
 
-        fig = panel_wise_visualization(grid, bᵢ; k = Nz)
-        save("cubed_sphere_aquaplanet_bᵢ.png", fig)
-
         for (index, panel_index) in enumerate([1, 2, 4, 5])
             uᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, uᵢ, panel_index; levels = 1:Nz))
@@ -384,8 +377,7 @@ if plot_initial_field
             extract_field_at_specific_longitude_through_panel_center(grid, vᵢ, panel_index; levels = 1:Nz))
             ζᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, ζᵢ, panel_index; levels = 1:Nz))
-            bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
+
             title = "Zonal velocity"
             cbar_label = "zonal velocity (m s⁻¹)"
             create_heat_map_or_contour_plot(resolution, plot_type_2D,
@@ -407,6 +399,13 @@ if plot_initial_field
                                             depths/1000, ζᵢ_at_specific_longitude_through_panel_center[:, :, index],
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
+        end
+
+        fig = panel_wise_visualization(grid, bᵢ; k = Nz)
+        save("cubed_sphere_aquaplanet_bᵢ.png", fig)
+        for (index, panel_index) in enumerate([1, 2, 4, 5])
+            bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+            extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
             title = "Buoyancy"
             cbar_label = "buoyancy (m s⁻²)"
             create_heat_map_or_contour_plot(resolution, plot_type_2D,
@@ -523,8 +522,9 @@ if plot_final_field
         cbar_label = "surface elevation (m)"
         create_single_line_or_scatter_plot(resolution, plot_type_1D,
                                            latitude_at_specific_longitude_through_panel_center[:, index],
-                                           η_f_at_specific_longitude_through_panel_center[:, 1, index], axis_kwargs,
-                                           title, plot_kwargs, "cubed_sphere_aquaplanet_η_f_latitude_$panel_index")
+                                           η_f_at_specific_longitude_through_panel_center[:, 1, index], axis_kwargs_ssh,
+                                           title, plot_kwargs, "cubed_sphere_aquaplanet_η_f_latitude_$panel_index";
+                                           tight_x_axis = true, tight_y_axis = true)
         title = "Buoyancy"
         cbar_label = "buoyancy (m s⁻²)"
         create_heat_map_or_contour_plot(resolution, plot_type_2D,
@@ -622,7 +622,7 @@ if make_animations
                                               common_kwargs...)
 
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
-
+    #=
     u_colorrange = specify_colorrange_timeseries(grid, u_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity",
                                            "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation"; k = Nz,
@@ -652,7 +652,7 @@ if make_animations
                                            "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = Nz,
                                            cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
-
+    =#
     u_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
     v_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
     ζ_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
@@ -707,9 +707,10 @@ if make_animations
         create_single_line_or_scatter_plot_animation(resolution, plot_type_1D,
                                                      latitude_at_specific_longitude_through_panel_center[:, index],
                                                      η_at_specific_longitude_through_panel_center[:, :, 1, index],
-                                                     axis_kwargs, title, plot_kwargs, framerate,
+                                                     axis_kwargs_ssh, title, plot_kwargs, framerate,
                                                      "cubed_sphere_aquaplanet_η_vs_latitude_$panel_index";
-                                                     use_prettytimes = true, prettytimes = prettytimes)
+                                                     use_prettytimes = true, prettytimes = prettytimes,
+                                                     tight_x_axis = true)
         title = "Buoyancy"
         cbar_label = "buoyancy (m s⁻²)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
