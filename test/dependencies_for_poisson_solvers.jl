@@ -1,4 +1,5 @@
 using CUDA
+using Oceananigans.BoundaryConditions: fill_boundary_normal_velocities!
 using Oceananigans.Solvers: solve!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
@@ -17,19 +18,21 @@ function random_divergent_source_term(grid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
     fill_halo_regions!(Rw)
+
+    fill_boundary_normal_velocities!(U, Clock(; time = 0.0), nothing)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
