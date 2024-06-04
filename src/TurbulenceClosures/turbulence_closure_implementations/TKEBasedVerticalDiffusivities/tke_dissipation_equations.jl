@@ -230,9 +230,9 @@ end
 
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
-    dissipation_dissipation_parameters = closure.dissipation_dissipation_equations
+    tke_dissipation_parameters = closure.tke_dissipation_equations
 
-    return _top_dissipation_flux(i, j, grid, clock, fields, dissipation_dissipation_parameters, closure,
+    return _top_dissipation_flux(i, j, grid, clock, fields, tke_dissipation_parameters, closure,
                          buoyancy, top_tracer_bcs, top_velocity_bcs)
 end
 
@@ -240,16 +240,18 @@ end
                                parameters::TKEDissipationEquations, closure::TDVD,
                                buoyancy, top_tracer_bcs, top_velocity_bcs)
 
+    # u★ ϵ★ ∼ L³ / T⁴
     wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
-    Cᵂu★ = parameters.Cᵂu★
-    CᵂwΔ = parameters.CᵂwΔ
+    k = grid.Nz
+    ℓ₀ = 1e-2 # roughness
+    e★ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, fields)
+    C⁰μ = 0.077
+    σϵ = 1.2
 
-    return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
+    return - 10 * C⁰μ^4 * e★^2 / (σϵ * ℓ₀)
 end
-
-
 
 #####
 ##### Utilities for model constructors

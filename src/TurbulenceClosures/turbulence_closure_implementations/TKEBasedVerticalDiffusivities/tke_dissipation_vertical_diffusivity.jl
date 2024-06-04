@@ -102,10 +102,10 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                            tke_dissipation_equations = TKEDissipationEquations(),
                                            stability_functions = VariableStabilityFunctions(),
                                            minimum_length_scale = StratifiedDisplacementScale(),
-                                           maximum_tracer_diffusivity = Inf,
-                                           maximum_tke_diffusivity = Inf,
-                                           maximum_dissipation_diffusivity = Inf,
-                                           maximum_viscosity = Inf,
+                                           maximum_tracer_diffusivity = 100,
+                                           maximum_tke_diffusivity = 100,
+                                           maximum_dissipation_diffusivity = 100,
+                                           maximum_viscosity = 100,
                                            minimum_tke = 1e-6,
                                            negative_tke_damping_time_scale = 1minute,
                                            tke_dissipation_time_step = nothing) where TD
@@ -197,11 +197,9 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    #=
     ϵ = parent(model.tracers.ϵ)
     ϵᵐⁱⁿ = 1e-12
     @. ϵ = max(ϵ, ϵᵐⁱⁿ)
-    =#
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:
@@ -254,7 +252,6 @@ end
     eᵐⁱⁿ = closure.minimum_tke
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
     return max(eᵐⁱⁿ, eⁱʲᵏ)
-    #return eⁱʲᵏ
 end
 
 @inline max_a_b(i, j, k, grid, a::Number, b, args...) = max(a, b(i, j, k, grid, args...))
@@ -263,23 +260,24 @@ end
     FT = eltype(grid)
 
     N²min = closure.minimum_length_scale.minimum_buoyancy_frequency
+    N²⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, max_a_b, N²min, ∂z_b, buoyancy, tracers)
+
     #N² = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     #N²⁺ = max(N², N²min)
-    
-    N²⁺= ℑbzᵃᵃᶜ(i, j, k, grid, max_a_b, N²min, ∂z_b, buoyancy, tracers)
 
     Cᴺ = closure.minimum_length_scale.Cᴺ
     eⁱʲᵏ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, tracers)
     ℓst = ifelse(N²⁺ == 0, FT(Inf), Cᴺ * sqrt(eⁱʲᵏ / N²⁺))
 
-    ℓmin = ℓst #min(grid.Lz, ℓst)
+    ℓmin = min(grid.Lz, ℓst)
     return sqrt(eⁱʲᵏ)^3 / ℓmin
 end
 
 @inline function minimum_dissipation(i, j, k, grid, closure, tracers, buoyancy)
     eᵐⁱⁿ = closure.minimum_tke
     ℓmax = grid.Lz
-    return 1e-12 #zero(grid) #sqrt(eᵐⁱⁿ)^3 / ℓmax
+    #return 1e-12
+    return sqrt(eᵐⁱⁿ)^3 / ℓmax
 end
 
 @inline function dissipationᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
@@ -292,7 +290,7 @@ end
 @inline function κuᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    𝕊u = momentum_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κu = 𝕊u * e² / ϵ
     κu_max = closure.maximum_viscosity
     return min(κu, κu_max)
@@ -301,7 +299,7 @@ end
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    𝕊c = tracer_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    𝕊c = tracer_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κc = 𝕊c * e² / ϵ
     κc_max = closure.maximum_tracer_diffusivity
     return min(κc, κc_max)
@@ -310,7 +308,7 @@ end
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    𝕊e = tke_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    𝕊e = tke_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κe = 𝕊e * e² / ϵ
     κe_max = closure.maximum_tke_diffusivity
     return min(κe, κe_max)
@@ -319,7 +317,7 @@ end
 @inline function κϵᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
     e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
     ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
-    𝕊ϵ = dissipation_stability_function(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    𝕊ϵ = dissipation_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κϵ = 𝕊ϵ * e² / ϵ
     κϵ_max = closure.maximum_dissipation_diffusivity
     return min(κϵ, κϵ_max)

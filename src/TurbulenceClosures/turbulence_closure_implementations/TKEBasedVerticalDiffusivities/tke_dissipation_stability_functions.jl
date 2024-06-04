@@ -2,15 +2,15 @@ abstract type AbstractConstantSchmidtStabilityFunctions end
 
 const ConstantSchmidtStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:AbstractConstantSchmidtStabilityFunctions}
 
-@inline function tke_stability_function(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
+@inline function tke_stability_functionᶜᶜᶠ(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
     Cσe = closure.stability_functions.Cσe
-    𝕊u = momentum_stability_function(i, j, k, grid, closure, args...)
+    𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, args...)
     return 𝕊u / Cσe
 end
         
-@inline function dissipation_stability_function(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
+@inline function dissipation_stability_functionᶜᶜᶠ(i, j, k, grid, closure::ConstantSchmidtStabilityTDVD, args...)
     Cσϵ = closure.stability_functions.Cσϵ
-    𝕊u = momentum_stability_function(i, j, k, grid, closure, args...)
+    𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, args...)
     return 𝕊u / Cσϵ
 end
 
@@ -32,8 +32,8 @@ summarize_stability_functions(s::ConstantStabilityFunctions{FT}, prefix="", sep=
 
 const ConstantStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:ConstantStabilityFunctions}
 
-@inline momentum_stability_function(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu
-@inline   tracer_stability_function(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc
+@inline momentum_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu
+@inline   tracer_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc
 
 Base.@kwdef struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
     Cσe :: FT = 1.0
@@ -157,7 +157,7 @@ end
 
 const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:VariableStabilityFunctions}
 
-@inline function momentum_stability_function(i, j, k, grid, closure::VariableStabilityTDVD, velocities, tracers, buoyancy)
+@inline function momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure::VariableStabilityTDVD, velocities, tracers, buoyancy)
     αᴺ = stratification_numberᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
     αᴹ = shear_numberᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
@@ -169,10 +169,10 @@ const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    return momentum_stability_function(closure, αᴺ, αᴹ)
+    return momentum_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
 end
 
-@inline function momentum_stability_function(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+@inline function momentum_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
     Cu₀ = closure.stability_functions.Cu₀
     Cu₁ = closure.stability_functions.Cu₁
     Cu₂ = closure.stability_functions.Cu₂
@@ -190,7 +190,7 @@ end
     return num / den
 end
 
-@inline function tracer_stability_function(i, j, k, grid, closure::VariableStabilityTDVD, velocities, tracers, buoyancy)
+@inline function tracer_stability_functionᶜᶜᶠ(i, j, k, grid, closure::VariableStabilityTDVD, velocities, tracers, buoyancy)
     αᴺ = stratification_numberᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
     αᴹ = shear_numberᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
@@ -202,10 +202,10 @@ end
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    return tracer_stability_function(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+    return tracer_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
 end
 
-@inline function tracer_stability_function(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+@inline function tracer_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
     Cc₀ = closure.stability_functions.Cc₀
     Cc₁ = closure.stability_functions.Cc₁
     Cc₂ = closure.stability_functions.Cc₂
