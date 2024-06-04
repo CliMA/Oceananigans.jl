@@ -33,13 +33,13 @@ function time_step_turbulent_kinetic_energy!(model)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
-    Δτ = tke_time_step(closure)
+    Δt = model.clock.last_Δt # simulation time-step (for velocities, tracers, etc)
+    Δτ = tke_time_step(closure) # special time-step for turbulent kinetic energy
 
     if isnothing(Δτ)
         Δτ = Δt
         M = 1
-    else
+    else # limit TKE time-step Δτ by Δt.
         M = ceil(Int, Δt / Δτ) # number of substeps
         Δτ = Δt / M
     end
@@ -122,7 +122,7 @@ end
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
-    e⁺ = clip(eⁱʲᵏ)
+    e⁺ = clip(eⁱʲᵏ) # ensure that eⁱʲᵏ > 0
     w★ = sqrt(e⁺)
     div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
 

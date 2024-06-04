@@ -29,8 +29,7 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-#closures_to_run = [catke, ri_based, convective_adjustment]
-closures_to_run = [catke] #, ri_based] #, convective_adjustment]
+closures_to_run = [catke] #, ri_based, convective_adjustment]
 
 for closure in closures_to_run
 
@@ -53,7 +52,6 @@ for closure in closures_to_run
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           schedule = TimeInterval(20minutes),
-                                                          #schedule = IterationInterval(1),
                                                           filename = "windy_convection_" * closurename,
                                                           overwrite_existing = true)
 

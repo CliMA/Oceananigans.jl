@@ -217,15 +217,6 @@ end
     return σ
 end
 
-#=
-@inline function scale(Ri, σ₀, σ∞ , Δσ, δRi)
-    σ⁺ = σ₀ * (1 - Ri / δRi)
-    σ⁻ = σ₀ + Δσ
-    σ = σ⁻ * (Ri < 0) + σ⁺ * (Ri > 0)
-    return max(σ, σ∞)
-end
-=#
-
 @inline function stability_functionᶜᶜᶠ(i, j, k, grid, closure, Cᵘⁿ, Cˡᵒ, Cʰⁱ, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     CRi⁰ = closure.mixing_length.CRi⁰
