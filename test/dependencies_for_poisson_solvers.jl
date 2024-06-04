@@ -49,21 +49,25 @@ function random_divergence_free_source_term(grid)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
     # Random right hand side
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, zeros(Nx, Ny, Nz))
 
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    
     arch = architecture(grid)
-    fill_halo_regions!((Ru, Rv, Rw))
 
     compute_w_from_continuity!(U, arch, grid)
     fill_halo_regions!(Rw)
+
+    fill_boundary_normal_velocities!(U, Clock(; time = 0.0), nothing)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
