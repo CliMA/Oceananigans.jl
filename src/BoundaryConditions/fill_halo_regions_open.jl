@@ -1,9 +1,9 @@
-function fill_bounded_wall_normal_halo_regions!(velocities, clock, fields)
+function fill_boundary_normal_velocities!(velocities, clock, fields)
     grid = velocities.u.grid
 
-    fill_open_halo_regions!(velocities.u, grid, instantiated_location(velocities.u), clock, fields)
-    fill_open_halo_regions!(velocities.v, grid, instantiated_location(velocities.v), clock, fields)
-    fill_open_halo_regions!(velocities.w, grid, instantiated_location(velocities.w), clock, fields)
+    fill_open_boundary_regions!(velocities.u, grid, instantiated_location(velocities.u), clock, fields)
+    fill_open_boundary_regions!(velocities.v, grid, instantiated_location(velocities.v), clock, fields)
+    fill_open_boundary_regions!(velocities.w, grid, instantiated_location(velocities.w), clock, fields)
 
     return nothing
 end
@@ -12,9 +12,9 @@ const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded},
                           AbstractGrid{<:Any, <:Any, <:Bounded}, 
                           AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}}
 
-@inline fill_open_halo_regions!(field, grid, args...) = nothing
+@inline fill_open_boundary_regions!(field, grid, args...) = nothing
 
-function fill_open_halo_regions!(field, grid::BoundedGrid, loc, args...)
+function fill_open_boundary_regions!(field, grid::BoundedGrid, loc, args...)
     arch = architecture(grid)
 
     left_bc = left_boundary_condition(field, loc)
