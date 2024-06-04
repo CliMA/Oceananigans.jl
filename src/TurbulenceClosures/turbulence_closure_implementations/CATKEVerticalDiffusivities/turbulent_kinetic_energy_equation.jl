@@ -178,7 +178,6 @@ end
 
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
-    FT = eltype(grid)
     τx = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
     τy = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
     return sqrt(sqrt(τx^2 + τy^2))
