@@ -1,4 +1,5 @@
 using LinearAlgebra
+using Printf
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
@@ -594,6 +595,7 @@ function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, 
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
         n[] = i
+        ax.title = use_prettytimes ? (title_prefix * " after " * prettytime[]) : title_prefix
     end
 end
 
@@ -601,6 +603,7 @@ function test_create_single_line_or_scatter_plot_animation()
     x = range(0, 2π, length = 100)
     t = range(0, 2π, length = 100)
 
+    prettytimes = [@sprintf("%.3f seconds", t[i]) for i in 1:length(t)]
     y_series = [sin(x[i] - t[k]) for k in 1:100, i in 1:100]
 
     resolution = (850, 750)
@@ -618,7 +621,8 @@ function test_create_single_line_or_scatter_plot_animation()
         plot_type = plot_types[i]
         file_name = file_names[i]
         create_single_line_or_scatter_plot_animation(resolution, plot_type, x, y_series, axis_kwargs, title,
-                                                     plot_kwargs, framerate, file_name)
+                                                     plot_kwargs, framerate, file_name; use_prettytimes = true,
+                                                     prettytimes = prettytimes)
     end
 end
 
@@ -654,6 +658,7 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
         msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
         n[] = i
+        ax.title = use_prettytimes ? (title_prefix * " after " * prettytime[]) : title_prefix
     end
 end
 
@@ -669,6 +674,7 @@ function test_create_heat_map_or_contour_plot_animation()
     l = 1
     ω = 1
 
+    prettytimes = [@sprintf("%.3f seconds", t[i]) for i in 1:length(t)]
     φ_series = zeros(nPoints, nPoints, nPoints)
     for j in 1:nPoints
         for i in 1:nPoints
@@ -695,7 +701,8 @@ function test_create_heat_map_or_contour_plot_animation()
         title = titles[i]
         file_name = file_names[i]
         create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, φ_series, axis_kwargs, title, contourlevels,
-                                                  cbar_kwargs, cbar_label, framerate, file_name)
+                                                  cbar_kwargs, cbar_label, framerate, file_name; use_prettytimes = true,
+                                                  prettytimes = prettytimes)
     end
 end
 

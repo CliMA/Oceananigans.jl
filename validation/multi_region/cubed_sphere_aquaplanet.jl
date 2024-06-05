@@ -120,7 +120,7 @@ end
 0.5(1 + cos(π * min(max((deg2rad(abs(φ)) - π/4)/(deg2rad(p.φ_max_cos) - π/4), -1), 1))))
 
 @inline function buoyancy_restoring(λ, φ, t, b, p)
-    B = p.Δ * double_cosine_profile_in_y(φ, p)
+    B = p.Δ * cosine_profile_in_y(φ, p)
     return p.𝓋 * (b - B)
 end
 
@@ -198,12 +198,15 @@ model = HydrostaticFreeSurfaceModel(; grid,
 ##### Model initialization
 #####
 
-@inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * double_cosine_profile_in_y(φ, my_buoyancy_parameters)
+@inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * cosine_profile_in_y(φ, my_buoyancy_parameters)
                                      * exponential_profile_in_z(z, my_buoyancy_parameters))
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
-initialize_velocities_based_on_thermal_wind_balance = true
+initialize_velocities_based_on_thermal_wind_balance = false
+# If the above flag is set to true, meaning the velocities are initialized using thermal wind balance, set
+# φ_max_cos within the range [70, 80], and specify the latitudinal variation in buoyancy as
+# p.Δ * double_cosine_profile_in_y(φ, p) in both the initial buoyancy and the surface buoyancy restoring profiles.
 if initialize_velocities_based_on_thermal_wind_balance
     fill_halo_regions!(model.tracers.b)
 
@@ -348,7 +351,7 @@ plot_kwargs = (linewidth = 2, linecolor = :black, marker = :rect, markersize = 1
 plot_type_2D = "heat_map"
 axis_kwargs = (xlabel = "Latitude (degrees)", ylabel = "Depth (km)", xlabelsize = 22.5, ylabelsize = 22.5,
                xticklabelsize = 17.5, yticklabelsize = 17.5, xlabelpadding = 10, ylabelpadding = 10, aspect = 1,
-               title = "Buoyancy", titlesize = 27.5, titlegap = 15, titlefont = :bold)
+               titlesize = 27.5, titlegap = 15, titlefont = :bold)
 axis_kwargs_ssh = (; axis_kwargs..., ylabel = "Surface elevation (m)")
 
 contourlevels = 50
@@ -400,20 +403,20 @@ if plot_initial_field
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
         end
+    end
 
-        fig = panel_wise_visualization(grid, bᵢ; k = Nz)
-        save("cubed_sphere_aquaplanet_bᵢ.png", fig)
-        for (index, panel_index) in enumerate([1, 2, 4, 5])
-            bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
-            title = "Buoyancy"
-            cbar_label = "buoyancy (m s⁻²)"
-            create_heat_map_or_contour_plot(resolution, plot_type_2D,
-                                            latitude_at_specific_longitude_through_panel_center[:, index],
-                                            depths/1000, bᵢ_at_specific_longitude_through_panel_center[:, :, index],
-                                            axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
-                                            "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
-        end
+    fig = panel_wise_visualization(grid, bᵢ; k = round(Int, Nz/2))
+    save("cubed_sphere_aquaplanet_bᵢ.png", fig)
+    for (index, panel_index) in enumerate([1, 2, 4, 5])
+        bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
+        extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
+        title = "Buoyancy"
+        cbar_label = "buoyancy (m s⁻²)"
+        create_heat_map_or_contour_plot(resolution, plot_type_2D,
+                                        latitude_at_specific_longitude_through_panel_center[:, index], depths/1000,
+                                        bᵢ_at_specific_longitude_through_panel_center[:, :, index], axis_kwargs, title,
+                                        contourlevels, cbar_kwargs, cbar_label,
+                                        "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
     end
 end
 
@@ -483,7 +486,7 @@ if plot_final_field
     fig = panel_wise_visualization(grid, η_fields[end]; k = Nz + 1, ssh = true)
     save("cubed_sphere_aquaplanet_η.png", fig)
 
-    fig = panel_wise_visualization(grid, b_fields[end]; k = Nz)
+    fig = panel_wise_visualization(grid, b_fields[end]; k = round(Int, Nz/2))
     save("cubed_sphere_aquaplanet_b.png", fig)
 
     for (index, panel_index) in enumerate([1, 2, 4, 5])
@@ -546,6 +549,7 @@ if plot_snapshots
     b_colorrange = zeros(2)
 
     common_kwargs = (consider_all_levels = false, vertical_dimensions = Nz:Nz)
+    common_kwargs_b = (consider_all_levels = false, vertical_dimensions = round(Int, Nz/2):round(Int, Nz/2))
 
     for i_snapshot in 0:n_snapshots
         frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
@@ -553,7 +557,7 @@ if plot_snapshots
         v_colorrange_at_frame_index = specify_colorrange(grid, v_fields[frame_index]; common_kwargs...)
         ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index]; common_kwargs...)
         η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; ssh = true)
-        b_colorrange_at_frame_index = specify_colorrange(grid, b_fields[frame_index]; common_kwargs...)
+        b_colorrange_at_frame_index = specify_colorrange(grid, b_fields[frame_index]; common_kwargs_b...)
         if i_snapshot == 0
             u_colorrange[:] = collect(u_colorrange_at_frame_index)
             v_colorrange[:] = collect(v_colorrange_at_frame_index)
@@ -601,8 +605,9 @@ if plot_snapshots
                                            plot_limits = η_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_η_%d.png", i_snapshot), fig)
         title = "Buoyancy after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid, b_fields[frame_index], title; k = Nz, cbar_label = "buoyancy (m s⁻²)",
-                                           specify_plot_limits = true, plot_limits = b_colorrange)
+        fig = geo_heatlatlon_visualization(grid, b_fields[frame_index], title; k = round(Int, Nz/2),
+                                           cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
+                                           plot_limits = b_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_b_%d.png", i_snapshot), fig)
     end
 end
@@ -610,6 +615,7 @@ end
 make_animations = true
 if make_animations
     common_kwargs = (consider_all_levels = false, vertical_dimensions = Nz:Nz)
+    common_kwargs_b = (consider_all_levels = false, vertical_dimensions = round(Int, Nz/2):round(Int, Nz/2))
     create_panel_wise_visualization_animation(grid, u_fields, framerate, "cubed_sphere_aquaplanet_u"; k = Nz,
                                               common_kwargs...)
     create_panel_wise_visualization_animation(grid, v_fields, framerate, "cubed_sphere_aquaplanet_v"; k = Nz,
@@ -618,8 +624,8 @@ if make_animations
                                               common_kwargs...)
     create_panel_wise_visualization_animation(grid, η_fields, framerate, "cubed_sphere_aquaplanet_η"; k = Nz+1,
                                               ssh = true)
-    create_panel_wise_visualization_animation(grid, b_fields, framerate, "cubed_sphere_aquaplanet_b"; k = Nz,
-                                              common_kwargs...)
+    create_panel_wise_visualization_animation(grid, b_fields, framerate, "cubed_sphere_aquaplanet_b";
+                                              k = round(Int, Nz/2), common_kwargs_b...)
 
     prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
     #=
@@ -649,7 +655,7 @@ if make_animations
 
     b_colorrange = specify_colorrange_timeseries(grid, b_fields; common_kwargs...)
     geo_heatlatlon_visualization_animation(grid, b_fields, "cc", prettytimes, "Buoyancy",
-                                           "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = Nz,
+                                           "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = round(Int, Nz/2),
                                            cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
     =#
@@ -682,7 +688,8 @@ if make_animations
         cbar_label = "zonal velocity (m s⁻¹)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths/1000, u_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, u_at_specific_longitude_through_panel_center[:, :, :,
+                                                                                                            index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_u_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
@@ -690,7 +697,8 @@ if make_animations
         cbar_label = "meridional velocity (m s⁻¹)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths/1000, v_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, v_at_specific_longitude_through_panel_center[:, :, :,
+                                                                                                            index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_v_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
@@ -698,7 +706,8 @@ if make_animations
         cbar_label = "relative vorticity (s⁻¹)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths/1000, ζ_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, ζ_at_specific_longitude_through_panel_center[:, :, :,
+                                                                                                            index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_ζ_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
@@ -715,7 +724,8 @@ if make_animations
         cbar_label = "buoyancy (m s⁻²)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
                                                   latitude_at_specific_longitude_through_panel_center[:, index],
-                                                  depths/1000, b_at_specific_longitude_through_panel_center[:, :, :, index],
+                                                  depths/1000, b_at_specific_longitude_through_panel_center[:, :, :,
+                                                                                                            index],
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_b_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
