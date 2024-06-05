@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.BoundaryConditions: fill_open_boundary_regions!
+
 @testset "Field broadcasting" begin
     @info "  Testing broadcasting with fields..."
 
@@ -46,6 +48,7 @@ include("dependencies_for_runtests.jl")
 
         b2 .= 1
         fill_halo_regions!(b2) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
+        fill_open_boundary_regions!(b2)
 
         CUDA.@allowscalar begin
             @test b2[1, 1, 1] == 0
