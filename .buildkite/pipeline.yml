@@ -3,7 +3,6 @@ env:
   JULIA_MINOR_VERSION: "1.10"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
 
 steps:
