@@ -273,7 +273,7 @@ Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondi
                                                                                      Adapt.adapt(to, bc.bottom),
                                                                                      Adapt.adapt(to, bc.top))
 
-update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
+update_boundary_conditions!(bc::ImmersedBoundaryCondition, args...) = nothing
 
 #####
 ##### Alternative implementation for immersed flux divergence
