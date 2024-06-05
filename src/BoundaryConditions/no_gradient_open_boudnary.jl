@@ -33,8 +33,8 @@ end
 @inline function _fill_east_open_halo!(j, k, grid, c, bc::ZGOBC, loc, clock, model_fields)
     i = grid.Nx + 1
 
-    @inbounds c[i, j, k] =  c[i - 2, j, k]
-    
+    @inbounds c[i, j, k] =  c[i - 2, j, k] + (c[i - 1, j, k] - c[i - 3, j, k]) / 2
+
     return nothing
 end
 

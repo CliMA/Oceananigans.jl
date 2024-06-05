@@ -1,3 +1,4 @@
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
 
 import Oceananigans.Fields: set!
@@ -39,14 +40,14 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
         set!(ϕ, value)
+
+        fill_halo_regions!(ϕ)
     end
 
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
     update_state!(model)
-
-    fill_boundary_normal_velocities!(model.velocities, model.clock, fields(model))
 
     if enforce_incompressibility
         FT = eltype(model.grid)

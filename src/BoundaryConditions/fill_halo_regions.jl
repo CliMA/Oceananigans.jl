@@ -45,8 +45,7 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
-
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; fill_open_boundaries = true, kwargs...)
     arch = architecture(grid)
 
     fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
@@ -55,6 +54,10 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
+    end
+
+    if fill_open_boundaries
+        fill_open_boundary_regions!(c, boundary_conditions, loc, grid, args...; kwargs...)
     end
 
     return nothing
@@ -208,7 +211,6 @@ end
     _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
        _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
-
 #####
 ##### Single-sided fill_halo! kernels
 #####

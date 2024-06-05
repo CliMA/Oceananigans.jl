@@ -31,7 +31,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); async = true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_boundaries = false, async = true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
