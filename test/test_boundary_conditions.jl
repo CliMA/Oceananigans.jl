@@ -7,7 +7,7 @@ simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
 function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
     success = try
-        bc(C(), FT, ArrayType)
+        bc(C, FT, ArrayType)
         true
     catch
         false
