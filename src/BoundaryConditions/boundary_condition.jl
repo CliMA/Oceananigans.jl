@@ -56,9 +56,6 @@ function BoundaryCondition(classification::AbstractBoundaryConditionClassificati
     return BoundaryCondition(classification, condition)
 end
 
-# for backwards compatability, maybe we should remove...
-BoundaryCondition(Classification::DataType, condition; kwargs...) = BoundaryCondition(Classification(), condition; kwargs...)
-
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
     BoundaryCondition(Adapt.adapt(to, b.classification), Adapt.adapt(to, b.condition))

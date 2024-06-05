@@ -7,7 +7,7 @@ simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
 function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
     success = try
-        bc(C, FT, ArrayType)
+        bc(C(), FT, ArrayType)
         true
     catch
         false
@@ -21,7 +21,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value(), Gradient(), Flux())
+        for C in (Value, Gradient, Flux)
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)

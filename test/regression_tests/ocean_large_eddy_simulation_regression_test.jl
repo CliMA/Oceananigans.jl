@@ -23,9 +23,9 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     end
 
     # Boundary conditions
-    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵘ))
-    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵀ), bottom = BoundaryCondition(Gradient, ∂T∂z))
-    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
+    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), Qᵘ))
+    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), Qᵀ), bottom = BoundaryCondition(Gradient(), ∂T∂z))
+    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), 5e-8))
 
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
