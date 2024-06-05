@@ -16,12 +16,12 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities:
 using GLMakie
 using Printf
 
-grid = RectilinearGrid(size=128, z=(-128, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-f = 0
+f = 1e-4
 N² = 1e-5
 τˣ = -1e-4
-Jᵇ = 1e-7
+Jᵇ = 5e-8
 
 u_top_bc = FluxBoundaryCondition(τˣ)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
@@ -54,6 +54,8 @@ buoyancy = model.buoyancy
 velocities = model.velocities 
 
 κc = model.diffusivity_fields.κc
+κe = model.diffusivity_fields.κe
+κϵ = model.diffusivity_fields.κϵ
 
 progress(sim) = @info @sprintf("Iter: % 4d, time: % 24s, max(e): %6.2e, extrema(ϵ): (%6.2e, %6.2e)",
                                iteration(sim), prettytime(sim), maximum(e), minimum(ϵ), maximum(ϵ))
@@ -82,7 +84,7 @@ axκ = Axis(fig[1, 5], title="Diffusivity")
 axα = Axis(fig[1, 6], title="αᴺ, αᴹ")
 axs = Axis(fig[1, 7], title="Stability functions")
 
-lines!(axb, bn, zc)
+scatterlines!(axb, bn, zc)
 lines!(axu, un, zc, label="u")
 lines!(axu, vn, zc, label="v")
 axislegend(axu, position=:rb)
@@ -108,10 +110,10 @@ compute!(αᴺ)
 compute!(αᴹ)
 αᴹn = interior(αᴹ, 1, 1, :)
 αᴺn = interior(αᴺ, 1, 1, :)
-lines!(axα, αᴺn, zf, label="αᴺ")
-lines!(axα, αᴹn, zf, label="αᴹ")
+scatterlines!(axα, αᴺn, zf, label="αᴺ")
+scatterlines!(axα, αᴹn, zf, label="αᴹ")
 axislegend(axα)
-xlims!(axα, -10, 40)
+xlims!(axα, -30, 50)
 
 lines!(axs, 𝕊ᵘn, zf, label="𝕊ᵘ")
 lines!(axs, 𝕊ᶜn, zf, label="𝕊ᶜ")

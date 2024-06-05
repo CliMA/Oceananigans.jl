@@ -132,9 +132,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
-
     parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
-
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
     if :e ∈ keys(user_bcs)

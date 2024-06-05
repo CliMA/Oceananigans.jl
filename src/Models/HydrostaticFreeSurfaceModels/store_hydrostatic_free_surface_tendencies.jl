@@ -37,6 +37,10 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
 
         if closure isa FlavorOfCATKE && field_name == :e
             @debug "Skipping store tendencies for e"
+        elseif closure isa FlavorOfTD && field_name == :ϵ
+            @debug "Skipping store tendencies for ϵ"
+        elseif closure isa FlavorOfTD && field_name == :e
+            @debug "Skipping store tendencies for e"
         else
             launch!(model.architecture, model.grid, :xyz,
                     store_field_tendencies!,

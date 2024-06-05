@@ -13,6 +13,9 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵇϵ :: FT = -0.65
     Cᵂu★ :: FT = 1.0
     CᵂwΔ :: FT = 1.0
+    Cᵂα  :: FT = 0.11
+    gravitational_acceleration  :: FT = 9.8065
+    minimum_roughness_length :: FT = 1e-4
 end
 
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
@@ -102,7 +105,7 @@ end
 
     closure_ij = getclosure(i, j, closure)
 
-    # Compute TKE diffusivity.
+    # Compute TKE and dissipation diffusivities
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
     κϵ★ = κϵᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy)
 
@@ -126,31 +129,22 @@ end
 
     # Compute additional diagonal component of the linear TKE operator
     wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
-    wb⁻ = min(zero(grid), wb)
-    wb⁺ = max(zero(grid), wb)
+
+    # Patankar trick for TKE equation
+    wb⁻ = min(wb, zero(grid))
+    wb⁺ = max(wb, zero(grid))
 
     eᵐⁱⁿ = closure_ij.minimum_tke
     wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
 
-    # The interior contributions to the linear implicit term `L` are defined via
-    #
-    #       ∂t e = Lⁱ e + ⋯,
-    #
-    # So
-    #
-    #       Lⁱ e = wb - ϵ
-    #            = (wb / e - ω) e,
-    #               ↖--------↗
-    #                  = Lⁱ
-    #
-    # where ω = ϵ / e ∼ √e / ℓ.
-
+    # Patankar trick for ϵ-equation
     Cᵋϵ = closure_ij.tke_dissipation_equations.Cᵋϵ
     Cᵇϵ = closure_ij.tke_dissipation_equations.Cᵇϵ
 
-    Cᵇϵ_wb⁻ = min(zero(grid), Cᵇϵ * wb)
-    Cᵇϵ_wb⁺ = max(zero(grid), Cᵇϵ * wb)
+    Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
+    Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))
 
+    # ∂t e = Lⁱ e + ⋯,
     @inbounds Le[i, j, k] = wb⁻_e - ωe
     @inbounds Lϵ[i, j, k] = Cᵇϵ_wb⁻ / e★ - Cᵋϵ * ωϵ
 
@@ -222,7 +216,7 @@ end
     Cᵂu★ = parameters.Cᵂu★
     CᵂwΔ = parameters.CᵂwΔ
 
-    return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
+    return zero(grid) #- Cᵂu★ * u★^3 #- CᵂwΔ * wΔ³
 end
 
 @inline function top_dissipation_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfTD, buoyancy)
@@ -236,21 +230,26 @@ end
                          buoyancy, top_tracer_bcs, top_velocity_bcs)
 end
 
-@inline function _top_dissipation_flux(i, j, grid, clock, fields,
-                               parameters::TKEDissipationEquations, closure::TDVD,
-                               buoyancy, top_tracer_bcs, top_velocity_bcs)
+@inline function _top_dissipation_flux(i, j, grid, clock, fields, parameters::TKEDissipationEquations,
+                                       closure::TDVD, buoyancy, top_tracer_bcs, top_velocity_bcs)
 
-    # u★ ϵ★ ∼ L³ / T⁴
-    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    𝕊u₀ = closure.stability_functions.𝕊u₀
+    σϵ = closure.stability_functions.Cσϵ
+
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
+    α = parameters.Cᵂα
+    g = parameters.gravitational_acceleration
+    ℓ_charnock = α * u★^2 / g
+
+    ℓmin = parameters.minimum_roughness_length
+    ℓᵣ = max(ℓmin, ℓ_charnock)
 
     k = grid.Nz
-    ℓ₀ = 1e-2 # roughness
     e★ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, fields)
-    C⁰μ = 0.077
-    σϵ = 1.2
+    z = znode(i, j, k, grid, c, c, c)
+    d = - z
 
-    return - 10 * C⁰μ^4 * e★^2 / (σϵ * ℓ₀)
+    return - 𝕊u₀^4 / σϵ * e★^2 / (d + ℓᵣ)
 end
 
 #####
@@ -271,6 +270,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     top_dissipation_bc = FluxBoundaryCondition(top_dissipation_flux, discrete_form=true, parameters=parameters)
 
+    
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
         

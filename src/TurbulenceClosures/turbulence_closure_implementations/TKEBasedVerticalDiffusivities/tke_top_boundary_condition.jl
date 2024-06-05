@@ -76,7 +76,6 @@ end
     return clip(Jᵇ) * Δz   
 end
 
-
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
 

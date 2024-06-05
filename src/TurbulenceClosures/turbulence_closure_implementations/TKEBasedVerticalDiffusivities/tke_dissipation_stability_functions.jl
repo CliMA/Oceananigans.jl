@@ -17,39 +17,83 @@ end
 Base.@kwdef struct ConstantStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
     Cσe :: FT = 1.0
     Cσϵ :: FT = 1.2
-    Cu :: FT = 0.54 # √3
-    Cc :: FT = 0.54 # √3
+    Cu₀ :: FT = 0.53 # √3
+    Cc₀ :: FT = 0.53 # √3
+    𝕊u₀ :: FT = 0.53 # √3
 end
 
 Base.summary(s::ConstantStabilityFunctions{FT}) where FT = "ConstantStabilityFunctions{$FT}"
 
 summarize_stability_functions(s::ConstantStabilityFunctions{FT}, prefix="", sep="│   ") where FT =
     string(prefix, "ConstantStabilityFunctions{$FT}:", '\n',
+           "    ├── 𝕊u₀: ", prettysummary(s.𝕊u₀), '\n',
            "    ├── Cσe: ", prettysummary(s.Cσe), '\n',
            "    ├── Cσϵ: ", prettysummary(s.Cσϵ), '\n',
-           "    ├── Cu: ", prettysummary(s.Cu), '\n',
-           "    └── Cc: ", prettysummary(s.Cc))
+           "    ├── Cu₀: ", prettysummary(s.Cu₀), '\n',
+           "    └── Cc₀: ", prettysummary(s.Cc₀))
 
 const ConstantStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:ConstantStabilityFunctions}
 
-@inline momentum_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu
-@inline   tracer_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc
+@inline momentum_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cu₀
+@inline   tracer_stability_functionᶜᶜᶠ(i, j, k, grid, c::ConstantStabilityTDVD, args...) = c.stability_functions.Cc₀
 
-Base.@kwdef struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
-    Cσe :: FT = 1.0
-    Cσϵ :: FT = 1.2
-    Cu₀ :: FT = 0.1067
-    Cu₁ :: FT = 0.0173
-    Cu₂ :: FT = -0.0001205
-    Cc₀ :: FT = 0.1120
-    Cc₁ :: FT = 0.003766
-    Cc₂ :: FT = 0.0008871
-    Cd₀ :: FT = 1.0
-    Cd₁ :: FT = 0.2398
-    Cd₂ :: FT = 0.02872
-    Cd₃ :: FT = 0.005154
-    Cd₄ :: FT = 0.006930
-    Cd₅ :: FT = -0.0003372
+struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctions
+    Cσe :: FT
+    Cσϵ :: FT
+    Cu₀ :: FT
+    Cu₁ :: FT
+    Cu₂ :: FT
+    Cc₀ :: FT
+    Cc₁ :: FT
+    Cc₂ :: FT
+    Cd₀ :: FT
+    Cd₁ :: FT
+    Cd₂ :: FT
+    Cd₃ :: FT
+    Cd₄ :: FT
+    Cd₅ :: FT
+    𝕊u₀ :: FT
+end
+
+function VariableStabilityFunctions(FT=Float64; 
+                                    Cσe = 1.0,
+                                    Cσϵ = 1.2,
+                                    Cu₀ = 0.1067,
+                                    Cu₁ = 0.0173,
+                                    Cu₂ = -0.0001205,
+                                    Cc₀ = 0.1120,
+                                    Cc₁ = 0.003766,
+                                    Cc₂ = 0.0008871,
+                                    Cd₀ = 1.0,
+                                    Cd₁ = 0.2398,
+                                    Cd₂ = 0.02872,
+                                    Cd₃ = 0.005154,
+                                    Cd₄ = 0.006930,
+                                    Cd₅ = -0.0003372,
+                                    𝕊u₀ = nothing)
+
+    if isnothing(𝕊u₀)
+        a = Cd₅ - Cu₂
+        b = Cd₂ - Cu₀
+        c = Cd₀
+        𝕊u₀ = (2a / (-b - sqrt(b^2 - 4a * c)))^(1/4)
+    end
+
+    return VariableStabilityFunctions(convert(FT, Cσe),   
+                                      convert(FT, Cσϵ),
+                                      convert(FT, Cu₀),
+                                      convert(FT, Cu₁),
+                                      convert(FT, Cu₂),
+                                      convert(FT, Cc₀),
+                                      convert(FT, Cc₁),
+                                      convert(FT, Cc₂),
+                                      convert(FT, Cd₀),
+                                      convert(FT, Cd₁),
+                                      convert(FT, Cd₂),
+                                      convert(FT, Cd₃),
+                                      convert(FT, Cd₄),
+                                      convert(FT, Cd₅),
+                                      convert(FT, 𝕊u₀))
 end
 
 Base.summary(s::VariableStabilityFunctions{FT}) where FT = "VariableStabilityFunctions{$FT}"
@@ -72,9 +116,9 @@ summarize_stability_functions(s::VariableStabilityFunctions{FT}, prefix="", sep=
            "    └── Cd₅: ", prettysummary(s.Cd₅))
 
 @inline function square_time_scaleᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    e = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, tracers)
-    ϵ = dissipationᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    return e^2 / ϵ^2
+    e★ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, tracers)
+    ϵ★ = dissipationᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    return e★^2 / ϵ★^2
 end
 
 @inline function shear_numberᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
@@ -119,10 +163,11 @@ as discussed in the text surrounding equation 45-46 in Umlauf and Buchard (2005)
     ϵ = 0.73 # safety factor?
     ϵ = convert(typeof(c), ϵ)
 
-    return ϵ * (- b + sqrt(b^2 - 4a*c)) / 2a
+    αᴺmin = ϵ * (- b + sqrt(b^2 - 4a*c)) / 2a
+    return αᴺmin
 end
 
-@inline minimum_shear_number(closure) = 0.0
+@inline minimum_shear_number(closure::FlavorOfTD) = 0.0
 
 """
 Based on the condition that shear aniostropy must increase.
@@ -169,7 +214,8 @@ const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    return momentum_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
+    𝕊u = momentum_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
+    return 𝕊u
 end
 
 @inline function momentum_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
@@ -184,8 +230,15 @@ end
     Cd₄ = closure.stability_functions.Cd₄
     Cd₅ = closure.stability_functions.Cd₅
 
-    num = Cu₀ + Cu₁ * αᴺ + Cu₂ * αᴹ
-    den = Cd₀ + Cd₁ * αᴺ + Cd₂ * αᴹ + Cd₃ * αᴺ * αᴹ + Cd₄ * αᴺ^2 + Cd₅ * αᴹ^2
+    num = Cu₀ +
+          Cu₁ * αᴺ +
+          Cu₂ * αᴹ
+
+    den = Cd₀ + Cd₁ * αᴺ +
+          Cd₂ * αᴹ +
+          Cd₃ * αᴺ * αᴹ +
+          Cd₄ * αᴺ^2 +
+          Cd₅ * αᴹ^2
 
     return num / den
 end
@@ -202,7 +255,8 @@ end
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    return tracer_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+    𝕊c = tracer_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
+    return 𝕊c
 end
 
 @inline function tracer_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
@@ -217,8 +271,16 @@ end
     Cd₄ = closure.stability_functions.Cd₄
     Cd₅ = closure.stability_functions.Cd₅
 
-    num = Cc₀ + Cc₁ * αᴺ + Cc₂ * αᴹ
-    den = Cd₀ + Cd₁ * αᴺ + Cd₂ * αᴹ + Cd₃ * αᴺ * αᴹ + Cd₄ * αᴺ^2 + Cd₅ * αᴹ^2
+    num = Cc₀ +
+          Cc₁ * αᴺ +
+          Cc₂ * αᴹ
+
+    den = Cd₀ +
+          Cd₁ * αᴺ +
+          Cd₂ * αᴹ +
+          Cd₃ * αᴺ * αᴹ +
+          Cd₄ * αᴺ^2 +
+          Cd₅ * αᴹ^2
 
     return num / den
 end
