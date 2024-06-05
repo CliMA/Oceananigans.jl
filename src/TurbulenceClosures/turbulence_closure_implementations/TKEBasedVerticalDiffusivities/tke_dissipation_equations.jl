@@ -116,14 +116,14 @@ end
     @inbounds κϵ[i, j, k] = κϵ★
 
     # Compute TKE and dissipation tendencies
-    ϵ★ = dissipationᶜᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    e★ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure, tracers)
+    ϵ★ = dissipationᶜᶜᶜ(i, j, k, grid, closure_ij, tracers, buoyancy)
+    e★ = turbulent_kinetic_energyᶜᶜᶜ(i, j, k, grid, closure_ij, tracers)
     eⁱʲᵏ = @inbounds e[i, j, k]
     ϵⁱʲᵏ = @inbounds ϵ[i, j, k]
 
     # Different destruction time-scales for TKE vs dissipation for numerical reasons
     ω★  = ϵ★ / e★ # target / physical dissipation time scale
-    ωe⁻ = closure.negative_tke_damping_time_scale
+    ωe⁻ = closure_ij.negative_tke_damping_time_scale
     ωe  = ifelse(eⁱʲᵏ < 0, ωe⁻, ω★)
     ωϵ  = ϵⁱʲᵏ / e★
 
@@ -161,9 +161,8 @@ end
     P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
 
     @inbounds begin
-        fast_Gⁿe = P + wb⁺                    # - ϵ (no implicit time stepping for now)
-        #fast_Gⁿϵ = ω★ * (Cᴾϵ * P + Cᵇϵ_wb⁺) # - ϵ
-        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺) # - ϵ
+        fast_Gⁿe = P + wb⁺                  # - ϵ (no implicit time stepping for now)
+        fast_Gⁿϵ = ωϵ * (Cᴾϵ * P + Cᵇϵ_wb⁺) 
     end
 
     # Advance TKE and store tendency
