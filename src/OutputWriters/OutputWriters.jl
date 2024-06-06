@@ -19,7 +19,7 @@ using Oceananigans.Utils: pretty_filesize
 
 using OffsetArrays
 
-import Oceananigans: write_output!
+import Oceananigans: write_output!, initialize!
 
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing

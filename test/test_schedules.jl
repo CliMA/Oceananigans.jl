@@ -19,6 +19,9 @@ using Oceananigans: initialize!
 
     # TimeInterval
     ti = TimeInterval(2)
+    initialize!(ti, fake_model_at_iter_0)
+
+    @test ti.actuations == 1
     @test ti.interval == 2.0
     @test ti(fake_model_at_time_2)
     @test !(ti(fake_model_at_time_3))
