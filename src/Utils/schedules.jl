@@ -10,7 +10,7 @@ false.
 abstract type AbstractSchedule end
 
 # Default behavior is no alignment.
-aligned_time_step(schedule, clock, Δt) = Δt
+schedule_aligned_time_step(schedule, clock, Δt) = Δt
 
 # Fallback initialization for schedule: call the schedule,
 # then return `true`, indicating that the schedule "actuates" at
@@ -35,7 +35,8 @@ according to `model.clock.time`.
 """
 mutable struct TimeInterval <: AbstractSchedule
     interval :: Float64
-    previous_actuation_time :: Float64
+    start_time :: Float64
+    actuations :: Int
 end
 
 """
@@ -44,26 +45,37 @@ end
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
 """
-TimeInterval(interval) = TimeInterval(Float64(interval), 0.0)
+TimeInterval(interval) = TimeInterval(convert(Float64, interval), 0.0, 0)
+
+function initialize!(schedule::TimeInterval, model)
+    schedule.start_time = time(model)
+    schedule(model)
+    return true
+end
+
+function next_actuation_time(schedule::TimeInterval)
+    t₀ = schedule.start_time
+    N = schedule.actuations
+    T = schedule.interval
+    return = t₀ + N * T
+end
 
 function (schedule::TimeInterval)(model)
-    time = model.clock.time
+    t = model.clock.time
+    t★ = next_actuation_time(schedule)
 
-    if time == schedule.previous_actuation_time + schedule.interval
-        schedule.previous_actuation_time = time
-        return true
-    elseif time > schedule.previous_actuation_time + schedule.interval
-        # Shave overshoot off previous_actuation_time to prevent overshoot from accumulating
-        schedule.previous_actuation_time = time - rem(time, schedule.interval)
+    if t >= t★
+        schedule.actuations += 1
         return true
     else
         return false
     end
 end
 
-function aligned_time_step(schedule::TimeInterval, clock, Δt)
-    next_actuation_time = schedule.previous_actuation_time + schedule.interval
-    return min(Δt, next_actuation_time - clock.time)
+function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
+    t★ = next_actuation_time(schedule)
+    t = clock.time
+    return min(Δt, t★ - t)
 end
 
 #####
@@ -149,7 +161,7 @@ whenever the model's clock equals the specified values in `times`. For example,
 SpecifiedTimes(times::Vararg{T}) where T<:Number = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 SpecifiedTimes(times) = SpecifiedTimes(times...)
 
-function next_appointment_time(st::SpecifiedTimes)
+function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
         return Inf
     else
@@ -160,7 +172,7 @@ end
 function (st::SpecifiedTimes)(model)
     current_time = model.clock.time
 
-    if current_time >= next_appointment_time(st)
+    if current_time >= next_actuation_time(st)
         st.previous_actuation += 1
         return true
     end
@@ -170,7 +182,7 @@ end
 
 initialize!(st::SpecifiedTimes, model) = st(model)
 
-align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointment_time(schedule) - clock.time)
+align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_actuation_time(schedule) - clock.time)
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
@@ -214,8 +226,8 @@ function (schedule::ConsecutiveIterations)(model)
     end
 end
 
-aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
-    aligned_time_step(schedule.parent, clock, Δt)
+schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
+    schedule_aligned_time_step(schedule.parent, clock, Δt)
 
 #####
 ##### Any and AndSchedule

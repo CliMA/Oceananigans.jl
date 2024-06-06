@@ -21,12 +21,12 @@ function collect_scheduled_activities(sim)
     return tuple(writers..., callbacks...)
 end
 
-function schedule_aligned_Δt(sim, aligned_Δt)
+function schedule_aligned_time_step(sim, aligned_Δt)
     clock = sim.model.clock
     activities = collect_scheduled_activities(sim)
 
     for activity in activities
-        aligned_Δt = aligned_time_step(activity.schedule, clock, aligned_Δt)
+        aligned_Δt = schedule_aligned_time_step(activity.schedule, clock, aligned_Δt)
     end
 
     return aligned_Δt
@@ -44,7 +44,7 @@ function aligned_time_step(sim::Simulation, Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
-    aligned_Δt = schedule_aligned_Δt(sim, aligned_Δt)
+    aligned_Δt = schedule_aligned_time_step(sim, aligned_Δt)
     
     # Align time step with simulation stop time
     aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
