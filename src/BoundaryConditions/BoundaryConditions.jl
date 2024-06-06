@@ -39,5 +39,5 @@ include("apply_flux_bcs.jl")
 
 include("update_boundary_conditions.jl")
 
-include("no_gradient_open_boudnary.jl")
+include("flat_extrapolation_open_boundary_matching_scheme.jl")
 end # module
