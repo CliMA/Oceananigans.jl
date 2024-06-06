@@ -16,6 +16,7 @@ struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting" 
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+initialize!(::NoFileSplitting, model) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
@@ -32,7 +33,6 @@ The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
-
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
 
 function Base.summary(fsl::FileSizeLimit)
