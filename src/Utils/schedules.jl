@@ -35,7 +35,7 @@ according to `model.clock.time`.
 """
 mutable struct TimeInterval <: AbstractSchedule
     interval :: Float64
-    start_time :: Float64
+    first_actuation_time :: Float64
     actuations :: Int
 end
 
@@ -48,13 +48,13 @@ on a `interval` of simulation time, as kept by `model.clock`.
 TimeInterval(interval) = TimeInterval(convert(Float64, interval), 0.0, 0)
 
 function initialize!(schedule::TimeInterval, model)
-    schedule.start_time = time(model)
+    schedule.first_actuation_time = model.clock.time
     schedule(model)
     return true
 end
 
 function next_actuation_time(schedule::TimeInterval)
-    t₀ = schedule.start_time
+    t₀ = schedule.first_actuation_time
     N = schedule.actuations
     T = schedule.interval
     return t₀ + N * T
@@ -65,7 +65,12 @@ function (schedule::TimeInterval)(model)
     t★ = next_actuation_time(schedule)
 
     if t >= t★
-        schedule.actuations += 1
+        if schedule.actuations < typemax(Int)
+            schedule.actuations += 1
+        else
+            schedule.first_actuation_time = t★
+            schedule.actuations = 1
+        end
         return true
     else
         return false
