@@ -117,10 +117,10 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
 @inline Δz_reference(i, j, k, Δz::Number) = Δz
-@inline Δz_reference(i, j, k, Δz::AbstractVector) = Δz[k]
+@inline Δz_reference(i, j, k, Δz::AbstractVector) = @inbounds Δz[k]
 
 @inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing{<:Number}) = Δz.Δr
-@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing) = Δz.Δr[k]
+@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing) = @inbounds Δz.Δr[k]
 
 @inline Δzᶜᶜᶠ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶠ)
 @inline Δzᶜᶜᶜ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶜ)
