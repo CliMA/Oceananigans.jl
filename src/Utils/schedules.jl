@@ -48,7 +48,7 @@ on a `interval` of simulation time, as kept by `model.clock`.
 TimeInterval(interval) = TimeInterval(convert(Float64, interval), 0.0, 0)
 
 function initialize!(schedule::TimeInterval, model)
-    schedule.first_actuation_time = time(model)
+    schedule.first_actuation_time = model.clock.time
     schedule(model)
     return true
 end
