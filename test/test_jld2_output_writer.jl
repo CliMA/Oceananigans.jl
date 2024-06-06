@@ -175,8 +175,10 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
 
     FT = eltype(model.grid)
 
-    @test wu == zero(FT) 
-    @test wT == zero(FT) 
+    # Note: w is not identically 0 because T = 4 introduces a buoyancy term that is
+    # subsequently cancelled by a large scale pressure field.
+    @test abs(wu) < eps(FT)
+    @test abs(wT) < eps(FT)
     @test uv == FT(2)
 
     return nothing

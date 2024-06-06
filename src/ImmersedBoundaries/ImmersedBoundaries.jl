@@ -1,6 +1,6 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition
        
 using Adapt
 
