@@ -16,7 +16,7 @@ f₀ = 1e-4       # Coriolis parameter (s⁻¹)
 N² = 1e-5       # Buoyancy gradient (s⁻²)
 Jᵇ = +1e-7      # Surface buoyancy flux (m² s⁻³)
 τˣ = -2e-3      # Surface kinematic momentum flux (m s⁻¹)
-stop_time = 1days
+stop_time = 4days
 
 tke_dissipation = TKEDissipationVerticalDiffusivity()
 catke = CATKEVerticalDiffusivity()
@@ -28,7 +28,7 @@ grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=f₀)
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
-closures_to_run = [tke_dissipation, catke] #, ri_based]
+closures_to_run = [tke_dissipation, catke]
 closure = tke_dissipation
 
 function progress(sim)

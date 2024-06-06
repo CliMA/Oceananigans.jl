@@ -57,7 +57,7 @@ function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.start_time
     N = schedule.actuations
     T = schedule.interval
-    return = t₀ + N * T
+    return t₀ + N * T
 end
 
 function (schedule::TimeInterval)(model)
