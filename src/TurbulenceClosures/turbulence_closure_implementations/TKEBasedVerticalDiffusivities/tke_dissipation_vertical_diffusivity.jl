@@ -20,7 +20,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                maximum_dissipation_diffusivity::FT,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
-                                               minimum_stratification_number_safety_factor::FT
+                                               minimum_stratification_number_safety_factor::FT,
                                                negative_tke_damping_time_scale::FT, 
                                                tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 

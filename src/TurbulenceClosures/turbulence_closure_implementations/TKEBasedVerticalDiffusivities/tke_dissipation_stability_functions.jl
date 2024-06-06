@@ -160,7 +160,7 @@ as discussed in the text surrounding equation 45-46 in Umlauf and Buchard (2005)
     b = d₁ + m₀
     c = d₀
 
-    αᴺmin = - b + sqrt(b^2 - 4a*c) / 2a
+    αᴺmin = (- b + sqrt(b^2 - 4a*c)) / 2a
 
     # Reduce by the "safety factor"
     ϵ = closure.minimum_stratification_number_safety_factor
