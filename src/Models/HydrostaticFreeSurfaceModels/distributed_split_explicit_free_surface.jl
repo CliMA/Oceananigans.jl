@@ -12,7 +12,7 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
     Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
-    Hᶜᶠ = Field{Center, Center, Nothing}(grid)
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
     calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
