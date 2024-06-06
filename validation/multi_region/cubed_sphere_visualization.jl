@@ -434,7 +434,7 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetr
 end
 
 function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
-                                             consider_all_levels = true, vertical_dimensions = 1:1,
+                                             consider_all_levels = true, vertical_dimensions = k:k,
                                              specify_plot_limits = false, plot_limits = [])
     fig = Figure(resolution = (2450, 1400))
 
@@ -451,6 +451,10 @@ function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_c
     end
     colormap = use_symmetric_colorrange ? :balance : :amp
     
+    if ssh
+        k = grid.Nz+1
+    end
+
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[:, :, k]); colorrange, colormap)
     Colorbar(fig[3, 2], hm_1)
@@ -479,7 +483,7 @@ function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_c
 end
 
 function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
-                                  consider_all_levels = true, vertical_dimensions = 1:1, specify_plot_limits = false,
+                                  consider_all_levels = true, vertical_dimensions = k:k, specify_plot_limits = false,
                                   plot_limits = [])
     fig = Figure(resolution = (2450, 1400))
     
@@ -498,6 +502,10 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
     end
     colormap = use_symmetric_colorrange ? :balance : :amp
     
+    if ssh
+        k = grid.Nz+1
+    end
+
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(getregion(field, 1).data[1:Nx, 1:Ny, k]); colorrange, colormap)
     Colorbar(fig[3, 2], hm_1)
@@ -526,7 +534,7 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
 end
 
 function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_colorrange = true, ssh = false,
-                                      consider_all_levels = true, vertical_dimensions = 1:1, cbar_label = "",
+                                      consider_all_levels = true, vertical_dimensions = k:k, cbar_label = "",
                                       specify_plot_limits = false, plot_limits = [])
     fig = Figure(resolution = (1350, 650))
 
@@ -708,7 +716,7 @@ end
 
 function create_panel_wise_visualization_animation_with_halos(grid, φ_series, framerate, filename; start_index = 1,
                                                               k = 1, use_symmetric_colorrange = true, ssh = false,
-                                                              consider_all_levels = true, vertical_dimensions = 1:1,
+                                                              consider_all_levels = true, vertical_dimensions = k:k,
                                                               specify_plot_limits = false, plot_limits = [],
                                                               format = ".mp4")
     n = Observable(start_index) # the current index
@@ -728,6 +736,10 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
                                                    vertical_dimensions = vertical_dimensions)
     end
     colormap = use_symmetric_colorrange ? :balance : :amp
+
+    if ssh
+        k = grid.Nz+1
+    end
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(φ[][1].data[:, :, k]); colorrange, colormap)
@@ -782,7 +794,7 @@ end
 
 function create_panel_wise_visualization_animation(grid, φ_series, framerate, filename; start_index = 1, k = 1,
                                                    use_symmetric_colorrange = true, ssh = false,
-                                                   consider_all_levels = true, vertical_dimensions = 1:1,
+                                                   consider_all_levels = true, vertical_dimensions = k:k,
                                                    specify_plot_limits = false, plot_limits = [], format = ".mp4")
     Nx, Ny, Nz = size(grid)
 
@@ -803,6 +815,10 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
                                                    vertical_dimensions = vertical_dimensions)
     end
     colormap = use_symmetric_colorrange ? :balance : :amp
+
+    if ssh
+        k = grid.Nz+1
+    end
 
     ax_1 = Axis(fig[3, 1]; title="Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, φ[][1].data[1:Nx, 1:Ny, k]; colorrange, colormap)
@@ -857,7 +873,7 @@ end
 
 function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix, filename;
                                                 start_index = 1, k = 1, use_symmetric_colorrange = true, ssh = false,
-                                                consider_all_levels = true, vertical_dimensions = 1:1, cbar_label = "",
+                                                consider_all_levels = true, vertical_dimensions = k:k, cbar_label = "",
                                                 specify_plot_limits = false, plot_limits = [], framerate = 10,
                                                 format = ".mp4")
     n = Observable(start_index)
