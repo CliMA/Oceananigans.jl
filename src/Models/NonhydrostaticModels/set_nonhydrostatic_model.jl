@@ -41,7 +41,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         end
         set!(ϕ, value)
 
-        fill_halo_regions!(ϕ)
+        fill_halo_regions!(ϕ, model.clock, fields(model))
     end
 
     # Apply a mask
