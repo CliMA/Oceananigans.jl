@@ -290,7 +290,7 @@ end
     tapering = closure_ij.Ri_dependent_tapering
     Ri_filter = closure_ij.horizontal_Ri_filter
     N²ᵉⁿ = closure_ij.minimum_entrainment_buoyancy_gradient
-    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
     # Convection and entrainment
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
@@ -298,14 +298,14 @@ end
 
     # Conditions
     # TODO: apply a minimum entrainment buoyancy gradient?
-    convecting = N² < 0 # applies regardless of Qᵇ
-    entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Qᵇ > 0)
+    convecting = N² < 0 # applies regardless of Jᵇ
+    entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Jᵇ > 0)
 
     # Convective adjustment diffusivity
     κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
-    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Qᵇ / N², zero(grid))
+    κᵉⁿ = ifelse(entraining, Cᵉⁿ * Jᵇ / N², zero(grid))
 
     # (Potentially) apply a horizontal filter to the Richardson number
     Ri = filter_horizontally(i, j, k, grid, Ri_filter, diffusivities.Ri)
