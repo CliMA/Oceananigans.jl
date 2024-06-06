@@ -7,7 +7,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 import Oceananigans: initialize!
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: aligned_time_step
+import Oceananigans.Utils: schedule_aligned_time_step
 
 # Simulations are for running
 
