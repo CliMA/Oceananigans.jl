@@ -160,14 +160,16 @@ as discussed in the text surrounding equation 45-46 in Umlauf and Buchard (2005)
     b = d₁ + m₀
     c = d₀
 
-    ϵ = 0.73 # safety factor?
-    ϵ = convert(typeof(c), ϵ)
+    αᴺmin = - b + sqrt(b^2 - 4a*c) / 2a
 
-    αᴺmin = ϵ * (- b + sqrt(b^2 - 4a*c)) / 2a
+    # Reduce by the "safety factor"
+    ϵ = closure.minimum_stratification_number_safety_factor
+    αᴺmin *= ϵ
+
     return αᴺmin
 end
 
-@inline minimum_shear_number(closure::FlavorOfTD) = 0.0
+@inline minimum_shear_number(closure::FlavorOfTD) = zero(eltype(closure))
 
 """
 Based on the condition that shear aniostropy must increase.
@@ -214,11 +216,11 @@ const VariableStabilityTDVD = TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    𝕊u = momentum_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
+    𝕊u = momentum_stability_function(closure, αᴺ, αᴹ)
     return 𝕊u
 end
 
-@inline function momentum_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+@inline function momentum_stability_function(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
     Cu₀ = closure.stability_functions.Cu₀
     Cu₁ = closure.stability_functions.Cu₁
     Cu₂ = closure.stability_functions.Cu₂
@@ -255,11 +257,11 @@ end
     αᴹmax = maximum_shear_number(closure, αᴺ)
     αᴹ = clamp(αᴹ, αᴹmin, αᴹmax)
 
-    𝕊c = tracer_stability_functionᶜᶜᶠ(closure, αᴺ, αᴹ)
+    𝕊c = tracer_stability_function(closure, αᴺ, αᴹ)
     return 𝕊c
 end
 
-@inline function tracer_stability_functionᶜᶜᶠ(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
+@inline function tracer_stability_function(closure::VariableStabilityTDVD, αᴺ::Number, αᴹ::Number)
     Cc₀ = closure.stability_functions.Cc₀
     Cc₁ = closure.stability_functions.Cc₁
     Cc₂ = closure.stability_functions.Cc₂

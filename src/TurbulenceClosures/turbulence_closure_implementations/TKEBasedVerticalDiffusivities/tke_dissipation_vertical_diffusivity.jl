@@ -7,6 +7,7 @@ struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractSc
     maximum_dissipation_diffusivity :: FT
     maximum_viscosity :: FT
     minimum_tke :: FT
+    minimum_stratification_number_safety_factor :: FT
     negative_tke_damping_time_scale :: FT
     tke_dissipation_time_step :: DT
 end
@@ -19,6 +20,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                maximum_dissipation_diffusivity::FT,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
+                                               minimum_stratification_number_safety_factor::FT
                                                negative_tke_damping_time_scale::FT, 
                                                tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 
@@ -30,6 +32,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                                        maximum_dissipation_diffusivity,
                                                                        maximum_viscosity,
                                                                        minimum_tke,
+                                                                       minimum_stratification_number_safety_factor,
                                                                        negative_tke_damping_time_scale,
                                                                        tke_dissipation_time_step)
 end
@@ -40,6 +43,8 @@ TKEDissipationVerticalDiffusivity(FT::DataType; kw...) =
 const TDVD{TD} = TKEDissipationVerticalDiffusivity{TD} where TD
 const TDVDArray{TD} = AbstractArray{<:TDVD{TD}} where TD
 const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
+
+@inline Base.eltype(::TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, FT}) where FT = FT
 
 """
     TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -52,6 +57,7 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
                                       maximum_dissipation_diffusivity = Inf,
                                       maximum_viscosity = Inf,
                                       minimum_tke = 1e-6,
+                                      minimum_stratification_number_safety_factor = 0.73,
                                       negative_tke_damping_time_scale = 1minute,
                                       tke_dissipation_time_step = nothing)
 
@@ -107,6 +113,7 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                            maximum_dissipation_diffusivity = Inf,
                                            maximum_viscosity = Inf,
                                            minimum_tke = 1e-6,
+                                           minimum_stratification_number_safety_factor = 0.73,
                                            negative_tke_damping_time_scale = 1minute,
                                            tke_dissipation_time_step = nothing) where TD
 
@@ -120,6 +127,7 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                                  convert(FT, maximum_dissipation_diffusivity),
                                                  convert(FT, maximum_viscosity),
                                                  convert(FT, minimum_tke),
+                                                 convert(FT, minimum_stratification_number_safety_factor),
                                                  convert(FT, negative_tke_damping_time_scale),
                                                  tke_dissipation_time_step)
 end
