@@ -28,11 +28,11 @@ on_architecture(arch, coord::ZStarSpacing) =
 Grids.coordinate_summary(Δ::ZStarSpacing, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
 
-
 const ZStarSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing}
 const ZStarSpacingLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing} 
+const ZStarSpacingOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing} 
 
-const ZStarSpacingUnderlyingGrid = Union{ZStarSpacingRG, ZStarSpacingLLG}
+const ZStarSpacingUnderlyingGrid = Union{ZStarSpacingRG, ZStarSpacingLLG, ZStarSpacingOSG}
 const ZStarSpacingImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarSpacingUnderlyingGrid} 
 
 const ZStarSpacingGrid = Union{ZStarSpacingUnderlyingGrid, ZStarSpacingImmersedGrid}
