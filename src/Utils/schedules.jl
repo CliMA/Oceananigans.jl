@@ -65,7 +65,12 @@ function (schedule::TimeInterval)(model)
     t★ = next_actuation_time(schedule)
 
     if t >= t★
-        schedule.actuations += 1
+        if schedule.actuations < typemax(Int)
+            schedule.actuations += 1
+        else
+            schedule.first_actuation_time = t★
+            schedule.actuations = 1
+        end
         return true
     else
         return false
