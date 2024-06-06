@@ -178,6 +178,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
+    initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
