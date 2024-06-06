@@ -72,7 +72,7 @@ end
        _fill_top_open_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
 
-# fallback for normal boundary conditions
+# fallback for non-open boundary conditions
 
 @inline   _fill_west_open_halo!(j, k, grid, c, bc, loc, args...) = nothing
 @inline   _fill_east_open_halo!(j, k, grid, c, bc, loc, args...) = nothing
@@ -81,7 +81,7 @@ end
 @inline _fill_bottom_open_halo!(i, j, grid, c, bc, loc, args...) = nothing
 @inline    _fill_top_open_halo!(i, j, grid, c, bc, loc, args...) = nothing
 
-# and don't do anything on the normal fill call
+# and don't do anything on the non-open boundary fill call
 
 @inline   _fill_west_halo!(j, k, grid, c, bc, loc, args...) = nothing
 @inline   _fill_east_halo!(j, k, grid, c, bc, loc, args...) = nothing
@@ -89,6 +89,15 @@ end
 @inline  _fill_north_halo!(i, k, grid, c, bc, loc, args...) = nothing
 @inline _fill_bottom_halo!(i, j, grid, c, bc, loc, args...) = nothing
 @inline    _fill_top_halo!(i, j, grid, c, bc, loc, args...) = nothing
+
+# except when its a center field (so presumably are tracers)
+
+@inline   _fill_west_halo!(j, k, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
+@inline   _fill_east_halo!(j, k, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
+@inline  _fill_south_halo!(i, k, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
+@inline  _fill_north_halo!(i, k, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
+@inline _fill_bottom_halo!(i, j, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
+@inline    _fill_top_halo!(i, j, grid, c, bc, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
 # generic for open boundary conditions
 
