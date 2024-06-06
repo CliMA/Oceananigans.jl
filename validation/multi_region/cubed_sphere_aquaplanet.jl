@@ -98,8 +98,44 @@ my_parameters = merge(my_parameters, (Δz = Δz_min, 𝓋 = Δz_min/my_parameter
     return coefficients[1] * x^3 + coefficients[2] * x^2 + coefficients[3] * x + coefficients[4]
 end
 
+using Oceananigans.Grids: λnode, φnode
+
 # Specify the wind stress as a function of latitude, φ.
-@inline function wind_stress(λ, φ, t, p) 
+@inline function wind_stress_x(i, j, grid, clock, fields, p)
+    φ = φnode(i, j, 1, grid, Face(), Center(), Center())
+    φ_index = sum(φ .> p.φs) + 1
+
+    φ₁ = p.φs[φ_index-1]
+    φ₂ = p.φs[φ_index]
+    τ₁ = p.τs[φ_index-1]
+    τ₂ = p.τs[φ_index]
+
+    τy_latlon = cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+
+    # Now, calculate the sine of the angle with respect to the geographic north, and use it to determine the component
+    # of τy_latlon in the local x direction of the cubed sphere panel.
+
+    φᶠᶠᵃ_i_jp1 = φnode(i, j+1, 1, grid,   Face(),   Face(), Center())
+    φᶠᶠᵃ_i_j   = φnode(i,   j, 1, grid,   Face(),   Face(), Center())
+    Δyᶠᶜᵃ_i_j  =    Δy(i,   j, 1, grid,   Face(), Center(), Center())
+
+    u_Pseudo = deg2rad(φᶠᶠᵃ_i_jp1 - φᶠᶠᵃ_i_j)/Δyᶠᶜᵃ_i_j
+
+    φᶜᶜᵃ_i_j   = φnode(i,   j, 1, grid, Center(), Center(), Center())
+    φᶜᶜᵃ_im1_j = φnode(i-1, j, 1, grid, Center(), Center(), Center())
+    Δxᶠᶜᵃ_i_j  =    Δx(i,   j, 1, grid,   Face(), Center(), Center())
+
+    v_Pseudo = -deg2rad(φᶜᶜᵃ_i_j - φᶜᶜᵃ_im1_j)/Δxᶠᶜᵃ_i_j
+
+    sin_θ = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+
+    τy_x = -τy_latlon * sin_θ
+
+    return τy_x
+end
+
+@inline function wind_stress_y(i, j, grid, clock, fields, p)
+    φ = φnode(i, j, 1, grid, Center(), Face(), Center())
     φ_index = sum(φ .> p.φs) + 1
     
     φ₁ = p.φs[φ_index-1]
@@ -107,7 +143,28 @@ end
     τ₁ = p.τs[φ_index-1]
     τ₂ = p.τs[φ_index]
     
-    return cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+    τy_latlon = cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+
+    # Now, calculate the cosine of the angle with respect to the geographic north, and use it to determine the component
+    # of τy_latlon in the local y direction of the cubed sphere panel.
+
+    φᶜᶜᵃ_i_j   = φnode(i,   j, 1, grid, Center(), Center(), Center())
+    φᶜᶜᵃ_i_jm1 = φnode(i, j-1, 1, grid, Center(), Center(), Center())
+    Δyᶜᶠᵃ_i_j  =    Δy(i,   j, 1, grid, Center(),   Face(), Center())
+
+    u_Pseudo = deg2rad(φᶜᶜᵃ_i_j - φᶜᶜᵃ_i_jm1)/Δyᶜᶠᵃ_i_j
+
+    φᶠᶠᵃ_ip1_j = φnode(i+1, j, 1, grid,   Face(),   Face(), Center())
+    φᶠᶠᵃ_i_j   = φnode(i,   j, 1, grid,   Face(),   Face(), Center())
+    Δxᶜᶠᵃ_i_j  =    Δx(i,   j, 1, grid, Center(),   Face(), Center())
+
+    v_Pseudo = -deg2rad(φᶠᶠᵃ_ip1_j - φᶠᶠᵃ_i_j)/Δxᶜᶠᵃ_i_j
+
+    cos_θ = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+
+    τy_y = τy_latlon * cos_θ
+
+    return τy_y
 end
 
 @inline linear_profile_in_z(z, p) = 1 + z/p.Lz
@@ -138,14 +195,16 @@ end
 @inline v_drag(i, j, grid, clock, fields, p) = (
 @inbounds - p.Cᴰ * speedᶜᶠᶜ(i, j, 1, grid, fields.u, fields.v) * fields.v[i, j, 1])
 
-#=
 u_bot_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
 v_bot_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
-top_stress_bc = FluxBoundaryCondition(wind_stress; parameters = (; φs = my_parameters.φs, τs = my_parameters.τs,
-                                                                   ρ₀ = my_parameters.ρ₀)) 
-u_bcs = FieldBoundaryConditions(bottom = u_bot_bc, top = top_stress_bc)
-v_bcs = FieldBoundaryConditions(bottom = v_bot_bc, top = top_stress_bc)
-=#
+top_stress_x = FluxBoundaryCondition(wind_stress_x; discrete_form = true, parameters = (; φs = my_parameters.φs,
+                                                                                          τs = my_parameters.τs,
+                                                                                          ρ₀ = my_parameters.ρ₀))
+top_stress_y = FluxBoundaryCondition(wind_stress_y; discrete_form = true, parameters = (; φs = my_parameters.φs,
+                                                                                          τs = my_parameters.τs,
+                                                                                          ρ₀ = my_parameters.ρ₀))
+u_bcs = FieldBoundaryConditions(bottom = u_bot_bc, top = top_stress_x)
+v_bcs = FieldBoundaryConditions(bottom = v_bot_bc, top = top_stress_y)
 
 my_buoyancy_parameters = (; Δ = my_parameters.Δ, h = my_parameters.h, Lz = my_parameters.Lz,
                             φ_max_lin = my_parameters.φ_max_lin, φ_max_par = my_parameters.φ_max_par,
@@ -159,13 +218,11 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 ####
 
 momentum_advection = VectorInvariant()
-tracer_advection   = CenteredSecondOrder()
+tracer_advection   = WENO(; order = 7)
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-νh = 5e+4
 νz = 2e-4
-κh = 1e+3
 κz = 2e-5
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
@@ -175,12 +232,11 @@ free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = f
 # Use a biharmonic diffusivity for momentum. Define the diffusivity function as gridsize^4 divided by the timescale.
 @inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, λ) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / λ
 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
-vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
-convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                                 convective_κz = 1.0)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true,
-                                                               parameters = (; my_parameters.λ_rts))
+biharmonic_viscosity  = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
+                                                              parameters = my_parameters.λ_rts)
+vertical_diffusivity  = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                                convective_κz = 1.0)
 
 coriolis = HydrostaticSphericalCoriolis()
 
@@ -189,10 +245,10 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
+                                      closure = (biharmonic_viscosity, vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
-                                      boundary_conditions = (; b = b_bcs))
+                                      boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
 
 #####
 ##### Model initialization
@@ -329,7 +385,7 @@ cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
 sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
 latitude_at_specific_longitude_through_panel_center = zeros(2*Nx, 4)
 
-for (index, panel_index) in enumerate([1, 2, 4, 5])
+for (index, panel_index) in enumerate([1])
     cos_θ_at_specific_longitude_through_panel_center[:, index] = (
     extract_scalar_at_specific_longitude_through_panel_center(grid, cos_θ, panel_index))
     sin_θ_at_specific_longitude_through_panel_center[:, index] = (
@@ -374,7 +430,7 @@ if plot_initial_field
         fig = panel_wise_visualization(grid, ζᵢ; k = Nz, common_kwargs...)
         save("cubed_sphere_aquaplanet_ζᵢ.png", fig)
 
-        for (index, panel_index) in enumerate([1, 2, 4, 5])
+        for (index, panel_index) in enumerate([1])
             uᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, uᵢ, panel_index; levels = 1:Nz))
             vᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
@@ -408,7 +464,7 @@ if plot_initial_field
 
     fig = panel_wise_visualization(grid, bᵢ; k = b_index, common_kwargs...)
     save("cubed_sphere_aquaplanet_bᵢ.png", fig)
-    for (index, panel_index) in enumerate([1, 2, 4, 5])
+    for (index, panel_index) in enumerate([1])
         bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
         extract_field_at_specific_longitude_through_panel_center(grid, bᵢ, panel_index; levels = 1:Nz))
         title = "Buoyancy"
@@ -490,7 +546,7 @@ if plot_final_field
     fig = panel_wise_visualization(grid, b_fields[end]; k = b_index, common_kwargs...)
     save("cubed_sphere_aquaplanet_b.png", fig)
 
-    for (index, panel_index) in enumerate([1, 2, 4, 5])
+    for (index, panel_index) in enumerate([1])
         u_f_at_specific_longitude_through_panel_center[:, :, index] = (
         extract_field_at_specific_longitude_through_panel_center(grid, u_fields[end], panel_index; levels = 1:Nz))
         v_f_at_specific_longitude_through_panel_center[:, :, index] = (
@@ -663,7 +719,7 @@ if make_animations
     η_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx,  1, 4)
     b_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
 
-    for (index, panel_index) in enumerate([1, 2, 4, 5])
+    for (index, panel_index) in enumerate([1])
         for i_frame in 1:n_frames+1
             u_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
             extract_field_at_specific_longitude_through_panel_center(grid, u_fields[i_frame], panel_index;
