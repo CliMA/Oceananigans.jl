@@ -88,7 +88,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Set time-stepper χ (this is used in ab2_step!, but may also be used elsewhere)
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
-    ab2_timestepper.previous_Δt = Δt
 
     # Ensure zeroing out all previous tendency fields to avoid errors in
     # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
