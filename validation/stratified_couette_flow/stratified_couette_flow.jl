@@ -16,6 +16,18 @@ using Oceananigans.TurbulenceClosures:
                 𝒥ᴿᴺ_forcing_function, 
                 𝒥ᴺᴺ_forcing_function
 
+
+Nxy=64
+Nz=32
+arch=CPU()
+h=1
+U_wall=1
+Re=4250
+Pr=0.7
+Ri = 0.5
+Ni=10
+end_time=1000
+
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
@@ -113,7 +125,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Impose boundary conditions
     #####
 
-    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h), halo = (6, 6, 6))
 
     bbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
                                    bottom = ValueBoundaryCondition(-Θ_wall))

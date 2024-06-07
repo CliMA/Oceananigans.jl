@@ -108,6 +108,8 @@ end
     u̅w̅ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, uᵢuⱼ, ℑxᶜᵃᵃ, ℑzᵃᵃᶜ, u, w)
     v̅w̅ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, uᵢuⱼ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, v, w)
 
+    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
+
     S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₁₁, u) # Directly at centers
     S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₂₂, v) # Directly at centers
     S̅₃₃ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₃₃, w) # Directly at centers
@@ -115,8 +117,6 @@ end
     S̅₁₂ = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, Σ₁₂, u, v) # originally at ffc
     S̅₁₃ = ℑxzᶜᵃᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, Σ₁₃, u, w) # originally at fcf
     S̅₂₃ = ℑyzᵃᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, Σ₁₂, u, v) # originally at cff
-
-    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
 
     S̅S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₁₁, u, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
     S̅S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₂₂, v, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
@@ -162,6 +162,8 @@ end
     v = fields.v
     w = fields.w
 
+    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
+
     S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₁₁, u) # Directly at centers
     S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₂₂, v) # Directly at centers
     S̅₃₃ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, Σ₃₃, w) # Directly at centers
@@ -169,8 +171,6 @@ end
     S̅₁₂ = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, Σ₁₂, u, v) # originally at ffc
     S̅₁₃ = ℑxzᶜᵃᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, Σ₁₃, u, w) # originally at fcf
     S̅₂₃ = ℑyzᵃᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, Σ₁₂, u, v) # originally at cff
-
-    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
 
     S̅S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₁₁, u, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
     S̅S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₂₂, v, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
@@ -225,6 +225,8 @@ end
     u̅w̅ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, uᵢuⱼ, ℑxᶜᵃᵃ, ℑzᵃᵃᶜ, u, w)
     v̅w̅ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, uᵢuⱼ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, v, w)
 
+    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
+
     S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₁₁, u) # Directly at centers
     S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₂₂, v) # Directly at centers
     S̅₃₃ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₃₃, w) # Directly at centers
@@ -232,8 +234,6 @@ end
     S̅₁₂ = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, Σ₁₂, u, v) # originally at ffc
     S̅₁₃ = ℑxzᶜᵃᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, Σ₁₃, u, w) # originally at fcf
     S̅₂₃ = ℑyzᵃᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, Σ₁₂, u, v) # originally at cff
-
-    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
 
     S̅S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₁₁, u, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
     S̅S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₂₂, v, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
@@ -279,6 +279,8 @@ end
     v = fields.v
     w = fields.w
 
+    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
+
     S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₁₁, u) # Directly at centers
     S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₂₂, v) # Directly at centers
     S̅₃₃ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, Σ₃₃, w) # Directly at centers
@@ -286,8 +288,6 @@ end
     S̅₁₂ = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶠ, Σ₁₂, u, v) # originally at ffc
     S̅₁₃ = ℑxzᶜᵃᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶠ, ℑxyzᶜᶠᶜ, Σ₁₃, u, w) # originally at fcf
     S̅₂₃ = ℑyzᵃᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶜ, Σ₁₂, u, v) # originally at cff
-
-    S̅ₘ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
 
     S̅S̅₁₁ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₁₁, u, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
     S̅S̅₂₂ = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ, SₘSᵢⱼ, Σ₂₂, v, ϕ⁰⁵, ΣᵢⱼΣᵢⱼᶜᶜᶜ, u, v, w)
