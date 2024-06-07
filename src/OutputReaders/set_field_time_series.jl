@@ -1,3 +1,5 @@
+using Printf
+
 #####
 ##### set!
 #####
@@ -19,6 +21,14 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
     for n in time_indices(fts)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
+
+        if isnothing(file_index)
+            msg = string("Error setting ", summary(fts), '\n')
+            msg *= @sprintf("Can't find data for time %.1e and time index %d\n", t, n)
+            msg *= @sprintf("for field %s at path %s", path, name)
+            error(msg)
+        end
+
         file_iter = file_iterations[file_index]
         
         # Note: use the CPU for this step
