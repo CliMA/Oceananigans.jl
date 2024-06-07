@@ -73,6 +73,14 @@ my_parameters = (Lz        = Lz,
                  Cᴰ        = 1e-3       # Drag coefficient
 )
 
+f₀ = 1e-4
+L_d = (2/f₀ * sqrt(my_parameters.h * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h)))
+       * (1 - exp(-my_parameters.Lz/(2my_parameters.h))))
+print("For an initial buoyancy profile decaying exponetially with depth, the Rossby radius of deformation is $L_d m.\n")
+num_grid_points = ceil(Int, 2π * grid.radius/(4L_d))
+print("The minimum number of grid points in each direction of the cubed sphere panels required to resolve this " *
+      "Rossby radius of deformation is $(num_grid_points).\n")
+
 arch = CPU()
 grid = ConformalCubedSphereGrid(arch;
                                 panel_size = (Nx, Ny, Nz),
@@ -294,6 +302,12 @@ if initialize_velocities_based_on_thermal_wind_balance
 end
 
 Δt = 5minutes
+
+min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
+c = sqrt(model.free_surface.gravitational_acceleration * Lz)
+CourantNumber = 0.25
+min_substeps = ceil(Int, c * Δt / (CourantNumber * min_spacing))
+print("The minimum number of substeps required to satisfy the CFL condition is $min_substeps.\n")
 
 stop_time = 7days
 Ntime = round(Int, stop_time/Δt)
