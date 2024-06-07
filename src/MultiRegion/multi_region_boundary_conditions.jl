@@ -12,7 +12,8 @@ using Oceananigans.BoundaryConditions:
             extract_north_bc, extract_top_bc, extract_bottom_bc,
             fill_halo_event!,
             MCBCT,
-            MCBC
+            MCBC,
+            fill_open_boundary_regions!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
 
@@ -38,8 +39,13 @@ import Oceananigans.BoundaryConditions:
     end
 end
 
-function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
+function fill_halo_regions!(field::MultiRegionField, args...; fill_boundary_normal_velocities = true, kwargs...)
     reduced_dims = reduced_dimensions(field)
+
+    if fill_boundary_normal_velocities
+        clock, fields = args
+        apply_regionally!(fill_open_boundary_regions!, field, clock, fields)
+    end
 
     return fill_halo_regions!(field.data,
                               field.boundary_conditions,
