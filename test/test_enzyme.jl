@@ -180,6 +180,7 @@ end
                 Duplicated(model, dmodel),
                 Active(1.0))
     end
+end
 
     Enzyme.API.looseTypeAnalysis!(false)
 
