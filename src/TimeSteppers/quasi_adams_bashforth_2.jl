@@ -1,7 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
-using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
-using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -69,41 +67,59 @@ Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 Setting `compute_tendencies=false` will not calculate new tendencies
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false, compute_tendencies=true)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
+                    callbacks=[], euler=false, compute_tendencies=true)
+
+    # Be paranoid and update state at iteration 0
+    model.clock.iteration == 0 && update_state!(model, callbacks)
+
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    # Shenanigans for properly starting the AB2 loop with an Euler step
-    euler = euler || (Δt != model.timestepper.previous_Δt)
-    
-    χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
+    ab2_timestepper = model.timestepper
 
+    # Change the default χ if necessary, which occurs if:
+    #   * We detect that the time-step size has changed.
+    #   * We detect that this is the "first" time-step, which means we
+    #     need to take an euler step. Note that model.clock.last_Δt is
+    #     initialized as Inf
+    #   * The user has passed euler=true to time_step!
+    χ₀ = ab2_timestepper.χ
+    euler = euler || (Δt != ab2_timestepper.previous_Δt)
+    
+    # If euler, then set χ = -0.5
+    minus_point_five = convert(eltype(model.grid), -0.5)
+    χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
+
+    # Set time-stepper χ (this is used in ab2_step!, but may also be used elsewhere)
+    ab2_timestepper.χ = χ
+    ab2_timestepper.previous_Δt = Δt
+
+    # Ensure zeroing out all previous tendency fields to avoid errors in
+    # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
     if euler
         @debug "Taking a forward Euler step."
-        # Ensure zeroing out all previous tendency fields to avoid errors in
-        # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
-        for field in model.timestepper.G⁻
+        for field in ab2_timestepper.G⁻
             !isnothing(field) && @apply_regionally fill!(field, 0)
         end
     end
 
-    model.timestepper.previous_Δt = Δt
-
-    # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
-    
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
-    calculate_pressure_correction!(model, Δt)
 
-    @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
+    ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
+    calculate_pressure_correction!(model, Δt)
+    @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
 
     tick!(model.clock, Δt)
     update_state!(model, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, Δt)
+
+    # Return χ to initial value
+    ab2_timestepper.χ = χ₀
     
     return nothing
 end
 
-function correct_velocities_and_store_tendecies!(model, Δt)
+function correct_velocities_and_store_tendencies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
     return nothing
@@ -114,12 +130,13 @@ end
 #####
 
 """ Generic implementation. """
-function ab2_step!(model, Δt, χ)
+function ab2_step!(model, Δt)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     arch = model.architecture
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
     model_fields = prognostic_fields(model)
+    χ = model.timestepper.χ
 
     for (i, field) in enumerate(model_fields)
 
