@@ -194,6 +194,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
 
+    # first we construct the grid on CPU and convert to user-prescribed architecture later...
     devices = validate_devices(partition, CPU(), devices)
     devices = assign_devices(partition, devices)
 
@@ -223,7 +224,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     region_η = Iterate(region_η)
     region_rotation = Iterate(region_rotation)
 
-    # construct the grid on CPU and convert to architecture later...
+    # as mentioned above, construct the grid on CPU and convert to user-prescribed architecture later...
     region_grids = construct_regionally(conformal_cubed_sphere_panel, CPU(), FT;
                                         size = region_size,
                                         z,
