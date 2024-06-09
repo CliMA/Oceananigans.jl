@@ -136,7 +136,7 @@ end
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         tracers = :c,
-                                        buoyancy = nothing)
+                                       buoyancy = nothing)
 
     model_tracer = model.tracers.c
 
