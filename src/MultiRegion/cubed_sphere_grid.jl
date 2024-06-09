@@ -187,8 +187,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   radius = R_Earth,
                                   partition = CubedSpherePartition(; R = 1),
                                   devices = nothing)
-    myarch = deepcopy(arch)
-    arch = CPU()
 
     Nx, Ny, _ = panel_size
     region_topology = (horizontal_topology, horizontal_topology, z_topology)
@@ -196,7 +194,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
 
-    devices = validate_devices(partition, arch, devices)
+    devices = validate_devices(partition, CPU(), devices)
     devices = assign_devices(partition, devices)
 
     connectivity = CubedSphereConnectivity(devices, partition)
@@ -299,7 +297,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     ###################################################
     ## Code specific to one-region-per panel partitions
-    ###################################################
 
     ## hardcoding NW/SE corner values only works for a one-region-per panel partition
 
@@ -326,15 +323,18 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
     end
 
-    # now convert to proper architecture
-    region_grids = grid.region_grids
-    @apply_regionally new_region_grids = on_architecture(myarch, region_grids)
+    ## End code specific to one-region-per panel partitions
+    #######################################################
 
-    new_devices = myarch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+    # now convert to user-prescribed architecture
+    region_grids = grid.region_grids
+    @apply_regionally new_region_grids = on_architecture(arch, region_grids)
+
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
 
     new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
 
-    new_grid = MultiRegionGrid{FT, region_topology...}(myarch,
+    new_grid = MultiRegionGrid{FT, region_topology...}(arch,
                                                        partition,
                                                        connectivity,
                                                        new_region_grids,
