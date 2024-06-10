@@ -35,3 +35,24 @@ end
 function serializeproperty!(file, location, mrg::MultiRegionGrids) 
     file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
 end
+
+#####
+##### For a cubed sphere, we dump the entire field as is.
+#####
+
+function fetch_output(csf::CubedSphereField, model)
+    compute_at!(csf, model.clock.time)
+    return parent(csf)
+end
+
+function serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) where {LX, LY, LZ}
+    serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
+    serializeproperty!(file, location * "/data", parent(csf))
+    serializeproperty!(file, location * "/boundary_conditions", csf.boundary_conditions)
+
+    return nothing
+end
+
+function serializeproperty!(file, location, csf::ConformalCubedSphereGrid)
+    file[location] = on_architecture(CPU(), csf)
+end

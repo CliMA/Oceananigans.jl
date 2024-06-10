@@ -212,8 +212,8 @@ function set!(model, filepath::AbstractString)
         for name in propertynames(model_fields)
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
-                copyto!(model_field.data.parent, parent_data)
+                parent_data = file["$name/data"]
+                @apply_regionally copyto!(model_field.data, parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
@@ -242,13 +242,13 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields)
             parent_data = file["timestepper/Gⁿ/$name/data"]
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
+            @apply_regionally copyto!(tendencyⁿ_field.data, parent_data)
 
             # Tendency "n-1"
             parent_data = file["timestepper/G⁻/$name/data"]
 
             tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
+            @apply_regionally copyto!(tendency⁻_field.data, parent_data)
         else
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
