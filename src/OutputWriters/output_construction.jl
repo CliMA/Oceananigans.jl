@@ -1,6 +1,7 @@
 using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
+using Oceananigans.MultiRegion: number_of_regions, Iterate
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
@@ -35,14 +36,15 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     if !with_halos # Maybe chop those indices
         loc = map(instantiate, location(output))
         topo = map(instantiate, topology(grid))
-        indices = map(restrict_to_interior, indices, loc, topo, size(grid))
+        @apply_regionally indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
     return indices
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
-    indices = output_indices(user_output, grid, user_indices, with_halos)
+    multi_region_indices = output_indices(user_output, grid, user_indices, with_halos)
+    indices = grid isa ConformalCubedSphereGrid ? multi_region_indices[1] : multi_region_indices
     return Field(user_output; indices)
 end
 
