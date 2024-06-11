@@ -1,6 +1,5 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.ImmersedBoundaries: ActiveCellsIBG
 using Oceananigans.Utils: launch!
 
 """ Store source terms for `u`, `v`, and `w`. """
