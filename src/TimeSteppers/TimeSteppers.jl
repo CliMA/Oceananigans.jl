@@ -52,6 +52,7 @@ abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
 reset!(timestepper) = nothing
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
 include("store_tendencies.jl")
