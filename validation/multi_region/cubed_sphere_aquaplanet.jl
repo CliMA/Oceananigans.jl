@@ -8,6 +8,7 @@ using Oceananigans.Utils
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.Units
+using Oceananigans.OutputReaders: FieldTimeSeries
 
 using JLD2
 
@@ -54,38 +55,42 @@ Nhalo = 4
 
 ratio = 0.8
 
-φs = (-90, -45, -15, 0, 15, 45, 90)
-τs = (0, 0.2, -0.1, -0.02, -0.1, 0.1, 0)
+φ_max_τ = 70
+φs = (-φ_max_τ, -45, -15, 0, 15, 45, φ_max_τ)
+τs = (0, 0.2, -0.1, -0.02, -0.1, 0.2, 0)
 
-my_parameters = (Lz        = Lz,
-                 h         = h,
-                 Nz        = Nz,
-                 k₀        = 0.25 * Nz, # Exponential profile parameter
-                 ratio     = ratio,     # Geometric profile parameter
-                 ρ₀        = 1020,      # Boussinesq density
-                 φs        = φs,  
-                 τs        = τs,
-                 Δ         = 0.06,
-                 φ_max_lin = 90,
-                 φ_max_par = 90,
-                 φ_max_cos = 75,
-                 λ_rts     = 10days,    # Restoring time scale
-                 Cᴰ        = 1e-3       # Drag coefficient
+my_parameters = (Lz          = Lz,
+                 h           = h,
+                 Nz          = Nz,
+                 k₀          = 0.25 * Nz, # Exponential profile parameter
+                 ratio       = ratio,     # Geometric profile parameter
+                 ρ₀          = 1020,      # Boussinesq density
+                 φ_max_τ     = φ_max_τ,
+                 φs          = φs,
+                 τs          = τs,
+                 Δ           = 0.06,
+                 φ_max_b_lin = 90,
+                 φ_max_b_par = 90,
+                 φ_max_b_cos = 75,
+                 λ_rts       = 10days,    # Restoring time scale
+                 Cᴰ          = 1e-3       # Drag coefficient
 )
 
+radius = 6371e3
 f₀ = 1e-4
 L_d = (2/f₀ * sqrt(my_parameters.h * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h)))
        * (1 - exp(-my_parameters.Lz/(2my_parameters.h))))
 print("For an initial buoyancy profile decaying exponetially with depth, the Rossby radius of deformation is $L_d m.\n")
-num_grid_points = ceil(Int, 2π * grid.radius/(4L_d))
+Nx_min = ceil(Int, 2π * radius/(4L_d))
 print("The minimum number of grid points in each direction of the cubed sphere panels required to resolve this " *
-      "Rossby radius of deformation is $(num_grid_points).\n")
+      "Rossby radius of deformation is $(Nx_min).\n")
 
 arch = CPU()
 grid = ConformalCubedSphereGrid(arch;
                                 panel_size = (Nx, Ny, Nz),
                                 z = geometric_z_faces(my_parameters),
                                 horizontal_direction_halo = Nhalo,
+                                radius,
                                 partition = CubedSpherePartition(; R = 1))
 
 Hx, Hy, Hz = halo_size(grid)
@@ -111,17 +116,22 @@ using Oceananigans.Grids: λnode, φnode
 # Specify the wind stress as a function of latitude, φ.
 @inline function wind_stress_x(i, j, grid, clock, fields, p)
     φ = φnode(i, j, 1, grid, Face(), Center(), Center())
-    φ_index = sum(φ .> p.φs) + 1
 
-    φ₁ = p.φs[φ_index-1]
-    φ₂ = p.φs[φ_index]
-    τ₁ = p.τs[φ_index-1]
-    τ₂ = p.τs[φ_index]
+    if abs(φ) > p.φ_max_τ
+        τₓ_latlon = 0
+    else
+        φ_index = sum(φ .> p.φs) + 1
 
-    τy_latlon = cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+        φ₁ = p.φs[φ_index-1]
+        φ₂ = p.φs[φ_index]
+        τ₁ = p.τs[φ_index-1]
+        τ₂ = p.τs[φ_index]
 
-    # Now, calculate the sine of the angle with respect to the geographic north, and use it to determine the component
-    # of τy_latlon in the local x direction of the cubed sphere panel.
+        τₓ_latlon = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+    end
+
+    # Now, calculate the cosine of the angle with respect to the geographic north, and use it to determine the component
+    # of τₓ_latlon in the local x direction of the cubed sphere panel.
 
     φᶠᶠᵃ_i_jp1 = φnode(i, j+1, 1, grid,   Face(),   Face(), Center())
     φᶠᶠᵃ_i_j   = φnode(i,   j, 1, grid,   Face(),   Face(), Center())
@@ -135,26 +145,31 @@ using Oceananigans.Grids: λnode, φnode
 
     v_Pseudo = -deg2rad(φᶜᶜᵃ_i_j - φᶜᶜᵃ_im1_j)/Δxᶠᶜᵃ_i_j
 
-    sin_θ = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+    cos_θ = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
 
-    τy_x = -τy_latlon * sin_θ
+    τₓ_x = τₓ_latlon * cos_θ
 
-    return τy_x
+    return τₓ_x
 end
 
 @inline function wind_stress_y(i, j, grid, clock, fields, p)
     φ = φnode(i, j, 1, grid, Center(), Face(), Center())
-    φ_index = sum(φ .> p.φs) + 1
     
-    φ₁ = p.φs[φ_index-1]
-    φ₂ = p.φs[φ_index]
-    τ₁ = p.τs[φ_index-1]
-    τ₂ = p.τs[φ_index]
-    
-    τy_latlon = cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+    if abs(φ) > p.φ_max_τ
+        τₓ_latlon = 0
+    else
+        φ_index = sum(φ .> p.φs) + 1
 
-    # Now, calculate the cosine of the angle with respect to the geographic north, and use it to determine the component
-    # of τy_latlon in the local y direction of the cubed sphere panel.
+        φ₁ = p.φs[φ_index-1]
+        φ₂ = p.φs[φ_index]
+        τ₁ = p.τs[φ_index-1]
+        τ₂ = p.τs[φ_index]
+
+        τₓ_latlon = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+    end
+
+    # Now, calculate the sine of the angle with respect to the geographic north, and use it to determine the component
+    # of τₓ_latlon in the local y direction of the cubed sphere panel.
 
     φᶜᶜᵃ_i_j   = φnode(i,   j, 1, grid, Center(), Center(), Center())
     φᶜᶜᵃ_i_jm1 = φnode(i, j-1, 1, grid, Center(), Center(), Center())
@@ -168,21 +183,21 @@ end
 
     v_Pseudo = -deg2rad(φᶠᶠᵃ_ip1_j - φᶠᶠᵃ_i_j)/Δxᶜᶠᵃ_i_j
 
-    cos_θ = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+    sin_θ = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
 
-    τy_y = τy_latlon * cos_θ
+    τₓ_y = τₓ_latlon * sin_θ
 
-    return τy_y
+    return τₓ_y
 end
 
 @inline linear_profile_in_z(z, p) = 1 + z/p.Lz
 @inline exponential_profile_in_z(z, p) = (exp(z/p.h) - exp(-p.Lz/p.h))/(1 - exp(-p.Lz/p.h))
 
-@inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_lin
-@inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_par)^2
-@inline cosine_profile_in_y(φ, p) = 0.5(1 + cos(π * min(max(φ/p.φ_max_cos, -1), 1)))
+@inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_b_lin
+@inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_b_par)^2
+@inline cosine_profile_in_y(φ, p) = 0.5(1 + cos(π * min(max(φ/p.φ_max_b_cos, -1), 1)))
 @inline double_cosine_profile_in_y(φ, p) = (
-0.5(1 + cos(π * min(max((deg2rad(abs(φ)) - π/4)/(deg2rad(p.φ_max_cos) - π/4), -1), 1))))
+0.5(1 + cos(π * min(max((deg2rad(abs(φ)) - π/4)/(deg2rad(p.φ_max_b_cos) - π/4), -1), 1))))
 
 @inline function buoyancy_restoring(λ, φ, t, b, p)
     B = p.Δ * cosine_profile_in_y(φ, p)
@@ -205,18 +220,18 @@ end
 
 u_bot_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
 v_bot_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
-top_stress_x = FluxBoundaryCondition(wind_stress_x; discrete_form = true, parameters = (; φs = my_parameters.φs,
-                                                                                          τs = my_parameters.τs,
-                                                                                          ρ₀ = my_parameters.ρ₀))
-top_stress_y = FluxBoundaryCondition(wind_stress_y; discrete_form = true, parameters = (; φs = my_parameters.φs,
-                                                                                          τs = my_parameters.τs,
-                                                                                          ρ₀ = my_parameters.ρ₀))
+top_stress_x = FluxBoundaryCondition(wind_stress_x; discrete_form = true,
+                                     parameters = (; φ_max_τ = my_parameters.φ_max_τ, φs = my_parameters.φs,
+                                                     τs = my_parameters.τs, ρ₀ = my_parameters.ρ₀))
+top_stress_y = FluxBoundaryCondition(wind_stress_y; discrete_form = true,
+                                     parameters = (; φ_max_τ = my_parameters.φ_max_τ, φs = my_parameters.φs,
+                                                     τs = my_parameters.τs, ρ₀ = my_parameters.ρ₀))
 u_bcs = FieldBoundaryConditions(bottom = u_bot_bc, top = top_stress_x)
 v_bcs = FieldBoundaryConditions(bottom = v_bot_bc, top = top_stress_y)
 
 my_buoyancy_parameters = (; Δ = my_parameters.Δ, h = my_parameters.h, Lz = my_parameters.Lz,
-                            φ_max_lin = my_parameters.φ_max_lin, φ_max_par = my_parameters.φ_max_par,
-                            φ_max_cos = my_parameters.φ_max_cos, 𝓋 = my_parameters.𝓋)
+                            φ_max_b_lin = my_parameters.φ_max_b_lin, φ_max_b_par = my_parameters.φ_max_b_par,
+                            φ_max_b_cos = my_parameters.φ_max_b_cos, 𝓋 = my_parameters.𝓋)
 top_restoring_bc = FluxBoundaryCondition(buoyancy_restoring; field_dependencies = :b,
                                          parameters = my_buoyancy_parameters)
 b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
@@ -226,7 +241,7 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 ####
 
 momentum_advection = VectorInvariant()
-tracer_advection   = WENO(; order = 7)
+tracer_advection   = WENO()
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
@@ -269,7 +284,7 @@ set!(model, b = initial_buoyancy)
 
 initialize_velocities_based_on_thermal_wind_balance = false
 # If the above flag is set to true, meaning the velocities are initialized using thermal wind balance, set
-# φ_max_cos within the range [70, 80], and specify the latitudinal variation in buoyancy as
+# φ_max_b_cos within the range [70, 80], and specify the latitudinal variation in buoyancy as
 # p.Δ * double_cosine_profile_in_y(φ, p) in both the initial buoyancy and the surface buoyancy restoring profiles.
 if initialize_velocities_based_on_thermal_wind_balance
     fill_halo_regions!(model.tracers.b)
@@ -301,99 +316,76 @@ if initialize_velocities_based_on_thermal_wind_balance
     fill_halo_regions!((model.velocities.u, model.velocities.v))
 end
 
-Δt = 5minutes
-
-min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
-c = sqrt(model.free_surface.gravitational_acceleration * Lz)
-CourantNumber = 0.25
-min_substeps = ceil(Int, c * Δt / (CourantNumber * min_spacing))
-print("The minimum number of substeps required to satisfy the CFL condition is $min_substeps.\n")
-
-stop_time = 7days
-Ntime = round(Int, stop_time/Δt)
-
-print_output_to_jld2_file = false
-if print_output_to_jld2_file
-    Ntime = 1500
-    stop_time = Ntime * Δt
-end
-
-@info "Stop time = $(prettytime(stop_time))"
-@info "Number of time steps = $Ntime"
-
-simulation = Simulation(model; Δt, stop_time)
-
-# Print a progress message.
-progress_message_iteration_interval = 10
-progress_message(sim) = (
-@printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
-        iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
-        maximum(abs, model.free_surface.η) - Lz, maximum(abs, model.tracers.b), prettytime(sim.run_wall_time)))
-
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
-
-u_fields = Field[]
-save_u(sim) = push!(u_fields, deepcopy(sim.model.velocities.u))
-
-v_fields = Field[]
-save_v(sim) = push!(v_fields, deepcopy(sim.model.velocities.v))
-
-# Now, compute the vorticity.
+# Compute the initial vorticity.
 ζ = Field{Face, Face, Center}(grid)
+
+offset = -1 .* halo_size(grid)
+
+fill_halo_regions!((model.velocities.u, model.velocities.v))
 
 @kernel function _compute_vorticity!(ζ, grid, u, v)
     i, j, k = @index(Global, NTuple)
     @inbounds ζ[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 end
 
-offset = -1 .* halo_size(grid)
-
 @apply_regionally begin
     kernel_parameters = KernelParameters(total_size(ζ[1]), offset)
     launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, model.velocities.u, model.velocities.v)
 end
 
-ζ_fields = Field[]
+# Compute actual and reconstructed wind stress.
+τₓ = CenterField(grid, indices = (1:Nx, 1:Ny, 1:1))
+τ_xr = CenterField(grid, indices = (1:Nx, 1:Ny, 1:1)) # Reconstructed zonal wind stress
+τ_yr = CenterField(grid, indices = (1:Nx, 1:Ny, 1:1)) # Reconstructed meridional wind stress, expected to be zero
 
-function save_ζ(sim)
-    grid = sim.model.grid
-    
-    offset = -1 .* halo_size(grid)
-    
-    u, v, _ = sim.model.velocities
+for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+    φ = φnode(i, j, 1, grid[region], Center(), Center(), Center())
 
-    fill_halo_regions!((u, v))
+    if abs(φ) > my_parameters.φ_max_τ
+        τₓ[region][i, j, 1] = 0
+    else
+        φ_index = sum(φ .> my_parameters.φs) + 1
 
-    @apply_regionally begin
-        kernel_parameters = KernelParameters(total_size(ζ[1]), offset)
-        launch!(arch, grid, kernel_parameters, _compute_vorticity!, ζ, grid, u, v)
+        φ₁ = my_parameters.φs[φ_index-1]
+        φ₂ = my_parameters.φs[φ_index]
+        τ₁ = my_parameters.τs[φ_index-1]
+        τ₂ = my_parameters.τs[φ_index]
+
+        τₓ[region][i, j, 1] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / my_parameters.ρ₀
     end
 
-    push!(ζ_fields, deepcopy(ζ))
+    φᶜᶠᵃ_i_jp1 = φnode(i, j+1, 1, grid[region], Center(),   Face(), Center())
+    φᶜᶠᵃ_i_j   = φnode(i,   j, 1, grid[region], Center(),   Face(), Center())
+    Δyᶜᶜᵃ_i_j  =    Δy(i,   j, 1, grid[region], Center(), Center(), Center())
+
+    u_Pseudo = deg2rad(φᶜᶠᵃ_i_jp1 - φᶜᶠᵃ_i_j)/Δyᶜᶜᵃ_i_j
+
+    φᶠᶜᵃ_ip1_j = φnode(i+1, j, 1, grid[region],   Face(), Center(), Center())
+    φᶠᶜᵃ_i_j   = φnode(i,   j, 1, grid[region],   Face(), Center(), Center())
+    Δxᶜᶜᵃ_i_j  =    Δx(i,   j, 1, grid[region], Center(), Center(), Center())
+
+    v_Pseudo = -deg2rad(φᶠᶜᵃ_ip1_j - φᶠᶜᵃ_i_j)/Δxᶜᶜᵃ_i_j
+
+    cos_θ = u_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+    sin_θ = v_Pseudo/sqrt(u_Pseudo^2 + v_Pseudo^2)
+
+    τₓ_x = τₓ[region][i, j, 1] * cos_θ
+    τₓ_y = τₓ[region][i, j, 1] * sin_θ
+
+    τ_xr[region][i, j, 1] = τₓ_x * cos_θ + τₓ_y * sin_θ
+    τ_yr[region][i, j, 1] = τₓ_y * cos_θ - τₓ_x * sin_θ
 end
 
-η_fields = Field[]
-save_η(sim) = push!(η_fields, deepcopy(sim.model.free_surface.η))
-
-b_fields = Field[]
-save_b(sim) = push!(b_fields, deepcopy(sim.model.tracers.b))
-
-uᵢ = deepcopy(simulation.model.velocities.u)
-vᵢ = deepcopy(simulation.model.velocities.v)
+# Plot wind stress and initial fields.
+uᵢ = deepcopy(model.velocities.u)
+vᵢ = deepcopy(model.velocities.v)
 ζᵢ = deepcopy(ζ)
-bᵢ = deepcopy(simulation.model.tracers.b)
+bᵢ = deepcopy(model.tracers.b)
 
 include("cubed_sphere_visualization.jl")
 
 latitude = extract_latitude(grid)
 cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, "cc")
-
-function orient_velocities_in_global_direction(grid, u, v, cos_θ, sin_θ; levels = 1:1)
-    u = interpolate_cubed_sphere_field_to_cell_centers(grid, u, "fc"; levels = levels)
-    v = interpolate_cubed_sphere_field_to_cell_centers(grid, v, "cf"; levels = levels)
-    orient_in_global_direction!(grid, u, v, cos_θ, sin_θ; levels = levels)
-    return u, v
-end
 
 cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
 sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
@@ -427,9 +419,38 @@ contourlevels = 50
 cbar_kwargs = (labelsize = 22.5, labelpadding = 10, ticksize = 17.5)
 common_kwargs = (; consider_all_levels = false)
 b_index = round(Int, Nz/2)
+common_kwargs_geo_colorrange = (consider_all_levels = false, levels = Nz:Nz)
+common_kwargs_geo_colorrange_b = (consider_all_levels = false, levels = b_index:b_index)
+common_kwargs_geo_τ = (consider_all_levels = false, levels = 1:1)
+common_kwargs_geo = (consider_all_levels = false, k = Nz)
+common_kwargs_geo_b = (consider_all_levels = false, k = b_index)
 
 plot_initial_field = true
 if plot_initial_field
+    fig = panel_wise_visualization(grid, τₓ; k = 1, common_kwargs...)
+    save("cubed_sphere_aquaplanet_zonal_wind_stress.png", fig)
+
+    fig = panel_wise_visualization(grid, τ_xr; k = 1, common_kwargs...)
+    save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed.png", fig)
+
+    fig = panel_wise_visualization(grid, τ_yr; k = 1, common_kwargs...)
+    save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed.png", fig)
+
+    title = "Zonal wind stress"
+    fig = geo_heatlatlon_visualization(grid, τₓ, title; common_kwargs_geo_τ...,
+                                       cbar_label = "zonal wind stress (N m⁻²)")
+    save("cubed_sphere_aquaplanet_zonal_wind_stress_geo_heatlatlon_plot.png", fig)
+
+    title = "Reconstructed zonal wind stress"
+    fig = geo_heatlatlon_visualization(grid, τ_xr, title; common_kwargs_geo_τ...,
+                                       cbar_label = "zonal wind stress (N m⁻²)")
+    save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
+
+    title = "Reconstructed meridional wind stress"
+    fig = geo_heatlatlon_visualization(grid, τ_yr, title; common_kwargs_geo_τ...,
+                                       cbar_label = "meridional wind stress (N m⁻²)")
+    save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
+
     if initialize_velocities_based_on_thermal_wind_balance
         uᵢ, vᵢ = orient_velocities_in_global_direction(grid, uᵢ, vᵢ, cos_θ, sin_θ; levels = 1:Nz)
 
@@ -474,9 +495,24 @@ if plot_initial_field
                                             axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                             "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
         end
+
+        title = "Initial zonal velocity"
+        fig = geo_heatlatlon_visualization(grid, uᵢ, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
+        save("cubed_sphere_aquaplanet_u_0.png", fig)
+
+        title = "Initial meridional velocity"
+        fig = geo_heatlatlon_visualization(grid, vᵢ, title; common_kwargs_geo...,
+                                           cbar_label = "meridional velocity (m s⁻¹)")
+        save("cubed_sphere_aquaplanet_v_0.png", fig)
+
+        title = "Initial relative vorticity"
+        fig = geo_heatlatlon_visualization(grid, ζᵢ, title; common_kwargs_geo...,
+                                           cbar_label = "relative vorticity (s⁻¹)")
+        save("cubed_sphere_aquaplanet_ζ_0.png", fig)
     end
 
     fig = panel_wise_visualization(grid, bᵢ; k = b_index, common_kwargs...)
+
     save("cubed_sphere_aquaplanet_bᵢ.png", fig)
     for (index, panel_index) in enumerate([1])
         bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
@@ -489,52 +525,89 @@ if plot_initial_field
                                         contourlevels, cbar_kwargs, cbar_label,
                                         "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
     end
+
+    title = "Initial buoyancy"
+    fig = geo_heatlatlon_visualization(grid, bᵢ, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)")
+    save("cubed_sphere_aquaplanet_b_0.png", fig)
 end
 
-animation_time = 15 # seconds
-framerate = 5
-n_frames = animation_time * framerate # excluding the initial condition frame
-simulation_time_per_frame = stop_time / n_frames
-save_fields_iteration_interval = floor(Int, simulation_time_per_frame/Δt)
-# Redefine the simulation time per frame.
-simulation_time_per_frame = save_fields_iteration_interval * Δt
-# Redefine the number of frames.
-n_frames = floor(Int, Ntime / save_fields_iteration_interval) # excluding the initial condition frame
-# Redefine the animation time.
-animation_time = n_frames / framerate
-simulation.callbacks[:save_u] = Callback(save_u, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_v] = Callback(save_v, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_ζ] = Callback(save_ζ, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_η] = Callback(save_η, IterationInterval(save_fields_iteration_interval))
-simulation.callbacks[:save_b] = Callback(save_b, IterationInterval(save_fields_iteration_interval))
+#####
+##### Simulation setup
+#####
 
-run!(simulation)
+Δt = 5minutes
 
-if print_output_to_jld2_file
-    jldopen("cubed_sphere_aquaplanet_initial_condition.jld2", "w") do file
-        for region in 1:6
-            file["u/"*string(region)] = u_fields[1][region][:, :, Nz]
-            file["v/"*string(region)] = v_fields[1][region][:, :, Nz]
-            file["ζ/"*string(region)] = ζ_fields[1][region][:, :, Nz]
-            file["η/"*string(region)] = η_fields[1][region][:, :, Nz+1]
-            file["b/"*string(region)] = b_fields[1][region][:, :, Nz]
-        end
-    end
-    jldopen("cubed_sphere_aquaplanet_output.jld2", "w") do file
-        for region in 1:6
-            file["u/"*string(region)] = u_fields[end][region][:, :, Nz]
-            file["v/"*string(region)] = v_fields[end][region][:, :, Nz]
-            file["ζ/"*string(region)] = ζ_fields[end][region][:, :, Nz]
-            file["η/"*string(region)] = η_fields[end][region][:, :, Nz+1]
-            file["b/"*string(region)] = b_fields[end][region][:, :, Nz]
-        end
-    end
-end
+min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
+c = sqrt(model.free_surface.gravitational_acceleration * Lz)
+CourantNumber = 0.25
+min_substeps = ceil(Int, c * Δt / (CourantNumber * min_spacing))
+print("The minimum number of substeps required to satisfy the CFL condition is $min_substeps.\n")
 
-for i_frame in 1:n_frames+1
-    u_fields[i_frame], v_fields[i_frame] = (
-    orient_velocities_in_global_direction(grid, u_fields[i_frame], v_fields[i_frame], cos_θ, sin_θ; levels = 1:Nz))
-    ζ_fields[i_frame] = interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_fields[i_frame], "ff"; levels = 1:Nz)
+stop_time = 2days
+save_fields_interval = 6hours
+checkpointer_interval = 12hours
+Ntime = round(Int, stop_time/Δt)
+
+@info "Stop time = $(prettytime(stop_time))"
+@info "Number of time steps = $Ntime"
+
+simulation = Simulation(model; Δt, stop_time)
+
+# Print a progress message.
+progress_message_iteration_interval = 10
+progress_message(sim) = (
+@printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
+        iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
+        maximum(abs, model.free_surface.η) - Lz, maximum(abs, model.tracers.b), prettytime(sim.run_wall_time)))
+
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
+
+#####
+##### Build checkpointer and output writer
+#####
+
+filename_checkpointer = "cubed_sphere_aquaplanet_checkpointer"
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(checkpointer_interval),
+                                                        prefix = filename_checkpointer,
+                                                        overwrite_existing = true)
+
+ζ = Oceananigans.Models.HydrostaticFreeSurfaceModels.VerticalVorticityField(model)
+
+outputs = merge(fields(model), (; ζ))
+filename_output_writer = "cubed_sphere_aquaplanet_output"
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
+                                                      schedule = TimeInterval(save_fields_interval),
+                                                      filename = filename_output_writer,
+                                                      verbose = false,
+                                                      overwrite_existing = true)
+
+#####
+##### Run simulation
+#####
+
+@info "Running the simulation..."
+
+run!(simulation, pickup = false)
+
+u_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "u");
+v_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "v");
+ζ_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "ζ");
+η_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "η");
+b_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "b");
+
+x_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "b");
+
+n_frames = length(u_timeseries)
+
+for i_frame in 1:n_frames
+    u_frame, v_frame = (
+    orient_velocities_in_global_direction(grid, u_timeseries[i_frame], v_timeseries[i_frame], cos_θ, sin_θ;
+                                          levels = 1:Nz))
+    ζ_frame = interpolate_cubed_sphere_field_to_cell_centers(grid, ζ_timeseries[i_frame], "ff"; levels = 1:Nz)
+    set!(u_timeseries[i_frame], u_frame)
+    set!(v_timeseries[i_frame], v_frame)
+    set!(ζ_timeseries[i_frame], ζ_frame)
 end
 
 u_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
@@ -545,39 +618,40 @@ b_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
 
 plot_final_field = true
 if plot_final_field
-    fig = panel_wise_visualization(grid, u_fields[end]; k = Nz, common_kwargs...)
-    save("cubed_sphere_aquaplanet_u.png", fig)
+    fig = panel_wise_visualization(grid, u_timeseries[end]; k = Nz, common_kwargs...)
+    save("cubed_sphere_aquaplanet_u_f.png", fig)
 
-    fig = panel_wise_visualization(grid, v_fields[end]; k = Nz, common_kwargs...)
-    save("cubed_sphere_aquaplanet_v.png", fig)
+    fig = panel_wise_visualization(grid, v_timeseries[end]; k = Nz, common_kwargs...)
+    save("cubed_sphere_aquaplanet_v_f.png", fig)
 
-    fig = panel_wise_visualization(grid, ζ_fields[end]; k = Nz, common_kwargs...)
-    save("cubed_sphere_aquaplanet_ζ.png", fig)
+    fig = panel_wise_visualization(grid, ζ_timeseries[end]; k = Nz, common_kwargs...)
+    save("cubed_sphere_aquaplanet_ζ_f.png", fig)
 
-    fig = panel_wise_visualization(grid, η_fields[end]; ssh = true)
-    save("cubed_sphere_aquaplanet_η.png", fig)
+    fig = panel_wise_visualization(grid, η_timeseries[end]; ssh = true)
+    save("cubed_sphere_aquaplanet_η_f.png", fig)
 
-    fig = panel_wise_visualization(grid, b_fields[end]; k = b_index, common_kwargs...)
-    save("cubed_sphere_aquaplanet_b.png", fig)
+    fig = panel_wise_visualization(grid, b_timeseries[end]; k = b_index, common_kwargs...)
+    save("cubed_sphere_aquaplanet_b_f.png", fig)
 
     for (index, panel_index) in enumerate([1])
         u_f_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(grid, u_fields[end], panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid, u_timeseries[end], panel_index; levels = 1:Nz))
         v_f_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(grid, v_fields[end], panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid, v_timeseries[end], panel_index; levels = 1:Nz))
         ζ_f_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[end], panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid, ζ_timeseries[end], panel_index; levels = 1:Nz))
         η_f_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(grid, η_fields[end], panel_index; levels = Nz+1:Nz+1))
+        extract_field_at_specific_longitude_through_panel_center(grid, η_timeseries[end], panel_index;
+                                                                 levels = Nz+1:Nz+1))
         b_f_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(grid, b_fields[end], panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid, b_timeseries[end], panel_index; levels = 1:Nz))
         title = "Zonal velocity"
         cbar_label = "zonal velocity (m s⁻¹)"
         create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                         latitude_at_specific_longitude_through_panel_center[:, index],
                                         depths/1000, u_f_at_specific_longitude_through_panel_center[:, :, index],
                                         axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
-                                        "cubed_sphere_aquaplanet_u_f_latitude-depth_section_$panel_index" )
+                                        "cubed_sphere_aquaplanet_u_f_latitude-depth_section_$panel_index")
         title = "Meridional velocity"
         cbar_label = "meridional velocity (m s⁻¹)"
         create_heat_map_or_contour_plot(resolution, plot_type_2D,
@@ -609,146 +683,110 @@ if plot_final_field
     end
 end
 
-common_kwargs_snapshots = (consider_all_levels = false, vertical_dimensions = Nz:Nz)
-common_kwargs_snapshots_b = (consider_all_levels = false, vertical_dimensions = b_index:b_index)
-
 plot_snapshots = true
 if plot_snapshots
-    n_snapshots = 3
+    n_snapshots = 4 + 1
+    Δn_snapshots = floor(Int, (n_frames - 1)/(n_snapshots - 1))
+    # Ensure that (n_frames - 1) is divisible by (n_snapshots - 1).
 
-    u_colorrange = zeros(2)
-    v_colorrange = zeros(2)
-    ζ_colorrange = zeros(2)
-    η_colorrange = zeros(2)
-    b_colorrange = zeros(2)
+    u_colorrange = specify_colorrange_timeseries(grid, u_timeseries; common_kwargs_geo_colorrange..., Δ = Δn_snapshots)
+    v_colorrange = specify_colorrange_timeseries(grid, v_timeseries; common_kwargs_geo_colorrange..., Δ = Δn_snapshots)
+    ζ_colorrange = specify_colorrange_timeseries(grid, ζ_timeseries; common_kwargs_geo_colorrange..., Δ = Δn_snapshots)
+    η_colorrange = specify_colorrange_timeseries(grid, η_timeseries; ssh = true, Δ = Δn_snapshots)
+    b_colorrange = specify_colorrange_timeseries(grid, b_timeseries; common_kwargs_geo_colorrange_b...,
+                                                 Δ = Δn_snapshots)
 
-    for i_snapshot in 0:n_snapshots
-        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
-        u_colorrange_at_frame_index = specify_colorrange(grid, u_fields[frame_index]; common_kwargs_snapshots...)
-        v_colorrange_at_frame_index = specify_colorrange(grid, v_fields[frame_index]; common_kwargs_snapshots...)
-        ζ_colorrange_at_frame_index = specify_colorrange(grid, ζ_fields[frame_index]; common_kwargs_snapshots...)
-        η_colorrange_at_frame_index = specify_colorrange(grid, η_fields[frame_index]; ssh = true)
-        b_colorrange_at_frame_index = specify_colorrange(grid, b_fields[frame_index]; common_kwargs_snapshots_b...)
-        if i_snapshot == 0
-            u_colorrange[:] = collect(u_colorrange_at_frame_index)
-            v_colorrange[:] = collect(v_colorrange_at_frame_index)
-            ζ_colorrange[:] = collect(ζ_colorrange_at_frame_index)
-            η_colorrange[:] = collect(η_colorrange_at_frame_index)
-            b_colorrange[:] = collect(b_colorrange_at_frame_index)
-        else
-            u_colorrange[1] = min(u_colorrange[1], u_colorrange_at_frame_index[1])
-            u_colorrange[2] = max(u_colorrange[2], u_colorrange_at_frame_index[2])
-            v_colorrange[1] = min(v_colorrange[1], v_colorrange_at_frame_index[1])
-            v_colorrange[2] = max(v_colorrange[2], v_colorrange_at_frame_index[2])
-            ζ_colorrange[1] = min(ζ_colorrange[1], ζ_colorrange_at_frame_index[1])
-            ζ_colorrange[2] = max(ζ_colorrange[2], ζ_colorrange_at_frame_index[2])
-            η_colorrange[1] = min(η_colorrange[1], η_colorrange_at_frame_index[1])
-            η_colorrange[2] = max(η_colorrange[2], η_colorrange_at_frame_index[2])
-            b_colorrange[1] = min(b_colorrange[1], b_colorrange_at_frame_index[1])
-            b_colorrange[2] = max(b_colorrange[2], b_colorrange_at_frame_index[2])
-        end
-    end
+    for i_snapshot in 1:(n_snapshots - 1)
+        frame_index = floor(Int, i_snapshot * (n_frames - 1)/(n_snapshots - 1) + 1)
+        simulation_time = (frame_index - 1) * save_fields_interval
 
-    for i_snapshot in 0:n_snapshots
-        frame_index = floor(Int, i_snapshot * n_frames / n_snapshots) + 1
-        simulation_time = simulation_time_per_frame * (frame_index - 1)
-        if (initialize_velocities_based_on_thermal_wind_balance
-            || (!initialize_velocities_based_on_thermal_wind_balance && i_snapshot > 0))
-            title = "Zonal velocity after $(prettytime(simulation_time))"
-            fig = geo_heatlatlon_visualization(grid, u_fields[frame_index], title; k = Nz,
-                                               cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
-                                               plot_limits = u_colorrange)
-            save(@sprintf("cubed_sphere_aquaplanet_u_%d.png", i_snapshot), fig)
-            title = "Meridional velocity after $(prettytime(simulation_time))"
-            fig = geo_heatlatlon_visualization(grid, v_fields[frame_index], title; k = Nz,
-                                               cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
-                                               plot_limits = v_colorrange)
-            save(@sprintf("cubed_sphere_aquaplanet_v_%d.png", i_snapshot), fig)
-            title = "Relative vorticity after $(prettytime(simulation_time))"
-            fig = geo_heatlatlon_visualization(grid, ζ_fields[frame_index], title; k = Nz,
-                                               cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
-                                               plot_limits = ζ_colorrange)
-            save(@sprintf("cubed_sphere_aquaplanet_ζ_%d.png", i_snapshot), fig)
-        end
+        title = "Zonal velocity after $(prettytime(simulation_time))"
+        set!(x_timeseries[frame_index], u_timeseries[frame_index])
+        fig = geo_heatlatlon_visualization(grid, x_timeseries[frame_index], title; common_kwargs_geo...,
+                                           cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = u_colorrange)
+        save(@sprintf("cubed_sphere_aquaplanet_u_%d.png", i_snapshot), fig)
+
+        title = "Meridional velocity after $(prettytime(simulation_time))"
+        set!(x_timeseries[frame_index], v_timeseries[frame_index])
+        fig = geo_heatlatlon_visualization(grid, x_timeseries[frame_index], title; common_kwargs_geo...,
+                                           cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = v_colorrange)
+        save(@sprintf("cubed_sphere_aquaplanet_v_%d.png", i_snapshot), fig)
+
+        title = "Relative vorticity after $(prettytime(simulation_time))"
+        set!(x_timeseries[frame_index], ζ_timeseries[frame_index])
+        fig = geo_heatlatlon_visualization(grid, x_timeseries[frame_index], title; common_kwargs_geo...,
+                                           cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange)
+        save(@sprintf("cubed_sphere_aquaplanet_ζ_%d.png", i_snapshot), fig)
+
         title = "Surface elevation after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid, η_fields[frame_index], title; ssh = true,
+        fig = geo_heatlatlon_visualization(grid, η_timeseries[frame_index], title; ssh = true,
                                            cbar_label = "surface elevation (m)", specify_plot_limits = true,
                                            plot_limits = η_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_η_%d.png", i_snapshot), fig)
+
         title = "Buoyancy after $(prettytime(simulation_time))"
-        fig = geo_heatlatlon_visualization(grid, b_fields[frame_index], title; k = b_index,
+        fig = geo_heatlatlon_visualization(grid, b_timeseries[frame_index], title; common_kwargs_geo_b...,
                                            cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
                                            plot_limits = b_colorrange)
         save(@sprintf("cubed_sphere_aquaplanet_b_%d.png", i_snapshot), fig)
     end
 end
 
+function copy_to_center_field(x_timeseries, y_timeseries)
+    n_frames = length(x_timeseries)
+    for i_frame in 1:n_frames
+        set!(x_timeseries[i_frame], y_timeseries[i_frame])
+    end
+end
+
 make_animations = true
 if make_animations
-    create_panel_wise_visualization_animation(grid, u_fields, framerate, "cubed_sphere_aquaplanet_u"; k = Nz,
+    animation_time = 9 # seconds
+    framerate = floor(Int, n_frames/animation_time)
+    # Redefine the animation time.
+    animation_time = n_frames / framerate
+
+    create_panel_wise_visualization_animation(grid, u_timeseries, framerate, "cubed_sphere_aquaplanet_u"; k = Nz,
                                               common_kwargs...)
-    create_panel_wise_visualization_animation(grid, v_fields, framerate, "cubed_sphere_aquaplanet_v"; k = Nz,
+    create_panel_wise_visualization_animation(grid, v_timeseries, framerate, "cubed_sphere_aquaplanet_v"; k = Nz,
                                               common_kwargs...)
-    create_panel_wise_visualization_animation(grid, ζ_fields, framerate, "cubed_sphere_aquaplanet_ζ"; k = Nz,
+    create_panel_wise_visualization_animation(grid, ζ_timeseries, framerate, "cubed_sphere_aquaplanet_ζ"; k = Nz,
                                               common_kwargs...)
-    create_panel_wise_visualization_animation(grid, η_fields, framerate, "cubed_sphere_aquaplanet_η"; ssh = true)
-    create_panel_wise_visualization_animation(grid, b_fields, framerate, "cubed_sphere_aquaplanet_b"; k = b_index,
+    create_panel_wise_visualization_animation(grid, η_timeseries, framerate, "cubed_sphere_aquaplanet_η"; ssh = true)
+    create_panel_wise_visualization_animation(grid, b_timeseries, framerate, "cubed_sphere_aquaplanet_b"; k = b_index,
                                               common_kwargs...)
 
-    prettytimes = [prettytime(simulation_time_per_frame * i) for i in 0:n_frames]
-    #=
-    u_colorrange = specify_colorrange_timeseries(grid, u_fields; common_kwargs_snapshots...)
-    geo_heatlatlon_visualization_animation(grid, u_fields, "cc", prettytimes, "Zonal velocity",
-                                           "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
-                                           plot_limits = u_colorrange, framerate = framerate)
+    prettytimes = [prettytime((i - 1) * save_fields_interval) for i in 1:n_frames]
 
-    v_colorrange = specify_colorrange_timeseries(grid, v_fields; common_kwargs_snapshots...)
-    geo_heatlatlon_visualization_animation(grid, v_fields, "cc", prettytimes, "Meridional velocity",
-                                           "cubed_sphere_aquaplanet_v_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
-                                           plot_limits = v_colorrange, framerate = framerate)
-
-    ζ_colorrange = specify_colorrange_timeseries(grid, ζ_fields; common_kwargs_snapshots...)
-    geo_heatlatlon_visualization_animation(grid, ζ_fields, "cc", prettytimes, "Relative vorticity",
-                                           "cubed_sphere_aquaplanet_ζ_geo_heatlatlon_animation"; k = Nz,
-                                           cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
-                                           plot_limits = ζ_colorrange, framerate = framerate)
-
-    η_colorrange = specify_colorrange_timeseries(grid, η_fields; ssh = true)
-    geo_heatlatlon_visualization_animation(grid, η_fields, "cc", prettytimes, "Surface elevation",
-                                           "cubed_sphere_aquaplanet_η_geo_heatlatlon_animation"; ssh = true,
-                                           cbar_label = "surface elevation (m)", specify_plot_limits = true,
-                                           plot_limits = η_colorrange, framerate = framerate)
-
-    b_colorrange = specify_colorrange_timeseries(grid, b_fields; common_kwargs_snapshots_b...)
-    geo_heatlatlon_visualization_animation(grid, b_fields, "cc", prettytimes, "Buoyancy",
-                                           "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = b_index,
-                                           cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
-                                           plot_limits = b_colorrange, framerate = framerate)
-    =#
-    u_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
-    v_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
-    ζ_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
-    η_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx,  1, 4)
-    b_at_specific_longitude_through_panel_center = zeros(n_frames+1, 2*Nx, Nz, 4)
+    u_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
+    v_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
+    ζ_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
+    η_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx,  1, 4)
+    b_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
 
     for (index, panel_index) in enumerate([1])
-        for i_frame in 1:n_frames+1
+        for i_frame in 1:n_frames
             u_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, u_fields[i_frame], panel_index;
+            extract_field_at_specific_longitude_through_panel_center(grid, u_timeseries[i_frame], panel_index;
                                                                      levels = 1:Nz))
+
             v_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, v_fields[i_frame], panel_index;
+            extract_field_at_specific_longitude_through_panel_center(grid, v_timeseries[i_frame], panel_index;
                                                                      levels = 1:Nz))
+
             ζ_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, ζ_fields[i_frame], panel_index;
+            extract_field_at_specific_longitude_through_panel_center(grid, ζ_timeseries[i_frame], panel_index;
                                                                      levels = 1:Nz))
+
             η_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, η_fields[i_frame], panel_index;
+            extract_field_at_specific_longitude_through_panel_center(grid, η_timeseries[i_frame], panel_index;
                                                                      levels = Nz+1:Nz+1))
+
             b_at_specific_longitude_through_panel_center[i_frame, :, :, index] = (
-            extract_field_at_specific_longitude_through_panel_center(grid, b_fields[i_frame], panel_index;
+            extract_field_at_specific_longitude_through_panel_center(grid, b_timeseries[i_frame], panel_index;
                                                                      levels = 1:Nz))
         end
 
@@ -761,6 +799,7 @@ if make_animations
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_u_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
+
         title = "Meridional velocity"
         cbar_label = "meridional velocity (m s⁻¹)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
@@ -770,6 +809,7 @@ if make_animations
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_v_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
+
         title = "Relative vorticity"
         cbar_label = "relative vorticity (s⁻¹)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
@@ -779,6 +819,7 @@ if make_animations
                                                   axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label, framerate,
                                                   "cubed_sphere_aquaplanet_ζ_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
+
         title = "Surface elevation"
         cbar_label = "surface elevation (m)"
         create_single_line_or_scatter_plot_animation(resolution, plot_type_1D,
@@ -788,6 +829,7 @@ if make_animations
                                                      "cubed_sphere_aquaplanet_η_vs_latitude_$panel_index";
                                                      use_prettytimes = true, prettytimes = prettytimes,
                                                      use_symmetric_range = false, tight_x_axis = true)
+
         title = "Buoyancy"
         cbar_label = "buoyancy (m s⁻²)"
         create_heat_map_or_contour_plot_animation(resolution, plot_type_2D,
@@ -798,4 +840,37 @@ if make_animations
                                                   "cubed_sphere_aquaplanet_b_latitude-depth_section_$panel_index";
                                                   use_prettytimes = true, prettytimes = prettytimes)
     end
+
+    u_colorrange = specify_colorrange_timeseries(grid, u_timeseries; common_kwargs_geo_colorrange...)
+    copy_to_center_field(x_timeseries, u_timeseries)
+    geo_heatlatlon_visualization_animation(grid, x_timeseries, "cc", prettytimes, "Zonal velocity",
+                                           "cubed_sphere_aquaplanet_u_geo_heatlatlon_animation"; k = Nz,
+                                           cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = u_colorrange, framerate = framerate)
+
+    v_colorrange = specify_colorrange_timeseries(grid, v_timeseries; common_kwargs_geo_colorrange...)
+    copy_to_center_field(x_timeseries, v_timeseries)
+    geo_heatlatlon_visualization_animation(grid, x_timeseries, "cc", prettytimes, "Meridional velocity",
+                                           "cubed_sphere_aquaplanet_v_geo_heatlatlon_animation"; k = Nz,
+                                           cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = v_colorrange, framerate = framerate)
+
+    ζ_colorrange = specify_colorrange_timeseries(grid, ζ_timeseries; common_kwargs_geo_colorrange...)
+    copy_to_center_field(x_timeseries, ζ_timeseries)
+    geo_heatlatlon_visualization_animation(grid, x_timeseries, "cc", prettytimes, "Relative vorticity",
+                                           "cubed_sphere_aquaplanet_ζ_geo_heatlatlon_animation"; k = Nz,
+                                           cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
+                                           plot_limits = ζ_colorrange, framerate = framerate)
+
+    η_colorrange = specify_colorrange_timeseries(grid, η_timeseries; ssh = true)
+    geo_heatlatlon_visualization_animation(grid, η_timeseries, "cc", prettytimes, "Surface elevation",
+                                           "cubed_sphere_aquaplanet_η_geo_heatlatlon_animation"; ssh = true,
+                                           cbar_label = "surface elevation (m)", specify_plot_limits = true,
+                                           plot_limits = η_colorrange, framerate = framerate)
+
+    b_colorrange = specify_colorrange_timeseries(grid, b_timeseries; common_kwargs_geo_colorrange_b...)
+    geo_heatlatlon_visualization_animation(grid, b_timeseries, "cc", prettytimes, "Buoyancy",
+                                           "cubed_sphere_aquaplanet_b_geo_heatlatlon_animation"; k = b_index,
+                                           cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
+                                           plot_limits = b_colorrange, framerate = framerate)
 end
