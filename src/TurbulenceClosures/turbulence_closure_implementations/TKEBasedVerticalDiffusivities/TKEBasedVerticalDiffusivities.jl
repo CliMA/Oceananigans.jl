@@ -97,7 +97,7 @@ end
     return (f⁺ + f⁻) / 2
 end
 
-# To reconstruct buoyancy flux "conservatively" (ie approximately correpsonding to production/destruction
+# To reconstruct buoyancy flux "conservatively" (ie approximately corresponding to production/destruction
 # of mean potential energy):
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
     κc = @inbounds diffusivities.κc[i, j, k]
