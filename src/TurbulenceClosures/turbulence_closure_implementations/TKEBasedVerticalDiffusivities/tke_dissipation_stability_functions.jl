@@ -73,6 +73,9 @@ function VariableStabilityFunctions(FT=Float64;
                                     𝕊u₀ = nothing)
 
     if isnothing(𝕊u₀)
+        # Compute 𝕊u₀ for the logarithmic boundary layer where production
+        # balances dissipation. For more information see the discussion
+        # surrounding equation (13) in Umlauf and Burchard (2003).
         a = Cd₅ - Cu₂
         b = Cd₂ - Cu₀
         c = Cd₀
