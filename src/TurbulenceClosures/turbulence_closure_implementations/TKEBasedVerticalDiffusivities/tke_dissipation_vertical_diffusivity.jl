@@ -85,9 +85,9 @@ Keyword arguments
 =================
 
 - `maximum_diffusivity`: Maximum value for tracer, momentum, and TKE diffusivities.
-                        Used to clip the diffusivity when/if CATKE predicts
-                        diffusivities that are too large.
-                        Default: `Inf`.
+                         Used to clip the diffusivity when/if CATKE predicts
+                         diffusivities that are too large.
+                         Default: `Inf`.
 
 - `minimum_tke`: Minimum value for the turbulent kinetic energy.
                  Can be used to model the presence "background" TKE
