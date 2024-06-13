@@ -11,10 +11,10 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
     Cᴾϵ :: FT = 1.44
     Cᵇϵ :: FT = -0.65
-    Cᵂu★ :: FT = 1.0
-    CᵂwΔ :: FT = 1.0
-    Cᵂα  :: FT = 0.11
-    gravitational_acceleration  :: FT = 9.8065
+    Cᵂu★ :: FT = 0.0
+    CᵂwΔ :: FT = 0.0
+    Cᵂα  :: FT = 0.11 # Charnock parameter
+    gravitational_acceleration :: FT = 9.8065
     minimum_roughness_length :: FT = 1e-4
 end
 
@@ -73,12 +73,6 @@ function time_step_tke_dissipation_equations!(model)
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
                 Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
-
-        # Good idea?
-        # previous_time = model.clock.time - Δt
-        # previous_iteration = model.clock.iteration - 1
-        # current_time = previous_time + m * Δτ
-        # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
                        model.diffusivity_fields, Val(e_index),
@@ -215,7 +209,7 @@ end
     Cᵂu★ = parameters.Cᵂu★
     CᵂwΔ = parameters.CᵂwΔ
 
-    return zero(grid) #- Cᵂu★ * u★^3 #- CᵂwΔ * wΔ³
+    return - Cᵂu★ * u★^3 #- CᵂwΔ * wΔ³
 end
 
 @inline function top_dissipation_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfTD, buoyancy)

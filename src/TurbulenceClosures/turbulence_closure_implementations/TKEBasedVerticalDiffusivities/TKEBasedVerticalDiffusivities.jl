@@ -70,10 +70,10 @@ end
     ℑbzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    u = velocities.u
+    v = velocities.v
+    S² = shearᶜᶜᶠ(i, j, k, grid, u, v)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    S² = ∂z_u² + ∂z_v²
     Ri = N² / S²
     return ifelse(N² == 0, zero(grid), Ri)
 end
