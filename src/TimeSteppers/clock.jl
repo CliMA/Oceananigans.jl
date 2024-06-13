@@ -59,8 +59,8 @@ function Base.summary(clock::Clock)
     DT = typeof(clock.last_Δt)
     return string("Clock{", TT, ", ", DT, "}",
                   "(time=", prettytime(clock.time),
-                  " iteration=", clock.iteration,
-                  " last_Δt=", prettytime(clock.last_Δt), ")")
+                  ", iteration=", clock.iteration,
+                  ", last_Δt=", prettytime(clock.last_Δt), ")")
 end
 
 function Base.show(io::IO, clock::Clock)

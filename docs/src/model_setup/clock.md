@@ -14,7 +14,7 @@ end
 
 ```jldoctest
 julia> clock = Clock(time=0.0)
-Clock{Float64, Float64}(time=0 seconds iteration=0 last_Δt=Inf days)
+Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
 ├── stage: 1
 └── last_stage_Δt: Inf days
 ```
@@ -24,7 +24,7 @@ For example, passing
 
 ```jldoctest
 julia> clock = Clock(time=3600.0)
-Clock{Float64, Float64}(time=1 hour iteration=0 last_Δt=Inf days)
+Clock{Float64, Float64}(time=1 hour, iteration=0, last_Δt=Inf days)
 ├── stage: 1
 └── last_stage_Δt: Inf days
 ```
@@ -41,7 +41,7 @@ for example, pass
 julia> using TimesDates
 
 julia> clock = Clock(time=TimeDate(2020))
-Clock{TimesDates.TimeDate, Float64}(time=2020-01-01T00:00:00 iteration=0 last_Δt=Inf days)
+Clock{TimesDates.TimeDate, Float64}(time=2020-01-01T00:00:00, iteration=0, last_Δt=Inf days)
 ├── stage: 1
 └── last_stage_Δt: Inf days
 ```
