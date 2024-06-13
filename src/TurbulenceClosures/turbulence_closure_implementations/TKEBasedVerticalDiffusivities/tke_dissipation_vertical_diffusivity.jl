@@ -65,13 +65,6 @@ Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical m
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 
-!!! note "TKEDissipationVerticalDiffusivity"
-    `TKEDissipationVerticalDiffusivity` is a new turbulence closure diffusivity. The default
-    values for its free parameters are obtained from calibration against large eddy
-    simulations. For more details please refer to [Wagner23catke](@cite).
-
-    Use with caution and report any issues with the physics at https://github.com/CliMA/Oceananigans.jl/issues.
-
 Arguments
 =========
 
@@ -85,8 +78,9 @@ Keyword arguments
 =================
 
 - `maximum_diffusivity`: Maximum value for tracer, momentum, and TKE diffusivities.
-                         Used to clip the diffusivity when/if CATKE predicts
-                         diffusivities that are too large.
+                         Used to clip the diffusivity when/if
+                         TKEDissipationVerticalDiffusivity predicts diffusivities
+                         that are too large.
                          Default: `Inf`.
 
 - `minimum_tke`: Minimum value for the turbulent kinetic energy.
