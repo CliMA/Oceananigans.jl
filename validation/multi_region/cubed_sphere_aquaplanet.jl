@@ -543,9 +543,22 @@ CourantNumber = 0.25
 min_substeps = ceil(Int, c * Δt / (CourantNumber * min_spacing))
 print("The minimum number of substeps required to satisfy the CFL condition is $min_substeps.\n")
 
-stop_time = 2days
-save_fields_interval = 6hours
-checkpointer_interval = 12hours
+debug_mode = false
+if debug_mode
+    stop_time = 2days
+    save_fields_interval = 6hours
+    checkpointer_interval = 12hours
+else
+    month = 30days
+    months = month
+    year = 365days
+    years = year
+    stop_time = 100years
+    save_fields_interval = 1month
+    checkpointer_interval = 1year
+end
+# Note that n_frames = floor(Int, stop_time/save_fields_interval) + 1.
+
 Ntime = round(Int, stop_time/Δt)
 
 @info "Stop time = $(prettytime(stop_time))"
