@@ -7,7 +7,7 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT
-    κcᵃ :: FT
+    κᶜᵃ :: FT
     Cᵉⁿ :: FT
     Cᵃᵛ :: FT
     Ri₀ :: FT
@@ -21,7 +21,7 @@ end
 
 function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
-                                        κcᵃ::FT,
+                                        κᶜᵃ::FT,
                                         Cᵉⁿ::FT,
                                         Cᵃᵛ::FT,
                                         Ri₀::FT,
@@ -33,7 +33,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
                                        
 
-    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κcᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
+    return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                      Ri_dependent_tapering,
                                                      horizontal_Ri_filter,
                                                      minimum_entrainment_buoyancy_gradient,
@@ -65,7 +65,7 @@ struct FivePointHorizontalFilter end
                                maximum_viscosity = Inf,
                                ν₀  = 0.7,
                                κ₀  = 0.5,
-                               κcᵃ = 1.7,
+                               κᶜᵃ = 1.7,
                                Cᵉⁿ = 0.1,
                                Cᵃᵛ = 0.6,
                                Ri₀ = 0.1,
@@ -98,7 +98,7 @@ Keyword arguments
 
 * `κ₀`: Non-convective diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
-* `κcᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
+* `κᶜᵃ`: Convective adjustment diffusivity for tracers (units of diffusivity, typically m² s⁻¹).
 
 * `Cᵉⁿ`: Entrainment coefficient for tracers (non-dimensional).
          Set `Cᵉⁿ = 0` to turn off the penetrative entrainment diffusivity.
@@ -131,7 +131,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     maximum_viscosity = Inf,
                                     ν₀  = 0.7,
                                     κ₀  = 0.5,
-                                    κcᵃ = 1.7,
+                                    κᶜᵃ = 1.7,
                                     Cᵉⁿ = 0.1,
                                     Cᵃᵛ = 0.6,
                                     Ri₀ = 0.1,
@@ -149,7 +149,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
 
     return RiBasedVerticalDiffusivity{TD}(convert(FT, ν₀),
                                           convert(FT, κ₀),
-                                          convert(FT, κcᵃ),
+                                          convert(FT, κᶜᵃ),
                                           convert(FT, Cᵉⁿ),
                                           convert(FT, Cᵃᵛ),
                                           convert(FT, Ri₀),
@@ -282,7 +282,7 @@ end
 
     ν₀  = closure_ij.ν₀
     κ₀  = closure_ij.κ₀
-    κcᵃ = closure_ij.κcᵃ
+    κᶜᵃ = closure_ij.κᶜᵃ
     Cᵉⁿ = closure_ij.Cᵉⁿ
     Cᵃᵛ = closure_ij.Cᵃᵛ
     Ri₀ = closure_ij.Ri₀
@@ -302,7 +302,7 @@ end
     entraining = (N² > N²ᵉⁿ) & (N²_above < 0) & (Jᵇ > 0)
 
     # Convective adjustment diffusivity
-    κcᵃ = ifelse(convecting, κcᵃ, zero(grid))
+    κᶜᵃ = ifelse(convecting, κᶜᵃ, zero(grid))
 
     # Entrainment diffusivity
     κᵉⁿ = ifelse(entraining, Cᵉⁿ * Jᵇ / N², zero(grid))
@@ -320,7 +320,7 @@ end
     κu = diffusivities.κu
 
     # New diffusivities
-    κc⁺ = κcᵃ + κᵉⁿ + κc★
+    κc⁺ = κᶜᵃ + κᵉⁿ + κc★
     κu⁺ = κu★
 
     # Limit by specified maximum
@@ -351,7 +351,7 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── Ri_dependent_tapering: ", prettysummary(closure.Ri_dependent_tapering), '\n')
     print(io, "├── κ₀: ", prettysummary(closure.κ₀), '\n')
     print(io, "├── ν₀: ", prettysummary(closure.ν₀), '\n')
-    print(io, "├── κcᵃ: ", prettysummary(closure.κcᵃ), '\n')
+    print(io, "├── κᶜᵃ: ", prettysummary(closure.κᶜᵃ), '\n')
     print(io, "├── Cᵉⁿ: ", prettysummary(closure.Cᵉⁿ), '\n')
     print(io, "├── Cᵃᵛ: ", prettysummary(closure.Cᵃᵛ), '\n')
     print(io, "├── Ri₀: ", prettysummary(closure.Ri₀), '\n')
