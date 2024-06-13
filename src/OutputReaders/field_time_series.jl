@@ -520,7 +520,7 @@ function FieldTimeSeries(path::String, name::String;
 
     loc = map(instantiate, Location)
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
                                               indices, times, path, name, time_indexing)
@@ -566,7 +566,7 @@ function Field(location, path::String, name::String, iter;
     # Change grid to specified architecture?
     grid     = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
-    data     = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
     
     return Field(location, grid; boundary_conditions, indices, data)
 end
