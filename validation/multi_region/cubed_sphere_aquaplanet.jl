@@ -245,8 +245,12 @@ tracer_advection   = WENO()
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-νz = 2e-4
 κz = 2e-5
+
+νz_surface = 5e-3
+νz_bottom = 1e-4
+my_νz_parameters = (; Lz = my_parameters.Lz, h = my_parameters.h)
+@inline νz(x, y, z, t) = νz_bottom + (νz_surface - νz_bottom) * exponential_profile_in_z(z, my_νz_parameters)
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
 @inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2
