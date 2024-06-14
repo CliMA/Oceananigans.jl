@@ -8,7 +8,7 @@ using Oceananigans.Utils: getnamewrapper
 using Adapt 
 using Printf
 
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, znode
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
 import Oceananigans.Advection: ∂t_∂s_grid
 import Oceananigans.Architectures: arch_array

@@ -6,6 +6,22 @@
 """ free-surface following vertical coordinate """
 struct ZStar end
 
+"""
+    struct ZStarSpacing{R, S} <: AbstractVerticalSpacing{R}
+
+A vertical spacing for the hydrostatic free surface model that follows the free surface.
+The vertical spacing is defined by a reference spacing `Δr` and a scaling `s` that obeys
+```math
+s = (η + H) / η
+```
+where ``η`` is the free surface height and ``H`` the vertical depth of the water column
+
+# Fields
+- `Δr`: reference vertical spacing with `η = 0`
+- `sⁿ`: scaling of the vertical coordinate at time step `n`
+- `s⁻`:scaling of the vertical coordinate at time step `n - 1`
+- `∂t_∂s`: Time derivative of `s`
+"""
 struct ZStarSpacing{R, S} <: AbstractVerticalSpacing{R}
     Δr :: R
     sⁿ :: S
