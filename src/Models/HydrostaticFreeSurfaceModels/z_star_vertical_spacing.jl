@@ -44,11 +44,12 @@ function generalized_spacing_grid(grid::ImmersedBoundaryGrid, ::ZStar)
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
 end
 
-# Replacing the z-coordinate with a moving vertical coordinate, defined by its reference spacing,
-# the actual vertical spacing and a scaling
+# Replacing the z-coordinate with a moving vertical coordinate, defined by 
+# - the reference spacing,
+# - the scaling to apply to the reference
+# - the derivative in time of the spacing
 function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
-    # Memory layout for Δz spacings should be local in z instead of x
     s⁻    = Field{Center, Center, Nothing}(grid)
     sⁿ    = Field{Center, Center, Nothing}(grid)
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
