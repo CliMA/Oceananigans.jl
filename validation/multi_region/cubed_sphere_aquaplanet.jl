@@ -257,10 +257,10 @@ my_νz_parameters = (; Lz = my_parameters.Lz, h = my_parameters.h)
                                                       + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
 
 # Use a biharmonic diffusivity for momentum. Define the diffusivity function as gridsize^4 divided by the timescale.
-@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, λ) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / λ
+@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, p) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / p.λ_rts
 
 biharmonic_viscosity  = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
-                                                              parameters = my_parameters.λ_rts)
+                                                              parameters = (; λ_rts = my_parameters.λ_rts))
 vertical_diffusivity  = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(),
                                                                 convective_κz = 1.0)
