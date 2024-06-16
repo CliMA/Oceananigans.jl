@@ -113,7 +113,7 @@ end
 Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
 over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
 """
-@inline function launch!(arch, grid, workspec, kernel!, kernel_args...;
+function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
