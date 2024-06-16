@@ -583,6 +583,15 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(p
 ##### Build checkpointer and output writer
 #####
 
+pick_up_simulation = false
+if pick_up_simulation
+    pick_up = (pickup = true)
+    overwrite_existing_output_writer = (overwrite_existing = false)
+else
+    pick_up = (pickup = false)
+    overwrite_existing_output_writer = (overwrite_existing = true)
+end
+
 filename_checkpointer = "cubed_sphere_aquaplanet_checkpointer"
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(checkpointer_interval),
@@ -597,7 +606,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename_output_writer,
                                                       verbose = false,
-                                                      overwrite_existing = true)
+                                                      overwrite_existing = overwrite_existing_output_writer...)
 
 #####
 ##### Run simulation
@@ -605,7 +614,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
 
 @info "Running the simulation..."
 
-run!(simulation, pickup = false)
+run!(simulation, pick_up...)
 
 u_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "u");
 v_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "v");
