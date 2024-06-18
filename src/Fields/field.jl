@@ -397,12 +397,18 @@ interior(f::Field, I...) = view(interior(f), I...)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
-function Base.axes(f::Field)
-    if f.indices === (:, : ,:)
-        return Base.OneTo.(size(f))
-    else
-        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : f.indices[i] for i = 1:3)
-    end
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::Field)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = f.indices
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
 end
 
 @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
