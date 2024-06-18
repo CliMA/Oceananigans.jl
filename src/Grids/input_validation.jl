@@ -9,9 +9,9 @@ using Oceananigans: tupleit
 "adds tup element with `default` value for flat dimensions"
 inflate_tuple(TX, TY, TZ, tup; default) = tup
 
-inflate_tuple(::Type{Flat}, TY, TZ, tup; default) = tuple(default, tup[1], tup[2])
-inflate_tuple(TY, ::Type{Flat}, TZ, tup; default) = tuple(tup[1], default, tup[2])
-inflate_tuple(TY, TZ, ::Type{Flat}, tup; default) = tuple(tup[1], tup[2], default)
+inflate_tuple(::Type{Flat}, TY, TZ, tup; default) = (default, tup[1], tup[2])
+inflate_tuple(TY, ::Type{Flat}, TZ, tup; default) = (tup[1], default, tup[2])
+inflate_tuple(TY, TZ, ::Type{Flat}, tup; default) = (tup[1], tup[2], default)
 
 inflate_tuple(TX, ::Type{Flat}, ::Type{Flat}, tup; default) = (tup[1], default, default)
 inflate_tuple(::Type{Flat}, TY, ::Type{Flat}, tup; default) = (default, tup[1], default)
@@ -109,15 +109,13 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
             throw(ArgumentError("Cannot specify both 'extent' and 'x, y, z' keyword arguments."))
 
         extent = tupleit(extent)
-
         validate_tupled_argument(extent, Number, "extent", topological_tuple_length(TX, TY, TZ))
-
         Lx, Ly, Lz = extent = inflate_tuple(TX, TY, TZ, extent, default=0)
 
         # An "oceanic" default domain:
-        x = FT.((0, Lx))
-        y = FT.((0, Ly))
-        z = FT.((-Lz, 0))
+        x = TX() isa Flat ? nothing : (zero(FT), convert(FT, Lx))
+        y = TY() isa Flat ? nothing : (zero(FT), convert(FT, Ly))
+        z = TZ() isa Flat ? nothing : (-convert(FT, Lz), zero(FT))
 
     else # isnothing(extent) === true implies that user has not specified a length
         x = validate_dimension_specification(TX, x, :x, size[1], FT)
@@ -160,38 +158,6 @@ validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = convert
 
 default_horizontal_extent(T, extent) = (0, extent[i])
 default_vertical_extent(T, extent) = (-extent[3], 0)
-
-function validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
-
-    # Find domain endpoints or domain extent, depending on user input:
-    if !isnothing(extent) # the user has specified an extent!
-
-        (!isnothing(x) || !isnothing(y) || !isnothing(z)) &&
-            throw(ArgumentError("Cannot specify both 'extent' and 'x, y, z' keyword arguments."))
-
-        extent = tupleit(extent)
-
-        validate_tupled_argument(extent, Number, "extent", topological_tuple_length(TX, TY, TZ))
-
-        Lx, Ly, Lz = extent = inflate_tuple(TX, TY, TZ, extent, default=0)
-
-        # An "oceanic" default domain:
-        x = (0, Lx)
-        y = (0, Ly)
-        z = (-Lz, 0)
-
-    else # isnothing(extent) === true implies that user has not specified a length
-        x = validate_dimension_specification(TX, x, :x, FT)
-        y = validate_dimension_specification(TY, y, :y, FT)
-        z = validate_dimension_specification(TZ, z, :z, FT)
-
-        Lx = x[2] - x[1]
-        Ly = y[2] - y[1]
-        Lz = z[2] - z[1]
-    end
-
-    return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
-end
 
 function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
     x = validate_dimension_specification(TX, x, :x, FT)

@@ -4,6 +4,34 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
+"""
+    _property(ξ, T, ℓ, N, with_halos=false)
+
+Return the grid property `ξ`, either `with_halos` or without,
+for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
+"""
+@inline function _property(ξ, ℓ, T, N, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓ, T(), N)
+        return view(ξ, i)
+    end
+end
+
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓx, Tx(), Nx)
+        j = interior_indices(ℓy, Ty(), Ny)
+        return view(ξ, i, j)
+    end
+end
+
+@inline _property(ξ::Number, args...) = ξ
+@inline _property(::Nothing, args...) = nothing
+
 # Define default indices in a type-stable way
 @inline default_indices(N::Int) = default_indices(Val(N))
 

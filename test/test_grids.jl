@@ -928,8 +928,8 @@ end
                 grid = RectilinearGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
                 x = xnodes(grid, ccc...)
                 y = ynodes(grid, ccc...)
-                @test x[1] == 0
-                @test y[1] == 0
+                @test isnothing(x)
+                @test isnothing(y)
 
                 x₀ = 1
                 y₀ = π
@@ -944,14 +944,13 @@ end
                 grid = LatitudeLongitudeGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
                 λ = λnodes(grid, ccc...)
                 φ = φnodes(grid, ccc...)
-                @test λ[1] isa FT
-                @test φ[1] isa FT
-                @test λ[1] == 0
-                @test φ[1] == 0
+                @test isnothing(λ)
+                @test isnothing(φ)
 
                 λ₀ = 45
                 φ₀ = 10.1
-                grid = LatitudeLongitudeGrid(arch, FT, size=4, latitude=φ₀, longitude=λ₀, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                grid = LatitudeLongitudeGrid(arch, FT, size=4, latitude=φ₀, longitude=λ₀, z=(-1, 0),
+                                             topology=(Flat, Flat, Bounded))
                 λ = λnodes(grid, ccc...)
                 φ = φnodes(grid, ccc...)
                 @test λ[1] isa FT
