@@ -15,7 +15,7 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
@@ -30,7 +30,7 @@ For example, to add conservative temperature `T` and absolute salinity `S`:
 julia> model = NonhydrostaticModel(; grid, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -65,7 +65,7 @@ An arbitrary number of tracers may be simulated. For example, to simulate
 julia> model = NonhydrostaticModel(; grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S, C₁, CO₂, nitrogen)
 ├── closure: Nothing

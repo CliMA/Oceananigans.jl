@@ -13,7 +13,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
-        time_step!(model, 1e-16, euler=true)
+        time_step!(model, 1e-16)
         true
     catch err
         @warn "test_boundary_condition errored with " * sprint(showerror, err)
@@ -61,10 +61,12 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = NonhydrostaticModel(
-        grid=grid, tracers=:b, buoyancy=BuoyancyTracer(),
-        closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
-    )
+    model = NonhydrostaticModel(; grid,
+                                timestepper = :QuasiAdamsBashforth2,
+                                tracers = :b,
+                                buoyancy = BuoyancyTracer(),
+                                closure = AnisotropicMinimumDissipation(),
+                                boundary_conditions = model_bcs)
 
     b₀(x, y, z) = z * bz
     set!(model, b=b₀)
