@@ -3,6 +3,7 @@ get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::Number, N)         = (coord, coord)
 
 get_face_node(coord::Nothing, i) = 1
 get_face_node(coord::Function, i) = coord(i)
@@ -119,5 +120,12 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
 end
 
 # Flat domains
-generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, coordinate_name, arch) =
-    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
+#generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, coordinate_name, arch) =
+#    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
+
+generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
+    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+
+generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
+    generate_coordinate(FT, Flat(), N, H, 0, coordinate_name, arch)
+

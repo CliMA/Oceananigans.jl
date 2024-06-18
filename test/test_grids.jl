@@ -918,6 +918,49 @@ end
 
         @test grid isa LatitudeLongitudeGrid
     end
+
+    @testset "Single column grids" begin
+        @info "  Testing single column grid construction..."
+
+        for arch in archs
+            for FT in float_types
+                ccc = (Center(), Center(), Center())
+                grid = RectilinearGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                x = xnodes(grid, ccc...)
+                y = ynodes(grid, ccc...)
+                @test x[1] == 0
+                @test y[1] == 0
+
+                x₀ = 1
+                y₀ = π
+                grid = RectilinearGrid(arch, FT, size=4, x=x₀, y=y₀, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                x = xnodes(grid, ccc...)
+                y = ynodes(grid, ccc...)
+                @test x[1] isa FT
+                @test y[1] isa FT
+                @test x[1] == x₀
+                @test y[1] == convert(FT, y₀)
+
+                grid = LatitudeLongitudeGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                λ = λnodes(grid, ccc...)
+                φ = φnodes(grid, ccc...)
+                @test λ[1] isa FT
+                @test φ[1] isa FT
+                @test λ[1] == 0
+                @test φ[1] == 0
+
+                λ₀ = 45
+                φ₀ = 10.1
+                grid = LatitudeLongitudeGrid(arch, FT, size=4, latitude=φ₀, longitude=λ₀, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                λ = λnodes(grid, ccc...)
+                φ = φnodes(grid, ccc...)
+                @test λ[1] isa FT
+                @test φ[1] isa FT
+                @test λ[1] == λ₀
+                @test φ[1] == convert(FT, φ₀)
+            end
+        end
+    end
     
     @testset "Conformal cubed sphere face grid" begin
         @info "  Testing OrthogonalSphericalShellGrid grid..."
