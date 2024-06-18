@@ -120,9 +120,6 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
 end
 
 # Flat domains
-#generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, coordinate_name, arch) =
-#    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
-
 generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
     FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
 
