@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: conformal_cubed_sphere_panel,
+using Oceananigans.Grids: ConformalCubedSphere,
                           R_Earth,
                           halo_size,
                           size_summary,
@@ -25,7 +25,7 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ,
                              partition = CubedSpherePartition(; R = 1),
                              devices = nothing)
 
-Return a `ConformalCubedSphereGrid` that comprises of six [`conformal_cubed_sphere_panel`](@ref)
+Return a `ConformalCubedSphereGrid` that comprises of six [`ConformalCubedSpherePanelGrid`](@ref)
 grids; we refer to each of these grids as a "panel". Each panel corresponds to a face of the cube.
 
 The keyword arguments prescribe the properties of each of the panels. Only the topology in
@@ -225,7 +225,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     region_rotation = Iterate(region_rotation)
 
     # as mentioned above, construct the grid on CPU and convert to user-prescribed architecture later...
-    region_grids = construct_regionally(conformal_cubed_sphere_panel, CPU(), FT;
+    region_grids = construct_regionally(ConformalCubedSpherePanelGrid, CPU(), FT;
                                         size = region_size,
                                         z,
                                         halo = region_halo,
@@ -372,7 +372,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))
 
-    region_grids = construct_regionally(conformal_cubed_sphere_panel, filepath, arch, FT;
+    region_grids = construct_regionally(ConformalCubedSpherePanelGrid, filepath, arch, FT;
                                         Nz = region_Nz,
                                         z,
                                         panel = region_panels,
