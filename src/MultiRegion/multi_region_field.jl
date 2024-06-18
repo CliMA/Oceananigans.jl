@@ -139,13 +139,13 @@ end
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid) =
+validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
+FieldBoundaryBuffers(grid::MultiRegionGrids, args...; kwargs...) =
     construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
