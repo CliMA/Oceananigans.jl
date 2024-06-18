@@ -414,6 +414,7 @@ function NetCDFOutputWriter(model, outputs;
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
 
+    initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     if isnothing(overwrite_existing)
