@@ -72,7 +72,7 @@ julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
 UnaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     square_it at (Center, Center, Center) via identity
     └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -130,3 +130,9 @@ Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
                                Adapt.adapt(to, unary.grid))
+
+on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    UnaryOperation{LX, LY, LZ}(on_architecture(to, unary.op),
+                               on_architecture(to, unary.arg),
+                               on_architecture(to, unary.▶),
+                               on_architecture(to, unary.grid))

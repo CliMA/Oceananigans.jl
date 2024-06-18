@@ -7,7 +7,7 @@ using Oceananigans.Units
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
@@ -55,7 +55,7 @@ pickup_file   = false
 
 using DataDeps
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
+path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/quarter_degree_near_global_input_data/"
 
 datanames = ["z_faces-50-levels",
              "bathymetry-1440x600",
@@ -94,7 +94,7 @@ T★ = file_temp["field"]
 S★ = file_salt["field"] 
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
-bathymetry = arch_array(arch, bathymetry)
+bathymetry = on_architecture(arch, bathymetry)
 
 # Stretched faces taken from ECCO Version 4 (50 levels in the vertical)
 z_faces = file_z_faces["z_faces"][3:end]

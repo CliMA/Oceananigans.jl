@@ -1,10 +1,10 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Grids: LLGNoMetric, XRegularLLGNoMetric, YRegularLLGNoMetric
 
-const RG   = RectilinearGrid
-const RGX  = XRegularRG
-const RGY  = YRegularRG
-const RGZ  = ZRegularRG
+const RG  = RectilinearGrid
+const RGX = XRegularRG
+const RGY = YRegularRG
+const RGZ = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
@@ -53,10 +53,10 @@ The operators in this file fall into two categories:
 #####
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid) =  nothing
-@inline Δxᶜᵃᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
+@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
+@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
 
 const ZRG = Union{LLGZ, RGZ}
 

@@ -29,7 +29,7 @@ using Oceananigans
 using Oceananigans.Architectures
 
 import Base: size, length, eltype, show, -
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 
 # Physical constants for constructors.
 const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
@@ -140,6 +140,8 @@ const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
 const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 
 isrectilinear(grid) = false
+@inline active_surface_map(::AbstractGrid) = nothing
+@inline active_interior_map(::AbstractGrid) = nothing
 
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")

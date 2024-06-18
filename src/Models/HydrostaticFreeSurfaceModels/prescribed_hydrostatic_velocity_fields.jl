@@ -95,12 +95,12 @@ compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = not
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
+free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-FreeSurface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-FreeSurface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
@@ -111,18 +111,24 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),
                              Adapt.adapt(to, velocities.w),
-                             nothing)
+                             nothing) # Why are parameters not passed here? They probably should...
+
+on_architecture(to, velocities::PrescribedVelocityFields) =
+    PrescribedVelocityFields(on_architecture(to, velocities.u),
+                             on_architecture(to, velocities.v),
+                             on_architecture(to, velocities.w),
+                             on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!
 const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
-                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+                 {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 
-function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...) 
-    model.timestepper.previous_Δt = Δt
+function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
+    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) = 
+update_state!(model::OnlyParticleTrackingModel, callbacks) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]

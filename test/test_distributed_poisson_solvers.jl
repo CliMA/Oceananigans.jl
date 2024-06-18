@@ -59,7 +59,7 @@ function random_divergent_source_term(grid)
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
-    
+
     return R
 end
 
@@ -74,7 +74,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
     ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
     R   = random_divergent_source_term(local_grid)
-    
+
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -108,4 +108,3 @@ end
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
 end
-

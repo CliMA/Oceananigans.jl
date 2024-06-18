@@ -43,7 +43,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 3 to be conservative
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure(FT)
     model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
     time_step!(model, 1, euler=true)
@@ -53,8 +53,16 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
+    time_step!(model, 1, euler=true)
+    return true  # Test that no errors/crashes happen when time stepping.
+end
+
+function time_stepping_works_with_stokes_drift(arch, stokes_drift)
+    # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
+    grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
+    model = NonhydrostaticModel(; grid, stokes_drift, advection=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -79,27 +87,32 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
+@inline add_ones(args...) = 1
+
 function run_first_AB2_time_step_tests(arch, FT)
-    add_ones(args...) = 1.0
 
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(grid=grid, forcing=(T=add_ones,),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid,
+                                forcing = (; T=add_ones),
+                                buoyancy = SeawaterBuoyancy(),
+                                tracers = (:T, :S))
 
-    # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
+    # Test that GT = 1 after model construction (note: this computes tendencies)
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
+    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
 
+    # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
+    Δt = 1
+    time_step!(model, Δt, euler=true)
     @test all(interior(model.velocities.u) .≈ 0)
     @test all(interior(model.velocities.v) .≈ 0)
     @test all(interior(model.velocities.w) .≈ 0)
-    @test all(interior(model.tracers.T)    .≈ 1.0)
+    @test all(interior(model.tracers.T)    .≈ 1)
     @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
@@ -242,6 +255,43 @@ advection_schemes = (nothing,
                      UpwindBiasedFifthOrder(),
                      WENO())
 
+@inline ∂t_uˢ_uniform(z, t, h) = exp(z / h) * cos(t)
+@inline ∂t_vˢ_uniform(z, t, h) = exp(z / h) * cos(t)
+@inline ∂z_uˢ_uniform(z, t, h) = exp(z / h) / h * sin(t)
+@inline ∂z_vˢ_uniform(z, t, h) = exp(z / h) / h * sin(t)
+
+parameterized_uniform_stokes_drift = UniformStokesDrift(∂t_uˢ = ∂t_uˢ_uniform,
+                                                        ∂t_vˢ = ∂t_vˢ_uniform,
+                                                        ∂z_uˢ = ∂z_uˢ_uniform,
+                                                        ∂z_vˢ = ∂z_vˢ_uniform,
+                                                        parameters = 20)
+
+@inline ∂t_uˢ(x, y, z, t, h) = exp(z / h) * cos(t)
+@inline ∂t_vˢ(x, y, z, t, h) = exp(z / h) * cos(t)
+@inline ∂t_wˢ(x, y, z, t, h) = 0
+@inline ∂x_vˢ(x, y, z, t, h) = 0
+@inline ∂x_wˢ(x, y, z, t, h) = 0
+@inline ∂y_uˢ(x, y, z, t, h) = 0
+@inline ∂y_wˢ(x, y, z, t, h) = 0
+@inline ∂z_uˢ(x, y, z, t, h) = exp(z / h) / h * sin(t)
+@inline ∂z_vˢ(x, y, z, t, h) = exp(z / h) / h * sin(t)
+
+parameterized_stokes_drift = StokesDrift(∂t_uˢ = ∂t_uˢ,
+                                         ∂t_vˢ = ∂t_vˢ,
+                                         ∂t_wˢ = ∂t_wˢ,
+                                         ∂x_vˢ = ∂x_vˢ,
+                                         ∂x_wˢ = ∂x_wˢ,
+                                         ∂y_uˢ = ∂y_uˢ,
+                                         ∂y_wˢ = ∂y_wˢ,
+                                         ∂z_uˢ = ∂z_uˢ,
+                                         ∂z_vˢ = ∂z_vˢ,
+                                         parameters = 20)
+
+stokes_drifts = (UniformStokesDrift(),
+                 StokesDrift(),
+                 parameterized_uniform_stokes_drift,
+                 parameterized_stokes_drift)
+
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Time stepping" begin
@@ -292,6 +342,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
         end
     end
+
+    @testset "Stokes drift" begin
+        for arch in archs, stokes_drift in stokes_drifts
+            @info "  Testing time stepping with stokes drift schemes [$(typeof(arch)), $(typeof(stokes_drift))]"
+            @test time_stepping_works_with_stokes_drift(arch, stokes_drift)
+        end
+    end
+
 
     @testset "BackgroundFields" begin
         for arch in archs

@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField
 using Oceananigans.Grids: architecture, φspacings, λspacings
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Coriolis: EnergyConserving
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
@@ -27,11 +28,13 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     ##### Constructing Grid and model
     #####
     
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                          momentum_advection = VectorInvariant(),
-                                free_surface = free_surface,
-                                    coriolis = HydrostaticSphericalCoriolis(),
-                                     closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
+    # This coriolis scheme was used to generated the regression test data
+    coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
+
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+                                        momentum_advection = VectorInvariant(),
+                                        free_surface = free_surface,
+                                        closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
     
     #####
     ##### Imposing initial conditions:

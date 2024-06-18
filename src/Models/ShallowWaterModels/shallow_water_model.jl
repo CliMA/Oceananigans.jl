@@ -61,7 +61,7 @@ struct VectorInvariantFormulation end
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
+                              clock = Clock{eltype(grid)}(time = 0),
                  momentum_advection = UpwindBiasedFifthOrder(),
                    tracer_advection = WENO(),
                      mass_advection = WENO(),
@@ -112,7 +112,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid)}(0, 0, 1),
+                               clock = Clock{eltype(grid)}(time=0),
                   momentum_advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),
@@ -144,7 +144,7 @@ function ShallowWaterModel(;
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
+    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
@@ -233,4 +233,3 @@ shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(mo
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
-

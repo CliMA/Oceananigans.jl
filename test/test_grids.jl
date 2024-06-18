@@ -295,17 +295,17 @@ function test_flat_size_regular_rectilinear_grid(FT)
 
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 3, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 0, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 3, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(3, 3), extent=(1, 1), halo=nothing) === (0, 3, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(3, 3), extent=(1, 1), halo=nothing) === (3, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(3, 3), extent=(1, 1), halo=nothing) === (3, 3, 0)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(3, 3), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(3, 3), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(3, 3), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1, halo=2) === (2, 0, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1, halo=2) === (0, 2, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=2, extent=1, halo=2) === (0, 0, 2)
 
     @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
 

@@ -48,7 +48,7 @@ zC = znodes(grid, Center())
 
 Ri, h = B.parameters
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size = (850, 450))
  
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
 lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
@@ -253,7 +253,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -267,7 +267,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+        push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data
@@ -307,7 +307,7 @@ growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturba
 
 n = Observable(1)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -415,7 +415,7 @@ n = Observable(1)
 ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
 bₙ = @lift interior(b_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
@@ -474,7 +474,7 @@ n = Observable(1)
 Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
 Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
 
-fig = Figure(resolution=(800, 600))
+fig = Figure(size=(800, 600))
 
 kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 

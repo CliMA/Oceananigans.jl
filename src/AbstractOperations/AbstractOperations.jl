@@ -2,7 +2,7 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 using Base: @propagate_inbounds
@@ -22,7 +22,7 @@ using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 

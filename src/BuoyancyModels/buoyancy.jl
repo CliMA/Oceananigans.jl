@@ -16,23 +16,23 @@ Example
 =======
 
 ```jldoctest
-
 using Oceananigans
 
 grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1))
 
 θ = 45 # degrees
-g̃ = (0, sind(θ), cosd(θ));
+g̃ = (0, -sind(θ), -cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
-model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 
 # output
 
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}

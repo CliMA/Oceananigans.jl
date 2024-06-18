@@ -55,16 +55,18 @@ Example
 Compute a density `Field` using the `KernelFunctionOperation` returned from `seawater_density`
 
 ```jldoctest density
-julia> using Oceananigans, Oceananigans.Models, SeawaterPolynomials.TEOS10
+julia> using Oceananigans, SeawaterPolynomials.TEOS10
 
-julia> grid = RectilinearGrid(CPU(), size=(32, 32), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [3.60072e-17, 6.28319) regularly spaced with Δy=0.19635
-└── Flat z
+julia> using Oceananigans.Models: seawater_density
 
-julia> tracers = (:S, :T)
-(:S, :T)
+julia> grid = RectilinearGrid(size=100, z=(-1000, 0), topology=(Flat, Flat, Bounded))
+1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
+├── Flat x
+├── Flat y
+└── Bounded  z ∈ [-1000.0, 0.0]   regularly spaced with Δz=10.0
+
+julia> tracers = (:T, :S)
+(:T, :S)
 
 julia> eos = TEOS10EquationOfState()
 BoussinesqEquationOfState{Float64}:
@@ -74,38 +76,45 @@ BoussinesqEquationOfState{Float64}:
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: BoussinesqEquationOfState{Float64}
+└── equation_of_state: BoussinesqEquationOfState{Float64}
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── tracers: (S, T)
+├── advection scheme: Centered reconstruction order 2
+├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()
 └── coriolis: Nothing
 
 julia> set!(model, S = 34.7, T = 0.5)
 
-julia> density_field = Field(seawater_density(model))
-32×32×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+julia> density_operation = seawater_density(model)
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
+├── kernel_function: ρ (generic function with 2 methods)
+└── arguments: ("BoussinesqEquationOfState{Float64}", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "KernelFunctionOperation at (Center, Center, Center)")
+
+julia> density_field = Field(density_operation)
+1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 38×38×1 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, 1:1) with eltype Float64 with indices -2:35×-2:35×1:1
+└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
     └── max=0.0, min=0.0, mean=0.0
 
 julia> compute!(density_field)
-32×32×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 38×38×1 OffsetArray(::Array{Float64, 3}, -2:35, -2:35, 1:1) with eltype Float64 with indices -2:35×-2:35×1:1
-    └── max=1027.7, min=1027.7, mean=1027.7
+└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
+    └── max=1027.81, min=1027.71, mean=1027.76
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to

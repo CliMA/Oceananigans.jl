@@ -1,6 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.ImmersedBoundaries: active_interior_map, active_surface_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -10,8 +11,9 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 setup_free_surface!(model, free_surface, χ) = nothing
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
+function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
+    χ = model.timestepper.χ
     setup_free_surface!(model, model.free_surface, χ)
 
     # Step locally velocity and tracers
@@ -68,23 +70,31 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
+    closure = model.closure
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        G⁻ = model.timestepper.G⁻[tracer_name]
-        tracer_field = tracers[tracer_name]
-        closure = model.closure
+        
+        # TODO: do better than this silly criteria, also need to check closure tuples
+        if closure isa FlavorOfCATKE && tracer_name == :e
+            @debug "Skipping AB2 step for e"
+        else
+            Gⁿ = model.timestepper.Gⁿ[tracer_name]
+            G⁻ = model.timestepper.G⁻[tracer_name]
+            tracer_field = tracers[tracer_name]
+            closure = model.closure
 
-        launch!(model.architecture, model.grid, :xyz,
-                ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+            launch!(model.architecture, model.grid, :xyz,
+                    ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
 
-        implicit_step!(tracer_field,
-                       model.timestepper.implicit_solver,
-                       closure,
-                       model.diffusivity_fields,
-                       Val(tracer_index),
-                       model.clock,
-                       Δt)
+            implicit_step!(tracer_field,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
+        end
     end
 
     return nothing
