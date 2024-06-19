@@ -84,13 +84,6 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     cpu_arch = cpu_architecture(architecture(grid))
 
-    truth_fields = (
-        u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
-        v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
-        w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
-        η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], size(η))
-    )
-
     u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(solution₀.u))
     v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(solution₀.v))
     w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(solution₀.w))
