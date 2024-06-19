@@ -1059,7 +1059,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     end
 
     λ_summary = "$(TX)  extent $(prettysummary(extent_λ)) degrees"
-    φ_summary = "$(TX)  extent $(prettysummary(extent_φ)) degrees"
+    φ_summary = "$(TY)  extent $(prettysummary(extent_φ)) degrees"
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
     longest = max(length(λ_summary), length(φ_summary), length(z_summary))
@@ -1067,8 +1067,12 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     padding_λ = length(λ_summary) < longest ? " "^(longest - length(λ_summary)) : ""
     padding_φ = length(φ_summary) < longest ? " "^(longest - length(φ_summary)) : ""
 
-    λ_summary = "longitude: $(TX)  extent $(prettysummary(extent_λ)) degrees" * padding_λ *" " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
-    φ_summary = "latitude:  $(TX)  extent $(prettysummary(extent_φ)) degrees" * padding_φ *" " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
+    λ_summary = "longitude: $(TX)  extent $(prettysummary(extent_λ)) degrees" * padding_λ * " " *
+                coordinate_summary(TX, rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
+
+    φ_summary = "latitude:  $(TY)  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
+                coordinate_summary(TY, rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
+
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
