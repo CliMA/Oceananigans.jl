@@ -1234,16 +1234,17 @@ rname(::OSSG) = :z
 
     𝒰 = sqrt(ũ^2 + ṽ^2)
 
-    d₁ = ũ / 𝒰
-    d₂ = ṽ / 𝒰
-
     u = getvalue(uₑ, i, j, k, grid)
     v = getvalue(vₑ, i, j, k, grid)
 
+    d₁ = ũ / 𝒰
+    d₂ = ṽ / 𝒰
+
+    wᵢ = getvalue(w, i, j, k, grid)
     uᵢ = u * d₁ - v * d₂
     vᵢ = u * d₂ + v * d₁
 
-    return uᵢ, vᵢ, wₑ
+    return uᵢ, vᵢ, wᵢ
 end
 
 @inline function intrisic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
@@ -1268,8 +1269,9 @@ end
     d₁ = ũ / 𝒰
     d₂ = ṽ / 𝒰
 
+    wₑ = getvalue(w, i, j, k, grid)
     uₑ = u * d₁ + v * d₂
     vₑ = u * d₂ - v * d₁
 
-    return uₑ, vₑ, wᵢ
+    return uₑ, vₑ, wₑ
 end
