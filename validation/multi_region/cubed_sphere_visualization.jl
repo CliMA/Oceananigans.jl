@@ -1011,3 +1011,48 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
         colgap!(fig.layout, 75)
     end
 end
+
+import Imaginocean: flip_location, get_longitude_vertices, get_latitude_vertices
+
+function get_longitude_vertices(i, j, k, grid::ImmersedBoundaryGrid, ℓx, ℓy, ℓz)
+    if ℓx == Center()
+        i₀ = i
+    elseif ℓx == Face()
+        i₀ = i-1
+    end
+
+    if ℓy == Center()
+        j₀ = j
+    elseif ℓy == Face()
+        j₀ = j-1
+    end
+
+    λ_vertex₁ = λnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ_vertex₂ = λnode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ_vertex₃ = λnode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    λ_vertex₄ = λnode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+
+    return [λ_vertex₁; λ_vertex₂; λ_vertex₃; λ_vertex₄]
+end
+
+function get_latitude_vertices(i, j, k, grid::ImmersedBoundaryGrid, ℓx, ℓy, ℓz)
+
+    if ℓx == Center()
+        i₀ = i
+    elseif ℓx == Face()
+        i₀ = i-1
+    end
+
+    if ℓy == Center()
+        j₀ = j
+    elseif ℓy == Face()
+        j₀ = j-1
+    end
+
+    φ_vertex₁ = φnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ_vertex₂ = φnode(i₀+1,  j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ_vertex₃ = φnode(i₀+1, j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+    φ_vertex₄ = φnode( i₀,  j₀+1, k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
+
+    return [φ_vertex₁; φ_vertex₂; φ_vertex₃; φ_vertex₄]
+end
