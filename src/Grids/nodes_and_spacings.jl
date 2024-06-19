@@ -60,19 +60,15 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 ##### << Nodes >>
 #####
 
-xnodes(grid, ::Nothing; kwargs...) = 1:1
-ynodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
-
 """
     xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
+    
 Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
 `ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 See [`znodes`](@ref) for examples.
 """
-@inline xnodes(grid, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
+xnodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     ynodes(grid, ℓx, ℓy, ℓz, with_halos=false)
@@ -82,7 +78,7 @@ Return the positions over the interior nodes on `grid` in the ``y``-direction fo
 
 See [`znodes`](@ref) for examples.
 """
-@inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
+ynodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
@@ -101,7 +97,7 @@ julia> zC = znodes(horz_periodic_grid, Center())
  -0.8333333333333334
  -0.5
  -0.16666666666666666
-
+ 
 julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
 3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
  -0.8333333333333334
@@ -112,27 +108,7 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 -1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
-
-"""
-    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
-
-"""
-    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
+znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
@@ -161,74 +137,6 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 function xspacing end
 function yspacing end
 function zspacing end
-
-"""
-    xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest xspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
-
-julia> xspacings(grid, Center(), Face(), Center())
-16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
-      1.0950562585518518e6
-      1.1058578920188267e6
-      1.1112718969963323e6
-      1.1112718969963323e6
-      1.1058578920188267e6
-      1.0950562585518518e6
-      1.0789196210678827e6
-      1.0575265956426917e6
-      1.0309814069457315e6
- 999413.38046802
- 962976.3124613502
- 921847.720658409
- 876227.979424229
- 826339.3435524226
- 772424.8654621692
- 714747.2110712599
-```
-"""
-@inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
-
-
-"""
-    yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest yspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> yspacings(grid, Center(), Center(), Center())
-222389.85328911748
-```
-"""
-@inline yspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = yspacings(grid, ℓy; with_halos)
-
-"""
-    zspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest zspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> zspacings(grid, Center(), Center(), Center())
-10.0
-```
-"""
-@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
