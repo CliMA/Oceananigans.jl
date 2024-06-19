@@ -39,36 +39,7 @@ _intrinsic_ reference frames are equivalent
 @inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
 
-@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ, wₑ) 
-
-    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
-    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
-    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
-
-    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
-
-    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
-    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
-    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
-
-    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
-
-    𝒰 = sqrt(ũ^2 + ṽ^2)
-
-    u  = getvalue(uₑ, i, j, k, grid)
-    v  = getvalue(vₑ, i, j, k, grid)
-    wᵢ = getvalue(wₑ, i, j, k, grid)
-
-    d₁ = ũ / 𝒰
-    d₂ = ṽ / 𝒰
-
-    uᵢ = u * d₁ - v * d₂
-    vᵢ = u * d₂ + v * d₁
-
-    return uᵢ, vᵢ, wᵢ
-end
-
-@inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
@@ -91,10 +62,39 @@ end
     d₁ = ũ / 𝒰
     d₂ = ṽ / 𝒰
 
-    uₑ = u * d₁ + v * d₂
-    vₑ = u * d₂ - v * d₁
+    uₑ = u * d₁ - v * d₂
+    vₑ = u * d₂ + v * d₁
 
     return uₑ, vₑ, wₑ
+end
+
+@inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+
+    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
+    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
+    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
+
+    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
+
+    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
+    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
+    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
+
+    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+
+    𝒰 = sqrt(ũ^2 + ṽ^2)
+
+    u  = getvalue(uₑ, i, j, k, grid)
+    v  = getvalue(vₑ, i, j, k, grid)
+    wᵢ = getvalue(wₑ, i, j, k, grid)
+
+    d₁ = ũ / 𝒰
+    d₂ = ṽ / 𝒰
+
+    uᵢ = u * d₁ + v * d₂
+    vᵢ = u * d₂ - v * d₁
+
+    return uᵢ, vᵢ, wᵢ
 end
 
 #####
