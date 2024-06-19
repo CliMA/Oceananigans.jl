@@ -163,11 +163,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                       b = Array(interior(model.tracers.b)),
                                       c = Array(interior(model.tracers.c)))
 
-    u₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.u)), size(solution₁.u))
-    v₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.v)), size(solution₁.v))
-    w₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.w)), size(solution₁.w))
-    b₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.b)), size(solution₁.b))
-    c₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.c)), size(solution₁.c))
+    u₁ = partition_global_array(cpu_arch, ArrayType(solution₁.u), size(solution₁.u))
+    v₁ = partition_global_array(cpu_arch, ArrayType(solution₁.v), size(solution₁.v))
+    w₁ = partition_global_array(cpu_arch, ArrayType(solution₁.w), size(solution₁.w))
+    b₁ = partition_global_array(cpu_arch, ArrayType(solution₁.b), size(solution₁.b))
+    c₁ = partition_global_array(cpu_arch, ArrayType(solution₁.c), size(solution₁.c))
 
     correct_fields = (u = u₁,
                       v = v₁,
