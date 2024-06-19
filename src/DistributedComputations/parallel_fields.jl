@@ -1,5 +1,5 @@
 using Oceananigans.Grids: architecture
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 
 struct ParallelFields{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free
@@ -40,10 +40,10 @@ function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
         xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:Nx[1], 1:Nx[2], 1:Nx[3]))
     end
 
-    yzbuffer = Ry == 1 ? nothing : (send = arch_array(zarch, zeros(FT, prod(Ny))), 
-                                    recv = arch_array(zarch, zeros(FT, prod(Nz))))
-    xybuffer = Rx == 1 ? nothing : (send = arch_array(zarch, zeros(FT, prod(Nx))), 
-                                    recv = arch_array(zarch, zeros(FT, prod(Ny))))
+    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(Ny))), 
+                                    recv = on_architecture(zarch, zeros(FT, prod(Nz))))
+    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(Nx))), 
+                                    recv = on_architecture(zarch, zeros(FT, prod(Ny))))
     
     yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
     xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
