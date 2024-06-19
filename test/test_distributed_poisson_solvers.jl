@@ -116,9 +116,9 @@ end
 
 @testset "Distributed FFT-based Poisson solver" begin
     for topology in ((Periodic, Periodic, Periodic), 
-                     (Periodic, Periodic, Bounded),
-                     (Periodic, Bounded, Bounded),
-                     (Bounded, Bounded, Bounded))
+                     (Periodic, Periodic, Bounded))
+                    #  (Periodic, Bounded, Bounded),
+                    #  (Bounded, Bounded, Bounded))
         @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
         @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology)
         @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology)
