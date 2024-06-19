@@ -86,16 +86,30 @@ print("The minimum number of grid points in each direction of the cubed sphere p
       "Rossby radius of deformation is $(Nx_min).\n")
 
 arch = CPU()
-grid = ConformalCubedSphereGrid(arch;
-                                panel_size = (Nx, Ny, Nz),
-                                z = geometric_z_faces(my_parameters),
-                                horizontal_direction_halo = Nhalo,
-                                radius,
-                                partition = CubedSpherePartition(; R = 1))
+underlying_grid = ConformalCubedSphereGrid(arch;
+                                           panel_size = (Nx, Ny, Nz),
+                                           z = geometric_z_faces(my_parameters),
+                                           horizontal_direction_halo = Nhalo,
+                                           radius,
+                                           partition = CubedSpherePartition(; R = 1))
+
+max_spacing_degree = rad2deg(maximum(underlying_grid[1].Δxᶠᶠᵃ)/radius)
+
+@inline function double_drake_depth(λ, φ)
+    if (-40 < φ ≤ 90) && ((-max_spacing_degree < λ ≤ 0) || (90 ≤ λ < (90 + max_spacing_degree)))
+        depth = 0
+    else
+        depth = -Lz
+    end
+    return depth
+end
+
+double_drake = false
+grid = double_drake ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(double_drake_depth)) : underlying_grid;
 
 Hx, Hy, Hz = halo_size(grid)
 
-Δz_min = minimum_zspacing(grid)
+Δz_min = minimum_zspacing(underlying_grid)
 my_parameters = merge(my_parameters, (Δz = Δz_min, 𝓋 = Δz_min/my_parameters.λ_rts,))
 
 @inline function cubic_interpolate(x, x₁, x₂, y₁, y₂, d₁ = 0, d₂ = 0)
@@ -245,10 +259,8 @@ tracer_advection   = WENO()
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-νh = 5e+4
 κh = 1e+3
-
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh) # Laplacian viscosity and diffusivity
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=κh) # Laplacian viscosity and diffusivity
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
 @inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2
@@ -276,9 +288,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      #=
-                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
-                                      =#
                                       closure = (horizontal_diffusivity, biharmonic_viscosity, vertical_diffusivity,
                                                  convective_adjustment),
                                       tracers = :b,
@@ -399,9 +408,9 @@ include("cubed_sphere_visualization.jl")
 latitude = extract_latitude(grid)
 cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid, "cc")
 
-cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
-sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4)
-latitude_at_specific_longitude_through_panel_center = zeros(2*Nx, 4)
+cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4);
+sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4);
+latitude_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 
 for (index, panel_index) in enumerate([1])
     cos_θ_at_specific_longitude_through_panel_center[:, index] = (
@@ -414,10 +423,10 @@ end
 
 depths = grid[1].zᵃᵃᶜ[1:Nz]
 
-uᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-ζᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-bᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+uᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+ζᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+bᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
 
 resolution = (875, 750)
 plot_type_1D = "scatter_line_plot"
@@ -644,11 +653,11 @@ for i_frame in 1:n_frames
     set!(ζ_timeseries[i_frame], ζ_frame)
 end
 
-u_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-v_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-ζ_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
-η_f_at_specific_longitude_through_panel_center = zeros(2*Nx,  1, 4)
-b_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4)
+u_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+v_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+ζ_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
+η_f_at_specific_longitude_through_panel_center = zeros(2*Nx,  1, 4);
+b_f_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
 
 plot_final_field = true
 if plot_final_field
@@ -795,11 +804,11 @@ if make_animations
 
     prettytimes = [prettytime((i - 1) * save_fields_interval) for i in 1:n_frames]
 
-    u_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
-    v_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
-    ζ_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
-    η_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx,  1, 4)
-    b_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4)
+    u_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4);
+    v_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4);
+    ζ_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4);
+    η_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx,  1, 4);
+    b_at_specific_longitude_through_panel_center = zeros(n_frames, 2*Nx, Nz, 4);
 
     for (index, panel_index) in enumerate([1])
         for i_frame in 1:n_frames
