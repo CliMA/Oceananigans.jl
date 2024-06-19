@@ -221,12 +221,34 @@ regular_dimensions(grid) = ()
 @inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
 @inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
+# Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
-parent_index_range(index::UnitRange, ::Nothing, ::Flat, halo) = index
-parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+# Return the index range of parent arrays that are themselves windowed
+parent_index_range(::Colon, args...) = parent_index_range(args...)
+
+function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+    start = first(view_indices) - first(parent_indices) + 1
+    stop = start + length(view_indices) - 1
+    return UnitRange(start, stop)
+end
+
+# intersect_index_range(::Colon, ::Colon) = Colon()
+index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, subset::UnitRange) = true
+index_range_contains(::Colon, ::Colon)           = true
+
+# Note: this choice means subset indices are defined on the whole grid.
+# Thus any UnitRange does not contain `:`.
+index_range_contains(range::UnitRange, subset::Colon) = false 
+
+# Return the index range of "full" parent arrays that span an entire dimension
+parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
+parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
@@ -459,7 +481,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     arch = architecture(data)
 
     # bring to CPU
-    map(a -> arch_array(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data)
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -484,7 +506,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
     # return to data's original architecture 
-    map(a -> arch_array(arch, a), offset_array)
+    map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
 end

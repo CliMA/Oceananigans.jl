@@ -1,5 +1,19 @@
 include("dependencies_for_runtests.jl")
 
+group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_file = get(ENV, "TEST_FILE", :none) |> Symbol
+
+# if we are testing just a single file then group = :none
+# to skip the full test suite
+if test_file != :none
+    group = :none
+end
+
+
+#####
+##### Run tests!
+#####
+
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
@@ -17,7 +31,7 @@ CUDA.allowscalar() do
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
-            include("test_field_reductions.jl")
+            include("test_field_scans.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
@@ -99,7 +113,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
-            include("test_sewater_density.jl")
+            include("test_seawater_density.jl")
         end
     end
 

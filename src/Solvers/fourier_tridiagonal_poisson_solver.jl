@@ -74,20 +74,20 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
 
     arch = architecture(grid)
-    λ1 = arch_array(arch, λ1)
-    λ2 = arch_array(arch, λ2)
+    λ1 = on_architecture(arch, λ1)
+    λ2 = on_architecture(arch, λ2)
 
     # Plan required transforms for x and y
-    sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    sol_storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
     lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
-    lower_diagonal = arch_array(arch, lower_diagonal)
+    lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
-    diagonal = arch_array(arch, zeros(size(grid)...))
+    diagonal = on_architecture(arch, zeros(size(grid)...))
     launch_config = if grid isa YZRegularRG
                         :yz
                     elseif grid isa XZRegularRG
@@ -107,7 +107,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
-    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    rhs = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
 end

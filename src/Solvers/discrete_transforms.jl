@@ -67,8 +67,8 @@ function twiddle_factors(arch::GPU, grid, dims)
     ω_4N⁻[1] *= 1/2
 
     twiddle_factors = (
-        forward = arch_array(arch, ω_4N⁺),
-        backward = arch_array(arch, ω_4N⁻)
+        forward = on_architecture(arch, ω_4N⁺),
+        backward = on_architecture(arch, ω_4N⁻)
     )
 
     return twiddle_factors

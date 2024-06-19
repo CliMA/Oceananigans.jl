@@ -61,8 +61,7 @@ to time-average its outputs before writing them to disk:
 
 ```jldoctest averaged_time_interval
 using Oceananigans
-using Oceananigans.OutputWriters: JLD2OutputWriter
-using Oceananigans.Utils: minutes
+using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
@@ -78,7 +77,8 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
+├── file_splitting: NoFileSplitting
+└── file size: 26.5 KiB
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)

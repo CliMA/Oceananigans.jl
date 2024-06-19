@@ -41,7 +41,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
-function test_jld2_file_splitting(arch)
+function test_jld2_size_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
@@ -49,7 +49,6 @@ function test_jld2_file_splitting(arch)
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
-
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
                           filename = "test.jld2",
@@ -58,7 +57,7 @@ function test_jld2_file_splitting(arch)
                           including = [:grid],
                           array_type = Array{Float64},
                           with_halos = true,
-                          max_filesize = 200KiB,
+                          file_splitting = FileSizeLimit(200KiB),
                           overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
@@ -70,6 +69,7 @@ function test_jld2_file_splitting(arch)
     @test filesize("test_part1.jld2") > 200KiB
     @test filesize("test_part2.jld2") > 200KiB
     @test filesize("test_part3.jld2") < 200KiB
+    @test !isfile("test_part4.jld2")
 
     for n in string.(1:3)
         filename = "test_part$n.jld2"
@@ -84,6 +84,51 @@ function test_jld2_file_splitting(arch)
         # Leave test directory clean.
         rm(filename)
     end
+
+    return nothing
+end
+
+function test_jld2_time_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+    function fake_bc_init(file, model)
+        file["boundary_conditions/fake"] = π
+    end
+    ow = JLD2OutputWriter(model, (; u=model.velocities.u);
+                          dir = ".",
+                          filename = "test.jld2",
+                          schedule = IterationInterval(1),
+                          init = fake_bc_init,
+                          including = [:grid],
+                          array_type = Array{Float64},
+                          with_halos = true,
+                          file_splitting = TimeInterval(3seconds),
+                          overwrite_existing = true)
+
+    push!(simulation.output_writers, ow)
+
+    run!(simulation)
+
+    for n in string.(1:3)
+        filename = "test_part$n.jld2"
+        jldopen(filename, "r") do file
+            # Test to make sure all files contain structs from `including`.
+            @test file["grid/Nx"] == 16
+
+            # Test to make sure all files contain the same number of snapshots.
+            dimlength = length(file["timeseries/t"])
+            @test dimlength == 3
+
+            # Test to make sure all files contain info from `init` function.
+            @test file["boundary_conditions/fake"] == π
+        end
+
+        # Leave test directory clean.
+        rm(filename)
+    end
+    rm("test_part4.jld2")
 
     return nothing
 end
@@ -130,8 +175,10 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
 
     FT = eltype(model.grid)
 
-    @test wu == zero(FT) 
-    @test wT == zero(FT) 
+    # Note: w is not identically 0 because T = 4 introduces a buoyancy term that is
+    # subsequently cancelled by a large scale pressure field.
+    @test abs(wu) < eps(FT)
+    @test abs(wT) < eps(FT)
     @test uv == FT(2)
 
     return nothing
@@ -266,11 +313,12 @@ for arch in archs
         test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
         test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
         
-        #####
-        ##### File splitting
-        #####
+        ####
+        #### File splitting
+        ####
 
-        test_jld2_file_splitting(arch)
+        test_jld2_size_file_splitting(arch)
+        test_jld2_time_file_splitting(arch)
 
         #####
         ##### Time-averaging

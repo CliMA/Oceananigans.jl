@@ -30,11 +30,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = NonhydrostaticModel(; grid, 
+    model = NonhydrostaticModel(; grid, closure,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(; equation_of_state),
                                 tracers = (:T, :S),
-                                closure = closure,
+                                hydrostatic_pressure_anomaly = CenterField(grid),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     # The type of the underlying data, not the offset array.
@@ -102,7 +102,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     model.clock.iteration = spinup_steps
 
     update_state!(model; compute_tendencies = true)
-    model.timestepper.previous_Δt = Δt
+    model.clock.last_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
