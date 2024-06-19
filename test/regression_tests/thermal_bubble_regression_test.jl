@@ -1,3 +1,5 @@
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
+
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100

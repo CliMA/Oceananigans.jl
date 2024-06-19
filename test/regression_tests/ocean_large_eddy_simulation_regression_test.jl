@@ -1,5 +1,6 @@
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)

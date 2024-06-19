@@ -1,5 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
