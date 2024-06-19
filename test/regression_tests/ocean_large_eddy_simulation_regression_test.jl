@@ -39,6 +39,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
+    nx, ny, nz = size(model.tracers.T)
 
     ####
     #### Uncomment the block below to generate regression data.
@@ -77,26 +78,54 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     Nz = grid.Nz
 
-    solution_indices   = [2:N+3, 2:N+3, 2:N+3]
-    w_solution_indices = [2:N+3, 2:N+3, 2:N+4]
+    solution_indices   = [2:nx+3, 2:ny+3, 2:nz+3]
+    w_solution_indices = [2:nx+3, 2:ny+3, 2:nz+4]
 
-    parent(model.velocities.u)[solution_indices...]   .= ArrayType(solution₀.u)
-    parent(model.velocities.v)[solution_indices...]   .= ArrayType(solution₀.v)
-    parent(model.velocities.w)[w_solution_indices...] .= ArrayType(solution₀.w)
-    parent(model.tracers.T)[solution_indices...]      .= ArrayType(solution₀.T)
-    parent(model.tracers.S)[solution_indices...]      .= ArrayType(solution₀.S)
 
-    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= ArrayType(Gⁿ₀.u)
-    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= ArrayType(Gⁿ₀.v)
-    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= ArrayType(Gⁿ₀.w)
-    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= ArrayType(Gⁿ₀.T)
-    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= ArrayType(Gⁿ₀.S)
+    truth_fields = (
+        u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
+        v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
+        w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
+        η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], size(η))
+    )
 
-    parent(model.timestepper.G⁻.u)[solution_indices...]   .= ArrayType(G⁻₀.u)
-    parent(model.timestepper.G⁻.v)[solution_indices...]   .= ArrayType(G⁻₀.v)
-    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= ArrayType(G⁻₀.w)
-    parent(model.timestepper.G⁻.T)[solution_indices...]   .= ArrayType(G⁻₀.T)
-    parent(model.timestepper.G⁻.S)[solution_indices...]   .= ArrayType(G⁻₀.S)
+    cpu_arch = cpu_architecture(architecture(grid))
+
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(solution₀.u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(solution₀.v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(solution₀.w))
+    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T), size(solution₀.T))
+    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S), size(solution₀.S))
+
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(Gⁿ₀.u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(Gⁿ₀.v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(Gⁿ₀.w))
+    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T), size(Gⁿ₀.T))
+    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S), size(Gⁿ₀.S))
+
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(G⁻₀.u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(G⁻₀.v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(G⁻₀.w))
+    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T), size(G⁻₀.T))
+    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S), size(G⁻₀.S))
+
+    parent(model.velocities.u)[solution_indices...]   .= u₀
+    parent(model.velocities.v)[solution_indices...]   .= v₀
+    parent(model.velocities.w)[w_solution_indices...] .= w₀
+    parent(model.tracers.T)[solution_indices...]      .= T₀
+    parent(model.tracers.S)[solution_indices...]      .= S₀
+
+    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= Gⁿu₀
+    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= Gⁿv₀
+    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= Gⁿw₀
+    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= GⁿT₀
+    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= GⁿS₀
+
+    parent(model.timestepper.G⁻.u)[solution_indices...]   .= G⁻u₀
+    parent(model.timestepper.G⁻.v)[solution_indices...]   .= G⁻v₀
+    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= G⁻w₀
+    parent(model.timestepper.G⁻.T)[solution_indices...]   .= G⁻T₀
+    parent(model.timestepper.G⁻.S)[solution_indices...]   .= G⁻S₀
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
@@ -115,15 +144,22 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
                                      v = Array(interior(model.velocities.v)),
-                                     w = Array(interior(model.velocities.w)[:, :, 1:N]),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:nz]),
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    correct_fields = (u = Array(solution₁.u)[2:N+1, 2:N+1, 2:N+1],
-                      v = Array(solution₁.v)[2:N+1, 2:N+1, 2:N+1],
-                      w = Array(solution₁.w)[2:N+1, 2:N+1, 2:N+1],
-                      T = Array(solution₁.T)[2:N+1, 2:N+1, 2:N+1],
-                      S = Array(solution₁.S)[2:N+1, 2:N+1, 2:N+1])
+    u₁ = partition_global_array(cpu_arch, ArrayType(solution₁.u), size(solution₁.u))
+    v₁ = partition_global_array(cpu_arch, ArrayType(solution₁.v), size(solution₁.v))
+    w₁ = partition_global_array(cpu_arch, ArrayType(solution₁.w), size(solution₁.w))
+    T₁ = partition_global_array(cpu_arch, ArrayType(solution₁.T), size(solution₁.T))
+    S₁ = partition_global_array(cpu_arch, ArrayType(solution₁.S), size(solution₁.S))
+
+
+    correct_fields = (u = u₁[2:nx+1, 2:ny+1, 2:nz+1],
+                      v = v₁[2:nx+1, 2:ny+1, 2:nz+1],
+                      w = w₁[2:nx+1, 2:ny+1, 2:nz+1],
+                      T = T₁[2:nx+1, 2:ny+1, 2:nz+1],
+                      S = S₁[2:nx+1, 2:ny+1, 2:nz+1])
 
     summarize_regression_test(test_fields, correct_fields)
 
