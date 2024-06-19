@@ -43,35 +43,6 @@ _intrinsic_ reference frames are equivalent
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
-@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
-
-    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
-    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
-    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
-
-    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
-
-    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
-    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
-    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
-
-    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
-
-    𝒰 = sqrt(ũ^2 + ṽ^2)
-
-    u  = getvalue(uᵢ, i, j, k, grid)
-    v  = getvalue(vᵢ, i, j, k, grid)
-    wₑ = getvalue(wᵢ, i, j, k, grid)
-
-    d₁ = ũ / 𝒰
-    d₂ = ṽ / 𝒰
-
-    uₑ = u * d₁ - v * d₂
-    vₑ = u * d₂ + v * d₁
-
-    return uₑ, vₑ, wₑ
-end
-
 @inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
@@ -99,6 +70,35 @@ end
     vᵢ = u * d₂ - v * d₁
 
     return uᵢ, vᵢ, wᵢ
+end
+
+@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+
+    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
+    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
+    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
+
+    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
+
+    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
+    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
+    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
+
+    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+
+    𝒰 = sqrt(ũ^2 + ṽ^2)
+
+    u  = getvalue(uᵢ, i, j, k, grid)
+    v  = getvalue(vᵢ, i, j, k, grid)
+    wₑ = getvalue(wᵢ, i, j, k, grid)
+
+    d₁ = ũ / 𝒰
+    d₂ = ṽ / 𝒰
+
+    uₑ = u * d₁ - v * d₂
+    vₑ = u * d₂ + v * d₁
+
+    return uₑ, vₑ, wₑ
 end
 
 #####
