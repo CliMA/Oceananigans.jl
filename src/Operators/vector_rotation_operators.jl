@@ -39,6 +39,10 @@ _intrinsic_ reference frames are equivalent
 @inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
 
+
+
+# Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
+# i.e. curvilinear grids defined on a sphere which are locally orthogonal.
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
