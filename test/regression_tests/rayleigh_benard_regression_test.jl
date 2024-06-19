@@ -1,6 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
@@ -163,17 +163,19 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                       b = Array(interior(model.tracers.b)),
                                       c = Array(interior(model.tracers.c)))
 
-    u₁ = partition_global_array(cpu_arch, ArrayType(solution₁.u), size(solution₁.u))
-    v₁ = partition_global_array(cpu_arch, ArrayType(solution₁.v), size(solution₁.v))
-    w₁ = partition_global_array(cpu_arch, ArrayType(solution₁.w), size(solution₁.w))
-    b₁ = partition_global_array(cpu_arch, ArrayType(solution₁.b), size(solution₁.b))
-    c₁ = partition_global_array(cpu_arch, ArrayType(solution₁.c), size(solution₁.c))
+    global_grid = reconstruct_global_grid(model.grid)
 
-    correct_fields = (u = u₁,
-                      v = v₁,
-                      w = w₁,
-                      b = b₁,
-                      c = c₁)
+    u₁ = interior(solution₁.u, global_grid)
+    v₁ = interior(solution₁.v, global_grid)
+    w₁ = interior(solution₁.w, global_grid)
+    b₁ = interior(solution₁.b, global_grid)
+    c₁ = interior(solution₁.c, global_grid)
+
+    correct_fields = (u = partition_global_array(cpu_arch, ArrayType(u₁), size(u₁)),
+                      v = partition_global_array(cpu_arch, ArrayType(v₁), size(v₁)),
+                      w = partition_global_array(cpu_arch, ArrayType(w₁), size(w₁)),
+                      b = partition_global_array(cpu_arch, ArrayType(b₁), size(b₁)),
+                      c = partition_global_array(cpu_arch, ArrayType(c₁), size(c₁)))
 
     summarize_regression_test(test_fields, correct_fields)
 
