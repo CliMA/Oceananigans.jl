@@ -65,6 +65,15 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
+    rightmost_interface_index(topology, N)
+
+Return the index of the rightmost cell interface for a grid with `topology` and `N` cells.
+"""
+rightmost_interface_index(::Bounded, N) = N + 1
+rightmost_interface_index(::Periodic, N) = N + 1
+rightmost_interface_index(::Flat, N) = N
+
+"""
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
 
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
@@ -99,9 +108,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     Nx, Ny, Nz = size(grid)
 
     # Find index of the "rightmost" cell interface
-    iᴿ = length(f, tx, Nx) + ifelse(tx == Periodic(), 1, 0)
-    jᴿ = length(f, ty, Ny) + ifelse(ty == Periodic(), 1, 0)
-    kᴿ = length(f, tz, Nz) + ifelse(tz == Periodic(), 1, 0)
+    iᴿ = rightmost_interface_index(tx, Nx)
+    jᴿ = rightmost_interface_index(ty, Ny)
+    kᴿ = rightmost_interface_index(tz, Nz)
 
     xᴸ = xnode(1, j, k, grid, f, f, f)
     yᴸ = ynode(i, 1, k, grid, f, f, f)
