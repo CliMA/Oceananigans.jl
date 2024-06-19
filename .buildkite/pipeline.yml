@@ -3,7 +3,6 @@ env:
   JULIA_MINOR_VERSION: "1.10"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
 
 steps:
@@ -415,33 +414,6 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "abstract_operations"
-      CUDA_VISIBLE_DEVICES: "-1"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    depends_on: "init_cpu"
-
-#####
-##### Cubed sphere
-#####
-
-  - label: "🐡 gpu cubed sphere tests"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "cubed_sphere"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    depends_on: "init_gpu"
-
-  - label: "🦔 cpu cubed sphere tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "cubed_sphere"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"

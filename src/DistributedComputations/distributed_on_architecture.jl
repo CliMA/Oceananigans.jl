@@ -1,5 +1,6 @@
 using CUDA: CuArray
 using OffsetArrays
+
 import Oceananigans.Architectures: on_architecture
 
 # We do not support switching from distributed and serial through `on_architecture`.

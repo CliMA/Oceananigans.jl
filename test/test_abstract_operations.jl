@@ -134,6 +134,10 @@ for arch in archs
             @test ZeroField() / 1 == ZeroField()
             @test 1 / ZeroField() == ConstantField(Inf)
 
+            @test ZeroField() + ZeroField() == ZeroField()
+            @test ZeroField() - ZeroField() == ZeroField()
+            @test ZeroField() * ZeroField() == ZeroField()
+
             @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
             @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
             @test compute!(Field(ConstantField(1) * u)) == compute!(Field(1 * u))

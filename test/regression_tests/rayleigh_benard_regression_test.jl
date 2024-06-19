@@ -34,19 +34,25 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(i, grid, Center()), znode(k, grid, Center())) - model_fields.c[i, j, k])
+
+    function Fc(i, j, k, grid, clock, model_fields)
+        x = xnode(i, grid, Center())
+        z = znode(k, grid, Center())
+        return 1/10 * (c★(x, z) - model_fields.c[i, j, k])
+    end
+
+    cforcing = Forcing(Fc, discrete_form=true)
 
     bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0.0),
                                    bottom = BoundaryCondition(Value, Δb))
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                    closure = ScalarDiffusivity(ν=ν, κ=κ),
-                    tracers = (:b, :c),
-                   buoyancy = Buoyancy(model=BuoyancyTracer()),
-        boundary_conditions = (b=bbcs,),
-                    forcing = (c=Forcing(Fc, discrete_form=true),)
-    )
+    model = NonhydrostaticModel(; grid,
+                                closure = ScalarDiffusivity(ν=ν, κ=κ),
+                                tracers = (:b, :c),
+                                buoyancy = Buoyancy(model=BuoyancyTracer()),
+                                boundary_conditions = (; b=bbcs),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                forcing = (; c=cforcing))
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
@@ -119,7 +125,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     # Step the model forward and perform the regression test
     update_state!(model)
 
-    model.timestepper.previous_Δt = Δt
+    model.clock.last_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)

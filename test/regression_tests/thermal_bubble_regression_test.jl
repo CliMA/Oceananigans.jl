@@ -11,8 +11,13 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     end
 
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure, coriolis=FPlane(f=1e-4),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
+    model = NonhydrostaticModel(; grid, closure,
+                                coriolis = FPlane(f=1e-4),
+                                buoyancy = SeawaterBuoyancy(),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                tracers = (:T, :S))
+
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85

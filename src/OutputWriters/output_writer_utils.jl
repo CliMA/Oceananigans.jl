@@ -12,6 +12,12 @@ using Oceananigans.Utils: AbstractSchedule
 ##### Output writer utilities
 #####
 
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+initialize!(::NoFileSplitting, model) = nothing
+
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
     path :: String
@@ -27,7 +33,6 @@ The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
-
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
 
 function Base.summary(fsl::FileSizeLimit)
@@ -46,11 +51,6 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
 end 
-
-struct NoFileSplitting end
-(::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
-Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 
 """
     ext(ow)
@@ -160,7 +160,6 @@ end
 function serializeproperty!(file, address, ts::QuasiAdamsBashforth2TimeStepper)
     serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, address * "/G⁻", ts.G⁻)
-    serializeproperty!(file, address * "/previous_Δt", ts.previous_Δt)
     return nothing
 end
 

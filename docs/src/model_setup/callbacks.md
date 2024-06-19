@@ -56,12 +56,12 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=1, stop_iteration=10)
 
-function modify_tendecy!(model, params)
+function modify_tendency!(model, params)
     model.timestepper.Gⁿ[params.c] .+= params.δ
     return nothing
 end
 
-simulation.callbacks[:modify_u] = Callback(modify_tendecy!, IterationInterval(1),
+simulation.callbacks[:modify_u] = Callback(modify_tendency!, IterationInterval(1),
                                            callsite = TendencyCallsite(),
                                            parameters = (c = :u, δ = 1))
 

@@ -85,9 +85,17 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                                 auxiliary_fields,
                                 diffusivities)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
-    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
+    u_kernel_args = tuple(start_momentum_kernel_args...,
+                          u_immersed_bc, end_momentum_kernel_args...,
+                          forcings, hydrostatic_pressure, clock)
+
+    v_kernel_args = tuple(start_momentum_kernel_args...,
+                          v_immersed_bc, end_momentum_kernel_args...,
+                          forcings, hydrostatic_pressure, clock)
+
+    w_kernel_args = tuple(start_momentum_kernel_args...,
+                          w_immersed_bc, end_momentum_kernel_args...,
+                          forcings, hydrostatic_pressure, clock)
 
     for parameters in kernel_parameters
         launch!(arch, grid, parameters, compute_Gu!, 
@@ -104,7 +112,8 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     end
 
     start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
+    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
+                                tracers, auxiliary_fields, diffusivities)
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index + 3]

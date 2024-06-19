@@ -169,6 +169,10 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
+    if architecture == GPU() && !has_cuda() 
+        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
+    end
+
     radius = FT(radius)
 
     TX, TY, TZ = topology
@@ -179,7 +183,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
-    ξη_grid = RectilinearGrid(architecture, FT;
+    # construct the grid on CPU and convert to architecture later...
+    ξη_grid = RectilinearGrid(CPU(), FT;
                               size=(Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
                               x=ξ, y=η, z, halo)
@@ -562,44 +567,45 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     warnings = false
 
-    λᶜᶜᵃ = add_halos(λᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    λᶠᶜᵃ = add_halos(λᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    λᶜᶠᵃ = add_halos(λᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    λᶠᶠᵃ = add_halos(λᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
+    args = topology, (Nξ, Nη, Nz), (Hx, Hy, Hz)
 
-    φᶜᶜᵃ = add_halos(φᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    φᶠᶜᵃ = add_halos(φᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    φᶜᶠᵃ = add_halos(φᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    φᶠᶠᵃ = add_halos(φᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
+     λᶜᶜᵃ = add_halos(λᶜᶜᵃ,  (Center, Center, Nothing), args...; warnings)
+     λᶠᶜᵃ = add_halos(λᶠᶜᵃ,  (Face,   Center, Nothing), args...; warnings)
+     λᶜᶠᵃ = add_halos(λᶜᶠᵃ,  (Center, Face,   Nothing), args...; warnings)
+     λᶠᶠᵃ = add_halos(λᶠᶠᵃ,  (Face,   Face,   Nothing), args...; warnings)
 
-    Δxᶜᶜᵃ = add_halos(Δxᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δxᶠᶜᵃ = add_halos(Δxᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δxᶜᶠᵃ = add_halos(Δxᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δxᶠᶠᵃ = add_halos(Δxᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
+     φᶜᶜᵃ = add_halos(φᶜᶜᵃ,  (Center, Center, Nothing), args...; warnings)
+     φᶠᶜᵃ = add_halos(φᶠᶜᵃ,  (Face,   Center, Nothing), args...; warnings)
+     φᶜᶠᵃ = add_halos(φᶜᶠᵃ,  (Center, Face,   Nothing), args...; warnings)
+     φᶠᶠᵃ = add_halos(φᶠᶠᵃ,  (Face,   Face,   Nothing), args...; warnings)
 
-    Δyᶜᶜᵃ = add_halos(Δyᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δyᶠᶜᵃ = add_halos(Δyᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δyᶜᶠᵃ = add_halos(Δyᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Δyᶠᶠᵃ = add_halos(Δyᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
+    Δxᶜᶜᵃ = add_halos(Δxᶜᶜᵃ, (Center, Center, Nothing), args...; warnings)
+    Δxᶠᶜᵃ = add_halos(Δxᶠᶜᵃ, (Face,   Center, Nothing), args...; warnings)
+    Δxᶜᶠᵃ = add_halos(Δxᶜᶠᵃ, (Center, Face,   Nothing), args...; warnings)
+    Δxᶠᶠᵃ = add_halos(Δxᶠᶠᵃ, (Face,   Face,   Nothing), args...; warnings)
 
-    Azᶜᶜᵃ = add_halos(Azᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Azᶠᶜᵃ = add_halos(Azᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
-    Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
+    Δyᶜᶜᵃ = add_halos(Δyᶜᶜᵃ, (Center, Center, Nothing), args...; warnings)
+    Δyᶠᶜᵃ = add_halos(Δyᶠᶜᵃ, (Face,   Center, Nothing), args...; warnings)
+    Δyᶜᶠᵃ = add_halos(Δyᶜᶠᵃ, (Center, Face,   Nothing), args...; warnings)
+    Δyᶠᶠᵃ = add_halos(Δyᶠᶠᵃ, (Face,   Face,   Nothing), args...; warnings)
 
-    # convert to
-    coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
-    coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
+    Azᶜᶜᵃ = add_halos(Azᶜᶜᵃ, (Center, Center, Nothing), args...; warnings)
+    Azᶠᶜᵃ = add_halos(Azᶠᶜᵃ, (Face,   Center, Nothing), args...; warnings)
+    Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), args...; warnings)
+    Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), args...; warnings)
+
+    coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                         φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
+                         zᵃᵃᶜ, zᵃᵃᶠ)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
-    metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
 
     conformal_mapping = (; ξ, η, rotation)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
@@ -607,11 +613,31 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     fill_metric_halo_regions!(grid)
 
+    # now convert to proper architecture
+
+    coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
+                         grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
+                         grid.zᵃᵃᶜ, grid.zᵃᵃᶠ)
+
+    metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
+                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
+                     grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
+
+    coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
+
+    metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
+
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+                                                    coordinate_arrays...,
+                                                    metric_arrays...,
+                                                    radius,
+                                                    conformal_mapping)
     return grid
 end
 
 """
-    function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+    fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
 Fill the `x`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
 and topology `tx`, `ty`.
@@ -659,7 +685,7 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, t
 end
 
 """
-    function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
+    fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
 
 Fill the `y`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`,
 and topology `tx`, `ty`.
@@ -742,12 +768,13 @@ function fill_metric_halo_regions!(grid)
     Hx, Hy, _ = halo_size(grid)
     TX, TY, _ = topology(grid)
 
-    metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
-                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
-                     grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
+    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ = grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ
+    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ = grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ
+    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ
 
-    LXs = (Center, Face, Center, Face, Center, Center, Face, Face, Center, Face, Center, Face)
-    LYs = (Center, Center, Face, Face, Center, Face, Center, Face, Center, Center, Face, Face)
+    metric_arrays = (Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ, Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ, Azᶜᶜᵃ,  Azᶠᶜᵃ,  Azᶜᶠᵃ,  Azᶠᶠᵃ)
+    LXs           = (Center, Face,   Center, Face,  Center, Center, Face,   Face,  Center, Face,   Center, Face)
+    LYs           = (Center, Center, Face,   Face,  Center, Face,   Center, Face,  Center, Center, Face,   Face)
 
     for (metric, LX, LY) in zip(metric_arrays, LXs, LYs)
         fill_metric_halo_regions_x!(metric, LX(), LY(), TX(), TY(), Nx, Ny, Hx, Hy)
@@ -774,50 +801,40 @@ conformal_cubed_sphere_panel(FT::DataType; kwargs...) = conformal_cubed_sphere_p
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
-    ii = interior_indices(loc[1](), topo[1](), N[1])
-    jj = interior_indices(loc[2](), topo[2](), N[2])
+    data = on_architecture(arch, file[field_name])
+    data = convert.(FT, data)
 
-    interior_data = on_architecture(arch, file[field_name][ii, jj])
-
-    underlying_data = zeros(FT, arch,
-                            total_length(loc[1](), topo[1](), N[1], H[1]),
-                            total_length(loc[2](), topo[2](), N[2], H[2]))
-
-    ip = interior_parent_indices(loc[1](), topo[1](), N[1], H[1])
-    jp = interior_parent_indices(loc[2](), topo[2](), N[2], H[2])
-
-    view(underlying_data, ip, jp) .= interior_data
-
-    return offset_data(underlying_data, loc[1:2], topo[1:2], N[1:2], H[1:2])
+    return offset_data(data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
 function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       panel, Nz, z,
-                                      topology = (Bounded, Bounded, Bounded),
+                                      topology = (FullyConnected, FullyConnected, Bounded),
                                         radius = R_Earth,
-                                          halo = (1, 1, 1),
+                                          halo = (4, 4, 4),
                                       rotation = nothing)
 
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
-    ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξ, η = (-1, 1), (-1, 1)
-    ξη_grid = RectilinearGrid(architecture, FT; size = (1, 1, Nz), x = ξ, y = η, z, topology, halo)
+    z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
 
-     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
-     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
-    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
-    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
-    Lz    = ξη_grid.Lz
+     zᵃᵃᶠ = z_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = z_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = z_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = z_grid.Δzᵃᵃᶠ
+    Lz    = z_grid.Lz
 
     ## Read everything else from the file
 
-    file = jldopen(filepath, "r")["face$panel"]
+    file = jldopen(filepath, "r")["panel$panel"]
 
-    Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
+    Nξ, Nη = size(file["λᶠᶠᵃ"])
+    Hξ, Hη = halo[1], halo[2]
+    Nξ -= 2Hξ
+    Nη -= 2Hη
 
     N = (Nξ, Nη, Nz)
     H = halo
@@ -859,7 +876,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    conformal_mapping = (; ξ, η)
+    conformal_mapping = (ξ = (-1, 1), η = (-1, 1))
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -902,8 +919,8 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                         :Azᶜᶠᵃ,
                         :Azᶠᶠᵃ)
 
-    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
+    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
 
     TX, TY, TZ = topology(grid)
@@ -994,20 +1011,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = CUDA.@allowscalar λnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = CUDA.@allowscalar φnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
     elseif mod(Ny, 2) == 1
-        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
+        extent_λ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
     end
 
     if mod(Nx, 2) == 0
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     elseif mod(Nx, 2) == 1
-        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
+        extent_φ = CUDA.@allowscalar maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     end
 
     return (λ_center, φ_center), (extent_λ, extent_φ)

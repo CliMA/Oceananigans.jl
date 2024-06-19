@@ -141,7 +141,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 27.4 KiB
+└── file size: 27.2 KiB
 ```
 
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
@@ -159,7 +159,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 17.5 KiB
+└── file size: 17.3 KiB
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
@@ -178,6 +178,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
+    initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 

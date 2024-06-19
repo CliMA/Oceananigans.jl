@@ -1,12 +1,12 @@
 module Fields
 
 export Face, Center
-export AbstractField, Field, Average, Integral, Reduction, field
+export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
+export VelocityFields, TracerFields, TendencyFields, tracernames
 export interpolate
 
 using Oceananigans.Architectures
@@ -21,7 +21,7 @@ include("constant_field.jl")
 include("function_field.jl")
 include("field_boundary_buffers.jl")
 include("field.jl")
-include("field_reductions.jl")
+include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
@@ -32,7 +32,7 @@ include("broadcasting_abstract_fields.jl")
 """
     field(loc, a, grid)
 
-Build a field from `a` at `loc` and on `grid`.
+Build a field from array `a` at `loc` and on `grid`.
 """
 @inline function field(loc, a::AbstractArray, grid)
     f = Field(loc, grid)
