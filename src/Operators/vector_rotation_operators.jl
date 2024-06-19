@@ -43,6 +43,9 @@ _intrinsic_ reference frames are equivalent
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
+# If the coordinates match with the coordinates of a latitude-longitude grid
+# (i.e. globally orthogonal), these functions collapse to 
+# uₑ, vₑ, wₑ = uᵢ, vᵢ, wᵢ
 @inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
