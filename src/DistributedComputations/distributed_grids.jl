@@ -160,6 +160,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
+# Fallback!
+reconstruct_global_grid(grid::AbstractGrid) = grid
+
 """
     reconstruct_global_grid(grid::DistributedGrid)
 
