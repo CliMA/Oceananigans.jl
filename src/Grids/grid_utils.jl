@@ -175,7 +175,9 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::Number) = ξ, ξ
+@inline domain(::Flat, N, ::Nothing) = nothing, nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
@@ -333,7 +335,9 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
-dimension_summary(topo::Flat, name, args...) = "Flat $name"
+
+domain_summary(topo::Flat, name, ::Nothing, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, left::Number, right::Number) = "Flat $name = $left"
 
 function domain_summary(topo, name, left, right)
     interval = (topo isa Bounded) ||
@@ -353,12 +357,13 @@ end
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, left, right)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(spacing, name))
+    return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+coordinate_summary(::Flat, Δ::Number, name) = ""
+coordinate_summary(topo, Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 
-coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))

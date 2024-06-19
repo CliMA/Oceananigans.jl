@@ -420,12 +420,12 @@ coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃ�
 ηname(::RG) = :y
 rname(::RG) = :z
 
-@inline xnode(i, grid::RG, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(i, grid::RG, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
-@inline ynode(j, grid::RG, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(j, grid::RG, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
-@inline znode(k, grid::RG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(k, grid::RG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+@inline xnode(i, grid::RG, ::Center) = getnode(grid.xᶜᵃᵃ, i)
+@inline xnode(i, grid::RG, ::Face)   = getnode(grid.xᶠᵃᵃ, i)
+@inline ynode(j, grid::RG, ::Center) = getnode(grid.yᵃᶜᵃ, j)
+@inline ynode(j, grid::RG, ::Face)   = getnode(grid.yᵃᶠᵃ, j)
+@inline znode(k, grid::RG, ::Center) = getnode(grid.zᵃᵃᶜ, k)
+@inline znode(k, grid::RG, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
 
 @inline ξnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ηnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)

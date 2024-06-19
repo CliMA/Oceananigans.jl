@@ -121,13 +121,11 @@ end
 
 # Flat domains
 generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
-    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), nothing, nothing
-    #FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
 
 generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
-    FT(1), c, c, nothing, nothing
+    FT(1), c, c, FT(1), FT(1)
 
 generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
-    FT(1), nothing, nothing, nothing, nothing
-    #generate_coordinate(FT, Flat(), N, H, 0, coordinate_name, arch)
+    FT(1), nothing, nothing, FT(1), FT(1)
 

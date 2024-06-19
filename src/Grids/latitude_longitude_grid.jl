@@ -582,12 +582,12 @@ coordinates(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ
 ηname(::LLG) = :φ
 rname(::LLG) = :z
 
-@inline λnode(i, grid::LLG, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
-@inline λnode(i, grid::LLG, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
-@inline φnode(j, grid::LLG, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
-@inline φnode(j, grid::LLG, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
-@inline znode(k, grid::LLG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(k, grid::LLG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+@inline λnode(i, grid::LLG, ::Center) = getnode(grid.λᶜᵃᵃ, i)
+@inline λnode(i, grid::LLG, ::Face)   = getnode(grid.λᶠᵃᵃ, i)
+@inline φnode(j, grid::LLG, ::Center) = getnode(grid.φᵃᶜᵃ, j)
+@inline φnode(j, grid::LLG, ::Face)   = getnode(grid.φᵃᶠᵃ, j)
+@inline znode(k, grid::LLG, ::Center) = getnode(grid.zᵃᵃᶜ, k)
+@inline znode(k, grid::LLG, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
 
 # Definitions for node
 @inline ξnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λnode(i, grid, ℓx)
