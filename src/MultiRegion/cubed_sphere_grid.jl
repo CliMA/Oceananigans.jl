@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: ConformalCubedSphere,
+using Oceananigans.Grids: ConformalCubedSpherePanelGrid,
                           R_Earth,
                           halo_size,
                           size_summary,
