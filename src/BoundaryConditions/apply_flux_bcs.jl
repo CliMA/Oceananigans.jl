@@ -83,11 +83,11 @@ Apply a top and/or bottom boundary condition to variable `c`.
 end
 
 # Shortcuts for zero flux or non-flux boundary conditions
-@inline apply_x_east_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_x_west_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_y_north_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_y_south_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_z_top_bc!(   Gc, loc, ::NotFluxBC, args...) = nothing
+@inline   apply_x_east_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline   apply_x_west_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline  apply_y_north_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline  apply_y_south_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline    apply_z_top_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 @inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
 @inline flip(::Center) = Face()

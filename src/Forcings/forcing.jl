@@ -1,7 +1,7 @@
 """
     Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=false)
 
-Returns a forcing function added to the tendency of an Oceananigans model field.
+Return a `Forcing` `func`tion, which can be added to the tendency of a model field.
 
 If `discrete_form=false` (the default), and neither `parameters` nor `field_dependencies`
 are provided, then `func` must be callable with the signature
@@ -19,7 +19,7 @@ the signature of `func` must include them. For example, if `field_dependencies=(
 (and `parameters` are _not_ provided), then `func` must be callable with the signature
 
 ```
-func(x, y, z, t, u, S)`
+func(x, y, z, t, u, S)
 ```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field
@@ -74,7 +74,7 @@ parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
 v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}}
+ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, ω::Irrational{:π}}}
 ├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
@@ -90,7 +90,7 @@ model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
 model.forcing.v
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}} at (Center, Face, Center)
+ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, ω::Irrational{:π}}} at (Center, Face, Center)
 ├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
@@ -121,7 +121,7 @@ c_forcing = Forcing(tracer_relaxation,
                             parameters = (μ=1/60, λ=10, H=1000, dCdz=1))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz), Tuple{Float64, Int64, Int64, Int64}}}
+ContinuousForcing{@NamedTuple{μ::Float64, λ::Int64, H::Int64, dCdz::Int64}}
 ├── func: tracer_relaxation (generic function with 1 method)
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
 └── field dependencies: (:c,)
@@ -148,7 +148,7 @@ masked_damping(i, j, k, grid, clock, model_fields, parameters) =
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 
 # output
-DiscreteForcing{NamedTuple{(:μ, :λ), Tuple{Int64, Irrational{:π}}}}
+DiscreteForcing{@NamedTuple{μ::Int64, λ::Irrational{:π}}}
 ├── func: masked_damping (generic function with 1 method)
 └── parameters: (μ = 42, λ = π)
 ```
@@ -160,4 +160,16 @@ function Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=
         return ContinuousForcing(func; parameters=parameters, field_dependencies=field_dependencies)
     end
 end
+
+# Support the case that forcing data is loaded in a 3D array:
+@inline array_forcing_func(i, j, k, grid, clock, fields, a) = @inbounds a[i, j, k]
+
+"""
+    Forcing(array::AbstractArray)
+
+Return a `Forcing` by `array`, which can be added to the tendency of a model field.
+
+Forcing is computed by calling `array[i, j, k]`, so `array` must be 3D with `size(grid)`.
+"""
+Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, parameters=array)
 

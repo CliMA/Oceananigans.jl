@@ -7,7 +7,7 @@ using Oceananigans.Units
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.Grids: boundary_node, inactive_node, peripheral_node
@@ -57,7 +57,7 @@ pickup_file   = false
 
 using DataDeps
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
+path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/quarter_degree_near_global_input_data/"
 
 datanames = ["tau_x-1440x600-latitude-75",
              "tau_y-1440x600-latitude-75",
@@ -84,8 +84,8 @@ end
 # Files contain 1 year (1992) of 12 monthly averages
 τˣ = file_tau_x["field"] ./ reference_density
 τʸ = file_tau_y["field"] ./ reference_density
-τˣ = arch_array(arch, τˣ)
-τʸ = arch_array(arch, τʸ)
+τˣ = on_architecture(arch, τˣ)
+τʸ = on_architecture(arch, τʸ)
 
 bat = file_bathymetry["bathymetry"]
 boundary = Int.(bat .> 0)

@@ -2,7 +2,7 @@ using Oceananigans.Advection
 using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.StokesDrift
+using Oceananigans.StokesDrifts
 
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
@@ -70,13 +70,13 @@ pressure anomaly.
 
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+             + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
-             + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.u(i, j, k, grid, clock, model_fields))
 end
 
@@ -133,15 +133,20 @@ pressure anomaly.
 
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+             + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
-             + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              + forcings.v(i, j, k, grid, clock, model_fields))
 end
+
+# Only add buoyancy if the hydrostatic pressure isa Nothing
+@inline maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, hydrostatic_pressure, buoyancy, tracers) = zero(grid)
+@inline maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, ::Nothing, buoyancy, tracers) =
+    z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
 
 """
     $(SIGNATURES)
@@ -181,6 +186,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      auxiliary_fields,
                                      diffusivities,
                                      forcings,
+                                     hydrostatic_pressure,
                                      clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -193,6 +199,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+             + maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, hydrostatic_pressure, buoyancy, tracers)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
@@ -262,4 +269,3 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
-

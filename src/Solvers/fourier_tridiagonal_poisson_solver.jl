@@ -20,7 +20,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds D[1, j, k] = -1 / Δxᶠᵃᵃ(2, j, k, grid) - Δxᶜᵃᵃ(1, j, k, grid) * (λy[j] + λz[k])
-    @unroll for i in 2:Nx-1
+    for i in 2:Nx-1
         @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
     end
     @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
@@ -32,7 +32,7 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds D[i, 1, k] = -1 / Δyᵃᶠᵃ(i, 2, k, grid) - Δyᵃᶜᵃ(i, 1, k, grid) * (λx[i] + λz[k])
-    @unroll for j in 2:Ny-1
+    for j in 2:Ny-1
         @inbounds D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
     end
     @inbounds D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
@@ -44,7 +44,7 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
-    @unroll for k in 2:Nz-1
+    for k in 2:Nz-1
         @inbounds D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
     @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
@@ -75,20 +75,20 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
 
     arch = architecture(grid)
-    λ1 = arch_array(arch, λ1)
-    λ2 = arch_array(arch, λ2)
+    λ1 = on_architecture(arch, λ1)
+    λ2 = on_architecture(arch, λ2)
 
     # Plan required transforms for x and y
-    sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    sol_storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
     lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
-    lower_diagonal = arch_array(arch, lower_diagonal)
+    lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
-    diagonal = arch_array(arch, zeros(size(grid)...))
+    diagonal = on_architecture(arch, zeros(size(grid)...))
     launch_config = if grid isa YZRegularRG
                         :yz
                     elseif grid isa XZRegularRG
@@ -108,7 +108,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
-    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    rhs = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
 end

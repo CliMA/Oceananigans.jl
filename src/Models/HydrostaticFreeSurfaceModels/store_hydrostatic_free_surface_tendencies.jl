@@ -1,9 +1,10 @@
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.TimeSteppers:  store_field_tendencies!
+using Oceananigans.TimeSteppers: store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.ImmersedBoundaries: active_interior_map
 
 using Oceananigans.Utils: launch!
 
@@ -18,7 +19,6 @@ end
 store_free_surface_tendency!(free_surface, model) = nothing
 
 function store_free_surface_tendency!(::ExplicitFreeSurface, model)
-
     launch!(model.architecture, model.grid, :xy,
             _store_free_surface_tendency!,
             model.timestepper.G⁻.η,
@@ -31,17 +31,22 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
     prognostic_field_names = keys(prognostic_fields(model))
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
 
+    closure = model.closure
+
     for field_name in three_dimensional_prognostic_field_names
 
-        launch!(model.architecture, model.grid, :xyz,
-                store_field_tendencies!,
-                model.timestepper.G⁻[field_name],
-                model.grid,
-                model.timestepper.Gⁿ[field_name])
-
+        if closure isa FlavorOfCATKE && field_name == :e
+            @debug "Skipping store tendencies for e"
+        else
+            launch!(model.architecture, model.grid, :xyz,
+                    store_field_tendencies!,
+                    model.timestepper.G⁻[field_name],
+                    model.timestepper.Gⁿ[field_name])
+        end
     end
 
     store_free_surface_tendency!(model.free_surface, model)
 
     return nothing
 end
+
