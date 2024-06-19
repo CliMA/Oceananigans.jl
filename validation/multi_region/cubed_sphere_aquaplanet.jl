@@ -205,7 +205,7 @@ end
 end
 
 @inline linear_profile_in_z(z, p) = 1 + z/p.Lz
-@inline exponential_profile_in_z(z, p) = (exp(z/p.h) - exp(-p.Lz/p.h))/(1 - exp(-p.Lz/p.h))
+@inline exponential_profile_in_z(z, Lz, h) = (exp(z / h) - exp(- Lz / h)) / (1 - exp(- Lz / h))
 
 @inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_b_lin
 @inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_b_par)^2
@@ -259,21 +259,38 @@ tracer_advection   = WENO()
 substeps           = 20
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-κh = 1e+3
-horizontal_diffusivity = HorizontalScalarDiffusivity(κ=κh) # Laplacian viscosity and diffusivity
-
 # Filter width squared, expressed as a harmonic mean of x and y spacings
 @inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2
                                                       + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
+
 # Use a biharmonic viscosity for momentum. Define the viscosity function as gridsize^4 divided by the timescale.
 @inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, p) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / p.λ_rts
+
 biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
                                                              parameters = (; λ_rts = my_parameters.λ_rts))
 
+κh = 1e+3
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ = κh) # Laplacian viscosity and diffusivity
+
 νz_surface = 5e-3
 νz_bottom = 1e-4
-my_νz_parameters = (; Lz = my_parameters.Lz, h = my_parameters.h)
-@inline νz(x, y, z, t) = νz_bottom + (νz_surface - νz_bottom) * exponential_profile_in_z(z, my_νz_parameters)
+
+struct MyViscosity{FT} <: Function
+    Lz  :: FT
+    h   :: FT
+    νzs :: FT
+    νzb :: FT
+end
+
+using Adapt
+
+Adapt.adapt_structure(to, ν::MyViscosity) = MyViscosity(Adapt.adapt(to, ν.Lz),  Adapt.adapt(to, ν.h),
+                                                        Adapt.adapt(to, ν.νzs), Adapt.adapt(to, ν.νzb))
+
+@inline (ν::MyViscosity)(x, y, z, t) = ν.νzb + (ν.νzs - ν.νzb) * exponential_profile_in_z(z, ν.Lz, ν.h)
+
+νz = MyViscosity(float(Lz), h, νz_surface, νz_bottom)
+
 κz = 2e-5
 
 vertical_diffusivity  = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
@@ -299,7 +316,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 #####
 
 @inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * cosine_profile_in_y(φ, my_buoyancy_parameters)
-                                     * exponential_profile_in_z(z, my_buoyancy_parameters))
+                                     * exponential_profile_in_z(z, my_parameters.Lz, my_parameters.h))
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
