@@ -492,6 +492,3 @@ const C = Center
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
-
-@inline intrinsic_vector(i, j, k, grid::RectilinearGrid, uₑ, vₑ, wₑ) = uₑ, vₑ, wₑ
-@inline extrinsic_vector(i, j, k, grid::RectilinearGrid, uₑ, vₑ, wₑ) = uᵢ, vᵢ, wᵢ

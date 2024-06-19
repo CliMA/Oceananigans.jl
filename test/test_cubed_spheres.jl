@@ -88,6 +88,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 vₑ = compute!(Field(vₑ))
 
                 @test all(Array(interior(vₑ)) .≈ 0)
+                @test all(Array(interior(uₑ)) .≈ 1)
             end
 
             @testset "Constructing a HydrostaticFreeSurfaceModel [$(typeof(arch))]" begin

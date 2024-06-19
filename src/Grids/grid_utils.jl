@@ -521,6 +521,7 @@ grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 # TODO: have a general Oceananigans-wide function that retrieves a pointwise
 # value for a function, an array, a number, a field etc?
 # This would be a generalization of `getbc` that could be used everywhere we need it
+@inline getvalue(::Nothing,        i, j, k, grid, args...) = nothing
 @inline getvalue(a::Number,        i, j, k, grid, args...) = a
 @inline getvalue(a::AbstractArray, i, j, k, grid, args...) = @inbounds a[i, j, k]
 
