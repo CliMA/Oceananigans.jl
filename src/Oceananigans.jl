@@ -41,7 +41,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    Average, Integral, Reduction, BackgroundField,
+    Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
     interior, set!, compute!, regrid!, location,
 
     # Forcing functions
@@ -103,7 +103,7 @@ export
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    AndSchedule, OrSchedule,
+    FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -203,6 +203,7 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
@@ -225,7 +226,6 @@ include("Biogeochemistry.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 # include("DistributedComputations/DistributedComputations.jl")
 
-include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models

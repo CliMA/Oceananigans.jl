@@ -70,8 +70,24 @@ function set!(u::Field, f::Function)
 end
 
 function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
-    f = arch_array(architecture(u), f)
-    u .= f
+    f = on_architecture(architecture(u), f)
+
+    try
+        u .= f
+    catch err
+        if err isa DimensionMismatch
+            Nx, Ny, Nz = size(u)
+            u .= reshape(f, Nx, Ny, Nz)
+
+            msg = string("Reshaped ", summary(f),
+                         " to set! its data to ", '\n',
+                         summary(u))
+            @warn msg
+        else
+            throw(err)
+        end
+    end
+
     return u
 end
 
@@ -91,7 +107,7 @@ function set!(u::Field, v::Field)
             interior(u) .= interior(v)
         end
     else
-        v_data = arch_array(architecture(u), v.data)
+        v_data = on_architecture(architecture(u), v.data)
         
         # As above, we permit ourselves a little ambition and try to copy halo data:
         try

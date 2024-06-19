@@ -1,5 +1,3 @@
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
 ##### Kernels that ensure 'no-flux' from second- and fourth-order diffusion operators.
 ##### Kernel functions that ensure 'no-flux' from second- and fourth-order diffusion operators.
 ##### Note that flux divergence associated with a flux boundary condition is added

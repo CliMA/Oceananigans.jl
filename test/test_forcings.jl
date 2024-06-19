@@ -3,6 +3,24 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 
+""" Take one time step with three forcing arrays on u, v, w. """
+function time_step_with_forcing_array(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+    Fu = XFaceField(grid)
+    Fv = YFaceField(grid)
+    Fw = ZFaceField(grid)
+
+    set!(Fu, (x, y, z) -> 1)
+    set!(Fv, (x, y, z) -> 1)
+    set!(Fw, (x, y, z) -> 1)
+
+    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
     @inline Fu(x, y, z, t) = exp(π * z)
@@ -116,7 +134,7 @@ function relaxed_time_stepping(arch)
 end
 
 function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
 
     constant_slip = AdvectiveForcing(w=1)
     zero_slip = AdvectiveForcing(w=0)
@@ -163,6 +181,7 @@ end
             @testset "Non-parameterized forcing functions [$A]" begin
                 @info "      Testing non-parameterized forcing functions [$A]..."
                 @test time_step_with_forcing_functions(arch)
+                @test time_step_with_forcing_array(arch)
                 @test time_step_with_discrete_forcing(arch)
             end
 

@@ -272,7 +272,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     latitude  = validate_dimension_specification(TY, latitude,  :latitude,  Nφ, FT)
     z         = validate_dimension_specification(TZ, z,         :z,         Nz, FT)
 
-    halo = validate_halo(TX, TY, TZ, halo)
+    halo = validate_halo(TX, TY, TZ, size, halo)
     topology = (TX, TY, TZ)
 
     return topology, size, halo, latitude, longitude, z, precompute_metrics
@@ -346,7 +346,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
     return new_grid
 end
 
-function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
+function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
@@ -354,7 +354,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongi
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
                       old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
 
-    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
+    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
 
     TX, TY, TZ = topology(old_grid)
 
@@ -437,10 +437,10 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶜᵃ) - 1 
+@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2 
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
@@ -552,17 +552,17 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     for metric in grid_metrics
         parentM        = Symbol(metric, :_parent)
         @eval $parentM = zeros($FT, $metric_size...)
-        @eval $metric  = OffsetArray(arch_array($arch, $parentM), $offsets...)
+        @eval $metric  = OffsetArray(on_architecture($arch, $parentM), $offsets...)
     end
 
     if grid isa YRegularLLG
-        Δyᶠᶜ = FT(0.0)
-        Δyᶜᶠ = FT(0.0)
+        Δyᶠᶜ = FT(0)
+        Δyᶜᶠ = FT(0)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(arch_array(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(arch_array(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ

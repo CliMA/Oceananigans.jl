@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!, 
                                                         compute_implicit_free_surface_right_hand_side!,
@@ -31,7 +31,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
         bottom = [-1. for j=1:Ny, i=1:Nx]
         bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
 
-        B = arch_array(arch, bottom)
+        B = on_architecture(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
         free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),

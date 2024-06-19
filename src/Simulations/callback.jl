@@ -14,7 +14,8 @@ end
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
-# Fallback initialization: call the schedule, then the callback
+# Fallback initialization: initialize the schedule.
+# Then, if the schedule calls for it, execute the callback.
 function initialize!(callback::Callback, sim)
     initialize!(callback.schedule, sim.model) && callback(sim)
     return nothing
@@ -34,14 +35,14 @@ Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 The `callsite` determines where `Callback` is executed. The possible values for 
 `callsite` are
 
- * `TimeStepCallsite()`: after a time-step.
+* `TimeStepCallsite()`: after a time-step.
 
- * `TendencyCallsite()`: after tendencies are calculated, but before taking
-    a time-step (useful for modifying tendency calculations).
+* `TendencyCallsite()`: after tendencies are calculated, but before taking
+  a time-step (useful for modifying tendency calculations).
 
- * `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
-    been computed (for multi-stage time-steppers, `update_state!` may be called multiple
-    times per time-step).
+* `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
+  been computed (for multi-stage time-steppers, `update_state!` may be called multiple
+  times per time-step).
 """
 function Callback(func, schedule=IterationInterval(1);
                   parameters = nothing,
@@ -100,7 +101,7 @@ Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The defau
 `GenericName()` generates a name of the form `:callbackN`, where `N`
 is big enough for the name to be unique.
 
-If `name` is supplied, it may be modified if `simulation.callbacks[name]`
+If `name::Symbol` is supplied, it may be modified if `simulation.callbacks[name]`
 already exists.
 
 `callback_kw` are passed to the constructor for [`Callback`](@ref).
@@ -119,4 +120,3 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
     callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)
 end
-

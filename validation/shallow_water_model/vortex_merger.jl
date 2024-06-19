@@ -129,7 +129,7 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
     xh, yh, z = nodes((Center, Center, Center), grid)
 
     title = @lift(@sprintf("Vorticity in Shallow Water Model at time = %s", prettytime(file["timeseries/t/" * string($iter)])))
-    fig = CairoMakie.Figure(resolution = (1000, 600))
+    fig = CairoMakie.Figure(size=(1000, 600))
 
     ax = CairoMakie.Axis(fig[1,1], xlabel = "longitude", ylabel = "latitude", title=title)
     heatmap_plot = CairoMakie.heatmap!(ax, yζ, xζ, PV, colormap=Reverse(:balance), colorrange = (-9.0, 9.0))

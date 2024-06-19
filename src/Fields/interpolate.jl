@@ -7,13 +7,15 @@ using Oceananigans.Grids: topology, node,
                           ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
 
+using Oceananigans.Architectures: child_architecture
+
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
     index_binary_search(val, vec, N)
 
-Return indices `low, high` of `vec`tor for which 
+Return indices `low, high` of `vec`tor for which
 
 ```julia
 vec[low] ≤ val && vec[high] ≥ val
@@ -27,9 +29,9 @@ Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/1
     low = 0
     high = N - 1
 
-    while low + 1 < high 
+    while low + 1 < high
         mid = middle_point(low, high)
-        if @inbounds vec[mid + 1] == val 
+        if @inbounds vec[mid + 1] == val
             return (mid + 1, mid + 1)
         elseif @inbounds vec[mid + 1] < val
             low = mid
@@ -55,8 +57,9 @@ end
 end
 
 #####
-##### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
-##### Use other methods if a more accurate interpolation is required
+##### Note: interpolation on LatitudeLongitudeGrid assumes a thin shell
+##### (i.e. curvature effects are not incorporated when interpolating).
+##### Use other methods if a more accurate interpolation is required.
 #####
 
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
@@ -142,7 +145,7 @@ end
 end
 
 """
-    fractional_indices(x, y, z, loc, grid)
+    fractional_indices(x, y, z, grid, loc...)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
@@ -209,6 +212,23 @@ end
 end
 
 """
+    truncate_fractional_indices(fi, fj, fk)
+
+Truncate _fractional_ indices output from fractional indices `fi, fj, fk` to integer indices, dealing
+with `nothing` indices for `Flat` domains.
+"""
+@inline function truncate_fractional_indices(fi, fj, fk)
+    i = truncate_fractional_index(fi)
+    j = truncate_fractional_index(fj)
+    k = truncate_fractional_index(fk)
+    return (i, j, k)
+end
+
+@inline truncate_fractional_index(::Nothing) = 1
+@inline truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
+
+
+"""
     interpolate(at_node, from_field, from_loc, from_grid)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
@@ -249,7 +269,8 @@ left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 
     i⁻ = Base.unsafe_trunc(Int, fractional_idx)
     i⁻ = Int(i⁻ + 1) # convert to "proper" integer?
-    i⁺ = i⁻ + 1
+    shift = Int(sign(fractional_idx))
+    i⁺ = i⁻ + shift
     ξ = mod(fractional_idx, 1)
 
     return (i⁻, i⁺, ξ)
@@ -267,20 +288,20 @@ end
 @inline ϕ₇(ξ, η, ζ) =      ξ  *      η  * (1 - ζ)
 @inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
 
-@inline function _interpolate(data, ix, iy, iz)
+@inline function _interpolate(data, ix, iy, iz, in...)
     # Unpack the "interpolators"
     i⁻, i⁺, ξ = ix
     j⁻, j⁺, η = iy
     k⁻, k⁺, ζ = iz
 
-    return @inbounds ϕ₁(ξ, η, ζ) * data[i⁻, j⁻, k⁻] +
-                     ϕ₂(ξ, η, ζ) * data[i⁻, j⁻, k⁺] +  
-                     ϕ₃(ξ, η, ζ) * data[i⁻, j⁺, k⁻] +
-                     ϕ₄(ξ, η, ζ) * data[i⁻, j⁺, k⁺] +
-                     ϕ₅(ξ, η, ζ) * data[i⁺, j⁻, k⁻] +
-                     ϕ₆(ξ, η, ζ) * data[i⁺, j⁻, k⁺] +
-                     ϕ₇(ξ, η, ζ) * data[i⁺, j⁺, k⁻] +
-                     ϕ₈(ξ, η, ζ) * data[i⁺, j⁺, k⁺]
+    return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
+                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +
+                     ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
+                     ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
+                     ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
+                     ϕ₆(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁺, in...) +
+                     ϕ₇(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁻, in...) +
+                     ϕ₈(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁺, in...)
 end
 
 """
@@ -312,6 +333,12 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     to_arch   = architecture(to_field)
     from_arch = architecture(from_field)
+
+    # In case architectures are `Distributed` we
+    # verify that the fields are on the same child architecture
+    to_arch   = child_architecture(to_arch)
+    from_arch = child_architecture(from_arch)
+
     if !isnothing(from_arch) && to_arch != from_arch
         msg = "Cannot interpolate! because from_field is on $from_arch while to_field is on $to_arch."
         throw(ArgumentError(msg))
@@ -327,6 +354,5 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     fill_halo_regions!(to_field)
 
-    return nothing
+    return to_field
 end
-

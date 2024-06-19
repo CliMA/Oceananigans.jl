@@ -4,8 +4,15 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
-# Define default indices
-default_indices(n) = Tuple(Colon() for i=1:n)
+# Define default indices in a type-stable way
+@inline default_indices(N::Int) = default_indices(Val(N))
+
+@inline function default_indices(::Val{N}) where N
+    ntuple(Val(N)) do n
+        Base.@_inline_meta
+        Colon()
+    end
+end
 
 const BoundedTopology = Union{Bounded, LeftConnected}
 
@@ -64,7 +71,7 @@ Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length
 Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
 Center cells have the location (Center, Center, Center).
 """
-Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 
 """
     halo_size(grid)
@@ -75,14 +82,19 @@ domain in (x, y, z).
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 halo_size(grid, d) = halo_size(grid)[d]
 
-Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
+@inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
-Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
 
-function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
-    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
 end
 
 Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
@@ -115,12 +127,12 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -209,12 +221,34 @@ regular_dimensions(grid) = ()
 @inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
 @inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
+# Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
-parent_index_range(index::UnitRange, ::Nothing, ::Flat, halo) = index
-parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+# Return the index range of parent arrays that are themselves windowed
+parent_index_range(::Colon, args...) = parent_index_range(args...)
+
+function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+    start = first(view_indices) - first(parent_indices) + 1
+    stop = start + length(view_indices) - 1
+    return UnitRange(start, stop)
+end
+
+# intersect_index_range(::Colon, ::Colon) = Colon()
+index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, subset::UnitRange) = true
+index_range_contains(::Colon, ::Colon)           = true
+
+# Note: this choice means subset indices are defined on the whole grid.
+# Thus any UnitRange does not contain `:`.
+index_range_contains(range::UnitRange, subset::Colon) = false 
+
+# Return the index range of "full" parent arrays that span an entire dimension
+parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
+parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
@@ -447,7 +481,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     arch = architecture(data)
 
     # bring to CPU
-    map(a -> arch_array(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data)
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -472,7 +506,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
     # return to data's original architecture 
-    map(a -> arch_array(arch, a), offset_array)
+    map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
 end
