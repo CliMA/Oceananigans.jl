@@ -364,7 +364,7 @@ end
                                                 cf.field_dependencies_interp)
 
 @inline getregion(df::DiscreteBoundaryFunction, i) =
-            DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
+            DiscreteBoundaryFunction(_getregion(df.func, i), _getregion(df.parameters, i))
 
 @inline _getregion(fc::FieldBoundaryConditions, i) =
             FieldBoundaryConditions(getregion(fc.west, i),
@@ -384,7 +384,7 @@ end
                                                 cf.field_dependencies_indices,
                                                 cf.field_dependencies_interp)
 
-@inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
+@inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(getregion(df.func, i), getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side) = nothing
