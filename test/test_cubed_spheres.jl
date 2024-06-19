@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
 using Statistics: mean
+using Oceananigans.Operators
 using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
@@ -80,6 +81,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 uᵢ = compute!(Field(uᵢ))
                 vᵢ = compute!(Field(vᵢ))
 
+                # The extrema of u and v, as well as their mean value should
+                # be equivalent on an "Intrinsic" frame
+                @test maximum(uᵢ) ≈ maximum(vᵢ)
+                @test minimum(uᵢ) ≈ minimum(vᵢ)
+                @test mean(uᵢ) ≈ mean(vᵢ)
+
                 # Convert it back to a purely zonal velocity (vₑ == 0)
                 uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ, nothing)
                 vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ, nothing)
@@ -87,6 +94,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 uₑ = compute!(Field(uₑ))
                 vₑ = compute!(Field(vₑ))
 
+                # Make sure that the flow was converted back to a 
+                # purely zonal flow in the extrensic frame (v ≈ 0)
                 @test all(Array(interior(vₑ)) .≈ 0)
                 @test all(Array(interior(uₑ)) .≈ 1)
             end

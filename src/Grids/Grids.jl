@@ -11,10 +11,6 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
 export conformal_cubed_sphere_panel
-export intrinsic_vector, extrinsic_vector
-export intrinsic_vector_x_component, extrinsic_vector_x_component
-export intrinsic_vector_y_component, extrinsic_vector_y_component
-export intrinsic_vector_z_component, extrinsic_vector_z_component
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
