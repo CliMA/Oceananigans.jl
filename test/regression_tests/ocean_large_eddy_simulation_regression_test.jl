@@ -154,7 +154,6 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     T₁ = partition_global_array(cpu_arch, ArrayType(solution₁.T), size(solution₁.T))
     S₁ = partition_global_array(cpu_arch, ArrayType(solution₁.S), size(solution₁.S))
 
-
     correct_fields = (u = u₁[2:nx+1, 2:ny+1, 2:nz+1],
                       v = v₁[2:nx+1, 2:ny+1, 2:nz+1],
                       w = w₁[2:nx+1, 2:ny+1, 2:nz+1],

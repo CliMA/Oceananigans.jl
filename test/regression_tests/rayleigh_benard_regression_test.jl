@@ -100,23 +100,43 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    model.velocities.u.data.parent .= ArrayType(solution₀.u)
-    model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
-    model.tracers.b.data.parent    .= ArrayType(solution₀.b)
-    model.tracers.c.data.parent    .= ArrayType(solution₀.c)
+    cpu_arch = cpu_architecture(architecture(grid))
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
-    model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gⁿ₀.b)
-    model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gⁿ₀.c)
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(solution₀.u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(solution₀.v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(solution₀.w))
+    b₀ = partition_global_array(cpu_arch, ArrayType(solution₀.b), size(solution₀.b))
+    c₀ = partition_global_array(cpu_arch, ArrayType(solution₀.c), size(solution₀.c))
 
-    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
-    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
-    model.timestepper.G⁻.b.data.parent .= ArrayType(G⁻₀.b)
-    model.timestepper.G⁻.c.data.parent .= ArrayType(G⁻₀.c)
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(Gⁿ₀.u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(Gⁿ₀.v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(Gⁿ₀.w))
+    Gⁿb₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.b), size(Gⁿ₀.b))
+    Gⁿc₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.c), size(Gⁿ₀.c))
+
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(G⁻₀.u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(G⁻₀.v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(G⁻₀.w))
+    G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b), size(G⁻₀.b))
+    G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c), size(G⁻₀.c))
+
+    model.velocities.u.data.parent .= u₀
+    model.velocities.v.data.parent .= v₀
+    model.velocities.w.data.parent .= w₀
+    model.tracers.b.data.parent    .= b₀
+    model.tracers.c.data.parent    .= c₀
+
+    model.timestepper.Gⁿ.u.data.parent .= Gⁿu₀
+    model.timestepper.Gⁿ.v.data.parent .= Gⁿv₀
+    model.timestepper.Gⁿ.w.data.parent .= Gⁿw₀
+    model.timestepper.Gⁿ.b.data.parent .= Gⁿb₀
+    model.timestepper.Gⁿ.c.data.parent .= Gⁿc₀
+
+    model.timestepper.G⁻.u.data.parent .= G⁻u₀
+    model.timestepper.G⁻.v.data.parent .= G⁻v₀
+    model.timestepper.G⁻.w.data.parent .= G⁻w₀
+    model.timestepper.G⁻.b.data.parent .= G⁻b₀
+    model.timestepper.G⁻.c.data.parent .= G⁻c₀
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -142,11 +162,17 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                       b = Array(interior(model.tracers.b)),
                                       c = Array(interior(model.tracers.c)))
 
-    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
-                      v = Array(interior(solution₁.v, model.grid)),
-                      w = Array(interior(solution₁.w, model.grid)),
-                      b = Array(interior(solution₁.b, model.grid)),
-                      c = Array(interior(solution₁.c, model.grid)))
+    u₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.u)), size(solution₁.u))
+    v₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.v)), size(solution₁.v))
+    w₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.w)), size(solution₁.w))
+    b₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.b)), size(solution₁.b))
+    c₁ = partition_global_array(cpu_arch, ArrayType(interior(solution₁.c)), size(solution₁.c))
+
+    correct_fields = (u = u₁,
+                      v = v₁,
+                      w = w₁,
+                      b = b₁,
+                      c = c₁)
 
     summarize_regression_test(test_fields, correct_fields)
 
