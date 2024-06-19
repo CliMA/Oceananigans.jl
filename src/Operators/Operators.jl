@@ -92,6 +92,6 @@ include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
-include("reference_frame_conversion_operators.jl")
+include("vector_rotation_operators.jl")
 
 end # module
