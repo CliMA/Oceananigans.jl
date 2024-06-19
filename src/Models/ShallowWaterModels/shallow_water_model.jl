@@ -112,7 +112,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid), eltype(grid)}(0, Inf, 0, 1),
+                               clock = Clock{eltype(grid)}(time=0),
                   momentum_advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),
