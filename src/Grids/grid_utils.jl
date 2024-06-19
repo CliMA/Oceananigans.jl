@@ -518,3 +518,65 @@ end
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 
+# TODO: have a general Oceananigans-wide function that retrieves a pointwise
+# value for a function, an array, a number, a field etc?
+# This would be a generalization of `getbc` that could be used everywhere we need it
+@inline getvalue(a::Number,        i, j, k, grid, args...) = a
+@inline getvalue(a::AbstractArray, i, j, k, grid, args...) = @inbounds a[i, j, k]
+
+"""
+    intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
+
+Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_ 
+reference frame associated with the domain, to the reference frame _intrinsic_ to the grid. 
+
+_extrinsic_ reference frames are:
+
+- Cartesian for box domains 
+- Latitude - Longitude for spherical domains
+
+Therefore, for the `RectilinearGrid` and the `LatitudeLongitudeGrid`, the _extrinsic_ and the 
+_intrinsic_ reference frames are equivalent
+"""
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
+    getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
+
+"""
+    extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ)
+
+Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined on the reference 
+reference frame _intrinsic_ to the grid, to the _extrinsic_ reference frame associated with the domain.
+
+_extrinsic_ reference frames are:
+
+- Cartesian for box domains 
+- Latitude - Longitude for spherical domains
+
+Therefore, for the `RectilinearGrid` and the `LatitudeLongitudeGrid`, the _extrinsic_ and the 
+_intrinsic_ reference frames are equivalent
+"""
+@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ) =
+    getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
+
+
+####
+#### Component-wise conversion between reference frames
+####
+
+@inline intrinsic_vector_x_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[1]
+    
+@inline intrinsic_vector_y_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[2]
+
+@inline intrinsic_vector_z_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[3]
+
+@inline extrinsic_vector_x_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[1]
+    
+@inline extrinsic_vector_y_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[2]
+
+@inline extrinsic_vector_z_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)[3]

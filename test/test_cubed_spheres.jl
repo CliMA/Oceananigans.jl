@@ -63,6 +63,33 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 @test mean(η) == 0
             end
 
+            @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
+                @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
+
+                u = XFaceField(grid)
+                v = YFaceField(grid)
+
+                # Set up a zonal u-velocity in 
+                # the "Extrinsic" reference frame
+                fill!(u, 1)
+                
+                # Convert it to an "Instrinsic" reference frame
+                uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v, nothing)
+                vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v, nothing)
+                
+                uᵢ = compute!(Field(uᵢ))
+                vᵢ = compute!(Field(vᵢ))
+
+                # Convert it back to a purely zonal velocity (vₑ == 0)
+                uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ, nothing)
+                vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ, nothing)
+                
+                uₑ = compute!(Field(uₑ))
+                vₑ = compute!(Field(vₑ))
+
+                @test all(Array(interior(vₑ)) .≈ 0)
+            end
+
             @testset "Constructing a HydrostaticFreeSurfaceModel [$(typeof(arch))]" begin
                 @test model isa HydrostaticFreeSurfaceModel
             end

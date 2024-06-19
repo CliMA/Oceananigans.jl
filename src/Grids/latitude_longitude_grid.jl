@@ -718,3 +718,6 @@ const C = Center
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
+
+@inline intrinsic_vector(i, j, k, grid::LatitudeLongitudeGrid, uₑ, vₑ, wₑ) = uₑ, vₑ, wₑ
+@inline extrinsic_vector(i, j, k, grid::LatitudeLongitudeGrid, uᵢ, vᵢ, wᵢ) = uᵢ, vᵢ, wᵢ
