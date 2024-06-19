@@ -87,7 +87,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
 end
 
 function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo)
-    arch = Distributed(CPU(), partition=Partition(ranks...))
+    arch = Distributed(GPU(), partition=Partition(ranks...))
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, 
                                  y=(0, 2π), z = (0, 2π), x = collect(0:grid_points[1]))
 
