@@ -479,10 +479,10 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ = FT(0)
         Δyᶜᶠ = FT(0)
     else
-        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        parentC = zeros(FT, length(grid.mapping.Δφᵃᶜᵃ))
+        parentF = zeros(FT, length(grid.mapping.Δφᵃᶜᵃ))
+        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.mapping.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.mapping.Δφᵃᶜᵃ.offsets[1])
     end
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
