@@ -4,7 +4,9 @@ using Oceananigans.Fields: AbstractField, FunctionField
 # Flavors of CubedSphereField
 const CubedSphereField{LX, LY, LZ} =
     Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
-        Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
+          Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:Nothing, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}},
+          Field{LX, LY, LZ, <:AbstractOperation, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}}}
 
 const CubedSphereFunctionField{LX, LY, LZ} =
     FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
