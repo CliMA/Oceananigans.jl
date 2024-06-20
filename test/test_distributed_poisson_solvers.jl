@@ -1,6 +1,11 @@
 using MPI
 MPI.Init()
 
+# Make sure results are 
+# reproducible
+using Random
+Random.seed!(1234)
+
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
@@ -40,15 +45,15 @@ function random_divergent_source_term(grid::DistributedGrid)
     v_bcs = inject_halo_communication_boundary_conditions(v_bcs, arch.local_rank, arch.connectivity, topology(grid))
     w_bcs = inject_halo_communication_boundary_conditions(w_bcs, arch.local_rank, arch.connectivity, topology(grid))
 
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru = XFaceField(grid, boundary_conditions=u_bcs)
+    Rv = YFaceField(grid, boundary_conditions=v_bcs)
+    Rw = ZFaceField(grid, boundary_conditions=w_bcs)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
@@ -66,12 +71,9 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
     arch = Distributed(CPU(), partition=Partition(ranks...))
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
-    p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity, topo)
-
     # The test will solve for ϕ, then compare R to ∇²ϕ.
-    ϕ   = CenterField(local_grid, boundary_conditions=p_bcs)
-    ∇²ϕ = CenterField(local_grid, boundary_conditions=p_bcs)
+    ϕ   = CenterField(local_grid)
+    ∇²ϕ = CenterField(local_grid)
     R, U = random_divergent_source_term(local_grid)
 
     global_grid = reconstruct_global_grid(local_grid)
@@ -79,87 +81,45 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
     
     # Using Δt = 1.
     solve_for_pressure!(ϕ, solver, 1, U)
-    
-    # "Recompute" ∇²ϕ
-    compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
-
-    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
-end
-
-function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo)
-    arch = Distributed(GPU(), partition=Partition(ranks...))
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, 
-                                 y=(0, 2π), z = (0, 2π), x = collect(0:grid_points[1]))
-
-    bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity, topo)
-
-    # The test will solve for ϕ, then compare R to ∇²ϕ.
-    ϕ   = CenterField(local_grid, boundary_conditions=bcs)
-    ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
-    R   = random_divergent_source_term(local_grid)
-
-    global_grid = reconstruct_global_grid(local_grid)
-    solver = DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-    solver.storage.zfield .= R
-
-    # Solve it
-    solve!(ϕ, solver)
-
-    fill_halo_regions!(ϕ)
 
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
-    return R ≈ interior(∇²ϕ)
+    return interior(∇²ϕ) ≈ R
 end
 
-# @testset "Distributed FFT-based Poisson solver" begin
-#     for topology in ((Periodic, Periodic, Periodic), 
-#                      (Periodic, Periodic, Bounded))
-#                     #  (Periodic, Bounded, Bounded),
-#                     #  (Bounded, Bounded, Bounded))
+@testset "Distributed FFT-based Poisson solver" begin
+    for topology in ((Periodic, Periodic, Periodic), 
+                     (Periodic, Periodic, Bounded),
+                     (Periodic, Bounded, Bounded),
+                     (Bounded, Bounded, Bounded))
                     
-#         @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
-#         @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology)
-#         @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology)
-#         @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology)
-#         @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology)
-#         @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology)
-#         @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology)
-#         @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology)
+        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
+        @show @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology)
+        @show @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology)
+        @show @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology)
+        @show @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology)
+        @show @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology)
+        @show @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology)
+        @show @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology)
 
-#         @info "  Testing 2D distributed FFT-based Poisson solver with topology $topology..."
-#         @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology)
-#         @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology)
-#     end
-#     # for topology in ((Periodic, Periodic, Bounded),
-#     #                  (Periodic, Bounded, Bounded),
-#     #                  (Bounded, Bounded, Bounded))
-#     #     @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver with topology $topology..."
-#     #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
-#     #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
-#     # end
-# end
-
-MPI.Barrier(MPI.COMM_WORLD)
-
-sol =  divergence_free_poisson_solution((44, 44, 8), (2, 2, 1), (Periodic, Periodic, Bounded))
-
-MPI.Barrier(MPI.COMM_WORLD)
-rank = MPI.Comm_rank(MPI.COMM_WORLD)
-
-for r in 0:3
-    if r == rank
-        @show rank, sol
+        @info "  Testing 2D distributed FFT-based Poisson solver with topology $topology..."
+        @show @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology)
+        @show @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology)
     end
-    MPI.Barrier(MPI.COMM_WORLD)
+    # for topology in ((Periodic, Periodic, Bounded),
+    #                  (Periodic, Bounded, Bounded),
+    #                  (Bounded, Bounded, Bounded))
+    #     @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver with topology $topology..."
+    #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
+    #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
+    # end
 end

@@ -32,7 +32,7 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
-    rhs = solver.storage.zfield
+    rhs  = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
 

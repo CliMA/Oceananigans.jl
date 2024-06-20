@@ -100,6 +100,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     architecture(local_grid).ranks[3] == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
     arch = architecture(storage.xfield.grid)
+    child_arch = child_architecture(arch)
 
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
@@ -111,19 +112,24 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     λy = partition_coordinate(λy, size(storage.xfield.grid, 2), arch, 2)
     λz = partition_coordinate(λz, size(storage.xfield.grid, 3), arch, 3)
 
-    λx = on_architecture(arch, λx)
-    λy = on_architecture(arch, λy)
-    λz = on_architecture(arch, λz)
+    λx = on_architecture(child_arch, λx)
+    λy = on_architecture(child_arch, λy)
+    λz = on_architecture(child_arch, λz)
 
     eigenvalues = (λx, λy, λz)
 
-    plan   = plan_distributed_transforms(global_grid, storage, planner_flag)
+    plan = plan_distributed_transforms(global_grid, storage, planner_flag)
     
     # We need to permute indices to apply bounded transforms on the GPU (r2r of r2c with twiddling)
-    buffer_x = child_architecture(arch) isa GPU && TX == Bounded ? on_architecture(arch, zeros(FT, size(storage.xfield)...)) : nothing
-    buffer_z = child_architecture(arch) isa GPU && TZ == Bounded ? on_architecture(arch, zeros(FT, size(storage.zfield)...)) : nothing
+    x_buffer_needed = child_arch isa GPU && TX == Bounded
+    z_buffer_needed = child_arch isa GPU && TZ == Bounded 
+    
     # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
-    buffer_y = child_architecture(arch) isa GPU ? on_architecture(arch, zeros(FT, size(storage.yfield)...)) : nothing 
+    y_buffer_needed = child_arch isa GPU
+
+    buffer_x = x_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.xfield)...)) : nothing
+    buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.yfield)...)) : nothing 
+    buffer_z = z_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.zfield)...)) : nothing
 
     buffer = (; x = buffer_x, y = buffer_y, z = buffer_z)
 
@@ -149,7 +155,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # for x̂. We solve for x̂ in place, reusing b̂.
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
-
+    
     launch!(arch, storage.xfield.grid, :xyz, _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
