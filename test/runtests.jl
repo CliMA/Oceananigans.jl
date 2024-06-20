@@ -170,7 +170,7 @@ CUDA.allowscalar() do
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
-        archs = test_architectures() 
+        archs = nonhydrostatic_regression_test_architectures()
         include("test_nonhydrostatic_regression.jl")
     end
 
