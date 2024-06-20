@@ -561,11 +561,11 @@ for arch in archs
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(computed_tke); true; catch; false end
-                    @test_broken try compute!(Field(tke)); true; catch; false; end
-                    @test_broken try compute!(tke_window); true; catch; false; end
-                    @test_broken all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test_broken all(interior(tke_window) .== 9/2)
+                    @test try compute!(computed_tke); true; catch; false end
+                    @test try compute!(Field(tke)); true; catch; false; end
+                    @test try compute!(tke_window); true; catch; false; end
+                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+                    @test all(interior(tke_window) .== 9/2)
                 else                    
                     @test try compute!(computed_tke); true; catch; false end
                     @test try compute!(Field(tke)); true; catch; false; end
@@ -581,17 +581,17 @@ for arch in archs
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(tke_xy); true; catch; false; end
-                    @test_broken all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+                    @test try compute!(tke_xy); true; catch; false; end
+                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
     
-                    @test_broken try compute!(tke_xz); true; catch; false; end
-                    @test_broken all(interior(tke_xz) .== 9/2)
+                    @test try compute!(tke_xz); true; catch; false; end
+                    @test all(interior(tke_xz) .== 9/2)
 
-                    @test_broken try compute!(tke_yz); true; catch; false; end
-                    @test_broken all(interior(tke_yz) .== 9/2)
+                    @test try compute!(tke_yz); true; catch; false; end
+                    @test all(interior(tke_yz) .== 9/2)
 
-                    @test_broken try compute!(tke_x); true; catch; false; end
-                    @test_broken all(interior(tke_x) .== 9/2)
+                    @test try compute!(tke_x); true; catch; false; end
+                    @test all(interior(tke_x) .== 9/2)
                 else
                     @test try compute!(tke_xy); true; catch; false; end
                     @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
