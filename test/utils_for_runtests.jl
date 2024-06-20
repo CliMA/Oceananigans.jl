@@ -11,8 +11,10 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
+test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
+
 function test_architectures() 
-    child_arch =  CUDA.has_cuda() ? GPU() : CPU()
+    child_arch =  test_child_arch()
 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 

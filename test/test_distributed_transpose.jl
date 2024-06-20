@@ -11,15 +11,16 @@ using Oceananigans.DistributedComputations:
                 transpose_y_to_x!,
                 transpose_x_to_y!
 
-function test_transpose(grid_points, ranks, topo)
-    arch = Distributed(CPU(), partition=Partition(ranks...))
+function test_transpose(grid_points, ranks, topo, child_arch)
+    arch = Distributed(child_arch, partition=Partition(ranks...))
     grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
-    ϕ = CenterField(grid)
+    loc = (Center, Center, Center)
+    ϕ = Field(loc, grid, ComplexF64)
     Φ = ParallelFields(ϕ)
 
     # Fill ϕ with random data
-    set!(ϕ, (x, y, z) -> rand())
+    set!(ϕ, (x, y, z) ->  rand(ComplexF64))
     set!(Φ.zfield, ϕ)
     
     # Complete a full transposition cycle
@@ -33,18 +34,20 @@ function test_transpose(grid_points, ranks, topo)
 end
 
 @testset "Distributed Transpose" begin
+    child_arch = test_child_arch()
+
     for topology in ((Periodic, Periodic, Periodic), 
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))
         @info "  Testing 3D transpose with topology $topology..."
-        @test test_transpose((44, 44, 8), (4, 1, 1), topology)
-        @test test_transpose((16, 44, 8), (4, 1, 1), topology)
-        @test test_transpose((44, 44, 8), (1, 4, 1), topology)
-        @test test_transpose((44, 16, 8), (1, 4, 1), topology)
-        @test test_transpose((16, 44, 8), (1, 4, 1), topology)
-        @test test_transpose((44, 16, 8), (2, 2, 1), topology)
-        @test test_transpose((16, 44, 8), (2, 2, 1), topology)
+        @test test_transpose((44, 44, 8), (4, 1, 1), topology, child_arch)
+        @test test_transpose((16, 44, 8), (4, 1, 1), topology, child_arch)
+        @test test_transpose((44, 44, 8), (1, 4, 1), topology, child_arch)
+        @test test_transpose((44, 16, 8), (1, 4, 1), topology, child_arch)
+        @test test_transpose((16, 44, 8), (1, 4, 1), topology, child_arch)
+        @test test_transpose((44, 16, 8), (2, 2, 1), topology, child_arch)
+        @test test_transpose((16, 44, 8), (2, 2, 1), topology, child_arch)
     end
 end
 

@@ -65,6 +65,17 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
 
+  - label: "🛸 gpu distributed solvers tests"
+    key: "distributed_solvers_gpu"
+    env:
+      TEST_GROUP: "distributed_solvers"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
     env:

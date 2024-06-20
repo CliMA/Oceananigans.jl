@@ -5,7 +5,7 @@ using Oceananigans.Solvers: Forward, Backward
 @inline reshaped_size(grid) = size(grid, 2), size(grid, 1), size(grid, 3)
 
 struct FFTPlan{F, B}
-    forward :: F
+     forward :: F
     backward :: B
 end
 
