@@ -19,7 +19,7 @@ function test_transpose(grid_points, ranks, topo, child_arch)
     ϕ = Field(loc, grid, ComplexF64)
     Φ = ParallelFields(ϕ)
 
-    ϕ₀ = on_architecture(child_arch, rand(Complex64, size(ϕ)))
+    ϕ₀ = on_architecture(child_arch, rand(ComplexF64, size(ϕ)))
 
     # Fill ϕ with random data
     set!(ϕ, ϕ₀)
