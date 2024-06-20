@@ -102,7 +102,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
     test_model_equality(test_model, checkpointed_model)
 
     # This only applies to QuasiAdamsBashforthTimeStepper:
-    @test test_model.timestepper.previous_Δt == checkpointed_model.timestepper.previous_Δt
+    @test test_model.clock.last_Δt == checkpointed_model.clock.last_Δt
 
     #####
     ##### Test pickup from explicit checkpoint path
