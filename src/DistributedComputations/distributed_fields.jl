@@ -23,7 +23,7 @@ function set!(u::DistributedField, f::Function)
     arch = architecture(u)
     if child_architecture(arch) isa GPU
         cpu_grid = on_architecture(cpu_architecture(arch), u.grid)
-        u_cpu = Field(location(u), cpu_grid; indices = indices(u))
+        u_cpu = Field(location(u), cpu_grid, eltype(u); indices = indices(u))
         f_field = field(location(u), f, cpu_grid)
         set!(u_cpu, f_field)
         set!(u, u_cpu)
