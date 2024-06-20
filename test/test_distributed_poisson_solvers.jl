@@ -67,8 +67,8 @@ function random_divergent_source_term(grid::DistributedGrid)
     return R, U
 end
 
-function divergence_free_poisson_solution(grid_points, ranks, topo)
-    arch = Distributed(CPU(), partition=Partition(ranks...))
+function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch)
+    arch = Distributed(child_arch, partition=Partition(ranks...))
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     # The test will solve for ϕ, then compare R to ∇²ϕ.
@@ -89,23 +89,25 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
+    child_arch = test_child_arch()
+    
     for topology in ((Periodic, Periodic, Periodic), 
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),
                      (Bounded, Bounded, Bounded))
                     
         @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
-        @show @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology)
-        @show @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology)
-        @show @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology)
-        @show @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology)
-        @show @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology)
-        @show @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology)
-        @show @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology)
+        @show @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology, child_arch)
 
         @info "  Testing 2D distributed FFT-based Poisson solver with topology $topology..."
-        @show @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology)
-        @show @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology)
+        @show @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology, child_arch)
+        @show @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology, child_arch)
     end
     # for topology in ((Periodic, Periodic, Bounded),
     #                  (Periodic, Bounded, Bounded),
