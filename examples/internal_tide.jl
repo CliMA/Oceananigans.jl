@@ -215,9 +215,16 @@ end
 
 # We retrieve each field's coordinates and convert from meters to kilometers.
 
-xu,  yu,  zu  = nodes(u′_t[1]) ./ 1e3
-xw,  yw,  zw  = nodes(w_t[1])  ./ 1e3
-xN², yN², zN² = nodes(N²_t[1]) ./ 1e3
+xu,  yu,  zu  = nodes(u′_t[1])
+xw,  yw,  zw  = nodes(w_t[1])
+xN², yN², zN² = nodes(N²_t[1])
+
+xu  = xu  ./ 1e3
+xw  = xw  ./ 1e3
+xN² = xN² ./ 1e3
+zu  = zu  ./ 1e3
+zw  = zw  ./ 1e3
+zN² = zN² ./ 1e3
 nothing #hide
 
 # ## Visualize
