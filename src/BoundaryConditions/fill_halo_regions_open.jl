@@ -3,7 +3,7 @@ const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded},
                           AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}}
 
 @inline fill_open_boundary_regions!(field, args...) = 
-    fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
+    fill_open_boundary_regions!(field.data, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
 
 # what is this for
 #@inline fill_open_boundary_regions!(field, grid::BoundedGrid, loc, args...) = fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, loc, grid, args...)
@@ -15,7 +15,7 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     right_bc = right_boundary_condition(boundary_conditions, loc)
 
     open_fill, normal_fill = fill_open_halo(loc) 
-    fill_size = fill_halo_size(field, normal_fill, indices, boundary_conditions)
+    fill_size = fill_halo_size(field, normal_fill, indices, boundary_conditions, loc, grid)
 
     launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
 
