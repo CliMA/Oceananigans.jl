@@ -9,12 +9,17 @@ The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 
 @inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
-    scaling = ifelse(on_corner(i, j, grid), convert(FT, 1), 1)
+    s₁ = convert(FT, 4/3)
+    s₂ = convert(FT, 1)
+    scaling = ifelse(on_corner(i, j, grid), s₁, s₂)
     return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 end
 
 # Corner
-@inline on_corner(i, j, grid) = on_south_west_corner(i, j, grid) | on_south_east_corner(i, j, grid) | on_north_west_corner(i, j, grid) | on_north_east_corner(i, j, grid)
+@inline on_corner(i, j, grid) = on_south_west_corner(i, j, grid) |
+                                on_south_east_corner(i, j, grid) |
+                                on_north_west_corner(i, j, grid) |
+                                on_north_east_corner(i, j, grid)
 
 # South-west, south-east, north-west, north-east corners
 @inline on_south_west_corner(i, j, grid) = (i == 1) & (j == 1)
@@ -33,7 +38,7 @@ end
 The vertical circulation associated with horizontal velocities ``u`` and ``v``.
 """
 
-@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v) 
+@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
     Hx, Hy = grid.Hx, grid.Hy
     Γ = ifelse((i == 1 - Hx) | (j == 1 - Hy),
                NaN,
