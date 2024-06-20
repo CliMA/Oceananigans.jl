@@ -82,28 +82,25 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     Nz = grid.Nz
 
-    solution_indices   = [2:nx+3, 2:ny+3, 2:nz+3]
-    w_solution_indices = [2:nx+3, 2:ny+3, 2:nz+4]
-
     cpu_arch = cpu_architecture(architecture(grid))
 
-    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(u))
-    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(v))
-    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(w))
-    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T), size(T))
-    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S), size(S))
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
+    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T[2:end-1, 2:end-1, 2:end-1]), size(T))
+    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S[2:end-1, 2:end-1, 2:end-1]), size(S))
 
-    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(u))
-    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(v))
-    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(w))
-    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T), size(T))
-    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S), size(S))
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u)[2:end-1, 2:end-1, 2:end-1], size(u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v)[2:end-1, 2:end-1, 2:end-1], size(v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w)[2:end-1, 2:end-1, 2:end-1], size(w))
+    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T)[2:end-1, 2:end-1, 2:end-1], size(T))
+    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S)[2:end-1, 2:end-1, 2:end-1], size(S))
 
-    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(u))
-    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(v))
-    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(w))
-    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T), size(T))
-    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S), size(S))
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u)[2:end-1, 2:end-1, 2:end-1], size(u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v)[2:end-1, 2:end-1, 2:end-1], size(v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w)[2:end-1, 2:end-1, 2:end-1], size(w))
+    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T)[2:end-1, 2:end-1, 2:end-1], size(T))
+    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S)[2:end-1, 2:end-1, 2:end-1], size(S))
 
     interior(model.velocities.u) .= u₀
     interior(model.velocities.v) .= v₀
@@ -144,17 +141,19 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    u₁ = partition_global_array(cpu_arch, Array(solution₁.u), size(u))
-    v₁ = partition_global_array(cpu_arch, Array(solution₁.v), size(v))
-    w₁ = partition_global_array(cpu_arch, Array(solution₁.w), size(test_fields.w))
-    T₁ = partition_global_array(cpu_arch, Array(solution₁.T), size(T))
-    S₁ = partition_global_array(cpu_arch, Array(solution₁.S), size(S))
+    u₁ = partition_global_array(cpu_arch, Array(solution₁.u)[2:end-1, 2:end-1, 2:end-1], size(u))
+    v₁ = partition_global_array(cpu_arch, Array(solution₁.v)[2:end-1, 2:end-1, 2:end-1], size(v))
+    w₁ = partition_global_array(cpu_arch, Array(solution₁.w)[2:end-1, 2:end-1, 2:end-2], size(test_fields.w))
+    T₁ = partition_global_array(cpu_arch, Array(solution₁.T)[2:end-1, 2:end-1, 2:end-1], size(T))
+    S₁ = partition_global_array(cpu_arch, Array(solution₁.S)[2:end-1, 2:end-1, 2:end-1], size(S))
 
-    correct_fields = (u = u₁[2:nx+1, 2:ny+1, 2:nz+1],
-                      v = v₁[2:nx+1, 2:ny+1, 2:nz+1],
-                      w = w₁[2:nx+1, 2:ny+1, 2:nz+1],
-                      T = T₁[2:nx+1, 2:ny+1, 2:nz+1],
-                      S = S₁[2:nx+1, 2:ny+1, 2:nz+1])
+    @show size(test_fields.w), size(w₁)
+
+    correct_fields = (u = u₁,
+                      v = v₁,
+                      w = w₁,
+                      T = T₁,
+                      S = S₁)
 
     summarize_regression_test(test_fields, correct_fields)
 
