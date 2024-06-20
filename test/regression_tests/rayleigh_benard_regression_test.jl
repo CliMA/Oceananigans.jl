@@ -171,11 +171,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     b₁ = interior(solution₁.b, global_grid)
     c₁ = interior(solution₁.c, global_grid)
 
-    correct_fields = (u = partition_global_array(cpu_arch, ArrayType(u₁), size(u₁)),
-                      v = partition_global_array(cpu_arch, ArrayType(v₁), size(v₁)),
-                      w = partition_global_array(cpu_arch, ArrayType(w₁), size(w₁)),
-                      b = partition_global_array(cpu_arch, ArrayType(b₁), size(b₁)),
-                      c = partition_global_array(cpu_arch, ArrayType(c₁), size(c₁)))
+    correct_fields = (u = partition_global_array(cpu_arch, Array(u₁), size(u₁)),
+                      v = partition_global_array(cpu_arch, Array(v₁), size(v₁)),
+                      w = partition_global_array(cpu_arch, Array(w₁), size(w₁)),
+                      b = partition_global_array(cpu_arch, Array(b₁), size(b₁)),
+                      c = partition_global_array(cpu_arch, Array(c₁), size(c₁)))
 
     summarize_regression_test(test_fields, correct_fields)
 
