@@ -3,7 +3,7 @@ const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded},
                           AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}}
 
 @inline fill_open_boundary_regions!(field, args...) = 
-    fill_open_boundary_regions!(field.data, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
+    fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
 
 # what is this for
 #@inline fill_open_boundary_regions!(field, grid::BoundedGrid, loc, args...) = fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, loc, grid, args...)
