@@ -160,7 +160,6 @@ end
 function serializeproperty!(file, address, ts::QuasiAdamsBashforth2TimeStepper)
     serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, address * "/G⁻", ts.G⁻)
-    serializeproperty!(file, address * "/previous_Δt", ts.previous_Δt)
     return nothing
 end
 
