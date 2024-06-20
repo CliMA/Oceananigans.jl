@@ -24,12 +24,13 @@ ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
 Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
 
-#####
-##### Interface to HydrostaticFreeSurfaceModel
-#####
+on_architecture(to, free_surface::ExplicitFreeSurface) =
+    ExplicitFreeSurface(on_architecture(to, free_surface.η),
+                        on_architecture(to, free_surface.gravitational_acceleration))
 
-function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+# Internal function for HydrostaticFreeSurfaceModel
+function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     return ExplicitFreeSurface(η, g)

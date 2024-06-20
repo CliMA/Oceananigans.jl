@@ -78,7 +78,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     arch = architecture(fts)
     file = jldopen(fts.path)
     iter = keys(file["timeseries/t"])[n]
-    raw_data = arch_array(arch, file["timeseries/$(fts.name)/$iter"])
+    raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
     # Wrap Field
@@ -198,27 +198,28 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     source_location = map(instantiate, location(source_fts))
     target_location = map(instantiate, location(target_fts))
 
+    target_times = map(Time, target_fts.times)
+
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
-            target_fts.data, target_grid, target_location,
-            source_fts.data, source_grid, source_location)
+            target_fts.data, target_grid, target_location, target_times,
+            source_fts, source_grid, source_location)
 
     fill_halo_regions!(target_fts)
 
     return nothing
 end
 
-@kernel function _interpolate_field_time_series!(target_fts, target_grid, target_location,
+@kernel function _interpolate_field_time_series!(target_fts, target_grid, target_location, target_times,
                                                  source_fts, source_grid, source_location)
 
     # 4D index, cool!
     i, j, k, n = @index(Global, NTuple)
 
-    source_field = view(source_fts, :, :, :, n)
     target_node = node(i, j, k, target_grid, target_location...)
-    target_time = @inbounds target_fts.times[n]
+    at_time     = @inbounds target_times[n]
 
-    @inbounds target_fts[i, j, k, n] = interpolate(target_node, target_time,
+    @inbounds target_fts[i, j, k, n] = interpolate(target_node, at_time,
                                                    source_fts, source_location, source_grid)
 end
 

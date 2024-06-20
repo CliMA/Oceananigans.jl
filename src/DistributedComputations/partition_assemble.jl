@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: arch_array
+import Oceananigans.Architectures: on_architecture
 
 all_reduce(op, val, arch::Distributed) = 
     MPI.Allreduce(val, op, arch.communicator)
@@ -116,7 +116,7 @@ partition_global_array(arch, c_global::Function, n)      = c_global
 
 # Here we assume that we cannot partition in z (we should remove support for that)
 function partition_global_array(arch::Distributed, c_global::AbstractArray, n) 
-    c_global = arch_array(CPU(), c_global)
+    c_global = on_architecture(CPU(), c_global)
 
     ri, rj, rk = arch.local_index
 
@@ -137,7 +137,7 @@ function partition_global_array(arch::Distributed, c_global::AbstractArray, n)
                             1 + sum(ny[1:rj-1]) : sum(ny[1:rj]), 
                             1:nz]
     end
-    return arch_array(child_architecture(arch), c_local)
+    return on_architecture(child_architecture(arch), c_local)
 end
 
 """
@@ -151,7 +151,7 @@ construct_global_array(arch, c_local::Function, N)      = c_local
 
 # TODO: This does not work for 3D parallelizations!!!
 function construct_global_array(arch::Distributed, c_local::AbstractArray, n) 
-    c_local = arch_array(CPU(), c_local)
+    c_local = on_architecture(CPU(), c_local)
 
     ri, rj, rk = arch.local_index
 
@@ -180,5 +180,5 @@ function construct_global_array(arch::Distributed, c_local::AbstractArray, n)
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
 
-    return arch_array(child_architecture(arch), c_global)
+    return on_architecture(child_architecture(arch), c_global)
 end

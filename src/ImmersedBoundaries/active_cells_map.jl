@@ -4,6 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
+import Oceananigans.Grids: active_surface_map, active_interior_map
 import Oceananigans.Utils: active_cells_work_layout
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
@@ -33,7 +34,6 @@ struct EastMap  end
 struct SouthMap end
 struct NorthMap end
 
-@inline active_surface_map(::AbstractGrid)      = nothing
 @inline active_surface_map(::ActiveZColumnsIBG) = ZColumnMap()
 
 @inline active_interior_map(::Val{:west})  = WestMap()
@@ -41,7 +41,6 @@ struct NorthMap end
 @inline active_interior_map(::Val{:south}) = SouthMap()
 @inline active_interior_map(::Val{:north}) = NorthMap()
 
-@inline active_interior_map(::AbstractGrid)              = nothing
 @inline active_interior_map(::ActiveCellsIBG)            = InteriorMap()
 @inline active_interior_map(::DistributedActiveCellsIBG) = InteriorMap()
 
@@ -162,7 +161,7 @@ function interior_active_indices(ibg; parameters = :xyz)
     # Cannot findall on the entire field because we incur on OOM errors
     active_indices = IndicesType[]
     active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
-    active_indices = arch_array(architecture(ibg), active_indices)
+    active_indices = on_architecture(architecture(ibg), active_indices)
 
     return active_indices
 end
@@ -173,7 +172,7 @@ end
 function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
     
     for k in 1:size(ibg, 3)
-        interior_indices = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
+        interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
         active_indices = vcat(active_indices, interior_indices)
         GC.gc()
@@ -234,7 +233,7 @@ end
 # computation only on active `columns`
 function map_active_z_columns(ibg)
     active_cells_field = compute_active_z_columns(ibg)
-    interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
+    interior_cells     = on_architecture(CPU(), interior(active_cells_field, :, :, 1))
   
     full_indices = findall(interior_cells)
 
@@ -243,7 +242,7 @@ function map_active_z_columns(ibg)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
     surface_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
-    surface_map = arch_array(architecture(ibg), surface_map)
+    surface_map = on_architecture(architecture(ibg), surface_map)
 
     return surface_map
 end

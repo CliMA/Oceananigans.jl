@@ -5,7 +5,7 @@ using Oceananigans.AbstractOperations: Ax, Ay, GridMetricOperation
 function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 
     # we have to account for halos when calculating Integrated areas, in case 
-    # a periodic domain, where it is not guaranteed that ηₙ == ηₙ₊₁ 
+    # a periodic domain, where it is not guaranteed that ηₙ == ηₙ₊₁
     # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid

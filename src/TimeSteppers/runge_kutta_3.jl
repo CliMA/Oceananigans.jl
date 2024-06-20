@@ -95,6 +95,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     second_stage_Δt = (γ² + ζ²) * Δt
     third_stage_Δt  = (γ³ + ζ³) * Δt
 
+    # Compute the next time step a priori to reduce floating point error accumulation
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
     #
     # First stage
     #
@@ -106,6 +109,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, first_stage_Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = first_stage_Δt
     store_tendencies!(model)
     update_state!(model, callbacks)
 
@@ -120,6 +124,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, second_stage_Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = second_stage_Δt
     store_tendencies!(model)
     update_state!(model, callbacks)
 
@@ -133,7 +138,15 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, third_stage_Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
 
-    tick!(model.clock, third_stage_Δt)
+    # This adjustment of the final time-step reduces the accumulation of
+    # round-off error when Δt is added to model.clock.time. Note that we still use 
+    # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
+    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
+  
+    tick!(model.clock, corrected_third_stage_Δt)
+    model.clock.last_stage_Δt = corrected_third_stage_Δt
+    model.clock.last_Δt = Δt
+
     update_state!(model, callbacks; compute_tendencies)
 
     return nothing

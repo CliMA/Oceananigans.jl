@@ -27,7 +27,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using JLD2
 using Printf

@@ -3,7 +3,7 @@ using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
 using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
 function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
@@ -59,7 +59,8 @@ end
     return (Ax, Ay)
 end
 
-function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
+# Internal function for HydrostaticFreeSurfaceModel
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
 
         settings  = free_surface.settings 
 
@@ -83,8 +84,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? old_halos[1] : step_halo
-    Ay = Ry == 1 ? old_halos[2] : step_halo
+    Ax = Rx == 1 ? old_halos[1] : max(step_halo, old_halos[1])
+    Ay = Ry == 1 ? old_halos[2] : max(step_halo, old_halos[2])
 
     return (Ax, Ay, old_halos[3])
 end

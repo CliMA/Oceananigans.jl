@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, cpu_architecture, arch_array, array_type, child_architecture, convert_args
+import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_args
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -204,15 +204,18 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function Distributed(child_architecture = CPU(); 
-                     communicator = MPI.COMM_WORLD,
+                     communicator = nothing,
                      devices = nothing, 
                      synchronized_communication = false,
-                     partition = Partition(MPI.Comm_size(communicator)))
+                     partition = nothing)
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
         MPI.Init()
     end
+
+    communicator = isnothing(communicator) ? MPI.COMM_WORLD : communicator
+    partition    = isnothing(partition) ? Partition(MPI.Comm_size(communicator)) : partition
 
     ranks = size(partition)
     Rx, Ry, Rz = ranks
@@ -261,7 +264,7 @@ const SynchronizedDistributed = Distributed{<:Any, true}
 
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
-arch_array(arch::Distributed, A)      = arch_array(child_architecture(arch), A)
+
 zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
 array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)

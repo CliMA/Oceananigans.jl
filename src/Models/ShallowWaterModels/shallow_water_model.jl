@@ -61,7 +61,7 @@ struct VectorInvariantFormulation end
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
+                              clock = Clock{eltype(grid)}(time = 0),
                  momentum_advection = UpwindBiasedFifthOrder(),
                    tracer_advection = WENO(),
                      mass_advection = WENO(),
@@ -112,7 +112,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid)}(0, 0, 1),
+                               clock = Clock{eltype(grid)}(time=0),
                   momentum_advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),

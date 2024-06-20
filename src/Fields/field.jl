@@ -1,10 +1,12 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
+using Oceananigans.Grids: index_range_contains
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
@@ -121,10 +123,10 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), extent=(1, 1, 1));
 
 julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
+└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -137,24 +139,24 @@ julia> u = XFaceField(grid); v = YFaceField(grid);
 
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
+└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 
 julia> compute!(ωₛ)
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
+└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 ```
 """
@@ -229,27 +231,24 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, loc, grid, indices)
+    offset_windowed_data(data, data_indices, loc, grid, view_indices)
 
-Return an `OffsetArray` of a `view` of `parent(data)` with `indices`.
+Return an `OffsetArray` of `parent(data)`.
+
+If `indices` is not (:, :, :), a `view` of `parent(data)` with `indices`.
 
 If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
 """
-function offset_windowed_data(data, Loc, grid, indices)
+function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
     halo = halo_size(grid)
     topo = map(instantiate, topology(grid))
     loc = map(instantiate, Loc)
 
-    if indices isa typeof(default_indices(3))
-        windowed_parent = parent(data)
-    else
-        parent_indices = map(parent_index_range, indices, loc, topo, halo)
-        windowed_parent = view(parent(data), parent_indices...)
-    end
+    parent_indices = map(parent_index_range, data_indices, view_indices, loc, topo, halo)
+    windowed_parent = view(parent(data), parent_indices...)
 
     sz = size(grid)
-
-    return offset_data(windowed_parent, loc, topo, sz, halo, indices)
+    return offset_data(windowed_parent, loc, topo, sz, halo, view_indices)
 end
 
 """
@@ -275,21 +274,21 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 
 julia> c = CenterField(grid)
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
+└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 
 julia> c .= rand(size(c)...);
 
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 ├── indices: (:, 2:3, 1:2)
-└── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
+└── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
 
 julia> size(v)
@@ -304,17 +303,27 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    window_indices = validate_indices((i, j, k), loc, f.grid)
-    
+    view_indices = validate_indices((i, j, k), loc, f.grid)
+
+    if view_indices == f.indices # nothing to "view" here
+        return f # we want the whole field after all.
+    end
+
+    # Check that the indices actually work here
+    valid_view_indices = map(index_range_contains, f.indices, view_indices)
+
+    all(valid_view_indices) ||
+        throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
+
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
     #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
     #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
     #
     # OffsetArray around a view of parent with appropriate indices:
-    windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
+    windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
 
-    boundary_conditions = FieldBoundaryConditions(window_indices, f.boundary_conditions)
+    boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)
 
     # "Sliced" Fields created here share data with their parent.
     # Therefore we set status=nothing so we don't conflate computation
@@ -325,7 +334,7 @@ function Base.view(f::Field, i, j, k)
                  grid,
                  windowed_data,
                  boundary_conditions,
-                 window_indices,
+                 view_indices,
                  f.operand,
                  status)
 end
@@ -414,6 +423,19 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ==(a::Field, b::Field) = interior(a) == interior(b)
 
 #####
+##### Move Fields between architectures
+#####
+
+on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+                      on_architecture(arch, field.data),
+                      on_architecture(arch, field.boundary_conditions),
+                      on_architecture(arch, field.indices),
+                      on_architecture(arch, field.operand),
+                      on_architecture(arch, field.status),
+                      on_architecture(arch, field.boundary_buffers))
+
+#####
 ##### Interface for field computations
 #####
 
@@ -423,6 +445,8 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 Computes `field.data` from `field.operand`.
 """
 compute!(field, time=nothing) = field # fallback
+
+compute!(collection::Union{Tuple, NamedTuple}) = map(compute!, collection)
 
 """
     @compute(exprs...)
@@ -603,8 +627,6 @@ function reduced_location(loc; dims)
     end
 end
 
-reduced_indices(indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-
 function reduced_dimension(loc)
     dims = ()
     for i in 1:3
@@ -741,15 +763,6 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    # To correctly fill the halo regions of fields with non-default indices, we'd have to
-    # offset indices in the fill halo regions kernels.
-    # For now we punt and don't support filling halo regions on windowed fields.
-    # Note that `FieldBoundaryConditions` _can_ filter boundary conditions in
-    # windowed directions:
-    #
-    #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    #  
-    # which will be useful for implementing halo filling for windowed fields in the future.
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,

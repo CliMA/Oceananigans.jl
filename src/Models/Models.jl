@@ -10,18 +10,17 @@ export
     seawater_density
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
-using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
-using Oceananigans.Utils: Time
-using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
+using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
+using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
+using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
+using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
+using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
-
-using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 
 # A prototype interface for AbstractModel.
 #

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: instantiate 
+using Oceananigans.Utils: instantiate
 using Oceananigans.Models: total_velocities
 
 #####
@@ -37,6 +37,13 @@ is outside the Periodic interval `(xᴸ, xᴿ)`.
 @inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + mod(x - xᴿ, xᴿ - xᴸ),
                                                                  ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
 
+"""
+    enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ)
+
+Do nothing on Flat dimensions.
+"""
+@inline enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ) = x
+
 const f = Face()
 const c = Center()
 
@@ -50,23 +57,21 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     X = flattened_node((x, y, z), ibg)
 
     # Determine current particle cell
-    i, j, k = fractional_indices(X, ibg.underlying_grid, (c, c, c))
-    i = Base.unsafe_trunc(Int, i)
-    j = Base.unsafe_trunc(Int, j)
-    k = Base.unsafe_trunc(Int, k)
-   
+    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, (c, c, c))
+    i, j, k = truncate_fractional_indices(fi, fj, fk)
+
     if immersed_cell(i, j, k, ibg)
         # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
-       
+
         if !immersed_cell(i⁻, j⁻, k⁻, ibg)
             # Left-right bounds of the previous, non-immersed cell
             xᴿ, yᴿ, zᴿ = node(i⁻+1, j⁻+1, k⁻+1, ibg, f, f, f)
             xᴸ, yᴸ, zᴸ = node(i⁻,   j⁻,   k⁻,   ibg, f, f, f)
 
             Cʳ = restitution
-            x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)    
-            y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)    
+            x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
+            y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
             z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
 
         end
@@ -103,10 +108,8 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices
-    i, j, k = fractional_indices(X, grid, c, c, c)
-    i = Base.unsafe_trunc(Int, i)
-    j = Base.unsafe_trunc(Int, j)
-    k = Base.unsafe_trunc(Int, k)
+    fi, fj, fk = fractional_indices(X, grid, c, c, c)
+    i, j, k = truncate_fractional_indices(fi, fj, fk)
 
     current_particle_indices = (i, j, k)
 
@@ -123,7 +126,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
-    ξ = x_metric(i, j, grid) 
+    ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
     x⁺ = x + ξ * u * Δt
@@ -183,9 +186,9 @@ end
     x⁺, y⁺, z⁺ = advect_particle((x, y, z), particles, p, restitution, advective_velocity, grid, clock, Δt, velocities, tracers, auxiliary_fields)
 
     @inbounds begin
-        particles.x[p] = x⁺ 
-        particles.y[p] = y⁺ 
-        particles.z[p] = z⁺ 
+        particles.x[p] = x⁺
+        particles.y[p] = y⁺
+        particles.z[p] = z⁺
     end
 end
 
