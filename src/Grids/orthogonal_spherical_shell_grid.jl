@@ -970,7 +970,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     adapt(to, grid.Azᶜᶠᵃ),
                                                     adapt(to, grid.Azᶠᶠᵃ),
                                                     grid.radius,
-                                                    grid.conformal_mapping)
+                                                    adapt(to, grid.conformal_mapping))
 end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
