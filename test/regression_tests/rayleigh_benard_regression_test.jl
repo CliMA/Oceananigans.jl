@@ -124,23 +124,19 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b), size(b))
     G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c), size(c))
 
-    model.velocities.u.data.parent .= u₀
-    model.velocities.v.data.parent .= v₀
-    model.velocities.w.data.parent .= w₀
-    model.tracers.b.data.parent    .= b₀
-    model.tracers.c.data.parent    .= c₀
+    set!(model, u = u₀, v = v₀, w = w₀, b = b₀, c = c₀)
 
-    model.timestepper.Gⁿ.u.data.parent .= Gⁿu₀
-    model.timestepper.Gⁿ.v.data.parent .= Gⁿv₀
-    model.timestepper.Gⁿ.w.data.parent .= Gⁿw₀
-    model.timestepper.Gⁿ.b.data.parent .= Gⁿb₀
-    model.timestepper.Gⁿ.c.data.parent .= Gⁿc₀
+    set!(model.timestepper.Gⁿ.u, Gⁿu₀)
+    set!(model.timestepper.Gⁿ.v, Gⁿv₀)
+    set!(model.timestepper.Gⁿ.w, Gⁿw₀)
+    set!(model.timestepper.Gⁿ.b, Gⁿb₀)
+    set!(model.timestepper.Gⁿ.c, Gⁿc₀)
 
-    model.timestepper.G⁻.u.data.parent .= G⁻u₀
-    model.timestepper.G⁻.v.data.parent .= G⁻v₀
-    model.timestepper.G⁻.w.data.parent .= G⁻w₀
-    model.timestepper.G⁻.b.data.parent .= G⁻b₀
-    model.timestepper.G⁻.c.data.parent .= G⁻c₀
+    set!(model.timestepper.G⁻.u, G⁻u₀)
+    set!(model.timestepper.G⁻.v, G⁻v₀)
+    set!(model.timestepper.G⁻.w, G⁻w₀)
+    set!(model.timestepper.G⁻.b, G⁻b₀)
+    set!(model.timestepper.G⁻.c, G⁻c₀)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt

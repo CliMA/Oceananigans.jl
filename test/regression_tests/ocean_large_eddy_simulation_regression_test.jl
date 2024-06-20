@@ -105,23 +105,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T), size(T))
     G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S), size(S))
 
-    parent(model.velocities.u)[solution_indices...]   .= u₀
-    parent(model.velocities.v)[solution_indices...]   .= v₀
-    parent(model.velocities.w)[w_solution_indices...] .= w₀
-    parent(model.tracers.T)[solution_indices...]      .= T₀
-    parent(model.tracers.S)[solution_indices...]      .= S₀
+    interior(model.velocities.u) .= u₀
+    interior(model.velocities.v) .= v₀
+    interior(model.velocities.w) .= w₀
+    interior(model.tracers.T)    .= T₀
+    interior(model.tracers.S)    .= S₀
 
-    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= Gⁿu₀
-    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= Gⁿv₀
-    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= Gⁿw₀
-    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= GⁿT₀
-    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= GⁿS₀
+    interior(model.timestepper.Gⁿ.u) .= Gⁿu₀
+    interior(model.timestepper.Gⁿ.v) .= Gⁿv₀
+    interior(model.timestepper.Gⁿ.w) .= Gⁿw₀
+    interior(model.timestepper.Gⁿ.T) .= GⁿT₀
+    interior(model.timestepper.Gⁿ.S) .= GⁿS₀
 
-    parent(model.timestepper.G⁻.u)[solution_indices...]   .= G⁻u₀
-    parent(model.timestepper.G⁻.v)[solution_indices...]   .= G⁻v₀
-    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= G⁻w₀
-    parent(model.timestepper.G⁻.T)[solution_indices...]   .= G⁻T₀
-    parent(model.timestepper.G⁻.S)[solution_indices...]   .= G⁻S₀
+    interior(model.timestepper.G⁻.u) .= G⁻u₀
+    interior(model.timestepper.G⁻.v) .= G⁻v₀
+    interior(model.timestepper.G⁻.w) .= G⁻w₀
+    interior(model.timestepper.G⁻.T) .= G⁻T₀
+    interior(model.timestepper.G⁻.S) .= G⁻S₀
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
