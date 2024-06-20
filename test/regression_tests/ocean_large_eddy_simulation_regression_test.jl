@@ -141,11 +141,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    u₁ = partition_global_array(cpu_arch, ArrayType(solution₁.u), size(solution₁.u))
-    v₁ = partition_global_array(cpu_arch, ArrayType(solution₁.v), size(solution₁.v))
-    w₁ = partition_global_array(cpu_arch, ArrayType(solution₁.w), size(solution₁.w))
-    T₁ = partition_global_array(cpu_arch, ArrayType(solution₁.T), size(solution₁.T))
-    S₁ = partition_global_array(cpu_arch, ArrayType(solution₁.S), size(solution₁.S))
+    u₁ = partition_global_array(cpu_arch, Array(solution₁.u), size(solution₁.u))
+    v₁ = partition_global_array(cpu_arch, Array(solution₁.v), size(solution₁.v))
+    w₁ = partition_global_array(cpu_arch, Array(solution₁.w), size(solution₁.w))
+    T₁ = partition_global_array(cpu_arch, Array(solution₁.T), size(solution₁.T))
+    S₁ = partition_global_array(cpu_arch, Array(solution₁.S), size(solution₁.S))
 
     correct_fields = (u = u₁[2:nx+1, 2:ny+1, 2:nz+1],
                       v = v₁[2:nx+1, 2:ny+1, 2:nz+1],

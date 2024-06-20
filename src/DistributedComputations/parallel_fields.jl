@@ -14,11 +14,22 @@ end
 const SlabYFields = ParallelFields{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
 const SlabXFields = ParallelFields{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
-function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
-    zgrid  = field_in.grid # We support only a 2D partition in X and Y
+"""
+    ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
 
-    ygrid = TwinGrid(zgrid; free_dimension = :y)
-    xgrid = TwinGrid(zgrid; free_dimension = :x)
+Constructs a ParallelFields object that containes the allocated memory and the ruleset required
+for distributed transpositions.
+
+# Arguments
+- `field_in`: The input field. It needs to be in a _z-free_ configuration (i.e. ranks[3] == 1).
+- `FT`: The element type of the field. Defaults to the element type of `field_in`.
+- `with_halos`: A boolean indicating whether to include halos in the field. Defaults to `false`.
+"""
+function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
+    
+    zgrid = field_in.grid # We support only a 2D partition in X and Y
+    ygrid = twin_grid(zgrid; free_dimension = :y)
+    xgrid = twin_grid(zgrid; free_dimension = :x)
 
     Nx = size(xgrid)
     Ny = size(ygrid)
@@ -70,7 +81,17 @@ end
 ##### Twin transposed grid
 #####
 
-function TwinGrid(grid::DistributedGrid; free_dimension = :y)
+"""
+    twin_grid(grid::DistributedGrid; free_dimension = :y)
+
+Constructs a "twin" grid based on the provided distributed `grid` object.
+The twin grid is a grid that discretizes the same domain of the original grid, just with a different partitioning strategy 
+whereas the "free dimension" (i.e. the  non-partitioned dimension) is specified by the keyword argument `free_dimension`.
+This could be either `:x` or `:y`.
+
+Note that `free_dimension = :z` will return the original grid as we do not allow partitioning in the `z` direction 
+"""
+function twin_grid(grid::DistributedGrid; free_dimension = :y)
 
     arch = grid.architecture
     ri, rj, rk = arch.local_index
