@@ -1,7 +1,7 @@
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: on_architecture
 
-struct ParallelFields{FX, FY, FZ, YZ, XY, C, Comms}
+struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
     xfield :: FX # X-direction is free
     yfield :: FY # Y-direction is free
     zfield :: FZ # Z-direction is free (original field)
@@ -11,13 +11,13 @@ struct ParallelFields{FX, FY, FZ, YZ, XY, C, Comms}
     comms  :: Comms
 end
 
-const SlabYFields = ParallelFields{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
-const SlabXFields = ParallelFields{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
+const SlabYFields = TransposableField{<:Any, <:Any, <:Any, <:Nothing} # Y-direction is free
+const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
 """
-    ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
+    TransposableField(field_in, FT = eltype(field_in); with_halos = false)
 
-Constructs a ParallelFields object that containes the allocated memory and the ruleset required
+Constructs a TransposableField object that containes the allocated memory and the ruleset required
 for distributed transpositions.
 
 # Arguments
@@ -25,7 +25,7 @@ for distributed transpositions.
 - `FT`: The element type of the field. Defaults to the element type of `field_in`.
 - `with_halos`: A boolean indicating whether to include halos in the field. Defaults to `false`.
 """
-function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
+function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     
     zgrid = field_in.grid # We support only a 2D partition in X and Y
     ygrid = twin_grid(zgrid; free_dimension = :y)
@@ -71,7 +71,7 @@ function ParallelFields(field_in, FT = eltype(field_in); with_halos = false)
     MPI.Allreduce!(yzcounts, +, yzcomm)
     MPI.Allreduce!(xycounts, +, xycomm)
 
-    return ParallelFields(xfield, yfield, zfield, 
+    return TransposableField(xfield, yfield, zfield, 
                           yzbuffer, xybuffer,
                           (; yz = yzcounts, xy = xycounts),
                           (; yz = yzcomm,   xy = xycomm))

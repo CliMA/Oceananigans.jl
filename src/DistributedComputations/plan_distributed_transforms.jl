@@ -9,7 +9,7 @@ struct FFTPlan{F, B}
     backward :: B
 end
 
-function plan_distributed_transforms(global_grid, storage::ParallelFields, planner_flag)
+function plan_distributed_transforms(global_grid, storage::TransposableField, planner_flag)
     topo = topology(global_grid)
     arch = architecture(global_grid)
 

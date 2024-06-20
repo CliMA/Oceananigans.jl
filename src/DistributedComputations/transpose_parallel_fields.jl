@@ -102,7 +102,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
     tofield = Symbol(to, :field)
 
     @eval begin
-        function $transpose!(pf::ParallelFields)
+        function $transpose!(pf::TransposableField)
             $pack_buffer!(pf.$buffer, pf.$fromfield) # pack the one-dimensional buffer for Alltoallv! call
             sync_device!(architecture(pf.$fromfield)) # Device needs to be synched with host before MPI call
             Alltoallv!(VBuffer(pf.$buffer.send, pf.counts.$buff), VBuffer(pf.$buffer.recv, pf.counts.$buff), pf.comms.$buff) # Actually transpose!

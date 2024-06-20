@@ -95,7 +95,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     validate_global_grid(global_grid)
     FT = Complex{eltype(local_grid)}
 
-    storage = ParallelFields(CenterField(local_grid), FT)
+    storage = TransposableField(CenterField(local_grid), FT)
     # We don't support distributing anything in z.
     architecture(local_grid).ranks[3] == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
