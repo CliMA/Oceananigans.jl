@@ -78,6 +78,10 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         # TODO: do better than this silly criteria, also need to check closure tuples
         if closure isa FlavorOfCATKE && tracer_name == :e
             @debug "Skipping AB2 step for e"
+        elseif closure isa FlavorOfTD && tracer_name == :ϵ
+            @debug "Skipping AB2 step for ϵ"
+        elseif closure isa FlavorOfTD && tracer_name == :e
+            @debug "Skipping AB2 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             G⁻ = model.timestepper.G⁻[tracer_name]
