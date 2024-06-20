@@ -42,6 +42,9 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     ArrayType = typeof(model.velocities.u.data.parent)
     nx, ny, nz = size(model.tracers.T)
 
+    u, v, w = model.velocities
+    T, S = model.tracers
+
     ####
     #### Uncomment the block below to generate regression data.
     ####
@@ -84,23 +87,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     cpu_arch = cpu_architecture(architecture(grid))
 
-    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(solution₀.u))
-    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(solution₀.v))
-    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(solution₀.w))
-    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T), size(solution₀.T))
-    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S), size(solution₀.S))
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(w))
+    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T), size(T))
+    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S), size(S))
 
-    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(Gⁿ₀.u))
-    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(Gⁿ₀.v))
-    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(Gⁿ₀.w))
-    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T), size(Gⁿ₀.T))
-    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S), size(Gⁿ₀.S))
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(w))
+    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T), size(T))
+    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S), size(S))
 
-    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(G⁻₀.u))
-    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(G⁻₀.v))
-    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(G⁻₀.w))
-    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T), size(G⁻₀.T))
-    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S), size(G⁻₀.S))
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(w))
+    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T), size(T))
+    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S), size(S))
 
     parent(model.velocities.u)[solution_indices...]   .= u₀
     parent(model.velocities.v)[solution_indices...]   .= v₀
@@ -141,11 +144,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    u₁ = partition_global_array(cpu_arch, Array(solution₁.u), size(solution₁.u))
-    v₁ = partition_global_array(cpu_arch, Array(solution₁.v), size(solution₁.v))
-    w₁ = partition_global_array(cpu_arch, Array(solution₁.w), size(solution₁.w))
-    T₁ = partition_global_array(cpu_arch, Array(solution₁.T), size(solution₁.T))
-    S₁ = partition_global_array(cpu_arch, Array(solution₁.S), size(solution₁.S))
+    u₁ = partition_global_array(cpu_arch, Array(solution₁.u), size(u))
+    v₁ = partition_global_array(cpu_arch, Array(solution₁.v), size(v))
+    w₁ = partition_global_array(cpu_arch, Array(solution₁.w), size(test_fields.w))
+    T₁ = partition_global_array(cpu_arch, Array(solution₁.T), size(T))
+    S₁ = partition_global_array(cpu_arch, Array(solution₁.S), size(S))
 
     correct_fields = (u = u₁[2:nx+1, 2:ny+1, 2:nz+1],
                       v = v₁[2:nx+1, 2:ny+1, 2:nz+1],

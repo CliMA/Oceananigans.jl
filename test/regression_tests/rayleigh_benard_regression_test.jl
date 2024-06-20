@@ -72,6 +72,9 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     checkpointer = Checkpointer(model, schedule=IterationInterval(test_steps), prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
 
+    u, v, w = model.velocities
+    b, c = model.tracers
+
     #####
     ##### Initial condition and spinup steps for creating regression test data
     #####
@@ -103,23 +106,23 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     cpu_arch = cpu_architecture(architecture(grid))
 
-    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(solution₀.u))
-    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(solution₀.v))
-    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(solution₀.w))
-    b₀ = partition_global_array(cpu_arch, ArrayType(solution₀.b), size(solution₀.b))
-    c₀ = partition_global_array(cpu_arch, ArrayType(solution₀.c), size(solution₀.c))
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u), size(u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v), size(v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w), size(w))
+    b₀ = partition_global_array(cpu_arch, ArrayType(solution₀.b), size(b))
+    c₀ = partition_global_array(cpu_arch, ArrayType(solution₀.c), size(c))
 
-    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(Gⁿ₀.u))
-    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(Gⁿ₀.v))
-    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(Gⁿ₀.w))
-    Gⁿb₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.b), size(Gⁿ₀.b))
-    Gⁿc₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.c), size(Gⁿ₀.c))
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u), size(u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v), size(v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w), size(w))
+    Gⁿb₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.b), size(b))
+    Gⁿc₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.c), size(c))
 
-    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(G⁻₀.u))
-    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(G⁻₀.v))
-    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(G⁻₀.w))
-    G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b), size(G⁻₀.b))
-    G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c), size(G⁻₀.c))
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u), size(u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v), size(v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w), size(w))
+    G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b), size(b))
+    G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c), size(c))
 
     model.velocities.u.data.parent .= u₀
     model.velocities.v.data.parent .= v₀
@@ -171,11 +174,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     b₁ = interior(solution₁.b, global_grid)
     c₁ = interior(solution₁.c, global_grid)
 
-    correct_fields = (u = partition_global_array(cpu_arch, Array(u₁), size(u₁)),
-                      v = partition_global_array(cpu_arch, Array(v₁), size(v₁)),
-                      w = partition_global_array(cpu_arch, Array(w₁), size(w₁)),
-                      b = partition_global_array(cpu_arch, Array(b₁), size(b₁)),
-                      c = partition_global_array(cpu_arch, Array(c₁), size(c₁)))
+    correct_fields = (u = partition_global_array(cpu_arch, Array(u₁), size(u)),
+                      v = partition_global_array(cpu_arch, Array(v₁), size(v)),
+                      w = partition_global_array(cpu_arch, Array(w₁), size(test_fields.w)),
+                      b = partition_global_array(cpu_arch, Array(b₁), size(b)),
+                      c = partition_global_array(cpu_arch, Array(c₁), size(c)))
 
     summarize_regression_test(test_fields, correct_fields)
 
