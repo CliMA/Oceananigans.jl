@@ -85,7 +85,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo)
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
-    return interior(∇²ϕ) ≈ R
+    return Array(interior(∇²ϕ)) ≈ Array(R)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
