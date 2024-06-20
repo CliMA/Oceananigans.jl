@@ -15,7 +15,7 @@ using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_condition
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
