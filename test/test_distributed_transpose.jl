@@ -5,7 +5,7 @@ MPI.Init()
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.DistributedComputations: 
-                ParallelFields, 
+                TransposableField, 
                 transpose_z_to_y!, 
                 transpose_y_to_z!,
                 transpose_y_to_x!,
@@ -17,7 +17,7 @@ function test_transpose(grid_points, ranks, topo, child_arch)
 
     loc = (Center, Center, Center)
     ϕ = Field(loc, grid, ComplexF64)
-    Φ = ParallelFields(ϕ)
+    Φ = TransposableField(ϕ)
 
     ϕ₀ = on_architecture(child_arch, rand(ComplexF64, size(ϕ)))
 
