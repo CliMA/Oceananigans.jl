@@ -1,12 +1,5 @@
-const BoundedGrid = Union{AbstractGrid{<:Any, <:Bounded}, 
-                          AbstractGrid{<:Any, <:Any, <:Bounded}, 
-                          AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}}
-
 @inline fill_open_boundary_regions!(field, args...) = 
     fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
-
-# what is this for
-#@inline fill_open_boundary_regions!(field, grid::BoundedGrid, loc, args...) = fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, loc, grid, args...)
 
 function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; kwargs...)
     arch = architecture(grid)
