@@ -30,7 +30,10 @@ function test_transpose(grid_points, ranks, topo, child_arch)
     transpose_y_to_z!(Φ)
 
     # Check that the data is unchanged
-    return all(interior(ϕ) .== interior(Φ.zfield))
+    same_real_part = all(real.(Array(interior(ϕ))) .== real.(Array(interior(Φ.zfield))))
+    same_imag_part = all(imag.(Array(interior(ϕ))) .== imag.(Array(interior(Φ.zfield))))
+
+    return same_real_part & same_imag_part
 end
 
 @testset "Distributed Transpose" begin
