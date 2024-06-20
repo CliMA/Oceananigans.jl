@@ -39,13 +39,8 @@ import Oceananigans.BoundaryConditions:
     end
 end
 
-function fill_halo_regions!(field::MultiRegionField, args...; fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
-
-    if fill_boundary_normal_velocities
-        clock, fields = args
-        apply_regionally!(fill_open_boundary_regions!, field, clock, fields)
-    end
 
     return fill_halo_regions!(field.data,
                               field.boundary_conditions,
@@ -104,9 +99,13 @@ function multi_region_permute_boundary_conditions(bcs)
     return (fill_halos!, boundary_conditions)
 end
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...) 
     arch = architecture(mrg)
     @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
+
+    if fill_boundary_normal_velocities
+        apply_regionally!(fill_open_boundary_regions!, field, args...) 
+    end
     
     # The number of tasks is fixed to 3 (see `multi_region_permute_boundary_conditions`).
     # When we want to allow asynchronous communication, we will might need to split the halos sides 
