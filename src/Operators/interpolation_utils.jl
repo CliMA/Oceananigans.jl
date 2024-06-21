@@ -62,11 +62,9 @@ function interpolation_operator(from, to)
         global identity_counter += 1
         identity = identify_an_identity(identity_counter)
 
-        # TODO: Remove eval
-        return @eval $identity
+        return getglobal(@__MODULE__, identity)
     else
-        # TODO: Remove eval
-        return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
+        return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
 end
 
@@ -79,8 +77,7 @@ operator for fields that have no intrinsic location, like numbers or functions.
 function interpolation_operator(::Nothing, to)
     global identity_counter += 1
     identity = identify_an_identity(identity_counter)
-    # TODO: Remove eval
-    return @eval $identity
+    return getglobal(@__MODULE__, identity)
 end
 
 assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
