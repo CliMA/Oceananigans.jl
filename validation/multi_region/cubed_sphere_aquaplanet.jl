@@ -1,16 +1,17 @@
-using Oceananigans, Printf
-
-using Oceananigans.Grids: node, halo_size, total_size
+using Adapt
+using CUDA
+using JLD2
+using KernelAbstractions: @kernel, @index
+using Oceananigans
+using Oceananigans.Grids: node, λnode, φnode, halo_size, total_size
 using Oceananigans.MultiRegion: getregion, number_of_regions, fill_halo_regions!, Iterate
 using Oceananigans.Operators
-using KernelAbstractions: @kernel, @index
-using Oceananigans.Utils
-using Oceananigans.TurbulenceClosures
 using Oceananigans.Operators: Δx, Δy
-using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
-
-using JLD2
+using Oceananigans.TurbulenceClosures
+using Oceananigans.Units
+using Oceananigans.Utils
+using Printf
 
 ## Grid setup
 
@@ -48,9 +49,10 @@ function geometric_z_faces(p)
 end
 
 Lz = 3000
-h = 0.25 * Lz
+h_b = 0.25 * Lz
+h_νz_κz = 100
 
-Nx, Ny, Nz = 32, 32, 20
+Nx, Ny, Nz = 360, 360, 30
 Nhalo = 4
 
 ratio = 0.8
@@ -60,7 +62,8 @@ ratio = 0.8
 τs = (0, 0.2, -0.1, -0.02, -0.1, 0.2, 0)
 
 my_parameters = (Lz          = Lz,
-                 h           = h,
+                 h_b         = h_b,
+                 h_νz_κz     = h_νz_κz,
                  Nz          = Nz,
                  k₀          = 0.25 * Nz, # Exponential profile parameter
                  ratio       = ratio,     # Geometric profile parameter
@@ -78,14 +81,15 @@ my_parameters = (Lz          = Lz,
 
 radius = 6371e3
 f₀ = 1e-4
-L_d = (2/f₀ * sqrt(my_parameters.h * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h)))
-       * (1 - exp(-my_parameters.Lz/(2my_parameters.h))))
-print("For an initial buoyancy profile decaying exponetially with depth, the Rossby radius of deformation is $L_d m.\n")
+L_d = (2/f₀ * sqrt(my_parameters.h_b * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h_b)))
+       * (1 - exp(-my_parameters.Lz/(2my_parameters.h_b))))
+print(
+"For an initial buoyancy profile decaying exponentially with depth, the Rossby radius of deformation is $L_d m.\n")
 Nx_min = ceil(Int, 2π * radius/(4L_d))
 print("The minimum number of grid points in each direction of the cubed sphere panels required to resolve this " *
       "Rossby radius of deformation is $(Nx_min).\n")
 
-arch = CPU()
+arch = GPU()
 underlying_grid = ConformalCubedSphereGrid(arch;
                                            panel_size = (Nx, Ny, Nz),
                                            z = geometric_z_faces(my_parameters),
@@ -93,10 +97,10 @@ underlying_grid = ConformalCubedSphereGrid(arch;
                                            radius,
                                            partition = CubedSpherePartition(; R = 1))
 
-max_spacing_degree = rad2deg(maximum(underlying_grid[1].Δxᶠᶠᵃ)/radius)
+Δλ = 1
 
 @inline function double_drake_depth(λ, φ)
-    if (-40 < φ ≤ 90) && ((-max_spacing_degree < λ ≤ 0) || (90 ≤ λ < (90 + max_spacing_degree)))
+    if (φ > -40) && ((-Δλ < λ ≤ 0) || (90 ≤ λ < (90 + Δλ)))
         depth = 0
     else
         depth = -Lz
@@ -125,28 +129,76 @@ my_parameters = merge(my_parameters, (Δz = Δz_min, 𝓋 = Δz_min/my_parameter
     return coefficients[1] * x^3 + coefficients[2] * x^2 + coefficients[3] * x + coefficients[4]
 end
 
-using Oceananigans.Grids: λnode, φnode
-
 # Specify the wind stress as a function of latitude, φ.
-@inline function wind_stress_x(i, j, grid, clock, fields, p)
-    φ = φnode(i, j, 1, grid, Face(), Center(), Center())
+@inline function stress_fc(grid, p)
+    stress = zeros(grid.Ny)
+    
+    for j in 1:grid.Ny
+        φ = φnode(1, j, 1, grid, Face(), Center(), Center())
 
-    if abs(φ) > p.φ_max_τ
-        τₓ_latlon = 0
-    else
-        φ_index = sum(φ .> p.φs) + 1
+        if abs(φ) > p.φ_max_τ
+            stress[j] = 0
+        else
+            φ_index = sum(φ .> p.φs) + 1
 
-        φ₁ = p.φs[φ_index-1]
-        φ₂ = p.φs[φ_index]
-        τ₁ = p.τs[φ_index-1]
-        τ₂ = p.τs[φ_index]
+            φ₁ = p.φs[φ_index-1]
+            φ₂ = p.φs[φ_index]
+            τ₁ = p.τs[φ_index-1]
+            τ₂ = p.τs[φ_index]
 
-        τₓ_latlon = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+            stress[j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+        end     
     end
+    
+    return stress
+end
 
-    # Now, calculate the cosine of the angle with respect to the geographic north, and use it to determine the component
-    # of τₓ_latlon in the local x direction of the cubed sphere panel.
+@inline function stress_cf(grid, p)
+    stress = zeros(grid.Ny)
+    
+    for j in 1:grid.Ny
+        φ = φnode(1, j, 1, grid, Center(), Face(), Center())
 
+        if abs(φ) > p.φ_max_τ
+            stress[j] = 0
+        else
+            φ_index = sum(φ .> p.φs) + 1
+
+            φ₁ = p.φs[φ_index-1]
+            φ₂ = p.φs[φ_index]
+            τ₁ = p.τs[φ_index-1]
+            τ₂ = p.τs[φ_index]
+
+            stress[j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+        end     
+    end
+    
+    return stress
+end
+
+using Oceananigans: on_architecture
+cpu_grid = on_architecture(CPU(), grid)  
+
+@apply_regionally zonal_stress_fc = stress_fc(cpu_grid, my_parameters)
+@apply_regionally zonal_stress_fc = on_architecture(arch, zonal_stress_fc)  
+
+@apply_regionally zonal_stress_cf = stress_cf(cpu_grid, my_parameters)
+@apply_regionally zonal_stress_cf = on_architecture(arch, zonal_stress_cf)
+
+struct WindStressBCX{C} <: Function
+    stress :: C
+end
+
+struct WindStressBCY{C} <: Function
+    stress :: C
+end
+
+Adapt.adapt_structure(to, τ::WindStressBCX) = WindStressBCX(Adapt.adapt(to, τ.stress))
+Adapt.adapt_structure(to, τ::WindStressBCY) = WindStressBCY(Adapt.adapt(to, τ.stress))
+
+@inline function (τ::WindStressBCX)(i, j, grid, clock, fields)
+    @inbounds τₓ_latlon = τ.stress[j]
+    
     φᶠᶠᵃ_i_jp1 = φnode(i, j+1, 1, grid,   Face(),   Face(), Center())
     φᶠᶠᵃ_i_j   = φnode(i,   j, 1, grid,   Face(),   Face(), Center())
     Δyᶠᶜᵃ_i_j  =    Δy(i,   j, 1, grid,   Face(), Center(), Center())
@@ -166,22 +218,9 @@ using Oceananigans.Grids: λnode, φnode
     return τₓ_x
 end
 
-@inline function wind_stress_y(i, j, grid, clock, fields, p)
-    φ = φnode(i, j, 1, grid, Center(), Face(), Center())
+@inline function (τ::WindStressBCY)(i, j, grid, clock, fields)
+    @inbounds τₓ_latlon = τ.stress[j]
     
-    if abs(φ) > p.φ_max_τ
-        τₓ_latlon = 0
-    else
-        φ_index = sum(φ .> p.φs) + 1
-
-        φ₁ = p.φs[φ_index-1]
-        φ₂ = p.φs[φ_index]
-        τ₁ = p.τs[φ_index-1]
-        τ₂ = p.τs[φ_index]
-
-        τₓ_latlon = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
-    end
-
     # Now, calculate the sine of the angle with respect to the geographic north, and use it to determine the component
     # of τₓ_latlon in the local y direction of the cubed sphere panel.
 
@@ -204,12 +243,23 @@ end
     return τₓ_y
 end
 
-@inline linear_profile_in_z(z, p) = 1 + z/p.Lz
-@inline exponential_profile_in_z(z, Lz, h) = (exp(z / h) - exp(- Lz / h)) / (1 - exp(- Lz / h))
+u_stress = WindStressBCX(zonal_stress_fc)
+v_stress = WindStressBCY(zonal_stress_cf)
 
-@inline linear_profile_in_y(φ, p) = 1 - abs(φ)/p.φ_max_b_lin
-@inline parabolic_profile_in_y(φ, p) = 1 - (φ/p.φ_max_b_par)^2
-@inline cosine_profile_in_y(φ, p) = 0.5(1 + cos(π * min(max(φ/p.φ_max_b_cos, -1), 1)))
+import Oceananigans.Utils: getregion, _getregion
+
+@inline getregion(τ::WindStressBCX, i)  = WindStressBCX(_getregion(τ.stress, i))
+@inline getregion(τ::WindStressBCY, i)  = WindStressBCY(_getregion(τ.stress, i))
+
+@inline _getregion(τ::WindStressBCX, i) = WindStressBCX(getregion(τ.stress, i))
+@inline _getregion(τ::WindStressBCY, i) = WindStressBCY(getregion(τ.stress, i))
+
+@inline linear_profile_in_z(z, p)          = 1 + z/p.Lz
+@inline exponential_profile_in_z(z, Lz, h) = (exp(z / h) - exp(-Lz / h)) / (1 - exp(-Lz / h))
+
+@inline linear_profile_in_y(φ, p)        = 1 - abs(φ)/p.φ_max_b_lin
+@inline parabolic_profile_in_y(φ, p)     = 1 - (φ/p.φ_max_b_par)^2
+@inline cosine_profile_in_y(φ, p)        = 0.5(1 + cos(π * min(max(φ/p.φ_max_b_cos, -1), 1)))
 @inline double_cosine_profile_in_y(φ, p) = (
 0.5(1 + cos(π * min(max((deg2rad(abs(φ)) - π/4)/(deg2rad(p.φ_max_b_cos) - π/4), -1), 1))))
 
@@ -234,16 +284,13 @@ end
 
 u_bot_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
 v_bot_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
-top_stress_x = FluxBoundaryCondition(wind_stress_x; discrete_form = true,
-                                     parameters = (; φ_max_τ = my_parameters.φ_max_τ, φs = my_parameters.φs,
-                                                     τs = my_parameters.τs, ρ₀ = my_parameters.ρ₀))
-top_stress_y = FluxBoundaryCondition(wind_stress_y; discrete_form = true,
-                                     parameters = (; φ_max_τ = my_parameters.φ_max_τ, φs = my_parameters.φs,
-                                                     τs = my_parameters.τs, ρ₀ = my_parameters.ρ₀))
+top_stress_x = FluxBoundaryCondition(u_stress; discrete_form = true)
+top_stress_y = FluxBoundaryCondition(v_stress; discrete_form = true)
+
 u_bcs = FieldBoundaryConditions(bottom = u_bot_bc, top = top_stress_x)
 v_bcs = FieldBoundaryConditions(bottom = v_bot_bc, top = top_stress_y)
 
-my_buoyancy_parameters = (; Δ = my_parameters.Δ, h = my_parameters.h, Lz = my_parameters.Lz,
+my_buoyancy_parameters = (; Δ = my_parameters.Δ, h = my_parameters.h_b, Lz = my_parameters.Lz,
                             φ_max_b_lin = my_parameters.φ_max_b_lin, φ_max_b_par = my_parameters.φ_max_b_par,
                             φ_max_b_cos = my_parameters.φ_max_b_cos, 𝓋 = my_parameters.𝓋)
 top_restoring_bc = FluxBoundaryCondition(buoyancy_restoring; field_dependencies = :b,
@@ -256,7 +303,7 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 
 momentum_advection = VectorInvariant()
 tracer_advection   = WENO()
-substeps           = 20
+substeps           = 160
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
@@ -269,13 +316,13 @@ free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = f
 biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
                                                              parameters = (; λ_rts = my_parameters.λ_rts))
 
-κh = 1e+3
-horizontal_diffusivity = HorizontalScalarDiffusivity(κ = κh) # Laplacian viscosity and diffusivity
+κh = 1e+2 
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ = κh) # Laplacian diffusivity
 
-νz_surface = 5e-3
+νz_surface = 1e-3
 νz_bottom = 1e-4
 
-struct MyViscosity{FT} <: Function
+struct MyVerticalViscosity{FT} <: Function
     Lz  :: FT
     h   :: FT
     νzs :: FT
@@ -284,14 +331,17 @@ end
 
 using Adapt
 
-Adapt.adapt_structure(to, ν::MyViscosity) = MyViscosity(Adapt.adapt(to, ν.Lz),  Adapt.adapt(to, ν.h),
-                                                        Adapt.adapt(to, ν.νzs), Adapt.adapt(to, ν.νzb))
+Adapt.adapt_structure(to, ν::MyVerticalViscosity) = MyVerticalViscosity(Adapt.adapt(to, ν.Lz),  Adapt.adapt(to, ν.h),
+                                                                        Adapt.adapt(to, ν.νzs), Adapt.adapt(to, ν.νzb))
 
-@inline (ν::MyViscosity)(x, y, z, t) = ν.νzb + (ν.νzs - ν.νzb) * exponential_profile_in_z(z, ν.Lz, ν.h)
+@inline (ν::MyVerticalViscosity)(x, y, z, t) = ν.νzb + (ν.νzs - ν.νzb) * exponential_profile_in_z(z, ν.Lz, ν.h)
 
-νz = MyViscosity(float(Lz), h, νz_surface, νz_bottom)
+νz = MyVerticalViscosity(float(Lz), float(h_νz_κz), νz_surface, νz_bottom)
 
-κz = 2e-5
+κz_surface = 2e-4
+κz_bottom = 2e-5
+
+κz = MyVerticalViscosity(float(Lz), float(h_νz_κz), κz_surface, κz_bottom)
 
 vertical_diffusivity  = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
 
@@ -316,7 +366,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 #####
 
 @inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * cosine_profile_in_y(φ, my_buoyancy_parameters)
-                                     * exponential_profile_in_z(z, my_parameters.Lz, my_parameters.h))
+                                     * exponential_profile_in_z(z, my_parameters.Lz, my_parameters.h_b))
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
 set!(model, b = initial_buoyancy) 
 
@@ -376,6 +426,7 @@ end
 τ_xr = CenterField(grid, indices = (1:Nx, 1:Ny, 1:1)) # Reconstructed zonal wind stress
 τ_yr = CenterField(grid, indices = (1:Nx, 1:Ny, 1:1)) # Reconstructed meridional wind stress, expected to be zero
 
+#=
 for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
     φ = φnode(i, j, 1, grid[region], Center(), Center(), Center())
 
@@ -568,33 +619,29 @@ if plot_initial_field
     fig = geo_heatlatlon_visualization(grid, bᵢ, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)")
     save("cubed_sphere_aquaplanet_b_0.png", fig)
 end
+=#
 
 #####
 ##### Simulation setup
 #####
 
-Δt = 5minutes
+Δt = 15minutes
 
-min_spacing = filter(!iszero, grid[1].Δxᶠᶠᵃ) |> minimum
+# Compute the minimum number of substeps required to satisfy the CFL condition for a given Courant number.
+CUDA.@allowscalar min_spacing = filter(!iszero, grid.Δxᶠᶠᵃ) |> minimum
 c = sqrt(model.free_surface.gravitational_acceleration * Lz)
-CourantNumber = 0.25
-min_substeps = ceil(Int, c * Δt / (CourantNumber * min_spacing))
+CourantNumber = 0.7
+min_substeps = ceil(Int, 2c * Δt / (CourantNumber * min_spacing))
 print("The minimum number of substeps required to satisfy the CFL condition is $min_substeps.\n")
 
-debug_mode = false
-if debug_mode
-    stop_time = 2days
-    save_fields_interval = 6hours
-    checkpointer_interval = 12hours
-else
-    month = 30days
-    months = month
-    year = 365days
-    years = year
-    stop_time = 100years
-    save_fields_interval = 1month
-    checkpointer_interval = 1year
-end
+month = 30days
+months = month
+year = 365days
+years = year
+stop_time = 10years
+save_fields_interval = 10days
+save_surface_interval = 12hours
+checkpointer_interval = 3months
 # Note that n_frames = floor(Int, stop_time/save_fields_interval) + 1.
 
 Ntime = round(Int, stop_time/Δt)
@@ -605,11 +652,16 @@ Ntime = round(Int, stop_time/Δt)
 simulation = Simulation(model; Δt, stop_time)
 
 # Print a progress message.
-progress_message_iteration_interval = 10
-progress_message(sim) = (
-@printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
-        iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
-        maximum(abs, model.free_surface.η) - Lz, maximum(abs, model.tracers.b), prettytime(sim.run_wall_time)))
+progress_message_iteration_interval = 100
+
+wall_time = [time_ns()]
+function progress_message(sim) 
+    @printf("Iteration: %04d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f, max|b|: %.3f, wall time: %s\n",
+            iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u),
+            maximum(abs, model.free_surface.η), maximum(abs, model.tracers.b), prettytime(1e-9 * (time_ns() - wall_time[1])))
+    
+    wall_time[1] = time_ns()
+end
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(progress_message_iteration_interval))
 
@@ -617,13 +669,13 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(p
 ##### Build checkpointer and output writer
 #####
 
-pick_up_simulation = false
-if pick_up_simulation
-    pick_up = (pickup = true)
-    overwrite_existing_output_writer = (overwrite_existing = false)
+pickup_simulation = false
+if pickup_simulation
+    pickup_option = true
+    overwrite_existing_option = false
 else
-    pick_up = (pickup = false)
-    overwrite_existing_output_writer = (overwrite_existing = true)
+    pickup_option = false
+    overwrite_existing_option = true
 end
 
 filename_checkpointer = "cubed_sphere_aquaplanet_checkpointer"
@@ -634,13 +686,31 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 
 ζ = Oceananigans.Models.HydrostaticFreeSurfaceModels.VerticalVorticityField(model)
 
-outputs = merge(fields(model), (; ζ))
+outputs = fields(model)
 filename_output_writer = "cubed_sphere_aquaplanet_output"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename_output_writer,
                                                       verbose = false,
-                                                      overwrite_existing = overwrite_existing_output_writer...)
+                                                      overwrite_existing = overwrite_existing_option)
+
+outputs = (u = model.velocities.u, v = model.velocities.v, b = model.tracers.b)
+filename_output_writer = "cubed_sphere_aquaplanet_surface_output"
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, outputs;
+                                                              schedule = TimeInterval(save_surface_interval),
+                                                              filename = filename_output_writer,
+                                                              indices = (:, :, grid.Nz),
+                                                              verbose = false,
+                                                              overwrite_existing = overwrite_existing_option)
+
+outputs = (; w = model.velocities.w, η = model.free_surface.η)
+filename_output_writer = "cubed_sphere_aquaplanet_surface_output_w_η"
+simulation.output_writers[:surface_w_η] = JLD2OutputWriter(model, outputs;
+                                                           schedule = TimeInterval(save_surface_interval),
+                                                           filename = filename_output_writer,
+                                                           indices = (:, :, grid.Nz+1),
+                                                           verbose = false,
+                                                           overwrite_existing = overwrite_existing_option)
 
 #####
 ##### Run simulation
@@ -648,8 +718,9 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
 
 @info "Running the simulation..."
 
-run!(simulation, pick_up...)
+run!(simulation, pickup = pickup_option)
 
+#=
 u_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "u");
 v_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "v");
 ζ_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "ζ");
@@ -934,3 +1005,4 @@ if make_animations
                                            cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = true,
                                            plot_limits = b_colorrange, framerate = framerate)
 end
+=#
