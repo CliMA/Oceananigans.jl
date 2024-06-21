@@ -47,6 +47,8 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 @testset "Nonhydrostatic Regression" begin
     @info "Running nonhydrostatic regression tests..."
 
+    archs = nonhydrostatic_regression_test_architectures()
+
     for arch in archs
         A = typeof(arch)
 

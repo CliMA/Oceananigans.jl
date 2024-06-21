@@ -69,3 +69,4 @@ closures = (
 include("utils_for_runtests.jl")
 
 float_types = (Float32, Float64)
+archs = test_architectures()
