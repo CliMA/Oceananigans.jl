@@ -7,15 +7,9 @@ using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, impli
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
-tke_time_step(closure::CATKEVerticalDiffusivity) = closure.turbulent_kinetic_energy_time_step
+get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
-function tke_time_step(closure_array::AbstractArray)
-    # assume they are all the same
-    closure = CUDA.@allowscalar closure_array[1, 1]
-    return tke_time_step(closure)
-end
-
-function time_step_turbulent_kinetic_energy!(model)
+function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
     closure = model.closure
@@ -33,13 +27,13 @@ function time_step_turbulent_kinetic_energy!(model)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt # simulation time-step (for velocities, tracers, etc)
-    Δτ = tke_time_step(closure) # special time-step for turbulent kinetic energy
+    Δt = model.clock.last_Δt
+    Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
         Δτ = Δt
         M = 1
-    else # limit TKE time-step Δτ by Δt.
+    else
         M = ceil(Int, Δt / Δτ) # number of substeps
         Δτ = Δt / M
     end
@@ -98,7 +92,7 @@ end
     wb⁺ = max(zero(grid), wb)
 
     eⁱʲᵏ = @inbounds e[i, j, k]
-    eᵐⁱⁿ = closure_ij.minimum_turbulent_kinetic_energy
+    eᵐⁱⁿ = closure_ij.minimum_tke
     wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
 
     # Treat the divergence of TKE flux at solid bottoms implicitly.
@@ -122,7 +116,7 @@ end
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
-    e⁺ = clip(eⁱʲᵏ) # ensure that eⁱʲᵏ > 0
+    e⁺ = clip(eⁱʲᵏ)
     w★ = sqrt(e⁺)
     div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
 
@@ -178,7 +172,7 @@ end
 end
 
 #=
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 
 @inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
 @inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
