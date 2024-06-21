@@ -288,8 +288,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     for (field₁, field₂, name₁, name₂) in zip(fields₁, fields₂, names₁, names₂)
         for region in 1:number_of_regions(grid)
-            getregion(field₁, region).data .= geproperty(getregion(grid, region), name₁)
-            getregion(field₂, region).data .= geproperty(getregion(grid, region), name₂)
+            getregion(field₁, region).data .= getproperty(getregion(grid, region), name₁)
+            getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
         end
 
         if horizontal_topology == FullyConnected
@@ -297,8 +297,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         end
 
         for region in 1:number_of_regions(grid)
-            geproperty(getregion(grid, region), name₁) .= getregion(field₁, region).data
-            geproperty(getregion(grid, region), name₂) .= getregion(field₂, region).data
+            getproperty(getregion(grid, region), name₁) .= getregion(field₁, region).data
+            getproperty(getregion(grid, region), name₂) .= getregion(field₂, region).data
         end
     end
 
