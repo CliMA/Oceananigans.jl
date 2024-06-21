@@ -303,7 +303,7 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 
 momentum_advection = VectorInvariant()
 tracer_advection   = WENO()
-substeps           = 160
+substeps           = 50
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
@@ -625,7 +625,7 @@ end
 ##### Simulation setup
 #####
 
-Δt = 15minutes
+Δt = 5minutes
 
 # Compute the minimum number of substeps required to satisfy the CFL condition for a given Courant number.
 CUDA.@allowscalar min_spacing = filter(!iszero, grid.Δxᶠᶠᵃ) |> minimum
