@@ -8,11 +8,11 @@ using ..TurbulenceClosures:
     total_depthᶜᶜᵃ
 
 """
-    struct MixingLength{FT}
+    struct CATKEMixingLength{FT}
 
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
-Base.@kwdef struct MixingLength{FT}
+Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
@@ -38,22 +38,6 @@ end
 #####
 ##### Mixing length
 #####
-
-@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
-
-@inline function shearᶜᶜᶠ(i, j, k, grid, u, v)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
-    S² = ∂z_u² + ∂z_v²
-    return S²
-end
-
-@inline function shearᶜᶜᶜ(i, j, k, grid, u, v)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶠᶜᶠ, u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶜᶠᶠ, v)
-    S² = ∂z_u² + ∂z_v²
-    return S²
-end
 
 @inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
@@ -292,10 +276,10 @@ end
     return min(H, ℓe)
 end
 
-Base.summary(::MixingLength) = "CATKEVerticalDiffusivities.MixingLength"
+Base.summary(::CATKEMixingLength) = "TKEBasedVerticalDiffusivities.CATKEMixingLength"
 
-Base.show(io::IO, ml::MixingLength) =
-    print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", '\n',
+Base.show(io::IO, ml::CATKEMixingLength) =
+    print(io, "TKEBasedVerticalDiffusivities.CATKEMixingLength parameters:", '\n',
               " ├── Cˢ:   ", ml.Cˢ,   '\n',
               " ├── Cᵇ:   ", ml.Cᵇ,   '\n',
               " ├── Cʰⁱu: ", ml.Cʰⁱu, '\n',
