@@ -649,8 +649,6 @@ end
 ##### Grid spacings in x, y, z (in meters)
 #####
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-
 @inline xspacings(grid::LLG, ℓx::C, ℓy::C; with_halos=false) = _property(grid.Δxᶜᶜᵃ, ℓx, ℓy,
                                                                          topology(grid, 1), topology(grid, 2),
                                                                          size(grid, 1), size(grid, 2), with_halos)
