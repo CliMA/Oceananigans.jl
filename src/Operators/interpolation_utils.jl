@@ -62,8 +62,10 @@ function interpolation_operator(from, to)
         global identity_counter += 1
         identity = identify_an_identity(identity_counter)
 
+        # TODO: Remove eval
         return @eval $identity
     else
+        # TODO: Remove eval
         return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
 end
@@ -77,6 +79,7 @@ operator for fields that have no intrinsic location, like numbers or functions.
 function interpolation_operator(::Nothing, to)
     global identity_counter += 1
     identity = identify_an_identity(identity_counter)
+    # TODO: Remove eval
     return @eval $identity
 end
 

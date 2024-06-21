@@ -262,6 +262,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
         end # quote
 
+        # TODO: Remove eval
         eval(expr)
     end
 
@@ -293,6 +294,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             end
         end # quote
 
+        # TODO: Remove eval
         eval(expr)
     end
 
