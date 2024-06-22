@@ -1,3 +1,8 @@
+using Enzyme
+# Required presently
+Enzyme.API.runtimeActivity!(true)
+Enzyme.API.looseTypeAnalysis!(true)
+
 include("dependencies_for_runtests.jl")
 
 using Oceananigans
@@ -5,14 +10,10 @@ using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: ConstantField
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
-using Enzyme
 using Oceananigans.Fields: FunctionField
 using Oceananigans: architecture
 using KernelAbstractions
 
-# Required presently
-Enzyme.API.runtimeActivity!(true)
-Enzyme.API.looseTypeAnalysis!(true)
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
