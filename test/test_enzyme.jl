@@ -1,9 +1,10 @@
+include("dependencies_for_runtests.jl")
+
 using Enzyme
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 
-include("dependencies_for_runtests.jl")
 
 using Oceananigans
 using Oceananigans.TurbulenceClosures: with_tracers
