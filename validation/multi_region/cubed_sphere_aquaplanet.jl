@@ -306,18 +306,9 @@ tracer_advection   = WENO()
 substeps           = 50
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-# Filter width squared, expressed as a harmonic mean of x and y spacings
-@inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2
-                                                      + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
-
-# Use a biharmonic viscosity for momentum. Define the viscosity function as gridsize^4 divided by the timescale.
-@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, p) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / p.λ_rts
-
-biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
-                                                             parameters = (; λ_rts = my_parameters.λ_rts))
-
+νh = 5e+3
 κh = 1e+2 
-horizontal_diffusivity = HorizontalScalarDiffusivity(κ = κh) # Laplacian diffusivity
+horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh) # Laplacian viscosity and diffusivity
 
 νz_surface = 1e-3
 νz_bottom = 1e-4
@@ -355,8 +346,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      closure = (horizontal_diffusivity, biharmonic_viscosity, vertical_diffusivity,
-                                                 convective_adjustment),
+                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
                                       boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
