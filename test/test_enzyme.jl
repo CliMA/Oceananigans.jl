@@ -12,6 +12,7 @@ using KernelAbstractions
 
 # Required presently
 Enzyme.API.runtimeActivity!(true)
+Enzyme.API.looseTypeAnalysis!(true)
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
