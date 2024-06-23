@@ -131,13 +131,13 @@ end
 
 # Specify the wind stress as a function of latitude, φ.
 @inline function stress_fc(grid, p)
-    stress = zeros(grid.Ny)
+    stress = zeros(grid.Nx, grid.Ny)
     
-    for j in 1:grid.Ny
-        φ = φnode(1, j, 1, grid, Face(), Center(), Center())
+    for j in 1:grid.Ny, i in 1:grid.Nx
+        φ = φnode(i, j, 1, grid, Face(), Center(), Center())
 
         if abs(φ) > p.φ_max_τ
-            stress[j] = 0
+            stress[i, j] = 0
         else
             φ_index = sum(φ .> p.φs) + 1
 
@@ -146,7 +146,7 @@ end
             τ₁ = p.τs[φ_index-1]
             τ₂ = p.τs[φ_index]
 
-            stress[j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+            stress[i, j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
         end     
     end
     
@@ -154,13 +154,13 @@ end
 end
 
 @inline function stress_cf(grid, p)
-    stress = zeros(grid.Ny)
+    stress = zeros(grid.Nx, grid.Ny)
     
-    for j in 1:grid.Ny
-        φ = φnode(1, j, 1, grid, Center(), Face(), Center())
+    for j in 1:grid.Ny, i in 1:grid.Nx
+        φ = φnode(i, j, 1, grid, Center(), Face(), Center())
 
         if abs(φ) > p.φ_max_τ
-            stress[j] = 0
+            stress[i, j] = 0
         else
             φ_index = sum(φ .> p.φs) + 1
 
@@ -169,7 +169,7 @@ end
             τ₁ = p.τs[φ_index-1]
             τ₂ = p.τs[φ_index]
 
-            stress[j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
+            stress[i, j] = -cubic_interpolate(φ, φ₁, φ₂, τ₁, τ₂) / p.ρ₀
         end     
     end
     
@@ -197,7 +197,7 @@ Adapt.adapt_structure(to, τ::WindStressBCX) = WindStressBCX(Adapt.adapt(to, τ.
 Adapt.adapt_structure(to, τ::WindStressBCY) = WindStressBCY(Adapt.adapt(to, τ.stress))
 
 @inline function (τ::WindStressBCX)(i, j, grid, clock, fields)
-    @inbounds τₓ_latlon = τ.stress[j]
+    @inbounds τₓ_latlon = τ.stress[i, j]
     
     φᶠᶠᵃ_i_jp1 = φnode(i, j+1, 1, grid,   Face(),   Face(), Center())
     φᶠᶠᵃ_i_j   = φnode(i,   j, 1, grid,   Face(),   Face(), Center())
@@ -219,7 +219,7 @@ Adapt.adapt_structure(to, τ::WindStressBCY) = WindStressBCY(Adapt.adapt(to, τ.
 end
 
 @inline function (τ::WindStressBCY)(i, j, grid, clock, fields)
-    @inbounds τₓ_latlon = τ.stress[j]
+    @inbounds τₓ_latlon = τ.stress[i, j]
     
     # Now, calculate the sine of the angle with respect to the geographic north, and use it to determine the component
     # of τₓ_latlon in the local y direction of the cubed sphere panel.
