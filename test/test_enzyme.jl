@@ -133,8 +133,6 @@ end
 
 @testset "Enzyme + Oceananigans Initialization Broadcast Kernel" begin
 
-    Enzyme.API.looseTypeAnalysis!(true)
-
     Nx = Ny = 64
     Nz = 8
 
@@ -191,8 +189,6 @@ end
                 Active(1.0))
     end
 end
-
-    Enzyme.API.looseTypeAnalysis!(false)
 
 @testset "Enzyme on advection and diffusion" begin
     Nx = Ny = 64
