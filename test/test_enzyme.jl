@@ -4,7 +4,7 @@ using Enzyme
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
-
+Enzyme.API.maxtypeoffset!(2032)
 
 using Oceananigans
 using Oceananigans.TurbulenceClosures: with_tracers
