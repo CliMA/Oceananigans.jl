@@ -265,22 +265,22 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     end
 
     Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δxᶠᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δyᶠᶜᵃ = Field((Center, Center, Nothing), grid)
-    λᶠᶜᵃ  = Field((Face,   Face,   Nothing), grid)
-    φᶠᶜᵃ  = Field((Face,   Face,   Nothing), grid)
-    Azᶠᶜᵃ = Field((Face,   Face,   Nothing), grid)
+    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
     Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
     
     fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
     names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
 
     Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid)
-    Δyᶜᶠᵃ = Field((Center, Center, Nothing), grid)
-    Δxᶜᶠᵃ = Field((Center, Center, Nothing), grid)
-    λᶜᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    φᶜᶠᵃ  = Field((Face,   Face,   Nothing), grid)
-    Azᶜᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
     Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
 
     fields₂ = ( Δyᶜᶜᵃ,   Δyᶜᶠᵃ,   Δxᶜᶠᵃ,   λᶜᶠᵃ,    φᶜᶠᵃ,    Azᶜᶠᵃ ,  Δyᶠᶠᵃ)
