@@ -26,8 +26,8 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 """
     extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ)
 
-Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined on the reference 
-reference frame _intrinsic_ to the grid, to the _extrinsic_ reference frame associated with the domain.
+Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ reference 
+frame of the grid, to the _extrinsic_ reference frame associated with the domain.
 
 _extrinsic_ reference frames are:
 
