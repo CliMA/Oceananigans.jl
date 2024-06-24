@@ -16,8 +16,9 @@ _extrinsic_ reference frames are:
 - Cartesian for box domains 
 - Latitude - Longitude for spherical domains
 
-Therefore, for the `RectilinearGrid` and the `LatitudeLongitudeGrid`, the _extrinsic_ and the 
-_intrinsic_ reference frames are equivalent
+Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
+_intrinsic_ reference frames are equivalent. However, for other grids (e.g., for the
+ [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
 @inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
