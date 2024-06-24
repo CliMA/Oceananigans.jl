@@ -22,6 +22,7 @@ using Oceananigans.Grids: φnode
 using Lux, LuxCUDA
 using JLD2
 using ComponentArrays
+using StaticArrays
 
 using KernelAbstractions: @index, @kernel, @private
 
@@ -43,14 +44,13 @@ struct NN{M, P, S}
     st      :: S
 end
 
-# @inline (neural_network::NN)(∂Tᵢ₋₁, ∂Tᵢ, ∂Tᵢ₊₁, ∂Sᵢ₋₁, ∂Sᵢ, ∂Sᵢ₊₁, ∂σᵢ₋₁, ∂σᵢ, ∂σᵢ₊₁, Jᵇ, fᶜᶜ, dev) = first(LuxCore.apply(neural_network.model, dev([Jᵇ, fᶜᶜ, ∂Tᵢ, ∂Tᵢ₋₁, ∂Tᵢ₊₁, ∂Sᵢ, ∂Sᵢ₋₁, ∂Sᵢ₊₁, ∂σᵢ, ∂σᵢ₋₁, ∂σᵢ₊₁]), neural_network.ps, neural_network.st))
 @inline (neural_network::NN)(input) = first(first(neural_network.model(input, neural_network.ps, neural_network.st)))
+@inline tosarray(x::AbstractArray) = SArray{Tuple{size(x)...}}(x)
 
 struct NNFluxClosure{A <: NN, S} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, 3}
     wT      :: A
     wS      :: A
     scaling :: S
-    # dev     :: D
 end
 
 Adapt.adapt_structure(to, nn :: NNFluxClosure) = 
@@ -64,7 +64,6 @@ Adapt.adapt_structure(to, nn :: NN) =
        Adapt.adapt(to, nn.st))
 
 function NNFluxClosure(arch)
-    # arch = model.architecture
     dev = ifelse(arch == GPU(), gpu_device(), cpu_device())
     nn_model = Chain(Dense(11, 128, relu), Dense(128, 128, relu), Dense(128, 1))
 
@@ -78,8 +77,11 @@ function NNFluxClosure(arch)
                    wS = ZeroMeanUnitVarianceScaling(-5.8185988680682135e-6, 1.7691239104281005e-5))
 
     # NNs = jldopen("./NN_model2.jld2")["NNs"]
-    ps = jldopen("./NN_model2.jld2")["u"] |> dev
-    sts = jldopen("./NN_model2.jld2")["sts"] |> dev
+    ps = jldopen("./NN_model2.jld2")["u"]
+    sts = jldopen("./NN_model2.jld2")["sts"]
+
+    ps_static = Lux.recursive_map(tosarray, ps)
+    sts_static = Lux.recursive_map(tosarray, sts)
 
     wT_NN = NN(nn_model, ps.wT, sts.wT)
     wS_NN = NN(nn_model, ps.wS, sts.wS)
@@ -103,7 +105,6 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
 
     launch!(arch, grid, parameters,
             _compute_residual_fluxes!, diffusivities, grid, closure, tracers, velocities, buoyancy, coriolis, top_tracer_bcs, clock)
-
 
     return nothing
 end
