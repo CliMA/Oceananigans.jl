@@ -390,7 +390,7 @@ function EnzymeCore.EnzymeRules.reverse(config,
 
     if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
-        dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
+        dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
         dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
         tapes = fulltape
@@ -408,7 +408,7 @@ function EnzymeCore.EnzymeRules.reverse(config,
 
             tapes = fulltape[i]
             dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
-            dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
+            dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
             dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
             i += 1
