@@ -17,7 +17,7 @@ const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true)
-    type = eval(T)
+    type = getglobal(@__MODULE__, T)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
     for (n, name) in enumerate(names)
