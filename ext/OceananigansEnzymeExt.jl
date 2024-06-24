@@ -387,6 +387,11 @@ function EnzymeCore.EnzymeRules.reverse(config,
                                         clock)
 
     time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    
+    possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
+
+    time_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
+    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
 
     if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
