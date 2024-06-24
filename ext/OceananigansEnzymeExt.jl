@@ -404,7 +404,6 @@ function EnzymeCore.EnzymeRules.reverse(config,
             dupft = Enzyme.Compiler.guaranteed_const(typeof(fts)) ? Const(fts) : Duplicated(fts, dfts)
             fwdfn, revfn = Enzyme.autodiff_thunk(EnzymeCore.ReverseSplitNoPrimal, Const{typeof(Oceananigans.Models.update_field_time_series!)}, Const, typeof(dupft), typeof(time))
             revfn(Const(Oceananigans.Models.update_field_time_series!), dupft, time, tapes[i])
-            push!(tapes, tape)
             i+= 1
         end
     else
