@@ -694,11 +694,6 @@ end
 @inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 @inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 
-# convenience
-@inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
-@inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓy; with_halos)
-@inline znodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
-
 #####
 ##### Grid spacings
 #####
