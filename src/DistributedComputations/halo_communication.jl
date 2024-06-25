@@ -97,11 +97,15 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
     arch             = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
 
     number_of_tasks = length(fill_halos!)
+
+    if fill_boundary_normal_velocities
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
+    end
 
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)

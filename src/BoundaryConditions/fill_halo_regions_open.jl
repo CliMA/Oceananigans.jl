@@ -18,8 +18,6 @@ end
 fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) =
     [fill_open_boundary_regions!(field, boundary_conditions[n], indices, loc[n], grid, args...; kwargs...) for (n, field) in enumerate(fields)]
 
-const FACE_FIELD_LOCS = Union{<:Tuple{Face, Center, Center}, <:Tuple{Center, Face, Center}, <:Tuple{Center, Center, Face}}
-
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc) = nothing
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Face, Center, Center}) = boundary_conditions.west
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Face, Center}) = boundary_conditions.south
