@@ -35,7 +35,8 @@ julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
 function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return @eval $fullname($args...; $kwargs...)
+    TS = getglobal(@__MODULE__, fullname)
+    return TS(args...; kwargs...)
 end
 
 # Fallback

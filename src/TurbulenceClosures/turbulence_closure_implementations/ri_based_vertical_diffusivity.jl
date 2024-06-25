@@ -177,17 +177,17 @@ const f = Face()
 @inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
 @inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κᵘ
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κᶜ
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κᶜ = Field((Center, Center, Face), grid)
-    κᵘ = Field((Center, Center, Face), grid)
+    κc = Field((Center, Center, Face), grid)
+    κu = Field((Center, Center, Face), grid)
     Ri = Field((Center, Center, Face), grid)
-    return (; κᶜ, κᵘ, Ri)
+    return (; κc, κu, Ri)
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
@@ -312,30 +312,30 @@ end
 
     # Shear mixing diffusivity and viscosity
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    κᶜ★ = κ₀ * τ
-    κᵘ★ = ν₀ * τ
+    κc★ = κ₀ * τ
+    κu★ = ν₀ * τ
 
     # Previous diffusivities
-    κᶜ = diffusivities.κᶜ
-    κᵘ = diffusivities.κᵘ
+    κc = diffusivities.κc
+    κu = diffusivities.κu
 
     # New diffusivities
-    κᶜ⁺ = κᶜᵃ + κᵉⁿ + κᶜ★
-    κᵘ⁺ = κᵘ★
+    κc⁺ = κᶜᵃ + κᵉⁿ + κc★
+    κu⁺ = κu★
 
     # Limit by specified maximum
-    κᶜ⁺ = min(κᶜ⁺, closure_ij.maximum_diffusivity) 
-    κᵘ⁺ = min(κᵘ⁺, closure_ij.maximum_viscosity) 
+    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity) 
+    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity) 
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
     within_inactive = inactive_node(i, j, k, grid, c, c, f)
-    κᶜ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᶜ⁺))
-    κᵘ⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κᵘ⁺))
+    κc⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κc⁺))
+    κu⁺ = ifelse(on_periphery, zero(grid), ifelse(within_inactive, NaN, κu⁺))
 
     # Update by averaging in time
-    @inbounds κᶜ[i, j, k] = (Cᵃᵛ * κᶜ[i, j, k] + κᶜ⁺) / (1 + Cᵃᵛ)
-    @inbounds κᵘ[i, j, k] = (Cᵃᵛ * κᵘ[i, j, k] + κᵘ⁺) / (1 + Cᵃᵛ)
+    @inbounds κc[i, j, k] = (Cᵃᵛ * κc[i, j, k] + κc⁺) / (1 + Cᵃᵛ)
+    @inbounds κu[i, j, k] = (Cᵃᵛ * κu[i, j, k] + κu⁺) / (1 + Cᵃᵛ)
 
     return nothing
 end
