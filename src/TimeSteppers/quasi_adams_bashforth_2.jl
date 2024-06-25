@@ -101,9 +101,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
     
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
     
-        tick!(model.clock, Δt)
+    tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
     
