@@ -103,6 +103,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 
+1. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edelman, A. (2021) [Universal differential equations for scientific machine learning](https://doi.org/10.48550/arXiv.2001.04385) _arXiv_, 	arXiv:10.48550/arXiv.2001.04385. DOI:[10.31223/X5PM5Q](https://doi.org/10.48550/arXiv.2001.04385)
+
 1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation-Large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
 
 1. Arnscheidt, C. W., Marshall, J., Dutrieux, P., Rye, C. D., and Ramadhan, A. (2021). [On the settling depth of meltwater escaping from beneath Antarctic ice shelves](https://doi.org/10.1175/JPO-D-20-0286.1), _Journal of Physical Oceanography_, **51(7)**, 2257–2270. DOI: [10.1175/JPO-D-20-0178.1](https://doi.org/10.1175/JPO-D-20-0286.1)
