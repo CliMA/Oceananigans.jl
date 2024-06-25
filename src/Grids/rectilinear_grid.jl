@@ -442,15 +442,22 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        # TODO: don't include Flat directions in reshape?
+        # Here we have to deal with the fact that Flat directions may have
+        # `nothing` nodes.
+        #
+        # A better solution (and more consistent with the rest of the API?)
+        # might be to omit the `nothing` nodes in the `reshape`. In other words,
+        # if `TX === Flat`, then we should return `(x, z)`. This is for future
+        # consideration...
         TX, TY, TZ = topology(grid)
-        Nx = TX === Flat ? 1 : length(x)
-        Ny = TY === Flat ? 1 : length(y)
-        Nz = TZ === Flat ? 1 : length(z)
 
-        x = Base.reshape(x, Nx, 1, 1)
-        y = Base.reshape(y, 1, Ny, 1)
-        z = Base.reshape(z, 1, 1, Nz)
+        Nx = isnothing(x) ? 1 : length(x)
+        Ny = isnothing(y) ? 1 : length(y)
+        Nz = isnothing(z) ? 1 : length(z)
+
+        x = isnothing(x) ? zeros(1, 1, 1) : Base.reshape(x, Nx, 1, 1)
+        y = isnothing(y) ? zeros(1, 1, 1) : Base.reshape(y, 1, Ny, 1)
+        z = isnothing(z) ? zeros(1, 1, 1) : Base.reshape(z, 1, 1, Nz)
     end
 
     return (x, y, z)
