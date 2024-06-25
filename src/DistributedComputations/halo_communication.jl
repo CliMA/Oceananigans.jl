@@ -12,6 +12,7 @@ using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,
     permute_boundary_conditions,
+    fill_open_boundary_regions!,
     PBCT, DCBCT, DCBC
 
 import Oceananigans.BoundaryConditions:
