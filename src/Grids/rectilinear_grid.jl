@@ -449,7 +449,8 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
         # might be to omit the `nothing` nodes in the `reshape`. In other words,
         # if `TX === Flat`, then we should return `(x, z)`. This is for future
         # consideration...
-        TX, TY, TZ = topology(grid)
+        # 
+        # See also `nodes` for `LatitudeLongitudeGrid`.
 
         Nx = isnothing(x) ? 1 : length(x)
         Ny = isnothing(y) ? 1 : length(y)

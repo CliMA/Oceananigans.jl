@@ -603,10 +603,23 @@ function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        N = (length(λ), length(φ), length(z))
-        λ = Base.reshape(λ, N[1], 1, 1)
-        φ = Base.reshape(φ, 1, N[2], 1)
-        z = Base.reshape(z, 1, 1, N[3])
+        # Here we have to deal with the fact that Flat directions may have
+        # `nothing` nodes.
+        #
+        # A better solution (and more consistent with the rest of the API?)
+        # might be to omit the `nothing` nodes in the `reshape`. In other words,
+        # if `TX === Flat`, then we should return `(x, z)`. This is for future
+        # consideration...
+        #
+        # See also `nodes` for `RectilinearGrid`.
+        
+        Nλ = isnothing(λ) ? 1 : length(λ)
+        Nφ = isnothing(φ) ? 1 : length(φ)
+        Nz = isnothing(z) ? 1 : length(z)
+
+        λ = isnothing(λ) ? zeros(1, 1, 1) : Base.reshape(λ, Nλ, 1, 1)
+        φ = isnothing(φ) ? zeros(1, 1, 1) : Base.reshape(φ, 1, Nφ, 1)
+        z = isnothing(z) ? zeros(1, 1, 1) : Base.reshape(z, 1, 1, Nz)
     end
 
     return (λ, φ, z)
