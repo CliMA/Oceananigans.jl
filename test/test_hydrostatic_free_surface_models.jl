@@ -14,16 +14,12 @@ function time_step_hydrostatic_model_works(grid;
                                            closure = nothing,
                                            velocities = nothing)
 
-    tracers = [:T, :S]
+    tracers = [:b]
+    buoyancy = BuoyancyTracer()
     closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        momentum_advection = momentum_advection,
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = tracers,
-                                        velocities = velocities,
-                                        closure = closure)
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis, tracers, velocities, buoyancy,
+                                        momentum_advection, free_surface, closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
@@ -250,7 +246,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         closure = ScalarDiffusivity()
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
-            @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
+            @test gime_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
