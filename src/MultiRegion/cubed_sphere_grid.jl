@@ -241,59 +241,65 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                    region_grids,
                                                    devices)
 
-    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ , :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
-    LXs    = (:Center, :Center, :Center, :Face, :Face, :Face )
-    LYs    = (:Center, :Center, :Center, :Face, :Face, :Face )
+    λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
+    φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
+    Azᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    λᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
+    φᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
+    Azᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
 
-    for (field, LX, LY) in zip(fields, LXs, LYs)
-        expr = quote
-            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
+    for (field, name) in zip(( λᶜᶜᵃ, φᶜᶜᵃ,   Azᶜᶜᵃ,  λᶠᶠᵃ,  φᶠᶠᵃ,  Azᶠᶠᵃ),
+                             (:λᶜᶜᵃ, :φᶜᶜᵃ, :Azᶜᶜᵃ, :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ))
+        
+        for region in 1:number_of_regions(grid)
+            getregion(field, region).data .= getproperty(getregion(grid, region), name)
+        end
 
-            for region in 1:number_of_regions($(grid))
-                getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
-            end
+        if horizontal_topology == FullyConnected
+            fill_halo_regions!(field)
+        end
 
-            if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!($(Symbol(field)))
-            end
-
-            for region in 1:number_of_regions($(grid))
-                getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
-            end
-        end # quote
-
-        eval(expr)
+        for region in 1:number_of_regions(grid)
+            getproperty(getregion(grid, region), name) .= getregion(field, region).data
+        end
     end
 
-    fields₁ = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
-    LXs₁    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
-    LYs₁    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
+    Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    
+    fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
+    names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
 
-    fields₂ = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
-    LXs₂    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
-    LYs₂    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
+    Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
 
-    for (field₁, LX₁, LY₁, field₂, LX₂, LY₂) in zip(fields₁, LXs₁, LYs₁, fields₂, LXs₂, LYs₂)
-        expr = quote
-            $(Symbol(field₁)) = Field{$(Symbol(LX₁)), $(Symbol(LY₁)), Nothing}($(grid))
-            $(Symbol(field₂)) = Field{$(Symbol(LX₂)), $(Symbol(LY₂)), Nothing}($(grid))
+    fields₂ = ( Δyᶜᶜᵃ,   Δyᶜᶠᵃ,   Δxᶜᶠᵃ,   λᶜᶠᵃ,    φᶜᶠᵃ,    Azᶜᶠᵃ ,  Δyᶠᶠᵃ)
+    names₂  = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
 
-            for region in 1:number_of_regions($(grid))
-                getregion($(Symbol(field₁)), region).data .= getregion($(grid), region).$(Symbol(field₁))
-                getregion($(Symbol(field₂)), region).data .= getregion($(grid), region).$(Symbol(field₂))
-            end
+    for (field₁, field₂, name₁, name₂) in zip(fields₁, fields₂, names₁, names₂)
+        for region in 1:number_of_regions(grid)
+            getregion(field₁, region).data .= getproperty(getregion(grid, region), name₁)
+            getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
+        end
 
-            if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!(($(Symbol(field₁)), $(Symbol(field₂))); signed = false)
-            end
+        if horizontal_topology == FullyConnected
+            fill_halo_regions!(field₁, field₂; signed = false)
+        end
 
-            for region in 1:number_of_regions($(grid))
-                getregion($(grid), region).$(Symbol(field₁)) .= getregion($(Symbol(field₁)), region).data
-                getregion($(grid), region).$(Symbol(field₂)) .= getregion($(Symbol(field₂)), region).data
-            end
-        end # quote
-
-        eval(expr)
+        for region in 1:number_of_regions(grid)
+            getproperty(getregion(grid, region), name₁) .= getregion(field₁, region).data
+            getproperty(getregion(grid, region), name₂) .= getregion(field₂, region).data
+        end
     end
 
     ###################################################

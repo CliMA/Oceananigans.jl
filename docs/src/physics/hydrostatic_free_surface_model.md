@@ -13,7 +13,7 @@ user.
 
 The mass conservation equation is
 ```math
-    0 = \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} + \partial_z w \, .  
+    0 = \boldsymbol{\nabla}_h \boldsymbol{\cdot} \boldsymbol{u} + \partial_z w \, .  
 ```
 
 Given the horizontal flow ``\boldsymbol{u}`` we use the above to diagnose the vertical velocity ``w``.
