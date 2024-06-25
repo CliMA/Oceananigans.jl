@@ -4,6 +4,7 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
+using CUDA: @allowscalar
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -251,8 +252,8 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
         end
         
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
-            Δt = times[end] - times[end-1]
-            period = times[end] - times[1] + Δt
+            Δt = @allowscalar times[end] - times[end-1]
+            period = @allowscalar times[end] - times[1] + Δt
             time_indexing = Cyclical(period)
         end
 
