@@ -35,7 +35,8 @@ julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
 function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return @eval $fullname($args...; $kwargs...)
+    TS = getglobal(@__MODULE__, fullname)
+    return TS(args...; kwargs...)
 end
 
 # Fallback
@@ -52,6 +53,7 @@ abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
 reset!(timestepper) = nothing
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
 include("store_tendencies.jl")
