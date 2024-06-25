@@ -79,9 +79,11 @@ cite our work and mention Oceananigans by name.
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2024). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.48550/arXiv.2403.15632), _arXiv_, arXiv:2403.15632. DOI: [10.48550/arXiv.2403.15632](https://doi.org/10.48550/arXiv.2403.15632)
+
 1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2024) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.22541/essoar.171708158.82342448/v1), _ESS Open Archive_. DOI: [10.22541/essoar.171708158.82342448/v1](https://doi.org/10.22541/essoar.171708158.82342448/v1)
 
-1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q), _Earth Arxiv_. DOI:[10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
+1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q), _Earth Arxiv_. DOI: [10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
 
 1. Chen S., Strong-Wright J., and Taylor, J. R. (2024) [Modeling carbon dioxide removal via sinking of particulate organic carbon from macroalgae cultivation](https://doi.org/10.3389/fmars.2024.1359614), _Frontiers in Marine Science_, **11**, 1359614. DOI: [10.3389/fmars.2024.1359614](https://doi.org/10.3389/fmars.2024.1359614)
 
@@ -105,7 +107,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025), _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 
-1. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edelman, A. (2021) [Universal differential equations for scientific machine learning](https://doi.org/10.48550/arXiv.2001.04385), _arXiv_, arXiv.2001.04385. DOI:[10.48550/arXiv.2001.04385](https://doi.org/10.48550/arXiv.2001.04385)
+1. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edelman, A. (2021) [Universal differential equations for scientific machine learning](https://doi.org/10.48550/arXiv.2001.04385), _arXiv_, arXiv.2001.04385. DOI: [10.48550/arXiv.2001.04385](https://doi.org/10.48550/arXiv.2001.04385)
 
 1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation-Large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
 
