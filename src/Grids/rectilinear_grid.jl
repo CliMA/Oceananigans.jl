@@ -442,10 +442,15 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        N = (length(x), length(y), length(z))
-        x = Base.reshape(x, N[1], 1, 1)
-        y = Base.reshape(y, 1, N[2], 1)
-        z = Base.reshape(z, 1, 1, N[3])
+        # TODO: don't include Flat directions in reshape?
+        TX, TY, TZ = topology(grid)
+        Nx = TX === Flat ? 1 : length(x)
+        Ny = TY === Flat ? 1 : length(y)
+        Nz = TZ === Flat ? 1 : length(z)
+
+        x = Base.reshape(x, Nx, 1, 1)
+        y = Base.reshape(y, 1, Ny, 1)
+        z = Base.reshape(z, 1, 1, Nz)
     end
 
     return (x, y, z)

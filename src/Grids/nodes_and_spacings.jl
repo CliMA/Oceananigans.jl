@@ -304,4 +304,3 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
 
-
