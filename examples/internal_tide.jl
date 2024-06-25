@@ -52,7 +52,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
 x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
-top_boundary = 0*x
+top_boundary = 0x
 
 using CairoMakie
 
