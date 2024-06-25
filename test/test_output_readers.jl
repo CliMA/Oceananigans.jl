@@ -115,6 +115,7 @@ end
             ArrayType = array_type(arch)
             for fts in (u3, v3, w3, T3, b3, ζ3)
                 @test parent(fts) isa ArrayType
+                @test (fts.times isa StepRange) | (fts.times isa ArrayType)
             end
 
             if arch isa CPU
