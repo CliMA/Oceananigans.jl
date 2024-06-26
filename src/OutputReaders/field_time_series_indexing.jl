@@ -230,7 +230,7 @@ end
 # Let's make sure `times` is available on the CPU. This is always the case 
 # for ranges, if `times` is on the GPU, it has to be switched back to the CPU
 # for accessing. A bit unclean but it does the job.
-cpu_safe_interpolating_time_indices(time_indexing, times::AbstractRange,  t, arch)  = interpolating_time_indices(time_indexing, times, t)
+cpu_safe_interpolating_time_indices(time_indexing, times, t, arch)  = interpolating_time_indices(time_indexing, times, t)
 cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::CPU) = interpolating_time_indices(time_indexing, times, t)
 
 function cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::GPU) 
