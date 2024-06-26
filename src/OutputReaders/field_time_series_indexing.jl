@@ -230,7 +230,7 @@ end
 #####
 
 # Let's make sure `times` is available on the CPU. This is always the case 
-# for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU  for safe indexing. 
+# for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing. 
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
 cpu_available_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = interpolating_time_indices(time_indexing, times, t)
