@@ -18,7 +18,7 @@ include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
 include("distributed_fields.jl")
-include("halo_communication.jl")
+include("fill_distributed_halo_regions.jl")
 include("distributed_fft_based_poisson_solver.jl")
 
 end # module
