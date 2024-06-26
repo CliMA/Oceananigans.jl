@@ -153,7 +153,7 @@ end
     return stress
 end
 
-using Oceananigans: on_architecture
+import Oceananigans: on_architecture
 cpu_grid = on_architecture(CPU(), grid)  
 
 location = (Face(), Center(), Center())
@@ -172,8 +172,8 @@ struct WindStressBCY{C} <: Function
     stress :: C
 end
 
-Adapt.adapt_structure(to, τ::WindStressBCX) = WindStressBCX(Adapt.adapt(to, τ.stress))
-Adapt.adapt_structure(to, τ::WindStressBCY) = WindStressBCY(Adapt.adapt(to, τ.stress))
+on_architecture(to, τ::WindStressBCX) = WindStressBCX(on_architecture(to, τ.stress))
+on_architecture(to, τ::WindStressBCY) = WindStressBCY(on_architecture(to, τ.stress))
 
 @inline function (τ::WindStressBCX)(i, j, grid, clock, fields)
     @inbounds τₓ = τ.stress[i, j] # Here τₓ is the zonal wind stress on a latitude-longitude grid.
@@ -658,6 +658,8 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(checkpointer_interval),
                                                         prefix = filename_checkpointer,
                                                         overwrite_existing = true)
+
+ζ = Oceananigans.Models.HydrostaticFreeSurfaceModels.VerticalVorticityField(model)
 
 outputs = fields(model)
 filename_output_writer = "cubed_sphere_aquaplanet_output"

@@ -231,3 +231,11 @@ regularize_field_boundary_conditions(::Missing,
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_names::Tuple) =
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
+
+on_architecture(arch, bcs::FieldBoundaryConditions) = FieldBoundaryConditions(on_architecture(arch, bcs.west),
+                                                                              on_architecture(arch, bcs.east),
+                                                                              on_architecture(arch, bcs.south),
+                                                                              on_architecture(arch, bcs.north),
+                                                                              on_architecture(arch, bcs.bottom),
+                                                                              on_architecture(arch, bcs.top),
+                                                                              on_architecture(arch, bcs.immersed))

@@ -1,6 +1,7 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+import Oceananigans.Architectures: on_architecture
 
 import Base: length
 
@@ -113,6 +114,9 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
 
 Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
 Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
+
+# TODO: Implement on_architecture(::GPU, mo::MultiRegionObject) given that MultiRegionObject can be on different devices.
+on_architecture(::CPU, mo::MultiRegionObject) = MultiRegionObject(on_architecture(CPU(), mo.regional_objects))
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
