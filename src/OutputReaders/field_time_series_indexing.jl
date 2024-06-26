@@ -174,7 +174,7 @@ end
     iy = interpolator(jj)
     iz = interpolator(kk)
 
-    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(time_indexing, times, at_time, architecture(times))
+    ñ, n₁, n₂ = safe_interpolating_time_indices(time_indexing, times, at_time)
 
     Nt = length(times)
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
