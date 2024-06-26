@@ -62,9 +62,9 @@ function interpolation_operator(from, to)
         global identity_counter += 1
         identity = identify_an_identity(identity_counter)
 
-        return @eval $identity
+        return getglobal(@__MODULE__, identity)
     else
-        return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
+        return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
 end
 
@@ -77,7 +77,7 @@ operator for fields that have no intrinsic location, like numbers or functions.
 function interpolation_operator(::Nothing, to)
     global identity_counter += 1
     identity = identify_an_identity(identity_counter)
-    return @eval $identity
+    return getglobal(@__MODULE__, identity)
 end
 
 assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
@@ -105,6 +105,8 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
         name = dependencies[i]
         findfirst(isequal(name), model_field_names)
     end
+
+    !any(isnothing.(indices)) || error("$dependencies are required to be model fields but only $model_field_names are present")
 
     return indices, interps
 end

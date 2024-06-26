@@ -2,7 +2,7 @@
 
 To calculate the various terms and perform the time-stepping, discrete difference and interpolation 
 operators must be designed from which all the terms, such as momentum advection and Laplacian 
-diffusion, may be constructed. Much of the material in this section is derived from [Marshall97FV](@cite).
+diffusion, may be constructed. Much of the material in this section is derived from [Marshall97FV](@citet).
 
 ## Differences
 

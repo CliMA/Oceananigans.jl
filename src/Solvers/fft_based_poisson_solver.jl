@@ -56,11 +56,11 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     arch = architecture(grid)
 
-    eigenvalues = (λx = arch_array(arch, λx),
-                   λy = arch_array(arch, λy),
-                   λz = arch_array(arch, λz))
+    eigenvalues = (λx = on_architecture(arch, λx),
+                   λy = on_architecture(arch, λy),
+                   λz = on_architecture(arch, λz))
 
-    storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     transforms = plan_transforms(grid, storage, planner_flag)
 
@@ -74,7 +74,7 @@ end
 """
     solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
 
-Solves the "generalized" Poisson equation,
+Solve the "generalized" Poisson equation,
 
 ```math
 (∇² + m) ϕ = b,
@@ -118,6 +118,8 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     return ϕ
 end
 
+# We have to pass the offset explicitly to this kernel (we cannot use KA implicit
+# index offsetting) since ϕc and ϕ and indexed with different indices
 @kernel function copy_real_component!(ϕ, ϕc, index_ranges)
     i, j, k = @index(Global, NTuple)
 

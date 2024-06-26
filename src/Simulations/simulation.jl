@@ -1,4 +1,8 @@
 using Oceananigans: prognostic_fields
+using Oceananigans.Models: default_nan_checker, NaNChecker, timestepper
+using Oceananigans.DistributedComputations: Distributed, all_reduce
+
+import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
@@ -6,9 +10,8 @@ import Oceananigans.TimeSteppers: reset!
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, TS, DT, ST, DI, OW, CB}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB}
               model :: ML
-        timestepper :: TS
                  Δt :: DT
      stop_iteration :: Float64
           stop_time :: ST
@@ -55,6 +58,8 @@ function Simulation(model; Δt,
              "= wall time limit = Inf."
    end
 
+   Δt = validate_Δt(Δt, architecture(model))
+
    diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
    output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
    callbacks = OrderedDict{Symbol, Callback}()
@@ -63,20 +68,18 @@ function Simulation(model; Δt,
    callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
    callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
 
-   # Check for NaNs in the model's first prognostic field every 100 iterations.
-   model_fields = prognostic_fields(model)
-   first_name = first(keys(model_fields))
-   field_to_check_nans = NamedTuple{tuple(first_name)}(model_fields)
-   nan_checker = NaNChecker(field_to_check_nans)
-   callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   nan_checker = default_nan_checker(model)
+   if !isnothing(nan_checker) # otherwise don't bother
+       callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   end
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
-   FT = eltype(model.grid)
-   Δt = Δt isa Number ? FT(Δt) : Δt
-   stop_time = stop_time isa Number ? FT(stop_time) : stop_time
+   #    TODO: implement TT = timetype(model) and FT = eltype(model)
+   TT = eltype(model.grid)
+   Δt = Δt isa Number ? TT(Δt) : Δt
+   stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
    return Simulation(model,
-                     model.timestepper,
                      Δt,
                      Float64(stop_iteration),
                      stop_time,
@@ -109,18 +112,34 @@ end
 #####
 
 """
+    validate_Δt(Δt, arch)
+
+Make sure different workers are using the same time step
+"""
+function validate_Δt(Δt, arch::Distributed)
+    Δt_min = all_reduce(min, Δt, arch)
+    if Δt != Δt_min
+        @warn "On rank $(arch.local_rank), Δt = $Δt is not the same as for the other workers. Using the minimum Δt = $Δt_min instead."
+    end
+    return Δt_min
+end
+
+# Fallback
+validate_Δt(Δt, arch) = Δt
+
+"""
     time(sim::Simulation)
 
 Return the current simulation time.
 """
-Base.time(sim::Simulation) = sim.model.clock.time
+Base.time(sim::Simulation) = time(sim.model)
 
 """
     iteration(sim::Simulation)
 
 Return the current simulation iteration.
 """
-iteration(sim::Simulation) = sim.model.clock.iteration
+iteration(sim::Simulation) = iteration(sim.model)
 
 """
     prettytime(sim::Simulation)
@@ -142,7 +161,8 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
 function reset!(sim::Simulation)
-    sim.model.clock.time = 0.0
+    sim.model.clock.time = 0
+    sim.model.clock.last_Δt = Inf
     sim.model.clock.iteration = 0
     sim.model.clock.stage = 1
     sim.stop_iteration = Inf
@@ -151,7 +171,7 @@ function reset!(sim::Simulation)
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
-    reset!(sim.model.timestepper)
+    reset!(timestepper(sim.model))
     return nothing
 end
 

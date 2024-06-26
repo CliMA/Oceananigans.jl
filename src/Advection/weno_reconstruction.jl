@@ -45,7 +45,7 @@ end
          zweno = true, 
          bounds = nothing)
                
-Construct a weigthed essentially non-oscillatory advection scheme of order `order`.
+Construct a weighted essentially non-oscillatory advection scheme of order `order`.
 
 Keyword arguments
 =================
@@ -114,12 +114,12 @@ function WENO(FT::DataType=Float64;
 
     if order < 3
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
-        return UpwindBiased(order = 1)
+        return UpwindBiased(FT; order = 1)
     else
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
+        buffer_scheme     = WENO(FT; grid, order = order - 2, zweno, bounds)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
@@ -159,6 +159,14 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, WF, PP}) where {N, FT,
                      Adapt.adapt(to, scheme.bounds),
                      Adapt.adapt(to, scheme.buffer_scheme),
                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
+
+on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT, WF, PP}) where {N, FT, XT, YT, ZT, WF, PP} =
+    WENO{N, FT, WF}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                    on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                    on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                    on_architecture(to, scheme.bounds),
+                    on_architecture(to, scheme.buffer_scheme),
+                    on_architecture(to, scheme.advecting_velocity_scheme))
 
 # Retrieve precomputed coefficients (+2 for julia's 1 based indices)
 @inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 

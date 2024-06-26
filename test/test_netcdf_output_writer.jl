@@ -45,6 +45,90 @@ function test_DateTime_netcdf_output(arch)
     return nothing
 end
 
+function test_netcdf_size_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+    fake_attributes = Dict("fake_attribute"=>"fake_attribute")
+
+    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+                            dir = ".",
+                            filename = "test.nc",
+                            schedule = IterationInterval(1),
+                            array_type = Array{Float64},
+                            with_halos = true,
+                            global_attributes = fake_attributes,
+                            file_splitting = FileSizeLimit(200KiB),
+                            overwrite_existing = true)
+
+    push!(simulation.output_writers, ow)
+
+    # 531 KiB of output will be written which should get split into 3 files.
+    run!(simulation)
+
+    # Test that files has been split according to size as expected.
+    @test filesize("test_part1.nc") > 200KiB
+    @test filesize("test_part2.nc") > 200KiB
+    @test filesize("test_part3.nc") < 200KiB
+    @test !isfile("test_part4.nc")
+
+    for n in string.(1:3)
+        filename = "test_part$n.nc"
+        ds = NCDataset(filename,"r")
+        dimlength = length(keys(ds.dim))
+        # Test that all files contain the same dimensions.
+        @test dimlength == 7
+        # Test that all files contain the user defined attributes.
+        @test ds.attrib["fake_attribute"] == "fake_attribute"
+
+        # Leave test directory clean.
+        close(ds)
+        rm(filename)
+    end
+
+    return nothing
+end
+
+function test_netcdf_time_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model, Δt=1, stop_iteration=12seconds)
+
+    fake_attributes = Dict("fake_attribute"=>"fake_attribute")
+
+    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+                            dir = ".",
+                            filename = "test.nc",
+                            schedule = IterationInterval(2),
+                            array_type = Array{Float64},
+                            with_halos = true,
+                            global_attributes = fake_attributes,
+                            file_splitting = TimeInterval(4seconds),
+                            overwrite_existing = true)
+
+    push!(simulation.output_writers, ow)
+
+    run!(simulation)
+
+    for n in string.(1:3)
+        filename = "test_part$n.nc"
+        ds = NCDataset(filename,"r")
+        dimlength = length(ds["time"])
+        # Test that all files contain the same dimensions.
+        @test dimlength == 2
+        # Test that all files contain the user defined attributes.
+        @test ds.attrib["fake_attribute"] == "fake_attribute"
+
+        # Leave test directory clean.
+        close(ds)
+        rm(filename)
+    end
+    rm("test_part4.nc")
+
+    return nothing
+end
+
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
@@ -372,9 +456,9 @@ function test_netcdf_function_output(arch)
     dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
 
     output_attributes = (
-        scalar = (longname="Some scalar", units="bananas"),
-        profile = (longname="Some vertical profile", units="watermelons"),
-        slice = (longname="Some slice", units="mushrooms")
+        scalar = (long_name="Some scalar", units="bananas"),
+        profile = (long_name="Some vertical profile", units="watermelons"),
+        slice = (long_name="Some slice", units="mushrooms")
     )
 
     global_attributes = (location="Bay of Fundy", onions=7)
@@ -441,12 +525,12 @@ function test_netcdf_function_output(arch)
     @test ds["time"][:] == [n*Δt for n in 0:iters]
 
     @test length(ds["scalar"]) == iters+1
-    @test ds["scalar"].attrib["longname"] == "Some scalar"
+    @test ds["scalar"].attrib["long_name"] == "Some scalar"
     @test ds["scalar"].attrib["units"] == "bananas"
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
     @test dimnames(ds["scalar"]) == ("time",)
 
-    @test ds["profile"].attrib["longname"] == "Some vertical profile"
+    @test ds["profile"].attrib["long_name"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
     @test size(ds["profile"]) == (N, iters+1)
     @test dimnames(ds["profile"]) == ("zC", "time")
@@ -455,7 +539,7 @@ function test_netcdf_function_output(arch)
         @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
     end
 
-    @test ds["slice"].attrib["longname"] == "Some slice"
+    @test ds["slice"].attrib["long_name"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
     @test size(ds["slice"]) == (N, N, iters+1)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
@@ -835,6 +919,8 @@ for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
         test_DateTime_netcdf_output(arch)
+        test_netcdf_size_file_splitting(arch)
+        test_netcdf_time_file_splitting(arch)
         test_TimeDate_netcdf_output(arch)
         test_thermal_bubble_netcdf_output(arch)
         test_thermal_bubble_netcdf_output_with_halos(arch)
@@ -846,3 +932,4 @@ for arch in archs
         test_netcdf_regular_lat_lon_grid_output(arch)
     end
 end
+

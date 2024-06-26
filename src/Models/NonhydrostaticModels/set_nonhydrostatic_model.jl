@@ -3,7 +3,7 @@ using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, 
 import Oceananigans.Fields: set!
 
 """
-    set!(model; kwargs...)
+    set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments
 `kwargs...` take the form `name=data`, where `name` refers to one of the

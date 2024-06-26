@@ -31,13 +31,13 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as Wagner et al. 2021,
+# We use a modest resolution and the same total extent as Wagner et al. (2021),
 
 grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# The surface wave Stokes drift profile prescribed in Wagner et al. 2021,
+# The surface wave Stokes drift profile prescribed in Wagner et al. (2021),
 # corresponds to a 'monochromatic' (that is, single-frequency) wave field.
 #
 # A monochromatic wave field is characterized by its wavelength and amplitude
@@ -59,8 +59,7 @@ const vertical_scale = wavelength / 4π
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
-# To run this example on the GPU, include `GPU()` in the
-# constructor for `RectilinearGrid` above.
+# To run this example on the GPU, include `GPU()` in the `RectilinearGrid` constructor above.
 #
 # The Stokes drift profile is
 
@@ -84,18 +83,18 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
 # if the Stokes drift and surface wave field undergoes _forced_ changes in time.
-# In this example, the Stokes drift is constant
-# and thus the time-derivative of the Stokes drift is 0.
+# In this example, the Stokes drift is constant and thus the time-derivative of
+# the Stokes drift is 0.
 
 # ### Boundary conditions
 #
-# At the surface at ``z=0``, Wagner et al. 2021 impose
+# At the surface ``z = 0``, Wagner et al. (2021) impose
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-# Wagner et al. 2021 impose a linear buoyancy gradient `N²` at the bottom
+# Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
@@ -140,7 +139,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # for buoyancy and velocity initial conditions,
 
 Ξ(z) = randn() * exp(z / 4)
-nothing # hide
+nothing #hide
 
 # Our initial condition for buoyancy consists of a surface mixed layer 33 m deep,
 # a deep linear stratification, plus noise,
@@ -167,9 +166,7 @@ simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
@@ -216,7 +213,7 @@ simulation.output_writers[:fields] =
 # ### An "averages" writer
 #
 # We also set up output of time- and horizontally-averaged velocity field and
-# momentum fluxes,
+# momentum fluxes.
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -241,7 +238,7 @@ run!(simulation)
 
 # # Making a neat movie
 #
-# We look at the results by loading data from file with FieldTimeSeries,
+# We look at the results by loading data from file with `FieldTimeSeries`,
 # and plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
@@ -259,7 +256,7 @@ time_series = (;
 times = time_series.w.times
 xw, yw, zw = nodes(time_series.w)
 xu, yu, zu = nodes(time_series.u)
-nothing # hide
+nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
@@ -271,7 +268,7 @@ wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
 wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 
-fig = Figure(resolution = (850, 850))
+fig = Figure(size = (850, 850))
 
 ax_B = Axis(fig[1, 4];
             xlabel = "Buoyancy (m s⁻²)",
@@ -354,7 +351,7 @@ ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
 
 Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
-current_figure() # hide
+current_figure() #hide
 fig
 
 # And, finally, we record a movie.
@@ -362,8 +359,6 @@ fig
 frames = 1:length(times)
 
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
     n[] = i
 end
 nothing #hide

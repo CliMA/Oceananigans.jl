@@ -80,26 +80,26 @@ end
 @inline _getregion(p::Pair, i)               = p.first => getregion(p.second, i)
 
 ## The implementation of `getregion` for a Tuple forces the compiler to infer the size of the Tuple
-@inline getregion(t::Tuple{}, i)                            = ()
-@inline getregion(t::Tuple{<:Any}, i)                       = (_getregion(t[1], i), )
-@inline getregion(t::Tuple{<:Any, <:Any}, i)                = (_getregion(t[1], i), _getregion(t[2], i))
-@inline getregion(t::Tuple{<:Any, <:Any, <:Any}, i)         = (_getregion(t[1], i), _getregion(t[2], i), _getregion(t[3], i))
-@inline getregion(t::Tuple, i)                              = (_getregion(t[1], i), _getregion(t[2:end], i)...)
+@inline getregion(t::Tuple{}, i)                     = ()
+@inline getregion(t::Tuple{<:Any}, i)                = (_getregion(t[1], i), )
+@inline getregion(t::Tuple{<:Any, <:Any}, i)         = (_getregion(t[1], i), _getregion(t[2], i))
+@inline getregion(t::Tuple{<:Any, <:Any, <:Any}, i)  = (_getregion(t[1], i), _getregion(t[2], i), _getregion(t[3], i))
+@inline getregion(t::Tuple, i)                       = (_getregion(t[1], i), _getregion(t[2:end], i)...)
 
-@inline _getregion(t::Tuple{}, i)                           = ()
-@inline _getregion(t::Tuple{<:Any}, i)                      = (getregion(t[1], i), )
-@inline _getregion(t::Tuple{<:Any, <:Any}, i)               = (getregion(t[1], i), getregion(t[2], i))
-@inline _getregion(t::Tuple{<:Any, <:Any, <:Any}, i)        = (getregion(t[1], i), getregion(t[2], i), getregion(t[3], i))
-@inline _getregion(t::Tuple, i)                             = (getregion(t[1], i), getregion(t[2:end], i)...)
+@inline _getregion(t::Tuple{}, i)                    = ()
+@inline _getregion(t::Tuple{<:Any}, i)               = (getregion(t[1], i), )
+@inline _getregion(t::Tuple{<:Any, <:Any}, i)        = (getregion(t[1], i), getregion(t[2], i))
+@inline _getregion(t::Tuple{<:Any, <:Any, <:Any}, i) = (getregion(t[1], i), getregion(t[2], i), getregion(t[3], i))
+@inline _getregion(t::Tuple, i)                      = (getregion(t[1], i), getregion(t[2:end], i)...)
 
-@inline getregion(nt::NamedTuple, i)   = NamedTuple{keys(nt)}(_getregion(Tuple(nt), i))
-@inline _getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(getregion(Tuple(nt), i))
+@inline getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(_getregion(Tuple(nt), i))
+@inline _getregion(nt::NamedTuple, i) = NamedTuple{keys(nt)}(getregion(Tuple(nt), i))
 
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
 
 @inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
+@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
 for func in [:isregional, :devices, :switch_device!]
     @eval begin
         @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
@@ -110,6 +110,9 @@ end
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
+
+Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
+Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
@@ -122,13 +125,15 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
     else
         devs = devices(multi_region_args)
     end
-   
+
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
     sync_all_devices!(devs)
+
+    return nothing
 end 
 
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
@@ -175,8 +180,10 @@ end
     end 
 end
 
+@inline sync_device!(::Nothing)  = nothing
+@inline sync_device!(::CPU)      = nothing
+@inline sync_device!(::GPU)      = CUDA.synchronize()
 @inline sync_device!(::CuDevice) = CUDA.synchronize()
-@inline sync_device!(dev)        = nothing
 
 
 # TODO: The macro errors when there is a return and the function has (args...) in the 
@@ -185,9 +192,11 @@ end
 """
     @apply_regionally expr
     
-Use `@apply_regionally` to distribute locally the function calls.
-Call `compute_regionally` in case of a returning value and `apply_regionally!` 
-in case of no return.
+Distributes locally the function calls in `expr`ession
+
+It calls [`apply_regionally!`](@ref) when the functions do not return anything.
+
+In case the function in `expr` returns something, `@apply_regionally` calls [`construct_regionally`](@ref).
 """
 macro apply_regionally(expr)
     if expr.head == :call
@@ -202,7 +211,7 @@ macro apply_regionally(expr)
     elseif expr.head == :(=)
         ret = expr.args[1]
         Nret = 1
-        if expr.args[1] isa Expr 
+        if expr.args[1] isa Expr
             Nret = length(expr.args[1].args)
         end
         exp = expr.args[2]
@@ -228,7 +237,7 @@ macro apply_regionally(expr)
                 Nret = 1
                 if arg.args[1] isa Expr 
                     Nret = length(arg.args[1].args)
-                end        
+                end
                 exp = arg.args[2]
                 func = exp.args[1]
                 args = exp.args[2:end]

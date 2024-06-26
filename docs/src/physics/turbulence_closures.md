@@ -65,7 +65,7 @@ diffusivity components ``\kappa_h`` and ``\kappa_z``.
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
+In the turbulence closure proposed by [Lilly62](@citet) and [Smagorinsky63](@citet),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
 \tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
@@ -110,8 +110,8 @@ Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
 
-The anisotropic minimum dissipation (AMD) model proposed by [Verstappen18](@cite) and was
-described and tested by [Vreugdenhil18](@cite). The AMD model uses an eddy diffusivity hypothesis
+The anisotropic minimum dissipation (AMD) model proposed by [Verstappen18](@citet) and was
+described and tested by [Vreugdenhil18](@citet). The AMD model uses an eddy diffusivity hypothesis
 similar the Smagorinsky-Lilly model. In the AMD model, the eddy viscosity and diffusivity for each
 tracer are defined in terms of eddy viscosity and diffusivity *predictors* ``\nu_e^\dagger`` and ``\kappa_e^\dagger``,
 such that

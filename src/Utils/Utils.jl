@@ -1,6 +1,6 @@
 module Utils
 
-export launch_config, work_layout, launch!
+export configured_kernel, work_layout, launch!, KernelParameters
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples
 export validate_intervals, time_to_run
@@ -39,5 +39,7 @@ include("versioninfo.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
+include("coordinate_transformations.jl")
+include("sum_of_arrays.jl")
 
 end # module

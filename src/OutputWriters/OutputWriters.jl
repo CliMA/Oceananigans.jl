@@ -1,9 +1,8 @@
 module OutputWriters
 
 export
-    JLD2OutputWriter, NetCDFOutputWriter,
-    Checkpointer, restore_from_checkpoint,
-    WindowedTimeAverage,
+    JLD2OutputWriter, NetCDFOutputWriter, written_names,
+    Checkpointer, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
 using CUDA
@@ -16,10 +15,11 @@ using Oceananigans.Models
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
+using Oceananigans.Utils: pretty_filesize
 
 using OffsetArrays
 
-import Oceananigans: write_output!
+import Oceananigans: write_output!, initialize!
 
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
@@ -32,4 +32,14 @@ include("jld2_output_writer.jl")
 include("netcdf_output_writer.jl")
 include("checkpointer.jl")
 
+function written_names(filename)
+    field_names = String[]
+    jldopen(filename, "r") do file 
+        all_names = keys(file["timeseries"])
+        field_names = filter(n -> n != "t", all_names)
+    end
+    return field_names
+end
+
 end # module
+

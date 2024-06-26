@@ -52,7 +52,7 @@
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
-It runs on GPUs (wow, fast!), though we believe Oceananigans makes the biggest waves
+It runs on GPUs (wow, [fast!](http://arxiv.org/abs/2309.06662)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 
 Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
@@ -71,7 +71,7 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-1. [Download Julia](https://julialang.org/downloads/).
+1. [Download Julia](https://julialang.org/downloads/) (version 1.9 or later).
 
 2. Launch Julia and type
 
@@ -96,7 +96,7 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 model = NonhydrostaticModel(; grid, advection=WENO())
-ϵ(x, y, z) = 2rand() - 1
+ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)

@@ -1,5 +1,9 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Utils: Time
+using Oceananigans.Fields: indices
+using Oceananigans.OutputReaders: Cyclical, Clamp
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -222,6 +226,86 @@ end
                 val2 = fun([fun(f[n]) for n in 1:Nt])
 
                 @test val1 ≈ val2 atol=4ε
+            end
+        end
+    end
+
+    @testset "Outputwriting with set!(FieldTimeSeries{OnDisk})" begin
+        @info "  Testing set!(FieldTimeSeries{OnDisk})..."
+
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+        c = CenterField(grid)
+
+        filepath = "testfile.jld2"
+        f = FieldTimeSeries(location(c), grid, 1:10; backend = OnDisk(), path = filepath, name = "c")
+
+        for i in 1:10
+            set!(c, i)
+            set!(f, c, i)
+        end
+
+        g = FieldTimeSeries(filepath, "c")
+
+        @test location(g) == (Center, Center, Center)
+        @test indices(g) == (:, :, :)
+        @test g.grid == grid
+
+        @test g[1, 1, 1, 1] == 1
+        @test g[1, 1, 1, 10] == 10
+        @test g[1, 1, 1, Time(1.6)] == 1.6
+
+        t = g[Time(3.8)]
+
+        @test t[1, 1, 1] == 3.8
+    end
+
+    @testset "Test chunked abstraction" begin  
+        @info "  Testing Chunked abstraction..."      
+        filepath = "testfile.jld2"
+        fts = FieldTimeSeries(filepath, "c")
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
+
+        for t in eachindex(fts.times)
+            fts_chunked[t] == fts[t]
+        end
+
+        min_fts, max_fts = extrema(fts)
+
+        # Test cyclic time interpolation with update_field_time_series!
+        times = map(Time, 0:0.1:300)
+        for time in times
+            @test minimum(fts_chunked[time]) ≥ min_fts
+            @test maximum(fts_chunked[time]) ≤ max_fts
+        end
+    end
+
+    @testset "Time Interpolation" begin
+        times = rand(100) * 100
+        times = sort(times) # random times between 0 and 100
+
+        min_t, max_t = extrema(times)
+
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+
+        fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Cyclical())
+        fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Clamp())
+
+        for t in eachindex(times)
+            fill!(fts_cyclic[t], t / 2) # value of the field between 0.5 and 50
+            fill!(fts_clamp[t], t / 2)  # value of the field between 0.5 and 50
+        end
+
+        # Let's test that the field remains bounded between 0.5 and 50
+        for time in Time.(collect(0:0.1:100))
+            @test fts_cyclic[1, 1, 1, time] ≤ 50
+            @test fts_cyclic[1, 1, 1, time] ≥ 0.5
+
+            if time.time > max_t
+                @test fts_clamp[1, 1, 1, time] == 50
+            elseif time.time < min_t
+                @test fts_clamp[1, 1, 1, time] == 0.5
+            else
+                @test fts_clamp[1, 1, 1, time] ≈ fts_cyclic[1, 1, 1, time]
             end
         end
     end

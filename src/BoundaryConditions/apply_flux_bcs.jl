@@ -9,8 +9,8 @@ using Oceananigans.Grids: AbstractGrid
 #####
 
 # Unpack
-apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west, c.boundary_conditions.east, args...)
-apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south, c.boundary_conditions.north, args...)
+apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west,   c.boundary_conditions.east, args...)
+apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south,  c.boundary_conditions.north, args...)
 apply_z_bcs!(Gc, c, args...) = apply_z_bcs!(Gc, Gc.grid, c, c.boundary_conditions.bottom, c.boundary_conditions.top, args...)
 
 # Shortcuts for...
@@ -83,11 +83,11 @@ Apply a top and/or bottom boundary condition to variable `c`.
 end
 
 # Shortcuts for zero flux or non-flux boundary conditions
-@inline apply_x_east_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_x_west_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_y_north_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_y_south_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_z_top_bc!(   Gc, loc, ::NotFluxBC, args...) = nothing
+@inline   apply_x_east_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline   apply_x_west_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline  apply_y_north_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline  apply_y_south_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline    apply_z_top_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 @inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
 @inline flip(::Center) = Face()

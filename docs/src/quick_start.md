@@ -8,7 +8,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 model = NonhydrostaticModel(; grid, advection=WENO())
 
-ϵ(x, y, z) = 2rand() - 1
+ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 
 simulation = Simulation(model; Δt=0.01, stop_iteration=100)
@@ -52,7 +52,7 @@ using Oceananigans
 grid = RectilinearGrid(GPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 model = NonhydrostaticModel(; grid, advection=WENO())
 
-ϵ(x, y, z) = 2rand() - 1
+ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 
 simulation = Simulation(model; Δt=0.01, stop_iteration=100)
@@ -63,4 +63,4 @@ Notice the difference? We passed the positional argument `GPU()` to `Rectilinear
 
 ## Well, that was tantalizing
 
-But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions, turbulence closures, output writing, actually labeling your axes... 🤯). It'd be best to move on to the [one-dimensional diffusion example](https://clima.github.io/OceananigansDocumentation/stable/generated/one_dimensional_diffusion/).
+But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions, turbulence closures, output writing, actually labeling your axes... 🤯). It'd be best to move on to the [one-dimensional diffusion example](@ref one_dimensional_diffusion_example).

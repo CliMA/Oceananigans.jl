@@ -12,8 +12,8 @@ DocTestSetup = quote
 end
 ```
 
-Forcings are added to `Oceananigans` models by passing a `NamedTuple` of functions
-or forcing objects to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
+Forcings are added to models by passing a `NamedTuple` of functions or forcing objects
+to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
 By default, momentum and tracer forcing functions are assumed to be functions of
 `x, y, z, t`. A basic example is
 
@@ -34,12 +34,13 @@ ContinuousForcing{Nothing} at (Face, Center, Center)
 
 More general forcing functions are built via the `Forcing` constructor
 described below. `Oceananigans` also provides two convenience types:
-    * `Relaxation` for damping terms that restore a field to a
-      target distribution outside of a masked region of space. `Relaxation` can be
-      used to implement sponge layers near the boundaries of a domain.
-    * `AdvectiveForcing` for advecting individual quantities by a separate or
-      "slip" velocity relative to both the prognostic model velocity field and any
-      `BackgroundField` velocity field.
+
+ * `Relaxation` for damping terms that restore a field to a
+   target distribution outside of a masked region of space. `Relaxation` can be
+   used to implement sponge layers near the boundaries of a domain.
+ * `AdvectiveForcing` for advecting individual quantities by a separate or
+   "slip" velocity relative to both the prognostic model velocity field and any
+   `BackgroundField` velocity field.
 
 ## The `Forcing` constructor
 
@@ -72,7 +73,7 @@ model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoya
 model.forcing.T
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω), Tuple{Int64, Float64, Float64, Float64}}} at (Center, Center, Center)
+ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, k::Float64, ω::Float64}} at (Center, Center, Center)
 ├── func: T_forcing_func (generic function with 1 method)
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()
@@ -300,16 +301,15 @@ r_sediment = 1e-4 # [m] "Fine sand"
 ν_molecular = 1.05e-6 # m² s⁻¹
 w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 
-sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
+sinking = AdvectiveForcing(w=w_sediment)
 
 # output
-AdvectiveForcing with the UpwindBiased scheme:
+AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-0.00352102)
 ```
 
-The first argument to `AdvectiveForcing` is the advection scheme (here `UpwindBiasedFifthOrder()`).
 The three keyword arguments specify the `u`, `v`, and `w` components of the separate
 slip velocity field. The default for each `u, v, w` is `ZeroField`.
 
@@ -328,10 +328,10 @@ slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(WENO(; grid), w=w_slip)
+sinking = AdvectiveForcing(w=w_slip)
 
 # output
-AdvectiveForcing with the WENO scheme:
+AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: 32×32×33 Field{Center, Center, Face} on RectilinearGrid on CPU

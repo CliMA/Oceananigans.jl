@@ -1,11 +1,11 @@
 # [Turbulence closures](@id numerical_closures)
 
 To truly simulate and resolve turbulence at high Reynolds number (so basically all interesting flows) would require
-you resolve all motions down to the [Kolmogorov41](@cite) length scale ``\eta = (\nu^3 / \varepsilon)^{1/4}`` where
+you resolve all motions down to the [Kolmogorov41](@citet) length scale ``\eta = (\nu^3 / \varepsilon)^{1/4}`` where
 ``\nu`` is the kinematic viscosity and ``\varepsilon`` the average rate of dissipation of turbulence kinetic energy per
 unit mass.
 
-As pointed out way back by [Corrsin61](@cite), to run a simulation on a horizontal domain about 10 times the size of an
+As pointed out way back by [Corrsin61](@citet), to run a simulation on a horizontal domain about 10 times the size of an
 "average eddy" with 100 vertical levels and where the grid spacing is given by ``\eta`` would require the computer to
 store on the order of ``10^{14}`` variables.[^1] This is still impractical today, although may be within
 reach in less than a decade. He ends by suggesting the use of an analog rather digital computer---a tank of water.
@@ -22,9 +22,9 @@ To have any hope of simulating high Reynolds number flows we need some way of re
 
 ## Reynolds-averaged Navier–Stokes equations
 
-Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\boldsymbol{v}`` into the mean component
+Following [Reynolds1895](@citet), we can decompose flow variables such as velocity ``\boldsymbol{v}`` into the mean component
 ``\overline{\boldsymbol{v}}`` and the fluctuating component ``\boldsymbol{v}^\prime`` so that ``\boldsymbol{v} = \overline{\boldsymbol{v}} + \boldsymbol{v}^\prime``
-[see §4 of [Pope00](@cite) for a modern discussion].
+[see §4 of [Pope00](@citet) for a modern discussion].
 
 Expressing the Navier-Stokes equations in tensor notation
 ```math
@@ -62,7 +62,7 @@ This is kind of hopeless so we will have to find some way to model the Reynolds 
 
 ## Gradient-diffusion hypothesis and eddy viscosity models
 
-The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@cite), assumes that the transport of scalar fluxes
+The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@citet), assumes that the transport of scalar fluxes
 such as ``\overline{\boldsymbol{v}^\prime c^\prime}`` and ``\overline{v_i^\prime v_j^\prime}`` occurs down the mean scalar gradient
 ``\boldsymbol{\nabla} \overline{c}`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
 molecular motion in a gas can be described by a molecular viscosity.

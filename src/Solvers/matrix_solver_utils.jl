@@ -93,7 +93,7 @@ end
 
 @inline validate_laplacian_size(N, dim) = dim == true ? N : 1
   
-@inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
+@inline ensure_diagonal_elements_are_present!(A) = fkeep!((i, j, x) -> (i == j || !iszero(x)), A)
 
 """
     compute_matrix_for_linear_operation(arch, template_field, linear_operation!, args...;

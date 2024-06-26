@@ -5,25 +5,25 @@ sub-grid scale motions. This is done usually be assuming eddy viscosity and eddy
 estimate for the eddy viscosity ``\nu_e`` and diffusivity ``\kappa_e``.
 
 Much of the early work on LES was motivated by the study of atmospheric boundary layer turbulence, being developed
-by [Smagorinsky63](@cite) and [Lilly66](@cite), then first implemented by [Deardorff70](@cite) and [Deardorff74](@cite).
+by [Smagorinsky63](@citet) and [Lilly66](@citet), then first implemented by [Deardorff70](@citet) and [Deardorff74](@citet).
 
-In the LES framework, the Navier-Stokes equations are averaged in the same way as [Reynolds1895](@cite) except that the
+In the LES framework, the Navier-Stokes equations are averaged in the same way as [Reynolds1895](@citet) except that the
 mean field ``\overline{\boldsymbol{v}}`` is obtained via convolution with a filter convolution kernel ``G``
 ```math
 \overline{\boldsymbol{v}(\boldsymbol{x}, t)} = G \star \boldsymbol{v} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
   \boldsymbol{v}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, \mathrm{d}\boldsymbol{x}^\prime \, \mathrm{d} \tau \, ,
 ```
-as described by [Leonard75](@cite) who introduced the general filtering formalism.
+as described by [Leonard75](@citet) who introduced the general filtering formalism.
 
 The ``\overline{v_i^\prime v_j^\prime}`` terms are now components of what is called the sub-grid scale (SGS) stress
 tensor ``\tau^\text{SGS}_{ij}``, which looks the same as the Reynolds stress tensor so we will drop the SGS superscript.
 
 It is probably important to note that the large eddy simulation filtering operation does not satisfy the properties
-of a Reynolds operator (§2.1)[sagaut06](@cite) and that in general, the filtered residual is not zero:
+of a Reynolds operator (§2.1) [sagaut06](@cite) and that in general, the filtered residual is not zero:
 ``\overline{\boldsymbol{v}^\prime(\boldsymbol{x}, t)} \ne 0``.
 
-§13.2 of [Pope00](@cite) lists a number of popular choices for the filter function ``G``. For practical reasons we
+§13.2 of [Pope00](@citet) lists a number of popular choices for the filter function ``G``. For practical reasons we
 simply employ the box kernel
 ```math
   \begin{equation}
@@ -32,7 +32,7 @@ simply employ the box kernel
   \end{equation}
 ```
 where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n`` is the current time step. With
-\eqref{eq:box-kernel} we get back the averaging operator originally used by [Deardorff70](@cite)
+\eqref{eq:box-kernel} we get back the averaging operator originally used by [Deardorff70](@citet)
 ```math
 \overline{\boldsymbol{v}(x, y, z, t)} =
   \frac{1}{\Delta x \Delta y \Delta z}
@@ -46,7 +46,7 @@ which if evaluated at the cell centers just returns the cell averages we already
 
 ## Smagorinsky-Lilly model
 
-[Smagorinsky63](@cite) estimated the eddy viscosity ``\nu_e`` via a characteristic length scale ``\Delta`` times a velocity
+[Smagorinsky63](@citet) estimated the eddy viscosity ``\nu_e`` via a characteristic length scale ``\Delta`` times a velocity
 scale given by ``\Delta |\overline{S}|`` where ``|\overline{S}| = \sqrt{2\overline{S}_{ij}\overline{S}_{ij}}``. Thus the
 SGS stress tensor is given by
 ```math
@@ -57,7 +57,7 @@ The eddy diffusivities are calculated via ``\kappa_e = \nu_e / \text{Pr}_t`` whe
 ``\text{Pr}_t`` is usually chosen to be ``\mathcal{O}(1)`` from experimental observations.
 
 Assuming that the SGS energy cascade is equal to the overall dissipation rate ``\varepsilon`` from the
-[Kolmogorov41](@cite) theory, [Lilly66](@cite) was able to derive a value of
+[Kolmogorov41](@citet) theory, [Lilly66](@citet) was able to derive a value of
 ```math
 C_s = \left( \frac{3}{2}C_K\pi^\frac{4}{3} \right)^{-\frac{3}{4}} \approx 0.16 \, ,
 ```
@@ -71,16 +71,16 @@ convection.
 ## Anisotropic minimum dissipation models
 
 Minimum-dissipation eddy-viscosity models are a class of LES closures that use the minimum eddy dissipation required to
-dissipate the energy of sub-grid scale motion. [Rozema15](@cite) proposed the first minimum-dissipation model
+dissipate the energy of sub-grid scale motion. [Rozema15](@citet) proposed the first minimum-dissipation model
 appropriate for use on anisotropic grids, termed the *anisotropic minimum dissipation* (AMD) model.
 
 It has a number of desirable properties over Smagorinsky-type closures: it is more cost-effective than dynamic
 Smagorinsky, it appropriately switches off in laminar and transitional flows, and it is consistent with the exact SGS
-stress tensor on both isotropic and anisotropic grids. [Abkar16](@cite) extended the AMD model to model SGS scalar
-fluxes for tracer transport. [Abkar17](@cite) further extended the model to include a buoyancy term that accounts for
+stress tensor on both isotropic and anisotropic grids. [Abkar16](@citet) extended the AMD model to model SGS scalar
+fluxes for tracer transport. [Abkar17](@citet) further extended the model to include a buoyancy term that accounts for
 the contribution of buoyant forces to the production and suppression of turbulence.
 
-[Vreugdenhil18](@cite) derive a modified AMD model by following the requirement suggested by [Verstappen18](@cite),
+[Vreugdenhil18](@citet) derive a modified AMD model by following the requirement suggested by [Verstappen18](@citet),
 which entail normalising the displacement, the velocity, and the velocity gradient by the filter width to ensure that
 the resulting eddy dissipation properly counteracts the spurious kinetic energy transferred by convective nonlinearity,
 to derive a modified AMD model.
@@ -132,12 +132,12 @@ so that the normalized rate of strain tensor is
 ```
 
 In equations \eqref{eq:nu-dagger}--\eqref{eq:S-hat}, ``C`` is a modified Poincaré "constant" that is independent from
-the filter width ``\Delta`` but does depend on the accuracy of the discretization method used. [Abkar16](@cite) cite
+the filter width ``\Delta`` but does depend on the accuracy of the discretization method used. [Abkar16](@citet) cite
 ``C^2 = \frac{1}{12}`` for a spectral method and ``C^2 = \frac{1}{3}`` for a second-order accurate scheme. ``\Delta_i`` is
 the filter width in the ``x_i``-direction, and ``\Delta`` is given by the square root of the harmonic mean of the squares
 of the filter widths in each direction
 ```math
     \frac{1}{\Delta^2} = \frac{1}{3} \left( \frac{1}{\Delta x^2} + \frac{1}{\Delta y^2} + \frac{1}{\Delta z^2} \right) \, .
 ```
-The term multiplying ``C_b`` is the buoyancy modification introduced by [Abkar17](@cite) and is small for weakly
+The term multiplying ``C_b`` is the buoyancy modification introduced by [Abkar17](@citet) and is small for weakly
 stratified flows. We have introduced the ``C_b`` constant so that the buoyancy modification term may be turned on and off.

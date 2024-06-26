@@ -25,9 +25,10 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     model_kwargs = (; tracers=:c, buoyancy=nothing, coriolis=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, closure=closures[i, j], model_kwargs...) for i=1:ensemble_size[1], j=1:ensemble_size[2]]
+    models = [HydrostaticFreeSurfaceModel(; grid, closure=closures[i, j], model_kwargs...)
+              for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
-    set_ic!(model) = set!(model, c = (x, y, z) -> exp(-z^2)) 
+    set_ic!(model) = set!(model, c = z -> exp(-z^2)) 
 
     for model in models
         set_ic!(model)
@@ -76,7 +77,8 @@ end
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i, j], model_kwargs...) for i=1:ensemble_size[1], j=1:ensemble_size[2]]
+    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i, j], model_kwargs...)
+              for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
     set_ic!(model) = set!(model, u=1, v=1)
 
@@ -86,8 +88,8 @@ end
         run!(simulation)
     end 
 
-    ensemble_grid = RectilinearGrid(; size=ColumnEnsembleSize(Nz=Nz, ensemble=ensemble_size, Hz=Hz),
-                                      z=(-1, 0), topology, halo=Hz)
+    ensemble_grid = RectilinearGrid(size=ColumnEnsembleSize(Nz=Nz, ensemble=ensemble_size, Hz=Hz);
+                                    z=(-1, 0), topology, halo=Hz)
     ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)

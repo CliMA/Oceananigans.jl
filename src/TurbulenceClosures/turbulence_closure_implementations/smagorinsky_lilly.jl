@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
+struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
      C :: FT
     Cb :: FT
     Pr :: P
@@ -22,7 +22,8 @@ end
     SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
-Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
+[Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
+which has an eddy viscosity of the form
 
 ```
 νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
@@ -35,8 +36,8 @@ and an eddy diffusivity of the form
 ```
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
-the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
-the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
+the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, `N²` is the
+total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
 number modification to the eddy viscosity.
 
 Arguments
@@ -69,10 +70,10 @@ Smagorinsky, J. "On the numerical integration of the primitive equations of moti
 Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
-    The basic experiment." Monthly weather review (1963)
+    The basic experiment." Monthly Weather Review (1963)
 
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
-    NCAR Manuscript No. 281, 0, 1966.
+    NCAR Manuscript No. 281, 0, (1966)
 """
 SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
         SmagorinskyLilly{TD, FT}(C, Cb, Pr)
@@ -101,7 +102,9 @@ when ``N^2 > 0``, and 1 otherwise.
     return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid, closure::SmagorinskyLilly, buoyancy, velocities, tracers)
+@kernel function _compute_smagorinsky_viscosity!(νₑ, grid, closure, buoyancy, velocities, tracers)
+    i, j, k = @index(Global, NTuple)
+
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
@@ -114,18 +117,17 @@ end
     Δᶠ = cbrt(Δ³)
     C = closure.C # free parameter
 
-    return ς * (C * Δᶠ)^2 * sqrt(2Σ²)
+    @inbounds νₑ[i, j, k] = ς * (C * Δᶠ)^2 * sqrt(2Σ²)
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
+function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy
     velocities = model.velocities
     tracers = model.tracers
 
-    launch!(arch, grid, :xyz,
-            calculate_nonlinear_viscosity!,
+    launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
             diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing

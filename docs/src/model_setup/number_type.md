@@ -1,6 +1,6 @@
 # Number type
 
-Passing `float_type=Float64` or `float_type=Float32` to the `Model` constructor causes the model to store all numbers
+Passing `Float64` or `Float32` to the grid constructor causes the grid to store all numbers
 with 64-bit or 32-bit floating point precision.
 
 !!! note "Avoiding mixed-precision operations"

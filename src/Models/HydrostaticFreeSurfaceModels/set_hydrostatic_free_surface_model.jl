@@ -45,7 +45,7 @@ model.velocities.u
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+@inline function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
@@ -60,6 +60,7 @@ function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
         @apply_regionally set!(ϕ, value)
     end
 
+    initialize!(model)
     update_state!(model)
 
     return nothing

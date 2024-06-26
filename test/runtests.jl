@@ -1,5 +1,19 @@
 include("dependencies_for_runtests.jl")
 
+group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_file = get(ENV, "TEST_FILE", :none) |> Symbol
+
+# if we are testing just a single file then group = :none
+# to skip the full test suite
+if test_file != :none
+    group = :none
+end
+
+
+#####
+##### Run tests!
+#####
+
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
@@ -8,8 +22,8 @@ CUDA.allowscalar() do
             include(String(test_file))
         end
     end
-    
-    # Core Oceananigans 
+
+    # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
@@ -17,7 +31,7 @@ CUDA.allowscalar() do
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
-            include("test_field_reductions.jl")
+            include("test_field_scans.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
@@ -44,7 +58,7 @@ CUDA.allowscalar() do
 
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
-            include("test_poisson_solvers_vertically_stretched_grid.jl")
+            include("test_poisson_solvers_stretched_grids.jl")
         end
     end
 
@@ -67,6 +81,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
+            include("test_netcdf_output_writer.jl")
             include("test_output_readers.jl")
         end
     end
@@ -98,6 +113,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
+            include("test_seawater_density.jl")
         end
     end
 
@@ -123,21 +139,14 @@ CUDA.allowscalar() do
             include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
-    
+
     # Model enhancements: cubed sphere, distributed, etc
     if group == :multi_region || group == :all
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
             include("test_multi_region_implicit_solver.jl")
-        end
-    end
-
-    if group == :cubed_sphere || group == :all
-        @testset "Cubed sphere tests" begin
-            include("test_cubed_spheres.jl")
-            include("test_cubed_sphere_halo_exchange.jl")
-            include("test_cubed_sphere_circulation.jl")
+            include("test_multi_region_cubed_sphere.jl")
         end
     end
 
@@ -151,6 +160,13 @@ CUDA.allowscalar() do
         include("test_distributed_poisson_solvers.jl")
     end
 
+    if group == :distributed_hydrostatic_model || group == :all
+        MPI.Initialized() || MPI.Init()
+        archs = test_architectures() 
+        include("test_hydrostatic_regression.jl")
+        include("test_distributed_hydrostatic_model.jl")
+    end
+
     if group == :nonhydrostatic_regression || group == :all
         include("test_nonhydrostatic_regression.jl")
     end
@@ -162,6 +178,13 @@ CUDA.allowscalar() do
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
+        end
+    end
+
+    # Tests for Enzyme extension
+    if group == :enzyme || group == :all
+        @testset "Enzyme extension tests" begin
+            include("test_enzyme.jl")
         end
     end
 

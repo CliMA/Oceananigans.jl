@@ -353,4 +353,4 @@ anim = @animate for i in 1:length(b_timeseries.times)
     plot(w_xz_plot, ζ_xy_plot, b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
 end
 
-mp4(anim, "abernathey_channel.mp4", fps = 8) # hide
+mp4(anim, "abernathey_channel.mp4", fps = 8) #hide

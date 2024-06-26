@@ -5,6 +5,49 @@ using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠ�
 
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
+function test_three_dimensional_differences(T=Float64)
+    grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
+    ϕ = rand(T, 3, 3, 3)
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> x < 1))
+    
+    ϕ²  = ϕ.^2
+
+    δx_ϕ_f = T(0)
+    δx_ϕ_c = ϕ²[3, 2, 2] - ϕ²[2, 2, 2]
+
+    δy_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 1, 2]
+    δy_ϕ_c = ϕ²[2, 3, 2] - ϕ²[2, 2, 2]
+
+    δz_ϕ_f = ϕ²[2, 2, 2] - ϕ²[2, 2, 1]
+    δz_ϕ_c = ϕ²[2, 2, 3] - ϕ²[2, 2, 2]
+
+    f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+    for δx in (δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ)
+        @test δx(2, 2, 2, grid, f, ϕ) == δx_ϕ_c 
+    end
+    for δx in (∂xᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δxᶠᶠᶠ)
+        @test δx(2, 2, 2, grid, f, ϕ) == δx_ϕ_f 
+    end
+
+    for δy in (∂yᶜᶜᶜ, δyᶜᶜᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ)
+        @test δy(2, 2, 2, grid, f, ϕ) == δy_ϕ_c 
+    end
+    for δy in (δyᶜᶠᶜ, δyᶠᶠᶜ, δyᶜᶠᶠ, δyᶠᶠᶠ)
+        @test δy(2, 2, 2, grid, f, ϕ) == δy_ϕ_f 
+    end
+
+    for δz in (δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ)
+        @test δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_c 
+    end
+    for δz in (δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ)
+        @test δz(2, 2, 2, grid, f, ϕ) == δz_ϕ_f 
+    end
+
+    return nothing
+end
+
 function test_function_differentiation(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
@@ -21,28 +64,25 @@ function test_function_differentiation(T=Float64)
 
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
-    assess = true 
-
-
     for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
-        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c 
+        @test ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c 
     end
     for ∂x in (∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂xᶠᶠᶠ)
-        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f 
+        @test ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f 
     end
 
     for ∂y in (∂yᶜᶜᶜ, ∂yᶜᶜᶠ, ∂yᶠᶜᶜ, ∂yᶠᶜᶠ)
-        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c 
+        @test ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c 
     end
     for ∂y in (∂yᶜᶠᶜ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶠ)
-        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f 
+        @test ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f 
     end
 
     for ∂z in (∂zᶜᶜᶜ, ∂zᶜᶠᶜ, ∂zᶠᶜᶜ, ∂zᶠᶠᶜ)
-        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c 
+        @test ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c 
     end
     for ∂z in (∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ)
-        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f 
+        @test ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f 
     end
 
     stretched_f = [0, 1, 3, 6]
@@ -61,27 +101,27 @@ function test_function_differentiation(T=Float64)
     ∂z_c(i, j, k) = (ϕ²[i, j, k+1] - ϕ²[i, j, k])   / dc(k)
 
     for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
-        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_c(2, 2, 2) 
+        @test ∂x(2, 2, 2, grid, f, ϕ) == ∂x_c(2, 2, 2) 
     end
     for ∂x in (∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂xᶠᶠᶠ)
-        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_f(2, 2, 2) 
+        @test ∂x(2, 2, 2, grid, f, ϕ) == ∂x_f(2, 2, 2) 
     end
 
     for ∂y in (∂yᶜᶜᶜ, ∂yᶜᶜᶠ, ∂yᶠᶜᶜ, ∂yᶠᶜᶠ)
-        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_c(2, 2, 2) 
+        @test ∂y(2, 2, 2, grid, f, ϕ) == ∂y_c(2, 2, 2) 
     end
     for ∂y in (∂yᶜᶠᶜ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶠ)
-        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_f(2, 2, 2)  
+        @test ∂y(2, 2, 2, grid, f, ϕ) == ∂y_f(2, 2, 2)  
     end
 
     for ∂z in (∂zᶜᶜᶜ, ∂zᶜᶠᶜ, ∂zᶠᶜᶜ, ∂zᶠᶠᶜ)
-        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_c(2, 2, 2)  
+        @test ∂z(2, 2, 2, grid, f, ϕ) == ∂z_c(2, 2, 2)  
     end
     for ∂z in (∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ)
-        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_f(2, 2, 2) 
+        @test ∂z(2, 2, 2, grid, f, ϕ) == ∂z_f(2, 2, 2) 
     end
 
-    return assess
+    return nothing
 end
 
 function test_function_interpolation(T=Float64)
@@ -100,16 +140,16 @@ function test_function_interpolation(T=Float64)
 
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
-    return (
-        ℑxᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_c &&
-        ℑxᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_f &&
+    @test ℑxᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_c 
+    @test ℑxᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_f 
 
-        ℑyᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_c &&
-        ℑyᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_f &&
+    @test ℑyᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_c 
+    @test ℑyᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_f 
 
-        ℑzᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_c &&
-        ℑzᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_f
-    )
+    @test ℑzᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_c 
+    @test ℑzᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_f
+    
+    return nothing
 end
 
 @testset "Operators" begin
@@ -183,14 +223,19 @@ end
 
     end
 
+    @testset "Function differences" begin
+        @info "  Testing function differences..."
+        test_three_dimensional_differences()
+    end
+
     @testset "Function differentiation" begin
         @info "  Testing function differentiation..."
-        @test test_function_differentiation()
+        test_function_differentiation()
     end
 
     @testset "Function interpolation" begin
         @info "  Testing function interpolation..."
-        @test test_function_interpolation()
+        test_function_interpolation()
     end
 
     @testset "2D operators" begin

@@ -1,9 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
@@ -119,7 +119,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
 
             # Big enough
-            bigger_grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+            bigger_grid = RectilinearGrid(topology=topo, size=(3, 3, 1), extent=(1, 2, 3), halo=(3, 3, 3))
 
             model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
@@ -174,16 +174,19 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
         z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
 
-        rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        rectilinear_grid = RectilinearGrid(arch, size=(3, 3, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        vertically_stretched_grid = RectilinearGrid(arch, size=(3, 3, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3))
 
-        lat_lon_sector_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
-        lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
+        lat_lon_sector_grid = LatitudeLongitudeGrid(arch, size=(3, 3, 3), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
+        lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, size=(3, 3, 3), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
         
-        vertically_stretched_grid = RectilinearGrid(arch, size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3))
-        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
-        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
+        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(arch, size=(3, 3, 3), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
+        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(3, 3, 3), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
+        grids = (rectilinear_grid, vertically_stretched_grid,
+                 lat_lon_sector_grid, lat_lon_strip_grid,
+                 lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched)
+
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver))
 
         for grid in grids
@@ -207,8 +210,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for coriolis in (nothing,
-                         HydrostaticSphericalCoriolis(scheme=EnergyConservingScheme()),
-                         HydrostaticSphericalCoriolis(scheme=EnstrophyConservingScheme()))
+                         HydrostaticSphericalCoriolis(scheme=EnergyConserving()),
+                         HydrostaticSphericalCoriolis(scheme=EnstrophyConserving()))
 
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @test time_step_hydrostatic_model_works(lat_lon_sector_grid, coriolis=coriolis)
@@ -248,32 +251,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
-        end
-
-        @testset "PrescribedVelocityFields [$arch]" begin
-            @info "  Testing PrescribedVelocityFields [$arch]..."
-            
-            grid = RectilinearGrid(arch, size=1, x =(0, 1), halo=1, topology = (Periodic, Flat, Flat))
-            
-            u₀, v₀ = 0.1, 0.2
-            
-            U = Field{Face, Center, Center}(grid)
-            V = Field{Center, Face, Center}(grid)
-
-            CUDA.@allowscalar begin
-                parent(U)[2, 1, 1] = u₀
-                parent(V)[2, 1, 1] = v₀
-            end
-
-            u = PrescribedField(Face, Center, Center, U, grid)
-            v = PrescribedField(Face, Center, Center, V, grid)
-
-            CUDA.@allowscalar begin
-                @test parent(u)[1, 1, 1] == u₀
-                @test parent(u)[3, 1, 1] == u₀
-                @test parent(v)[1, 1, 1] == v₀
-                @test parent(v)[3, 1, 1] == v₀
-            end
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin

@@ -9,13 +9,15 @@ using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, SumOfArrays
 using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.Architectures: on_architecture
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -26,8 +28,8 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
+free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
 include("rigid_lid.jl")
@@ -66,7 +68,9 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
 @inline fields(model::HydrostaticFreeSurfaceModel) = 
-        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields, biogeochemical_auxiliary_fields(model.biogeochemistry))
+    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
+          model.auxiliary_fields,
+          biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
@@ -99,9 +103,13 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
+# Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
+step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
-include("calculate_hydrostatic_free_surface_tendencies.jl")
+include("compute_hydrostatic_free_surface_tendencies.jl")
+include("compute_hydrostatic_free_surface_boundary_tendencies.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("store_hydrostatic_free_surface_tendencies.jl")

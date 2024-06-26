@@ -33,4 +33,4 @@ and ``\beta`` is the haline contraction coefficient.
 
 ### Nonlinear equation of state
 
-Buoyancy is determined by the simplified equations of state introduced by [Roquet15TEOS](@cite).
+Buoyancy is determined by the simplified equations of state introduced by [Roquet15TEOS](@citet).
