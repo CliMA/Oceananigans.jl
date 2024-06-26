@@ -59,36 +59,40 @@ struct XinKaiLocalVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, V
     ν₀  :: FT
     νˢʰ :: FT
     νᶜⁿ :: FT
-    Prₜ :: FT
+    Pr_convₜ :: FT
+    Pr_shearₜ :: FT
     Riᶜ :: FT
     δRi :: FT
 end
 
 function XinKaiLocalVerticalDiffusivity{TD}(ν₀  :: FT, 
-                                       νˢʰ :: FT,
-                                       νᶜⁿ :: FT,
-                                       Prₜ :: FT,
-                                       Riᶜ :: FT,
-				                       δRi :: FT) where {TD, FT}
+                                            νˢʰ :: FT,
+                                            νᶜⁿ :: FT,
+                                            Pr_convₜ :: FT,
+                                            Pr_shearₜ :: FT,
+                                            Riᶜ :: FT,
+				                            δRi :: FT) where {TD, FT}
                                        
-    return XinKaiLocalVerticalDiffusivity{TD, FT}(ν₀, νˢʰ, νᶜⁿ, Prₜ, Riᶜ, δRi)
+    return XinKaiLocalVerticalDiffusivity{TD, FT}(ν₀, νˢʰ, νᶜⁿ, Pr_convₜ, Pr_shearₜ, Riᶜ, δRi)
 end
 
 function XinKaiLocalVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT  = Float64;
 				                    ν₀  = 1e-5, 
-                                    νˢʰ = 0.0885,
-                                    νᶜⁿ = 4.3668,
-                                    Prₜ = 1.207,
-                                    Riᶜ = - 0.21982,
-				                    δRi = 8.342e-4) 
+                                    νˢʰ = 0.04569735882746968,
+                                    νᶜⁿ = 0.47887785611155065,
+                                    Pr_convₜ = 0.1261854430705509,
+                                    Pr_shearₜ = 1.594794053970444,
+                                    Riᶜ = 0.9964350402840053,
+				                    δRi = 0.05635304878092709) 
 
     TD = typeof(time_discretization)
 
     return XinKaiLocalVerticalDiffusivity{TD}(convert(FT, ν₀),
                                               convert(FT, νˢʰ),
                                               convert(FT, νᶜⁿ),
-                                              convert(FT, Prₜ),
+                                              convert(FT, Pr_convₜ),
+                                              convert(FT, Pr_shearₜ),
                                               convert(FT, Riᶜ),
                                               convert(FT, δRi))
 end
@@ -97,7 +101,7 @@ XinKaiLocalVerticalDiffusivity(FT::DataType; kw...) =
     XinKaiLocalVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 Adapt.adapt_structure(to, clo::XinKaiLocalVerticalDiffusivity{TD, FT}) where {TD, FT} = 
-    XinKaiLocalVerticalDiffusivity{TD, FT}(clo.ν₀, clo.νˢʰ, clo.νᶜⁿ, clo.Prₜ, clo.Riᶜ, clo.δRi)
+    XinKaiLocalVerticalDiffusivity{TD, FT}(clo.ν₀, clo.νˢʰ, clo.νᶜⁿ, clo.Pr_convₜ, clo.Pr_shearₜ, clo.Riᶜ, clo.δRi)
                                          
 #####                                    
 ##### Diffusivity field utilities        
@@ -206,7 +210,8 @@ end
     ν₀  = closure_ij.ν₀  
     νˢʰ = closure_ij.νˢʰ
     νᶜⁿ = closure_ij.νᶜⁿ
-    Prₜ = closure_ij.Prₜ
+    Pr_convₜ = closure_ij.Pr_convₜ
+    Pr_shearₜ = closure_ij.Pr_shearₜ
     Riᶜ = closure_ij.Riᶜ
     δRi = closure_ij.δRi
 
@@ -220,11 +225,14 @@ end
     Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
 
     # Convective adjustment diffusivity
-    ν_local = ifelse(convecting, - (νᶜⁿ - νˢʰ) / 2 * tanh(Ri / δRi) + νˢʰ, clamp(Riᶜ * Ri + νˢʰ + ν₀, ν₀, νˢʰ))
+    ν_local = ifelse(convecting, (νˢʰ - νᶜⁿ) * tanh(Ri / δRi) + νˢʰ, clamp((ν₀ - νˢʰ) * Ri / Riᶜ + νˢʰ, ν₀, νˢʰ))
 
     # Update by averaging in time
+    # @inbounds diffusivities.κᵘ[i, j, k] = ifelse(k == 1, 0, ν_local)
+    # @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k == 1, 0, ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ))
+
     @inbounds diffusivities.κᵘ[i, j, k] = ν_local
-    @inbounds diffusivities.κᶜ[i, j, k] = ν_local / Prₜ 
+    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ)
 
     return nothing
 end
