@@ -1,5 +1,7 @@
-import Oceananigans.Fields: interpolate
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
+using Oceananigans.Architectures: architecture
+
+import Oceananigans.Fields: interpolate
 
 #####
 ##### Computation of time indices for interpolation
