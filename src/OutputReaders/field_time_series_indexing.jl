@@ -135,7 +135,7 @@ end
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
-    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(fts.time_indexing, fts.times, time_index.time, architecture(fts))
+    ñ, n₁, n₂ = gpu_safe_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, time_index.time)
 
     if n₁ == n₂ # no interpolation needed
         return fts[n₁]
@@ -231,12 +231,11 @@ end
 
 # Let's make sure `times` is available on the CPU. This is always the case 
 # for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU  for safe indexing. 
-# Copying the whole array is a bit unclean but considering `update_field_time_series!` is called quite rarely 
-# it should not impact too much memory / performance
-cpu_safe_interpolating_time_indices(time_indexing, times, t, arch)  = interpolating_time_indices(time_indexing, times, t)
-cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::CPU) = interpolating_time_indices(time_indexing, times, t)
+# Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory
+gpu_safe_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = interpolating_time_indices(time_indexing, times, t)
+gpu_safe_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = interpolating_time_indices(time_indexing, times, t)
 
-function cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::GPU) 
+function gpu_safe_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t) 
     cpu_times = on_architecture(CPU(), times)
     return interpolating_time_indices(time_indexing, cpu_times, t)
 end
@@ -249,7 +248,7 @@ update_field_time_series!(fts, n::Int) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(fts.time_indexing, fts.times, t, architecture(fts))
+    ñ, n₁, n₂ = gpu_safe_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
     return update_field_time_series!(fts, n₁, n₂)
 end
 
