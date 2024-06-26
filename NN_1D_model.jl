@@ -18,14 +18,16 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
+import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
+s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
 
 # Architecture
-model_architecture = GPU()
+model_architecture = CPU()
 
 # number of grid points
-Nz = 32
+Nz = 64
 
-const Lz = 256
+const Lz = 512
 
 grid = RectilinearGrid(model_architecture,
     topology = (Flat, Flat, Bounded),
@@ -38,7 +40,13 @@ grid = RectilinearGrid(model_architecture,
 #####
 ##### Boundary conditions
 #####
-T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-4), bottom=FluxBoundaryCondition(0.0))
+const dTdz = 0.014
+const dSdz = 0.0021
+
+const T_surface = 20.0
+const S_surface = 36.6
+
+T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-4), bottom=GradientBoundaryCondition(dTdz))
 
 #####
 ##### Coriolis
@@ -52,12 +60,6 @@ coriolis = FPlane(f=f₀)
 #####
 ##### Forcing and initial condition
 #####
-const dTdz = 0.014
-const dSdz = 0.0021
-
-const T_surface = 20.0
-const S_surface = 36.6
-
 T_initial(z) = dTdz * z + T_surface
 S_initial(z) = dSdz * z + S_surface
 
@@ -78,6 +80,7 @@ model = HydrostaticFreeSurfaceModel(
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = (nn_closure, base_closure),
+    # closure = base_closure,
     tracers = (:T, :S),
     boundary_conditions = (; T = T_bcs),
 )
@@ -101,7 +104,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 2days
+stop_time = 10days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -175,7 +178,7 @@ Nt = length(Tbar_data.times)
 fig = Figure(size = (900, 600))
 axT = CairoMakie.Axis(fig[1, 1], xlabel = "T (°C)", ylabel = "z (m)")
 axS = CairoMakie.Axis(fig[1, 2], xlabel = "S (g kg⁻¹)", ylabel = "z (m)")
-n = Observable(1)
+n = Observable(Nt)
 
 Tbarₙ = @lift interior(Tbar_data[$n], 1, 1, :)
 Sbarₙ = @lift interior(Sbar_data[$n], 1, 1, :)
@@ -187,9 +190,11 @@ lines!(axS, Sbarₙ, zC)
 
 Label(fig[0, :], title_str, tellwidth = false)
 
-CairoMakie.record(fig, "./NN_1D_fields.mp4", 1:Nt, framerate=10) do nn
-    n[] = nn
-end
+# CairoMakie.record(fig, "./NN_1D_fields.mp4", 1:Nt, framerate=10) do nn
+#     n[] = nn
+#     xlims!(axT, nothing, nothing)
+#     xlims!(axS, nothing, nothing)
+# end
 
 display(fig)
 #%%
