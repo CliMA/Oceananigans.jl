@@ -18,21 +18,25 @@ end
 fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) =
     [fill_open_boundary_regions!(field, boundary_conditions[n], indices, loc[n], grid, args...; kwargs...) for (n, field) in enumerate(fields)]
 
-@inline left_velocity_open_boundary_condition(boundary_conditions, loc) = nothing
+# for regular halo fills
+@inline left_velocity_open_boundary_condition(boundary_condition, loc) = nothing
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Face, Center, Center}) = boundary_conditions.west
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Face, Center}) = boundary_conditions.south
 @inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Center, Face}) = boundary_conditions.bottom
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
 
 @inline right_velocity_open_boundary_condition(boundary_conditions, loc) = nothing
 @inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Face, Center, Center}) = boundary_conditions.east
 @inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Face, Center}) = boundary_conditions.north
 @inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Center, Face}) = boundary_conditions.top
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[2]
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
+
+# for multi region halo fills
+@inline left_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
+@inline left_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
+@inline left_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
+
+@inline right_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[2]
+@inline right_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
+@inline right_velocity_open_boundary_condition(boundary_conditions::NTuple{2}, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
 
 @inline fill_open_halo(loc) = _no_fill!, _no_fill!
 @inline fill_open_halo(loc::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
