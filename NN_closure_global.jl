@@ -20,6 +20,7 @@ using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 using Oceananigans.Coriolis
 using Oceananigans.Grids: φnode
 using Oceananigans.Grids: total_size
+using Oceananigans.Utils: KernelParameters
 using Oceananigans: architecture, on_architecture
 using Lux, LuxCUDA
 using JLD2
@@ -68,25 +69,23 @@ Adapt.adapt_structure(to, nn :: NN) =
 
 function NNFluxClosure(arch)
     dev = ifelse(arch == GPU(), gpu_device(), cpu_device())
-    nn_model = Chain(Dense(11, 128, relu), Dense(128, 128, relu), Dense(128, 1))
+    nn_path = "./NDE_FC_Qb_15simnew_2layer_64_relu_2Pr_model.jld2"
 
-    # scaling = jldopen("./NN_model2.jld2")["scaling"]
-    scaling = (; ∂T∂z = ZeroMeanUnitVarianceScaling(-0.0006850967567052092, 0.019041912105983983),
-                 ∂S∂z = ZeroMeanUnitVarianceScaling(-0.00042981832021978374, 0.0028927446724707905),
-                 ∂ρ∂z = ZeroMeanUnitVarianceScaling(-0.0011311157767216616, 0.0008333035237211424),
-                    f = ZeroMeanUnitVarianceScaling(-1.5e-5, 8.73212459828649e-5),
-                   wb = ZeroMeanUnitVarianceScaling(6.539366623323223e-8, 1.827377562065243e-7),
-                   wT = ZeroMeanUnitVarianceScaling(1.8169228278423015e-5, 0.00010721779595955453),
-                   wS = ZeroMeanUnitVarianceScaling(-5.8185988680682135e-6, 1.7691239104281005e-5))
+    ps, sts, scaling_params, wT_model, wS_model = jldopen(nn_path, "r") do file
+        ps = file["u"] |> dev
+        sts = file["sts"] |> dev
+        scaling_params = file["scaling"]
+        wT_model = file["model"].wT
+        wS_model = file["model"].wS
+        return ps, sts, scaling_params, wT_model, wS_model
+    end
 
-    # NNs = jldopen("./NN_model2.jld2")["NNs"]
-    ps = jldopen("./NN_model2.jld2")["u"] |> dev
-    sts = jldopen("./NN_model2.jld2")["sts"] |> dev
+    scaling = construct_zeromeanunitvariance_scaling(scaling_params)
 
-    ps = ps .= 0
+    # ps = ps .= 0
 
-    wT_NN = NN(nn_model, ps.wT, sts.wT)
-    wS_NN = NN(nn_model, ps.wS, sts.wS)
+    wT_NN = NN(wT_model, ps.wT, sts.wT)
+    wS_NN = NN(wS_model, ps.wS, sts.wS)
 
     return NNFluxClosure(wT_NN, wS_NN, scaling)
 end
@@ -118,13 +117,17 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     wT = diffusivities.wT
     wS = diffusivities.wS
 
-    launch!(arch, grid, parameters, 
+    Nx_in, Ny_in, Nz_in = total_size(wT)
+    ox_in, oy_in, oz_in = wT.data.offsets
+    kp = KernelParameters((Nx_in, Ny_in, Nz_in), (ox_in, oy_in, oz_in))
+
+    launch!(arch, grid, kp, 
             _populate_input!, input, grid, closure, tracers, velocities, buoyancy, coriolis, top_tracer_bcs, clock)
 
     wT.data.parent .= dropdims(closure.wT(input.parent), dims=1)
     wS.data.parent .= dropdims(closure.wS(input.parent), dims=1)
 
-    launch!(arch, grid, parameters, _rescale_nn_fluxes!, diffusivities, grid, closure)
+    launch!(arch, grid, kp, _rescale_nn_fluxes!, diffusivities, grid, closure)
     return nothing
 end
 
@@ -144,9 +147,9 @@ end
     @inbounds input[5, i, j, k] = ∂Sᵢ   = scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k,   grid, tracers.S))
     @inbounds input[6, i, j, k] = ∂Sᵢ₊₁ = scaling.∂S∂z(∂zᶜᶜᶠ(i, j, k+1, grid, tracers.S))
 
-    @inbounds input[7, i, j, k] = ∂σᵢ₋₁ = scaling.∂ρ∂z(ρ₀ * ∂z_b(i, j, k-1, grid, buoyancy, tracers) / g)
-    @inbounds input[8, i, j, k] = ∂σᵢ   = scaling.∂ρ∂z(ρ₀ * ∂z_b(i, j, k,   grid, buoyancy, tracers) / g)
-    @inbounds input[9, i, j, k] = ∂σᵢ₊₁ = scaling.∂ρ∂z(ρ₀ * ∂z_b(i, j, k+1, grid, buoyancy, tracers) / g)
+    @inbounds input[7, i, j, k] = ∂σᵢ₋₁ = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k-1, grid, buoyancy, tracers) / g)
+    @inbounds input[8, i, j, k] = ∂σᵢ   = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k,   grid, buoyancy, tracers) / g)
+    @inbounds input[9, i, j, k] = ∂σᵢ₊₁ = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k+1, grid, buoyancy, tracers) / g)
 
     @inbounds input[10, i, j, k] = Jᵇ = scaling.wb(top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, tracers))
     @inbounds input[11, i, j, k] = fᶜᶜ = scaling.f(fᶜᶜᵃ(i, j, k, grid, coriolis))
@@ -155,8 +158,8 @@ end
 @kernel function _rescale_nn_fluxes!(diffusivities, grid, closure)
     i, j, k = @index(Global, NTuple)
     scaling = closure.scaling
-    @inbounds diffusivities.wT[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 2, 0, inv(scaling.wT)(diffusivities.wT[i, j, k]))
-    @inbounds diffusivities.wS[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 2, 0, inv(scaling.wS)(diffusivities.wS[i, j, k]))
+    @inbounds diffusivities.wT[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 3, inv(scaling.wT)(0), inv(scaling.wT)(diffusivities.wT[i, j, k]))
+    @inbounds diffusivities.wS[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 3, inv(scaling.wS)(0), inv(scaling.wS)(diffusivities.wS[i, j, k]))
 end
 
 # Write here your constructor
