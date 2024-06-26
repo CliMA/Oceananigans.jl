@@ -138,7 +138,12 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfXKVD, model; par
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    launch!(arch, grid, parameters,
+    Nx_in, Ny_in, Nz_in = total_size(diffusivities.κᶜ)
+    ox_in, oy_in, oz_in = diffusivities.κᶜ.data.offsets
+
+    kp = KernelParameters((Nx_in, Ny_in, Nz_in), (ox_in, oy_in, oz_in))
+
+    launch!(arch, grid, kp,
             compute_ri_number!,
             diffusivities,
             grid,
@@ -153,7 +158,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfXKVD, model; par
     # this call to fill_halo_regions!
     fill_halo_regions!(diffusivities.Ri; only_local_halos=true)
 
-    launch!(arch, grid, parameters,
+    launch!(arch, grid, kp,
             compute_xinkai_diffusivities!,
             diffusivities,
             grid,
@@ -228,11 +233,8 @@ end
     ν_local = ifelse(convecting, (νˢʰ - νᶜⁿ) * tanh(Ri / δRi) + νˢʰ, clamp((ν₀ - νˢʰ) * Ri / Riᶜ + νˢʰ, ν₀, νˢʰ))
 
     # Update by averaging in time
-    # @inbounds diffusivities.κᵘ[i, j, k] = ifelse(k == 1, 0, ν_local)
-    # @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k == 1, 0, ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ))
-
-    @inbounds diffusivities.κᵘ[i, j, k] = ν_local
-    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ)
+    @inbounds diffusivities.κᵘ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, ν_local)
+    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ))
 
     return nothing
 end
