@@ -20,7 +20,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
         @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)
         @inline $y_derivative(i, j, k, grid, c) = $y_difference(i, j, k, grid, c) / $y_spacing(i, j, k, grid)
         @inline $z_derivative(i, j, k, grid, c) = $z_difference(i, j, k, grid, c) / $z_spacing(i, j, k, grid)
-        
+
         @inline $x_derivative(i, j, k, grid, c::Number) = zero(grid)
         @inline $y_derivative(i, j, k, grid, c::Number) = zero(grid)
         @inline $z_derivative(i, j, k, grid, c::Number) = zero(grid)
