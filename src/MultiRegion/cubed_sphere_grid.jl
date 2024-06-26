@@ -194,7 +194,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
 
-    devices = validate_devices(partition, arch, devices)
+    # first we construct the grid on CPU and convert to user-prescribed architecture later...
+    devices = validate_devices(partition, CPU(), devices)
     devices = assign_devices(partition, devices)
 
     connectivity = CubedSphereConnectivity(devices, partition)
@@ -223,7 +224,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     region_η = Iterate(region_η)
     region_rotation = Iterate(region_rotation)
 
-    region_grids = construct_regionally(conformal_cubed_sphere_panel, arch, FT;
+    # as mentioned above, construct the grid on CPU and convert to user-prescribed architecture later...
+    region_grids = construct_regionally(conformal_cubed_sphere_panel, CPU(), FT;
                                         size = region_size,
                                         z,
                                         halo = region_halo,
@@ -233,105 +235,119 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology...}(arch,
+    grid = MultiRegionGrid{FT, region_topology...}(CPU(),
                                                    partition,
                                                    connectivity,
                                                    region_grids,
                                                    devices)
 
-    fields = (:λᶜᶜᵃ,   :φᶜᶜᵃ,   :Azᶜᶜᵃ , :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ)
-    LXs    = (:Center, :Center, :Center, :Face, :Face, :Face )
-    LYs    = (:Center, :Center, :Center, :Face, :Face, :Face )
+    λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
+    φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
+    Azᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    λᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
+    φᶠᶠᵃ  = Field((Face,   Face,   Nothing), grid)
+    Azᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
 
-    for (field, LX, LY) in zip(fields, LXs, LYs)
-        expr = quote
-            $(Symbol(field)) = Field{$(Symbol(LX)), $(Symbol(LY)), Nothing}($(grid))
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field)), region).data .= getregion($(grid), region).$(Symbol(field))
-                end
-            end
-
-            if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!($(Symbol(field)))
-            end
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field)) .= getregion($(Symbol(field)), region).data
-                end
-            end
-        end # quote
-
-        eval(expr)
-    end
-
-    fields_1 = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
-    LXs_1    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
-    LYs_1    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
-
-    fields_2 = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
-    LXs_2    = (:Center, :Center, :Center, :Center, :Center, :Center, :Face )
-    LYs_2    = (:Center, :Face,   :Face,   :Face,   :Face,   :Face  , :Face )
-
-    for (field_1, LX_1, LY_1, field_2, LX_2, LY_2) in zip(fields_1, LXs_1, LYs_1, fields_2, LXs_2, LYs_2)
-        expr = quote
-            $(Symbol(field_1)) = Field{$(Symbol(LX_1)), $(Symbol(LY_1)), Nothing}($(grid))
-            $(Symbol(field_2)) = Field{$(Symbol(LX_2)), $(Symbol(LY_2)), Nothing}($(grid))
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(Symbol(field_1)), region).data .= getregion($(grid), region).$(Symbol(field_1))
-                    getregion($(Symbol(field_2)), region).data .= getregion($(grid), region).$(Symbol(field_2))
-                end
-            end
-
-            if $(horizontal_topology) == FullyConnected
-                fill_halo_regions!(($(Symbol(field_1)), $(Symbol(field_2))); signed = false)
-            end
-
-            CUDA.@allowscalar begin
-                for region in 1:number_of_regions($(grid))
-                    getregion($(grid), region).$(Symbol(field_1)) .= getregion($(Symbol(field_1)), region).data
-                    getregion($(grid), region).$(Symbol(field_2)) .= getregion($(Symbol(field_2)), region).data
-                end
-            end
-        end # quote
-
-        eval(expr)
-    end
-
-
-    CUDA.@allowscalar begin
-        # hardcoding NW/SE corner values only works for a one-region-per panel partition 
-        number_of_regions(grid) !== 6 && error("requires cubed sphere grids with 1 region per panel")
-
+    for (field, name) in zip(( λᶜᶜᵃ, φᶜᶜᵃ,   Azᶜᶜᵃ,  λᶠᶠᵃ,  φᶠᶠᵃ,  Azᶠᶠᵃ),
+                             (:λᶜᶜᵃ, :φᶜᶜᵃ, :Azᶜᶜᵃ, :λᶠᶠᵃ, :φᶠᶠᵃ, :Azᶠᶠᵃ))
+        
         for region in 1:number_of_regions(grid)
-            if isodd(region)
-                # Coordinates of "missing" NW corner points on odd panels can't be read from the interior
-                # so we compute them via conformal_cubed_sphere_mapping
-                φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
-                getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
-            elseif iseven(region)
-                # Coordinates of "missing" SE corner points on even panels can't be read from the interior
-                # so we compute them via conformal_cubed_sphere_mapping
-                φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
-                getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
-                getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
-            end
+            getregion(field, region).data .= getproperty(getregion(grid, region), name)
+        end
+
+        if horizontal_topology == FullyConnected
+            fill_halo_regions!(field)
         end
 
         for region in 1:number_of_regions(grid)
-            getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
-            getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
-            getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
-            getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
+            getproperty(getregion(grid, region), name) .= getregion(field, region).data
         end
-    end # CUDA.@allowscalar
+    end
 
-    return grid
+    Δxᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    Δxᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    Δyᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    λᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    φᶠᶜᵃ  = Field((Face,   Center, Nothing), grid)
+    Azᶠᶜᵃ = Field((Face,   Center, Nothing), grid)
+    Δxᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+    
+    fields₁ = ( Δxᶜᶜᵃ,   Δxᶠᶜᵃ,   Δyᶠᶜᵃ,   λᶠᶜᵃ,    φᶠᶜᵃ,    Azᶠᶜᵃ ,  Δxᶠᶠᵃ)
+    names₁  = (:Δxᶜᶜᵃ,  :Δxᶠᶜᵃ,  :Δyᶠᶜᵃ,  :λᶠᶜᵃ,   :φᶠᶜᵃ,   :Azᶠᶜᵃ , :Δxᶠᶠᵃ)
+
+    Δyᶜᶜᵃ = Field((Center, Center, Nothing), grid)
+    Δyᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    Δxᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    λᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    φᶜᶠᵃ  = Field((Center, Face,   Nothing), grid)
+    Azᶜᶠᵃ = Field((Center, Face,   Nothing), grid)
+    Δyᶠᶠᵃ = Field((Face,   Face,   Nothing), grid)
+
+    fields₂ = ( Δyᶜᶜᵃ,   Δyᶜᶠᵃ,   Δxᶜᶠᵃ,   λᶜᶠᵃ,    φᶜᶠᵃ,    Azᶜᶠᵃ ,  Δyᶠᶠᵃ)
+    names₂  = (:Δyᶜᶜᵃ,  :Δyᶜᶠᵃ,  :Δxᶜᶠᵃ,  :λᶜᶠᵃ,   :φᶜᶠᵃ,   :Azᶜᶠᵃ , :Δyᶠᶠᵃ)
+
+    for (field₁, field₂, name₁, name₂) in zip(fields₁, fields₂, names₁, names₂)
+        for region in 1:number_of_regions(grid)
+            getregion(field₁, region).data .= getproperty(getregion(grid, region), name₁)
+            getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
+        end
+
+        if horizontal_topology == FullyConnected
+            fill_halo_regions!(field₁, field₂; signed = false)
+        end
+
+        for region in 1:number_of_regions(grid)
+            getproperty(getregion(grid, region), name₁) .= getregion(field₁, region).data
+            getproperty(getregion(grid, region), name₂) .= getregion(field₂, region).data
+        end
+    end
+
+    ###################################################
+    ## Code specific to one-region-per panel partitions
+
+    ## hardcoding NW/SE corner values only works for a one-region-per panel partition
+
+    number_of_regions(grid) !== 6 && error("requires cubed sphere grids with 1 region per panel")
+
+    for region in 1:number_of_regions(grid)
+        if isodd(region)
+            # Coordinates of "missing" NW corner points on odd panels can't be read from the interior
+            # so we compute them via conformal_cubed_sphere_mapping
+            φc, λc = cartesian_to_lat_lon(conformal_cubed_sphere_mapping(1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[1, Ny+1] = φc
+            getregion(grid, region).λᶠᶠᵃ[1, Ny+1] = λc
+        elseif iseven(region)
+            # Coordinates of "missing" SE corner points on even panels can't be read from the interior
+            # so we compute them via conformal_cubed_sphere_mapping
+            φc, λc = -1 .* cartesian_to_lat_lon(conformal_cubed_sphere_mapping(-1, -1)...)
+            getregion(grid, region).φᶠᶠᵃ[Nx+1, 1] = φc
+            getregion(grid, region).λᶠᶠᵃ[Nx+1, 1] = λc
+        end
+
+        getregion(grid, region).λᶜᶜᵃ[getregion(grid, region).λᶜᶜᵃ .== -180] .= 180
+        getregion(grid, region).λᶠᶜᵃ[getregion(grid, region).λᶠᶜᵃ .== -180] .= 180
+        getregion(grid, region).λᶜᶠᵃ[getregion(grid, region).λᶜᶠᵃ .== -180] .= 180
+        getregion(grid, region).λᶠᶠᵃ[getregion(grid, region).λᶠᶠᵃ .== -180] .= 180
+    end
+
+    ## End code specific to one-region-per panel partitions
+    #######################################################
+
+    # now convert to user-prescribed architecture
+    region_grids = grid.region_grids
+    @apply_regionally new_region_grids = on_architecture(arch, region_grids)
+
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+
+    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+
+    new_grid = MultiRegionGrid{FT, region_topology...}(arch,
+                                                       partition,
+                                                       connectivity,
+                                                       new_region_grids,
+                                                       new_devices)
+
+    return new_grid
 end
 
 """

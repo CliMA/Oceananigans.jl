@@ -14,7 +14,8 @@ end
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
-# Fallback initialization: call the schedule, then the callback
+# Fallback initialization: initialize the schedule.
+# Then, if the schedule calls for it, execute the callback.
 function initialize!(callback::Callback, sim)
     initialize!(callback.schedule, sim.model) && callback(sim)
     return nothing
