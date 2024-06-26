@@ -98,9 +98,10 @@ underlying_grid = ConformalCubedSphereGrid(arch;
                                            partition = CubedSpherePartition(; R = 1))
 
 Δλ = 1
+Δφ = 1
 
 @inline function double_drake_depth(λ, φ)
-    if (φ > -40) && ((-Δλ < λ ≤ 0) || (90 ≤ λ < (90 + Δλ)))
+    if ((-40 < φ < 75) & ((-Δλ < λ ≤ 0) | (90 ≤ λ < (90 + Δλ)))) | ((75 < φ < (75 + Δφ)) & (-Δλ < λ ≤ (90 + Δλ)))
         depth = 0
     else
         depth = -Lz
