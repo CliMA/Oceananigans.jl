@@ -61,6 +61,7 @@ export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜ�
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 
 using Oceananigans.Grids
+using Oceananigans.Grids: inactive_node
 
 import Oceananigans.Grids: xspacing, yspacing, zspacing
 
@@ -77,6 +78,8 @@ const Δz = zspacing
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
+include("boundary_aware_difference_operators.jl")
+include("boundary_aware_interpolation_operators.jl")
 
 include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")

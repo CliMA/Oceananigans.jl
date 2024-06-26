@@ -311,7 +311,6 @@ include("grid_fitted_bottom.jl")
 include("partial_cell_bottom.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
-include("conditional_operators.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
