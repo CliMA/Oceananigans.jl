@@ -133,7 +133,7 @@ end
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
-    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
+    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(fts.time_indexing, fts.times, time_index.time, architecture(fts))
 
     if n₁ == n₂ # no interpolation needed
         return fts[n₁]
@@ -172,7 +172,7 @@ end
     iy = interpolator(jj)
     iz = interpolator(kk)
 
-    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, at_time)
+    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(time_indexing, times, at_time, architecture(times))
 
     Nt = length(times)
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
@@ -227,6 +227,17 @@ end
 ##### FieldTimeSeries updating
 #####
 
+# Let's make sure `times` is available on the CPU. This is always the case 
+# for ranges, if `times` is on the GPU, it has to be switched back to the CPU
+# for accessing. A bit unclean but it does the job.
+cpu_safe_interpolating_time_indices(time_indexing, times::AbstractRange,  t, arch)  = interpolating_time_indices(time_indexing, times, t)
+cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::CPU) = interpolating_time_indices(time_indexing, times, t)
+
+function cpu_safe_interpolating_time_indices(time_indexing, times::AbstractVector, t, ::GPU) 
+    cpu_times = on_architecture(CPU(), times)
+    return interpolating_time_indices(time_indexing, cpu_times, t)
+end
+
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
 update_field_time_series!(fts, n::Int) = nothing
@@ -235,7 +246,7 @@ update_field_time_series!(fts, n::Int) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, t)
+    ñ, n₁, n₂ = cpu_safe_interpolating_time_indices(fts.time_indexing, fts.times, t, architecture(fts))
     return update_field_time_series!(fts, n₁, n₂)
 end
 
