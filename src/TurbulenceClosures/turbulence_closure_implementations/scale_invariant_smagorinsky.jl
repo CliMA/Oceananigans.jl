@@ -4,6 +4,14 @@
 #####
 using Oceananigans.Operators: volume
 
+abstract type AveragingProcedure end
+abstract type DirectionalAveraging <: AveragingProcedure end
+struct       XDirectionalAveraging <: DirectionalAveraging end
+struct      XYDirectionalAveraging <: DirectionalAveraging end
+struct      XZDirectionalAveraging <: DirectionalAveraging end
+struct      YZDirectionalAveraging <: DirectionalAveraging end
+struct     XYZDirectionalAveraging <: DirectionalAveraging end
+
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     C #:: FT
     averaging :: FT
@@ -51,13 +59,7 @@ function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
 end
 
 
-@kernel function _compute_LM_MM!(LM, MM, grid, velocities)
-    i, j, k = @index(Global, NTuple)
-    @inbounds LM[i, j, k] = LᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
-    @inbounds MM[i, j, k] = MᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
-end
-
-@kernel function _compute_stuff!(LM, MM, grid, closure, velocities)
+@kernel function compute_LL_MM!(LM, MM, grid, closure, velocities)
     i, j, k = @index(Global, NTuple)
     @inbounds LM[i, j, k] = LᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
     @inbounds MM[i, j, k] = MᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
@@ -71,7 +73,7 @@ end
 
     C = 0.16
 
-    @inbounds νₑ[i, j, k] = (C * Δᶠ)^2 * sqrt(2Σ²)
+    @inbounds νₑ[i, j, k] = (C * Δᶠ(i, j, k, grid))^2 * sqrt(2Σ²)
 end
 
 function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmagorinsky, model; parameters = :xyz)
@@ -81,14 +83,11 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     velocities = model.velocities
     tracers = model.tracers
 
-#    launch!(arch, grid, parameters, _compute_LM_MM!,
-#            diffusivity_fields.LM, diffusivity_fields.MM, grid, velocities)
-
-#    launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
-#            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
-
-    launch!(arch, grid, parameters, _compute_stuff!,
+    launch!(arch, grid, parameters, compute_LL_MM!,
             diffusivity_fields.LM, diffusivity_fields.MM, grid, closure, velocities)
+
+    launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end
