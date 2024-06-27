@@ -660,8 +660,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = filename_checkpointer,
                                                         overwrite_existing = true)
 
-ζ = Oceananigans.Models.HydrostaticFreeSurfaceModels.VerticalVorticityField(model)
-
 outputs = fields(model)
 filename_output_writer = "cubed_sphere_aquaplanet_output"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
