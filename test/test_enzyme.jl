@@ -161,32 +161,32 @@ end
 
     if arch == CPU()
 
-    param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
+        param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
 
-    dmodel_tracer = Enzyme.make_zero(model_tracer)
+        dmodel_tracer = Enzyme.make_zero(model_tracer)
 
     # Test the individual kernel launch
-    autodiff(Enzyme.Reverse,
-                Oceananigans.Utils.launch!,
-                Const(arch),
-                Const(grid),
-                Const(param),
-                Const(Oceananigans.Fields._broadcast_kernel!),
-                Duplicated(model_tracer, dmodel_tracer),
-                Const(temp))
+        autodiff(Enzyme.Reverse,
+                    Oceananigans.Utils.launch!,
+                    Const(arch),
+                    Const(grid),
+                    Const(param),
+                    Const(Oceananigans.Fields._broadcast_kernel!),
+                    Duplicated(model_tracer, dmodel_tracer),
+                    Const(temp))
 
-    # Test out differentiation of the broadcast infrastructure
-    autodiff(Enzyme.Reverse,
-                set_initial_condition_via_launch!,
-                Duplicated(model_tracer, dmodel_tracer),
-                Active(1.0))
+        # Test out differentiation of the broadcast infrastructure
+        autodiff(Enzyme.Reverse,
+                    set_initial_condition_via_launch!,
+                    Duplicated(model_tracer, dmodel_tracer),
+                    Active(1.0))
 
-    # Test differentiation of the high-level set interface
-    dmodel = Enzyme.make_zero(model)
-    autodiff(Enzyme.Reverse,
-                set_initial_condition!,
-                Duplicated(model, dmodel),
-                Active(1.0))
+        # Test differentiation of the high-level set interface
+        dmodel = Enzyme.make_zero(model)
+        autodiff(Enzyme.Reverse,
+                    set_initial_condition!,
+                    Duplicated(model, dmodel),
+                    Active(1.0))
     end
 end
 
