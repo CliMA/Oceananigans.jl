@@ -186,7 +186,7 @@ end
     Ri = N² / S²
 
     # Clip N² and avoid NaN
-    return ifelse(N² <= 0, zero(grid), Ri)
+    return ifelse(N² == 0, zero(grid), Ri)
 end
 
 const c = Center()
@@ -205,7 +205,6 @@ end
                                    velocities, tracers, buoyancy, tracer_bcs, clock)
 end
 
-
 @inline function _compute_xinkai_diffusivities!(i, j, k, diffusivities, grid, closure,
                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
 
@@ -220,21 +219,23 @@ end
     Riᶜ = closure_ij.Riᶜ
     δRi = closure_ij.δRi
 
-    # Convection and entrainment
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-
-    # Conditions
-    convecting = N² < 0 # applies regardless of Qᵇ
+    κ₀ = ν₀ / Pr_shearₜ
+    κˢʰ = νˢʰ / Pr_shearₜ
+    κᶜⁿ = νᶜⁿ / Pr_convₜ
 
     # (Potentially) apply a horizontal filter to the Richardson number
     Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, diffusivities.Ri)
 
+    # Conditions
+    convecting = Ri < 0 # applies regardless of Qᵇ
+
     # Convective adjustment diffusivity
     ν_local = ifelse(convecting, (νˢʰ - νᶜⁿ) * tanh(Ri / δRi) + νˢʰ, clamp((ν₀ - νˢʰ) * Ri / Riᶜ + νˢʰ, ν₀, νˢʰ))
+    κ_local = ifelse(convecting, (κˢʰ - κᶜⁿ) * tanh(Ri / δRi) + κˢʰ, clamp((κ₀ - κˢʰ) * Ri / Riᶜ + κˢʰ, κ₀, κˢʰ))
 
     # Update by averaging in time
     @inbounds diffusivities.κᵘ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, ν_local)
-    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, ifelse(convecting, ν_local / Pr_convₜ, ν_local / Pr_shearₜ))
+    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, κ_local)
 
     return nothing
 end
