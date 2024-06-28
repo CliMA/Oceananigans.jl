@@ -16,14 +16,13 @@ struct      YZDirectionalAveraging <: DirectionalAveraging end
 struct     XYZDirectionalAveraging <: DirectionalAveraging end
 
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
-    C #:: FT
     averaging
     Pr :: P
 
-    function ScaleInvariantSmagorinsky{TD, FT}(C, averaging, Pr) where {TD, FT}
+    function ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        return new{TD, FT, P}(C, averaging, Pr)
+        return new{TD, FT, P}(averaging, Pr)
     end
 end
 
@@ -31,16 +30,16 @@ end
 @inline diffusivity(closure::ScaleInvariantSmagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 """
-    ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, averaging=1.0, Pr=1.0)
+    ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, averaging=XYZDirectionalAveraging(), Pr=1.0) where TD =
-        ScaleInvariantSmagorinsky{TD, FT}(C, averaging, Pr)
+ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=XYZDirectionalAveraging(), Pr=1.0) where TD =
+        ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
 
 ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
 function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, FT}(closure.C, closure.averaging, Pr)
+    return ScaleInvariantSmagorinsky{TD, FT}(closure.averaging, Pr)
 end
 
 function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
