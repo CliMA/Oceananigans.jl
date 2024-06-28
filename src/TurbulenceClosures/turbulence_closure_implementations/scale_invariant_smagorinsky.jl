@@ -5,18 +5,18 @@
 using Oceananigans.Operators: volume
 using Oceananigans.Grids: XBoundedGrid, YBoundedGrid, ZBoundedGrid, XYBoundedGrid, XZBoundedGrid, YZBoundedGrid, XYZBoundedGrid
 
-abstract type AveragingProcedure end
-abstract type DirectionalAveraging <: AveragingProcedure end
-struct       XDirectionalAveraging <: DirectionalAveraging end
-struct       YDirectionalAveraging <: DirectionalAveraging end
-struct       ZDirectionalAveraging <: DirectionalAveraging end
-struct      XYDirectionalAveraging <: DirectionalAveraging end
-struct      XZDirectionalAveraging <: DirectionalAveraging end
-struct      YZDirectionalAveraging <: DirectionalAveraging end
-struct     XYZDirectionalAveraging <: DirectionalAveraging end
+abstract type AbstractAveragingProcedure end
+abstract type AbstractDirectionalAveraging <: AbstractAveragingProcedure end
+struct       XDirectionalAveraging <: AbstractDirectionalAveraging end
+struct       YDirectionalAveraging <: AbstractDirectionalAveraging end
+struct       ZDirectionalAveraging <: AbstractDirectionalAveraging end
+struct      XYDirectionalAveraging <: AbstractDirectionalAveraging end
+struct      XZDirectionalAveraging <: AbstractDirectionalAveraging end
+struct      YZDirectionalAveraging <: AbstractDirectionalAveraging end
+struct     XYZDirectionalAveraging <: AbstractDirectionalAveraging end
 
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
-    averaging
+    averaging :: AbstractAveragingProcedure
     Pr :: P
 
     function ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr) where {TD, FT}
@@ -275,7 +275,7 @@ end
 
 
 
-@inline ϕψ(i, j, k, grid, ϕ, ψ) = ϕ[i, j, k] * ψ[i, j, k]
+@inline ϕψ(i, j, k, grid, ϕ, ψ) = @inbounds ϕ[i, j, k] * ψ[i, j, k]
 @inline u₁u₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ϕψ, u, u)
 @inline u₂u₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑyᵃᶜᵃ(i, j, k, grid, ϕψ, v, v)
 @inline u₃u₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑzᵃᵃᶜ(i, j, k, grid, ϕψ, w, w)
