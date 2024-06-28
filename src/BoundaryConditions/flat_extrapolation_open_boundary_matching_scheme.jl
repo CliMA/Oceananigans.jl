@@ -31,7 +31,7 @@ function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timesc
 end
 
 @inline relax(j, k, c, bc, grid, clock, model_fields) =
-    c + ifelse(isnothing(bc.condition)||isfinite(clock.last_stage_Δt), 0,
+    c + ifelse(isnothing(bc.condition)||!isfinite(clock.last_stage_Δt), 0,
         (getbc(bc, j, k, grid, clock, model_fields) - c) * min(1, clock.last_stage_Δt / bc.classification.matching_scheme.relaxation_timescale))
 
 @inline function _fill_west_open_halo!(j, k, grid, c, bc::FEOBC, loc, clock, model_fields)

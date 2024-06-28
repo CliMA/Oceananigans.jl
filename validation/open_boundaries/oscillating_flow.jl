@@ -50,12 +50,10 @@ T = 20 / U
 @inline u(t, p)      = p.U * sin(t * 2π / p.T)
 @inline u(y, t, p)   = u(t, p)
 
-@inline ∂ₜu(x, y, t, p) = p.U * cos(t * 2π / p.T) * 2π / p.T
-
 relaxation_timescale = 0.15
 
-u_boundaries = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(),#u; relaxation_timescale, parameters = (; U, T)),
-                                       west = FlatExtrapolationOpenBoundaryCondition())#u; relaxation_timescale, parameters = (; U, T)))
+u_boundaries = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)),
+                                       west = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)))
 
 v_boundaries = FieldBoundaryConditions(east = GradientBoundaryCondition(0),
                                        west = GradientBoundaryCondition(0))
@@ -64,8 +62,8 @@ v_boundaries = FieldBoundaryConditions(east = GradientBoundaryCondition(0),
 
 @show Δt
 
-u_forcing = (Relaxation(; rate = 1 / (2 * Δt), mask = cylinder), Forcing(∂ₜu; parameters = (; U, T)))
-v_forcing =  Relaxation(; rate = 1 / (2 * Δt), mask = cylinder) 
+u_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder)
+v_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder) 
 
 model = NonhydrostaticModel(; grid, 
                               closure, 
@@ -81,7 +79,7 @@ set!(model, u = (x, y) -> randn() * U * 0.01, v = (x, y) -> randn() * U * 0.01)
 
 simulation = Simulation(model; Δt = Δt, stop_time = 300)
 
-wizard = TimeStepWizard(cfl = 0.3)
+wizard = TimeStepWizard(cfl = 0.3, max_Δt = Δt)
 
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
