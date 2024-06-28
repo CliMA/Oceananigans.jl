@@ -59,12 +59,12 @@ function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, 
     zC = znodes(grid, c; with_halos)
     zF = znodes(grid, f; with_halos)
 
-    xC = isnothing(xC) ? [0.0] : xC 
-    xF = isnothing(xF) ? [0.0] : xF 
-    yC = isnothing(yC) ? [0.0] : yC 
-    yF = isnothing(yF) ? [0.0] : yF 
-    zC = isnothing(zC) ? [0.0] : zC 
-    zF = isnothing(zF) ? [0.0] : zF 
+    xC = isnothing(xC) ? [0.0] : parent(xC)  
+    xF = isnothing(xF) ? [0.0] : parent(xF) 
+    yC = isnothing(yC) ? [0.0] : parent(yC) 
+    yF = isnothing(yF) ? [0.0] : parent(yF) 
+    zC = isnothing(zC) ? [0.0] : parent(zC) 
+    zF = isnothing(zF) ? [0.0] : parent(zF) 
 
     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
@@ -86,12 +86,12 @@ function native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indi
     zC = znodes(grid, c; with_halos)
     zF = znodes(grid, f; with_halos)
 
-    xC = isnothing(xC) ? [0.0] : xC 
-    xF = isnothing(xF) ? [0.0] : xF 
-    yC = isnothing(yC) ? [0.0] : yC 
-    yF = isnothing(yF) ? [0.0] : yF 
-    zC = isnothing(zC) ? [0.0] : zC 
-    zF = isnothing(zF) ? [0.0] : zF 
+    xC = isnothing(xC) ? [0.0] : parent(xC)  
+    xF = isnothing(xF) ? [0.0] : parent(xF) 
+    yC = isnothing(yC) ? [0.0] : parent(yC) 
+    yF = isnothing(yF) ? [0.0] : parent(yF) 
+    zC = isnothing(zC) ? [0.0] : parent(zC) 
+    zF = isnothing(zF) ? [0.0] : parent(zF) 
 
     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
