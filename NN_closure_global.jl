@@ -72,8 +72,8 @@ function NNFluxClosure(arch)
     nn_path = "./NDE_FC_Qb_15simnew_2layer_64_relu_2Pr_model.jld2"
 
     ps, sts, scaling_params, wT_model, wS_model = jldopen(nn_path, "r") do file
-        ps = file["u"] |> dev
-        sts = file["sts"] |> dev
+        ps = file["u"] |> dev |> f64
+        sts = file["sts"] |> dev |> f64
         scaling_params = file["scaling"]
         wT_model = file["model"].wT
         wS_model = file["model"].wS
@@ -81,8 +81,6 @@ function NNFluxClosure(arch)
     end
 
     scaling = construct_zeromeanunitvariance_scaling(scaling_params)
-
-    # ps = ps .= 0
 
     wT_NN = NN(wT_model, ps.wT, sts.wT)
     wS_NN = NN(wS_model, ps.wS, sts.wS)
@@ -127,11 +125,12 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     wT.data.parent .= dropdims(closure.wT(input.parent), dims=1)
     wS.data.parent .= dropdims(closure.wS(input.parent), dims=1)
 
-    launch!(arch, grid, kp, _rescale_nn_fluxes!, diffusivities, grid, closure)
+    launch!(arch, grid, kp, _rescale_nn_fluxes!, diffusivities, grid, closure, tracers, buoyancy, top_tracer_bcs, clock)
+    launch!(arch, grid, kp, _adjust_nn_bottom_fluxes!, diffusivities, grid, closure)
     return nothing
 end
 
-@kernel function _populate_input!(input, grid, closure, tracers, velocities, buoyancy, coriolis, top_tracer_bcs, clock)
+@kernel function _populate_input!(input, grid, closure::NNFluxClosure, tracers, velocities, buoyancy, coriolis, top_tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
 
     scaling = closure.scaling
@@ -155,11 +154,20 @@ end
     @inbounds input[11, i, j, k] = fᶜᶜ = scaling.f(fᶜᶜᵃ(i, j, k, grid, coriolis))
 end
 
-@kernel function _rescale_nn_fluxes!(diffusivities, grid, closure)
+@kernel function _rescale_nn_fluxes!(diffusivities, grid, closure::NNFluxClosure, tracers, buoyancy, top_tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
     scaling = closure.scaling
-    @inbounds diffusivities.wT[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 3, inv(scaling.wT)(0), inv(scaling.wT)(diffusivities.wT[i, j, k]))
-    @inbounds diffusivities.wS[i, j, k] = ifelse(k >= grid.Nz - 1 || k <= 3, inv(scaling.wS)(0), inv(scaling.wS)(diffusivities.wS[i, j, k]))
+    convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, tracers) > 0
+    interior_point = k <= grid.Nz - 1 & k >= 2
+
+    @inbounds diffusivities.wT[i, j, k] = ifelse(convecting & interior_point, inv(scaling.wT)(diffusivities.wT[i, j, k]) - inv(scaling.wT)(0), 0)
+    @inbounds diffusivities.wS[i, j, k] = ifelse(convecting & interior_point, inv(scaling.wS)(diffusivities.wS[i, j, k]) - inv(scaling.wS)(0), 0)
+end
+
+@kernel function _adjust_nn_bottom_fluxes!(diffusivities, grid, closure::NNFluxClosure)
+    i, j, k = @index(Global, NTuple)
+    @inbounds diffusivities.wT[i, j, k] = ifelse(k <= 3, diffusivities.wT[i, j, 4], diffusivities.wT[i, j, k])
+    @inbounds diffusivities.wS[i, j, k] = ifelse(k <= 3, diffusivities.wS[i, j, 4], diffusivities.wS[i, j, k])
 end
 
 # Write here your constructor
