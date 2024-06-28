@@ -96,6 +96,7 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     launch!(arch, grid, parameters, compute_LM_MM!,
             diffusivity_fields.LM, diffusivity_fields.MM, grid, closure, velocities)
 
+    # TODO: optimize this
     directional_average!(diffusivity_fields.LM_avg, diffusivity_fields.LM, closure.averaging)
     directional_average!(diffusivity_fields.MM_avg, diffusivity_fields.MM, closure.averaging)
 
@@ -113,6 +114,8 @@ end
 #####
 ##### Filters
 #####
+
+# TODO: Generalize filter to stretched directions
 AG = AbstractGrid
 @inline ℱx²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i-1, j, k] + ϕ[i+1, j,  k])
 @inline ℱy²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i, j-1, k] + ϕ[i,  j+1, k])
@@ -300,7 +303,6 @@ end
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 
-
 Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: C=$(closure.C), averaging=$(closure.averaging), Pr=$(closure.Pr)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))
 
@@ -308,10 +310,11 @@ Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closur
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
+# TODO: Complete methods
 directionally_averaged_field(grid, ::XDirectionalAveraging)   = Field{Nothing, Center,  Center }(grid)
 directionally_averaged_field(grid, ::YDirectionalAveraging)   = Field{Center,  Nothing, Center }(grid)
 directionally_averaged_field(grid, ::ZDirectionalAveraging)   = Field{Center,  Center,  Nothing}(grid)
-directionally_averaged_field(grid, ::XYZDirectionalAveraging)   = Field{Nothing, Nothing,  Nothing}(grid)
+directionally_averaged_field(grid, ::XYZDirectionalAveraging) = Field{Nothing, Nothing, Nothing}(grid)
 
 function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky)
 
