@@ -77,14 +77,14 @@ function XinKaiLocalVerticalDiffusivity{TD}(ν₀  :: FT,
 end
 
 function XinKaiLocalVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                                    FT  = Float64;
-				                    ν₀  = 1e-5, 
-                                    νˢʰ = 0.04569735882746968,
-                                    νᶜⁿ = 0.47887785611155065,
-                                    Pr_convₜ = 0.1261854430705509,
-                                    Pr_shearₜ = 1.594794053970444,
-                                    Riᶜ = 0.9964350402840053,
-				                    δRi = 0.05635304878092709) 
+                                        FT  = Float64;
+                                        ν₀  = 1e-5, 
+                                        νˢʰ = 0.04569735882746968,
+                                        νᶜⁿ = 0.47887785611155065,
+                                        Pr_convₜ = 0.1261854430705509,
+                                        Pr_shearₜ = 1.594794053970444,
+                                        Riᶜ = 0.9964350402840053,
+                                        δRi = 0.05635304878092709) 
 
     TD = typeof(time_discretization)
 
