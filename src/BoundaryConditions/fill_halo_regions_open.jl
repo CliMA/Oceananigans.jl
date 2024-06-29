@@ -1,6 +1,11 @@
 @inline fill_open_boundary_regions!(field, args...) = 
     fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
 
+"""
+    fill_open_boundary_regions!(fields, boundary_conditions, indices, loc, grid, args...; kwargs...)
+
+Fill open boundary halo regions by filling boundary conditions on field faces with `open_fill`. 
+"""
 function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; kwargs...)
     arch = architecture(grid)
 

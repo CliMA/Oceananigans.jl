@@ -123,3 +123,103 @@ boundaries ``\partial \Omega_b``:
    values of ``c``.
 
 Flux boundary conditions are represented by the [`Flux`](@ref) type.
+
+## Open boundary conditions
+
+Open boundary conditions directly specify the value of the halo points. Typically this is used
+to impose no penitration boundary conditions, i.e. setting wall normal velocity components on 
+to zero on the boundary. 
+
+The nuance here is that open boundaries behave differently for fields on face points in the 
+boundary direction due to the [staggere grid](@ref finite_volume). For example, the u-component
+of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the 
+point specified by the boundary condition is the point lying on the boundary, where as for a 
+tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
+of the domain (hence the difference with `Value` boundary conditions).
+
+The other important detail is that open (including no-penitration) boundary conditions are the 
+only conditions used on wall normal velocities when the domain is not periodic. This means that 
+their value effects the pressure calculation for nonhydrostatic models as it is involved in 
+calculating the divergence in the boundary adjacent center point (as described in the 
+[fractional step method](@ref time_stepping) documentation). Usually boundary points are filled
+for the predictor velocity (i.e. before the pressure is calculated), and on the corrected field
+(i.e. after the pressure correction is applied), but for open boundaries this would result in
+the boundary adjacent center point becoming divergent so open boundaries are only filled for the 
+predictor velocity and stay the same after the pressure correction (so the boundary point is filled
+with the final corrected velocity at the predictor step).
+
+The restriction arrises as the boundary condition is specifying the wall normal velocity, 
+``\hat{\boldsymbol{n}}\cdot\boldsymbol{u}``, which leads to the pressure boundary condition
+```math
+    \begin{equation}
+    \label{eq:pressure_boundary_condition}
+    \Delta t\hat{\boldsymbol{n}}\cdot\boldsymbol{\nabla}p^{n+1}\big |_{\partial\Omega} = \left[\Delta t\hat{\boldsymbol{n}}\cdot\boldsymbol{u}^\star - \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^{n+1}\right],
+    \end{equation}
+```
+implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson 
+equation (``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\boldsymbol{u}^\star}{\Delta t}``)
+using the method described by [Schumann88](@citet) we have to move inhomogeneus boundary conditions
+on the pressure to the right hand side. In order todo this we define a new field ``\phi`` where
+```math
+    \begin{equation}
+    \label{eq:modified_pressure_field}
+    \phi = p^{n+1} \quad \text{inside} \quad \Omega \quad \text{but} \quad \boldsymbol{\nabla} \cdot \boldsymbol{\nable} \phi \, \big |_{\partial\Omega} = 0.
+    \end{equation}
+```
+This moves the boundary condition to the right hand side as ``\phi`` becomes
+```math
+    \begin{equation}
+    \label{eq:modified_pressure_poisson}
+    \boldsymbol{\nabla}^2\phi^{n+1} = \boldsymbol{\nabla}\cdot\left[\frac{\boldsymbol{u}^\star}{\Delta t} - \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)\boldsymbol{\nabla}p\right].
+    \end{equation}
+```
+Given the boundary condition on pressure given above, we can define a new modified predictor velocity
+which is equal to the predictor velocity within the domain but shares boundary conditions with the 
+corrected field,
+```math
+    \begin{equation}
+    \label{eq:quasi_predictor_velocity}
+    \tilde{\boldsymbol{u}}^\star:=\boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
+    \end{equation}
+```
+The modified pressure poisson equation becomes ``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\tilde{\boldsymbol{u}}^\star}{\Delta t}``
+which can easily be solved. 
+
+Perhaps a more intuative way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
+to the space of divergenece free velocity by applying
+```math
+    \begin{equation}
+    \label{eq:pressure_correction_step}
+    \boldsymbol{u}^{n+1} = \boldsymbol{u}^\star - \Delta t\boldsymbol{\nabla}p^{n+1},
+    \end{equation}
+```
+but we have changed ``p^{n+1}`` to ``\phi`` and ``\boldsymbol{u}^\star`` to ``\tilde{\boldsymbol{u}}^\star``
+so for ``\boldsymbol{\nabla}\phi \big |_{\partial\Omega} = 0`` the modified predictor velocity must
+equal the corrected velocity on the boundary.
+
+For simple open boundary conditions such as no penitration or a straight forward prescription of
+a known velocity at ``t^{n+1}`` this is simple to implement as we just set the boundary condition
+on the predictor velocity and don't change it after the correction. But some open boundary methods
+calculate the boundary value based on the interior solution. As a simple example, if we wanted to 
+set the wall normal veloicty gradient to zero at the west boundary then we would set the boundary 
+point to
+```math
+    \begin{equation}
+    \label{eq:zero_wall_normal_velocity_gradient}
+    u^\star_{1jk} \approx u^\star_{3jk} + (u^\star_{2jk} - u^\star_{jk4}) / 2 + \mathcal{O}(\Delta x^2),
+    \end{equation}
+```
+but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` error is introduced as
+```math
+    \begin{equation}
+    \label{eq:zero_wall_normal_velocity_gradient}
+    \begin{align}
+    u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
+    &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla}p^{n+1}_{3jk} + (\boldsymbol{\nabla}p^{n+1}_{2jk} - \boldsymbol{\nabla}p^{n+1}_{4jk}) / 2\right) + \mathcal{O}(\Delta x^2),\\
+    &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
+    \end{align}
+    \end{equation}
+```
+This is prefered to a divergent interior solution as open boundary conditions (except no penitration)
+are typlically already unphysical and only used in an attempt to allow information to enter or exit
+the domain.
