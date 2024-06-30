@@ -12,6 +12,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
+using Oceananigans.AbstractOperations: BinaryOperation
+
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
@@ -529,6 +531,38 @@ function FieldTimeSeries(path::String, name::String;
 
     return time_series
 end
+
+"""
+    FieldTimeSeries(binary_operation)
+
+Build a field time series from a binary operation acting on other `FieldTimeSeries`'
+"""
+@inline function FieldTimeSeries(bots::BinaryOperation)
+    grid = bots.grid
+
+    possible_fts = possible_base_fts(bots)
+
+    length(possible_fts) >= 1 || 
+        throw(ArgumentError("Binary operation does not operate on field time series"))
+
+    base_fts = possible_fts[1]
+
+    all([(all(fts.times .== base_fts.times) && fts.indices == base_fts.indices) for fts in possible_fts]) || 
+        throw(ArgumentError("Binary operation contains incompatible field time series"))
+
+    fts = FieldTimeSeries(location(base_fts), grid, base_fts.times; indices = base_fts.indices,
+                                                                    backend = base_fts.backend,
+                                                              time_indexing = base_fts.time_indexing)
+
+    fts .= bots
+
+    return fts
+end
+
+# recurse binary operation to find field time series
+possible_base_fts(something_else) = tuple()
+possible_base_fts(fts::FieldTimeSeries) = (fts, )
+possible_base_fts(bots::BinaryOperation) = (possible_base_fts(bots.a)..., possible_base_fts(bots.b)...)
 
 """
     Field(location, path, name, iter;
