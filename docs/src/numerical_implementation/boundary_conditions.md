@@ -137,7 +137,7 @@ point specified by the boundary condition is the point lying on the boundary, wh
 tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
 of the domain (hence the difference with `Value` boundary conditions).
 
-The other important detail is that open (including no-penitration) boundary conditions are the 
+The other important detail is that open (including no-penetration) boundary conditions are the 
 only conditions used on wall normal velocities when the domain is not periodic. This means that 
 their value affects the pressure calculation for nonhydrostatic models as it is involved in 
 calculating the divergence in the boundary adjacent center point (as described in the 
@@ -197,7 +197,7 @@ but we have changed ``p^{n+1}`` to ``\phi`` and ``\boldsymbol{u}^\star`` to ``\t
 so for ``\boldsymbol{\nabla}\phi \big |_{\partial\Omega} = 0`` the modified predictor velocity must
 equal the corrected velocity on the boundary.
 
-For simple open boundary conditions such as no penitration or a straight forward prescription of
+For simple open boundary conditions such as no penetration or a straight forward prescription of
 a known velocity at ``t^{n+1}`` this is simple to implement as we just set the boundary condition
 on the predictor velocity and don't change it after the correction. But some open boundary methods
 calculate the boundary value based on the interior solution. As a simple example, if we wanted to 
@@ -220,6 +220,6 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
     \end{align}
     \end{equation}
 ```
-This is prefered to a divergent interior solution as open boundary conditions (except no penitration)
+This is prefered to a divergent interior solution as open boundary conditions (except no penetration)
 are typlically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
