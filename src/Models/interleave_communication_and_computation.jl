@@ -38,7 +38,8 @@ function interior_tendency_kernel_parameters(grid, arch)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
     Nx, Ny, Nz = size(grid)
-    
+
+    # TODO: add a comment explaining what is going on here
     Sx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     Sy = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
