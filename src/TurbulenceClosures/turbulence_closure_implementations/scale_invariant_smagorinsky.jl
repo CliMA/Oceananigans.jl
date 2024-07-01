@@ -59,12 +59,6 @@ function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
 end
 
 
-@kernel function compute_LM_MM!(LM, MM, grid, closure, velocities)
-    i, j, k = @index(Global, NTuple)
-    @inbounds LM[i, j, k] = LᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
-    @inbounds MM[i, j, k] = MᵢⱼMᵢⱼ_ccc(i, j, k, grid, velocities...)
-end
-
 @kernel function _compute_scale_invariant_smagorinsky_viscosity!(νₑ, LM_avg, MM_avg, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
