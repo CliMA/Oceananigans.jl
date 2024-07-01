@@ -234,11 +234,13 @@ end
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
 end
 
-# Fallback for uniform directions
+# Fallbacks for uniform or Flat directions
 for val in [1, 2, 3]
     @eval begin
         @inline reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
         @inline reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
+        @inline reconstruction_coefficients(FT, coord::Nothing, arch, N, ::Val{$val}; order)                                    = nothing
+        @inline reconstruction_coefficients(FT, coord::Number, arch, N, ::Val{$val}; order)                                     = nothing
     end
 end
 
@@ -264,7 +266,6 @@ end
 
 # Stretched reconstruction coefficients for `WENO` schemes
 @inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
-
     cpu_coord = on_architecture(CPU(), coord)
     s = []
     for r in -1:order-1

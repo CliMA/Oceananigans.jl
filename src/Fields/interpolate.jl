@@ -1,4 +1,4 @@
-using Oceananigans.Grids: topology, node,
+using Oceananigans.Grids: topology, node, _node,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
@@ -237,7 +237,6 @@ where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
 @inline function interpolate(at_node, from_field, from_loc, from_grid)
-    # field, LX, LY, LZ, grid, x, y, z)
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
 
     ix = interpolator(ii)
@@ -314,11 +313,34 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     return interpolate(to_node, from_field, from_loc, from_field.grid)
 end
 
+@inline flatten_node(x, y, z) = (x, y, z)
+
+@inline flatten_node(::Nothing, y, z) = flatten_node(y, z)
+@inline flatten_node(x, ::Nothing, z) = flatten_node(x, z)
+@inline flatten_node(x, y, ::Nothing) = flatten_node(x, y)
+
+@inline flatten_node(x, y) = (x, y)
+@inline flatten_node(::Nothing, y) = flatten_node(y)
+@inline flatten_node(x, ::Nothing) = flatten_node(x)
+
+@inline flatten_node(x) = tuple(x)
+@inline flatten_node(::Nothing) = tuple(x)
+
 @kernel function _interpolate!(to_field, to_grid, to_location,
                                from_field, from_grid, from_location)
 
     i, j, k = @index(Global, NTuple)
-    to_node = node(i, j, k, to_grid, to_location...)
+
+    #=
+    ℓx, ℓy, ℓz = to_location
+    ξ = ξnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
+    η = ηnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
+    ζ = ζnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
+    =#
+
+    to_node = _node(i, j, k, to_grid, to_location...)
+    to_node = flatten_node(to_node...)
+
     @inbounds to_field[i, j, k] = interpolate(to_node, from_field, from_location, from_grid)
 end
 
