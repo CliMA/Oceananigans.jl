@@ -194,11 +194,11 @@ lines!(axS, Sbar_truthₙ, zC, label="Truth")
 axislegend(axT, position = :lb)
 Label(fig[0, :], title_str, tellwidth = false)
 
-# CairoMakie.record(fig, "./NN_1D_fields.mp4", 1:Nt, framerate=10) do nn
-#     n[] = nn
-#     xlims!(axT, nothing, nothing)
-#     xlims!(axS, nothing, nothing)
-# end
+GLMakie.record(fig, "./NN_1D_validation.mp4", 1:Nt, framerate=60, px_per_unit=4) do nn
+    @info nn
+    n[] = nn
+end
 
 display(fig)
 #%%
+close(file)
