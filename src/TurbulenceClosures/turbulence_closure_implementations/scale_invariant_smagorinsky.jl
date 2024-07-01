@@ -30,7 +30,7 @@ end
 """
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging((1,2,3)), Pr=1.0) where TD =
+ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0) where TD =
         ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
 
 ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
