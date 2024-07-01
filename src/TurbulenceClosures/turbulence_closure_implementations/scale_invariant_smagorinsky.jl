@@ -1,6 +1,6 @@
 #####
-##### The turbulence closure proposed by Smagorinsky and Lilly.
-##### We also call this 'Constant Smagorinsky'.
+##### In this version of the Smagorinsky closure, the coefficient is dynamically calculated but it's assumed to be invariant
+##### with scale. Hence the name Scale-Invariant Smagorinsky. This a type of "dynamic Smagorinsky" closures.
 #####
 using Oceananigans.Operators: volume
 using Oceananigans.Grids: XBoundedGrid, YBoundedGrid, ZBoundedGrid, XYBoundedGrid, XZBoundedGrid, YZBoundedGrid, XYZBoundedGrid
@@ -9,6 +9,9 @@ abstract type AbstractAveragingProcedure end
 struct DirectionalAveraging{D} <: AbstractAveragingProcedure
     dims :: D
 end
+
+Base.summary(averaging::DirectionalAveraging) = string("Averaging over directions $(averaging.dims)")
+Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AbstractAveragingProcedure
@@ -288,7 +291,7 @@ end
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 
-Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: C=$(closure.C), averaging=$(closure.averaging), Pr=$(closure.Pr)")
+Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))
 
 #####
