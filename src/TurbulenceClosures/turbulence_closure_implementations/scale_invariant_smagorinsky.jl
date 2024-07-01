@@ -3,7 +3,7 @@
 ##### with scale. Hence the name Scale-Invariant Smagorinsky. This a type of "dynamic Smagorinsky" closures.
 #####
 using Oceananigans.Operators: volume
-using Oceananigans.Grids: XBoundedGrid, YBoundedGrid, ZBoundedGrid, XYBoundedGrid, XZBoundedGrid, YZBoundedGrid, XYZBoundedGrid
+using Statistics: mean!
 
 abstract type AbstractAveragingProcedure end
 struct DirectionalAveraging{D} <: AbstractAveragingProcedure
@@ -76,14 +76,14 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     velocities = model.velocities
     tracers = model.tracers
 
-    LM_op = KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, velocities...)
-    MM_op = KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, velocities...)
+    LM_op = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
+    MM_op = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
 
-    LM_avg = Field(Average(LM_op, dims=closure.averaging.dims))
-    MM_avg = Field(Average(MM_op, dims=closure.averaging.dims))
+    mean!(diffusivity_fields.LM_avg, LM_op.operand)
+    mean!(diffusivity_fields.MM_avg, MM_op.operand)
 
     launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
-            diffusivity_fields.νₑ, LM_avg, MM_avg, grid, closure, buoyancy, velocities, tracers)
+            diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end
@@ -292,11 +292,25 @@ Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closur
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
+directionally_averaged_field(grid, ::Val{DirectionalAveraging(1)})         = Field{Nothing, Center,  Center }(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging(2)})         = Field{Center,  Nothing, Center }(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging(3)})         = Field{Center,  Center,  Nothing}(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2))})    = Field{Nothing, Nothing, Center }(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 3))})    = Field{Nothing, Center,  Nothing}(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging((2, 3))})    = Field{Center,  Nothing, Nothing}(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2, 3))}) = Field{Nothing, Nothing, Nothing}(grid)
+directionally_averaged_field(grid, ::Val{DirectionalAveraging(Colon())})   = Field{Nothing, Nothing, Nothing}(grid)
+directionally_averaged_field(grid, ::Any)                                  = Field{Center,  Center,  Center}(grid)
+
+
 function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
-    #return (; νₑ, LM_avg, MM_avg)
-    return (; νₑ)
+
+    LM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+    MM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+
+    return (; νₑ, LM_avg, MM_avg)
 end
