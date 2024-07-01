@@ -1,4 +1,3 @@
-using Oceananigans.Operators: ∂xᶜᶜᶜ
 
 """
     FlatExtrapolation
