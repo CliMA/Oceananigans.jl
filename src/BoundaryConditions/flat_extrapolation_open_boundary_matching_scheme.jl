@@ -3,7 +3,7 @@ using Oceananigans.Operators: ∂xᶜᶜᶜ
 """
     FlatExtrapolation
 
-Zero gradient perepndicular velocity boundary condition.
+Zero gradient perpendicular velocity boundary condition.
 
 *Given constant spacing*
 ```math
@@ -30,9 +30,9 @@ function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timesc
     return BoundaryCondition(classifcation, val; kwargs...)
 end
 
-@inline relax(j, k, c, bc, grid, clock, model_fields) =
+@inline relax(l, m, c, bc, grid, clock, model_fields) =
     c + ifelse(isnothing(bc.condition)||!isfinite(clock.last_stage_Δt), 0,
-        (getbc(bc, j, k, grid, clock, model_fields) - c) * min(1, clock.last_stage_Δt / bc.classification.matching_scheme.relaxation_timescale))
+        (getbc(bc, l, m, grid, clock, model_fields) - c) * min(1, clock.last_stage_Δt / bc.classification.matching_scheme.relaxation_timescale))
 
 @inline function _fill_west_open_halo!(j, k, grid, c, bc::FEOBC, loc, clock, model_fields)
     unrelaxed = @inbounds c[3, j, k] + (c[2, j, k] - c[4, j, k]) / 2

@@ -127,11 +127,11 @@ Flux boundary conditions are represented by the [`Flux`](@ref) type.
 ## Open boundary conditions
 
 Open boundary conditions directly specify the value of the halo points. Typically this is used
-to impose no penitration boundary conditions, i.e. setting wall normal velocity components on 
+to impose no penetration boundary conditions, i.e. setting wall normal velocity components on 
 to zero on the boundary. 
 
 The nuance here is that open boundaries behave differently for fields on face points in the 
-boundary direction due to the [staggere grid](@ref finite_volume). For example, the u-component
+boundary direction due to the [staggered grid](@ref finite_volume). For example, the u-component
 of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the 
 point specified by the boundary condition is the point lying on the boundary, where as for a 
 tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
@@ -139,7 +139,7 @@ of the domain (hence the difference with `Value` boundary conditions).
 
 The other important detail is that open (including no-penitration) boundary conditions are the 
 only conditions used on wall normal velocities when the domain is not periodic. This means that 
-their value effects the pressure calculation for nonhydrostatic models as it is involved in 
+their value affects the pressure calculation for nonhydrostatic models as it is involved in 
 calculating the divergence in the boundary adjacent center point (as described in the 
 [fractional step method](@ref time_stepping) documentation). Usually boundary points are filled
 for the predictor velocity (i.e. before the pressure is calculated), and on the corrected field
@@ -159,11 +159,11 @@ The restriction arrises as the boundary condition is specifying the wall normal 
 implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson 
 equation (``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\boldsymbol{u}^\star}{\Delta t}``)
 using the method described by [Schumann88](@citet) we have to move inhomogeneus boundary conditions
-on the pressure to the right hand side. In order todo this we define a new field ``\phi`` where
+on the pressure to the right hand side. In order to do this we define a new field ``\phi`` where
 ```math
     \begin{equation}
     \label{eq:modified_pressure_field}
-    \phi = p^{n+1} \quad \text{inside} \quad \Omega \quad \text{but} \quad \boldsymbol{\nabla} \cdot \boldsymbol{\nable} \phi \, \big |_{\partial\Omega} = 0.
+    \phi = p^{n+1} \quad \text{inside} \quad \Omega \quad \text{but} \quad \boldsymbol{\nabla} \cdot \boldsymbol{\nabla} \phi \, \big |_{\partial\Omega} = 0.
     \end{equation}
 ```
 This moves the boundary condition to the right hand side as ``\phi`` becomes
@@ -185,7 +185,7 @@ corrected field,
 The modified pressure poisson equation becomes ``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\tilde{\boldsymbol{u}}^\star}{\Delta t}``
 which can easily be solved. 
 
-Perhaps a more intuative way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
+Perhaps a more intuitive way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
 to the space of divergenece free velocity by applying
 ```math
     \begin{equation}
