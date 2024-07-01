@@ -12,6 +12,7 @@ export
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
+    ScaleInvariantSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
@@ -163,6 +164,7 @@ include("turbulence_closure_implementations/nothing_closure.jl")
 include("turbulence_closure_implementations/scalar_diffusivity.jl")
 include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
+include("turbulence_closure_implementations/scale_invariant_smagorinsky.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
