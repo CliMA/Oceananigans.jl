@@ -176,8 +176,8 @@ constant grid spacing `Δ`, and interior extent `L`.
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
 @inline domain(::Flat, N, ξ::AbstractArray) = CUDA.@allowscalar ξ[1], ξ[1]
-@inline domain(::Flat, N, ξ::Number) = ξ, ξ
-@inline domain(::Flat, N, ::Nothing) = nothing, nothing
+@inline domain(::Flat, N, ξ::Number) = ξ
+@inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
@@ -336,10 +336,10 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
-domain_summary(topo::Flat, name, ::Nothing, ::Nothing) = "Flat $name"
-domain_summary(topo::Flat, name, left::Number, right::Number) = "Flat $name = $left"
+domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 
-function domain_summary(topo, name, left, right)
+function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
 
@@ -354,8 +354,8 @@ function domain_summary(topo, name, left, right)
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
-    prefix = domain_summary(topo, name, left, right)
+function dimension_summary(topo, name, dom, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
     return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end

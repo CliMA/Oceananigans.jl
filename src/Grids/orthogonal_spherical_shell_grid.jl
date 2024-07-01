@@ -1038,7 +1038,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face])
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
-    z₁, z₂ = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
+    Ωz = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
 
     (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 
@@ -1060,7 +1060,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ_summary = "$(TX)  extent $(prettysummary(extent_λ)) degrees"
     φ_summary = "$(TY)  extent $(prettysummary(extent_φ)) degrees"
-    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+    z_summary = domain_summary(TZ(), "z", Ωz)
 
     longest = max(length(λ_summary), length(φ_summary), length(z_summary))
 
@@ -1073,7 +1073,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ_summary = "latitude:  $(TY)  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
                 coordinate_summary(TY, rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
 
-    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")

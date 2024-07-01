@@ -292,19 +292,19 @@ end
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    λ₁, λ₂ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
-    φ₁, φ₂ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
-    z₁, z₂ = domain(TZ(), size(grid, 3), grid.zᵃᵃᶠ)
+    Ωλ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
+    Ωφ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
+    Ωz = domain(TZ(), size(grid, 3), grid.zᵃᵃᶠ)
 
-    x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
-    y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
-    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+    x_summary = domain_summary(TX(), "λ", Ωλ) 
+    y_summary = domain_summary(TY(), "φ", Ωφ)
+    z_summary = domain_summary(TZ(), "z", Ωz)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
-    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
-    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = "longitude: " * dimension_summary(TX(), "λ", Ωλ, grid.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = "latitude:  " * dimension_summary(TY(), "φ", Ωφ, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")

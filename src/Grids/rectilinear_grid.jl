@@ -321,19 +321,19 @@ end
 function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    x₁, x₂ = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
-    y₁, y₂ = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
-    z₁, z₂ = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
+    Ωx = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
+    Ωy = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
+    Ωz = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
 
-    x_summary = domain_summary(TX(), "x", x₁, x₂)
-    y_summary = domain_summary(TY(), "y", y₁, y₂)
-    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+    x_summary = domain_summary(TX(), "x", Ωx)
+    y_summary = domain_summary(TY(), "y", Ωy)
+    z_summary = domain_summary(TZ(), "z", Ωz)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = dimension_summary(TX(), "x", x₁, x₂, grid.Δxᶜᵃᵃ, longest - length(x_summary))
-    y_summary = dimension_summary(TY(), "y", y₁, y₂, grid.Δyᵃᶜᵃ, longest - length(y_summary))
-    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = dimension_summary(TX(), "x", Ωx, grid.Δxᶜᵃᵃ, longest - length(x_summary))
+    y_summary = dimension_summary(TY(), "y", Ωy, grid.Δyᵃᶜᵃ, longest - length(y_summary))
+    z_summary = dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
