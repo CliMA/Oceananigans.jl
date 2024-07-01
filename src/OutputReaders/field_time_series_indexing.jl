@@ -103,6 +103,10 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 @propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
 @propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
 
+@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Time) = getindex(f, i, j, 1, n)
+@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Time) = getindex(f, i, 1, k, n)
+@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Time) = getindex(f, 1, j, k, n)
+
 #####
 ##### Time interpolation / extrapolation
 ##### Local getindex with integers `(i, j, k)` and `n :: Time`
