@@ -38,9 +38,9 @@ See the documentation for [`launch!`](@ref).
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
 """
-    KernelParameters(range1, range2=nothing, range3=nothing)
+    KernelParameters(range1, [range2, range3])
 
-Return parameters for launching a kernel of up to three-dimensions, where the
+Return parameters for launching a kernel of up to three dimensions, where the
 indices spanned by the kernel in each dimension are given by (range1, range2, range3).
 
 Example
@@ -56,15 +56,17 @@ launch!(arch, grid, kp, kernel!; kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(range1::UnitRange,
-                          range2::Union{Nothing, UnitRange}=nothing,
-                          range3::Union{Nothing, UnitRange}=nothing)
+KernelParameters(r::UnitRange) = KernelParameters(tuple(length(r)), tuple(first(r) - 1))
 
-    input_ranges = (range1, range2, range3)
-    ranges = filter(r -> !isnothing(r), input_ranges)
-    size = Tuple(length(r) for r in ranges)
-    offsets = Tuple(r -> first(r) - 1 for r in ranges)
+function KernelParameters(r1::UnitRange, r2::UnitRange)
+    size = (length(r1), length(r2))
+    offsets = (first(r1) - 1, first(r2) - 1)
+    return KernelParameters(size, offsets)
+end
 
+function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+    size = (length(r1), length(r2), length(r3))
+    offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
 end
 
