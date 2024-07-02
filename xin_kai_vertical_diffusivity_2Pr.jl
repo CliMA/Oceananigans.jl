@@ -4,6 +4,8 @@ using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Grids: inactive_node
+using Oceananigans.Grids: total_size
+using Oceananigans.Utils: KernelParameters
 using Oceananigans.Operators: ℑzᵃᵃᶜ, ℑxyᶠᶠᵃ, ℑxyᶜᶜᵃ
 
 using Adapt
