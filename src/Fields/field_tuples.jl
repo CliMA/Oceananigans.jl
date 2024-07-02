@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions, BoundaryCondition
 
 #####
 ##### `fill_halo_regions!` for tuples of `Field`
@@ -13,12 +13,10 @@ Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = Tuple(tuplify(ai) for ai in a)
-    flattened = flatten_tuple(tupled)
-
-    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
-    seen = []
-    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+    #tupled = Tuple(tuplify(ai) for ai in a)
+    #flattened = flatten_tuple(Tuple(tuplify(ai) for ai in a))
+    
+    return flatten_tuple(Tuple(tuplify(ai) for ai in a))
 end
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
@@ -35,49 +33,35 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
-"""
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
-
-Fill halo regions for all `fields`. The algorithm:
-
-  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-     duplicate entries to avoid "repeated" halo filling.
-    
-  2. Filters fields into three categories:
-     i. ReducedFields with non-trivial boundary conditions;
-     ii. Fields with non-trivial indices and boundary conditions;
-     iii. Fields spanning the whole grid with non-trivial boundary conditions.
-    
-  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-    
-  4. In every direction, the halo regions in each of the remaining `Field` tuple
-     are filled simultaneously.
-"""
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
-    flattened = flattened_unique_values(maybe_nested_tuple)
+    flattened = flatten_tuple(Tuple(tuplify(ai) for ai in maybe_nested_tuple))
 
-    # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
-    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
-    
-    for field in reduced_fields
-        fill_halo_regions!(field, args...; kwargs...)
+    bc = map(boundary_conditions, flattened)
+    permute_boundary_conditions(bc)
+
+    return nothing
+end
+
+fill_first(bc1, bc2) = true
+
+# Returns the boundary conditions a specific side for `FieldBoundaryConditions` inputs and
+# a tuple of boundary conditions for `NTuple{N, <:FieldBoundaryConditions}` inputs
+for dir in (:south, :north, :top)
+    extract_side_bc = Symbol(:extract_, dir, :_bc)
+    @eval begin
+        @inline $extract_side_bc(bc) = bc.$dir
+        @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
     end
+end
 
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
+#@inline extract_bc(bc, ::Val{:south})  = tuple(extract_south_bc(bc))
+@inline extract_bc(bc, ::Val{:south_and_north}) = (extract_south_bc(bc), extract_north_bc(bc))
+@inline extract_bc(bc, ::Val{:top}) = tuple(extract_top_bc(bc))
 
-    # Fill halo regions for reduced and windowed fields
-    for field in windowed_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-
-    # Fill the rest
-    if !isempty(ordinary_fields)
-        grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
-    end
+function permute_boundary_conditions(boundary_conditions)
+    sides = [:south_and_north, :top]
+    sides = sides[[2, 1]]
+    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
     return nothing
 end

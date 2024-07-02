@@ -47,15 +47,7 @@ const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
-    arch = architecture(grid)
-
-    fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
-    number_of_tasks  = length(fill_halos!)
-
-    # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
-    end
+    permute_boundary_conditions(boundary_conditions)
 
     return nothing
 end
@@ -79,44 +71,16 @@ end
 # `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in 
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)
-
-    split_x_halo_filling = split_halo_filling(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
-    split_y_halo_filling = split_halo_filling(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
-
-    west_bc  = extract_west_bc(boundary_conditions)
-    east_bc  = extract_east_bc(boundary_conditions)
-    south_bc = extract_south_bc(boundary_conditions)
-    north_bc = extract_north_bc(boundary_conditions)
     
-    if split_x_halo_filling
-        if split_y_halo_filling
-            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
-            sides       = [:west, :east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
-        else
-            fill_halos! = [fill_west_halo!, fill_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
-            sides       = [:west, :east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, extract_bottom_bc(boundary_conditions)]
-        end
-    else
-        if split_y_halo_filling
-            fill_halos! = [fill_west_and_east_halo!, fill_south_halo!, fill_north_halo!, fill_bottom_and_top_halo!]
-            sides       = [:west_and_east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
-        else
-            fill_halos! = [fill_west_and_east_halo!, fill_south_and_north_halo!, fill_bottom_and_top_halo!]
-            sides       = [:west_and_east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
-        end
-    end
+    sides       = [:south_and_north, :top]
+    bcs_array   = [extract_south_bc(boundary_conditions), extract_bottom_bc(boundary_conditions)]
 
     perm = sortperm(bcs_array, lt=fill_first)
-    fill_halos! = fill_halos![perm]
     sides = sides[perm]
 
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
-    return fill_halos!, boundary_conditions
+    return nothing
 end
 
 # Split direction in two distinct fill_halo! events in case of a communication boundary condition 
